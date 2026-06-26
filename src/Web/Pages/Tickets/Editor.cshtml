@@ -1,0 +1,97 @@
+@page "{id:int?}"
+@model Diger.TramitesEstado.Web.Pages.Tickets.EditorModel
+@{
+    ViewData["Title"] = Model.TicketId is null ? "Nuevo ticket" : "Editar ticket";
+}
+
+<div class="container" style="max-width:760px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
+        <a class="btns" asp-page="/Tickets/Index" style="font-size:13px">← Volver</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">@ViewData["Title"]</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error">@Model.Error</div>
+    }
+
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="alert-error"></div>
+
+        <div class="card">
+            <h3 class="sec-h">Incidencia</h3>
+            <div class="field">
+                <label>Título <span style="color:#dc2626">*</span></label>
+                <input asp-for="Datos.Titulo" placeholder="Resumen breve del problema" />
+            </div>
+            <div class="field">
+                <label>Descripción</label>
+                <textarea asp-for="Datos.Descripcion" rows="4" placeholder="Detalle del inconveniente, pasos para reproducirlo, mensajes de error…"></textarea>
+            </div>
+            <div class="row2">
+                <div class="field">
+                    <label>Categoría</label>
+                    <select asp-for="Datos.Categoria">
+                        @foreach (var c in Model.Categorias)
+                        {
+                            <option value="@c">@Diger.TramitesEstado.Web.Pages.Tickets.EditorModel.CatLabel(c)</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Prioridad</label>
+                    <select asp-for="Datos.Prioridad">
+                        @foreach (var p in Model.Prioridades)
+                        {
+                            <option value="@p">@p</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="sec-h">Vínculos (opcional)</h3>
+            <div class="row2">
+                <div class="field">
+                    <label>Institución</label>
+                    <select asp-for="Datos.InstitucionId">
+                        <option value="">— Ninguna —</option>
+                        @foreach (var i in Model.Instituciones)
+                        {
+                            <option value="@i.Id">@i.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Expediente</label>
+                    <select asp-for="Datos.ExpedienteId">
+                        <option value="">— Ninguno —</option>
+                        @foreach (var e in Model.Expedientes)
+                        {
+                            <option value="@e.Id">@e.Codigo — @e.Institucion</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="sec-h">Reportado por</h3>
+            <div class="row3">
+                <div class="field"><label>Nombre</label><input asp-for="Datos.ReportanteNombre" /></div>
+                <div class="field"><label>Correo</label><input asp-for="Datos.ReportanteCorreo" type="email" /></div>
+                <div class="field"><label>Teléfono</label><input asp-for="Datos.ReportanteTelefono" /></div>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a class="btns" asp-page="/Tickets/Index">Cancelar</a>
+            <button class="btnp" type="submit">@(Model.TicketId is null ? "Crear ticket" : "Guardar cambios")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

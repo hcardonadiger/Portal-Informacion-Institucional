@@ -1,0 +1,114 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Contactos.IndexModel
+@{
+    ViewData["Title"] = "Directorio de Contactos";
+    var puedeGestionar = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador)) || User.IsInRole(nameof(RolUsuario.Tecnico));
+    var puedeEliminar  = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador));
+}
+
+<div class="container" style="max-width:1040px">
+    @if (TempData["SuccessMsg"] is string ok)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
+    }
+    <div class="hist-header">
+        <div>
+            <h2>Directorio de Contactos</h2>
+            <p>Enlaces institucionales por institución</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a class="btns" asp-page="/Contactos/Index" asp-page-handler="Export"
+               asp-route-buscar="@Model.Buscar" asp-route-institucion="@Model.Institucion">⬇ CSV</a>
+            @if (puedeGestionar)
+            {
+                <a class="btnp" asp-page="/Contactos/Editor">+ Nuevo contacto</a>
+            }
+        </div>
+    </div>
+
+    @* ── KPIs ──────────────────────────────────────────────────── *@
+    <div class="row2" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.25rem">
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#0a2d6e">@Model.TotalContactos</div>
+            <div class="prog-label">Contactos</div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#1455a4">@Model.TotalInstituciones</div>
+            <div class="prog-label">Instituciones</div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#15803d">@Model.TotalManuales</div>
+            <div class="prog-label">Agregados manualmente</div>
+        </div>
+    </div>
+
+    @* ── Filtros ───────────────────────────────────────────────── *@
+    <form method="get" class="seg-filters">
+        <div class="field">
+            <label>Buscar</label>
+            <input asp-for="Buscar" placeholder="Nombre, correo, cargo…" />
+        </div>
+        <div class="field">
+            <label>Institución</label>
+            <select asp-for="Institucion">
+                <option value="">Todas</option>
+                @foreach (var i in Model.Instituciones)
+                {
+                    <option value="@i.Nombre">@i.Nombre</option>
+                }
+            </select>
+        </div>
+        <button class="btnp" type="submit">Filtrar</button>
+        <a class="btns" asp-page="/Contactos/Index">Limpiar</a>
+    </form>
+
+    @if (!Model.Contactos.Any())
+    {
+        <div class="hist-empty">
+            <div class="ico">📇</div>
+            <p>No hay contactos que coincidan.</p>
+        </div>
+    }
+    else
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Cargo</th>
+                    <th>Institución</th>
+                    <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Contactos)
+                {
+                    <tr>
+                        <td style="font-weight:700;color:#0a2d6e">@c.Nombre</td>
+                        <td class="res-meta">@(c.Cargo ?? "—")</td>
+                        <td>@c.Institucion</td>
+                        <td class="res-meta">@(c.Correo ?? "—")</td>
+                        <td class="res-meta">@(c.Telefono ?? "—")</td>
+                        <td style="white-space:nowrap;text-align:right">
+                            @if (puedeGestionar)
+                            {
+                                <a class="btns" asp-page="/Contactos/Editor" asp-route-id="@c.Id"
+                                   style="font-size:12.5px;padding:6px 12px">Editar</a>
+                            }
+                            @if (puedeEliminar)
+                            {
+                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button class="hist-del" type="submit" style="margin-left:4px"
+                                            onclick="return confirm('¿Eliminar este contacto?')">✕</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

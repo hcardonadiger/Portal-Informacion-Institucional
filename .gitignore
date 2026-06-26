@@ -1,0 +1,29 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+*.userprefs
+
+## Migrations (opcional: comentar si quieres versionar las migraciones)
+# src/Infrastructure/Persistence/Migrations/
+
+## Secrets
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+secrets.json
+
+## Paquetes
+packages/
+*.nupkg
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## OS
+.DS_Store
+Thumbs.db

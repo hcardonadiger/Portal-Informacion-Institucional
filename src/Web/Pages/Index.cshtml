@@ -1,0 +1,93 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Expedientes de Digitalización";
+
+    var puedeGestionar = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador)) || User.IsInRole(nameof(RolUsuario.Tecnico));
+    var puedeEliminar  = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador));
+
+    static (string cls, string txt) Wf(EstadoExpediente e) => e switch
+    {
+        EstadoExpediente.EnExploracion   => ("wf-registrada", "En exploración"),
+        EstadoExpediente.EnLevantamiento => ("wf-asignada",   "En levantamiento"),
+        EstadoExpediente.EnModelado      => ("wf-enproceso",  "En modelado"),
+        EstadoExpediente.EnValidacion    => ("wf-enproceso",  "En validación"),
+        _                                => ("wf-completada", "Cerrado")
+    };
+}
+
+<div class="container" style="max-width:1040px">
+    @if (TempData["SuccessMsg"] is string msg)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">✅ @msg</div>
+    }
+    <div class="hist-header">
+        <div>
+            <h2>Expedientes de Digitalización</h2>
+            <p>Expedientes de trámites nuevos por institución</p>
+        </div>
+        @if (puedeGestionar)
+        {
+            <div style="display:flex;gap:8px">
+                @if (User.IsInRole(nameof(RolUsuario.Administrador)))
+                {
+                    <a class="btns" asp-page="/Admin/ImportarExpedientes">⇩ Importar de Supabase</a>
+                }
+                <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
+            </div>
+        }
+    </div>
+
+    @if (!Model.Expedientes.Any())
+    {
+        <div class="hist-empty">
+            <div class="ico">📁</div>
+            <p>No hay expedientes registrados.<br />Crea el primero con el botón de arriba.</p>
+        </div>
+    }
+    else
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th>Institución</th>
+                    <th>Código</th>
+                    <th>Estado</th>
+                    <th>Analista</th>
+                    <th style="text-align:center">Trámites</th>
+                    <th>Apertura</th>
+                    <th style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model.Expedientes)
+                {
+                    var w = Wf(e.Estado);
+                    var tooltip = e.TramiteNombres.Any() ? string.Join(" · ", e.TramiteNombres) : "Sin trámites";
+                    <tr>
+                        <td>
+                            <a class="seg-inst" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Institucion</a>
+                        </td>
+                        <td><span class="res-meta">@e.Codigo</span></td>
+                        <td><span class="wf-badge @w.cls">@w.txt</span></td>
+                        <td>@e.Analista</td>
+                        <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
+                        <td class="res-meta">@e.FechaCreacion.ToString("dd MMM yyyy")</td>
+                        <td style="white-space:nowrap;text-align:right">
+                            <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
+                               style="font-size:12.5px;padding:6px 12px">@(puedeGestionar ? "Abrir" : "Ver")</a>
+                            @if (puedeEliminar)
+                            {
+                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                    <input type="hidden" name="id" value="@e.Id" />
+                                    <button class="hist-del" type="submit" style="margin-left:4px"
+                                            onclick="return confirm('¿Eliminar este expediente?')">✕</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

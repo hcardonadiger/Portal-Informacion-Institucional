@@ -1,0 +1,91 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Tableros.TicketsModel
+@{
+    ViewData["Title"] = "Tablero de Tickets";
+    var d = Model.Data;
+    int Max(IReadOnlyList<ConteoDto> l) => l.Count == 0 ? 1 : Math.Max(1, l.Max(x => x.Cantidad));
+    string PrioCls(string p) => p switch { "Critica" => "c-red", "Alta" => "c-amber", "Baja" => "c-gray", _ => "" };
+}
+
+<div class="container" style="max-width:1100px">
+    <div class="hist-header">
+        <div><h2>Tablero de Tickets</h2><p>Soporte de la plataforma SOL — su alcance</p></div>
+        <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-num">@d.Total</div><div class="kpi-lbl">Total tickets</div></div>
+        <div class="kpi-card warn"><div class="kpi-num">@d.Abiertos</div><div class="kpi-lbl">Abiertos / en progreso</div></div>
+        <div class="kpi-card @(d.CriticosAbiertos > 0 ? "alert" : "")"><div class="kpi-num">@d.CriticosAbiertos</div><div class="kpi-lbl">Críticos abiertos</div></div>
+    </div>
+
+    <div class="dash-grid">
+        <div class="dash-card">
+            <h3>Por estado</h3>
+            @{ var mE = Max(d.PorEstado); }
+            @foreach (var c in d.PorEstado)
+            {
+                <div class="bar-row"><span class="bar-lbl">@c.Etiqueta</span>
+                    <div class="bar-track"><div class="bar-fill" style="width:@(c.Cantidad * 100 / mE)%"></div></div>
+                    <span class="bar-val">@c.Cantidad</span></div>
+            }
+        </div>
+        <div class="dash-card">
+            <h3>Por prioridad</h3>
+            @{ var mP = Max(d.PorPrioridad); }
+            @foreach (var c in d.PorPrioridad)
+            {
+                <div class="bar-row"><span class="bar-lbl">@c.Etiqueta</span>
+                    <div class="bar-track"><div class="bar-fill @PrioCls(c.Etiqueta)" style="width:@(c.Cantidad * 100 / mP)%"></div></div>
+                    <span class="bar-val">@c.Cantidad</span></div>
+            }
+        </div>
+        <div class="dash-card">
+            <h3>Por categoría</h3>
+            @{ var mC = Max(d.PorCategoria); }
+            @foreach (var c in d.PorCategoria)
+            {
+                <div class="bar-row"><span class="bar-lbl">@c.Etiqueta</span>
+                    <div class="bar-track"><div class="bar-fill c-teal" style="width:@(c.Cantidad * 100 / mC)%"></div></div>
+                    <span class="bar-val">@c.Cantidad</span></div>
+            }
+        </div>
+        <div class="dash-card">
+            <h3>Por institución</h3>
+            @if (!d.PorInstitucion.Any()) { <p style="font-size:13px;color:#6b7fa3">Sin datos.</p> }
+            else
+            {
+                var mI = Max(d.PorInstitucion);
+                @foreach (var c in d.PorInstitucion.Take(8))
+                {
+                    <div class="bar-row"><span class="bar-lbl">@c.Etiqueta</span>
+                        <div class="bar-track"><div class="bar-fill" style="width:@(c.Cantidad * 100 / mI)%"></div></div>
+                        <span class="bar-val">@c.Cantidad</span></div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Tickets abiertos más antiguos</h3>
+        @if (!d.AbiertosAntiguos.Any()) { <p style="font-size:13px;color:#6b7fa3">No hay tickets abiertos. 🎉</p> }
+        else
+        {
+            <table class="seg-table">
+                <thead><tr><th>Nº</th><th>Título</th><th>Institución</th><th>Prioridad</th><th style="text-align:right">Días abierto</th></tr></thead>
+                <tbody>
+                    @foreach (var t in d.AbiertosAntiguos)
+                    {
+                        <tr>
+                            <td class="res-meta" style="white-space:nowrap">@t.Numero</td>
+                            <td><a class="seg-inst" asp-page="/Tickets/Detalle" asp-route-id="@t.Id">@t.Titulo</a></td>
+                            <td class="res-meta">@(t.Institucion ?? "—")</td>
+                            <td class="res-meta">@t.Prioridad</td>
+                            <td style="text-align:right;font-weight:700;color:@(t.DiasAbierto >= 7 ? "#a32d2d" : "#0a2d6e")">@t.DiasAbierto</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

@@ -1,0 +1,79 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Reuniones.IndexModel
+@{
+    ViewData["Title"] = "Reuniones y Asistencias";
+    var puedeGestionar = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador)) || User.IsInRole(nameof(RolUsuario.Tecnico));
+    var puedeEliminar  = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador));
+}
+
+<div class="container" style="max-width:1040px">
+    @if (TempData["SuccessMsg"] is string ok)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
+    }
+    <div class="hist-header">
+        <div>
+            <h2>Reuniones y Asistencias</h2>
+            <p>Actas de reuniones y capacitaciones</p>
+        </div>
+        @if (puedeGestionar)
+        {
+            <div style="display:flex;gap:8px">
+                @if (User.IsInRole(nameof(RolUsuario.Administrador)))
+                {
+                    <a class="btns" asp-page="/Admin/ImportarReuniones">⇩ Importar de Supabase</a>
+                }
+                <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
+            </div>
+        }
+    </div>
+
+    @if (!Model.Reuniones.Any())
+    {
+        <div class="hist-empty">
+            <div class="ico">📅</div>
+            <p>No hay reuniones registradas.</p>
+        </div>
+    }
+    else
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Fecha</th>
+                    <th>Institución</th>
+                    <th>Tipo</th>
+                    <th style="text-align:center">Asistentes</th>
+                    <th style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Reuniones)
+                {
+                    <tr>
+                        <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a></td>
+                        <td class="res-meta">@(r.Fecha?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td>@(r.Institucion ?? "—")</td>
+                        <td class="res-meta">@(r.Tipo ?? "—")</td>
+                        <td style="text-align:center">@r.NumAsistentes</td>
+                        <td style="white-space:nowrap;text-align:right">
+                            <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
+                               style="font-size:12.5px;padding:6px 12px">Acta</a>
+                            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
+                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
+                            @if (puedeEliminar)
+                            {
+                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button class="hist-del" type="submit" style="margin-left:4px"
+                                            onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

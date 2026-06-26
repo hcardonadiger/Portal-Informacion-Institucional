@@ -1,0 +1,166 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Tickets.DetalleModel
+@{
+    var t = Model.Ticket;
+    ViewData["Title"] = t.Numero + " — " + t.Titulo;
+
+    (string bg, string fg) EstadoColor(EstadoTicket e) => e switch
+    {
+        EstadoTicket.Abierto => ("#e6f1fb", "#0c447c"), EstadoTicket.EnProgreso => ("#faeeda", "#854f0b"),
+        EstadoTicket.Resuelto => ("#eaf3de", "#27500a"), _ => ("#f1efe8", "#444441"),
+    };
+    (string bg, string fg) PrioColor(PrioridadTicket p) => p switch
+    {
+        PrioridadTicket.Critica => ("#fcebeb", "#a32d2d"), PrioridadTicket.Alta => ("#faece7", "#993c1d"),
+        PrioridadTicket.Media => ("#e6f1fb", "#185fa5"), _ => ("#f1efe8", "#5f5e5a"),
+    };
+    string EstadoLbl(EstadoTicket e) => e == EstadoTicket.EnProgreso ? "En progreso" : e.ToString();
+    string CatLbl(CategoriaTicket c) => Diger.TramitesEstado.Web.Pages.Tickets.EditorModel.CatLabel(c);
+    var ec = EstadoColor(t.Estado);
+    var pc = PrioColor(t.Prioridad);
+    var estados = new[] { EstadoTicket.Abierto, EstadoTicket.EnProgreso, EstadoTicket.Resuelto, EstadoTicket.Cerrado };
+}
+
+<div class="container" style="max-width:1040px">
+    @if (TempData["SuccessMsg"] is string ok)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.3rem;flex-wrap:wrap">
+        <a class="btns" asp-page="/Tickets/Index" style="font-size:13px">← Volver</a>
+        <span class="res-meta" style="font-variant-numeric:tabular-nums;font-weight:700">@t.Numero</span>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e;flex:1;min-width:200px">@t.Titulo</h2>
+        @if (Model.PuedeGestionar)
+        {
+            <a class="btns" asp-page="/Tickets/Editor" asp-route-id="@t.Id">✎ Editar</a>
+        }
+    </div>
+
+    <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+        <main style="flex:1;min-width:320px">
+            <div class="card">
+                <h3 class="sec-h">Descripción</h3>
+                <p style="font-size:14px;line-height:1.6;white-space:pre-line;color:#2d3748">@(string.IsNullOrWhiteSpace(t.Descripcion) ? "—" : t.Descripcion)</p>
+            </div>
+
+            <div class="card">
+                <h3 class="sec-h">Seguimiento</h3>
+                @if (!t.Comentarios.Any())
+                {
+                    <p class="res-meta">Sin actividad todavía.</p>
+                }
+                else
+                {
+                    <div style="display:flex;flex-direction:column;gap:.7rem">
+                        @foreach (var c in t.Comentarios)
+                        {
+                            if (c.Tipo == TipoComentarioTicket.Comentario)
+                            {
+                                <div style="border:1px solid #eef1f7;border-radius:10px;padding:.7rem .9rem">
+                                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7fa3;margin-bottom:3px">
+                                        <strong style="color:#0a2d6e">@c.Autor</strong>
+                                        <span>@c.Fecha.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+                                    </div>
+                                    <div style="font-size:14px;line-height:1.5;white-space:pre-line">@c.Texto</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div style="font-size:12.5px;color:#6b7fa3;text-align:center;padding:2px">
+                                    <span style="background:#f5f8ff;border-radius:20px;padding:3px 12px">
+                                        @(c.Tipo == TipoComentarioTicket.CambioEstado ? "🔄" : "👤") @c.Texto
+                                        <span style="opacity:.7">· @c.Autor · @c.Fecha.ToLocalTime().ToString("dd MMM HH:mm")</span>
+                                    </span>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+
+                <form method="post" asp-page-handler="Comentar" asp-route-id="@t.Id" style="margin-top:1rem">
+                    <div class="field" style="margin-bottom:.6rem">
+                        <textarea name="texto" rows="2" placeholder="Escribe un comentario…" required></textarea>
+                    </div>
+                    <button class="btnp" type="submit" style="font-size:13px">Comentar</button>
+                </form>
+            </div>
+        </main>
+
+        <aside style="width:300px;flex:none">
+            <div class="card">
+                <h3 class="sec-h">Estado</h3>
+                <div style="display:flex;gap:8px;margin-bottom:.9rem">
+                    <span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700">@EstadoLbl(t.Estado)</span>
+                    <span style="background:@pc.bg;color:@pc.fg;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700">@t.Prioridad</span>
+                </div>
+                @if (Model.PuedeAtender)
+                {
+                    <form method="post" asp-page-handler="CambiarEstado" asp-route-id="@t.Id">
+                        <div class="field" style="margin-bottom:.5rem">
+                            <label>Cambiar estado a</label>
+                            <select name="estado">
+                                @foreach (var e in estados)
+                                {
+                                    <option value="@e" selected="@(e == t.Estado)">@EstadoLbl(e)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="margin-bottom:.6rem">
+                            <input name="nota" placeholder="Nota (opcional)" />
+                        </div>
+                        <button class="btns" type="submit" style="width:100%">Actualizar estado</button>
+                    </form>
+                }
+            </div>
+
+            <div class="card">
+                <h3 class="sec-h">Asignación</h3>
+                <p style="font-size:14px;margin:0 0 .7rem">@(t.AsignadoA ?? "Sin asignar")</p>
+                @if (Model.PuedeGestionar)
+                {
+                    <form method="post" asp-page-handler="Asignar" asp-route-id="@t.Id">
+                        <div class="field" style="margin-bottom:.6rem">
+                            <select name="usuarioId">
+                                <option value="">— Sin asignar —</option>
+                                @foreach (var u in Model.Usuarios)
+                                {
+                                    <option value="@u.Id" selected="@(u.Id == t.AsignadoAId)">@u.Nombre (@u.Rol)</option>
+                                }
+                            </select>
+                        </div>
+                        <button class="btns" type="submit" style="width:100%">Asignar</button>
+                    </form>
+                }
+            </div>
+
+            <div class="card">
+                <h3 class="sec-h">Detalles</h3>
+                <dl style="margin:0;font-size:13.5px;line-height:1.5">
+                    <div style="margin-bottom:.5rem"><span class="res-meta">Categoría</span><br>@CatLbl(t.Categoria)</div>
+                    <div style="margin-bottom:.5rem"><span class="res-meta">Institución</span><br>@(t.Institucion ?? "—")</div>
+                    <div style="margin-bottom:.5rem"><span class="res-meta">Expediente</span><br>
+                        @if (t.ExpedienteId is int eid)
+                        {
+                            <a class="seg-inst" asp-page="/Expedientes/Editor" asp-route-id="@eid">@t.ExpedienteCodigo</a>
+                        }
+                        else { <text>—</text> }
+                    </div>
+                    <div style="margin-bottom:.5rem"><span class="res-meta">Reportado por</span><br>
+                        @(t.ReportanteNombre ?? "—")
+                        @if (!string.IsNullOrWhiteSpace(t.ReportanteCorreo)) { <br><span class="res-meta">@t.ReportanteCorreo</span> }
+                    </div>
+                    @if (t.FechaResolucion is DateTime fr)
+                    {
+                        <div style="margin-bottom:.5rem"><span class="res-meta">Resuelto</span><br>@fr.ToLocalTime().ToString("dd MMM yyyy")</div>
+                    }
+                    <div><span class="res-meta">Creado</span><br>@t.FechaCreacion.ToLocalTime().ToString("dd MMM yyyy HH:mm")@(string.IsNullOrWhiteSpace(t.CreadoPor) ? "" : " · " + t.CreadoPor)</div>
+                </dl>
+            </div>
+        </aside>
+    </div>
+</div>

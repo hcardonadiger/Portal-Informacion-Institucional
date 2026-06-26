@@ -1,0 +1,77 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Tableros.ReunionesModel
+@{
+    ViewData["Title"] = "Tablero de Reuniones";
+    var d = Model.Data;
+    int Max(IReadOnlyList<ConteoDto> l) => l.Count == 0 ? 1 : Math.Max(1, l.Max(x => x.Cantidad));
+}
+
+<div class="container" style="max-width:1100px">
+    <div class="hist-header">
+        <div><h2>Tablero de Reuniones y Acuerdos</h2><p>Seguimiento de compromisos — su alcance</p></div>
+        <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-num">@d.Total</div><div class="kpi-lbl">Reuniones</div></div>
+        <div class="kpi-card"><div class="kpi-num">@d.Mes</div><div class="kpi-lbl">Este mes</div></div>
+        <div class="kpi-card"><div class="kpi-num">@d.AsistentesTotal</div><div class="kpi-lbl">Asistentes</div></div>
+        <div class="kpi-card @(d.AcuerdosVencidos > 0 ? "alert" : "")"><div class="kpi-num">@d.AcuerdosVencidos</div><div class="kpi-lbl">Acuerdos vencidos</div></div>
+        <div class="kpi-card warn"><div class="kpi-num">@d.AcuerdosProximos</div><div class="kpi-lbl">Acuerdos próximos</div></div>
+    </div>
+
+    <div class="dash-grid">
+        <div class="dash-card">
+            <h3>Por tipo</h3>
+            @if (!d.PorTipo.Any()) { <p style="font-size:13px;color:#6b7fa3">Sin datos.</p> }
+            else
+            {
+                var mT = Max(d.PorTipo);
+                @foreach (var c in d.PorTipo.Take(8))
+                {
+                    <div class="bar-row"><span class="bar-lbl">@c.Etiqueta</span>
+                        <div class="bar-track"><div class="bar-fill c-teal" style="width:@(c.Cantidad * 100 / mT)%"></div></div>
+                        <span class="bar-val">@c.Cantidad</span></div>
+                }
+            }
+        </div>
+        <div class="dash-card">
+            <h3>Por institución</h3>
+            @if (!d.PorInstitucion.Any()) { <p style="font-size:13px;color:#6b7fa3">Sin datos.</p> }
+            else
+            {
+                var mI = Max(d.PorInstitucion);
+                @foreach (var c in d.PorInstitucion.Take(10))
+                {
+                    <div class="bar-row"><span class="bar-lbl">@c.Etiqueta</span>
+                        <div class="bar-track"><div class="bar-fill" style="width:@(c.Cantidad * 100 / mI)%"></div></div>
+                        <span class="bar-val">@c.Cantidad</span></div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Acuerdos con plazo (@(d.AcuerdosVencidos) vencidos · @(d.AcuerdosProximos) próximos · @(d.AcuerdosSinPlazo) sin plazo)</h3>
+        @if (!d.Acuerdos.Any()) { <p style="font-size:13px;color:#6b7fa3">No hay acuerdos con plazo registrado.</p> }
+        else
+        {
+            <table class="seg-table">
+                <thead><tr><th>Compromiso</th><th>Responsable</th><th>Reunión</th><th style="text-align:right">Plazo</th></tr></thead>
+                <tbody>
+                    @foreach (var a in d.Acuerdos)
+                    {
+                        <tr>
+                            <td style="font-size:13px">@a.Compromiso</td>
+                            <td class="res-meta">@(a.Responsable ?? "—")</td>
+                            <td><a class="seg-inst" asp-page="/Reuniones/Acta" asp-route-id="@a.ReunionId" style="font-size:12.5px">@a.ReunionTitulo</a></td>
+                            <td style="text-align:right;white-space:nowrap;font-weight:700;color:@(a.Vencido ? "#a32d2d" : "#0a2d6e")">
+                                @(a.Plazo?.ToString("dd MMM yyyy")) @(a.Vencido ? "⚠" : "")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

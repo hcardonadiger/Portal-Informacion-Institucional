@@ -1,0 +1,63 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Admin.ImportarReunionesModel
+@{
+    ViewData["Title"] = "Importar reuniones (Supabase)";
+}
+
+<div class="container" style="max-width:720px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
+        <a class="btns" asp-page="/Reuniones/Index" style="font-size:13px">← Volver</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Importar reuniones desde el portal demo</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error">@Model.Error</div>
+    }
+
+    @if (Model.Resultado is { } r)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">
+            ✅ Importación finalizada — <strong>@r.Creadas</strong> creadas,
+            <strong>@r.Omitidas</strong> omitidas (ya existían), de <strong>@r.Total</strong> en origen.
+        </div>
+        @if (r.Errores.Count > 0)
+        {
+            <div class="card" style="border-color:#fca5a5">
+                <h3 class="sec-h" style="color:#b91c1c">Filas con error (@r.Errores.Count)</h3>
+                <ul style="margin:0;padding-left:1.2rem">
+                    @foreach (var e in r.Errores)
+                    {
+                        <li style="font-size:13px;margin-bottom:.3rem">@e</li>
+                    }
+                </ul>
+            </div>
+        }
+        <a class="btnp" asp-page="/Reuniones/Index">Ver reuniones →</a>
+    }
+    else
+    {
+        <div class="card">
+            <h3 class="sec-h">¿Qué hace esto?</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568">
+                Lee las reuniones y asistencias del portal demo (Supabase) y las crea en esta base de datos.
+                Es <strong>idempotente</strong>: las reuniones ya importadas (por su id de origen) se omiten,
+                así que puedes ejecutarlo varias veces sin duplicar. Los asistentes con correo también
+                alimentan el Directorio de Contactos.
+            </p>
+            @if (!Model.EsDesarrollo)
+            {
+                <div class="alert-error">Solo disponible en entorno de Desarrollo.</div>
+            }
+            else
+            {
+                <form method="post">
+                    <button class="btnp" type="submit"
+                            onclick="this.disabled=true;this.textContent='Importando…';this.form.submit()">
+                        Importar ahora
+                    </button>
+                </form>
+            }
+        </div>
+    }
+</div>

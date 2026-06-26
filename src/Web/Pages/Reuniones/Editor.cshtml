@@ -1,0 +1,275 @@
+@page "{id:int?}"
+@model Diger.TramitesEstado.Web.Pages.Reuniones.EditorModel
+@{
+    ViewData["Title"] = Model.ReunionId is null ? "Nueva reunión" : "Editar reunión";
+}
+
+<div class="container" style="max-width:920px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
+        <a class="btns" asp-page="/Reuniones/Index" style="font-size:13px">← Volver</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">@ViewData["Title"]</h2>
+        @if (Model.ReunionId is not null)
+        {
+            <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@Model.ReunionId"
+               style="font-size:13px;margin-left:auto">🖨 Ver acta</a>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error">@Model.Error</div>
+    }
+
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="alert-error"></div>
+
+        @* ── Datos generales ─────────────────────────────────────── *@
+        <div class="card">
+            <h3 class="sec-h">Datos generales</h3>
+
+            <div class="field">
+                <label>Título <span style="color:#dc2626">*</span></label>
+                <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" />
+            </div>
+
+            <div class="row3">
+                <div class="field">
+                    <label>Fecha</label>
+                    <input asp-for="Datos.Fecha" type="date" />
+                </div>
+                <div class="field">
+                    <label>Hora</label>
+                    <input asp-for="Datos.Hora" placeholder="Ej: 09:00" />
+                </div>
+                <div class="field">
+                    <label>Duración</label>
+                    <input asp-for="Datos.Duracion" placeholder="Ej: 2 horas" />
+                </div>
+            </div>
+
+            <div class="row3">
+                <div class="field">
+                    <label>Modalidad</label>
+                    <select asp-for="Datos.Modalidad">
+                        <option value="">— Seleccione —</option>
+                        @foreach (var m in Model.Modalidades)
+                        {
+                            <option value="@m">@m</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Tipo</label>
+                    <select asp-for="Datos.Tipo">
+                        <option value="">— Seleccione —</option>
+                        @foreach (var t in Model.Tipos)
+                        {
+                            <option value="@t">@t</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Institución beneficiaria</label>
+                    <select asp-for="Datos.InstitucionId">
+                        <option value="">— Ninguna / Otro —</option>
+                        @foreach (var i in Model.Instituciones)
+                        {
+                            <option value="@i.Id">@i.Nombre</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Lugar</label>
+                <input asp-for="Datos.Lugar" placeholder="Sede, sala o enlace de videollamada" />
+            </div>
+
+            <label class="chk">
+                <input asp-for="Datos.EsCapacitacionPlataforma" type="checkbox" onchange="toggleCap(this.checked)" />
+                <span>Es una capacitación de la plataforma</span>
+            </label>
+        </div>
+
+        @* ── Memoria / agenda ────────────────────────────────────── *@
+        <div class="card">
+            <h3 class="sec-h">Memoria de la reunión</h3>
+            <div class="field">
+                <label>Objetivo / agenda</label>
+                <textarea asp-for="Datos.ObjetivoAgenda" rows="3" placeholder="Propósito y puntos de agenda…"></textarea>
+            </div>
+            <div class="field">
+                <label>Desarrollo</label>
+                <textarea asp-for="Datos.Desarrollo" rows="4" placeholder="Resumen de lo tratado…"></textarea>
+            </div>
+        </div>
+
+        @* ── Capacitación (solo si aplica) ───────────────────────── *@
+        <div class="card" id="cap-card" style="@(Model.Datos.EsCapacitacionPlataforma ? "" : "display:none")">
+            <h3 class="sec-h">Detalle de capacitación</h3>
+            <div class="field">
+                <label>Tema</label>
+                <input asp-for="Datos.Tema" placeholder="Tema de la capacitación" />
+            </div>
+            <div class="field">
+                <label>Objetivo de la capacitación</label>
+                <textarea asp-for="Datos.ObjetivoCap" rows="2"></textarea>
+            </div>
+            <div class="field">
+                <label>Contenido <span class="hint">(un punto por línea)</span></label>
+                <textarea asp-for="Datos.Contenido" rows="4"></textarea>
+            </div>
+        </div>
+
+        @* ── Enlace institucional / Facilitador ──────────────────── *@
+        <div class="card">
+            <h3 class="sec-h">Enlace institucional</h3>
+            <div class="row2">
+                <div class="field"><label>Nombre</label><input asp-for="Datos.EpNombre" /></div>
+                <div class="field"><label>Cargo</label><input asp-for="Datos.EpCargo" /></div>
+            </div>
+            <div class="row2">
+                <div class="field"><label>Correo</label><input asp-for="Datos.EpCorreo" type="email" /></div>
+                <div class="field"><label>Teléfono</label><input asp-for="Datos.EpTel" /></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="sec-h">Facilitador DIGER</h3>
+            <div class="row3">
+                <div class="field"><label>Nombre</label><input asp-for="Datos.FacNombre" /></div>
+                <div class="field"><label>Cargo</label><input asp-for="Datos.FacCargo" /></div>
+                <div class="field"><label>Correo</label><input asp-for="Datos.FacCorreo" type="email" /></div>
+            </div>
+        </div>
+
+        @* ── Asistentes ──────────────────────────────────────────── *@
+        <div class="card">
+            <h3 class="sec-h">Asistentes</h3>
+            <table class="seg-table edit-grid" id="asistentes-tbl">
+                <thead>
+                    <tr>
+                        <th style="width:22%">Nombre</th><th style="width:18%">Cargo</th><th style="width:18%">Institución</th>
+                        <th style="width:23%">Correo</th><th style="width:15%">Teléfono</th><th style="width:40px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Asistentes.Count; i++)
+                    {
+                        <tr>
+                            <td><input type="hidden" name="Asistentes.Index" value="@i" />
+                                <input name="Asistentes[@i].Nombre" value="@Model.Asistentes[i].Nombre" /></td>
+                            <td><input name="Asistentes[@i].Cargo" value="@Model.Asistentes[i].Cargo" /></td>
+                            <td><input name="Asistentes[@i].Institucion" value="@Model.Asistentes[i].Institucion" /></td>
+                            <td><input name="Asistentes[@i].Correo" value="@Model.Asistentes[i].Correo" /></td>
+                            <td><input name="Asistentes[@i].Telefono" value="@Model.Asistentes[i].Telefono" /></td>
+                            <td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button type="button" class="btns" style="margin-top:.6rem" onclick="addAsistente()">+ Agregar asistente</button>
+        </div>
+
+        @* ── Resultados ──────────────────────────────────────────── *@
+        <div class="card">
+            <h3 class="sec-h">Resultados</h3>
+            <div class="row3">
+                <div class="field"><label>Convocados</label><input asp-for="Datos.Convocados" type="number" min="0" /></div>
+                <div class="field"><label>Nº asistentes</label><input asp-for="Datos.NumAsistentes" type="number" min="0" />
+                    <span class="hint">Si registra asistentes arriba, se usa ese conteo.</span></div>
+                <div class="field"><label>% asistencia</label><input asp-for="Datos.PctAsistencia" type="number" min="0" max="100" /></div>
+            </div>
+            <div class="field"><label>Satisfacción</label><input asp-for="Datos.Satisfaccion" placeholder="Ej: Alta / 4.5 de 5" /></div>
+            <div class="field">
+                <label>Compromisos <span class="hint">(uno por línea)</span></label>
+                <textarea asp-for="Datos.Compromisos" rows="3"></textarea>
+            </div>
+        </div>
+
+        @* ── Acuerdos ────────────────────────────────────────────── *@
+        <div class="card">
+            <h3 class="sec-h">Acuerdos y seguimiento</h3>
+            <table class="seg-table edit-grid" id="acuerdos-tbl">
+                <thead>
+                    <tr><th style="width:46%">Compromiso</th><th style="width:24%">Responsable</th><th style="width:170px">Plazo</th><th style="width:40px"></th></tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Acuerdos.Count; i++)
+                    {
+                        <tr>
+                            <td><input type="hidden" name="Acuerdos.Index" value="@i" />
+                                <input name="Acuerdos[@i].Compromiso" value="@Model.Acuerdos[i].Compromiso" /></td>
+                            <td><input name="Acuerdos[@i].Responsable" value="@Model.Acuerdos[i].Responsable" /></td>
+                            <td><input name="Acuerdos[@i].Plazo" type="date" value="@(Model.Acuerdos[i].Plazo?.ToString("yyyy-MM-dd"))" /></td>
+                            <td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button type="button" class="btns" style="margin-top:.6rem" onclick="addAcuerdo()">+ Agregar acuerdo</button>
+        </div>
+
+        @* ── Validación y evidencias ─────────────────────────────── *@
+        <div class="card">
+            <h3 class="sec-h">Validación y evidencias</h3>
+            <div class="row2">
+                <div class="field"><label>Validación DIGER</label><input asp-for="Datos.ValDiger" /></div>
+                <div class="field"><label>Validación institución</label><input asp-for="Datos.ValInst" /></div>
+            </div>
+            <div class="field">
+                <label>Documentos / recursos <span class="hint">(uno por línea)</span></label>
+                <textarea asp-for="Datos.DocsRecursos" rows="2"></textarea>
+            </div>
+            <div class="row2">
+                <div class="field"><label>Foto 1 (URL)</label><input asp-for="Datos.Foto1Url" placeholder="https://…" /></div>
+                <div class="field"><label>Descripción foto 1</label><input asp-for="Datos.Foto1Desc" /></div>
+            </div>
+            <div class="row2">
+                <div class="field"><label>Foto 2 (URL)</label><input asp-for="Datos.Foto2Url" placeholder="https://…" /></div>
+                <div class="field"><label>Descripción foto 2</label><input asp-for="Datos.Foto2Desc" /></div>
+            </div>
+        </div>
+
+        <div class="nav">
+            <a class="btns" asp-page="/Reuniones/Index">Cancelar</a>
+            <button class="btnp" type="submit">@(Model.ReunionId is null ? "Crear reunión" : "Guardar cambios")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        let aIdx = @Model.Asistentes.Count, kIdx = @Model.Acuerdos.Count;
+
+        function toggleCap(on) {
+            document.getElementById('cap-card').style.display = on ? '' : 'none';
+        }
+
+        function addAsistente() {
+            const i = aIdx++;
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                `<td><input type="hidden" name="Asistentes.Index" value="${i}" />` +
+                `<input name="Asistentes[${i}].Nombre" /></td>` +
+                `<td><input name="Asistentes[${i}].Cargo" /></td>` +
+                `<td><input name="Asistentes[${i}].Institucion" /></td>` +
+                `<td><input name="Asistentes[${i}].Correo" /></td>` +
+                `<td><input name="Asistentes[${i}].Telefono" /></td>` +
+                `<td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>`;
+            document.querySelector('#asistentes-tbl tbody').appendChild(tr);
+        }
+
+        function addAcuerdo() {
+            const i = kIdx++;
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                `<td><input type="hidden" name="Acuerdos.Index" value="${i}" />` +
+                `<input name="Acuerdos[${i}].Compromiso" /></td>` +
+                `<td><input name="Acuerdos[${i}].Responsable" /></td>` +
+                `<td><input name="Acuerdos[${i}].Plazo" type="date" /></td>` +
+                `<td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>`;
+            document.querySelector('#acuerdos-tbl tbody').appendChild(tr);
+        }
+    </script>
+}

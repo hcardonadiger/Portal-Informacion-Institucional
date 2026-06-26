@@ -1,0 +1,72 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Instituciones.IndexModel
+@{
+    ViewData["Title"] = "Catálogo de Instituciones";
+}
+
+<div class="container" style="max-width:900px">
+    @if (TempData["SuccessMsg"] is string ok)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
+    }
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+    <div class="hist-header">
+        <div>
+            <h2>Catálogo de Instituciones</h2>
+            <p>Instituciones y sus definiciones de trámites</p>
+        </div>
+        <a class="btnp" asp-page="/Instituciones/Editor">+ Nueva institución</a>
+    </div>
+
+    @if (!Model.Instituciones.Any())
+    {
+        <div class="hist-empty">
+            <div class="ico">🏛</div>
+            <p>No hay instituciones registradas.</p>
+        </div>
+    }
+    else
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th>Institución</th>
+                    <th style="text-align:center">Trámites</th>
+                    <th style="text-align:center">Estado</th>
+                    <th style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var i in Model.Instituciones)
+                {
+                    <tr>
+                        <td><a class="seg-inst" asp-page="/Instituciones/Editor" asp-route-id="@i.Id">@i.Nombre</a></td>
+                        <td style="text-align:center">@i.NumTramites</td>
+                        <td style="text-align:center">
+                            @if (i.Activo)
+                            {
+                                <span class="wf-badge wf-completada">Activa</span>
+                            }
+                            else
+                            {
+                                <span class="wf-badge wf-cancelada">Inactiva</span>
+                            }
+                        </td>
+                        <td style="white-space:nowrap;text-align:right">
+                            <a class="btns" asp-page="/Instituciones/Editor" asp-route-id="@i.Id"
+                               style="font-size:12.5px;padding:6px 12px">Editar</a>
+                            <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                <input type="hidden" name="id" value="@i.Id" />
+                                <button class="hist-del" type="submit" style="margin-left:4px"
+                                        onclick="return confirm('¿Eliminar esta institución? (solo si no tiene expedientes)')">✕</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
