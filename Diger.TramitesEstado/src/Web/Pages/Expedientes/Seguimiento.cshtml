@@ -1,0 +1,190 @@
+@page "{id:int}"
+@using System.Text.Json
+@model Diger.TramitesEstado.Web.Pages.Expedientes.SeguimientoModel
+@{
+    ViewData["Title"] = "Seguimiento de digitalización";
+    var d = Model.Data;
+    var etapas = MetodologiaDigitalizacion.Etapas;
+    var globalPct = MetodologiaDigitalizacion.Global(d.Estados, d.Aplica);
+    var gInt = (int)Math.Round(globalPct * 100);
+    var estadoG = MetodologiaDigitalizacion.EstadoGlobal(globalPct);
+    string EstadoCls(double p) => p >= 0.9999 ? "wf-completada" : p > 0 ? "wf-enproceso" : "wf-registrada";
+    var LABELS = new[] { "⬜ Pendiente", "🟡 En proceso", "✅ Completado" };
+    int Est(string sub) => d.Estados.TryGetValue(sub, out var v) ? v : 0;
+    var ro = Model.PuedeGestionar ? "" : " data-ro=\"1\"";
+    var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
+}
+
+<div class="container" style="max-width:980px">
+    @Html.AntiForgeryToken()
+    <div class="hist-header">
+        <div>
+            <h2>Seguimiento de digitalización</h2>
+            <p><strong>@d.Codigo</strong> · @d.Institucion</p>
+        </div>
+        <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@d.ExpedienteId">← Expediente</a>
+    </div>
+
+@if (!d.Tramites.Any())
+{
+    <div class="hist-empty" style="margin-top:1rem">
+        <div class="ico">📄</div>
+        <p>Este expediente no tiene trámites.<br />Agrégalos en el editor para hacer seguimiento por trámite.</p>
+    </div>
+}
+else
+{
+    @* ── Selector de trámite ─────────────────────────────────────── *@
+    <div class="seg-tramites">
+        <span class="res-meta" style="align-self:center;font-size:12px">Trámite:</span>
+        @foreach (var tr in d.Tramites)
+        {
+            <a class="seg-tram@(tr.Index == d.TramiteActual ? " on" : "")"
+               asp-page="/Expedientes/Seguimiento" asp-route-id="@d.ExpedienteId" asp-route-t="@tr.Index"
+               title="@tr.Nombre">@(tr.Index + 1). @tr.Nombre</a>
+        }
+    </div>
+
+    @* ── Progreso global ─────────────────────────────────────────── *@
+    <div class="card" style="display:flex;align-items:center;gap:14px">
+        <div class="seg-gbar"><i id="g-bar" style="width:@gInt%"></i></div>
+        <div style="font-size:20px;font-weight:800;color:#0a2d6e;min-width:56px" id="g-pct">@gInt%</div>
+        <span id="g-estado" class="wf-badge @EstadoCls(globalPct)">@estadoG</span>
+    </div>
+
+    @* ── Tabs ────────────────────────────────────────────────────── *@
+    <div class="seg-tabs">
+        <button type="button" class="seg-tab on" id="tb-etapas" onclick="tab('etapas')">📊 Etapas detalladas</button>
+        <button type="button" class="seg-tab" id="tb-checklist" onclick="tab('checklist')">📋 Checklist</button>
+    </div>
+
+    @* ── Etapas detalladas ───────────────────────────────────────── *@
+    <div id="tab-etapas">
+        @foreach (var e in etapas)
+        {
+            var ePct = (int)Math.Round(MetodologiaDigitalizacion.EtapaPct(e, d.Estados) * 100);
+            var aplica = MetodologiaDigitalizacion.Aplica(e, d.Aplica);
+            <div class="seg-etapa@(aplica ? "" : " no-aplica")" id="et-card-@e.Num">
+                <div class="seg-etapa-head">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+                        <div>
+                            <div class="seg-etapa-num">ETAPA @e.Num · @((int)Math.Round(e.Peso * 100))% DEL PROYECTO</div>
+                            <div class="seg-etapa-titulo">@e.Label</div>
+                        </div>
+                        <div style="font-size:15px;font-weight:800;color:#0f8a6a" id="et-pct-@e.Num">@ePct%</div>
+                    </div>
+                    <div class="seg-mini"><i id="et-bar-@e.Num" style="width:@ePct%"></i></div>
+                    @if (e.Toggle && Model.PuedeGestionar)
+                    {
+                        <label class="chk" style="margin:.5rem 0 0;font-size:12.5px">
+                            <input type="checkbox" data-etapa="@e.Num" checked="@aplica" onchange="toggleAplica(this)" />
+                            <span>Esta etapa aplica al proyecto</span>
+                        </label>
+                    }
+                </div>
+                <div>
+                    @foreach (var s in e.Subs)
+                    {
+                        var st = Est(s.Id);
+                        <div class="seg-sub">
+                            <span class="seg-sub-id">@s.Id</span>
+                            <span class="seg-sub-desc">@s.Desc</span>
+                            <span class="seg-sub-peso">@((int)Math.Round(s.Peso * 100))%</span>
+                            <button type="button" class="est-btn est-@st" data-sub="@s.Id"@Html.Raw(ro) onclick="cycle(this)">@LABELS[st]</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    @* ── Checklist (plano) ───────────────────────────────────────── *@
+    <div id="tab-checklist" hidden>
+        <div class="card">
+            @foreach (var e in etapas)
+            {
+                <div class="seg-chk-etapa">@e.Num · @e.Label</div>
+                @foreach (var s in e.Subs)
+                {
+                    var st = Est(s.Id);
+                    <div class="seg-sub" style="border-top:1px solid #f0f3f8">
+                        <span class="seg-sub-id">@s.Id</span>
+                        <span class="seg-sub-desc">@s.Desc</span>
+                        <button type="button" class="est-btn est-@st" data-sub="@s.Id"@Html.Raw(ro) onclick="cycle(this)">@LABELS[st]</button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
+</div>
+
+@section Scripts {
+<script>
+  var META    = @J(MetodologiaDigitalizacion.Etapas.Select(e => new { e.Num, e.Peso, e.Toggle, Subs = e.Subs.Select(s => new { s.Id, s.Peso }) }));
+  var ESTADOS = @J(Model.Data.Estados);
+  var APLICA  = @J(Model.Data.Aplica);
+  var ID      = @Model.Data.ExpedienteId;
+  var TRAMITE = @Model.Data.TramiteActual;
+  var TOKEN   = document.querySelector('input[name="__RequestVerificationToken"]').value;
+  var LABELS  = ['⬜ Pendiente', '🟡 En proceso', '✅ Completado'];
+
+  function estadoDe(s){ return ESTADOS[s] || 0; }
+  function aplicaDe(num){ var e = META.find(function(x){return x.Num===num;}); if(!e || !e.Toggle) return true; return APLICA[num] !== false; }
+  function etapaPct(e){ var t=0; e.Subs.forEach(function(s){ var st=estadoDe(s.Id); t += s.Peso*(st===2?1:st===1?0.5:0); }); return t; }
+  function globalPct(){ var n=0,dd=0; META.forEach(function(e){ if(!aplicaDe(e.Num)) return; n+=e.Peso*etapaPct(e); dd+=e.Peso; }); return dd<=0?0:n/dd; }
+  function estadoGlobal(p){ return p<=0?'No iniciado': p>=0.9999?'En operación':'En proceso'; }
+
+  function pintar(){
+    META.forEach(function(e){
+      var pct = Math.round(etapaPct(e)*100);
+      var bar = document.getElementById('et-bar-'+e.Num); if(bar) bar.style.width = pct+'%';
+      var lbl = document.getElementById('et-pct-'+e.Num); if(lbl) lbl.textContent = pct+'%';
+      var card = document.getElementById('et-card-'+e.Num); if(card) card.classList.toggle('no-aplica', !aplicaDe(e.Num));
+    });
+    var g = globalPct(); var gi = Math.round(g*100);
+    document.getElementById('g-bar').style.width = gi+'%';
+    document.getElementById('g-pct').textContent = gi+'%';
+    var eg = document.getElementById('g-estado');
+    eg.textContent = estadoGlobal(g);
+    eg.className = 'wf-badge ' + (g>=0.9999?'wf-completada': g>0?'wf-enproceso':'wf-registrada');
+  }
+
+  function post(handler, extra){
+    var b = new URLSearchParams();
+    b.append('__RequestVerificationToken', TOKEN);
+    b.append('id', ID);
+    b.append('tramite', TRAMITE);
+    for (var k in extra) b.append(k, extra[k]);
+    fetch('?handler='+handler, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:b })
+      .then(function(r){ if(!r.ok) console.warn('No se pudo guardar el cambio.'); })
+      .catch(function(){ console.warn('Sin conexión al guardar.'); });
+  }
+
+  function cycle(btn){
+    if (btn.dataset.ro) return;
+    var sub = btn.getAttribute('data-sub');
+    var est = (estadoDe(sub)+1)%3;
+    if (est===0) delete ESTADOS[sub]; else ESTADOS[sub]=est;
+    document.querySelectorAll('[data-sub="'+sub+'"]').forEach(function(x){ x.className='est-btn est-'+est; x.textContent=LABELS[est]; });
+    pintar();
+    post('Sub', { subId:sub, estado:est });
+  }
+
+  function toggleAplica(cb){
+    var num = cb.getAttribute('data-etapa');
+    APLICA[num] = cb.checked;
+    pintar();
+    post('Aplica', { etapa:num, aplica:cb.checked });
+  }
+
+  function tab(t){
+    document.getElementById('tab-etapas').hidden = t!=='etapas';
+    document.getElementById('tab-checklist').hidden = t!=='checklist';
+    document.getElementById('tb-etapas').classList.toggle('on', t==='etapas');
+    document.getElementById('tb-checklist').classList.toggle('on', t==='checklist');
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){ if (document.getElementById('g-bar')) pintar(); });
+</script>
+}

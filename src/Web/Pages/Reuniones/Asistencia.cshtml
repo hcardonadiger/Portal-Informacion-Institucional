@@ -1,0 +1,201 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Reuniones.AsistenciaModel
+@{
+    ViewData["Title"] = "Asistencia de la reunión";
+    var d = Model.Data;
+    var autoCount = d.Asistentes.Count(a => a.AutoRegistro);
+}
+
+<div class="container" style="max-width:1080px">
+    @if (TempData["SuccessMsg"] is string ok)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
+    }
+    <div class="hist-header">
+        <div>
+            <h2>Asistencia — @d.Titulo</h2>
+            <p>Auto-registro de participantes (enlace + QR) y lista en vivo</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@d.ReunionId">← Editar reunión</a>
+        </div>
+    </div>
+
+    <div class="dash-grid" style="grid-template-columns:1.4fr 1fr">
+        @* ── Enlace + QR ─────────────────────────────────────────── *@
+        <div class="dash-card">
+            <h3>Enlace y QR para participantes</h3>
+            <p style="font-size:12.5px;color:#6b7fa3;margin-top:-4px">Comparte el QR o el enlace; cada participante se registra desde su teléfono.</p>
+
+            <div style="display:flex;gap:8px;margin:.6rem 0">
+                <input id="urlBox" value="@Model.PublicUrl" readonly style="flex:1;font-size:12.5px" />
+                <button class="btns" type="button" onclick="copiar(event)">Copiar</button>
+                <a class="btns" href="@Model.PublicUrl" target="_blank" rel="noopener">Abrir</a>
+            </div>
+
+            <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:.5rem">
+                <div style="background:#fff;padding:10px;border:1px solid #e2e8f0;border-radius:12px;line-height:0">
+                    <img id="qrImg" src="@Model.QrDataUri" alt="Código QR de registro" width="190" height="190" style="display:block" />
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    <button class="btns" type="button" onclick="descargarQR()">⬇ Descargar QR</button>
+                    <button class="btns" type="button" onclick="imprimirQR()">🖨 Imprimir QR</button>
+                </div>
+            </div>
+        </div>
+
+        @* ── Estado del registro ─────────────────────────────────── *@
+        <div class="dash-card">
+            <h3>Registro</h3>
+            <div class="kpi-grid" style="grid-template-columns:1fr 1fr;margin:.4rem 0 1rem">
+                <div class="kpi-card"><div class="kpi-num">@d.Asistentes.Count</div><div class="kpi-lbl">Registrados</div></div>
+                <div class="kpi-card"><div class="kpi-num">@autoCount</div><div class="kpi-lbl">Auto-registro</div></div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:.8rem">
+                <span class="wf-badge @(d.RegistroAbierto ? "wf-completada" : "wf-cancelada")">
+                    @(d.RegistroAbierto ? "Abierto" : "Cerrado")
+                </span>
+                <form method="post" asp-page-handler="Toggle" asp-route-id="@d.ReunionId" style="display:inline">
+                    <input type="hidden" name="abrir" value="@((!d.RegistroAbierto).ToString().ToLowerInvariant())" />
+                    <button class="btns" type="submit">@(d.RegistroAbierto ? "Cerrar registro" : "Abrir registro")</button>
+                </form>
+            </div>
+
+            <form method="post" asp-page-handler="Regenerar" asp-route-id="@d.ReunionId"
+                  onsubmit="return confirm('Se generará un enlace/QR nuevo y el anterior dejará de funcionar. ¿Continuar?')">
+                <button class="btns" type="submit" style="font-size:12.5px">↻ Regenerar enlace</button>
+            </form>
+        </div>
+    </div>
+
+    @* ── Lista en vivo ───────────────────────────────────────────── *@
+    <div class="dash-card" style="margin-top:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <h3 style="margin:0">Registros (@d.Asistentes.Count)</h3>
+            <div style="display:flex;gap:8px">
+                @if (Model.Directorio.Any())
+                {
+                    <details class="seg-upd">
+                        <summary class="btns" style="font-size:12.5px">👥 Agregar del directorio</summary>
+                        <form method="post" asp-page-handler="AgregarDirectorio" asp-route-id="@d.ReunionId" class="seg-upd-form" style="width:320px">
+                            <p style="font-size:12px;color:#6b7fa3;margin:.2rem 0 .5rem">Contactos de @d.Institucion</p>
+                            <div style="max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:4px">
+                                @foreach (var c in Model.Directorio)
+                                {
+                                    <label class="chk" style="font-size:13px">
+                                        <input type="checkbox" name="contactoIds" value="@c.Id" />
+                                        <span>@c.Nombre @(string.IsNullOrWhiteSpace(c.Cargo) ? "" : $"· {c.Cargo}")</span>
+                                    </label>
+                                }
+                            </div>
+                            <button class="btnp" type="submit" style="margin-top:.6rem;width:100%;justify-content:center">Agregar seleccionados</button>
+                        </form>
+                    </details>
+                }
+                <a class="btns" asp-page-handler="Export" asp-route-id="@d.ReunionId" style="font-size:12.5px">⬇ Descargar Excel</a>
+            </div>
+        </div>
+
+        @if (!d.Asistentes.Any())
+        {
+            <p style="font-size:13px;color:#6b7fa3;margin-top:.8rem">Aún no hay registros. Comparte el enlace o QR de arriba.</p>
+        }
+        else
+        {
+            <table class="seg-table" style="margin-top:.6rem">
+                <thead>
+                    <tr>
+                        <th>Nombre</th><th>Cargo</th><th>Institución</th><th>Depto.</th>
+                        <th>Correo</th><th>Teléfono</th><th>Origen</th><th>Registrado</th><th style="width:1%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in d.Asistentes)
+                    {
+                        <tr>
+                            <td style="font-weight:600;color:#0a2d6e">@a.Nombre</td>
+                            <td class="res-meta">@(a.Cargo ?? "—")</td>
+                            <td class="res-meta">@(a.Institucion ?? "—")</td>
+                            <td class="res-meta">@(a.Departamento ?? "—")</td>
+                            <td class="res-meta">@(a.Correo ?? "—")</td>
+                            <td class="res-meta">@(a.Telefono ?? "—")</td>
+                            <td>
+                                @if (a.AutoRegistro)
+                                {
+                                    <span class="wf-badge wf-asignada">Auto</span>
+                                }
+                                else
+                                {
+                                    <span class="res-meta">Manual</span>
+                                }
+                            </td>
+                            <td class="res-meta" style="white-space:nowrap">@(a.RegistradoEl?.ToLocalTime().ToString("dd MMM HH:mm") ?? "—")</td>
+                            <td style="text-align:right">
+                                <form method="post" asp-page-handler="Eliminar" asp-route-id="@d.ReunionId" style="display:inline">
+                                    <input type="hidden" name="asistenteId" value="@a.Id" />
+                                    <button class="hist-del" type="submit" onclick="return confirm('¿Eliminar este registro?')">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+  // El QR se genera en el servidor (etiqueta <img id="qrImg">). Aquí solo se usa su data-URI
+  // para descargar/imprimir; no hay librería ni <canvas> en el cliente.
+  var URL_REG = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PublicUrl));
+  var TITULO  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data.Titulo));
+
+  function obtenerQR(){ var i = document.getElementById('qrImg'); return i ? i.src : null; }
+
+  function escHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function copiar(ev){
+    navigator.clipboard.writeText(URL_REG).then(function(){
+      var b = ev && ev.target; if(!b) return;
+      var t = b.textContent; b.textContent = '¡Copiado!';
+      setTimeout(function(){ b.textContent = t; }, 1400);
+    });
+  }
+  function descargarQR(){
+    var data = obtenerQR();
+    if (!data) { alert('El QR aún se está generando; intenta de nuevo en un momento.'); return; }
+    var a = document.createElement('a');
+    a.href = data; a.download = 'qr-asistencia.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  function imprimirQR(){
+    var data = obtenerQR();
+    if (!data) { alert('El QR aún se está generando; intenta de nuevo en un momento.'); return; }
+    // Impresión vía iframe oculto (evita el bloqueo de ventanas emergentes).
+    var ifr = document.createElement('iframe');
+    ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(ifr);
+    var doc = ifr.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR asistencia</title></head>'
+      + '<body style="text-align:center;font-family:system-ui;margin:0;padding:24px">'
+      + '<h2 style="color:#0a2d6e">' + escHtml(TITULO) + '</h2>'
+      + '<p>Escanea para registrar tu asistencia</p>'
+      + '<img src="' + data + '" style="width:300px;height:300px" />'
+      + '<p style="font-size:12px;color:#666;word-break:break-all">' + escHtml(URL_REG) + '</p>'
+      + '</body></html>');
+    doc.close();
+    var hecho = false;
+    function imprimir(){
+      if (hecho) return; hecho = true;
+      try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) {}
+      setTimeout(function(){ document.body.removeChild(ifr); }, 1500);
+    }
+    var img = doc.querySelector('img');
+    if (img && !img.complete) { img.onload = imprimir; setTimeout(imprimir, 800); }
+    else { imprimir(); }
+  }
+</script>
+}
