@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "autoPort": false,
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Web", "--no-launch-profile", "--", "--urls", "http://localhost:5011", "--environment", "Development"],
+      "port": 5011
+    }
+  ]
+}

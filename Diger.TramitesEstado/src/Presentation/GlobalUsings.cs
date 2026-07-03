@@ -1,0 +1,9 @@
+global using Diger.TramitesEstado.Domain.Common;
+global using Diger.TramitesEstado.Application.Common.Interfaces;
+global using Diger.TramitesEstado.Application.Common.Exceptions;
+global using Diger.TramitesEstado.Infrastructure.Persistence;
+global using MediatR;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Logging;

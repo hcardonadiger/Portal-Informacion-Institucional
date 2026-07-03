@@ -1,0 +1,102 @@
+@page "{token:guid}"
+@model Diger.TramitesEstado.Web.Pages.Asistencia.RegistroModel
+@{
+    ViewData["Title"] = "Registro de asistencia";
+    var r = Model.Reunion!;
+}
+
+<div class="container" style="max-width:520px">
+    <div class="card" style="margin-top:1.5rem">
+        <div style="text-align:center;margin-bottom:1.25rem">
+            <div class="iavt" style="margin:0 auto 12px;width:54px;height:54px;font-size:18px">DG</div>
+            <h2 style="color:#0a2d6e;font-size:20px;margin:0">Registro de asistencia</h2>
+            <p style="color:#0a2d6e;font-weight:700;margin:.6rem 0 0;font-size:15px">@r.Titulo</p>
+            <p style="color:#6b7fa3;font-size:13px;margin-top:4px">
+                @(r.Institucion is null ? "" : r.Institucion + " · ")
+                @(r.Fecha?.ToString("dd MMM yyyy"))
+                @(string.IsNullOrWhiteSpace(r.Hora) ? "" : " · " + r.Hora)
+                @(string.IsNullOrWhiteSpace(r.Modalidad) ? "" : " · " + r.Modalidad)
+            </p>
+        </div>
+
+        @if (Model.Registrado)
+        {
+            <div class="alert-ok" style="text-align:center">
+                ✅ <strong>¡Registro completado!</strong><br />Gracias por confirmar tu asistencia.
+            </div>
+            <div style="text-align:center;margin-top:1rem">
+                <a class="btns" asp-page="/Asistencia/Registro" asp-route-token="@r.Token">Registrar otra persona</a>
+            </div>
+        }
+        else if (!r.RegistroAbierto)
+        {
+            <div class="alert-error" style="text-align:center">
+                El registro de esta reunión está <strong>cerrado</strong>.
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+            }
+            <p style="font-size:12px;color:#9aadcc;margin:-.3rem 0 1rem">
+                Tus datos se usarán únicamente para el registro oficial de asistencia.
+            </p>
+
+            <form method="post">
+                <div class="field">
+                    <label>Nombre completo *</label>
+                    <input asp-for="Datos.Nombre" autocomplete="name" placeholder="Nombre y apellidos" required />
+                </div>
+                <div class="field">
+                    <label>Institución</label>
+                    <select id="instSel" onchange="toggleOtro()">
+                        <option value="">— Seleccione —</option>
+                        @foreach (var i in r.Instituciones)
+                        {
+                            <option value="@i">@i</option>
+                        }
+                        <option value="__OTRO__">Otra…</option>
+                    </select>
+                    <input type="hidden" asp-for="Datos.Institucion" id="instVal" />
+                    <input id="instOtro" style="display:none;margin-top:6px" placeholder="Escriba la institución" oninput="syncOtro()" />
+                </div>
+                <div class="row2" style="gap:12px">
+                    <div class="field"><label>Departamento / Unidad</label><input asp-for="Datos.Departamento" placeholder="Área" /></div>
+                    <div class="field"><label>Cargo</label><input asp-for="Datos.Cargo" placeholder="Puesto" /></div>
+                </div>
+                <div class="field">
+                    <label>Correo electrónico</label>
+                    <input asp-for="Datos.Correo" type="email" autocomplete="email" placeholder="correo@ejemplo.com" />
+                </div>
+                <div class="field">
+                    <label>Teléfono</label>
+                    <div style="display:flex;gap:8px">
+                        <select asp-for="Datos.CodigoPais" style="max-width:165px">
+                            @foreach (var (code, label) in RegistroModel.Paises)
+                            {
+                                <option value="@code">@label</option>
+                            }
+                        </select>
+                        <input asp-for="Datos.Telefono" type="tel" placeholder="Número" style="flex:1" />
+                    </div>
+                </div>
+                <button class="btnp" type="submit" style="width:100%;justify-content:center;margin-top:.6rem">
+                    Confirmar asistencia
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+  function toggleOtro(){
+    var s=document.getElementById('instSel'), o=document.getElementById('instOtro'), v=document.getElementById('instVal');
+    if(s.value==='__OTRO__'){ o.style.display='block'; v.value=o.value; o.focus(); }
+    else { o.style.display='none'; v.value=s.value; }
+  }
+  function syncOtro(){ document.getElementById('instVal').value=document.getElementById('instOtro').value; }
+</script>
+}
