@@ -26,16 +26,17 @@
             <h2>Expedientes de Digitalización</h2>
             <p>Expedientes de trámites nuevos por institución</p>
         </div>
-        @if (puedeGestionar)
-        {
-            <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px">
+            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">🗂 Vista por institución</button>
+            @if (puedeGestionar)
+            {
                 @if (User.IsInRole(nameof(RolUsuario.Administrador)))
                 {
                     <a class="btns" asp-page="/Admin/ImportarExpedientes">⇩ Importar de Supabase</a>
                 }
                 <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
-            </div>
-        }
+            }
+        </div>
     </div>
 
     <form method="get" class="lista-buscar">
@@ -60,6 +61,7 @@
     }
     else
     {
+        <div id="vista-lista">
         <table class="seg-table">
             <thead>
                 <tr>
@@ -106,5 +108,83 @@
         </table>
 
         <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+        </div>
+
+        @* ── Vista agrupada por institución ───────────────────────── *@
+        <div id="vista-agrupada" style="display:none">
+            @foreach (var grupo in Model.Todos.GroupBy(e => e.Institucion ?? "Sin institución").OrderBy(g => g.Key))
+            {
+                <div class="grupo-inst">
+                    <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
+                        <span>🏛</span>
+                        <strong>@grupo.Key</strong>
+                        <span class="grupo-inst-badge">@grupo.Count() expediente@(grupo.Count() == 1 ? "" : "s")</span>
+                        <span class="grupo-inst-chevron">▾</span>
+                    </div>
+                    <div class="grupo-inst-body">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Estado</th>
+                                    <th>Analista</th>
+                                    <th style="text-align:center">Trámites</th>
+                                    <th>Apertura</th>
+                                    <th style="width:1%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var e in grupo.OrderByDescending(e => e.FechaCreacion))
+                                {
+                                    var w = Wf(e.Estado);
+                                    var tooltip = e.TramiteNombres.Any() ? string.Join(" · ", e.TramiteNombres) : "Sin trámites";
+                                    <tr>
+                                        <td><a class="seg-inst" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a></td>
+                                        <td><span class="wf-badge @w.cls">@w.txt</span></td>
+                                        <td>@e.Analista</td>
+                                        <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
+                                        <td class="res-meta">@e.FechaCreacion.ToString("dd MMM yyyy")</td>
+                                        <td style="white-space:nowrap;text-align:right">
+                                            <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
+                                               style="font-size:12.5px;padding:6px 12px">📊 Seguimiento</a>
+                                            <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
+                                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
+                                            @if (puedeEliminar)
+                                            {
+                                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                                    <input type="hidden" name="id" value="@e.Id" />
+                                                    <button class="hist-del" type="submit" style="margin-left:4px"
+                                                            onclick="return confirm('¿Eliminar este expediente?')">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
     }
 </div>
+
+<script>
+    function toggleVistaExpedientes() {
+        var lista = document.getElementById('vista-lista');
+        var agrupada = document.getElementById('vista-agrupada');
+        var btn = document.getElementById('btn-toggle-vista');
+        if (!lista || !agrupada) return;
+        var enLista = agrupada.style.display === 'none';
+        lista.style.display = enLista ? 'none' : '';
+        agrupada.style.display = enLista ? '' : 'none';
+        btn.textContent = enLista ? '📋 Vista de lista' : '🗂 Vista por institución';
+    }
+    function toggleGrupoInst(hdr) {
+        var body = hdr.nextElementSibling;
+        var chevron = hdr.querySelector('.grupo-inst-chevron');
+        var abierto = body.style.display !== 'none';
+        body.style.display = abierto ? 'none' : '';
+        chevron.style.transform = abierto ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+</script>

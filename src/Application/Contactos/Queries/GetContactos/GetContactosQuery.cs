@@ -2,9 +2,10 @@ namespace Diger.TramitesEstado.Application.Contactos.Queries.GetContactos;
 
 public sealed record ContactoDto(
     int Id, string Nombre, int InstitucionId, string Institucion, string? Cargo,
-    string? Correo, string? Telefono, string? Notas, OrigenContacto Origen);
+    string? Correo, string? Telefono, string? Notas, OrigenContacto Origen, bool Activo);
 
-public sealed record GetContactosQuery(string? Buscar = null, string? Institucion = null)
+public sealed record GetContactosQuery(
+    string? Buscar = null, string? Institucion = null, bool MostrarInactivos = false)
     : IRequest<IReadOnlyList<ContactoDto>>;
 
 public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
@@ -13,6 +14,9 @@ public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
     public async Task<IReadOnlyList<ContactoDto>> Handle(GetContactosQuery q, CancellationToken ct)
     {
         var query = ctx.Contactos.AsNoTracking();
+
+        if (!q.MostrarInactivos)
+            query = query.Where(c => c.Activo);
 
         if (!string.IsNullOrWhiteSpace(q.Institucion))
             query = query.Where(c => c.Institucion == q.Institucion);
@@ -28,7 +32,7 @@ public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
         return await query
             .OrderBy(c => c.Institucion).ThenBy(c => c.Nombre)
             .Select(c => new ContactoDto(
-                c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen))
+                c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen, c.Activo))
             .ToListAsync(ct);
     }
 }

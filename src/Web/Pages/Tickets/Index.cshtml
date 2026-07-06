@@ -37,6 +37,7 @@
             <p>Incidencias y solicitudes sobre la plataforma SOL</p>
         </div>
         <div style="display:flex;gap:8px">
+            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaTickets()">🗂 Vista por institución</button>
             @if (puedeEliminar)
             {
                 <a class="btns" asp-page="/Tickets/Temas">⚙ Temas y SLA</a>
@@ -125,6 +126,7 @@
     }
     else
     {
+        <div id="vista-lista">
         <table class="seg-table">
             <thead>
                 <tr>
@@ -178,5 +180,92 @@
         </table>
 
         <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+        </div>
+
+        @* ── Vista agrupada por institución ───────────────────────── *@
+        <div id="vista-agrupada" style="display:none">
+            @foreach (var grupo in Model.Todos.GroupBy(t => t.Institucion ?? "Sin institución").OrderBy(g => g.Key))
+            {
+                <div class="grupo-inst">
+                    <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
+                        <span>🏛</span>
+                        <strong>@grupo.Key</strong>
+                        <span class="grupo-inst-badge">@grupo.Count() ticket@(grupo.Count() == 1 ? "" : "s")</span>
+                        <span class="grupo-inst-chevron">▾</span>
+                    </div>
+                    <div class="grupo-inst-body">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:1%">Nº</th>
+                                    <th>Título</th>
+                                    <th>Tema</th>
+                                    <th>Prioridad</th>
+                                    <th>Estado</th>
+                                    <th>Asignado</th>
+                                    <th style="width:1%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in grupo)
+                                {
+                                    var ec = EstadoColor(t.Estado);
+                                    var pc = PrioColor(t.Prioridad);
+                                    <tr>
+                                        <td class="res-meta" style="white-space:nowrap;font-variant-numeric:tabular-nums">@t.Numero</td>
+                                        <td><a class="seg-inst" asp-page="/Tickets/Detalle" asp-route-id="@t.Id">@t.Titulo</a>
+                                            @if (t.NumComentarios > 0)
+                                            {
+                                                <span class="res-meta" style="margin-left:6px">💬 @t.NumComentarios</span>
+                                            }
+                                            @if (t.SlaVencido)
+                                            {
+                                                <span style="background:#fcebeb;color:#a32d2d;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-left:6px">⏱ Vencido</span>
+                                            }
+                                        </td>
+                                        <td class="res-meta">@(t.Tema ?? "—")</td>
+                                        <td><span style="background:@pc.bg;color:@pc.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@t.Prioridad</span></td>
+                                        <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@EstadoLbl(t.Estado)</span></td>
+                                        <td class="res-meta">@(t.AsignadoA ?? "—")</td>
+                                        <td style="white-space:nowrap;text-align:right">
+                                            <a class="btns" asp-page="/Tickets/Detalle" asp-route-id="@t.Id"
+                                               style="font-size:12.5px;padding:6px 12px">Abrir</a>
+                                            @if (puedeEliminar)
+                                            {
+                                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                                    <input type="hidden" name="id" value="@t.Id" />
+                                                    <button class="hist-del" type="submit" style="margin-left:4px"
+                                                            onclick="return confirm('¿Eliminar este ticket?')">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
     }
 </div>
+
+<script>
+    function toggleVistaTickets() {
+        var lista = document.getElementById('vista-lista');
+        var agrupada = document.getElementById('vista-agrupada');
+        var btn = document.getElementById('btn-toggle-vista');
+        if (!lista || !agrupada) return;
+        var enLista = agrupada.style.display === 'none';
+        lista.style.display = enLista ? 'none' : '';
+        agrupada.style.display = enLista ? '' : 'none';
+        btn.textContent = enLista ? '📋 Vista de lista' : '🗂 Vista por institución';
+    }
+    function toggleGrupoInst(hdr) {
+        var body = hdr.nextElementSibling;
+        var chevron = hdr.querySelector('.grupo-inst-chevron');
+        var abierto = body.style.display !== 'none';
+        body.style.display = abierto ? 'none' : '';
+        chevron.style.transform = abierto ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+</script>

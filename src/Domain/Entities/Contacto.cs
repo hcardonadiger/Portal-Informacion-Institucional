@@ -11,8 +11,12 @@ public sealed class Contacto : BaseAuditableEntity
     public string?        Telefono      { get; private set; }
     public string?        Notas         { get; private set; }
     public OrigenContacto Origen        { get; private set; } = OrigenContacto.Manual;
+    public bool           Activo        { get; private set; } = true;
 
     private Contacto() { }
+
+    public void DarDeBaja() => Activo = false;
+    public void Reactivar() => Activo = true;
 
     public static Contacto Crear(
         string nombre, int institucionId, string institucionNombre, string? cargo, string? correo,

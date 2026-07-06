@@ -12,6 +12,7 @@ public sealed class ActualizarReunionCommandHandler(
     IInstitucionRepository institucionRepo,
     IContactoRepository contactoRepo,
     ICurrentUserService currentUser,
+    IApplicationDbContext ctx,
     IUnitOfWork uow)
     : IRequestHandler<ActualizarReunionCommand, Unit>
 {
@@ -37,7 +38,7 @@ public sealed class ActualizarReunionCommandHandler(
 
         r.MarcarActualizada();
         repo.Update(r);
-        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ct);
+        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ctx, uow, ct);
         await uow.SaveChangesAsync(ct);
         return Unit.Value;
     }

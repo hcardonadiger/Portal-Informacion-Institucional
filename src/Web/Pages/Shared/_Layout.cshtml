@@ -14,24 +14,62 @@
         <header class="topnav">
             <div class="topnav-inner">
                 <a class="topnav-brand" asp-page="/Tableros/Index">
-                    <span class="topnav-logo">DG</span> Portal DIGER
+                    <img src="~/img/logo_diger.png" asp-append-version="true" class="topnav-logo-img" alt="DIGER" />
                 </a>
                 <nav class="topnav-links">
-                    @if (await Acceso.PuedeAsync(ModulosPortal.Tableros)) { <a asp-page="/Tableros/Index">Tableros</a> }
-                    @if (await Acceso.PuedeAsync(ModulosPortal.Calendario)) { <a asp-page="/Calendario/Index">Calendario</a> }
-                    @if (await Acceso.PuedeAsync(ModulosPortal.Expedientes)) { <a asp-page="/Index">Expedientes</a> }
-                    @if (await Acceso.PuedeAsync(ModulosPortal.Reuniones))
-                    {
-                        <a asp-page="/Reuniones/Index">Reuniones</a>
-                        <a asp-page="/Reuniones/Compromisos">Compromisos</a>
+                    @{
+                        var puedeTableros    = await Acceso.PuedeAsync(ModulosPortal.Tableros);
+                        var puedeCalendario  = await Acceso.PuedeAsync(ModulosPortal.Calendario);
+                        var puedeExpedientes = await Acceso.PuedeAsync(ModulosPortal.Expedientes);
+                        var puedeReuniones   = await Acceso.PuedeAsync(ModulosPortal.Reuniones);
+                        var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
+                        var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
                     }
-                    @if (await Acceso.PuedeAsync(ModulosPortal.Tickets)) { <a asp-page="/Tickets/Index">Tickets</a> }
-                    @if (await Acceso.PuedeAsync(ModulosPortal.Contactos)) { <a asp-page="/Contactos/Index">Contactos</a> }
+                    @if (puedeTableros || puedeCalendario || puedeExpedientes)
+                    {
+                        <div class="topnav-dropdown">
+                            <a href="javascript:void(0)" class="topnav-dropdown-trigger">
+                                Seguimiento <span class="topnav-chevron">&#9662;</span>
+                            </a>
+                            <div class="topnav-dropdown-menu">
+                                <div class="topnav-dropdown-menu-inner">
+                                    @if (puedeTableros) { <a asp-page="/Tableros/Index">Tableros</a> }
+                                    @if (puedeCalendario) { <a asp-page="/Calendario/Index">Calendario</a> }
+                                    @if (puedeExpedientes) { <a asp-page="/Index">Expedientes</a> }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @if (puedeReuniones)
+                    {
+                        <div class="topnav-dropdown">
+                            <a href="javascript:void(0)" class="topnav-dropdown-trigger">
+                                Pendientes <span class="topnav-chevron">&#9662;</span>
+                            </a>
+                            <div class="topnav-dropdown-menu">
+                                <div class="topnav-dropdown-menu-inner">
+                                    <a asp-page="/Reuniones/Index">Reuniones</a>
+                                    <a asp-page="/Reuniones/Compromisos">Compromisos</a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @if (puedeTickets) { <a asp-page="/Tickets/Index">Tickets</a> }
+                    @if (puedeContactos) { <a asp-page="/Contactos/Index">Contactos</a> }
                     @if (Acceso.EsAdministrador)
                     {
                         <a asp-page="/Instituciones/Index">Instituciones</a>
-                        <a asp-page="/Usuarios/Index">Usuarios</a>
-                        <a asp-page="/Accesos/Index">Accesos</a>
+                        <div class="topnav-dropdown">
+                            <a href="javascript:void(0)" class="topnav-dropdown-trigger">
+                                Seguridad <span class="topnav-chevron">&#9662;</span>
+                            </a>
+                            <div class="topnav-dropdown-menu">
+                                <div class="topnav-dropdown-menu-inner">
+                                    <a asp-page="/Usuarios/Index">Usuarios</a>
+                                    <a asp-page="/Accesos/Index">Accesos</a>
+                                </div>
+                            </div>
+                        </div>
                     }
                 </nav>
                 <div class="topnav-user">

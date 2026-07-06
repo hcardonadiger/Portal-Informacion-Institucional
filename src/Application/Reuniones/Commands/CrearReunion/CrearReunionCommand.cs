@@ -11,6 +11,7 @@ public sealed class CrearReunionCommandHandler(
     IInstitucionRepository institucionRepo,
     IContactoRepository contactoRepo,
     ICurrentUserService currentUser,
+    IApplicationDbContext ctx,
     IUnitOfWork uow)
     : IRequestHandler<CrearReunionCommand, int>
 {
@@ -31,7 +32,7 @@ public sealed class CrearReunionCommandHandler(
         }
 
         await repo.AddAsync(r, ct);
-        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ct);
+        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ctx, uow, ct);
         await uow.SaveChangesAsync(ct);
         return r.Id;
     }

@@ -1,4 +1,4 @@
-@page "{id:int?}"
+﻿@page "{id:int?}"
 @model Diger.TramitesEstado.Web.Pages.Reuniones.EditorModel
 @{
     ViewData["Title"] = Model.ReunionId is null ? "Nueva reunión" : "Editar reunión";
@@ -25,8 +25,6 @@
     <div class="sb-hdr">Pasos</div>
     <div class="sbi active" id="sb0" onclick="irPaso(0)"><div class="sbi-dot"></div>Generales</div>
     <div class="sbi" id="sb1" onclick="irPaso(1)"><div class="sbi-dot"></div>Asistencia</div>
-    <div class="sbi" id="sb2" onclick="irPaso(2)"><div class="sbi-dot"></div>Memoria</div>
-    <div class="sbi" id="sb3" onclick="irPaso(3)"><div class="sbi-dot"></div>Capacitación</div>
     <div class="sbi" id="sb4" onclick="irPaso(4)"><div class="sbi-dot"></div>Cierre</div>
   </aside>
 
@@ -78,7 +76,7 @@
             <span class="hint">Las privadas solo las ve quien las crea.</span>
           </div>
         </div>
-        <label class="chk"><input asp-for="Datos.EsCapacitacionPlataforma" id="es-cap" type="checkbox" onchange="toggleCap()" /><span>Es una capacitación de la plataforma</span></label>
+        <label class="chk"><input asp-for="Datos.EsCapacitacionPlataforma" id="es-cap" type="checkbox" /><span>Es una capacitación de la plataforma</span></label>
       </div>
       <div class="nav"><span></span><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
     </div>
@@ -97,138 +95,103 @@
           </div>
         </div>
       }
+
       <div class="card">
-        <table class="seg-table edit-grid" id="asistentes-tbl">
-          <thead><tr>
-            <th style="width:22%">Nombre</th><th style="width:15%">Cargo</th><th style="width:15%">Institución</th>
-            <th style="width:14%">Depto.</th><th style="width:20%">Correo</th><th style="width:14%">Teléfono</th><th style="width:40px"></th>
-          </tr></thead>
-          <tbody>
-            @for (var i = 0; i < Model.Asistentes.Count; i++)
-            {
-              <tr>
-                <td><input type="hidden" name="Asistentes.Index" value="@i" /><input name="Asistentes[@i].Nombre" value="@Model.Asistentes[i].Nombre" /></td>
-                <td><input name="Asistentes[@i].Cargo" value="@Model.Asistentes[i].Cargo" /></td>
-                <td><input name="Asistentes[@i].Institucion" value="@Model.Asistentes[i].Institucion" /></td>
-                <td><input name="Asistentes[@i].Departamento" value="@Model.Asistentes[i].Departamento" /></td>
-                <td><input name="Asistentes[@i].Correo" value="@Model.Asistentes[i].Correo" /></td>
-                <td><input name="Asistentes[@i].Telefono" value="@Model.Asistentes[i].Telefono" /></td>
-                <td>
-                  <input type="hidden" name="Asistentes[@i].AutoRegistro" value="@Model.Asistentes[i].AutoRegistro.ToString().ToLowerInvariant()" />
-                  @if (Model.Asistentes[i].RegistradoEl is DateTime re)
+          <div class="field">
+              <label>Objetivo de la capacitación</label>
+              <textarea asp-for="Datos.ObjetivoCap" rows="2"></textarea>
+          </div>
+          <div class="field">
+              <label>Contenido <span class="hint">(un punto por línea)</span></label>
+              <textarea asp-for="Datos.Contenido" rows="4"></textarea>
+          </div>
+      </div>
+
+      @* ── Enlace institucional / Facilitador ──────────────────── *@
+      <div class="card">
+          <h3 class="sec-h">Enlace institucional</h3>
+          <div class="row2">
+              <div class="field"><label>Nombre</label><input asp-for="Datos.EpNombre" /></div>
+              <div class="field"><label>Cargo</label><input asp-for="Datos.EpCargo" /></div>
+          </div>
+          <div class="row2">
+              <div class="field"><label>Correo</label><input asp-for="Datos.EpCorreo" type="email" /></div>
+              <div class="field"><label>Teléfono</label><input asp-for="Datos.EpTel" /></div>
+          </div>
+      </div>
+
+      <div class="card">
+          <h3 class="sec-h">Facilitador DIGER</h3>
+          <div class="row3">
+              <div class="field"><label>Nombre</label><input asp-for="Datos.FacNombre" /></div>
+              <div class="field"><label>Cargo</label><input asp-for="Datos.FacCargo" /></div>
+              <div class="field"><label>Correo</label><input asp-for="Datos.FacCorreo" type="email" /></div>
+          </div>
+      </div>
+
+      @* ── Asistentes ──────────────────────────────────────────── *@
+      <div class="card">
+          <h3 class="sec-h">Asistentes</h3>
+          <div id="asistentes-list">
+              @for (var i = 0; i < Model.Asistentes.Count; i++)
+              {
+                  <div class="asistente-item">
+                      <input type="hidden" name="Asistentes.Index" value="@i" />
+                      <div class="asistente-row">
+                          <div class="field"><label>Nombre</label><input name="Asistentes[@i].Nombre" value="@Model.Asistentes[i].Nombre" /></div>
+                          <div class="field"><label>Cargo</label><input name="Asistentes[@i].Cargo" value="@Model.Asistentes[i].Cargo" /></div>
+                          <div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[@i].Institucion" value="@Model.Asistentes[i].Institucion" /></div>
+                      </div>
+                      <div class="asistente-row">
+                          <div class="field"><label>Correo</label><input name="Asistentes[@i].Correo" value="@Model.Asistentes[i].Correo" /></div>
+                          <div class="field"><label>Tel&eacute;fono</label><input name="Asistentes[@i].Telefono" value="@Model.Asistentes[i].Telefono" /></div>
+                          <div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar</button></div>
+                      </div>
+                  </div>
+              }
+          </div>
+          <button type="button" class="btns" style="margin-top:.6rem" onclick="addAsistente()">+ Agregar asistente</button>
+      </div>
+
+      @* ── Resultados ──────────────────────────────────────────── *@
+      <div class="card">
+          <h3 class="sec-h">Resultados</h3>
+          <div class="row3">
+              <div class="field"><label>Convocados</label><input asp-for="Datos.Convocados" type="number" min="0" /></div>
+              <div class="field"><label>Nº asistentes</label><input asp-for="Datos.NumAsistentes" type="number" min="0" />
+                  <span class="hint">Si registra asistentes arriba, se usa ese conteo.</span></div>
+              <div class="field"><label>% asistencia</label><input asp-for="Datos.PctAsistencia" type="number" min="0" max="100" /></div>
+          </div>
+          <div class="field"><label>Satisfacción</label><input asp-for="Datos.Satisfaccion" placeholder="Ej: Alta / 4.5 de 5" /></div>
+          <div class="field">
+              <label>Compromisos <span class="hint">(uno por línea)</span></label>
+              <textarea asp-for="Datos.Compromisos" rows="3"></textarea>
+          </div>
+      </div>
+
+      @* ── Acuerdos ────────────────────────────────────────────── *@
+      <div class="card">
+          <h3 class="sec-h">Acuerdos y seguimiento</h3>
+          <table class="seg-table edit-grid" id="acuerdos-tbl">
+              <thead>
+                  <tr><th style="width:46%">Compromiso</th><th style="width:24%">Responsable</th><th style="width:170px">Plazo</th><th style="width:40px"></th></tr>
+              </thead>
+              <tbody>
+                  @for (var i = 0; i < Model.Acuerdos.Count; i++)
                   {
-                    <input type="hidden" name="Asistentes[@i].RegistradoEl" value="@re.ToString("o")" />
+                      <tr>
+                          <td><input type="hidden" name="Acuerdos.Index" value="@i" />
+                              <input name="Acuerdos[@i].Compromiso" value="@Model.Acuerdos[i].Compromiso" /></td>
+                          <td><select name="Acuerdos[@i].Responsable" class="resp-select" data-selected="@Model.Acuerdos[i].Responsable"></select></td>
+                          <td><input name="Acuerdos[@i].Plazo" type="date" value="@(Model.Acuerdos[i].Plazo?.ToString("yyyy-MM-dd"))" /></td>
+                          <td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>
+                      </tr>
                   }
-                  <button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-        <button type="button" class="btns" style="margin-top:.6rem" onclick="addAsistente()">+ Agregar asistente</button>
+              </tbody>
+          </table>
+          <button type="button" class="btns" style="margin-top:.6rem" onclick="addAcuerdo()">+ Agregar acuerdo</button>
       </div>
-      <div class="card">
-        <div class="row3">
-          <div class="field"><label>Convocados</label><input asp-for="Datos.Convocados" id="r-conv" type="number" min="0" oninput="calcPct()" /></div>
-          <div class="field"><label>Nº asistentes</label><input asp-for="Datos.NumAsistentes" id="r-asis" type="number" min="0" oninput="calcPct()" />
-            <span class="hint">Si registra asistentes arriba, se usa ese conteo.</span></div>
-          <div class="field"><label>% asistencia <span class="hint">(automático)</span></label>
-            <div class="val" id="r-pct-disp" style="font-size:22px;font-weight:800;color:#0a2d6e">0%</div>
-            <input type="hidden" asp-for="Datos.PctAsistencia" id="r-pct-val" />
-          </div>
-        </div>
-      </div>
-      <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
-    </div>
 
-    @* ══ PASO 2: MEMORIA ══ *@
-    <div class="sec" id="sec2">
-      <div class="sec-title">📝 Memoria de la reunión</div>
-      <div class="card">
-        <div class="field"><label>Objetivo / agenda</label><textarea asp-for="Datos.ObjetivoAgenda" rows="3" placeholder="Propósito y puntos de agenda…"></textarea></div>
-        <div class="field">
-          <label>Desarrollo</label>
-          <div class="rte-toolbar">
-            <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('bold')" title="Negrita"><b>B</b></button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('italic')" title="Cursiva"><i>I</i></button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('underline')" title="Subrayado"><u>U</u></button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('insertUnorderedList')" title="Viñetas">• Lista</button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('insertOrderedList')" title="Numeración">1. Lista</button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('removeFormat')" title="Quitar formato">✗</button>
-          </div>
-          <div id="dev-rte" class="rte-body" contenteditable="true" data-placeholder="Resumen de lo tratado…" oninput="syncDev()"></div>
-          <input type="hidden" asp-for="Datos.Desarrollo" id="dev-val" />
-        </div>
-      </div>
-      <div class="card">
-        <h3 class="sec-h">Acuerdos y seguimiento</h3>
-        <table class="seg-table edit-grid" id="acuerdos-tbl">
-          <thead><tr>
-            <th style="width:28%">Compromiso</th>
-            <th style="width:15%">Responsable</th>
-            <th style="width:140px">Plazo</th>
-            <th style="width:140px">Estado</th>
-            <th>Nota de seguimiento</th>
-            <th style="width:40px"></th>
-          </tr></thead>
-          <tbody>
-            @for (var i = 0; i < Model.Acuerdos.Count; i++)
-            {
-              <tr>
-                <td><input type="hidden" name="Acuerdos.Index" value="@i" /><input name="Acuerdos[@i].Compromiso" value="@Model.Acuerdos[i].Compromiso" /></td>
-                <td><input name="Acuerdos[@i].Responsable" value="@Model.Acuerdos[i].Responsable" /></td>
-                <td><input name="Acuerdos[@i].Plazo" type="date" value="@(Model.Acuerdos[i].Plazo?.ToString("yyyy-MM-dd"))" /></td>
-                <td>
-                  <select name="Acuerdos[@i].Estado">
-                    @foreach (var e in CompromisoUi.Estados)
-                    {
-                      <option value="@e" selected="@(Model.Acuerdos[i].Estado == e)">@CompromisoUi.Label(e)</option>
-                    }
-                  </select>
-                  <input type="hidden" name="Acuerdos[@i].FechaCumplimiento" value="@(Model.Acuerdos[i].FechaCumplimiento?.ToString("yyyy-MM-dd"))" />
-                </td>
-                <td><input name="Acuerdos[@i].NotaSeguimiento" value="@Model.Acuerdos[i].NotaSeguimiento" placeholder="Avance / observación…" /></td>
-                <td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-        <button type="button" class="btns" style="margin-top:.6rem" onclick="addAcuerdo()">+ Agregar acuerdo</button>
-        <p class="hint" style="margin-top:.4rem">El estado y la nota también se gestionan desde <a asp-page="/Reuniones/Compromisos">Seguimiento de compromisos</a>.</p>
-      </div>
-      <div class="card">
-        <div class="field"><label>Compromisos <span class="hint">(uno por línea)</span></label><textarea asp-for="Datos.Compromisos" rows="3"></textarea></div>
-      </div>
-      <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
-    </div>
-
-    @* ══ PASO 3: CAPACITACIÓN ══ *@
-    <div class="sec" id="sec3">
-      <div class="sec-title">🎓 Detalle de capacitación</div>
-      <div class="card">
-        <div class="field"><label>Tema</label><input asp-for="Datos.Tema" /></div>
-        <div class="field"><label>Objetivo de la capacitación</label><textarea asp-for="Datos.ObjetivoCap" rows="2"></textarea></div>
-        <div class="field"><label>Contenido <span class="hint">(un punto por línea)</span></label><textarea asp-for="Datos.Contenido" rows="4"></textarea></div>
-      </div>
-      <div class="card">
-        <h3 class="sec-h">Enlace institucional</h3>
-        <div class="row2">
-          <div class="field"><label>Nombre</label><input asp-for="Datos.EpNombre" /></div>
-          <div class="field"><label>Cargo</label><input asp-for="Datos.EpCargo" /></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Correo</label><input asp-for="Datos.EpCorreo" type="email" /></div>
-          <div class="field"><label>Teléfono</label><input asp-for="Datos.EpTel" /></div>
-        </div>
-      </div>
-      <div class="card">
-        <h3 class="sec-h">Facilitador DIGER</h3>
-        <div class="row3">
-          <div class="field"><label>Nombre</label><input asp-for="Datos.FacNombre" /></div>
-          <div class="field"><label>Cargo</label><input asp-for="Datos.FacCargo" /></div>
-          <div class="field"><label>Correo</label><input asp-for="Datos.FacCorreo" type="email" /></div>
-        </div>
-      </div>
       <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
     </div>
 
@@ -281,8 +244,7 @@
   var pasoActual = 0;
 
   function pasosVisibles() {
-    var cap = document.getElementById('es-cap').checked;
-    return cap ? [0,1,2,3,4] : [0,1,2,4];
+    return [0,1,4];
   }
   function irPaso(n) {
     document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
@@ -293,25 +255,6 @@
   }
   function siguiente(){ var v=pasosVisibles(), i=v.indexOf(pasoActual); if(i<v.length-1) irPaso(v[i+1]); }
   function anterior(){ var v=pasosVisibles(), i=v.indexOf(pasoActual); if(i>0) irPaso(v[i-1]); }
-  function toggleCap(){
-    var cap=document.getElementById('es-cap').checked;
-    document.getElementById('sb3').style.display = cap ? '' : 'none';
-    if(!cap && pasoActual===3) irPaso(2);
-  }
-
-  // Editor enriquecido
-  function rteCmd(cmd){ document.getElementById('dev-rte').focus(); document.execCommand(cmd,false,null); syncDev(); }
-  function syncDev(){ document.getElementById('dev-val').value = document.getElementById('dev-rte').innerHTML; }
-
-  // % asistencia automático
-  function calcPct(){
-    var c=parseInt(document.getElementById('r-conv').value)||0;
-    var a=parseInt(document.getElementById('r-asis').value)||0;
-    var p = c>0 ? Math.round(a/c*100) : 0;
-    document.getElementById('r-pct-disp').textContent = p+'%';
-    document.getElementById('r-pct-val').value = p;
-  }
-
   // Campos "Otro" (modalidad/tipo)
   function otroSync(k){
     var sel=document.getElementById(k+'-sel'), otro=document.getElementById(k+'-otro'), val=document.getElementById(k+'-val');
@@ -332,39 +275,84 @@
     if(input.files && input.files[0]){ img.src=URL.createObjectURL(input.files[0]); img.classList.add('has'); }
   }
 
-  // Tablas dinámicas
-  var aIdx=@Model.Asistentes.Count, kIdx=@Model.Acuerdos.Count;
-  function addAsistente(){
-    var i=aIdx++; var tr=document.createElement('tr');
-    tr.innerHTML='<td><input type="hidden" name="Asistentes.Index" value="'+i+'" /><input name="Asistentes['+i+'].Nombre" /></td>'
-      +'<td><input name="Asistentes['+i+'].Cargo" /></td><td><input name="Asistentes['+i+'].Institucion" /></td>'
-      +'<td><input name="Asistentes['+i+'].Departamento" /></td>'
-      +'<td><input name="Asistentes['+i+'].Correo" /></td><td><input name="Asistentes['+i+'].Telefono" /></td>'
-      +'<td><input type="hidden" name="Asistentes['+i+'].AutoRegistro" value="false" /><button type="button" class="hist-del" onclick="this.closest(\'tr\').remove()">✕</button></td>';
-    document.querySelector('#asistentes-tbl tbody').appendChild(tr);
-  }
-  function addAcuerdo(){
-    var i=kIdx++; var tr=document.createElement('tr');
-    var est='<select name="Acuerdos['+i+'].Estado">'
-      +'<option value="Pendiente">Pendiente</option><option value="EnProgreso">En progreso</option>'
-      +'<option value="Cumplido">Cumplido</option><option value="Reprogramado">Reprogramado</option>'
-      +'<option value="Cancelado">Cancelado</option></select>'
-      +'<input type="hidden" name="Acuerdos['+i+'].FechaCumplimiento" />';
-    tr.innerHTML='<td><input type="hidden" name="Acuerdos.Index" value="'+i+'" /><input name="Acuerdos['+i+'].Compromiso" /></td>'
-      +'<td><input name="Acuerdos['+i+'].Responsable" /></td><td><input name="Acuerdos['+i+'].Plazo" type="date" /></td>'
-      +'<td>'+est+'</td>'
-      +'<td><input name="Acuerdos['+i+'].NotaSeguimiento" placeholder="Avance / observación…" /></td>'
-      +'<td><button type="button" class="hist-del" onclick="this.closest(\'tr\').remove()">✕</button></td>';
-    document.querySelector('#acuerdos-tbl tbody').appendChild(tr);
-  }
+        var aIdx = @Model.Asistentes.Count, kIdx = @Model.Acuerdos.Count;
 
-  function syncTodo(){ syncDev(); otroSync('md'); otroSync('tp'); }
+        function addAsistente() {
+            const i = aIdx++;
+            const div = document.createElement('div');
+            div.className = 'asistente-item';
+            div.innerHTML =
+                `<input type="hidden" name="Asistentes.Index" value="${i}" />` +
+                `<div class="asistente-row">` +
+                  `<div class="field"><label>Nombre</label><input name="Asistentes[${i}].Nombre" /></div>` +
+                  `<div class="field"><label>Cargo</label><input name="Asistentes[${i}].Cargo" /></div>` +
+                  `<div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[${i}].Institucion" /></div>` +
+                `</div>` +
+                `<div class="asistente-row">` +
+                  `<div class="field"><label>Correo</label><input name="Asistentes[${i}].Correo" /></div>` +
+                  `<div class="field"><label>Tel&eacute;fono</label><input name="Asistentes[${i}].Telefono" /></div>` +
+                  `<div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar</button></div>` +
+                `</div>`;
+            document.getElementById('asistentes-list').appendChild(div);
+            actualizarResponsables();
+        }
+
+        function eliminarAsistente(btn) {
+            btn.closest('.asistente-item').remove();
+            actualizarResponsables();
+        }
+
+        function nombresAsistentes() {
+            return Array.from(document.querySelectorAll('#asistentes-list input[name$=".Nombre"]'))
+                .map(function (i) { return i.value.trim(); })
+                .filter(function (v) { return v.length > 0; });
+        }
+
+        function actualizarResponsables() {
+            var nombres = nombresAsistentes();
+            document.querySelectorAll('#acuerdos-tbl .resp-select').forEach(function (sel) {
+                var actual = sel.dataset.selected !== undefined ? sel.dataset.selected : sel.value;
+                var opciones = nombres.slice();
+                if (actual && opciones.indexOf(actual) < 0) opciones.push(actual);
+                sel.innerHTML = '';
+                var blank = document.createElement('option');
+                blank.value = ''; blank.textContent = '— Seleccione —';
+                sel.appendChild(blank);
+                opciones.forEach(function (n) {
+                    var op = document.createElement('option');
+                    op.value = n; op.textContent = n;
+                    if (n === actual) op.selected = true;
+                    sel.appendChild(op);
+                });
+                delete sel.dataset.selected;
+            });
+        }
+
+        function addAcuerdo() {
+            const i = kIdx++;
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                `<td><input type="hidden" name="Acuerdos.Index" value="${i}" />` +
+                `<input name="Acuerdos[${i}].Compromiso" /></td>` +
+                `<td><select name="Acuerdos[${i}].Responsable" class="resp-select"></select></td>` +
+                `<td><input name="Acuerdos[${i}].Plazo" type="date" /></td>` +
+                `<td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>`;
+            document.querySelector('#acuerdos-tbl tbody').appendChild(tr);
+            actualizarResponsables();
+        }
+
+  function syncTodo(){ otroSync('md'); otroSync('tp'); }
 
   document.addEventListener('DOMContentLoaded', function(){
-    document.getElementById('dev-rte').innerHTML = document.getElementById('dev-val').value || '';
     initOtro('md', MODALIDADES, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.Modalidad ?? "")));
     initOtro('tp', TIPOS, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.Tipo ?? "")));
-    calcPct(); toggleCap(); irPaso(0);
+    actualizarResponsables();
+    irPaso(0);
   });
-</script>
+
+  // Mantiene los selects de "Responsable" sincronizados con los nombres de la lista de asistentes.
+  document.getElementById('asistentes-list').addEventListener('input', function(e){
+    if (e.target.matches('input[name$=".Nombre"]')) actualizarResponsables();
+  });
+    </script>
 }

@@ -17,6 +17,7 @@
             <p>Enlaces institucionales por institución</p>
         </div>
         <div style="display:flex;gap:8px">
+            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaContactos()">🗂 Vista por institución</button>
             <a class="btns" asp-page="/Contactos/Index" asp-page-handler="Export"
                asp-route-buscar="@Model.Buscar" asp-route-institucion="@Model.Institucion">⬇ CSV</a>
             @if (puedeGestionar)
@@ -27,7 +28,7 @@
     </div>
 
     @* ── KPIs ──────────────────────────────────────────────────── *@
-    <div class="row2" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.25rem">
+    <div class="row2" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem">
         <div class="card" style="margin:0;text-align:center">
             <div style="font-size:26px;font-weight:800;color:#0a2d6e">@Model.TotalContactos</div>
             <div class="prog-label">Contactos</div>
@@ -39,6 +40,10 @@
         <div class="card" style="margin:0;text-align:center">
             <div style="font-size:26px;font-weight:800;color:#15803d">@Model.TotalManuales</div>
             <div class="prog-label">Agregados manualmente</div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#b45309">@Model.TotalInactivos</div>
+            <div class="prog-label">Dados de baja</div>
         </div>
     </div>
 
@@ -71,46 +76,182 @@
     }
     else
     {
-        <table class="seg-table">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Cargo</th>
-                    <th>Institución</th>
-                    <th>Correo</th>
-                    <th>Teléfono</th>
-                    <th style="width:1%"></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var c in Model.Resultado.Items)
-                {
+        <div id="vista-lista">
+            <table class="seg-table">
+                <thead>
                     <tr>
-                        <td style="font-weight:700;color:#0a2d6e">@c.Nombre</td>
-                        <td class="res-meta">@(c.Cargo ?? "—")</td>
-                        <td>@c.Institucion</td>
-                        <td class="res-meta">@(c.Correo ?? "—")</td>
-                        <td class="res-meta">@(c.Telefono ?? "—")</td>
-                        <td style="white-space:nowrap;text-align:right">
-                            @if (puedeGestionar)
-                            {
-                                <a class="btns" asp-page="/Contactos/Editor" asp-route-id="@c.Id"
-                                   style="font-size:12.5px;padding:6px 12px">Editar</a>
-                            }
-                            @if (puedeEliminar)
-                            {
-                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
-                                    <input type="hidden" name="id" value="@c.Id" />
-                                    <button class="hist-del" type="submit" style="margin-left:4px"
-                                            onclick="return confirm('¿Eliminar este contacto?')">✕</button>
-                                </form>
-                            }
-                        </td>
+                        <th style="width:26%">Nombre completo</th>
+                        <th style="width:14%">Institución</th>
+                        <th style="width:24%">Correo</th>
+                        <th style="width:13%">Teléfono</th>
+                        <th style="width:23%"></th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Resultado.Items)
+                    {
+                        var rowClass = c.Activo ? "" : "contacto-inactivo";
+                        <tr class="@rowClass">
+                            <td>
+                                <div style="font-weight:700;color:#0a2d6e">
+                                    @c.Nombre
+                                    @if (!c.Activo)
+                                    {
+                                        <span class="badge-baja">Baja</span>
+                                    }
+                                </div>
+                                <div class="res-meta" style="margin-top:2px">@(c.Cargo ?? "—")</div>
+                            </td>
+                            <td>@c.Institucion</td>
+                            <td class="res-meta">@(c.Correo ?? "—")</td>
+                            <td class="res-meta">@(c.Telefono ?? "—")</td>
+                            <td style="text-align:right;vertical-align:middle">
+                                <div style="display:flex;gap:5px;justify-content:flex-end;align-items:center;flex-wrap:nowrap">
+                                    @if (puedeGestionar)
+                                    {
+                                        <a class="btns" asp-page="/Contactos/Editor" asp-route-id="@c.Id"
+                                           style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#1455a4;border-color:#93c5fd;background:#eff6ff">Editar</a>
+                                    }
+                                    @if (puedeEliminar)
+                                    {
+                                        @if (c.Activo)
+                                        {
+                                            <form method="post" asp-page-handler="DarDeBaja">
+                                                <input type="hidden" name="id" value="@c.Id" />
+                                                <button class="btns" type="submit"
+                                                        style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#b45309;border-color:#fcd34d;background:#fef3c7"
+                                                        onclick="return confirm('¿Dar de baja a este contacto?')">Dar de baja</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form method="post" asp-page-handler="Reactivar">
+                                                <input type="hidden" name="id" value="@c.Id" />
+                                                <button class="btns" type="submit"
+                                                        style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#15803d;border-color:#86efac;background:#f0fdf4"
+                                                        onclick="return confirm('¿Reactivar este contacto?')">Reactivar</button>
+                                            </form>
+                                        }
+                                        <form method="post" asp-page-handler="Eliminar">
+                                            <input type="hidden" name="id" value="@c.Id" />
+                                            <button class="hist-del" type="submit"
+                                                    style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
+                                                    onclick="return confirm('¿Eliminar permanentemente este contacto?')">✕</button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
 
-        <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+            <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+        </div>
+
+        @* ── Vista agrupada por institución ───────────────────────── *@
+        <div id="vista-agrupada" style="display:none">
+            @foreach (var grupo in Model.Contactos.GroupBy(c => c.Institucion).OrderBy(g => g.Key))
+            {
+                <div class="grupo-inst">
+                    <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
+                        <span>🏛</span>
+                        <strong>@grupo.Key</strong>
+                        <span class="grupo-inst-badge">@grupo.Count() contacto@(grupo.Count() == 1 ? "" : "s")</span>
+                        <span class="grupo-inst-chevron">▾</span>
+                    </div>
+                    <div class="grupo-inst-body">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:34%">Nombre completo</th>
+                                    <th style="width:30%">Correo</th>
+                                    <th style="width:15%">Teléfono</th>
+                                    <th style="width:21%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in grupo.OrderBy(c => c.Nombre))
+                                {
+                                    var rowClass = c.Activo ? "" : "contacto-inactivo";
+                                    <tr class="@rowClass">
+                                        <td>
+                                            <div style="font-weight:700;color:#0a2d6e">
+                                                @c.Nombre
+                                                @if (!c.Activo)
+                                                {
+                                                    <span class="badge-baja">Baja</span>
+                                                }
+                                            </div>
+                                            <div class="res-meta" style="margin-top:2px">@(c.Cargo ?? "—")</div>
+                                        </td>
+                                        <td class="res-meta">@(c.Correo ?? "—")</td>
+                                        <td class="res-meta">@(c.Telefono ?? "—")</td>
+                                        <td style="text-align:right;vertical-align:middle">
+                                            <div style="display:flex;gap:5px;justify-content:flex-end;align-items:center;flex-wrap:nowrap">
+                                                @if (puedeGestionar)
+                                                {
+                                                    <a class="btns" asp-page="/Contactos/Editor" asp-route-id="@c.Id"
+                                                       style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#1455a4;border-color:#93c5fd;background:#eff6ff">Editar</a>
+                                                }
+                                                @if (puedeEliminar)
+                                                {
+                                                    @if (c.Activo)
+                                                    {
+                                                        <form method="post" asp-page-handler="DarDeBaja">
+                                                            <input type="hidden" name="id" value="@c.Id" />
+                                                            <button class="btns" type="submit"
+                                                                    style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#b45309;border-color:#fcd34d;background:#fef3c7"
+                                                                    onclick="return confirm('¿Dar de baja a este contacto?')">Dar de baja</button>
+                                                        </form>
+                                                    }
+                                                    else
+                                                    {
+                                                        <form method="post" asp-page-handler="Reactivar">
+                                                            <input type="hidden" name="id" value="@c.Id" />
+                                                            <button class="btns" type="submit"
+                                                                    style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#15803d;border-color:#86efac;background:#f0fdf4"
+                                                                    onclick="return confirm('¿Reactivar este contacto?')">Reactivar</button>
+                                                        </form>
+                                                    }
+                                                    <form method="post" asp-page-handler="Eliminar">
+                                                        <input type="hidden" name="id" value="@c.Id" />
+                                                        <button class="hist-del" type="submit"
+                                                                style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
+                                                                onclick="return confirm('¿Eliminar permanentemente este contacto?')">✕</button>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
     }
 </div>
+
+@section Scripts {
+<script>
+    function toggleVistaContactos() {
+        var lista = document.getElementById('vista-lista');
+        var agrupada = document.getElementById('vista-agrupada');
+        var btn = document.getElementById('btn-toggle-vista');
+        if (!lista || !agrupada) return;
+        var enLista = agrupada.style.display === 'none';
+        lista.style.display = enLista ? 'none' : '';
+        agrupada.style.display = enLista ? '' : 'none';
+        btn.textContent = enLista ? '📋 Vista de lista' : '🗂 Vista por institución';
+    }
+    function toggleGrupoInst(hdr) {
+        var body = hdr.nextElementSibling;
+        var chevron = hdr.querySelector('.grupo-inst-chevron');
+        var abierto = body.style.display !== 'none';
+        body.style.display = abierto ? 'none' : '';
+        chevron.style.transform = abierto ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+</script>
+}

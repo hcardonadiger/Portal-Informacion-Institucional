@@ -3,7 +3,8 @@ namespace Diger.TramitesEstado.Web.Pages.Tickets;
 [Authorize]
 public sealed class IndexModel(ISender sender, IInstitucionRepository institucionRepo, IUsuarioRepository usuarioRepo, ICurrentUserService currentUser) : PageModel
 {
-    public PagedResult<TicketListItemDto> Resultado { get; private set; } = PagedResult<TicketListItemDto>.Empty(15);
+    public PagedResult<TicketListItemDto> Resultado { get; private set; } = PagedResult<TicketListItemDto>.Empty(Paginacion.TamanoDefecto);
+    public IReadOnlyList<TicketListItemDto> Todos { get; private set; } = [];
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
 
     public EstadoTicket?    Estado    { get; private set; }
@@ -20,7 +21,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
     public bool             EsTecnicoRestringido { get; private set; }
     public string           Vista     { get; private set; } = "temas"; // "temas" | "mios"
 
-    public async Task OnGetAsync(EstadoTicket? estado, PrioridadTicket? prioridad, int? institucionId, bool mias, bool misTemas, bool soloVencidos, string? vista, string? q, int? page, CancellationToken ct)
+    public async Task OnGetAsync(EstadoTicket? estado, PrioridadTicket? prioridad, int? institucionId, bool mias, bool misTemas, bool soloVencidos, string? vista, string? q, int? pg, CancellationToken ct)
     {
         Estado = estado; Prioridad = prioridad; InstitucionId = institucionId; SoloVencidos = soloVencidos; Q = q;
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
@@ -62,7 +63,9 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
         }
 
         Resultado = await sender.Send(
-            new GetTicketsQuery(estado, prioridad, institucionId, asignado, q, page, TemaIds: temaIds, SoloVencidos: soloVencidos), ct);
+            new GetTicketsQuery(estado, prioridad, institucionId, asignado, q, pg, TemaIds: temaIds, SoloVencidos: soloVencidos), ct);
+        Todos = (await sender.Send(
+            new GetTicketsQuery(estado, prioridad, institucionId, asignado, q, Page: 1, Size: 100, TemaIds: temaIds, SoloVencidos: soloVencidos), ct)).Items;
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
