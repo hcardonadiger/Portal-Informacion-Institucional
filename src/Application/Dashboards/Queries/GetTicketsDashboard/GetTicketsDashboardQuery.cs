@@ -14,7 +14,7 @@ public sealed class GetTicketsDashboardQueryHandler(IApplicationDbContext ctx)
     public async Task<TicketsDashboardDto> Handle(GetTicketsDashboardQuery q, CancellationToken ct)
     {
         // Base: alcance (filtro global) + institución elegida. Las tendencias usan esta base (12 meses).
-        var baseq = ctx.Tickets.AsQueryable();
+        var baseq = ctx.Tickets.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q.InstitucionId)) baseq = baseq.Where(t => t.InstitucionId == q.InstitucionId);
 
         // Alcance del técnico: solo sus temas (que atiende) o los tickets asignados a él.

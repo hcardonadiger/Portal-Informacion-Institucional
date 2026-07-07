@@ -5,8 +5,10 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// (formulario de 7 secciones); las propiedades escalares son asignables y las
 /// colecciones hijas se reemplazan en bloque al actualizar.
 /// </summary>
-public sealed class Expediente : BaseAuditableEntity
+public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     // ── Identificación (controlada) ───────────────────────────────
     public string Codigo        { get; private set; } = default!;
     public string InstitucionId { get; private set; } = default!;

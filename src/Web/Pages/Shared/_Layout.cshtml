@@ -11,6 +11,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — DIGER</title>
+    @* Token Anti-CSRF disponible para peticiones AJAX/Fetch futuras *@
+    @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+    @{ var token = Antiforgery.GetAndStoreTokens(Context).RequestToken; }
+    <meta name="csrf-token" content="@token" />
     <link rel="stylesheet" href="~/css/diger.css" asp-append-version="true" />
 </head>
 <body>

@@ -1,4 +1,4 @@
-﻿USE [master]
+USE [master]
 GO
 /****** Object:  Database [DigerTramitesEstado_Dev]    Script Date: 7/6/2026 4:30:24 PM ******/
 CREATE DATABASE [DigerTramitesEstado_Dev]
@@ -221,6 +221,7 @@ CREATE TABLE [dbo].[Contactos](
 	[Telefono] [nvarchar](40) NULL,
 	[Notas] [nvarchar](1000) NULL,
 	[Origen] [nvarchar](20) NOT NULL,
+	[IsDeleted] [bit] NOT NULL DEFAULT 0,
 	[CreatedAt] [datetime2](7) NOT NULL,
 	[CreatedBy] [nvarchar](max) NULL,
 	[UpdatedAt] [datetime2](7) NULL,
@@ -336,6 +337,7 @@ CREATE TABLE [dbo].[Expedientes](
 	[ValidadoInst] [nvarchar](200) NULL,
 	[FechaValidacion] [date] NULL,
 	[NumActa] [nvarchar](60) NULL,
+	[IsDeleted] [bit] NOT NULL DEFAULT 0,
 	[CreatedAt] [datetime2](7) NOT NULL,
 	[CreatedBy] [nvarchar](max) NULL,
 	[UpdatedAt] [datetime2](7) NULL,
@@ -605,6 +607,7 @@ CREATE TABLE [dbo].[Reuniones](
 	[CreatedBy] [nvarchar](max) NULL,
 	[UpdatedAt] [datetime2](7) NULL,
 	[UpdatedBy] [nvarchar](max) NULL,
+	[IsDeleted] [bit] NOT NULL DEFAULT 0,
  CONSTRAINT [PK_Reuniones] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
@@ -715,6 +718,7 @@ CREATE TABLE [dbo].[Tickets](
 	[CreatedBy] [nvarchar](max) NULL,
 	[UpdatedAt] [datetime2](7) NULL,
 	[UpdatedBy] [nvarchar](max) NULL,
+	[IsDeleted] [bit] NOT NULL DEFAULT 0,
  CONSTRAINT [PK_Tickets] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC

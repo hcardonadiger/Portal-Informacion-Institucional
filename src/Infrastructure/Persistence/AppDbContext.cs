@@ -57,40 +57,89 @@ public sealed class AppDbContext(
         // JefeUnidad / Empleado: ven lo asignado a su unidad.
         // Administrador (_alcanceGlobal = true): ve todo.
 
-        mb.Entity<Expediente>().HasQueryFilter(e => _alcanceGlobal ||
+        // ── Filtros RLS + Soft-Delete (fusionados) ─────────────────────────
+        // Soft-Delete (!IsDeleted) se AND-ea con el filtro RLS existente.
+        // COMPATIBILIDAD ESCALABILIDAD: al añadir jerarquía futura (Área/Unidad),
+        // solo hay que extender la condición RLS; el !IsDeleted permanece invariante.
+
+        mb.Entity<Expediente>().HasQueryFilter(e => !e.IsDeleted && (
+            _alcanceGlobal ||
             (_activeRol == "JefeInstitucion" && e.InstitucionId == _activeInst) ||
             (_activeRol == "JefeArea"        && e.AreaId == _activeArea) ||
             ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && e.UnidadId == _activeUnidad)
-        );
+        ));
 
-        mb.Entity<Contacto>().HasQueryFilter(c => _alcanceGlobal ||
+        mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
+            _alcanceGlobal ||
             (_activeRol == "JefeInstitucion" && c.InstitucionId == _activeInst) ||
             (_activeRol == "JefeArea"        && c.AreaId == _activeArea) ||
             ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && c.UnidadId == _activeUnidad)
-        );
+        ));
 
-        mb.Entity<Ticket>().HasQueryFilter(t => _alcanceGlobal ||
+        mb.Entity<Ticket>().HasQueryFilter(t => !t.IsDeleted && (
+            _alcanceGlobal ||
             (_activeRol == "JefeInstitucion" && t.InstitucionId == _activeInst) ||
             (_activeRol == "JefeArea"        && t.AreaId == _activeArea) ||
             ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && t.UnidadId == _activeUnidad)
-        );
+        ));
 
         // Reuniones: las públicas respetan la jerarquía, las privadas solo las ve el creador.
-        mb.Entity<Reunion>().HasQueryFilter(r =>
+        // Soft-Delete se evalúa primero para corto-circuitar todo el filtro si IsDeleted=true.
+        mb.Entity<Reunion>().HasQueryFilter(r => !r.IsDeleted && (
             (r.Visibilidad != VisibilidadReunion.Privada && (
                 _alcanceGlobal ||
                 (_activeRol == "JefeInstitucion" && r.InstitucionId == _activeInst) ||
                 (_activeRol == "JefeArea"        && r.AreaId == _activeArea) ||
                 ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && r.UnidadId == _activeUnidad)
-            )) || 
+            )) ||
             (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
-        );
+        ));
 
         base.OnModelCreating(mb);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
+        // ── Bloqueo de seguridad duro para rol Consultor (Solo lectura) ────────
+        var hasMutations = ChangeTracker.Entries().Any(e => 
+            e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted);
+            
+        if (hasMutations && _activeRol == "Consultor")
+        {
+            throw new UnauthorizedAccessException("El rol Consultor es de solo lectura y no puede mutar datos.");
+        }
+
+        // ── Inyección automática de jerarquía institucional en inserciones ──────
+        foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
+        {
+            var instProp = entry.Metadata.FindProperty("InstitucionId");
+            if (instProp != null && string.IsNullOrEmpty(entry.Property("InstitucionId").CurrentValue as string))
+            {
+                entry.Property("InstitucionId").CurrentValue = _activeInst;
+            }
+
+            var areaProp = entry.Metadata.FindProperty("AreaId");
+            if (areaProp != null && string.IsNullOrEmpty(entry.Property("AreaId").CurrentValue as string))
+            {
+                entry.Property("AreaId").CurrentValue = _activeArea;
+            }
+
+            var unidadProp = entry.Metadata.FindProperty("UnidadId");
+            if (unidadProp != null && string.IsNullOrEmpty(entry.Property("UnidadId").CurrentValue as string))
+            {
+                entry.Property("UnidadId").CurrentValue = _activeUnidad;
+            }
+        }
+
+        // ── Soft-Delete: convierte eliminaciones físicas en borrado lógico ──────
+        foreach (var entry in ChangeTracker.Entries<ISoftDeletable>()
+            .Where(e => e.State == EntityState.Deleted))
+        {
+            entry.State = EntityState.Modified;
+            entry.Entity.IsDeleted = true;
+        }
+
+        // ── Auditoría automática ──────────────────────────────────────────────
         var actor = currentUser.Nombre ?? currentUser.Correo;
         foreach (var entry in ChangeTracker.Entries<BaseAuditableEntity>())
         {

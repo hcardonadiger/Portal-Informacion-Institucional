@@ -2,8 +2,8 @@
 @model Diger.TramitesEstado.Web.Pages.Tickets.IndexModel
 @{
     ViewData["Title"] = "Tickets de soporte";
-    var puedeGestionar = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador)) || User.IsInRole(nameof(RolUsuario.Tecnico));
-    var puedeEliminar  = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador));
+    var puedeGestionar = User.CanMutate();
+    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
 
     (string bg, string fg) EstadoColor(EstadoTicket e) => e switch
     {

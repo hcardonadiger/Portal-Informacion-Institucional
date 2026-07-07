@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Exceptions;
+using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
@@ -10,19 +11,19 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
 
     // Un técnico (sin rol de gestión superior) solo alcanza tickets de sus temas o asignados a él.
     private bool EsTecnicoRestringido =>
-        User.IsInRole(nameof(RolUsuario.Tecnico))
-        && !User.IsInRole(nameof(RolUsuario.Administrador))
-        && !User.IsInRole(nameof(RolUsuario.Coordinador));
+        !User.IsInRole(nameof(RolUsuario.Administrador))
+        && !User.IsInRole(nameof(RolUsuario.JefeInstitucion))
+        && !User.IsInRole(nameof(RolUsuario.JefeArea))
+        && !User.IsInRole(nameof(RolUsuario.JefeUnidad));
 
     // El filtro global por institución garantiza que el usuario solo carga tickets de su alcance;
     // por tanto, quien pueda verlo y tenga rol de gestión puede gestionarlo.
-    public bool PuedeGestionar =>
-        User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador))
-        || User.IsInRole(nameof(RolUsuario.Tecnico));
+    public bool PuedeGestionar => User.CanMutate();
     public bool EsAsignado => Ticket.AsignadoAId is Guid a && a == currentUser.UserId;
     public bool PuedeAtender => PuedeGestionar || EsAsignado;
     private bool EsGestorSuperior =>
-        User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador));
+        User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.JefeInstitucion))
+        || User.IsInRole(nameof(RolUsuario.JefeArea)) || User.IsInRole(nameof(RolUsuario.JefeUnidad));
 
     // El responsable se define cuando alguien "toma" el ticket para iniciar el seguimiento;
     // no se asigna en la creación.

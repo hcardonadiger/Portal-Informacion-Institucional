@@ -48,9 +48,7 @@ Para mantener la integridad referencial, estas tablas estarán relacionadas medi
 ### 1.4 Modificación a Tablas Existentes
 *   Tablas transaccionales como `Reuniones`, `Tickets`, `Tramite`, `Contactos`, `Levantamientos`, etc., deben ser modificadas para incluir las FKs: `InstitucionId`, `AreaId`, `UnidadId`.
 
----
-
-## 2. Reglas de Negocio y Permisos (Roles)
+## 2. Reglas de Negocio y Permisos (Roles) ✅ [COMPLETADO]
 
 El acceso a la información estará dictado por el campo `Rol` en la tabla `AsignacionesUsuario`:
 

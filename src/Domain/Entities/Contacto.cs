@@ -1,8 +1,10 @@
 namespace Diger.TramitesEstado.Domain.Entities;
 
 /// <summary>Contacto del directorio institucional (enlaces por institución).</summary>
-public sealed class Contacto : BaseAuditableEntity
+public sealed class Contacto : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     public string         InstitucionId { get; private set; }
     public string?        AreaId        { get; private set; }
     public string?        UnidadId      { get; private set; }

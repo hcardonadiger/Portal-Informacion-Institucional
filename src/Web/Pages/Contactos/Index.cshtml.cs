@@ -29,7 +29,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.Coordinador)))
+        if (User.IsInRole(nameof(RolUsuario.Empleado)) || User.IsInRole(nameof(RolUsuario.Consultor)))
             return Forbid();
         await sender.Send(new EliminarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto eliminado.";

@@ -28,18 +28,18 @@ builder.Services
     });
 
 builder.Services.AddAuthorizationBuilder()
-    // Gestión: Admin/Coordinador/Técnico pueden crear/editar; el ALCANCE institucional
+    // Gestión: Administrador, Jefes y Empleado pueden crear/editar; el ALCANCE institucional
     // (filtro global + validación al crear) limita sobre qué registros pueden actuar.
     .AddPolicy("PuedeGestionarExpedientes", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.Coordinador), nameof(RolUsuario.Tecnico)))
+        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
     .AddPolicy("PuedeAdministrarCatalogo", p => p.RequireRole(
         nameof(RolUsuario.Administrador)))
     .AddPolicy("PuedeGestionarContactos", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.Coordinador), nameof(RolUsuario.Tecnico)))
+        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
     .AddPolicy("PuedeGestionarReuniones", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.Coordinador), nameof(RolUsuario.Tecnico)))
+        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
     .AddPolicy("PuedeGestionarTickets", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.Coordinador), nameof(RolUsuario.Tecnico)))
+        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
     .AddPolicy("PuedeAdministrarUsuarios", p => p.RequireRole(
         nameof(RolUsuario.Administrador)));
 
@@ -74,6 +74,25 @@ else
 }
 
 app.UseHttpsRedirection();
+
+// ── Cabeceras de seguridad HTTP ───────────────────────────────────────────
+// Previene XSS (CSP), Clickjacking (X-Frame-Options) y MIME sniffing.
+// La CSP permite 'unsafe-inline' porque Razor Pages usa scripts/estilos inline;
+// se puede endurecer progresivamente con nonces cuando se migre a AJAX/Fetch.
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"]        = "DENY";
+    ctx.Response.Headers["Content-Security-Policy"] =
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data:; " +
+        "font-src 'self'; " +
+        "connect-src 'self';";
+    await next();
+});
+
 app.UseStaticFiles();
 app.UseRouting();
 

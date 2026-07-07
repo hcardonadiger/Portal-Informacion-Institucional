@@ -11,7 +11,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     [BindProperty] public string     Nombre { get; set; } = string.Empty;
     [BindProperty] public string     Correo { get; set; } = string.Empty;
-    [BindProperty] public string     Rol    { get; set; } = "Tecnico";
+    [BindProperty] public string     Rol    { get; set; } = nameof(Diger.TramitesEstado.Domain.Enums.RolUsuario.Empleado);
     [BindProperty] public bool       Activo { get; set; } = true;
     [BindProperty] public string?    Password { get; set; }        // solo al crear
     [BindProperty] public string?    NuevaPassword { get; set; }   // restablecer
@@ -19,7 +19,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     [BindProperty] public List<int>  TemaIds { get; set; } = []; // temas que atiende
 
     public string? Error { get; set; }
-    public string[] Roles => new[] { "Administrador", "Coordinador", "Tecnico" };
+    public string[] Roles => Enum.GetNames<Diger.TramitesEstado.Domain.Enums.RolUsuario>();
 
     private async Task CargarCatalogosAsync(CancellationToken ct)
     {

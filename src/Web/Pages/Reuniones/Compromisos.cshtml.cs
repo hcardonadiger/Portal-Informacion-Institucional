@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.WebUtilities;
+using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
@@ -18,10 +19,7 @@ public sealed class CompromisosModel(
     public string?           Responsable   { get; private set; }
     public bool              SoloVencidos  { get; private set; }
 
-    public bool PuedeGestionar =>
-        User.IsInRole(nameof(RolUsuario.Administrador)) ||
-        User.IsInRole(nameof(RolUsuario.Coordinador)) ||
-        User.IsInRole(nameof(RolUsuario.Tecnico));
+    public bool PuedeGestionar => User.CanMutate();
 
     private async Task<IReadOnlyList<Institucion>> InstitucionesEnAlcanceAsync(CancellationToken ct)
     {

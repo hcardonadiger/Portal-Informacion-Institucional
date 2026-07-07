@@ -4,8 +4,10 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// Reunión o capacitación documentada (acta + asistencia + acuerdos).
 /// Agregado de captura: escalares asignables; hijos reemplazados en bloque.
 /// </summary>
-public sealed class Reunion : BaseAuditableEntity
+public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     public string Titulo { get; private set; } = default!;
 
     /// <summary>Id del registro origen (p. ej. Supabase) cuando la reunión fue importada.

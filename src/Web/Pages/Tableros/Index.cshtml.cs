@@ -9,9 +9,10 @@ public sealed class IndexModel(ISender sender, IUsuarioRepository usuarioRepo, I
     {
         // El técnico ve los KPIs de tickets limitados a sus temas o sus tickets asignados.
         var esTecnico =
-            User.IsInRole(nameof(RolUsuario.Tecnico))
-            && !User.IsInRole(nameof(RolUsuario.Administrador))
-            && !User.IsInRole(nameof(RolUsuario.Coordinador));
+            !User.IsInRole(nameof(RolUsuario.Administrador))
+            && !User.IsInRole(nameof(RolUsuario.JefeInstitucion))
+            && !User.IsInRole(nameof(RolUsuario.JefeArea))
+            && !User.IsInRole(nameof(RolUsuario.JefeUnidad));
 
         IReadOnlyList<int>? temaIds = null;
         Guid? tecnicoId = null;

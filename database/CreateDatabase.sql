@@ -382,3 +382,38 @@ GO
 -- ============================================================
 PRINT '✔ Base de datos DigerTramitesEstado lista con estructura escalable.';
 GO
+
+-- ============================================================
+--  SOFT-DELETE: Agregar columna IsDeleted a tablas transaccionales
+--  (Idempotente: seguro ejecutar en base de datos existente)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Expedientes') AND name = 'IsDeleted')
+BEGIN
+    ALTER TABLE dbo.Expedientes ADD IsDeleted BIT NOT NULL DEFAULT 0;
+    PRINT 'Columna IsDeleted agregada a Expedientes.';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Contactos') AND name = 'IsDeleted')
+BEGIN
+    ALTER TABLE dbo.Contactos ADD IsDeleted BIT NOT NULL DEFAULT 0;
+    PRINT 'Columna IsDeleted agregada a Contactos.';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Reuniones') AND name = 'IsDeleted')
+BEGIN
+    ALTER TABLE dbo.Reuniones ADD IsDeleted BIT NOT NULL DEFAULT 0;
+    PRINT 'Columna IsDeleted agregada a Reuniones.';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Tickets') AND name = 'IsDeleted')
+BEGIN
+    ALTER TABLE dbo.Tickets ADD IsDeleted BIT NOT NULL DEFAULT 0;
+    PRINT 'Columna IsDeleted agregada a Tickets.';
+END
+GO
+
+PRINT '✔ Soft-Delete aplicado correctamente en todas las tablas transaccionales.';
+GO

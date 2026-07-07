@@ -5,8 +5,10 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// Agregado: escalares de captura editables; estado y asignación se controlan por métodos;
 /// el seguimiento (comentarios, cambios de estado) se agrega de forma incremental.
 /// </summary>
-public sealed class Ticket : BaseAuditableEntity
+public sealed class Ticket : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     public string Numero { get; private set; } = default!; // TCK-2026-0001 (controlado)
     public string Titulo { get; private set; } = default!;
     public string? Descripcion { get; set; }

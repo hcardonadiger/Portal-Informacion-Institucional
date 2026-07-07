@@ -19,9 +19,10 @@ public sealed class TicketsModel(ISender sender, IInstitucionRepository instituc
 
         // Alcance del técnico: solo sus temas o sus tickets (mismo criterio que la lista y el detalle).
         AlcanceTecnico =
-            User.IsInRole(nameof(RolUsuario.Tecnico))
-            && !User.IsInRole(nameof(RolUsuario.Administrador))
-            && !User.IsInRole(nameof(RolUsuario.Coordinador));
+            !User.IsInRole(nameof(RolUsuario.Administrador))
+            && !User.IsInRole(nameof(RolUsuario.JefeInstitucion))
+            && !User.IsInRole(nameof(RolUsuario.JefeArea))
+            && !User.IsInRole(nameof(RolUsuario.JefeUnidad));
 
         IReadOnlyList<int>? temaIds = null;
         Guid? tecnicoId = null;

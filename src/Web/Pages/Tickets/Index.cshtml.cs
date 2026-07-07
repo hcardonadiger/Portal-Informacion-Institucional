@@ -26,9 +26,10 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
 
         EsTecnicoRestringido =
-            User.IsInRole(nameof(RolUsuario.Tecnico))
-            && !User.IsInRole(nameof(RolUsuario.Administrador))
-            && !User.IsInRole(nameof(RolUsuario.Coordinador));
+            !User.IsInRole(nameof(RolUsuario.Administrador))
+            && !User.IsInRole(nameof(RolUsuario.JefeInstitucion))
+            && !User.IsInRole(nameof(RolUsuario.JefeArea))
+            && !User.IsInRole(nameof(RolUsuario.JefeUnidad));
 
         Guid? asignado;
         IReadOnlyList<int>? temaIds = null;
@@ -67,7 +68,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.Coordinador)))
+        if (User.IsInRole(nameof(RolUsuario.Empleado)) || User.IsInRole(nameof(RolUsuario.Consultor)))
             return Forbid();
         await sender.Send(new EliminarTicketCommand(id), ct);
         TempData["SuccessMsg"] = "Ticket eliminado.";

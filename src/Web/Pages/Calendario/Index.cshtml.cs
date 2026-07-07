@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Infrastructure.Security;
+
 namespace Diger.TramitesEstado.Web.Pages.Calendario;
 
 [Authorize]
@@ -11,10 +13,7 @@ public sealed class IndexModel(ISender sender) : PageModel
     public ILookup<DateOnly, ReunionCalendarioDto> ReunionesPorDia { get; private set; } = default!;
     public ILookup<DateOnly, EventoCalendarioDto>  ActividadPorDia { get; private set; } = default!;
 
-    public bool PuedeGestionar =>
-        User.IsInRole(nameof(RolUsuario.Administrador)) ||
-        User.IsInRole(nameof(RolUsuario.Coordinador)) ||
-        User.IsInRole(nameof(RolUsuario.Tecnico));
+    public bool PuedeGestionar => User.CanMutate();
 
     public DateOnly MesAnterior  => PrimerDia.AddMonths(-1);
     public DateOnly MesSiguiente => PrimerDia.AddMonths(1);

@@ -13,7 +13,7 @@ public sealed class GetReunionesDashboardQueryHandler(IApplicationDbContext ctx)
         var primerDiaMes = new DateOnly(hoy.Year, hoy.Month, 1);
         var finMes = primerDiaMes.AddMonths(1).AddDays(-1);
 
-        var r = ctx.Reuniones.AsQueryable();
+        var r = ctx.Reuniones.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q.InstitucionId)) r = r.Where(x => x.InstitucionId == q.InstitucionId);
         var total = await r.CountAsync(ct);
         var mes = await r.CountAsync(x => x.Fecha >= primerDiaMes && x.Fecha <= finMes, ct);

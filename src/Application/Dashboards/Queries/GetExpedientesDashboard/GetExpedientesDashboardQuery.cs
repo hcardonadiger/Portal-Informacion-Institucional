@@ -9,7 +9,7 @@ public sealed class GetExpedientesDashboardQueryHandler(IApplicationDbContext ct
 {
     public async Task<ExpedientesDashboardDto> Handle(GetExpedientesDashboardQuery q, CancellationToken ct)
     {
-        var e = ctx.Expedientes.AsQueryable();
+        var e = ctx.Expedientes.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q.InstitucionId)) e = e.Where(x => x.InstitucionId == q.InstitucionId);
         var total = await e.CountAsync(ct);
         var cerrados = await e.CountAsync(x => x.EstadoExpediente == EstadoExpediente.Cerrado, ct);
