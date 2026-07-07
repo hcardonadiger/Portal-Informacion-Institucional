@@ -13,14 +13,20 @@ public static class DbSeeder
         if (await db.Usuarios.AnyAsync(ct))
             return;
 
-        var usuarios = new[]
-        {
-            Usuario.Crear("Administrador DIGER", "admin@diger.gob.hn",       hasher.Hash("Admin#2026"),   RolUsuario.Administrador),
-            Usuario.Crear("Coordinador DIGER",   "coordinador@diger.gob.hn", hasher.Hash("Coord#2026"),   RolUsuario.Coordinador),
-            Usuario.Crear("Técnico DIGER",       "tecnico@diger.gob.hn",     hasher.Hash("Tecnico#2026"), RolUsuario.Tecnico),
-        };
+        var admin = Usuario.Crear("Administrador DIGER", "admin@diger.gob.hn", hasher.Hash("Admin#2026"));
+        var coord = Usuario.Crear("Coordinador DIGER", "coordinador@diger.gob.hn", hasher.Hash("Coord#2026"));
+        var tecnico = Usuario.Crear("Técnico DIGER", "tecnico@diger.gob.hn", hasher.Hash("Tecnico#2026"));
 
-        await db.Usuarios.AddRangeAsync(usuarios, ct);
+        await db.Usuarios.AddRangeAsync(new[] { admin, coord, tecnico }, ct);
+        
+        await db.AsignacionesUsuario.AddRangeAsync(
+            new[] {
+                AsignacionUsuario.Crear(admin.Id,   "DIGER", null, null, "Administrador"),
+                AsignacionUsuario.Crear(coord.Id,   "DIGER", null, null, "Coordinador"),
+                AsignacionUsuario.Crear(tecnico.Id, "DIGER", null, null, "Tecnico")
+            }, ct
+        );
+
         await db.SaveChangesAsync(ct);
     }
 }

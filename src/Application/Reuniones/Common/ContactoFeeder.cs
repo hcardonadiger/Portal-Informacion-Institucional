@@ -8,7 +8,7 @@ internal static class ContactoFeeder
         Reunion r, IContactoRepository contactoRepo, IInstitucionRepository instRepo, CancellationToken ct)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var reunionInst = r.InstitucionId is int rid ? await instRepo.GetByIdAsync(rid, ct) : null;
+        var reunionInst = !string.IsNullOrWhiteSpace(r.InstitucionId) ? await instRepo.GetByIdAsync(r.InstitucionId, ct) : null;
 
         foreach (var a in r.Asistentes)
         {
@@ -23,7 +23,7 @@ internal static class ContactoFeeder
             if (inst is null) continue;
 
             await contactoRepo.AddAsync(
-                Contacto.Crear(a.Nombre, inst.Id, inst.Nombre, a.Cargo, correo, a.Telefono,
+                Contacto.Crear(a.Nombre, inst.Id, inst.Nombre, null, null, a.Cargo, correo, a.Telefono,
                     $"Registrado desde reunión: {r.Titulo}", OrigenContacto.Reunion), ct);
         }
     }

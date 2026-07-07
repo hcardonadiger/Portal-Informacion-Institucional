@@ -1,5 +1,10 @@
 @using Diger.TramitesEstado.Application.Accesos
+@using System.Security.Claims
+@using System.Text.Json
+@using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario
+@using Diger.TramitesEstado.Infrastructure.Security
 @inject Diger.TramitesEstado.Web.Common.AccesoModulosService Acceso
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -35,6 +40,52 @@
                     }
                 </nav>
                 <div class="topnav-user">
+                    @{
+                        var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
+                        List<AsignacionDto>? asignaciones = null;
+                        if (!string.IsNullOrWhiteSpace(asignacionesJson))
+                        {
+                            try { asignaciones = JsonSerializer.Deserialize<List<AsignacionDto>>(asignacionesJson); }
+                            catch { }
+                        }
+                    }
+
+                    @if (asignaciones != null && asignaciones.Count > 1)
+                    {
+                        var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
+                        var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+                        var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
+                        var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
+
+                        // Find the current index based on claims
+                        int currentIndex = asignaciones.FindIndex(a => 
+                            a.InstitucionId == activeInst && 
+                            a.AreaId == activeArea && 
+                            a.UnidadId == activeUnidad &&
+                            a.Rol == activeRol);
+
+                        <form method="post" asp-page="/Cuenta/CambiarContexto" style="display:inline; margin-right: 15px;">
+                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                            <select name="indiceSeleccionado" onchange="this.form.submit()" class="form-select form-select-sm" style="display:inline-block; width:auto; font-size:0.85rem;">
+                                @for (int i = 0; i < asignaciones.Count; i++)
+                                {
+                                    var a = asignaciones[i];
+                                    var label = $"{a.Rol} - {a.InstitucionId}" + 
+                                                (a.AreaId != null ? $" / {a.AreaId}" : "") + 
+                                                (a.UnidadId != null ? $" / {a.UnidadId}" : "");
+                                    if (i == currentIndex)
+                                    {
+                                        <option value="@i" selected>@label</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@i">@label</option>
+                                    }
+                                }
+                            </select>
+                        </form>
+                    }
+
                     <span class="topnav-name">@User.Identity!.Name</span>
                     <span class="topnav-rol">@(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>
                     <form method="post" asp-page="/Cuenta/Logout" style="display:inline">

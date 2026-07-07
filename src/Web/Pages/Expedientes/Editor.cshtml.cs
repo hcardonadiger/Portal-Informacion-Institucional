@@ -47,7 +47,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         var instituciones = await institucionRepo.GetAllActivasAsync(ct);
         var inst = instituciones.FirstOrDefault(i =>
             string.Equals(i.Nombre, datos.Inst?.Trim(), StringComparison.OrdinalIgnoreCase));
-        var institucionId = inst?.Id ?? 0;
+        var institucionId = inst?.Id ?? string.Empty;
 
         var input = OriginalShapeMapper.ToInput(datos, institucionId);
 

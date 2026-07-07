@@ -14,8 +14,8 @@ public sealed class IndexModel(ISender sender, IUsuarioRepository usuarioRepo, I
             && !User.IsInRole(nameof(RolUsuario.Coordinador));
 
         IReadOnlyList<int>? temaIds = null;
-        int? tecnicoId = null;
-        if (esTecnico && currentUser.UserId is int uid)
+        Guid? tecnicoId = null;
+        if (esTecnico && currentUser.UserId is Guid uid)
         {
             temaIds = await usuarioRepo.GetTemaIdsAsync(uid, ct);
             tecnicoId = uid;

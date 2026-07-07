@@ -14,7 +14,7 @@ public sealed class CompromisosModel(
 
     public string?           Q             { get; private set; }
     public EstadoCompromiso? Estado        { get; private set; }
-    public int?              InstitucionId { get; private set; }
+    public string?              InstitucionId { get; private set; }
     public string?           Responsable   { get; private set; }
     public bool              SoloVencidos  { get; private set; }
 
@@ -31,7 +31,7 @@ public sealed class CompromisosModel(
     }
 
     public async Task OnGetAsync(
-        string? q, EstadoCompromiso? estado, int? institucionId, string? responsable,
+        string? q, EstadoCompromiso? estado, string? institucionId, string? responsable,
         bool soloVencidos, int? page, CancellationToken ct)
     {
         Q = q; Estado = estado; InstitucionId = institucionId; Responsable = responsable; SoloVencidos = soloVencidos;
@@ -42,7 +42,7 @@ public sealed class CompromisosModel(
 
     public async Task<IActionResult> OnPostActualizarAsync(
         int id, EstadoCompromiso estado, DateOnly? fechaCumplimiento, string? nota,
-        string? q, EstadoCompromiso? festado, int? finstitucionId, string? fresponsable, bool fsoloVencidos, int? fpage,
+        string? q, EstadoCompromiso? festado, string? finstitucionId, string? fresponsable, bool fsoloVencidos, int? fpage,
         CancellationToken ct)
     {
         if (!PuedeGestionar) return Forbid();

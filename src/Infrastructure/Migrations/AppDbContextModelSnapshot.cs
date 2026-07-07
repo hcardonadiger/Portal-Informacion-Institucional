@@ -80,6 +80,99 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("AcuerdosReunion", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Area", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Descripcion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InstitucionId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("LogoUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("NombreCorto")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstitucionId");
+
+                    b.ToTable("Areas", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.AsignacionUsuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AreaId")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InstitucionId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Rol")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("UnidadId")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstitucionId");
+
+                    b.HasIndex("UsuarioId", "InstitucionId", "AreaId", "UnidadId")
+                        .IsUnique()
+                        .HasFilter("[AreaId] IS NOT NULL AND [UnidadId] IS NOT NULL");
+
+                    b.ToTable("AsignacionesUsuario", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Asistente", b =>
                 {
                     b.Property<int>("Id")
@@ -175,6 +268,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AreaId")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
                     b.Property<string>("Cargo")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
@@ -194,8 +291,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
-                    b.Property<int>("InstitucionId")
-                        .HasColumnType("int");
+                    b.Property<string>("InstitucionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -215,6 +313,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
+                    b.Property<string>("UnidadId")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -223,11 +325,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AreaId");
+
                     b.HasIndex("Institucion");
 
                     b.HasIndex("InstitucionId");
 
                     b.HasIndex("Nombre");
+
+                    b.HasIndex("UnidadId");
 
                     b.ToTable("Contactos", (string)null);
                 });
@@ -318,6 +424,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("AreaId")
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("Codigo")
                         .IsRequired()
@@ -420,8 +529,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
-                    b.Property<int>("InstitucionId")
-                        .HasColumnType("int");
+                    b.Property<string>("InstitucionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("NumActa")
                         .HasMaxLength(60)
@@ -469,6 +579,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("UnidadId")
+                        .HasColumnType("nvarchar(120)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -488,6 +601,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AreaId");
+
                     b.HasIndex("Codigo")
                         .IsUnique();
 
@@ -500,6 +615,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("OrigenExternoId")
                         .IsUnique()
                         .HasFilter("[OrigenExternoId] IS NOT NULL");
+
+                    b.HasIndex("UnidadId");
 
                     b.ToTable("Expedientes", (string)null);
                 });
@@ -866,19 +983,41 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Institucion", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Id")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Descripcion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InfoExtra")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LogoUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("NombreCorto")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -890,148 +1029,231 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
+                            Id = "DIGER",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Nombre = "DIGER (Sistema)"
+                        },
+                        new
+                        {
+                            Id = "1",
+                            Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "CONVIVIENDA"
                         },
                         new
                         {
-                            Id = 2,
+                            Id = "2",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "COPECO"
                         },
                         new
                         {
-                            Id = 3,
+                            Id = "3",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SIT"
                         },
                         new
                         {
-                            Id = 4,
+                            Id = "4",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "IHADFA"
                         },
                         new
                         {
-                            Id = 5,
+                            Id = "5",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "BANHPROVI"
                         },
                         new
                         {
-                            Id = 6,
+                            Id = "6",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "INPREUNAH"
                         },
                         new
                         {
-                            Id = 7,
+                            Id = "7",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "CNBS"
                         },
                         new
                         {
-                            Id = 8,
+                            Id = "8",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "INPREMA"
                         },
                         new
                         {
-                            Id = 9,
+                            Id = "9",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "IHTT"
                         },
                         new
                         {
-                            Id = 10,
+                            Id = "10",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SEN"
                         },
                         new
                         {
-                            Id = 11,
+                            Id = "11",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "CONSUCOOP"
                         },
                         new
                         {
-                            Id = 12,
+                            Id = "12",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "CONATEL"
                         },
                         new
                         {
-                            Id = 13,
+                            Id = "13",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "IHCINE"
                         },
                         new
                         {
-                            Id = 14,
+                            Id = "14",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SAG"
                         },
                         new
                         {
-                            Id = 15,
+                            Id = "15",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SECAPPH"
                         },
                         new
                         {
-                            Id = 16,
+                            Id = "16",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SRECI"
                         },
                         new
                         {
-                            Id = 17,
+                            Id = "17",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SERNA"
                         },
                         new
                         {
-                            Id = 18,
+                            Id = "18",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SGJD"
                         },
                         new
                         {
-                            Id = 19,
+                            Id = "19",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "CANATURH / IHT"
                         },
                         new
                         {
-                            Id = 20,
+                            Id = "20",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "IP"
                         },
                         new
                         {
-                            Id = 21,
+                            Id = "21",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SENASA"
                         },
                         new
                         {
-                            Id = 22,
+                            Id = "22",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "SESAL"
                         },
                         new
                         {
-                            Id = 23,
+                            Id = "23",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "FOSOVI"
                         },
                         new
                         {
-                            Id = 24,
+                            Id = "24",
                             Activo = true,
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nombre = "IHT"
                         });
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Movimiento", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Descripcion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Movimientos", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Prefijo", b =>
+                {
+                    b.Property<string>("PrefijoInstitucion")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("PrefijoMovimiento")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("UltimoCodigo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UltimoValor")
+                        .HasColumnType("int");
+
+                    b.HasKey("PrefijoInstitucion", "PrefijoMovimiento");
+
+                    b.ToTable("Prefijos", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Reunion", b =>
@@ -1041,6 +1263,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AreaId")
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("Compromisos")
                         .HasMaxLength(4000)
@@ -1053,8 +1278,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<int?>("Convocados")
                         .HasColumnType("int");
 
-                    b.Property<int?>("CreadoPorId")
-                        .HasColumnType("int");
+                    b.Property<Guid?>("CreadoPorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1131,8 +1356,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
-                    b.Property<int?>("InstitucionId")
-                        .HasColumnType("int");
+                    b.Property<string>("InstitucionId")
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("Lugar")
                         .HasMaxLength(250)
@@ -1185,6 +1410,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<string>("UnidadId")
+                        .HasColumnType("nvarchar(120)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1208,6 +1436,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AreaId");
+
                     b.HasIndex("CreadoPorId");
 
                     b.HasIndex("Fecha");
@@ -1220,6 +1450,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasIndex("RegistroToken")
                         .IsUnique();
+
+                    b.HasIndex("UnidadId");
 
                     b.HasIndex("Visibilidad", "CreadoPorId");
 
@@ -1308,19 +1540,22 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AreaId")
+                        .HasColumnType("nvarchar(120)");
+
                     b.Property<string>("AsignadoA")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<int?>("AsignadoAId")
-                        .HasColumnType("int");
+                    b.Property<Guid?>("AsignadoAId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CreadoPor")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<int?>("CreadoPorId")
-                        .HasColumnType("int");
+                    b.Property<Guid?>("CreadoPorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1351,8 +1586,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
-                    b.Property<int?>("InstitucionId")
-                        .HasColumnType("int");
+                    b.Property<string>("InstitucionId")
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("NotaResolucion")
                         .HasMaxLength(2000)
@@ -1388,6 +1623,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("UnidadId")
+                        .HasColumnType("nvarchar(120)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1395,6 +1633,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
 
                     b.HasIndex("AsignadoAId");
 
@@ -1412,6 +1652,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsUnique();
 
                     b.HasIndex("TemaId");
+
+                    b.HasIndex("UnidadId");
 
                     b.ToTable("Tickets", (string)null);
                 });
@@ -1520,8 +1762,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("InstitucionId")
-                        .HasColumnType("int");
+                    b.Property<string>("InstitucionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -1579,13 +1822,55 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("TramiteRequisitos", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Unidad", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("AreaId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Descripcion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LogoUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("NombreCorto")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.ToTable("Unidades", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Usuario", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
@@ -1611,10 +1896,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<string>("Rol")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                    b.Property<string>("Telefono")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1630,30 +1913,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Usuarios", (string)null);
                 });
 
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.UsuarioInstitucion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("InstitucionId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InstitucionId");
-
-                    b.HasIndex("UsuarioId", "InstitucionId")
-                        .IsUnique();
-
-                    b.ToTable("UsuarioInstituciones", (string)null);
-                });
-
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.UsuarioTema", b =>
                 {
                     b.Property<int>("Id")
@@ -1665,8 +1924,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<int>("TemaId")
                         .HasColumnType("int");
 
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
@@ -1687,6 +1946,30 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Area", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
+                        .WithMany()
+                        .HasForeignKey("InstitucionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.AsignacionUsuario", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
+                        .WithMany()
+                        .HasForeignKey("InstitucionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Asistente", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Reunion", null)
@@ -1698,11 +1981,21 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Contacto", b =>
                 {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Area", null)
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
                         .WithMany()
                         .HasForeignKey("InstitucionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Unidad", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.DocumentoInterno", b =>
@@ -1725,11 +2018,21 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Expediente", b =>
                 {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Area", null)
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
                         .WithMany()
                         .HasForeignKey("InstitucionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Unidad", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteEtapaAvance", b =>
@@ -1806,6 +2109,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Reunion", b =>
                 {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Area", null)
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Usuario", null)
                         .WithMany()
                         .HasForeignKey("CreadoPorId")
@@ -1814,6 +2122,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
                         .WithMany()
                         .HasForeignKey("InstitucionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Unidad", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
@@ -1829,6 +2142,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Ticket", b =>
                 {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Area", null)
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Usuario", null)
                         .WithMany()
                         .HasForeignKey("AsignadoAId")
@@ -1853,6 +2171,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("TemaId")
                         .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Unidad", null)
+                        .WithMany()
+                        .HasForeignKey("UnidadId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("TemaRef");
                 });
@@ -1902,17 +2225,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.UsuarioInstitucion", b =>
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Unidad", b =>
                 {
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Area", null)
                         .WithMany()
-                        .HasForeignKey("InstitucionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
+                        .HasForeignKey("AreaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

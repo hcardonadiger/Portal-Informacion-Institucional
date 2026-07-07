@@ -1,7 +1,7 @@
 namespace Diger.TramitesEstado.Application.Contactos.Queries.GetContactos;
 
 public sealed record ContactoDto(
-    int Id, string Nombre, int InstitucionId, string Institucion, string? Cargo,
+    int Id, string Nombre, string InstitucionId, string Institucion, string? Cargo,
     string? Correo, string? Telefono, string? Notas, OrigenContacto Origen);
 
 public sealed record GetContactosQuery(string? Buscar = null, string? Institucion = null)

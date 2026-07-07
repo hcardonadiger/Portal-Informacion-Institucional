@@ -19,7 +19,7 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
     public bool PuedeGestionar =>
         User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador))
         || User.IsInRole(nameof(RolUsuario.Tecnico));
-    public bool EsAsignado => Ticket.AsignadoAId is int a && a == currentUser.UserId;
+    public bool EsAsignado => Ticket.AsignadoAId is Guid a && a == currentUser.UserId;
     public bool PuedeAtender => PuedeGestionar || EsAsignado;
     private bool EsGestorSuperior =>
         User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador));
@@ -38,7 +38,7 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         try { Ticket = await sender.Send(new GetTicketByIdQuery(id), ct); }
         catch (NotFoundException) { return false; }
 
-        if (EsTecnicoRestringido && currentUser.UserId is int uid)
+        if (EsTecnicoRestringido && currentUser.UserId is Guid uid)
         {
             var temaIds = await usuarioRepo.GetTemaIdsAsync(uid, ct);
             var enSuAlcance = (Ticket.TemaId is int tid && temaIds.Contains(tid)) || EsAsignado;

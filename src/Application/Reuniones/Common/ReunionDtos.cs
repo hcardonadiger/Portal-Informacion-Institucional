@@ -35,7 +35,7 @@ public sealed class ReunionFormDto
     public string?   Duracion  { get; set; }
     public string?   Modalidad { get; set; }
     public string?   Lugar     { get; set; }
-    public int?      InstitucionId { get; set; }
+    public string?   InstitucionId { get; set; }
     public string?   Tipo      { get; set; }
     public bool      EsCapacitacionPlataforma { get; set; }
     public VisibilidadReunion Visibilidad { get; set; } = VisibilidadReunion.Publica;

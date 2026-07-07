@@ -1,9 +1,9 @@
 namespace Diger.TramitesEstado.Domain.Common;
 
 // ── Base entity ───────────────────────────────────────────────────────────
-public abstract class BaseEntity
+public abstract class BaseEntity<TId>
 {
-    public int Id { get; protected set; }
+    public TId Id { get; protected set; } = default!;
 
     private readonly List<INotification> _domainEvents = [];
     public IReadOnlyCollection<INotification> DomainEvents => _domainEvents.AsReadOnly();
@@ -12,14 +12,18 @@ public abstract class BaseEntity
     public void ClearDomainEvents() => _domainEvents.Clear();
 }
 
+public abstract class BaseEntity : BaseEntity<int> { }
+
 // ── Auditable base ────────────────────────────────────────────────────────
-public abstract class BaseAuditableEntity : BaseEntity
+public abstract class BaseAuditableEntity<TId> : BaseEntity<TId>
 {
     public DateTime  CreatedAt { get; set; }
     public string?   CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public string?   UpdatedBy { get; set; }
 }
+
+public abstract class BaseAuditableEntity : BaseAuditableEntity<int> { }
 
 // ── Domain events ─────────────────────────────────────────────────────────
 public record ExpedienteCreatedEvent(int ExpedienteId, string Codigo, string Institucion) : INotification;

@@ -3,7 +3,7 @@ namespace Diger.TramitesEstado.Application.Expedientes.Queries.GetExpedientes;
 public sealed record ExpedienteListItemDto(
     int                Id,
     string             Codigo,
-    int                InstitucionId,
+    string             InstitucionId,
     string             Institucion,
     string             Analista,
     int                NumTramites,

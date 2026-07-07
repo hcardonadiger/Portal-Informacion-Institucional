@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Application.Dashboards.Common;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetExpedientesDashboard;
 
-public sealed record GetExpedientesDashboardQuery(int? InstitucionId = null) : IRequest<ExpedientesDashboardDto>;
+public sealed record GetExpedientesDashboardQuery(string? InstitucionId = null) : IRequest<ExpedientesDashboardDto>;
 
 public sealed class GetExpedientesDashboardQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetExpedientesDashboardQuery, ExpedientesDashboardDto>
@@ -10,7 +10,7 @@ public sealed class GetExpedientesDashboardQueryHandler(IApplicationDbContext ct
     public async Task<ExpedientesDashboardDto> Handle(GetExpedientesDashboardQuery q, CancellationToken ct)
     {
         var e = ctx.Expedientes.AsQueryable();
-        if (q.InstitucionId is int iid) e = e.Where(x => x.InstitucionId == iid);
+        if (!string.IsNullOrWhiteSpace(q.InstitucionId)) e = e.Where(x => x.InstitucionId == q.InstitucionId);
         var total = await e.CountAsync(ct);
         var cerrados = await e.CountAsync(x => x.EstadoExpediente == EstadoExpediente.Cerrado, ct);
         var tramites = total == 0 ? 0 : await e.SumAsync(x => x.Tramites.Count, ct);

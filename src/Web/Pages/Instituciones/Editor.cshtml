@@ -1,4 +1,4 @@
-@page "{id:int?}"
+@page "{id?}"
 @model Diger.TramitesEstado.Web.Pages.Instituciones.EditorModel
 @{
     ViewData["Title"] = Model.InstId is null ? "Nueva institución" : "Editar institución";
@@ -18,9 +18,23 @@
     <form method="post" class="card">
         <div asp-validation-summary="ModelOnly" class="alert-error"></div>
 
+        @if (Model.InstId is null)
+        {
+            <div class="field">
+                <label>Id (Siglas) de la institución <span style="color:#dc2626">*</span></label>
+                <input asp-for="Id" placeholder="Ej: CNBS" />
+                <span asp-validation-for="Id" class="hint error"></span>
+                <span class="hint">Identificador único en mayúsculas (ej. CNBS). No se puede cambiar después.</span>
+            </div>
+        }
+        else
+        {
+            <input type="hidden" asp-for="Id" />
+        }
+
         <div class="field">
-            <label>Nombre / sigla de la institución <span style="color:#dc2626">*</span></label>
-            <input asp-for="Nombre" placeholder="Ej: CNBS" />
+            <label>Nombre de la institución <span style="color:#dc2626">*</span></label>
+            <input asp-for="Nombre" placeholder="Ej: Comisión Nacional de Bancos y Seguros" />
             <span asp-validation-for="Nombre" class="hint error"></span>
         </div>
 

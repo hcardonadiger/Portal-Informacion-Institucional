@@ -23,9 +23,9 @@ public sealed class CrearReunionCommandHandler(
         ReunionMapper.Aplicar(r, cmd.Datos, cmd.Asistentes, cmd.Acuerdos);
         r.CreadoPorId = currentUser.UserId;   // dueño (relevante para reuniones privadas)
 
-        if (cmd.Datos.InstitucionId is int id)
+        if (!string.IsNullOrWhiteSpace(cmd.Datos.InstitucionId))
         {
-            var inst = await institucionRepo.GetByIdAsync(id, ct);
+            var inst = await institucionRepo.GetByIdAsync(cmd.Datos.InstitucionId, ct);
             r.InstitucionId = inst?.Id;
             r.Institucion   = inst?.Nombre;
         }

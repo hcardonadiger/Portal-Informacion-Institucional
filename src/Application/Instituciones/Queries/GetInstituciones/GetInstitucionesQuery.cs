@@ -1,7 +1,7 @@
 namespace Diger.TramitesEstado.Application.Instituciones.Queries.GetInstituciones;
 
 public sealed record InstitucionListItemDto(
-    int Id, string Nombre, bool Activo, int NumTramites,
+    string Id, string Nombre, bool Activo, int NumTramites,
     int Expedientes, int Tickets, int Reuniones, int Contactos);
 
 public sealed record GetInstitucionesQuery(string? Q = null, int? Page = null, int? Size = null)

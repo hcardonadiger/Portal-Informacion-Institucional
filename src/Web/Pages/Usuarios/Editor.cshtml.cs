@@ -5,21 +5,21 @@ namespace Diger.TramitesEstado.Web.Pages.Usuarios;
 [Authorize(Policy = "PuedeAdministrarUsuarios")]
 public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo) : PageModel
 {
-    public int? UsuarioId { get; private set; }
+    public Guid? UsuarioId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
     public IReadOnlyList<TemaAdminDto> Temas { get; private set; } = [];
 
     [BindProperty] public string     Nombre { get; set; } = string.Empty;
     [BindProperty] public string     Correo { get; set; } = string.Empty;
-    [BindProperty] public RolUsuario Rol    { get; set; } = RolUsuario.Tecnico;
+    [BindProperty] public string     Rol    { get; set; } = "Tecnico";
     [BindProperty] public bool       Activo { get; set; } = true;
     [BindProperty] public string?    Password { get; set; }        // solo al crear
     [BindProperty] public string?    NuevaPassword { get; set; }   // restablecer
-    [BindProperty] public List<int>  InstitucionIds { get; set; } = []; // alcance
+    [BindProperty] public List<string>  InstitucionIds { get; set; } = []; // alcance
     [BindProperty] public List<int>  TemaIds { get; set; } = []; // temas que atiende
 
     public string? Error { get; set; }
-    public RolUsuario[] Roles => Enum.GetValues<RolUsuario>();
+    public string[] Roles => new[] { "Administrador", "Coordinador", "Tecnico" };
 
     private async Task CargarCatalogosAsync(CancellationToken ct)
     {
@@ -27,7 +27,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         Temas = await sender.Send(new GetTemasQuery(), ct);
     }
 
-    public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
+    public async Task<IActionResult> OnGetAsync(Guid? id, CancellationToken ct)
     {
         await CargarCatalogosAsync(ct);
         if (id is null) return Page();
@@ -42,7 +42,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         catch (NotFoundException) { return NotFound(); }
     }
 
-    public async Task<IActionResult> OnPostAsync(int? id, CancellationToken ct)
+    public async Task<IActionResult> OnPostAsync(Guid? id, CancellationToken ct)
     {
         UsuarioId = id;
         await CargarCatalogosAsync(ct);
@@ -55,7 +55,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
         try
         {
-            int destinoId;
+            Guid destinoId;
             if (id is null)
             {
                 if (string.IsNullOrWhiteSpace(Password) || Password.Length < 8)
@@ -63,11 +63,11 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
                     Error = "La contraseña inicial debe tener al menos 8 caracteres.";
                     return Page();
                 }
-                destinoId = await sender.Send(new CrearUsuarioCommand(Nombre, Correo, Password, Rol), ct);
+                destinoId = await sender.Send(new CrearUsuarioCommand(Nombre, Correo, Password), ct);
             }
             else
             {
-                await sender.Send(new ActualizarUsuarioCommand(id.Value, Nombre, Correo, Rol, Activo), ct);
+                await sender.Send(new ActualizarUsuarioCommand(id.Value, Nombre, Correo, Activo), ct);
                 destinoId = id.Value;
             }
             // Alcance institucional (irrelevante para Administrador: acceso global)
@@ -85,7 +85,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         }
     }
 
-    public async Task<IActionResult> OnPostRestablecerAsync(int id, CancellationToken ct)
+    public async Task<IActionResult> OnPostRestablecerAsync(Guid id, CancellationToken ct)
     {
         UsuarioId = id;
         if (string.IsNullOrWhiteSpace(NuevaPassword) || NuevaPassword.Length < 8)

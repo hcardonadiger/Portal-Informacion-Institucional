@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.AsignarInstitucionesUsuario;
 
-public sealed record AsignarInstitucionesUsuarioCommand(int UsuarioId, IReadOnlyList<int> InstitucionIds)
+public sealed record AsignarInstitucionesUsuarioCommand(Guid UsuarioId, IReadOnlyList<string> InstitucionIds)
     : IRequest<Unit>;
 
 public sealed class AsignarInstitucionesUsuarioCommandHandler(IUsuarioRepository repo, IUnitOfWork uow)

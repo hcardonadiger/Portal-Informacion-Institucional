@@ -12,7 +12,7 @@ public sealed class AccesoModulosService(ICurrentUserService currentUser, IAppli
 {
     private HashSet<string>? _permitidos;
 
-    public bool EsAdministrador => currentUser.Rol == RolUsuario.Administrador;
+    public bool EsAdministrador => currentUser.Rol == "Administrador";
 
     public async Task<bool> PuedeAsync(string modulo, CancellationToken ct = default)
     {
@@ -25,8 +25,8 @@ public sealed class AccesoModulosService(ICurrentUserService currentUser, IAppli
     private async Task<HashSet<string>> CargarAsync(CancellationToken ct)
     {
         if (_permitidos is not null) return _permitidos;
-        var rol = currentUser.Rol;
-        if (rol is null) return _permitidos = new();
+        var rolStr = currentUser.Rol;
+        if (rolStr is null || !Enum.TryParse<RolUsuario>(rolStr, out var rol)) return _permitidos = new();
         _permitidos = (await ctx.RolModuloAccesos
             .Where(g => g.Rol == rol)
             .Select(g => g.Modulo)

@@ -17,13 +17,13 @@ public interface IInstitucionRepository
 {
     Task<IReadOnlyList<Institucion>>       GetAllActivasAsync(CancellationToken ct = default);
     Task<IReadOnlyList<Institucion>>       GetAllAsync(CancellationToken ct = default);
-    Task<Institucion?>                     GetByIdAsync(int id, CancellationToken ct = default);
-    Task<Institucion?>                     GetByIdWithTramitesAsync(int id, CancellationToken ct = default);
+    Task<Institucion?>                     GetByIdAsync(string id, CancellationToken ct = default);
+    Task<Institucion?>                     GetByIdWithTramitesAsync(string id, CancellationToken ct = default);
     Task<Institucion?>                     GetByNombreAsync(string nombre, CancellationToken ct = default);
-    Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(int institucionId, CancellationToken ct = default);
+    Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(string institucionId, CancellationToken ct = default);
     Task<IReadOnlyList<TramiteDefinicion>> GetAllTramitesAsync(CancellationToken ct = default);
-    Task<bool>                             ExisteNombreAsync(string nombre, int? exceptoId = null, CancellationToken ct = default);
-    Task<bool>                             TieneExpedientesAsync(int institucionId, CancellationToken ct = default);
+    Task<bool>                             ExisteNombreAsync(string nombre, string? exceptoId = null, CancellationToken ct = default);
+    Task<bool>                             TieneExpedientesAsync(string institucionId, CancellationToken ct = default);
     Task                                   AddAsync(Institucion institucion, CancellationToken ct = default);
     void                                   Update(Institucion institucion);
     void                                   Delete(Institucion institucion);
@@ -63,38 +63,46 @@ public interface ITicketRepository
 
 public interface IUsuarioRepository
 {
-    Task<Usuario?>               GetByIdAsync(int id, CancellationToken ct = default);
+    Task<Usuario?>               GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Usuario?>               GetByCorreoAsync(string correo, CancellationToken ct = default);
     Task<IReadOnlyList<Usuario>> GetByRolAsync(RolUsuario rol, bool soloActivos = true, CancellationToken ct = default);
     Task<IReadOnlyList<Usuario>> GetAllAsync(CancellationToken ct = default);
-    Task<bool>                   ExisteCorreoAsync(string correo, int? exceptoId = null, CancellationToken ct = default);
+    Task<bool>                   ExisteCorreoAsync(string correo, Guid? exceptoId = null, CancellationToken ct = default);
     Task                         AddAsync(Usuario usuario, CancellationToken ct = default);
     void                         Update(Usuario usuario);
 
     // ── Alcance institucional ──────────────────────────────────────────────
-    Task<IReadOnlyList<int>>     GetInstitucionIdsAsync(int usuarioId, CancellationToken ct = default);
-    Task                         ReemplazarInstitucionesAsync(int usuarioId, IEnumerable<int> institucionIds, CancellationToken ct = default);
+    Task<IReadOnlyList<string>>  GetInstitucionIdsAsync(Guid usuarioId, CancellationToken ct = default);
+    Task                         ReemplazarInstitucionesAsync(Guid usuarioId, IEnumerable<string> institucionIds, CancellationToken ct = default);
 
     // ── Temas de ticket que atiende (especialidad) ─────────────────────────
-    Task<IReadOnlyList<int>> GetTemaIdsAsync(int usuarioId, CancellationToken ct = default);
-    Task                     ReemplazarTemasAsync(int usuarioId, IEnumerable<int> temaIds, CancellationToken ct = default);
+    Task<IReadOnlyList<int>> GetTemaIdsAsync(Guid usuarioId, CancellationToken ct = default);
+    Task                     ReemplazarTemasAsync(Guid usuarioId, IEnumerable<int> temaIds, CancellationToken ct = default);
 }
 
 // ── Servicios de aplicación ───────────────────────────────────────────────
 public interface ICurrentUserService
 {
-    int?        UserId   { get; }
+    Guid?       UserId   { get; }
     string?     Nombre   { get; }
     string?     Correo   { get; }
-    RolUsuario? Rol      { get; }
+    string?     Rol      { get; }
     bool        IsAuthenticated { get; }
 
     /// <summary>Acceso global (Administrador, o procesos del sistema sin usuario).</summary>
     bool EsGlobal { get; }
-    /// <summary>Instituciones a las que el usuario tiene alcance (vacío para usuarios sin asignación).</summary>
-    IReadOnlyCollection<int> InstitucionesAsignadas { get; }
-    /// <summary>True si el usuario puede acceder a un registro de la institución dada.</summary>
-    bool PuedeAccederInstitucion(int? institucionId);
+    /// <summary>Contexto activo: Institución.</summary>
+    string? ActiveInstitucionId { get; }
+    /// <summary>Contexto activo: Área.</summary>
+    string? ActiveAreaId { get; }
+    /// <summary>Contexto activo: Unidad.</summary>
+    string? ActiveUnidadId { get; }
+    
+    /// <summary>Instituciones a las que el usuario tiene alcance.</summary>
+    IReadOnlyCollection<string> InstitucionesAsignadas { get; }
+
+    /// <summary>True si el usuario puede acceder a un registro de la institución dada en el contexto actual.</summary>
+    bool PuedeAccederInstitucion(string? institucionId);
 }
 
 public interface IPasswordHasher
@@ -134,6 +142,10 @@ public interface IApplicationDbContext
     DbSet<TemaTicket>               TemasTicket   { get; }
     DbSet<UsuarioTema>              UsuarioTemas  { get; }
     DbSet<RolModuloAcceso>          RolModuloAccesos { get; }
-    DbSet<UsuarioInstitucion>       UsuarioInstituciones { get; }
+    DbSet<AsignacionUsuario>        AsignacionesUsuario { get; }
+    DbSet<Area>                     Areas               { get; }
+    DbSet<Unidad>                   Unidades            { get; }
+    DbSet<Movimiento>               Movimientos         { get; }
+    DbSet<Prefijo>                  Prefijos            { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

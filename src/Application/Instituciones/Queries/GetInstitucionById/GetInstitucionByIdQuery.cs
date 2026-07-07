@@ -3,10 +3,10 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 namespace Diger.TramitesEstado.Application.Instituciones.Queries.GetInstitucionById;
 
 public sealed record InstitucionDetailDto(
-    int Id, string Nombre, bool Activo, IReadOnlyList<string> Tramites,
+    string Id, string Nombre, bool Activo, IReadOnlyList<string> Tramites,
     int Expedientes, int Tickets, int TicketsAbiertos, int Reuniones, int Contactos, int UsuariosAsignados);
 
-public sealed record GetInstitucionByIdQuery(int Id) : IRequest<InstitucionDetailDto>;
+public sealed record GetInstitucionByIdQuery(string Id) : IRequest<InstitucionDetailDto>;
 
 public sealed class GetInstitucionByIdQueryHandler(IInstitucionRepository repo, IApplicationDbContext ctx)
     : IRequestHandler<GetInstitucionByIdQuery, InstitucionDetailDto>
@@ -24,7 +24,7 @@ public sealed class GetInstitucionByIdQueryHandler(IInstitucionRepository repo, 
             (t.Estado == EstadoTicket.Abierto || t.Estado == EstadoTicket.EnProgreso), ct);
         var reuniones       = await ctx.Reuniones.IgnoreQueryFilters().CountAsync(r => r.InstitucionId == id, ct);
         var contactos       = await ctx.Contactos.IgnoreQueryFilters().CountAsync(c => c.InstitucionId == id, ct);
-        var usuarios        = await ctx.UsuarioInstituciones.CountAsync(u => u.InstitucionId == id, ct);
+        var usuarios        = await ctx.AsignacionesUsuario.CountAsync(u => u.InstitucionId == id, ct);
 
         return new InstitucionDetailDto(
             inst.Id, inst.Nombre, inst.Activo,

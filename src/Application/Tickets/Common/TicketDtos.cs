@@ -10,7 +10,7 @@ public sealed class TicketFormDto
     public int?            TemaId      { get; set; } // tema/categoría del catálogo administrable
     public PrioridadTicket Prioridad   { get; set; } = PrioridadTicket.Media;
 
-    public int? InstitucionId { get; set; }
+    public string? InstitucionId { get; set; }
     public int? ExpedienteId  { get; set; }
     /// <summary>Ids del catálogo (TramiteDefinicion) de los trámites afectados por el incidente.</summary>
     public List<int> TramiteIds { get; set; } = [];
@@ -32,14 +32,14 @@ public sealed record AdjuntoDto(int Id, int? ComentarioId, string Nombre, string
 public sealed record TicketDetailDto(
     int Id, string Numero, string Titulo, string? Descripcion,
     int? TemaId, string? Tema, int? HorasSla, PrioridadTicket Prioridad, EstadoTicket Estado,
-    int? InstitucionId, string? Institucion, int? ExpedienteId, string? ExpedienteCodigo,
+    string? InstitucionId, string? Institucion, int? ExpedienteId, string? ExpedienteCodigo,
     string? ReportanteNombre, string? ReportanteCorreo, string? ReportanteTelefono,
-    int? AsignadoAId, string? AsignadoA, DateTime? FechaResolucion, string? NotaResolucion,
+    Guid? AsignadoAId, string? AsignadoA, DateTime? FechaResolucion, string? NotaResolucion,
     DateTime FechaCreacion, string? CreadoPor, IReadOnlyList<string> Tramites,
     IReadOnlyList<AdjuntoDto> Adjuntos,
     IReadOnlyList<TicketComentarioDto> Comentarios);
 
-public sealed record UsuarioAsignableDto(int Id, string Nombre, RolUsuario Rol);
+public sealed record UsuarioAsignableDto(Guid Id, string Nombre, string Rol);
 
 /// <summary>Opción de tema para selectores (creación/edición/asignación), su SLA y su categoría.</summary>
 public sealed record TemaOpcionDto(int Id, string Nombre, int HorasResolucion, bool Activo, int? CategoriaId, string? Categoria);
