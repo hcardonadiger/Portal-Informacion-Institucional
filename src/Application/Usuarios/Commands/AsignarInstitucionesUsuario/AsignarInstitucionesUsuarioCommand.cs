@@ -2,18 +2,20 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.AsignarInstitucionesUsuario;
 
-public sealed record AsignarInstitucionesUsuarioCommand(Guid UsuarioId, IReadOnlyList<string> InstitucionIds)
+using Diger.TramitesEstado.Application.Usuarios.Common;
+
+public sealed record AsignarJerarquiaUsuarioCommand(Guid UsuarioId, string Rol, IReadOnlyList<AsignacionDto> Asignaciones)
     : IRequest<Unit>;
 
-public sealed class AsignarInstitucionesUsuarioCommandHandler(IUsuarioRepository repo, IUnitOfWork uow)
-    : IRequestHandler<AsignarInstitucionesUsuarioCommand, Unit>
+public sealed class AsignarJerarquiaUsuarioCommandHandler(IUsuarioRepository repo, IUnitOfWork uow)
+    : IRequestHandler<AsignarJerarquiaUsuarioCommand, Unit>
 {
-    public async Task<Unit> Handle(AsignarInstitucionesUsuarioCommand cmd, CancellationToken ct)
+    public async Task<Unit> Handle(AsignarJerarquiaUsuarioCommand cmd, CancellationToken ct)
     {
         _ = await repo.GetByIdAsync(cmd.UsuarioId, ct)
             ?? throw new NotFoundException(nameof(Usuario), cmd.UsuarioId);
 
-        await repo.ReemplazarInstitucionesAsync(cmd.UsuarioId, cmd.InstitucionIds ?? [], ct);
+        await repo.ReemplazarAsignacionesAsync(cmd.UsuarioId, cmd.Rol, cmd.Asignaciones ?? [], ct);
         await uow.SaveChangesAsync(ct);
         return Unit.Value;
     }

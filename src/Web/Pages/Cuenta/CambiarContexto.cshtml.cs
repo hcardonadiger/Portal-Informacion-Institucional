@@ -23,10 +23,10 @@ public sealed class CambiarContextoModel : PageModel
         if (string.IsNullOrWhiteSpace(asignacionesJson))
             return RedirectToPage("/Tableros/Index");
 
-        List<AsignacionDto>? asignaciones = null;
+        List<AsignacionAuthDto>? asignaciones = null;
         try
         {
-            asignaciones = JsonSerializer.Deserialize<List<AsignacionDto>>(asignacionesJson);
+            asignaciones = JsonSerializer.Deserialize<List<AsignacionAuthDto>>(asignacionesJson);
         }
         catch { }
 

@@ -1,8 +1,8 @@
 namespace Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 
-public sealed record AsignacionDto(string InstitucionId, string? AreaId, string? UnidadId, string Rol);
+public sealed record AsignacionAuthDto(string InstitucionId, string? AreaId, string? UnidadId, string Rol);
 
-public sealed record UsuarioAuthDto(Guid Id, string Nombre, string Correo, string RolGlobal, IReadOnlyList<AsignacionDto> Asignaciones);
+public sealed record UsuarioAuthDto(Guid Id, string Nombre, string Correo, string RolGlobal, IReadOnlyList<AsignacionAuthDto> Asignaciones);
 
 public sealed record AutenticarUsuarioQuery(string Correo, string Password)
     : IRequest<UsuarioAuthDto?>;
@@ -30,7 +30,7 @@ public sealed class AutenticarUsuarioQueryHandler(
             .ToListAsync(ct);
 
         var asignaciones = asignacionesEntity
-            .Select(a => new AsignacionDto(a.InstitucionId, a.AreaId, a.UnidadId, a.Rol))
+            .Select(a => new AsignacionAuthDto(a.InstitucionId, a.AreaId, a.UnidadId, a.Rol))
             .ToList();
 
         var rolGlobal = asignaciones.FirstOrDefault()?.Rol ?? "Empleado";

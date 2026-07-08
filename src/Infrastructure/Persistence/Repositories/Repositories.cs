@@ -211,17 +211,17 @@ public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
 
     public void Update(Usuario usuario) => ctx.Usuarios.Update(usuario);
 
-    public async Task<IReadOnlyList<string>> GetInstitucionIdsAsync(Guid usuarioId, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto>> GetAsignacionesAsync(Guid usuarioId, CancellationToken ct = default) =>
         await ctx.AsignacionesUsuario
-            .Where(x => x.UsuarioId == usuarioId && x.InstitucionId != null)
-            .Select(x => x.InstitucionId!)
+            .Where(x => x.UsuarioId == usuarioId)
+            .Select(x => new Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto(x.InstitucionId, x.AreaId, x.UnidadId))
             .ToListAsync(ct);
 
-    public async Task ReemplazarInstitucionesAsync(Guid usuarioId, IEnumerable<string> institucionIds, CancellationToken ct = default)
+    public async Task ReemplazarAsignacionesAsync(Guid usuarioId, string rol, IEnumerable<Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto> asignaciones, CancellationToken ct = default)
     {
         var actuales = await ctx.AsignacionesUsuario.Where(x => x.UsuarioId == usuarioId).ToListAsync(ct);
         ctx.AsignacionesUsuario.RemoveRange(actuales);
-        var nuevos = institucionIds.Distinct().Select(id => AsignacionUsuario.Crear(usuarioId, "Empleado", id, null, null));
+        var nuevos = asignaciones.Distinct().Select(a => AsignacionUsuario.Crear(usuarioId, a.InstitucionId, a.AreaId, a.UnidadId, rol));
         await ctx.AsignacionesUsuario.AddRangeAsync(nuevos, ct);
     }
 
@@ -238,4 +238,46 @@ public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
         var nuevos = temaIds.Distinct().Select(id => UsuarioTema.Crear(usuarioId, id));
         await ctx.UsuarioTemas.AddRangeAsync(nuevos, ct);
     }
+}
+
+public sealed class AreaRepository(AppDbContext ctx) : IAreaRepository
+{
+    public async Task<IReadOnlyList<Area>> GetAllAsync(CancellationToken ct = default) =>
+        await ctx.Areas.OrderBy(a => a.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Area>> GetByInstitucionAsync(string institucionId, CancellationToken ct = default) =>
+        await ctx.Areas.Where(a => a.InstitucionId == institucionId).OrderBy(a => a.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<Area?> GetByIdAsync(string id, CancellationToken ct = default) =>
+        await ctx.Areas.FirstOrDefaultAsync(a => a.Id == id, ct);
+
+    public async Task<bool> ExisteNombreAsync(string nombre, string institucionId, string? exceptoId = null, CancellationToken ct = default) =>
+        await ctx.Areas.AnyAsync(a => a.InstitucionId == institucionId && a.Nombre.ToLower() == nombre.ToLower() && a.Id != exceptoId, ct);
+
+    public async Task AddAsync(Area area, CancellationToken ct = default) =>
+        await ctx.Areas.AddAsync(area, ct);
+
+    public void Update(Area area) => ctx.Areas.Update(area);
+    public void Delete(Area area) => ctx.Areas.Remove(area);
+}
+
+public sealed class UnidadRepository(AppDbContext ctx) : IUnidadRepository
+{
+    public async Task<IReadOnlyList<Unidad>> GetAllAsync(CancellationToken ct = default) =>
+        await ctx.Unidades.OrderBy(u => u.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Unidad>> GetByAreaAsync(string areaId, CancellationToken ct = default) =>
+        await ctx.Unidades.Where(u => u.AreaId == areaId).OrderBy(u => u.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<Unidad?> GetByIdAsync(string id, CancellationToken ct = default) =>
+        await ctx.Unidades.FirstOrDefaultAsync(u => u.Id == id, ct);
+
+    public async Task<bool> ExisteNombreAsync(string nombre, string areaId, string? exceptoId = null, CancellationToken ct = default) =>
+        await ctx.Unidades.AnyAsync(u => u.AreaId == areaId && u.Nombre.ToLower() == nombre.ToLower() && u.Id != exceptoId, ct);
+
+    public async Task AddAsync(Unidad unidad, CancellationToken ct = default) =>
+        await ctx.Unidades.AddAsync(unidad, ct);
+
+    public void Update(Unidad unidad) => ctx.Unidades.Update(unidad);
+    public void Delete(Unidad unidad) => ctx.Unidades.Remove(unidad);
 }

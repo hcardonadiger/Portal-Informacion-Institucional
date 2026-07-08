@@ -53,6 +53,7 @@ builder.Services.AddRazorPages(opts =>
 });
 
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.AccesoModulosService>();
+builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.JerarquiaUiService>();
 builder.Services.AddExceptionHandler<WebExceptionHandler>();
 builder.Services.AddProblemDetails();
 

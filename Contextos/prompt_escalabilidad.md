@@ -60,7 +60,10 @@ El acceso a la información estará dictado por el campo `Rol` en la tabla `Asig
 
 ---
 
-## 3. Estado de Navegación y UI (Combobox de Cambio de Contexto)
+## 3. Estado de Navegación y UI (Combobox de Cambio de Contexto) ✅ [COMPLETADO]
+
+> [!NOTE]
+> Se agregó el servicio `JerarquiaUiService` y el endpoint `/Cuenta/CambiarFiltroJerarquia` para permitir que `JefeInstitucion` y `JefeArea` cambien su contexto (Area/Unidad) de forma dinámica, manteniendo la seguridad a través de los RLS Global Query Filters en `AppDbContext`.
 
 Para los usuarios con rol de Jefe (`JefeInstitucion` y `JefeArea`), el sistema debe proveer una funcionalidad en la Interfaz de Usuario (ej. Navbar) que les permita cambiar su "Contexto Visual":
 *   **JefeInstitucion** tendrá un Combobox para seleccionar qué `Area` y/o `Unidad` desea revisar.

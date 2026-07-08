@@ -29,6 +29,28 @@ public interface IInstitucionRepository
     void                                   Delete(Institucion institucion);
 }
 
+public interface IAreaRepository
+{
+    Task<IReadOnlyList<Area>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Area>> GetByInstitucionAsync(string institucionId, CancellationToken ct = default);
+    Task<Area?> GetByIdAsync(string id, CancellationToken ct = default);
+    Task<bool> ExisteNombreAsync(string nombre, string institucionId, string? exceptoId = null, CancellationToken ct = default);
+    Task AddAsync(Area area, CancellationToken ct = default);
+    void Update(Area area);
+    void Delete(Area area);
+}
+
+public interface IUnidadRepository
+{
+    Task<IReadOnlyList<Unidad>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Unidad>> GetByAreaAsync(string areaId, CancellationToken ct = default);
+    Task<Unidad?> GetByIdAsync(string id, CancellationToken ct = default);
+    Task<bool> ExisteNombreAsync(string nombre, string areaId, string? exceptoId = null, CancellationToken ct = default);
+    Task AddAsync(Unidad unidad, CancellationToken ct = default);
+    void Update(Unidad unidad);
+    void Delete(Unidad unidad);
+}
+
 public interface IContactoRepository
 {
     Task<Contacto?>               GetByIdAsync(int id, CancellationToken ct = default);
@@ -71,9 +93,9 @@ public interface IUsuarioRepository
     Task                         AddAsync(Usuario usuario, CancellationToken ct = default);
     void                         Update(Usuario usuario);
 
-    // ── Alcance institucional ──────────────────────────────────────────────
-    Task<IReadOnlyList<string>>  GetInstitucionIdsAsync(Guid usuarioId, CancellationToken ct = default);
-    Task                         ReemplazarInstitucionesAsync(Guid usuarioId, IEnumerable<string> institucionIds, CancellationToken ct = default);
+    // ── Alcance (Jerarquía) ──────────────────────────────────────────────
+    Task<IReadOnlyList<Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto>> GetAsignacionesAsync(Guid usuarioId, CancellationToken ct = default);
+    Task ReemplazarAsignacionesAsync(Guid usuarioId, string rol, IEnumerable<Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto> asignaciones, CancellationToken ct = default);
 
     // ── Temas de ticket que atiende (especialidad) ─────────────────────────
     Task<IReadOnlyList<int>> GetTemaIdsAsync(Guid usuarioId, CancellationToken ct = default);
