@@ -50,6 +50,10 @@ builder.Services.AddRazorPages(opts =>
     opts.Conventions.AllowAnonymousToFolder("/Cuenta"); // …salvo login/logout
     opts.Conventions.AllowAnonymousToFolder("/Asistencia"); // …y el auto-registro público
     opts.Conventions.AllowAnonymousToPage("/Error");
+})
+.AddMvcOptions(options =>
+{
+    options.Filters.Add<Diger.TramitesEstado.Web.Common.ConsultorReadOnlyPageFilter>();
 });
 
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.AccesoModulosService>();

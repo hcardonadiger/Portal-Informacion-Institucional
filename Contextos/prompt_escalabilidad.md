@@ -73,11 +73,11 @@ Para los usuarios con rol de Jefe (`JefeInstitucion` y `JefeArea`), el sistema d
 
 ---
 
-## 4. Instrucciones Técnicas y Patrones para la IA Implementadora
+## 4. Instrucciones Técnicas y Patrones para la IA Implementadora ✅ [COMPLETADA]
 
 Al implementar estos cambios en el código C#, se DEBEN seguir estrictamente las siguientes directrices:
 
-1.  **Auditoría Automatizada en EF Core**:
+1.  **Auditoría Automatizada en EF Core** ✅ [COMPLETADO]:
     *   No llenar los campos de auditoría (`UsuarioCreo`, `FechaCreacion`, etc.) manualmente en los controladores o servicios.
     *   **Obligatorio:** Sobrescribir el método `SaveChangesAsync()` en el `DbContext`. Se debe usar el `IHttpContextAccessor` para obtener el ID del usuario actual de los claims, e inyectar las fechas en UTC para las entidades que implementen una interfaz (ej. `IAuditableEntity`).
 
@@ -86,11 +86,11 @@ Al implementar estos cambios en el código C#, se DEBEN seguir estrictamente las
 > **TAREA DE SEGURIDAD PENDIENTE (Global Query Filters):**
 > [COMPLETADO - 06/07/2026] Se implementaron los filtros globales en AppDbContext usando `ActiveInstitucionId`, `ActiveAreaId` y `ActiveUnidadId` evaluando la jerarquía según el Rol. También se agregó un Combobox en el Layout para cambiar de contexto leyendo los Claims de la cookie.
 
-3.  **Stored Procedure para Códigos Concurrentes**:
+3.  **Stored Procedure para Códigos Concurrentes** ✅ [COMPLETADO]:
     *   Crear un script SQL (migration) que defina el `SP_GenerarCodigoMovimiento`. Usar transacciones y `UPDLOCK` a nivel de base de datos para asegurar que dos peticiones simultáneas no obtengan el mismo código de la tabla `Prefijos`.
 
-4.  **Inyección Automática en Inserciones**:
+4.  **Inyección Automática en Inserciones** ✅ [COMPLETADO]:
     *   Similar a la auditoría, cuando se agregue una entidad al contexto (`EntityState.Added`), el sistema debe asignar automáticamente la `InstitucionId`, `AreaId` y `UnidadId` basándose en la configuración activa del usuario (su asignación real o la de su combobox si es jefe).
 
-5.  **Rol Consultor (Read-Only)**:
+5.  **Rol Consultor (Read-Only)** ✅ [COMPLETADO]:
     *   Implementar directivas en Razor Pages/Views (ej. un TagHelper o comprobación de claims) para ocultar controles de edición si el `Rol == Consultor`. A nivel de backend, usar atributos de autorización o validación en los `OnPost` para rechazar operaciones de mutación de este rol.
