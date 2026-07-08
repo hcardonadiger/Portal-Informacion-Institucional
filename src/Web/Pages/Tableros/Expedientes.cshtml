@@ -14,8 +14,8 @@
         <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
     </div>
 
-    <form method="get" class="card" style="padding:.9rem 1rem;margin-bottom:1.1rem;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
-        <div class="field" style="margin:0;min-width:200px"><label>Institución</label>
+    <form method="get" class="seg-filters">
+        <div class="field" style="min-width:200px"><label>Institución</label>
             <select name="institucionId" onchange="this.form.submit()">
                 <option value="">Todas</option>
                 @foreach (var i in Model.Instituciones) { <option value="@i.Id" selected="@(Model.InstitucionId == i.Id)">@i.Nombre</option> }

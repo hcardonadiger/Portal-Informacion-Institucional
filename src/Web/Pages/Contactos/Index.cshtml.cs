@@ -1,4 +1,6 @@
 using System.Text;
+using Diger.TramitesEstado.Application.Contactos.Commands.DarDeBajaContacto;
+using Diger.TramitesEstado.Application.Contactos.Commands.ReactivarContacto;
 
 namespace Diger.TramitesEstado.Web.Pages.Contactos;
 
@@ -11,28 +13,46 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     [BindProperty(SupportsGet = true)] public string? Buscar      { get; set; }
     [BindProperty(SupportsGet = true)] public string? Institucion { get; set; }
-    [BindProperty(SupportsGet = true)] public int?    Page        { get; set; }
 
-    public int TotalContactos    => Contactos.Count;
+    public int TotalContactos     => Contactos.Count;
     public int TotalInstituciones => Contactos.Select(c => c.Institucion).Distinct().Count();
     public int TotalManuales      => Contactos.Count(c => c.Origen == OrigenContacto.Manual);
+    public int TotalInactivos     => Contactos.Count(c => !c.Activo);
 
-    public async Task OnGetAsync(CancellationToken ct)
+    public async Task OnGetAsync(int? pg, CancellationToken ct)
     {
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
-        Contactos = await sender.Send(new GetContactosQuery(Buscar, Institucion), ct);
+        Contactos = await sender.Send(new GetContactosQuery(Buscar, Institucion, MostrarInactivos: true), ct);
 
-        var (_, page, size) = Paginacion.Normalizar(null, Page, null);
-        var items = Contactos.Skip((page - 1) * size).Take(size).ToList();
-        Resultado = new PagedResult<ContactoDto>(items, Contactos.Count, page, size);
+        var (_, p, size) = Paginacion.Normalizar(null, pg, 20);
+        var items = Contactos.Skip((p - 1) * size).Take(size).ToList();
+        Resultado = new PagedResult<ContactoDto>(items, Contactos.Count, p, size);
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.Coordinador)))
+        if (User.IsInRole(nameof(RolUsuario.Empleado)) || User.IsInRole(nameof(RolUsuario.Consultor)))
             return Forbid();
         await sender.Send(new EliminarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto eliminado.";
+        return RedirectToPage(new { Buscar, Institucion });
+    }
+
+    public async Task<IActionResult> OnPostDarDeBajaAsync(int id, CancellationToken ct)
+    {
+        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.JefeInstitucion)))
+            return Forbid();
+        await sender.Send(new DarDeBajaContactoCommand(id), ct);
+        TempData["SuccessMsg"] = "Contacto dado de baja.";
+        return RedirectToPage(new { Buscar, Institucion });
+    }
+
+    public async Task<IActionResult> OnPostReactivarAsync(int id, CancellationToken ct)
+    {
+        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.JefeInstitucion)))
+            return Forbid();
+        await sender.Send(new ReactivarContactoCommand(id), ct);
+        TempData["SuccessMsg"] = "Contacto reactivado.";
         return RedirectToPage(new { Buscar, Institucion });
     }
 

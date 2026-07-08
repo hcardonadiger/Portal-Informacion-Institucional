@@ -14,7 +14,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     }
 
     [BindProperty] public string  Nombre        { get; set; } = string.Empty;
-    [BindProperty] public int     InstitucionId { get; set; }
+    [BindProperty] public string     InstitucionId { get; set; } = string.Empty;
     [BindProperty] public string? Cargo         { get; set; }
     [BindProperty] public string? Correo      { get; set; }
     [BindProperty] public string? Telefono    { get; set; }
@@ -32,7 +32,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
             var c = await sender.Send(new GetContactoByIdQuery(id.Value), ct);
             ContactoId    = c.Id;
             Nombre        = c.Nombre;
-            InstitucionId = c.InstitucionId;
+            InstitucionId = c.InstitucionId ?? string.Empty;
             Cargo         = c.Cargo;
             Correo      = c.Correo;
             Telefono    = c.Telefono;
@@ -54,9 +54,9 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         try
         {
             if (id is null)
-                await sender.Send(new CrearContactoCommand(Nombre, InstitucionId, Cargo, Correo, Telefono, Notas), ct);
+                await sender.Send(new CrearContactoCommand(Nombre, InstitucionId, Cargo, Correo, Telefono, Notas, null, null), ct);
             else
-                await sender.Send(new ActualizarContactoCommand(id.Value, Nombre, InstitucionId, Cargo, Correo, Telefono, Notas), ct);
+                await sender.Send(new ActualizarContactoCommand(id.Value, Nombre, InstitucionId, Cargo, Correo, Telefono, Notas, null, null), ct);
 
             TempData["SuccessMsg"] = id is null ? "Contacto creado." : "Contacto actualizado.";
             return RedirectToPage("/Contactos/Index");

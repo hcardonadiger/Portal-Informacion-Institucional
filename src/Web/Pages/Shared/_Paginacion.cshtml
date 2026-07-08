@@ -3,9 +3,9 @@
     var query = Context.Request.Query;
     Func<int, string> Link = p =>
     {
-        var parts = query.Where(kv => kv.Key != "page")
+        var parts = query.Where(kv => kv.Key != "pg")
             .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value.ToString())}").ToList();
-        parts.Add("page=" + p);
+        parts.Add("pg=" + p);
         return Context.Request.Path + "?" + string.Join("&", parts);
     };
     var ini = Math.Max(1, Model.Page - 2);

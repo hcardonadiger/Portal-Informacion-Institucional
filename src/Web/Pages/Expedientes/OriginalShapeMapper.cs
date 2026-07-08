@@ -8,7 +8,7 @@ namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 public static class OriginalShapeMapper
 {
     // ── Forma editor → DTO de aplicación (al guardar) ─────────────────────
-    public static ExpedienteInputDto ToInput(OriginalExpedienteDto o, int institucionId)
+    public static ExpedienteInputDto ToInput(OriginalExpedienteDto o, string institucionId)
     {
         var n = Math.Max(1, o.NumTramites);
 

@@ -5,9 +5,9 @@ public sealed class ExpedientesModel(ISender sender, IInstitucionRepository inst
 {
     public ExpedientesDashboardDto Data { get; private set; } = default!;
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
-    public int? InstitucionId { get; private set; }
+    public string? InstitucionId { get; private set; }
 
-    public async Task OnGetAsync(int? institucionId, CancellationToken ct)
+    public async Task OnGetAsync(string? institucionId, CancellationToken ct)
     {
         InstitucionId = institucionId;
         var insts = await institucionRepo.GetAllActivasAsync(ct);

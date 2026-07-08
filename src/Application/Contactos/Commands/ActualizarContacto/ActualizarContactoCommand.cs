@@ -4,7 +4,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 namespace Diger.TramitesEstado.Application.Contactos.Commands.ActualizarContacto;
 
 public sealed record ActualizarContactoCommand(
-    int Id, string Nombre, int InstitucionId, string? Cargo, string? Correo, string? Telefono, string? Notas)
+    int Id, string Nombre, string InstitucionId, string? AreaId, string? UnidadId, string? Cargo, string? Correo, string? Telefono, string? Notas)
     : IRequest<Unit>;
 
 public sealed class ActualizarContactoCommandHandler(
@@ -21,7 +21,7 @@ public sealed class ActualizarContactoCommandHandler(
         var inst = await institucionRepo.GetByIdAsync(cmd.InstitucionId, ct)
             ?? throw new NotFoundException(nameof(Institucion), cmd.InstitucionId);
 
-        c.Actualizar(cmd.Nombre, inst.Id, inst.Nombre, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas);
+        c.Actualizar(cmd.Nombre, inst.Id, inst.Nombre, cmd.AreaId, cmd.UnidadId, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas);
         repo.Update(c);
         await uow.SaveChangesAsync(ct);
         return Unit.Value;
@@ -34,7 +34,7 @@ public sealed class ActualizarContactoCommandValidator : AbstractValidator<Actua
     {
         RuleFor(x => x.Id).GreaterThan(0);
         RuleFor(x => x.Nombre).NotEmpty().MaximumLength(150);
-        RuleFor(x => x.InstitucionId).GreaterThan(0).WithMessage("Seleccione una institución.");
+        RuleFor(x => x.InstitucionId).NotEmpty().WithMessage("Seleccione una institución.");
         RuleFor(x => x.Correo).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Correo))
             .WithMessage("Correo no válido.");
         RuleFor(x => x.Telefono).MaximumLength(40);

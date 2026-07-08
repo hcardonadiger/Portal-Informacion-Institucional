@@ -25,7 +25,7 @@ public class SeguimientoCompromisosTests : IDisposable
     private async Task<AcuerdoReunion> SembrarAcuerdoAsync(DateOnly? plazo, EstadoCompromiso estado)
     {
         var r = Reunion.Crear("Reunión de prueba");
-        r.InstitucionId = 7; r.Institucion = "CNBS";
+        r.InstitucionId = "7"; r.Institucion = "CNBS";
         r.Agregar(new AcuerdoReunion { Orden = 0, Compromiso = "Entregar informe", Responsable = "Ana", Plazo = plazo, Estado = estado });
         await _ctx.Reuniones.AddAsync(r);
         await _ctx.SaveChangesAsync();

@@ -5,10 +5,7 @@
 }
 
 <div class="container" style="max-width:720px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
 
     <div class="hist-header">
         <div>
@@ -23,8 +20,11 @@
                 <tr>
                     <th>Opción / módulo</th>
                     <th style="width:120px;text-align:center">Administrador</th>
-                    <th style="width:120px;text-align:center">Coordinador</th>
-                    <th style="width:120px;text-align:center">Técnico</th>
+                    <th style="width:120px;text-align:center">Jefe Inst.</th>
+                    <th style="width:120px;text-align:center">Jefe Área</th>
+                    <th style="width:120px;text-align:center">Jefe Unidad</th>
+                    <th style="width:120px;text-align:center">Empleado</th>
+                    <th style="width:120px;text-align:center">Consultor</th>
                 </tr>
             </thead>
             <tbody>
@@ -33,8 +33,11 @@
                     <tr>
                         <td><strong>@m.Nombre</strong></td>
                         <td style="text-align:center"><input type="checkbox" checked disabled title="El Administrador siempre tiene acceso" /></td>
-                        <td style="text-align:center"><input type="checkbox" name="coordinador" value="@m.Clave" checked="@Model.Coordinador.Contains(m.Clave)" /></td>
-                        <td style="text-align:center"><input type="checkbox" name="tecnico" value="@m.Clave" checked="@Model.Tecnico.Contains(m.Clave)" /></td>
+                        <td style="text-align:center"><input type="checkbox" name="jefeInstitucion" value="@m.Clave" checked="@Model.JefeInstitucion.Contains(m.Clave)" /></td>
+                        <td style="text-align:center"><input type="checkbox" name="jefeArea" value="@m.Clave" checked="@Model.JefeArea.Contains(m.Clave)" /></td>
+                        <td style="text-align:center"><input type="checkbox" name="jefeUnidad" value="@m.Clave" checked="@Model.JefeUnidad.Contains(m.Clave)" /></td>
+                        <td style="text-align:center"><input type="checkbox" name="empleado" value="@m.Clave" checked="@Model.Empleado.Contains(m.Clave)" /></td>
+                        <td style="text-align:center"><input type="checkbox" name="consultor" value="@m.Clave" checked="@Model.Consultor.Contains(m.Clave)" /></td>
                     </tr>
                 }
             </tbody>

@@ -21,6 +21,7 @@ global using Diger.TramitesEstado.Application.Instituciones.Commands.ActualizarI
 global using Diger.TramitesEstado.Application.Instituciones.Commands.EliminarInstitucion;
 global using Diger.TramitesEstado.Application.Contactos.Queries.GetContactos;
 global using Diger.TramitesEstado.Application.Contactos.Queries.GetContactoById;
+global using Diger.TramitesEstado.Application.Contactos.Queries.GetContactoPorCorreo;
 global using Diger.TramitesEstado.Application.Contactos.Queries.GetContactosPorInstitucion;
 global using Diger.TramitesEstado.Application.Contactos.Commands.CrearContacto;
 global using Diger.TramitesEstado.Application.Contactos.Commands.ActualizarContacto;

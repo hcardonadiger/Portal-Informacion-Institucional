@@ -13,14 +13,17 @@ namespace Diger.TramitesEstado.Application.Tests.Expedientes;
 
 internal sealed class FakeCurrentUser : ICurrentUserService
 {
-    public int?        UserId          => 1;
-    public string?     Nombre          => "test";
-    public string?     Correo          => "test@diger.gob.hn";
-    public RolUsuario? Rol             => RolUsuario.Coordinador;
-    public bool        IsAuthenticated => true;
-    public bool        EsGlobal        => true;
-    public IReadOnlyCollection<int> InstitucionesAsignadas => [];
-    public bool        PuedeAccederInstitucion(int? institucionId) => true;
+    public Guid?       UserId               => Guid.NewGuid();
+    public string?     Nombre               => "test";
+    public string?     Correo               => "test@diger.gob.hn";
+    public string?     Rol                  => "Coordinador";
+    public bool        IsAuthenticated       => true;
+    public bool        EsGlobal             => true;
+    public string?     ActiveInstitucionId   => null;
+    public string?     ActiveAreaId          => null;
+    public string?     ActiveUnidadId        => null;
+    public IReadOnlyCollection<string> InstitucionesAsignadas => [];
+    public bool        PuedeAccederInstitucion(string? institucionId) => true;
 }
 
 public class ExpedienteHandlerTests : IDisposable
@@ -37,7 +40,7 @@ public class ExpedienteHandlerTests : IDisposable
         _repo = new ExpedienteRepository(_ctx);
     }
 
-    private static ExpedienteInputDto BuildInput(string institucion = "CNBS", int institucionId = 7) => new(
+    private static ExpedienteInputDto BuildInput(string institucion = "CNBS", string institucionId = "7") => new(
         InstitucionId: institucionId, Institucion: institucion, FechaApertura: null, Analista: "Ana Analista",
         DirSede: null, NumTramitesProd: 0,
         ContactoNombre: null, ContactoCargo: null, ContactoCorreo: null, ContactoTel: null,
@@ -89,7 +92,7 @@ public class ExpedienteHandlerTests : IDisposable
     public async Task GetExpedientes_RetornaListaConTramites()
     {
         var handler = new CrearExpedienteCommandHandler(_repo, new FakeCurrentUser(), _ctx);
-        await handler.Handle(new CrearExpedienteCommand(BuildInput("SAG", 14)), CancellationToken.None);
+        await handler.Handle(new CrearExpedienteCommand(BuildInput("SAG", "14")), CancellationToken.None);
 
         var listHandler = new GetExpedientesQueryHandler(_ctx);
         var result = await listHandler.Handle(new GetExpedientesQuery(), CancellationToken.None);

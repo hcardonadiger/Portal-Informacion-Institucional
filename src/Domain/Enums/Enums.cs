@@ -3,9 +3,12 @@ namespace Diger.TramitesEstado.Domain.Enums;
 // ── Rol del usuario interno DIGER ─────────────────────────────────────────
 public enum RolUsuario
 {
-    Administrador = 1, // gestiona usuarios y todo el portal
-    Coordinador   = 2, // crea y edita expedientes
-    Tecnico       = 3  // consulta
+    Administrador   = 1, // Gestiona usuarios y todo el portal
+    JefeInstitucion = 2, // Gestiona toda su institución
+    JefeArea        = 3, // Gestiona toda su área
+    JefeUnidad      = 4, // Gestiona toda su unidad
+    Empleado        = 5, // Gestiona sus propios datos en su unidad
+    Consultor       = 6  // Solo lectura
 }
 
 // ── Tipo de documento (documentación solicitada) ──────────────────────────

@@ -59,10 +59,17 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
             .AsNoTracking()
             .ToListAsync(ct);
 
-    public Task<Institucion?> GetByIdAsync(int id, CancellationToken ct = default) =>
+    public Task<Institucion?> GetByIdAsync(string id, CancellationToken ct = default) =>
         ctx.Instituciones.FindAsync([id], ct).AsTask();
 
-    public Task<Institucion?> GetByIdWithTramitesAsync(int id, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<Institucion>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) =>
+        await ctx.Instituciones
+            .Where(i => ids.Contains(i.Id))
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+    public Task<Institucion?> GetByIdWithTramitesAsync(string id, CancellationToken ct = default) =>
+
         ctx.Instituciones
             .Include(i => i.Tramites)
             .FirstOrDefaultAsync(i => i.Id == id, ct);
@@ -73,7 +80,7 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
         return ctx.Instituciones.FirstOrDefaultAsync(i => i.Nombre == norm, ct);
     }
 
-    public async Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(int institucionId, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(string institucionId, CancellationToken ct = default) =>
         await ctx.TramitesDefinicion
             .Where(t => t.InstitucionId == institucionId)
             .OrderBy(t => t.Orden)
@@ -86,14 +93,14 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
             .AsNoTracking()
             .ToListAsync(ct);
 
-    public Task<bool> ExisteNombreAsync(string nombre, int? exceptoId = null, CancellationToken ct = default)
+    public Task<bool> ExisteNombreAsync(string nombre, string? exceptoId = null, CancellationToken ct = default)
     {
         var norm = nombre.Trim().ToUpper();
         return ctx.Instituciones.AnyAsync(
             i => i.Nombre == norm && (exceptoId == null || i.Id != exceptoId), ct);
     }
 
-    public Task<bool> TieneExpedientesAsync(int institucionId, CancellationToken ct = default) =>
+    public Task<bool> TieneExpedientesAsync(string institucionId, CancellationToken ct = default) =>
         ctx.Expedientes.AnyAsync(e => e.InstitucionId == institucionId, ct);
 
     public async Task AddAsync(Institucion institucion, CancellationToken ct = default) =>
@@ -107,6 +114,14 @@ public sealed class ContactoRepository(AppDbContext ctx) : IContactoRepository
 {
     public Task<Contacto?> GetByIdAsync(int id, CancellationToken ct = default) =>
         ctx.Contactos.FindAsync([id], ct).AsTask();
+
+    public Task<Contacto?> GetByCorreoAsync(string correo, CancellationToken ct = default)
+    {
+        var norm = correo.Trim().ToLower();
+        return ctx.Contactos.IgnoreQueryFilters()
+            .Where(c => c.Activo)
+            .FirstOrDefaultAsync(c => c.Correo == norm, ct);
+    }
 
     public Task<bool> ExisteCorreoAsync(string correo, CancellationToken ct = default)
     {
@@ -130,13 +145,16 @@ public sealed class ReunionRepository(AppDbContext ctx) : IReunionRepository
         ctx.Reuniones
             .Include(r => r.Asistentes)
             .Include(r => r.Acuerdos)
-            .AsSplitQuery()  // evita el producto cartesiano Asistentes × Acuerdos
+            .Include(r => r.InstitucionesParticipantes)
+            .AsSplitQuery()  // evita el producto cartesiano Asistentes × Acuerdos × Instituciones
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public Task<Reunion?> GetByTokenWithAsistentesAsync(Guid token, CancellationToken ct = default) =>
         ctx.Reuniones
             .IgnoreQueryFilters()           // el auto-registro es anónimo (sin alcance institucional)
             .Include(r => r.Asistentes)
+            .Include(r => r.InstitucionesParticipantes)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.RegistroToken == token, ct);
 
     public async Task<HashSet<string>> GetOrigenExternoIdsAsync(CancellationToken ct = default) =>
@@ -183,7 +201,7 @@ public sealed class TicketRepository(AppDbContext ctx) : ITicketRepository
 
 public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
 {
-    public Task<Usuario?> GetByIdAsync(int id, CancellationToken ct = default) =>
+    public Task<Usuario?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         ctx.Usuarios.FindAsync([id], ct).AsTask();
 
     public Task<Usuario?> GetByCorreoAsync(string correo, CancellationToken ct = default) =>
@@ -192,7 +210,7 @@ public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
     public async Task<IReadOnlyList<Usuario>> GetByRolAsync(
         RolUsuario rol, bool soloActivos = true, CancellationToken ct = default) =>
         await ctx.Usuarios
-            .Where(u => u.Rol == rol && (!soloActivos || u.Activo))
+            .Where(u => (!soloActivos || u.Activo) && ctx.AsignacionesUsuario.Any(a => a.UsuarioId == u.Id && a.Rol == rol.ToString()))
             .OrderBy(u => u.Nombre)
             .AsNoTracking()
             .ToListAsync(ct);
@@ -200,7 +218,7 @@ public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
     public async Task<IReadOnlyList<Usuario>> GetAllAsync(CancellationToken ct = default) =>
         await ctx.Usuarios.OrderBy(u => u.Nombre).AsNoTracking().ToListAsync(ct);
 
-    public Task<bool> ExisteCorreoAsync(string correo, int? exceptoId = null, CancellationToken ct = default)
+    public Task<bool> ExisteCorreoAsync(string correo, Guid? exceptoId = null, CancellationToken ct = default)
     {
         var norm = correo.Trim().ToLowerInvariant();
         return ctx.Usuarios.AnyAsync(u => u.Correo == norm && (exceptoId == null || u.Id != exceptoId), ct);
@@ -211,31 +229,73 @@ public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
 
     public void Update(Usuario usuario) => ctx.Usuarios.Update(usuario);
 
-    public async Task<IReadOnlyList<int>> GetInstitucionIdsAsync(int usuarioId, CancellationToken ct = default) =>
-        await ctx.UsuarioInstituciones
+    public async Task<IReadOnlyList<Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto>> GetAsignacionesAsync(Guid usuarioId, CancellationToken ct = default) =>
+        await ctx.AsignacionesUsuario
             .Where(x => x.UsuarioId == usuarioId)
-            .Select(x => x.InstitucionId)
+            .Select(x => new Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto(x.InstitucionId, x.AreaId, x.UnidadId))
             .ToListAsync(ct);
 
-    public async Task ReemplazarInstitucionesAsync(int usuarioId, IEnumerable<int> institucionIds, CancellationToken ct = default)
+    public async Task ReemplazarAsignacionesAsync(Guid usuarioId, string rol, IEnumerable<Diger.TramitesEstado.Application.Usuarios.Common.AsignacionDto> asignaciones, CancellationToken ct = default)
     {
-        var actuales = await ctx.UsuarioInstituciones.Where(x => x.UsuarioId == usuarioId).ToListAsync(ct);
-        ctx.UsuarioInstituciones.RemoveRange(actuales);
-        var nuevos = institucionIds.Distinct().Select(id => UsuarioInstitucion.Crear(usuarioId, id));
-        await ctx.UsuarioInstituciones.AddRangeAsync(nuevos, ct);
+        var actuales = await ctx.AsignacionesUsuario.Where(x => x.UsuarioId == usuarioId).ToListAsync(ct);
+        ctx.AsignacionesUsuario.RemoveRange(actuales);
+        var nuevos = asignaciones.Distinct().Select(a => AsignacionUsuario.Crear(usuarioId, a.InstitucionId, a.AreaId, a.UnidadId, rol));
+        await ctx.AsignacionesUsuario.AddRangeAsync(nuevos, ct);
     }
 
-    public async Task<IReadOnlyList<int>> GetTemaIdsAsync(int usuarioId, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<int>> GetTemaIdsAsync(Guid usuarioId, CancellationToken ct = default) =>
         await ctx.UsuarioTemas
             .Where(x => x.UsuarioId == usuarioId)
             .Select(x => x.TemaId)
             .ToListAsync(ct);
 
-    public async Task ReemplazarTemasAsync(int usuarioId, IEnumerable<int> temaIds, CancellationToken ct = default)
+    public async Task ReemplazarTemasAsync(Guid usuarioId, IEnumerable<int> temaIds, CancellationToken ct = default)
     {
         var actuales = await ctx.UsuarioTemas.Where(x => x.UsuarioId == usuarioId).ToListAsync(ct);
         ctx.UsuarioTemas.RemoveRange(actuales);
         var nuevos = temaIds.Distinct().Select(id => UsuarioTema.Crear(usuarioId, id));
         await ctx.UsuarioTemas.AddRangeAsync(nuevos, ct);
     }
+}
+
+public sealed class AreaRepository(AppDbContext ctx) : IAreaRepository
+{
+    public async Task<IReadOnlyList<Area>> GetAllAsync(CancellationToken ct = default) =>
+        await ctx.Areas.OrderBy(a => a.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Area>> GetByInstitucionAsync(string institucionId, CancellationToken ct = default) =>
+        await ctx.Areas.Where(a => a.InstitucionId == institucionId).OrderBy(a => a.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<Area?> GetByIdAsync(string id, CancellationToken ct = default) =>
+        await ctx.Areas.FirstOrDefaultAsync(a => a.Id == id, ct);
+
+    public async Task<bool> ExisteNombreAsync(string nombre, string institucionId, string? exceptoId = null, CancellationToken ct = default) =>
+        await ctx.Areas.AnyAsync(a => a.InstitucionId == institucionId && a.Nombre.ToLower() == nombre.ToLower() && a.Id != exceptoId, ct);
+
+    public async Task AddAsync(Area area, CancellationToken ct = default) =>
+        await ctx.Areas.AddAsync(area, ct);
+
+    public void Update(Area area) => ctx.Areas.Update(area);
+    public void Delete(Area area) => ctx.Areas.Remove(area);
+}
+
+public sealed class UnidadRepository(AppDbContext ctx) : IUnidadRepository
+{
+    public async Task<IReadOnlyList<Unidad>> GetAllAsync(CancellationToken ct = default) =>
+        await ctx.Unidades.OrderBy(u => u.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Unidad>> GetByAreaAsync(string areaId, CancellationToken ct = default) =>
+        await ctx.Unidades.Where(u => u.AreaId == areaId).OrderBy(u => u.Nombre).AsNoTracking().ToListAsync(ct);
+
+    public async Task<Unidad?> GetByIdAsync(string id, CancellationToken ct = default) =>
+        await ctx.Unidades.FirstOrDefaultAsync(u => u.Id == id, ct);
+
+    public async Task<bool> ExisteNombreAsync(string nombre, string areaId, string? exceptoId = null, CancellationToken ct = default) =>
+        await ctx.Unidades.AnyAsync(u => u.AreaId == areaId && u.Nombre.ToLower() == nombre.ToLower() && u.Id != exceptoId, ct);
+
+    public async Task AddAsync(Unidad unidad, CancellationToken ct = default) =>
+        await ctx.Unidades.AddAsync(unidad, ct);
+
+    public void Update(Unidad unidad) => ctx.Unidades.Update(unidad);
+    public void Delete(Unidad unidad) => ctx.Unidades.Remove(unidad);
 }

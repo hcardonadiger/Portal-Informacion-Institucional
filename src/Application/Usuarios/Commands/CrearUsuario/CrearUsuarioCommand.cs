@@ -3,19 +3,19 @@ using Diger.TramitesEstado.Domain.Enums;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.CrearUsuario;
 
-public sealed record CrearUsuarioCommand(string Nombre, string Correo, string Password, RolUsuario Rol)
-    : IRequest<int>;
+public sealed record CrearUsuarioCommand(string Nombre, string Correo, string Password)
+    : IRequest<Guid>;
 
 public sealed class CrearUsuarioCommandHandler(
     IUsuarioRepository repo, IPasswordHasher hasher, IUnitOfWork uow)
-    : IRequestHandler<CrearUsuarioCommand, int>
+    : IRequestHandler<CrearUsuarioCommand, Guid>
 {
-    public async Task<int> Handle(CrearUsuarioCommand cmd, CancellationToken ct)
+    public async Task<Guid> Handle(CrearUsuarioCommand cmd, CancellationToken ct)
     {
         if (await repo.ExisteCorreoAsync(cmd.Correo, null, ct))
             throw new DomainException($"Ya existe un usuario con el correo {cmd.Correo.Trim().ToLowerInvariant()}.");
 
-        var u = Usuario.Crear(cmd.Nombre, cmd.Correo, hasher.Hash(cmd.Password), cmd.Rol);
+        var u = Usuario.Crear(cmd.Nombre, cmd.Correo, hasher.Hash(cmd.Password));
         await repo.AddAsync(u, ct);
         await uow.SaveChangesAsync(ct);
         return u.Id;

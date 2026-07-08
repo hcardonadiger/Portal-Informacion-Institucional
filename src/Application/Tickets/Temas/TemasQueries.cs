@@ -32,8 +32,12 @@ public sealed class GetTemasQueryHandler(IApplicationDbContext ctx)
     }
 }
 
-// ── Temas activos para selectores (creación de ticket, asignación) ─────────
-public sealed record GetTemasActivosQuery : IRequest<IReadOnlyList<TemaOpcionDto>>;
+// ── Temas activos para selectores (creación de ticket, asignación) ─────────────
+public sealed record GetTemasActivosQuery : IRequest<IReadOnlyList<TemaOpcionDto>>, ICacheableQuery
+{
+    public string CacheKey => "temas-activos";
+    public TimeSpan? CacheDuration => TimeSpan.FromMinutes(60);
+}
 
 public sealed class GetTemasActivosQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetTemasActivosQuery, IReadOnlyList<TemaOpcionDto>>

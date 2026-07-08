@@ -30,8 +30,8 @@
 <div class="acta-toolbar">
     <a class="btns" asp-page="/Reuniones/Index">← Volver</a>
     <div style="display:flex;gap:8px">
-        <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">✎ Editar</a>
-        <button class="btnp" type="button" onclick="window.print()">🖨 Imprimir / PDF</button>
+        <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
+        <button class="btnp" type="button" onclick="window.print()">Imprimir / PDF</button>
     </div>
 </div>
 
@@ -49,9 +49,22 @@
         @if (Hay(d.Duracion)) { <div><span>Duración</span>@d.Duracion</div> }
         @if (Hay(d.Modalidad)) { <div><span>Modalidad</span>@d.Modalidad</div> }
         @if (Hay(d.Tipo)) { <div><span>Tipo</span>@d.Tipo</div> }
-        @if (Hay(Model.InstitucionNombre)) { <div><span>Institución</span>@Model.InstitucionNombre</div> }
+        @if (Model.InstitucionesParticipantes.Count == 0 && Hay(Model.InstitucionNombre)) { <div><span>Institución</span>@Model.InstitucionNombre</div> }
         @if (Hay(d.Lugar)) { <div><span>Lugar</span>@d.Lugar</div> }
     </section>
+
+    @if (Model.InstitucionesParticipantes.Count > 0)
+    {
+        <section class="acta-sec">
+            <h2>Instituciones convocadas <span class="acta-count">@Model.InstitucionesParticipantes.Count</span></h2>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+                @foreach (var inst in Model.InstitucionesParticipantes)
+                {
+                    <span style="background:#eef3fc;border:1px solid #cfe0fb;border-radius:20px;padding:3px 12px;font-size:13px;color:#0a2d6e">@inst.Nombre</span>
+                }
+            </div>
+        </section>
+    }
 
     @if (Hay(d.ObjetivoAgenda) || Hay(d.Desarrollo))
     {
@@ -119,6 +132,22 @@
                             <td>@(i + 1)</td><td>@a.Nombre</td><td>@a.Cargo</td>
                             <td>@a.Institucion</td><td>@a.Correo</td><td>@a.Telefono</td>
                         </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    }
+
+    @if (Model.DesgloseAsistenciaPorInstitucion.Count > 0)
+    {
+        <section class="acta-sec">
+            <h2>Desglose de asistencia por institución</h2>
+            <table class="acta-table">
+                <thead><tr><th>Institución</th><th style="width:120px">Asistentes</th></tr></thead>
+                <tbody>
+                    @foreach (var (inst, cantidad) in Model.DesgloseAsistenciaPorInstitucion)
+                    {
+                        <tr><td>@inst</td><td>@cantidad</td></tr>
                     }
                 </tbody>
             </table>

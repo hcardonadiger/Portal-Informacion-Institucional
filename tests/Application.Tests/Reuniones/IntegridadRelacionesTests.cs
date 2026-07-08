@@ -11,8 +11,9 @@ public class IntegridadRelacionesTests
     {
         var t = Ticket.Crear("TCK-2026-0001", "Falla");
 
-        t.EstablecerCreador(5, "  Ana Pérez  ");
-        t.CreadoPorId.Should().Be(5);
+        var uid = Guid.NewGuid();
+        t.EstablecerCreador(uid, "  Ana Pérez  ");
+        t.CreadoPorId.Should().Be(uid);
         t.CreadoPor.Should().Be("Ana Pérez");
 
         t.EstablecerCreador(null, null);

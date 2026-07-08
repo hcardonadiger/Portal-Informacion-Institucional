@@ -4,7 +4,7 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetResumen;
 
 public sealed record GetResumenQuery(
     // Alcance del técnico: cuando TecnicoUserId != null, los KPIs de tickets se limitan a sus temas o asignados.
-    IReadOnlyList<int>? TecnicoTemaIds = null, int? TecnicoUserId = null) : IRequest<ResumenDto>;
+    IReadOnlyList<int>? TecnicoTemaIds = null, Guid? TecnicoUserId = null) : IRequest<ResumenDto>;
 
 public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetResumenQuery, ResumenDto>
@@ -15,8 +15,8 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
         var primerDiaMes = new DateOnly(hoy.Year, hoy.Month, 1);
         var finMes = primerDiaMes.AddMonths(1).AddDays(-1);
 
-        var tickets = ctx.Tickets.AsQueryable();
-        if (q.TecnicoUserId is int tuid)
+        var tickets = ctx.Tickets.AsNoTracking();
+        if (q.TecnicoUserId is Guid tuid)
         {
             var temaIds = q.TecnicoTemaIds ?? [];
             tickets = tickets.Where(t => (t.TemaId != null && temaIds.Contains(t.TemaId.Value)) || t.AsignadoAId == tuid);

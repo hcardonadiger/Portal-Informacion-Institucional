@@ -1,12 +1,15 @@
 namespace Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 
-public sealed record UsuarioAuthDto(int Id, string Nombre, string Correo, RolUsuario Rol, IReadOnlyList<int> Instituciones);
+public sealed record AsignacionAuthDto(string InstitucionId, string? AreaId, string? UnidadId, string Rol);
+
+public sealed record UsuarioAuthDto(Guid Id, string Nombre, string Correo, string RolGlobal, IReadOnlyList<AsignacionAuthDto> Asignaciones);
 
 public sealed record AutenticarUsuarioQuery(string Correo, string Password)
     : IRequest<UsuarioAuthDto?>;
 
 public sealed class AutenticarUsuarioQueryHandler(
     IUsuarioRepository repo,
+    IApplicationDbContext ctx,
     IPasswordHasher hasher)
     : IRequestHandler<AutenticarUsuarioQuery, UsuarioAuthDto?>
 {
@@ -22,7 +25,16 @@ public sealed class AutenticarUsuarioQueryHandler(
         if (!hasher.Verify(q.Password, usuario.PasswordHash))
             return null;
 
-        var instituciones = await repo.GetInstitucionIdsAsync(usuario.Id, ct);
-        return new UsuarioAuthDto(usuario.Id, usuario.Nombre, usuario.Correo, usuario.Rol, instituciones);
+        var asignacionesEntity = await ctx.AsignacionesUsuario
+            .Where(a => a.UsuarioId == usuario.Id)
+            .ToListAsync(ct);
+
+        var asignaciones = asignacionesEntity
+            .Select(a => new AsignacionAuthDto(a.InstitucionId, a.AreaId, a.UnidadId, a.Rol))
+            .ToList();
+
+        var rolGlobal = asignaciones.FirstOrDefault()?.Rol ?? "Empleado";
+
+        return new UsuarioAuthDto(usuario.Id, usuario.Nombre, usuario.Correo, rolGlobal, asignaciones);
     }
 }

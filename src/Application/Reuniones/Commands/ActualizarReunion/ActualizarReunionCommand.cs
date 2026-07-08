@@ -12,6 +12,7 @@ public sealed class ActualizarReunionCommandHandler(
     IInstitucionRepository institucionRepo,
     IContactoRepository contactoRepo,
     ICurrentUserService currentUser,
+    IApplicationDbContext ctx,
     IUnitOfWork uow)
     : IRequestHandler<ActualizarReunionCommand, Unit>
 {
@@ -20,6 +21,9 @@ public sealed class ActualizarReunionCommandHandler(
         var r = await repo.GetByIdWithDetailsAsync(cmd.Id, ct)
             ?? throw new NotFoundException(nameof(Reunion), cmd.Id);
 
+        // "Es capacitación de plataforma" ya no es un checkbox manual: se deriva del Tipo elegido.
+        cmd.Datos.EsCapacitacionPlataforma = cmd.Datos.Tipo == "Capacitación";
+
         ReunionMapper.Aplicar(r, cmd.Datos, cmd.Asistentes, cmd.Acuerdos);
 
         // Al volver privada una reunión sin dueño registrado, el editor pasa a ser el dueño
@@ -27,9 +31,9 @@ public sealed class ActualizarReunionCommandHandler(
         if (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId is null)
             r.CreadoPorId = currentUser.UserId;
 
-        if (cmd.Datos.InstitucionId is int id)
+        if (!string.IsNullOrWhiteSpace(cmd.Datos.InstitucionId))
         {
-            var inst = await institucionRepo.GetByIdAsync(id, ct);
+            var inst = await institucionRepo.GetByIdAsync(cmd.Datos.InstitucionId, ct);
             r.InstitucionId = inst?.Id;
             r.Institucion   = inst?.Nombre;
         }
@@ -37,7 +41,7 @@ public sealed class ActualizarReunionCommandHandler(
 
         r.MarcarActualizada();
         repo.Update(r);
-        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ct);
+        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ctx, uow, ct);
         await uow.SaveChangesAsync(ct);
         return Unit.Value;
     }
