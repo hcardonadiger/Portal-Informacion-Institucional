@@ -23,20 +23,30 @@
     {
         EstadoTicket.EnProgreso => "En progreso", _ => e.ToString()
     };
+    string TemaLbl(TicketListItemDto x) => string.IsNullOrWhiteSpace(x.TemaOtro)
+        ? (x.Tema ?? "\u2014")
+        : $"{x.Tema ?? "Otro"}: {x.TemaOtro}";
     var estados = new[] { EstadoTicket.Abierto, EstadoTicket.EnProgreso, EstadoTicket.Resuelto, EstadoTicket.Cerrado };
+    var abiertos = Model.Todos.Count(x => x.Estado == EstadoTicket.Abierto);
+    var progreso = Model.Todos.Count(x => x.Estado == EstadoTicket.EnProgreso);
+    var vencidos = Model.Todos.Count(x => x.SlaVencido);
+    var resueltos = Model.Todos.Count(x => x.Estado == EstadoTicket.Resuelto || x.Estado == EstadoTicket.Cerrado);
 }
 
-<div class="container" style="max-width:1100px">
+<div class="tkm-shell">
     @if (TempData["SuccessMsg"] is string ok)
     {
         <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
     }
-    <div class="hist-header">
-        <div>
-            <h2>Tickets de soporte</h2>
-            <p>Incidencias y solicitudes sobre la plataforma SOL</p>
+    <div class="tkm-topbar">
+        <div class="tkm-brand">
+            <div class="tkm-mark">TK</div>
+            <div>
+                <h1>Tickets de soporte</h1>
+                <p>Incidencias y solicitudes sobre la plataforma SOL</p>
+            </div>
         </div>
-        <div style="display:flex;gap:8px">
+        <div class="tkm-actions">
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaTickets()">🗂 Vista por institución</button>
             @if (puedeEliminar)
             {
@@ -47,6 +57,13 @@
                 <a class="btnp" asp-page="/Tickets/Editor">+ Nuevo ticket</a>
             }
         </div>
+    </div>
+
+    <div class="tkm-metrics">
+        <div class="tkm-metric"><span>Abiertos</span><strong>@abiertos</strong><small>pendientes de toma</small></div>
+        <div class="tkm-metric"><span>En progreso</span><strong>@progreso</strong><small>con responsable</small></div>
+        <div class="tkm-metric tkm-metric-alert"><span>SLA vencido</span><strong>@vencidos</strong><small>requieren prioridad</small></div>
+        <div class="tkm-metric"><span>Resueltos</span><strong>@resueltos</strong><small>en esta vista</small></div>
     </div>
 
     @if (Model.EsTecnicoRestringido)
@@ -63,7 +80,7 @@
         </div>
     }
 
-    <form method="get" class="card" style="padding:.9rem 1rem;margin-bottom:1.1rem;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+    <form method="get" class="tkm-filterbar">
         @if (Model.EsTecnicoRestringido)
         {
             <input type="hidden" name="vista" value="@Model.Vista" />
@@ -157,7 +174,7 @@
                                 <span style="background:#fcebeb;color:#a32d2d;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-left:6px">⏱ Vencido</span>
                             }
                         </td>
-                        <td class="res-meta">@(t.Tema ?? "—")</td>
+                        <td class="res-meta">@TemaLbl(t)</td>
                         <td class="res-meta">@(t.Institucion ?? "—")</td>
                         <td><span style="background:@pc.bg;color:@pc.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@t.Prioridad</span></td>
                         <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@EstadoLbl(t.Estado)</span></td>
@@ -223,7 +240,7 @@
                                                 <span style="background:#fcebeb;color:#a32d2d;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;margin-left:6px">⏱ Vencido</span>
                                             }
                                         </td>
-                                        <td class="res-meta">@(t.Tema ?? "—")</td>
+                                        <td class="res-meta">@TemaLbl(t)</td>
                                         <td><span style="background:@pc.bg;color:@pc.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@t.Prioridad</span></td>
                                         <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@EstadoLbl(t.Estado)</span></td>
                                         <td class="res-meta">@(t.AsignadoA ?? "—")</td>

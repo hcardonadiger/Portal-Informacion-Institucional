@@ -389,8 +389,93 @@ tr.contacto-inactivo td { color: #6b7fa3; }
 .seg-tram.on { background: #0a2d6e; border-color: #0a2d6e; color: #fff; }
 
 /* ── Adjuntos de tickets ────────────────────────────────────── */
+.tkm-shell { max-width: 1180px; margin: 0 auto; padding: 2rem 1rem 3rem; }
+.tkm-topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.tkm-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tkm-mark {
+    width: 42px; height: 42px; border-radius: 8px; flex: none;
+    display: grid; place-items: center; color: #fff; font-weight: 800; letter-spacing: .02em;
+    background: linear-gradient(135deg,#1455a4,#0a2d6e);
+}
+.tkm-brand h1 { margin: 0; font-size: 21px; line-height: 1.15; color: #0a2d6e; }
+.tkm-brand p { margin: 3px 0 0; color: #6b7fa3; font-size: 12.5px; }
+.tkm-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.tkm-actions-stack { align-items: stretch; flex-direction: column; }
+.tkm-actions-stack .btnp, .tkm-actions-stack .btns { justify-content: center; width: 100%; }
+.tkm-form-layout { display: grid; grid-template-columns: minmax(0,1fr) 310px; gap: 14px; align-items: start; }
+.tkm-main { min-width: 0; }
+.tkm-side { position: sticky; top: 1rem; min-width: 0; }
+.tkm-panel {
+    background: #fff; border: 1px solid #dbe5ef; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(10,45,110,.08); padding: 16px; margin-bottom: 14px;
+}
+.tkm-panel h2 {
+    margin: 0 0 14px; color: #0a2d6e; font-size: 15px;
+    padding-bottom: 9px; border-bottom: 1px solid #edf2f7;
+}
+.tkm-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tkm-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; align-items: start; }
+.tkm-kv { display: grid; grid-template-columns: 104px minmax(0,1fr); gap: 8px; padding: 8px 0; border-bottom: 1px solid #edf2f7; }
+.tkm-kv:last-child { border-bottom: 0; }
+.tkm-kv span { color: #6b7fa3; font-size: 12px; font-weight: 700; }
+.tkm-kv strong { color: #18324d; min-width: 0; overflow-wrap: anywhere; }
+.tkm-sla-box {
+    display: flex; flex-direction: column; gap: 5px;
+    border-left: 4px solid #1455a4; background: #f7fbff; border-radius: 0 8px 8px 0;
+    padding: 12px 14px; margin-bottom: 8px;
+}
+.tkm-sla-box strong { color: #0a2d6e; }
+.tkm-sla-box span { color: #6b7fa3; font-size: 12px; }
+.tkm-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+.tkm-metric {
+    background: #fff; border: 1px solid #dbe5ef; border-radius: 8px; padding: 14px 15px;
+    box-shadow: 0 8px 24px rgba(10,45,110,.08);
+}
+.tkm-metric span { display: block; color: #6b7fa3; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.tkm-metric strong { display: block; margin-top: 4px; font-size: 28px; line-height: 1; color: #0a2d6e; }
+.tkm-metric small { color: #6b7fa3; }
+.tkm-metric-alert strong { color: #a32d2d; }
+.tkm-filterbar {
+    display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
+    background: #fff; border: 1px solid #dbe5ef; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(10,45,110,.08); padding: 13px; margin-bottom: 14px;
+}
+.tkm-filterbar .field { margin: 0; min-width: 150px; }
 .tk-adjuntos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .6rem; }
 .tk-adj { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; font-size: 12.5px; text-decoration: none; color: #0c447c; background: #eef3fb; border: 1px solid #dbe6f5; border-radius: 8px; padding: 4px 10px; }
 .tk-adj:hover { background: #e0ebf9; border-color: #1455a4; }
 .tk-adj-n { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .tk-adj-t { color: #94a3b8; font-size: 11px; }
+.tk-file-input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+.tk-filebox {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 96px; padding: 16px; border: 1.5px dashed #c8d5ee; border-radius: 12px;
+    background: #f8fbff; color: #4a5568; text-align: center; cursor: pointer; transition: .15s;
+}
+.tk-filebox:hover { border-color: #1455a4; background: #f0f6ff; color: #1455a4; }
+.tk-filebox-compact { min-height: 72px; padding: 12px; }
+.tk-filebox-title { font-size: 13.5px; font-weight: 800; color: #0a2d6e; }
+.tk-filebox-text { font-size: 12px; color: #6b7fa3; line-height: 1.35; }
+.tk-file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 9px; }
+.tk-file-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 7px 10px; border: 1px solid #dbe6f5; border-radius: 8px; background: #fff;
+    font-size: 12.5px; color: #2d3748;
+}
+.tk-file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.tk-file-size { flex: none; color: #6b7fa3; font-size: 11.5px; }
+.tk-file-error { margin-top: 7px; color: #a32d2d; font-size: 12.5px; font-weight: 700; }
+
+@media (max-width: 940px) {
+    .tkm-topbar { align-items: flex-start; flex-direction: column; }
+    .tkm-actions { justify-content: flex-start; }
+    .tkm-form-layout { grid-template-columns: 1fr; }
+    .tkm-side { position: static; }
+    .tkm-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 640px) {
+    .tkm-shell { padding: 1rem .75rem 2rem; }
+    .tkm-grid-2, .tkm-grid-3 { grid-template-columns: 1fr; }
+    .tkm-metrics { grid-template-columns: 1fr; }
+}
