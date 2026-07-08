@@ -4,10 +4,19 @@
     ViewData["Title"] = Model.TicketId is null ? "Nuevo ticket" : "Editar ticket";
 }
 
-<div class="container" style="max-width:760px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
-        <a class="btns" asp-page="/Tickets/Index" style="font-size:13px">← Volver</a>
-        <h2 style="margin:0;font-size:18px;color:#0a2d6e">@ViewData["Title"]</h2>
+<div class="tkm-shell">
+    <div class="tkm-topbar">
+        <div class="tkm-brand">
+            <div class="tkm-mark">TK</div>
+            <div>
+                <h1>@ViewData["Title"]</h1>
+                <p>Reporte de incidente o solicitud para seguimiento de plataforma SOL.</p>
+            </div>
+        </div>
+        <div class="tkm-actions">
+            <a class="btns" asp-page="/Tickets/Index">Volver a bandeja</a>
+            <button class="btnp" type="submit" form="ticket-editor-form">@(Model.TicketId is null ? "Enviar ticket" : "Guardar cambios")</button>
+        </div>
     </div>
 
     @if (!string.IsNullOrEmpty(Model.Error))
@@ -15,116 +24,139 @@
         <div class="alert-error">@Model.Error</div>
     }
 
-    <form method="post" enctype="multipart/form-data">
-        <div asp-validation-summary="ModelOnly" class="alert-error"></div>
+    <form id="ticket-editor-form" method="post" enctype="multipart/form-data" class="tkm-form-layout">
+        <div class="tkm-main">
+            <div asp-validation-summary="ModelOnly" class="alert-error"></div>
 
-        <div class="card">
-            <h3 class="sec-h">Incidencia</h3>
-            <div class="field">
-                <label>Título <span style="color:#dc2626">*</span></label>
-                <input asp-for="Datos.Titulo" placeholder="Resumen breve del problema" />
-            </div>
-            <div class="field">
-                <label>Descripción</label>
-                <textarea asp-for="Datos.Descripcion" rows="4" placeholder="Detalle del inconveniente, pasos para reproducirlo, mensajes de error…"></textarea>
-            </div>
-            <div class="row2">
+            <section class="tkm-panel">
+                <h2>Reporte de incidente o problema</h2>
                 <div class="field">
-                    <label>Tema</label>
-                    <select asp-for="Datos.TemaId">
-                        <option value="">— Sin clasificar —</option>
-                        @foreach (var grupo in Model.Temas.GroupBy(t => t.Categoria ?? "Sin categoría").OrderBy(g => g.Key))
-                        {
-                            <optgroup label="@grupo.Key">
-                                @foreach (var tm in grupo)
-                                {
-                                    <option value="@tm.Id">@tm.Nombre@(tm.HorasResolucion > 0 ? $" (SLA {tm.HorasResolucion} h)" : "")</option>
-                                }
-                            </optgroup>
-                        }
-                    </select>
+                    <label>Titulo <span style="color:#dc2626">*</span></label>
+                    <input asp-for="Datos.Titulo" placeholder="Resumen breve del problema" />
                 </div>
                 <div class="field">
-                    <label>Prioridad</label>
-                    <select asp-for="Datos.Prioridad">
-                        @foreach (var p in Model.Prioridades)
-                        {
-                            <option value="@p">@p</option>
-                        }
-                    </select>
+                    <label>Descripcion</label>
+                    <textarea asp-for="Datos.Descripcion" rows="5" placeholder="Detalle del inconveniente, pasos para reproducirlo, mensajes de error..."></textarea>
                 </div>
-            </div>
-        </div>
+                <div class="tkm-grid-3">
+                    <div class="field">
+                        <label>Tema</label>
+                        <select asp-for="Datos.TemaId" id="tk-tema" onchange="toggleTemaOtro()">
+                            <option value="">Sin clasificar</option>
+                            @foreach (var grupo in Model.Temas.GroupBy(t => t.Categoria ?? "Sin categoria").OrderBy(g => g.Key))
+                            {
+                                <optgroup label="@grupo.Key">
+                                    @foreach (var tm in grupo)
+                                    {
+                                        var esOtro = string.Equals(tm.Nombre.Trim(), "Otro", StringComparison.OrdinalIgnoreCase).ToString().ToLowerInvariant();
+                                        <option value="@tm.Id" data-es-otro="@esOtro">@tm.Nombre@(tm.HorasResolucion > 0 ? $" (SLA {tm.HorasResolucion} h)" : "")</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" id="tk-tema-otro-wrap" style="display:none">
+                        <label>Otro tema</label>
+                        <input asp-for="Datos.TemaOtro" id="tk-tema-otro" maxlength="200" placeholder="Indica cual es el otro tema" />
+                        <span asp-validation-for="Datos.TemaOtro" class="text-danger"></span>
+                    </div>
+                    <div class="field">
+                        <label>Prioridad</label>
+                        <select asp-for="Datos.Prioridad">
+                            @foreach (var p in Model.Prioridades)
+                            {
+                                <option value="@p">@p</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </section>
 
-        <div class="card">
-            <h3 class="sec-h">Vínculos (opcional)</h3>
-            <div class="row2">
+            <section class="tkm-panel">
+                <h2>Vinculos y tramites afectados</h2>
+                <div class="tkm-grid-2">
+                    <div class="field">
+                        <label>Institucion</label>
+                        <select asp-for="Datos.InstitucionId" id="tk-inst" onchange="filtrarExpedientes()">
+                            <option value="">Ninguna</option>
+                            @foreach (var i in Model.Instituciones)
+                            {
+                                <option value="@i.Id">@i.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Expediente</label>
+                        <select asp-for="Datos.ExpedienteId" id="tk-exp" onchange="alElegirExpediente()">
+                            <option value="" data-inst="">Ninguno</option>
+                            @foreach (var e in Model.Expedientes)
+                            {
+                                <option value="@e.Id" data-inst="@e.InstitucionId">@e.Codigo - @e.Institucion</option>
+                            }
+                        </select>
+                        <span class="hint" id="tk-exp-hint"></span>
+                    </div>
+                </div>
                 <div class="field">
-                    <label>Institución</label>
-                    <select asp-for="Datos.InstitucionId" id="tk-inst" onchange="filtrarExpedientes()">
-                        <option value="">— Ninguna —</option>
-                        @foreach (var i in Model.Instituciones)
+                    <label>Tramites afectados</label>
+                    <select name="Datos.TramiteIds" id="tk-tramites" multiple size="7" style="width:100%">
+                        @foreach (var t in Model.Tramites)
                         {
-                            <option value="@i.Id">@i.Nombre</option>
+                            <option value="@t.Id" data-inst="@t.InstitucionId" selected="@(Model.Datos.TramiteIds.Contains(t.Id))">@t.Nombre</option>
                         }
                     </select>
+                    <span class="hint" id="tk-tramites-hint"></span>
                 </div>
-                <div class="field">
-                    <label>Expediente</label>
-                    <select asp-for="Datos.ExpedienteId" id="tk-exp" onchange="alElegirExpediente()">
-                        <option value="" data-inst="">— Ninguno —</option>
-                        @foreach (var e in Model.Expedientes)
-                        {
-                            <option value="@e.Id" data-inst="@e.InstitucionId">@e.Codigo — @e.Institucion</option>
-                        }
-                    </select>
-                    <span class="hint" id="tk-exp-hint"></span>
-                </div>
-            </div>
-        </div>
+            </section>
 
-        <div class="card">
-            <h3 class="sec-h">Trámites afectados</h3>
-            <p class="hint" style="margin-top:-.3rem">Selecciona uno o más trámites del catálogo de la institución que se ven afectados por el incidente (Ctrl/⌘ + clic para varios).</p>
-            <select name="Datos.TramiteIds" id="tk-tramites" multiple size="6" style="width:100%">
-                @foreach (var t in Model.Tramites)
-                {
-                    <option value="@t.Id" data-inst="@t.InstitucionId" selected="@(Model.Datos.TramiteIds.Contains(t.Id))">@t.Nombre</option>
-                }
-            </select>
-            <span class="hint" id="tk-tramites-hint"></span>
-        </div>
-
-        @if (Model.TicketId is null)
-        {
-            <div class="card">
-                <h3 class="sec-h">Archivos adjuntos</h3>
-                <p class="hint" style="margin-top:-.3rem">Capturas, documentos o registros que ayuden a diagnosticar (PDF, imágenes, Office, TXT/CSV/LOG, ZIP · máx. 10 MB c/u).</p>
-                <input type="file" name="Archivos" multiple />
-            </div>
-        }
-
-        <div class="card">
-            <h3 class="sec-h">Reportado por</h3>
             @if (Model.TicketId is null)
             {
-                <p class="res-meta" style="margin:0">Se registrará automáticamente con tu usuario:
-                    <strong style="color:#0a2d6e">@Model.UsuarioActualNombre</strong>@(string.IsNullOrWhiteSpace(Model.UsuarioActualCorreo) ? "" : " · " + Model.UsuarioActualCorreo)
-                </p>
-            }
-            else
-            {
-                <p class="res-meta" style="margin:0">
-                    <strong style="color:#0a2d6e">@(string.IsNullOrWhiteSpace(Model.ReportanteView) ? "—" : Model.ReportanteView)</strong>
-                    <span class="hint">(no editable)</span>
-                </p>
+                <section class="tkm-panel">
+                    <h2>Archivos adjuntos</h2>
+                    <label class="tk-filebox" for="tk-archivos">
+                        <span class="tk-filebox-title">Seleccionar documentos</span>
+                        <span class="tk-filebox-text">PDF, imagenes, Office, TXT/CSV/LOG o ZIP. Max. 10 MB por archivo.</span>
+                    </label>
+                    <input class="tk-file-input" id="tk-archivos" type="file" name="Archivos" multiple
+                           accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.log,.zip" />
+                    <div class="tk-file-error" id="tk-archivos-error" aria-live="polite"></div>
+                    <div class="tk-file-list" id="tk-archivos-list"></div>
+                </section>
             }
         </div>
 
-        <div class="nav">
-            <a class="btns" asp-page="/Tickets/Index">Cancelar</a>
-            <button class="btnp" type="submit">@(Model.TicketId is null ? "Crear ticket" : "Guardar cambios")</button>
-        </div>
+        <aside class="tkm-side">
+            <section class="tkm-panel">
+                <h2>Resumen</h2>
+                <div class="tkm-sla-box">
+                    <strong>SLA segun tema</strong>
+                    <span>El tiempo de atencion se calcula con el tema seleccionado.</span>
+                </div>
+                <div class="tkm-kv"><span>Estado inicial</span><strong>Abierto</strong></div>
+                <div class="tkm-kv"><span>Responsable</span><strong>Sin tomar</strong></div>
+                <div class="tkm-kv"><span>Adjuntos</span><strong>Opcionales</strong></div>
+            </section>
+
+            <section class="tkm-panel">
+                <h2>Reportado por</h2>
+                @if (Model.TicketId is null)
+                {
+                    <div class="tkm-kv"><span>Usuario</span><strong>@Model.UsuarioActualNombre</strong></div>
+                    <div class="tkm-kv"><span>Correo</span><strong>@(Model.UsuarioActualCorreo ?? "-")</strong></div>
+                    <div class="tkm-kv"><span>Registro</span><strong>Automatico</strong></div>
+                }
+                else
+                {
+                    <div class="tkm-kv"><span>Usuario</span><strong>@(string.IsNullOrWhiteSpace(Model.ReportanteView) ? "-" : Model.ReportanteView)</strong></div>
+                    <p class="hint">El reportante no se modifica al editar.</p>
+                }
+            </section>
+
+            <div class="tkm-actions tkm-actions-stack">
+                <a class="btns" asp-page="/Tickets/Index">Cancelar</a>
+                <button class="btnp" type="submit">@(Model.TicketId is null ? "Enviar ticket" : "Guardar cambios")</button>
+            </div>
+        </aside>
     </form>
 </div>
 
@@ -136,25 +168,36 @@
       var hint = document.getElementById('tk-exp-hint');
       var tram  = document.getElementById('tk-tramites');
       var thint = document.getElementById('tk-tramites-hint');
+      var tema = document.getElementById('tk-tema');
+      var temaOtroWrap = document.getElementById('tk-tema-otro-wrap');
+      var temaOtro = document.getElementById('tk-tema-otro');
+      var extPermitidas = ['pdf','png','jpg','jpeg','webp','gif','doc','docx','xls','xlsx','ppt','pptx','txt','csv','log','zip'];
+      var maxBytesArchivo = 10 * 1024 * 1024;
 
-      // Muestra solo los expedientes de la institución seleccionada (o todos si no hay institución).
+      function toggleTemaOtro() {
+        if (!tema || !temaOtroWrap || !temaOtro) return;
+        var opt = tema.selectedOptions && tema.selectedOptions.length ? tema.selectedOptions[0] : null;
+        var esOtro = opt && opt.getAttribute('data-es-otro') === 'true';
+        temaOtroWrap.style.display = esOtro ? '' : 'none';
+        temaOtro.required = !!esOtro;
+        if (!esOtro) temaOtro.value = '';
+      }
+
       function filtrarExpedientes() {
         var sel = inst.value;
         var visibles = 0;
         Array.prototype.forEach.call(exp.options, function (o) {
-          if (o.value === '') { o.hidden = false; return; }   // "— Ninguno —"
+          if (o.value === '') { o.hidden = false; return; }
           var match = !sel || o.getAttribute('data-inst') === sel;
           o.hidden = !match;
           if (match) visibles++;
         });
-        // Si el expediente elegido ya no corresponde a la institución, se limpia.
         var actual = exp.selectedOptions[0];
         if (actual && actual.value !== '' && actual.hidden) exp.value = '';
-        hint.textContent = sel && visibles === 0 ? 'Esta institución no tiene expedientes.' : '';
+        hint.textContent = sel && visibles === 0 ? 'Esta institucion no tiene expedientes.' : '';
         filtrarTramites();
       }
 
-      // Muestra solo los trámites del catálogo de la institución seleccionada.
       function filtrarTramites() {
         if (!tram) return;
         var sel = inst.value;
@@ -162,21 +205,58 @@
         Array.prototype.forEach.call(tram.options, function (o) {
           var match = sel && o.getAttribute('data-inst') === sel;
           o.hidden = !match;
-          if (!match && o.selected) o.selected = false;   // deselecciona los que no aplican
+          if (!match && o.selected) o.selected = false;
           if (match) visibles++;
         });
         thint.textContent = !sel
-          ? 'Selecciona una institución para ver sus trámites.'
-          : (visibles === 0 ? 'Esta institución no tiene trámites en el catálogo.' : '');
+          ? 'Selecciona una institucion para ver sus tramites.'
+          : (visibles === 0 ? 'Esta institucion no tiene tramites en el catalogo.' : '');
       }
 
-      // Al elegir un expediente, fija la institución a la de ese expediente (coherencia).
       function alElegirExpediente() {
         var o = exp.selectedOptions[0];
         var di = o ? o.getAttribute('data-inst') : '';
         if (o && o.value !== '' && di) { inst.value = di; filtrarExpedientes(); }
       }
 
-      document.addEventListener('DOMContentLoaded', filtrarExpedientes);
+      function tamArchivo(bytes) {
+        return bytes >= 1048576 ? (bytes / 1048576).toFixed(bytes >= 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+      }
+
+      function setupTicketFiles(inputId, listId, errorId) {
+        var input = document.getElementById(inputId);
+        var list = document.getElementById(listId);
+        var error = document.getElementById(errorId);
+        if (!input || !list || !error) return;
+        input.addEventListener('change', function () {
+          error.textContent = '';
+          list.innerHTML = '';
+          var files = Array.prototype.slice.call(input.files || []);
+          if (files.length === 0) return;
+          var invalidos = files.filter(function (file) {
+            var ext = (file.name.split('.').pop() || '').toLowerCase();
+            return extPermitidas.indexOf(ext) === -1 || file.size > maxBytesArchivo;
+          });
+          if (invalidos.length > 0) {
+            input.value = '';
+            error.textContent = 'Uno o mas archivos no cumplen el tipo permitido o superan 10 MB.';
+            return;
+          }
+          files.forEach(function (file) {
+            var item = document.createElement('div');
+            item.className = 'tk-file-item';
+            item.innerHTML = '<span class="tk-file-name"></span><span class="tk-file-size"></span>';
+            item.querySelector('.tk-file-name').textContent = file.name;
+            item.querySelector('.tk-file-size').textContent = tamArchivo(file.size);
+            list.appendChild(item);
+          });
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        filtrarExpedientes();
+        toggleTemaOtro();
+        setupTicketFiles('tk-archivos', 'tk-archivos-list', 'tk-archivos-error');
+      });
     </script>
 }

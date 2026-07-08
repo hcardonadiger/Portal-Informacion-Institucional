@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preview modulo de tickets</title>
+  <style>
+    :root {
+      --bg: #eef3f8;
+      --panel: #ffffff;
+      --ink: #18324d;
+      --muted: #667892;
+      --line: #dbe5ef;
+      --blue: #1455a4;
+      --blue-2: #0a2d6e;
+      --teal: #0f766e;
+      --amber: #a15c07;
+      --red: #a32d2d;
+      --green: #256b3a;
+      --soft-blue: #eaf2ff;
+      --soft-teal: #e6f6f3;
+      --soft-amber: #fff3df;
+      --soft-red: #fce8e8;
+      --soft-green: #eaf5ec;
+      --shadow: 0 8px 24px rgba(10, 45, 110, .08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 18px 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--blue), var(--blue-2));
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      letter-spacing: .02em;
+      flex: none;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.15;
+      color: var(--blue-2);
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button, .btn {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 8px 13px;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    button:hover, .btn:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), var(--blue-2));
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 6px 18px rgba(20, 85, 164, .24);
+    }
+    .btn-primary:hover { color: #fff; filter: brightness(1.03); }
+
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      border: 0;
+      background: transparent;
+      border-radius: 8px 8px 0 0;
+      color: var(--muted);
+      padding: 10px 14px;
+      min-height: 42px;
+      box-shadow: none;
+      border-bottom: 3px solid transparent;
+    }
+    .tab.active {
+      color: var(--blue-2);
+      background: rgba(255,255,255,.7);
+      border-bottom-color: var(--blue);
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .grid-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 15px;
+      box-shadow: var(--shadow);
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    .metric strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 28px;
+      line-height: 1;
+      color: var(--blue-2);
+    }
+    .metric small { color: var(--muted); }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 150px 150px 170px auto;
+      gap: 10px;
+      align-items: end;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #4f6075;
+    }
+    input, select, textarea {
+      width: 100%;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      min-height: 38px;
+      padding: 9px 11px;
+      background: #fbfdff;
+      color: var(--ink);
+      font: inherit;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(20, 85, 164, .11);
+      background: #fff;
+    }
+
+    .tickets-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .table-wrap, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    th {
+      background: #f5f8fc;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      text-align: left;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #edf2f7;
+      vertical-align: middle;
+      color: #2d4057;
+    }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover td { background: #fbfdff; }
+
+    .ticket-title {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      gap: 2px;
+    }
+    .ticket-title strong {
+      color: var(--blue-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .muted { color: var(--muted); font-size: 12px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .b-blue { background: var(--soft-blue); color: var(--blue-2); }
+    .b-amber { background: var(--soft-amber); color: var(--amber); }
+    .b-red { background: var(--soft-red); color: var(--red); }
+    .b-green { background: var(--soft-green); color: var(--green); }
+    .b-teal { background: var(--soft-teal); color: var(--teal); }
+    .b-gray { background: #eef2f7; color: #506075; }
+
+    .panel { padding: 14px; }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      color: var(--blue-2);
+    }
+    .queue-list { display: flex; flex-direction: column; gap: 8px; }
+    .queue-item {
+      border: 1px solid #e5edf5;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfdff;
+    }
+    .queue-item strong { display: block; color: var(--ink); }
+    .queue-item .meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .form-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 14px;
+      align-items: start;
+    }
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .section h2 {
+      margin: 0 0 14px;
+      color: var(--blue-2);
+      font-size: 15px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid #edf2f7;
+    }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .stack { display: flex; flex-direction: column; gap: 12px; }
+
+    .dropzone {
+      border: 1.5px dashed #bfd0e6;
+      border-radius: 8px;
+      background: #f7fbff;
+      padding: 16px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .check-row {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      gap: 9px;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid #edf2f7;
+    }
+    .check-row:last-child { border-bottom: 0; }
+    .check-row input { width: 16px; height: 16px; min-height: auto; }
+
+    .sla-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-left: 4px solid var(--blue);
+      background: #f7fbff;
+      border-radius: 0 8px 8px 0;
+      padding: 12px 14px;
+    }
+
+    .detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 14px;
+      align-items: start;
+    }
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .event {
+      border: 1px solid #e6eef6;
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+    .event-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 112px 1fr;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid #edf2f7;
+    }
+    .kv:last-child { border-bottom: 0; }
+    .kv span { color: var(--muted); font-size: 12px; font-weight: 700; }
+
+    .steps {
+      display: grid;
+      gap: 8px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 30px 1fr auto;
+      gap: 9px;
+      align-items: center;
+      border: 1px solid #e6eef6;
+      border-radius: 8px;
+      padding: 9px;
+      background: #fbfdff;
+    }
+    .step-num {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--soft-blue);
+      color: var(--blue-2);
+      font-weight: 800;
+    }
+
+    @media (max-width: 940px) {
+      .grid-metrics { grid-template-columns: repeat(2, 1fr); }
+      .toolbar, .tickets-layout, .form-layout, .detail-layout { grid-template-columns: 1fr; }
+      .toolbar { align-items: stretch; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .actions { justify-content: flex-start; }
+    }
+
+    @media (max-width: 620px) {
+      .shell { padding: 16px 10px 32px; }
+      .grid-metrics, .two, .three { grid-template-columns: 1fr; }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 780px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">TK</div>
+        <div>
+          <h1>Sistema de tickets</h1>
+          <p>Soporte operativo para incidencias, solicitudes y seguimiento de plataforma SOL.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" data-tab="new">Nuevo ticket</button>
+        <button type="button">Temas y SLA</button>
+        <button type="button" class="btn-primary" data-tab="inbox">Bandeja</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Vistas del modulo">
+      <button type="button" class="tab active" data-tab="inbox">Bandeja</button>
+      <button type="button" class="tab" data-tab="new">Registrar ticket</button>
+      <button type="button" class="tab" data-tab="detail">Detalle y seguimiento</button>
+    </nav>
+
+    <section class="view active" id="view-inbox">
+      <div class="grid-metrics">
+        <div class="metric"><span>Abiertos</span><strong>18</strong><small>7 sin responsable</small></div>
+        <div class="metric"><span>En progreso</span><strong>11</strong><small>4 vencen hoy</small></div>
+        <div class="metric"><span>SLA vencido</span><strong>5</strong><small>priorizar seguimiento</small></div>
+        <div class="metric"><span>Resueltos</span><strong>36</strong><small>ultimos 30 dias</small></div>
+      </div>
+
+      <form class="toolbar">
+        <div class="field">
+          <label for="q">Buscar</label>
+          <input id="q" type="search" placeholder="Numero, titulo, institucion o tema">
+        </div>
+        <div class="field">
+          <label for="estado">Estado</label>
+          <select id="estado">
+            <option>Todos</option>
+            <option>Abierto</option>
+            <option>En progreso</option>
+            <option>Resuelto</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="prioridad">Prioridad</label>
+          <select id="prioridad">
+            <option>Todas</option>
+            <option>Critica</option>
+            <option>Alta</option>
+            <option>Media</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="institucion">Institucion</label>
+          <select id="institucion">
+            <option>Todas</option>
+            <option>SENASA</option>
+            <option>IP</option>
+            <option>SESAL</option>
+          </select>
+        </div>
+        <button type="button" class="btn-primary">Filtrar</button>
+      </form>
+
+      <div class="tickets-layout">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:118px">Numero</th>
+                <th>Ticket</th>
+                <th style="width:170px">Tema</th>
+                <th style="width:132px">SLA</th>
+                <th style="width:130px">Estado</th>
+                <th style="width:118px">Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="muted">TCK-2026-0184</span></td>
+                <td>
+                  <div class="ticket-title">
+                    <strong>Error al cargar expediente digitalizado</strong>
+                    <span class="muted">SENASA · sin responsable · creado hace 9 h</span>
+                  </div>
+                </td>
+                <td><span class="badge b-red">Error en plataforma</span></td>
+                <td><span class="badge b-red">Vencido</span></td>
+                <td><span class="badge b-blue">Abierto</span></td>
+                <td><button type="button" data-tab="detail">Abrir</button></td>
+              </tr>
+              <tr>
+                <td><span class="muted">TCK-2026-0183</span></td>
+                <td>
+                  <div class="ticket-title">
+                    <strong>Solicitud de capacitacion para usuarios nuevos</strong>
+                    <span class="muted">IP · asignado a Mario Lopez · 2 comentarios</span>
+                  </div>
+                </td>
+                <td><span class="badge b-teal">Capacitacion</span></td>
+                <td><span class="badge b-green">36 h restantes</span></td>
+                <td><span class="badge b-amber">En progreso</span></td>
+                <td><button type="button" data-tab="detail">Abrir</button></td>
+              </tr>
+              <tr>
+                <td><span class="muted">TCK-2026-0182</span></td>
+                <td>
+                  <div class="ticket-title">
+                    <strong>Crear permisos para coordinador regional</strong>
+                    <span class="muted">SESAL · asignado a Ana Rivera · creado ayer</span>
+                  </div>
+                </td>
+                <td><span class="badge b-blue">Accesos</span></td>
+                <td><span class="badge b-amber">4 h restantes</span></td>
+                <td><span class="badge b-amber">En progreso</span></td>
+                <td><button type="button" data-tab="detail">Abrir</button></td>
+              </tr>
+              <tr>
+                <td><span class="muted">TCK-2026-0181</span></td>
+                <td>
+                  <div class="ticket-title">
+                    <strong>Otro: homologacion de plantilla institucional</strong>
+                    <span class="muted">SRECI · sin responsable · creado ayer</span>
+                  </div>
+                </td>
+                <td><span class="badge b-gray">Otro</span></td>
+                <td><span class="badge b-green">52 h restantes</span></td>
+                <td><span class="badge b-blue">Abierto</span></td>
+                <td><button type="button" data-tab="detail">Abrir</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <aside class="panel">
+          <h2>Prioridad de atencion</h2>
+          <div class="queue-list">
+            <div class="queue-item">
+              <strong>Error al cargar expediente</strong>
+              <div class="meta"><span>SENASA</span><span class="badge b-red">Critica</span></div>
+            </div>
+            <div class="queue-item">
+              <strong>Permisos de coordinador</strong>
+              <div class="meta"><span>SESAL</span><span class="badge b-amber">Alta</span></div>
+            </div>
+            <div class="queue-item">
+              <strong>Solicitud de capacitacion</strong>
+              <div class="meta"><span>IP</span><span class="badge b-teal">SLA 72 h</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="view-new">
+      <form class="form-layout">
+        <div>
+          <section class="section">
+            <h2>Reporte de incidente o problema</h2>
+            <div class="stack">
+              <div class="field">
+                <label for="title">Titulo</label>
+                <input id="title" value="Error al cargar expediente digitalizado">
+              </div>
+              <div class="field">
+                <label for="desc">Descripcion</label>
+                <textarea id="desc">Al intentar abrir el expediente, la plataforma muestra un mensaje de error y no carga los documentos adjuntos.</textarea>
+              </div>
+              <div class="three">
+                <div class="field">
+                  <label for="topic">Tema</label>
+                  <select id="topic">
+                    <option>Error en plataforma (SLA 8 h)</option>
+                    <option>Acceso (SLA 24 h)</option>
+                    <option>Capacitacion (SLA 72 h)</option>
+                    <option>Otro (SLA 72 h)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="other">Otro tema</label>
+                  <input id="other" placeholder="Se habilita si Tema = Otro">
+                </div>
+                <div class="field">
+                  <label for="prio">Prioridad</label>
+                  <select id="prio">
+                    <option>Critica</option>
+                    <option>Alta</option>
+                    <option>Media</option>
+                    <option>Baja</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>Vinculos y tramites afectados</h2>
+            <div class="two">
+              <div class="field">
+                <label for="inst">Institucion</label>
+                <select id="inst">
+                  <option>SENASA</option>
+                  <option>IP</option>
+                  <option>SESAL</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="exp">Expediente</label>
+                <select id="exp">
+                  <option>EXP-SENASA-2026-0041</option>
+                  <option>Ninguno</option>
+                </select>
+              </div>
+            </div>
+            <div class="check-row">
+              <input type="checkbox" checked>
+              <span>Registro sanitario de alimentos y bebidas</span>
+              <span class="badge b-blue">afectado</span>
+            </div>
+            <div class="check-row">
+              <input type="checkbox">
+              <span>Certificado fitosanitario de exportacion</span>
+              <span class="muted">opcional</span>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>Archivos adjuntos</h2>
+            <div class="dropzone">Capturas, documentos, logs o evidencias del incidente</div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="section">
+            <h2>Resumen</h2>
+            <div class="sla-box">
+              <strong>SLA estimado: 8 horas</strong>
+              <span class="muted">Se calcula desde el tema seleccionado y se muestra antes de enviar el ticket.</span>
+              <span class="badge b-red">Critica · atencion inmediata</span>
+            </div>
+          </section>
+          <section class="section">
+            <h2>Reportado por</h2>
+            <div class="kv"><span>Usuario</span><strong>Brayan Zelaya</strong></div>
+            <div class="kv"><span>Correo</span><span>bzelaya@diger.gob.hn</span></div>
+            <div class="kv"><span>Registro</span><span>Automatico</span></div>
+          </section>
+          <div class="actions">
+            <button type="button">Limpiar</button>
+            <button type="button" class="btn-primary">Enviar ticket</button>
+          </div>
+        </aside>
+      </form>
+    </section>
+
+    <section class="view" id="view-detail">
+      <div class="detail-layout">
+        <div>
+          <section class="section">
+            <div class="actions" style="justify-content:space-between;margin-bottom:10px">
+              <div>
+                <span class="muted">TCK-2026-0184</span>
+                <h2 style="border:0;margin:4px 0 0;padding:0;font-size:19px">Error al cargar expediente digitalizado</h2>
+              </div>
+              <button type="button" class="btn-primary">Tomar ticket</button>
+            </div>
+            <p>Al intentar abrir el expediente, la plataforma muestra un mensaje de error y no carga los documentos adjuntos.</p>
+            <div class="actions" style="justify-content:flex-start;margin-top:12px">
+              <span class="badge b-red">Critica</span>
+              <span class="badge b-blue">Abierto</span>
+              <span class="badge b-red">SLA vencido</span>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>Seguimiento</h2>
+            <div class="timeline">
+              <div class="event">
+                <div class="event-head"><strong>Sistema</strong><span>hace 9 h</span></div>
+                <div>Ticket registrado y clasificado como Error en plataforma.</div>
+              </div>
+              <div class="event">
+                <div class="event-head"><strong>Coordinacion</strong><span>hace 7 h</span></div>
+                <div>Se solicita validar si el error ocurre solo en la institucion o en varios expedientes.</div>
+              </div>
+              <div class="field">
+                <label for="comment">Comentario</label>
+                <textarea id="comment" placeholder="Escribe una actualizacion para el seguimiento"></textarea>
+              </div>
+              <button type="button" class="btn-primary">Comentar</button>
+            </div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="section">
+            <h2>Detalles</h2>
+            <div class="kv"><span>Tema</span><strong>Error en plataforma</strong></div>
+            <div class="kv"><span>Institucion</span><span>SENASA</span></div>
+            <div class="kv"><span>Expediente</span><span>EXP-SENASA-2026-0041</span></div>
+            <div class="kv"><span>Responsable</span><span>Sin tomar</span></div>
+            <div class="kv"><span>Reportado por</span><span>Brayan Zelaya</span></div>
+          </section>
+
+          <section class="section">
+            <h2>Fases sugeridas</h2>
+            <div class="steps">
+              <div class="step"><span class="step-num">1</span><strong>Recepcion</strong><span class="badge b-green">Completa</span></div>
+              <div class="step"><span class="step-num">2</span><strong>Diagnostico</strong><span class="badge b-amber">Actual</span></div>
+              <div class="step"><span class="step-num">3</span><strong>Resolucion</strong><span class="badge b-gray">Pendiente</span></div>
+              <div class="step"><span class="step-num">4</span><strong>Cierre</strong><span class="badge b-gray">Pendiente</span></div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const tabs = Array.from(document.querySelectorAll('[data-tab]'));
+    const tabButtons = Array.from(document.querySelectorAll('.tab'));
+    const views = {
+      inbox: document.getElementById('view-inbox'),
+      new: document.getElementById('view-new'),
+      detail: document.getElementById('view-detail')
+    };
+
+    function activate(name) {
+      Object.entries(views).forEach(([key, view]) => view.classList.toggle('active', key === name));
+      tabButtons.forEach(button => button.classList.toggle('active', button.dataset.tab === name));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    tabs.forEach(item => item.addEventListener('click', () => activate(item.dataset.tab)));
+  </script>
+</body>
+</html>

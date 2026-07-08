@@ -53,7 +53,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
             TicketId = d.Id;
             Datos = new TicketFormDto
             {
-                Titulo = d.Titulo, Descripcion = d.Descripcion, TemaId = d.TemaId, Prioridad = d.Prioridad,
+                Titulo = d.Titulo, Descripcion = d.Descripcion, TemaId = d.TemaId, TemaOtro = d.TemaOtro, Prioridad = d.Prioridad,
                 InstitucionId = d.InstitucionId, ExpedienteId = d.ExpedienteId
             };
             ReportanteView = string.Join(" · ",

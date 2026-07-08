@@ -108,7 +108,14 @@
                         <textarea name="texto" rows="2" placeholder="Escribe un comentario…" required></textarea>
                     </div>
                     <div class="field" style="margin-bottom:.6rem">
-                        <input type="file" name="archivos" multiple />
+                        <label class="tk-filebox tk-filebox-compact" for="tk-comentario-archivos">
+                            <span class="tk-filebox-title">Adjuntar documentos</span>
+                            <span class="tk-filebox-text">PDF, imagenes, Office, TXT/CSV/LOG o ZIP. Max. 10 MB c/u.</span>
+                        </label>
+                        <input class="tk-file-input" id="tk-comentario-archivos" type="file" name="archivos" multiple
+                               accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.log,.zip" />
+                        <div class="tk-file-error" id="tk-comentario-archivos-error" aria-live="polite"></div>
+                        <div class="tk-file-list" id="tk-comentario-archivos-list"></div>
                         <span class="hint">Adjunta archivos si aplica (máx. 10 MB c/u).</span>
                     </div>
                     <button class="btnp" type="submit" style="font-size:13px">Comentar</button>
@@ -178,6 +185,10 @@
                 <dl style="margin:0;font-size:13.5px;line-height:1.5">
                     <div style="margin-bottom:.5rem"><span class="res-meta">Tema</span><br>
                         @(t.Tema ?? "Sin clasificar")
+                        @if (!string.IsNullOrWhiteSpace(t.TemaOtro))
+                        {
+                            <br><span class="res-meta">Otro:</span> @t.TemaOtro
+                        }
                         @if (t.HorasSla is int hs && hs > 0)
                         {
                             <br><span class="res-meta">SLA: @hs h</span>
@@ -222,3 +233,48 @@
         </aside>
     </div>
 </div>
+
+<script>
+    (function () {
+        var extPermitidas = ['pdf','png','jpg','jpeg','webp','gif','doc','docx','xls','xlsx','ppt','pptx','txt','csv','log','zip'];
+        var maxBytesArchivo = 10 * 1024 * 1024;
+
+        function tamArchivo(bytes) {
+            return bytes >= 1048576 ? (bytes / 1048576).toFixed(bytes >= 10485760 ? 0 : 1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+        }
+
+        function setupTicketFiles(inputId, listId, errorId) {
+            var input = document.getElementById(inputId);
+            var list = document.getElementById(listId);
+            var error = document.getElementById(errorId);
+            if (!input || !list || !error) return;
+            input.addEventListener('change', function () {
+                error.textContent = '';
+                list.innerHTML = '';
+                var files = Array.prototype.slice.call(input.files || []);
+                if (files.length === 0) return;
+                var invalidos = files.filter(function (file) {
+                    var ext = (file.name.split('.').pop() || '').toLowerCase();
+                    return extPermitidas.indexOf(ext) === -1 || file.size > maxBytesArchivo;
+                });
+                if (invalidos.length > 0) {
+                    input.value = '';
+                    error.textContent = 'Uno o mas archivos no cumplen el tipo permitido o superan 10 MB.';
+                    return;
+                }
+                files.forEach(function (file) {
+                    var item = document.createElement('div');
+                    item.className = 'tk-file-item';
+                    item.innerHTML = '<span class="tk-file-name"></span><span class="tk-file-size"></span>';
+                    item.querySelector('.tk-file-name').textContent = file.name;
+                    item.querySelector('.tk-file-size').textContent = tamArchivo(file.size);
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            setupTicketFiles('tk-comentario-archivos', 'tk-comentario-archivos-list', 'tk-comentario-archivos-error');
+        });
+    })();
+</script>

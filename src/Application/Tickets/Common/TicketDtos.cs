@@ -8,6 +8,7 @@ public sealed class TicketFormDto
     public string          Titulo      { get; set; } = string.Empty;
     public string?         Descripcion { get; set; }
     public int?            TemaId      { get; set; } // tema/categoría del catálogo administrable
+    public string?         TemaOtro    { get; set; }
     public PrioridadTicket Prioridad   { get; set; } = PrioridadTicket.Media;
 
     public int? InstitucionId { get; set; }
@@ -19,7 +20,7 @@ public sealed class TicketFormDto
 
 public sealed record TicketListItemDto(
     int Id, string Numero, string Titulo, EstadoTicket Estado, PrioridadTicket Prioridad,
-    string? Tema, int? HorasSla, bool SlaVencido, string? Institucion, string? AsignadoA,
+    string? Tema, string? TemaOtro, int? HorasSla, bool SlaVencido, string? Institucion, string? AsignadoA,
     DateTime FechaCreacion, int NumComentarios);
 
 public sealed record TicketComentarioDto(int Id, TipoComentarioTicket Tipo, string Autor, string Texto, DateTime Fecha);
@@ -31,7 +32,7 @@ public sealed record AdjuntoDto(int Id, int? ComentarioId, string Nombre, string
 
 public sealed record TicketDetailDto(
     int Id, string Numero, string Titulo, string? Descripcion,
-    int? TemaId, string? Tema, int? HorasSla, PrioridadTicket Prioridad, EstadoTicket Estado,
+    int? TemaId, string? Tema, string? TemaOtro, int? HorasSla, PrioridadTicket Prioridad, EstadoTicket Estado,
     int? InstitucionId, string? Institucion, int? ExpedienteId, string? ExpedienteCodigo,
     string? ReportanteNombre, string? ReportanteCorreo, string? ReportanteTelefono,
     int? AsignadoAId, string? AsignadoA, DateTime? FechaResolucion, string? NotaResolucion,

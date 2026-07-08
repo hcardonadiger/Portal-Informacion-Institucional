@@ -1413,6 +1413,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<int?>("TemaId")
                         .HasColumnType("int");
 
+                    b.Property<string>("TemaOtro")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("Titulo")
                         .IsRequired()
                         .HasMaxLength(200)
