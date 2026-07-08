@@ -17,22 +17,19 @@
 }
 
 <div class="container" style="max-width:1040px">
-    @if (TempData["SuccessMsg"] is string msg)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @msg</div>
-    }
+    <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
             <h2>Expedientes de Digitalización</h2>
             <p>Expedientes de trámites nuevos por institución</p>
         </div>
         <div style="display:flex;gap:8px">
-            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">🗂 Vista por institución</button>
+            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
             @if (puedeGestionar)
             {
                 @if (User.IsInRole(nameof(RolUsuario.Administrador)))
                 {
-                    <a class="btns" asp-page="/Admin/ImportarExpedientes">⇩ Importar de Supabase</a>
+                    <a class="btns" asp-page="/Admin/ImportarExpedientes">Importar de Supabase</a>
                 }
                 <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
             }
@@ -48,7 +45,7 @@
     @if (Model.Resultado.Total == 0)
     {
         <div class="hist-empty">
-            <div class="ico">📁</div>
+            <div class="ico"></div>
             @if (string.IsNullOrEmpty(Model.Q))
             {
                 <p>No hay expedientes registrados.<br />Crea el primero con el botón de arriba.</p>
@@ -90,7 +87,7 @@
                         <td class="res-meta">@e.FechaCreacion.ToString("dd MMM yyyy")</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
-                               style="font-size:12.5px;padding:6px 12px">📊 Seguimiento</a>
+                               style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
                             <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
                             @if (puedeEliminar)
@@ -98,7 +95,7 @@
                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                     <input type="hidden" name="id" value="@e.Id" />
                                     <button class="hist-del" type="submit" style="margin-left:4px"
-                                            onclick="return confirm('¿Eliminar este expediente?')">✕</button>
+                                            data-confirm="¿Eliminar este expediente?">✕</button>
                                 </form>
                             }
                         </td>
@@ -116,7 +113,6 @@
             {
                 <div class="grupo-inst">
                     <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
-                        <span>🏛</span>
                         <strong>@grupo.Key</strong>
                         <span class="grupo-inst-badge">@grupo.Count() expediente@(grupo.Count() == 1 ? "" : "s")</span>
                         <span class="grupo-inst-chevron">▾</span>
@@ -146,7 +142,7 @@
                                         <td class="res-meta">@e.FechaCreacion.ToString("dd MMM yyyy")</td>
                                         <td style="white-space:nowrap;text-align:right">
                                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
-                                               style="font-size:12.5px;padding:6px 12px">📊 Seguimiento</a>
+                                               style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
                                             <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
                                                style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
                                             @if (puedeEliminar)
@@ -154,7 +150,7 @@
                                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                                     <input type="hidden" name="id" value="@e.Id" />
                                                     <button class="hist-del" type="submit" style="margin-left:4px"
-                                                            onclick="return confirm('¿Eliminar este expediente?')">✕</button>
+                                                            data-confirm="¿Eliminar este expediente?">✕</button>
                                                 </form>
                                             }
                                         </td>
@@ -178,7 +174,7 @@
         var enLista = agrupada.style.display === 'none';
         lista.style.display = enLista ? 'none' : '';
         agrupada.style.display = enLista ? '' : 'none';
-        btn.textContent = enLista ? '📋 Vista de lista' : '🗂 Vista por institución';
+        btn.textContent = enLista ? 'Vista de lista' : 'Vista por institución';
     }
     function toggleGrupoInst(hdr) {
         var body = hdr.nextElementSibling;

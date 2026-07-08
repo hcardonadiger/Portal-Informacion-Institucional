@@ -7,19 +7,16 @@
 }
 
 <div class="container" style="max-width:1040px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
             <h2>Directorio de Contactos</h2>
             <p>Enlaces institucionales por institución</p>
         </div>
         <div style="display:flex;gap:8px">
-            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaContactos()">🗂 Vista por institución</button>
+            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaContactos()">Vista por institución</button>
             <a class="btns" asp-page="/Contactos/Index" asp-page-handler="Export"
-               asp-route-buscar="@Model.Buscar" asp-route-institucion="@Model.Institucion">⬇ CSV</a>
+               asp-route-buscar="@Model.Buscar" asp-route-institucion="@Model.Institucion">CSV</a>
             @if (puedeGestionar)
             {
                 <a class="btnp" asp-page="/Contactos/Editor">+ Nuevo contacto</a>
@@ -70,7 +67,7 @@
     @if (!Model.Contactos.Any())
     {
         <div class="hist-empty">
-            <div class="ico">📇</div>
+            <div class="ico"></div>
             <p>No hay contactos que coincidan.</p>
         </div>
     }
@@ -120,7 +117,7 @@
                                                 <input type="hidden" name="id" value="@c.Id" />
                                                 <button class="btns" type="submit"
                                                         style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#b45309;border-color:#fcd34d;background:#fef3c7"
-                                                        onclick="return confirm('¿Dar de baja a este contacto?')">Dar de baja</button>
+                                                        data-confirm="¿Dar de baja a este contacto?">Dar de baja</button>
                                             </form>
                                         }
                                         else
@@ -129,14 +126,14 @@
                                                 <input type="hidden" name="id" value="@c.Id" />
                                                 <button class="btns" type="submit"
                                                         style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#15803d;border-color:#86efac;background:#f0fdf4"
-                                                        onclick="return confirm('¿Reactivar este contacto?')">Reactivar</button>
+                                                        data-confirm="¿Reactivar este contacto?">Reactivar</button>
                                             </form>
                                         }
                                         <form method="post" asp-page-handler="Eliminar">
                                             <input type="hidden" name="id" value="@c.Id" />
                                             <button class="hist-del" type="submit"
                                                     style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
-                                                    onclick="return confirm('¿Eliminar permanentemente este contacto?')">✕</button>
+                                                    data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
                                         </form>
                                     }
                                 </div>
@@ -155,7 +152,6 @@
             {
                 <div class="grupo-inst">
                     <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
-                        <span>🏛</span>
                         <strong>@grupo.Key</strong>
                         <span class="grupo-inst-badge">@grupo.Count() contacto@(grupo.Count() == 1 ? "" : "s")</span>
                         <span class="grupo-inst-chevron">▾</span>
@@ -202,7 +198,7 @@
                                                             <input type="hidden" name="id" value="@c.Id" />
                                                             <button class="btns" type="submit"
                                                                     style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#b45309;border-color:#fcd34d;background:#fef3c7"
-                                                                    onclick="return confirm('¿Dar de baja a este contacto?')">Dar de baja</button>
+                                                                    data-confirm="¿Dar de baja a este contacto?">Dar de baja</button>
                                                         </form>
                                                     }
                                                     else
@@ -211,14 +207,14 @@
                                                             <input type="hidden" name="id" value="@c.Id" />
                                                             <button class="btns" type="submit"
                                                                     style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#15803d;border-color:#86efac;background:#f0fdf4"
-                                                                    onclick="return confirm('¿Reactivar este contacto?')">Reactivar</button>
+                                                                    data-confirm="¿Reactivar este contacto?">Reactivar</button>
                                                         </form>
                                                     }
                                                     <form method="post" asp-page-handler="Eliminar">
                                                         <input type="hidden" name="id" value="@c.Id" />
                                                         <button class="hist-del" type="submit"
                                                                 style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
-                                                                onclick="return confirm('¿Eliminar permanentemente este contacto?')">✕</button>
+                                                                data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
                                                     </form>
                                                 }
                                             </div>
@@ -244,7 +240,7 @@
         var enLista = agrupada.style.display === 'none';
         lista.style.display = enLista ? 'none' : '';
         agrupada.style.display = enLista ? '' : 'none';
-        btn.textContent = enLista ? '📋 Vista de lista' : '🗂 Vista por institución';
+        btn.textContent = enLista ? 'Vista de lista' : 'Vista por institución';
     }
     function toggleGrupoInst(hdr) {
         var body = hdr.nextElementSibling;

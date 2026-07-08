@@ -14,9 +14,9 @@
     <div style="display:flex;gap:8px">
         @if (Model.ExpId is int segId)
         {
-            <a class="btnp" asp-page="/Expedientes/Seguimiento" asp-route-id="@segId">📊 Seguimiento de digitalización</a>
+            <a class="btnp" asp-page="/Expedientes/Seguimiento" asp-route-id="@segId">Seguimiento de digitalización</a>
         }
-        <button class="btns" type="button" onclick="window.print()">🖨 PDF</button>
+        <button class="btns" type="button" onclick="window.print()">PDF</button>
     </div>
 </div>
 
@@ -49,7 +49,7 @@
 
     <!-- ══ SECCIÓN 0: APERTURA ══ -->
     <div class="sec active" id="sec0">
-      <div class="sec-title">📁 Apertura del expediente <span style="font-size:9px;font-weight:400;color:#c0c8d8;letter-spacing:.05em;margin-left:6px">v4.2</span></div>
+      <div class="sec-title">Apertura del expediente <span style="font-size:9px;font-weight:400;color:#c0c8d8;letter-spacing:.05em;margin-left:6px">v4.2</span></div>
 
       <div class="card accent">
         <div class="ct">Identificación del expediente</div>
@@ -125,7 +125,7 @@
 
     <!-- ══ SECCIÓN 1: FICHA DEL TRÁMITE ══ -->
     <div class="sec" id="sec1">
-      <div class="sec-title">📋 Ficha del trámite</div>
+      <div class="sec-title">Ficha del trámite</div>
       <div class="tram-tab-bar" id="tram-tabs-1" style="display:none"></div>
       <div id="fichas-wrap"></div>
 
@@ -137,7 +137,7 @@
 
     <!-- ══ SECCIÓN 2: MARCO LEGAL ══ -->
     <div class="sec" id="sec2">
-      <div class="sec-title">⚖ Marco legal y documentación solicitada</div>
+      <div class="sec-title">Marco legal y documentación solicitada</div>
       <div class="tram-tab-bar" id="tram-tabs-2" style="display:none"></div>
 
       <div class="card accent">
@@ -173,7 +173,7 @@
 
     <!-- ══ SECCIÓN 3: PROCESO ACTUAL ══ -->
     <div class="sec" id="sec3">
-      <div class="sec-title">🔄 Proceso actual del trámite</div>
+      <div class="sec-title">Proceso actual del trámite</div>
       <div class="tram-tab-bar" id="tram-tabs-3" style="display:none"></div>
 
       <div class="card">
@@ -212,15 +212,15 @@
         <div class="ct">Flujo real de actividades</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:.85rem">Registre cada paso tal como ocurre actualmente, etapa por etapa. Indique retornos cuando aplica.</p>
         <div class="flow-toggle">
-          <button class="ftog active" id="ftog-actual-edit" onclick="toggleFlowView('actual','edit')">✏️ Editar</button>
-          <button class="ftog" id="ftog-actual-diag" onclick="toggleFlowView('actual','diag')">📊 Ver diagrama</button>
+          <button class="ftog active" id="ftog-actual-edit" onclick="toggleFlowView('actual','edit')">Editar</button>
+          <button class="ftog" id="ftog-actual-diag" onclick="toggleFlowView('actual','diag')">Ver diagrama</button>
         </div>
         <div id="flujo-actual-list" class="flow-list"></div>
         <div id="flujo-actual-diag" style="display:none"></div>
         <div id="flujo-actual-btns" style="display:flex;gap:8px;margin-top:.9rem;flex-wrap:wrap">
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','inicio')">▶ Inicio</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','paso')">+ Paso</button>
-          <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','decision')">⬦ Decisión</button>
+          <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','decision')">Decisión</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','fin')">■ Fin</button>
         </div>
       </div>
@@ -238,7 +238,7 @@
 
     <!-- ══ SECCIÓN 4: INFRAESTRUCTURA SOL ══ -->
     <div class="sec" id="sec4">
-      <div class="sec-title">🖥 Requerimientos mínimos de infraestructura SOL</div>
+      <div class="sec-title">Requerimientos mínimos de infraestructura SOL</div>
       <p style="font-size:12px;color:var(--muted);margin:-0.9rem 0 1.2rem">Evaluación de la institución frente a los requerimientos mínimos para alojar la plataforma SOL. Se completa una sola vez por expediente.</p>
 
       <div class="card accent">
@@ -306,7 +306,7 @@
 
     <!-- ══ SECCIÓN 5: MODELO PROPUESTO ══ -->
     <div class="sec" id="sec5">
-      <div class="sec-title">✅ Modelo propuesto (trámite racionalizado)</div>
+      <div class="sec-title">Modelo propuesto (trámite racionalizado)</div>
       <div class="tram-tab-bar" id="tram-tabs-5" style="display:none"></div>
 
       <!-- ANTES VS AHORA -->
@@ -342,15 +342,15 @@
         <div class="ct">Flujo propuesto</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:.85rem">Diseñe el proceso digitalizado paso a paso.</p>
         <div class="flow-toggle">
-          <button class="ftog active" id="ftog-propuesto-edit" onclick="toggleFlowView('propuesto','edit')">✏️ Editar</button>
-          <button class="ftog" id="ftog-propuesto-diag" onclick="toggleFlowView('propuesto','diag')">📊 Ver diagrama</button>
+          <button class="ftog active" id="ftog-propuesto-edit" onclick="toggleFlowView('propuesto','edit')">Editar</button>
+          <button class="ftog" id="ftog-propuesto-diag" onclick="toggleFlowView('propuesto','diag')">Ver diagrama</button>
         </div>
         <div id="flujo-propuesto-list" class="flow-list"></div>
         <div id="flujo-propuesto-diag" style="display:none"></div>
         <div id="flujo-propuesto-btns" style="display:flex;gap:8px;margin-top:.9rem;flex-wrap:wrap">
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','inicio')">▶ Inicio</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','paso')">+ Paso</button>
-          <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','decision')">⬦ Decisión</button>
+          <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','decision')">Decisión</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','fin')">■ Fin</button>
         </div>
       </div>
@@ -381,7 +381,7 @@
 
     <!-- ══ SECCIÓN 6: ESTADO ══ -->
     <div class="sec" id="sec6">
-      <div class="sec-title">📊 Estado del expediente</div>
+      <div class="sec-title">Estado del expediente</div>
 
       <div class="card accent">
         <div class="ct">Estado general</div>
@@ -438,14 +438,14 @@
 
       <div class="nav">
         <button class="btn btn-s" onclick="ir(5)">← Anterior</button>
-        <button class="btn btn-p" onclick="guardar()">💾 Guardar expediente</button>
+        <button class="btn btn-p" onclick="guardar()">Guardar expediente</button>
       </div>
     </div>
 
   </main>
 </div>
 
-<button class="btn-save-float" type="button" onclick="guardar()">💾 Guardar</button>
+<button class="btn-save-float" type="button" onclick="guardar()">Guardar</button>
 <div class="toast" id="toast"></div>
 
 @* ── Detalle de nodo de flujo (visor; ids consumidos por expediente.js → showNodeModal) ── *@

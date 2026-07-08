@@ -22,7 +22,7 @@
         @if (Model.Registrado)
         {
             <div class="alert-ok" style="text-align:center">
-                ✅ <strong>¡Registro completado!</strong><br />Gracias por confirmar tu asistencia.
+                <strong>¡Registro completado!</strong><br />Gracias por confirmar tu asistencia.
             </div>
             <div style="text-align:center;margin-top:1rem">
                 <a class="btns" asp-page="/Asistencia/Registro" asp-route-token="@r.Token">Registrar otra persona</a>
@@ -44,48 +44,88 @@
                 Tus datos se usarán únicamente para el registro oficial de asistencia.
             </p>
 
-            <form method="post">
-                <div class="field">
-                    <label>Nombre completo *</label>
-                    <input asp-for="Datos.Nombre" autocomplete="name" placeholder="Nombre y apellidos" required />
+            @if (Model.Fase == "confirmar")
+            {
+                <div class="alert-ok" style="text-align:center;margin-bottom:1rem">
+                    <strong>¡Te encontramos, @Model.Datos.Nombre!</strong><br />Revisa tus datos y confirma tu asistencia.
                 </div>
-                <div class="field">
-                    <label>Institución</label>
-                    <select id="instSel" onchange="toggleOtro()">
-                        <option value="">— Seleccione —</option>
-                        @foreach (var i in r.Instituciones)
-                        {
-                            <option value="@i">@i</option>
-                        }
-                        <option value="__OTRO__">Otra…</option>
-                    </select>
-                    <input type="hidden" asp-for="Datos.Institucion" id="instVal" />
-                    <input id="instOtro" style="display:none;margin-top:6px" placeholder="Escriba la institución" oninput="syncOtro()" />
+            }
+            else if (Model.Fase == "formulario")
+            {
+                <div class="alert-error" style="text-align:center;margin-bottom:1rem">
+                    No te encontramos en el directorio. Completa tus datos para registrarte.
                 </div>
-                <div class="row2" style="gap:12px">
-                    <div class="field"><label>Departamento / Unidad</label><input asp-for="Datos.Departamento" placeholder="Área" /></div>
-                    <div class="field"><label>Cargo</label><input asp-for="Datos.Cargo" placeholder="Puesto" /></div>
-                </div>
-                <div class="field">
-                    <label>Correo electrónico</label>
-                    <input asp-for="Datos.Correo" type="email" autocomplete="email" placeholder="correo@ejemplo.com" />
-                </div>
-                <div class="field">
-                    <label>Teléfono</label>
-                    <div style="display:flex;gap:8px">
-                        <select asp-for="Datos.CodigoPais" style="max-width:165px">
-                            @foreach (var (code, label) in RegistroModel.Paises)
-                            {
-                                <option value="@code">@label</option>
-                            }
-                        </select>
-                        <input asp-for="Datos.Telefono" type="tel" placeholder="Número" style="flex:1" />
+            }
+
+            @if (Model.Fase == "correo")
+            {
+                <form method="post" asp-page-handler="Buscar">
+                    <div class="field">
+                        <label>Correo electrónico *</label>
+                        <input asp-for="CorreoBusqueda" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required autofocus />
+                        <span class="hint">Si ya estás en el directorio de contactos, agilizamos tu registro.</span>
                     </div>
-                </div>
-                <button class="btnp" type="submit" style="width:100%;justify-content:center;margin-top:.6rem">
-                    Confirmar asistencia
-                </button>
-            </form>
+                    <button class="btnp" type="submit" style="width:100%;justify-content:center;margin-top:.6rem">
+                        Continuar →
+                    </button>
+                </form>
+            }
+            else
+            {
+                <form method="post" asp-page="/Asistencia/Registro" asp-route-token="@r.Token">
+                    <input type="hidden" asp-for="Fase" />
+                    @if (Model.Fase == "confirmar")
+                    {
+                        <input type="hidden" asp-for="Datos.Correo" />
+                    }
+                    <div class="field">
+                        <label>Nombre completo *</label>
+                        <input asp-for="Datos.Nombre" autocomplete="name" placeholder="Nombre y apellidos" required />
+                    </div>
+                    <div class="field">
+                        <label>Institución</label>
+                        <select id="instSel" onchange="toggleOtro()">
+                            <option value="">— Seleccione —</option>
+                            @foreach (var i in r.Instituciones)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                            <option value="__OTRO__">Otra…</option>
+                        </select>
+                        <input type="hidden" asp-for="Datos.Institucion" id="instVal" />
+                        <input id="instOtro" style="display:none;margin-top:6px" placeholder="Escriba la institución" oninput="syncOtro()" />
+                    </div>
+                    <div class="row2" style="gap:12px">
+                        <div class="field"><label>Departamento / Unidad</label><input asp-for="Datos.Departamento" placeholder="Área" /></div>
+                        <div class="field"><label>Cargo</label><input asp-for="Datos.Cargo" placeholder="Puesto" /></div>
+                    </div>
+                    @if (Model.Fase == "formulario")
+                    {
+                        <div class="field">
+                            <label>Correo electrónico</label>
+                            <input asp-for="Datos.Correo" type="email" autocomplete="email" placeholder="correo@ejemplo.com" />
+                        </div>
+                    }
+                    <div class="field">
+                        <label>Teléfono</label>
+                        <div style="display:flex;gap:8px">
+                            <select asp-for="Datos.CodigoPais" style="max-width:165px">
+                                @foreach (var (code, label) in RegistroModel.Paises)
+                                {
+                                    <option value="@code">@label</option>
+                                }
+                            </select>
+                            <input asp-for="Datos.Telefono" type="tel" placeholder="Número" style="flex:1" />
+                        </div>
+                    </div>
+                    <button class="btnp" type="submit" style="width:100%;justify-content:center;margin-top:.6rem">
+                        @(Model.Fase == "confirmar" ? "Confirmar mi asistencia" : "Confirmar asistencia")
+                    </button>
+                    <div style="text-align:center;margin-top:.6rem">
+                        <a asp-page="/Asistencia/Registro" asp-route-token="@r.Token" style="font-size:12px;color:#6b7fa3">← Usar otro correo</a>
+                    </div>
+                </form>
+            }
         }
     </div>
 </div>
@@ -94,9 +134,24 @@
 <script>
   function toggleOtro(){
     var s=document.getElementById('instSel'), o=document.getElementById('instOtro'), v=document.getElementById('instVal');
-    if(s.value==='__OTRO__'){ o.style.display='block'; v.value=o.value; o.focus(); }
+    if(!s) return;
+    if(s.value==='__OTRO__'){ o.style.display='block'; v.value=o.value; }
     else { o.style.display='none'; v.value=s.value; }
   }
   function syncOtro(){ document.getElementById('instVal').value=document.getElementById('instOtro').value; }
+
+  // Preselecciona la institución cuando llega precargada (registro rápido o reintento tras error).
+  function initInst(actual){
+    var s=document.getElementById('instSel'), o=document.getElementById('instOtro');
+    if(!s) return;
+    actual = actual || '';
+    var opciones = Array.from(s.options).map(function(op){ return op.value; });
+    if(actual && opciones.indexOf(actual) < 0){ s.value='__OTRO__'; o.value=actual; }
+    else { s.value=actual; }
+    toggleOtro();
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    initInst(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Datos.Institucion ?? "")));
+  });
 </script>
 }

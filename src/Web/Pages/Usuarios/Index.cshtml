@@ -2,19 +2,16 @@
 @model Diger.TramitesEstado.Web.Pages.Usuarios.IndexModel
 @{
     ViewData["Title"] = "Usuarios";
-    (string bg, string fg) RolColor(RolUsuario r) => r switch
+    string RolClase(RolUsuario r) => r switch
     {
-        RolUsuario.Administrador => ("#eeedfe", "#3c3489"),
-        RolUsuario.Coordinador   => ("#e6f1fb", "#0c447c"),
-        _                        => ("#e1f5ee", "#085041"),
+        RolUsuario.Administrador => "admin",
+        RolUsuario.Coordinador   => "coordinador",
+        _                        => "default",
     };
 }
 
 <div class="container" style="max-width:920px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
             <h2>Usuarios</h2>
@@ -42,11 +39,10 @@
         <tbody>
             @foreach (var u in Model.Resultado.Items)
             {
-                var rc = RolColor(u.Rol);
                 <tr>
                     <td><a class="seg-inst" asp-page="/Usuarios/Editor" asp-route-id="@u.Id">@u.Nombre</a></td>
                     <td class="res-meta">@u.Correo</td>
-                    <td><span style="background:@rc.bg;color:@rc.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@u.Rol</span></td>
+                    <td><span class="rol-badge @RolClase(u.Rol)" style="padding:2px 10px;font-size:12px">@u.Rol</span></td>
                     <td>
                         @if (u.Activo)
                         {

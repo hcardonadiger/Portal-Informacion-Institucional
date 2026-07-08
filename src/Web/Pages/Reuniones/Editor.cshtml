@@ -10,7 +10,7 @@
     <a class="btns" asp-page="/Reuniones/Index">← Volver</a>
     @if (Model.ReunionId is not null)
     {
-        <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@Model.ReunionId">🖨 Ver acta</a>
+        <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@Model.ReunionId">Ver acta</a>
     }
 </div>
 
@@ -25,6 +25,8 @@
     <div class="sb-hdr">Pasos</div>
     <div class="sbi active" id="sb0" onclick="irPaso(0)"><div class="sbi-dot"></div>Generales</div>
     <div class="sbi" id="sb1" onclick="irPaso(1)"><div class="sbi-dot"></div>Asistencia</div>
+    <div class="sbi" id="sb3" onclick="irPaso(3)"><div class="sbi-dot"></div>Memoria</div>
+    <div class="sbi" id="sb2" onclick="irPaso(2)" style="display:none"><div class="sbi-dot"></div>Capacitación</div>
     <div class="sbi" id="sb4" onclick="irPaso(4)"><div class="sbi-dot"></div>Cierre</div>
   </aside>
 
@@ -32,10 +34,10 @@
 
     @* ══ PASO 0: GENERALES ══ *@
     <div class="sec active" id="sec0">
-      <div class="sec-title">📅 Generales</div>
+      <div class="sec-title">Generales</div>
       <div class="card">
         <div class="field"><label>Título <span style="color:#dc2626">*</span></label>
-          <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" /></div>
+          <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" required /></div>
         <div class="row3">
           <div class="field"><label>Fecha</label><input asp-for="Datos.Fecha" type="date" /></div>
           <div class="field"><label>Hora</label><input asp-for="Datos.Hora" placeholder="09:00" /></div>
@@ -51,39 +53,40 @@
             <input type="hidden" asp-for="Datos.Modalidad" id="md-val" />
           </div>
           <div class="field"><label>Tipo</label>
-            <select id="tp-sel" onchange="otroSync('tp')">
+            <select id="tp-sel" onchange="otroSync('tp'); toggleTipoVisibility();">
               <option value="">— Seleccione —</option>
               @foreach (var t in Model.Tipos) { <option value="@t">@t</option> }
             </select>
             <input id="tp-otro" placeholder="Especifique…" style="display:none;margin-top:6px" oninput="otroSync('tp')" />
             <input type="hidden" asp-for="Datos.Tipo" id="tp-val" />
           </div>
-          <div class="field"><label>Institución beneficiaria</label>
-            <select asp-for="Datos.InstitucionId">
-              <option value="">— Ninguna / Otro —</option>
+        </div>
+        <div class="field">
+          <label>Instituciones que van a atender la reunión</label>
+          <div style="display:flex;gap:8px">
+            <select id="inst-add-sel" style="flex:1">
+              <option value="">— Seleccione una institución —</option>
               @foreach (var i in Model.Instituciones) { <option value="@i.Id">@i.Nombre</option> }
             </select>
+            <button type="button" class="btns" onclick="addInstitucion()">+ Agregar</button>
           </div>
+          <div id="inst-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+          <span class="hint">Solo estas instituciones podrán elegirse al pasar asistencia. La primera agregada queda como principal.</span>
         </div>
         <div class="row2" style="gap:14px">
           <div class="field"><label>Lugar</label><input asp-for="Datos.Lugar" placeholder="Sede, sala o enlace de videollamada" /></div>
           <div class="field">
             <label>Visibilidad</label>
             <select asp-for="Datos.Visibilidad">
-              <option value="@VisibilidadReunion.Publica">🏛 Pública — mi institución</option>
-              <option value="@VisibilidadReunion.Privada">🔒 Privada — solo yo</option>
+              <option value="@VisibilidadReunion.Publica">Pública — mi institución</option>
+              <option value="@VisibilidadReunion.Privada">Privada — solo yo</option>
             </select>
             <span class="hint">Las privadas solo las ve quien las crea.</span>
           </div>
         </div>
-        <label class="chk"><input asp-for="Datos.EsCapacitacionPlataforma" id="es-cap" type="checkbox" /><span>Es una capacitación de la plataforma</span></label>
       </div>
-      <div class="nav"><span></span><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
-    </div>
 
-    @* ══ PASO 1: ASISTENCIA ══ *@
-    <div class="sec" id="sec1">
-      <div class="sec-title">👥 Asistencia</div>
+      @* ── Enlace y QR de auto-registro (disponible tras el primer guardado) ── *@
       @if (Model.ReunionId is int ridA)
       {
         <div class="card" style="background:#f0f7ff;border:1px solid #d4e4fb">
@@ -95,39 +98,27 @@
           </div>
         </div>
       }
+      else
+      {
+        <div class="card" style="background:#fdf6ec;border:1px solid #f3e2c0">
+          <div style="font-size:13px;color:#7a5a15">
+            Guarda la reunión para generar el enlace y código QR de auto-registro.
+          </div>
+        </div>
+      }
 
-      <div class="card">
-          <div class="field">
-              <label>Objetivo de la capacitación</label>
-              <textarea asp-for="Datos.ObjetivoCap" rows="2"></textarea>
-          </div>
-          <div class="field">
-              <label>Contenido <span class="hint">(un punto por línea)</span></label>
-              <textarea asp-for="Datos.Contenido" rows="4"></textarea>
-          </div>
+      <div class="nav">
+        <span></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-p" type="submit" asp-page-handler="GuardarContinuar" onclick="syncTodo()">Guardar y generar QR</button>
+          <button class="btn btn-s" type="button" onclick="siguiente()">Siguiente →</button>
+        </div>
       </div>
+    </div>
 
-      @* ── Enlace institucional / Facilitador ──────────────────── *@
-      <div class="card">
-          <h3 class="sec-h">Enlace institucional</h3>
-          <div class="row2">
-              <div class="field"><label>Nombre</label><input asp-for="Datos.EpNombre" /></div>
-              <div class="field"><label>Cargo</label><input asp-for="Datos.EpCargo" /></div>
-          </div>
-          <div class="row2">
-              <div class="field"><label>Correo</label><input asp-for="Datos.EpCorreo" type="email" /></div>
-              <div class="field"><label>Teléfono</label><input asp-for="Datos.EpTel" /></div>
-          </div>
-      </div>
-
-      <div class="card">
-          <h3 class="sec-h">Facilitador DIGER</h3>
-          <div class="row3">
-              <div class="field"><label>Nombre</label><input asp-for="Datos.FacNombre" /></div>
-              <div class="field"><label>Cargo</label><input asp-for="Datos.FacCargo" /></div>
-              <div class="field"><label>Correo</label><input asp-for="Datos.FacCorreo" type="email" /></div>
-          </div>
-      </div>
+    @* ══ PASO 1: ASISTENCIA ══ *@
+    <div class="sec" id="sec1">
+      <div class="sec-title">Asistencia</div>
 
       @* ── Asistentes ──────────────────────────────────────────── *@
       <div class="card">
@@ -140,41 +131,69 @@
                       <div class="asistente-row">
                           <div class="field"><label>Nombre</label><input name="Asistentes[@i].Nombre" value="@Model.Asistentes[i].Nombre" /></div>
                           <div class="field"><label>Cargo</label><input name="Asistentes[@i].Cargo" value="@Model.Asistentes[i].Cargo" /></div>
-                          <div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[@i].Institucion" value="@Model.Asistentes[i].Institucion" /></div>
+                          <div class="field"><label>Departamento / Área</label><input name="Asistentes[@i].Departamento" value="@Model.Asistentes[i].Departamento" /></div>
                       </div>
                       <div class="asistente-row">
+                          <div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[@i].Institucion" value="@Model.Asistentes[i].Institucion" /></div>
                           <div class="field"><label>Correo</label><input name="Asistentes[@i].Correo" value="@Model.Asistentes[i].Correo" /></div>
                           <div class="field"><label>Tel&eacute;fono</label><input name="Asistentes[@i].Telefono" value="@Model.Asistentes[i].Telefono" /></div>
-                          <div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar</button></div>
                       </div>
+                      <div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar asistente</button></div>
                   </div>
               }
           </div>
           <button type="button" class="btns" style="margin-top:.6rem" onclick="addAsistente()">+ Agregar asistente</button>
       </div>
 
-      @* ── Resultados ──────────────────────────────────────────── *@
-      <div class="card">
-          <h3 class="sec-h">Resultados</h3>
-          <div class="row3">
-              <div class="field"><label>Convocados</label><input asp-for="Datos.Convocados" type="number" min="0" /></div>
-              <div class="field"><label>Nº asistentes</label><input asp-for="Datos.NumAsistentes" type="number" min="0" />
-                  <span class="hint">Si registra asistentes arriba, se usa ese conteo.</span></div>
-              <div class="field"><label>% asistencia</label><input asp-for="Datos.PctAsistencia" type="number" min="0" max="100" /></div>
+      <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
+    </div>
+
+    @* ══ PASO 3: MEMORIA ══ *@
+    <div class="sec" id="sec3">
+      <div class="sec-title">Memoria</div>
+
+      @* ── Autocompletar desde transcripción (Cowork) — opcional ── *@
+      <details class="card" id="cowork-details" style="padding:0">
+        <summary style="cursor:pointer;padding:14px 16px;font-weight:600;color:#1455a4;font-size:13.5px">
+          Llenar automáticamente desde una transcripción (opcional)
+        </summary>
+        <div style="padding:0 16px 16px">
+          <p class="hint" style="margin:0 0 8px">Pega aquí el JSON resumido de la transcripción y presiona «Aplicar» para llenar los campos del formulario.</p>
+          <textarea id="cowork-json" rows="6" style="width:100%;font-family:monospace;font-size:12.5px" placeholder='{"titulo":"...","fecha":"YYYY-MM-DD","hora":"HH:MM","duracion":"...","modalidad":"Presencial","lugar":"...","institucion":"...","tipo":"Reunión técnica","objetivo":"...","desarrollo":"...","acuerdos":[{"compromiso":"...","responsable":"...","plazo":"YYYY-MM-DD"}],"documentos":"...","validador_diger":"..."}'></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="button" class="btnp" onclick="aplicarJsonCowork()">Aplicar al formulario</button>
+            <button type="button" class="btns" onclick="document.getElementById('cowork-json').value=''">Limpiar</button>
           </div>
-          <div class="field"><label>Satisfacción</label><input asp-for="Datos.Satisfaccion" placeholder="Ej: Alta / 4.5 de 5" /></div>
+          <div id="cowork-error" class="alert-error" style="display:none;margin-top:8px;font-size:12.5px"></div>
+        </div>
+      </details>
+
+      <div class="card">
           <div class="field">
-              <label>Compromisos <span class="hint">(uno por línea)</span></label>
-              <textarea asp-for="Datos.Compromisos" rows="3"></textarea>
+              <label>Objetivo de la reunión</label>
+              <textarea asp-for="Datos.ObjetivoAgenda" rows="3" placeholder="Describa el objetivo principal de esta reunión…"></textarea>
+          </div>
+          <div class="field">
+              <label>Desarrollo de la reunión</label>
+              <div class="rte-toolbar">
+                  <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('bold')" title="Negrita"><b>B</b></button>
+                  <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('italic')" title="Cursiva"><i>I</i></button>
+                  <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('underline')" title="Subrayado"><u>U</u></button>
+                  <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('insertUnorderedList')" title="Viñetas">• Lista</button>
+                  <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('insertOrderedList')" title="Numeración">1. Lista</button>
+                  <button type="button" onmousedown="event.preventDefault()" onclick="rteCmd('removeFormat')" title="Quitar formato">✗</button>
+              </div>
+              <div id="dev-rte" class="rte-body" contenteditable="true" data-placeholder="Resuma el desarrollo de la reunión, discusiones principales y conclusiones…" oninput="syncDev()"></div>
+              <input type="hidden" asp-for="Datos.Desarrollo" id="dev-val" />
           </div>
       </div>
 
       @* ── Acuerdos ────────────────────────────────────────────── *@
       <div class="card">
-          <h3 class="sec-h">Acuerdos y seguimiento</h3>
+          <h3 class="sec-h">Acuerdos y compromisos</h3>
           <table class="seg-table edit-grid" id="acuerdos-tbl">
               <thead>
-                  <tr><th style="width:46%">Compromiso</th><th style="width:24%">Responsable</th><th style="width:170px">Plazo</th><th style="width:40px"></th></tr>
+                  <tr><th style="width:42%">Compromiso</th><th style="width:28%">Responsable</th><th style="width:170px">Plazo</th><th style="width:40px"></th></tr>
               </thead>
               <tbody>
                   @for (var i = 0; i < Model.Acuerdos.Count; i++)
@@ -190,14 +209,48 @@
               </tbody>
           </table>
           <button type="button" class="btns" style="margin-top:.6rem" onclick="addAcuerdo()">+ Agregar acuerdo</button>
+          <span class="hint" style="display:block;margin-top:6px">El responsable puede ser un participante registrado en Asistencia o una de las instituciones convocadas.</span>
       </div>
 
       <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
     </div>
 
+    @* ══ PASO 2: CAPACITACIÓN (solo si Tipo = Capacitación) ══ *@
+    <div class="sec" id="sec2">
+      <div class="sec-title">Capacitación</div>
+      <div class="card">
+          <h3 class="sec-h">Detalle de capacitación</h3>
+          <div class="field">
+              <label>Objetivo de la capacitación</label>
+              <textarea asp-for="Datos.ObjetivoCap" rows="2"></textarea>
+          </div>
+          <div class="field">
+              <label>Contenido <span class="hint">(un punto por línea)</span></label>
+              <textarea asp-for="Datos.Contenido" rows="4"></textarea>
+          </div>
+      </div>
+
+      @* ── Resultados de la capacitación ────────────────────────── *@
+      <div class="card">
+          <h3 class="sec-h">Resultados de la capacitación</h3>
+          <div class="row3">
+              <div class="field"><label>Convocados</label><input asp-for="Datos.Convocados" type="number" min="0" /></div>
+              <div class="field"><label>Nº asistentes</label><input asp-for="Datos.NumAsistentes" type="number" min="0" />
+                  <span class="hint">Si registra asistentes arriba, se usa ese conteo.</span></div>
+              <div class="field"><label>% asistencia</label><input asp-for="Datos.PctAsistencia" type="number" min="0" max="100" /></div>
+          </div>
+          <div class="field"><label>Satisfacción</label><input asp-for="Datos.Satisfaccion" placeholder="Ej: Alta / 4.5 de 5" /></div>
+          <div class="field">
+              <label>Compromisos <span class="hint">(uno por línea)</span></label>
+              <textarea asp-for="Datos.Compromisos" rows="3"></textarea>
+          </div>
+      </div>
+      <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
+    </div>
+
     @* ══ PASO 4: CIERRE ══ *@
     <div class="sec" id="sec4">
-      <div class="sec-title">✅ Cierre</div>
+      <div class="sec-title">Cierre</div>
       <div class="card">
         <div class="row2">
           <div class="field"><label>Satisfacción</label><input asp-for="Datos.Satisfaccion" placeholder="Ej: Alta / 4.5 de 5" /></div>
@@ -206,12 +259,12 @@
         <div class="field"><label>Validación institución</label><input asp-for="Datos.ValInst" /></div>
         <div class="field"><label>Documentos / recursos <span class="hint">(uno por línea)</span></label><textarea asp-for="Datos.DocsRecursos" rows="2"></textarea></div>
       </div>
-      <div class="card">
+      <div class="card" id="foto-card">
         <h3 class="sec-h">Evidencia fotográfica</h3>
         <div class="row2">
           <div class="field"><label>Foto 1</label>
             <div class="foto-up">
-              <img id="f1-img" class="@(string.IsNullOrEmpty(d.Foto1Url) ? "" : "has")" src="@d.Foto1Url" alt="" />
+              <img id="f1-img" class="@(string.IsNullOrEmpty(d.Foto1Url) ? "" : "has")" src="@d.Foto1Url" alt="Vista previa de la foto 1" />
               <input type="file" name="Foto1File" accept="image/*" onchange="previewFoto(this,'f1-img')" />
             </div>
             <input asp-for="Datos.Foto1Desc" placeholder="Descripción foto 1" style="margin-top:6px" />
@@ -219,7 +272,7 @@
           </div>
           <div class="field"><label>Foto 2</label>
             <div class="foto-up">
-              <img id="f2-img" class="@(string.IsNullOrEmpty(d.Foto2Url) ? "" : "has")" src="@d.Foto2Url" alt="" />
+              <img id="f2-img" class="@(string.IsNullOrEmpty(d.Foto2Url) ? "" : "has")" src="@d.Foto2Url" alt="Vista previa de la foto 2" />
               <input type="file" name="Foto2File" accept="image/*" onchange="previewFoto(this,'f2-img')" />
             </div>
             <input asp-for="Datos.Foto2Desc" placeholder="Descripción foto 2" style="margin-top:6px" />
@@ -229,7 +282,7 @@
       </div>
       <div class="nav">
         <button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button>
-        <button class="btn btn-p" type="submit" onclick="syncTodo()">💾 @(Model.ReunionId is null ? "Crear reunión" : "Guardar cambios")</button>
+        <button class="btn btn-p" type="submit" onclick="syncTodo()">@(Model.ReunionId is null ? "Crear reunión" : "Guardar cambios")</button>
       </div>
     </div>
 
@@ -243,8 +296,51 @@
   var TIPOS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Tipos));
   var pasoActual = 0;
 
+  // ── Instituciones convocadas (lista acumulable) ─────────────────
+  var INSTITUCIONES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Instituciones.Select(i => new { i.Id, i.Nombre })));
+  var institucionesSeleccionadas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.InstitucionesIds));
+
+  function nombreInstitucion(id) {
+    var m = INSTITUCIONES.find(function(i){ return i.Id === id; });
+    return m ? m.Nombre : ('Institución #' + id);
+  }
+  function renderInstituciones() {
+    var wrap = document.getElementById('inst-chips');
+    wrap.innerHTML = '';
+    institucionesSeleccionadas.forEach(function(id, idx){
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:#eef3fc;border:1px solid #cfe0fb;border-radius:20px;padding:4px 6px 4px 12px;font-size:13px;color:#0a2d6e';
+      chip.textContent = (idx === 0 ? '★ ' : '') + nombreInstitucion(id);
+      var del = document.createElement('button');
+      del.type = 'button'; del.textContent = '✕';
+      del.title = 'Quitar';
+      del.style.cssText = 'border:0;background:transparent;cursor:pointer;color:#6b7fa3;font-size:12px;padding:0 2px';
+      del.onclick = function(){ institucionesSeleccionadas.splice(idx, 1); renderInstituciones(); };
+      chip.appendChild(del);
+      wrap.appendChild(chip);
+
+      var hid = document.createElement('input');
+      hid.type = 'hidden'; hid.name = 'Datos.InstitucionesIds'; hid.value = id;
+      wrap.appendChild(hid);
+    });
+    actualizarResponsables();
+  }
+  function addInstitucion() {
+    var sel = document.getElementById('inst-add-sel');
+    var id = parseInt(sel.value, 10);
+    if (!id) return;
+    if (institucionesSeleccionadas.indexOf(id) === -1) institucionesSeleccionadas.push(id);
+    sel.value = '';
+    renderInstituciones();
+  }
+
+  function getEsCap(){ return document.getElementById('tp-sel').value === 'Capacitación'; }
+
   function pasosVisibles() {
-    return [0,1,4];
+    var v = [0,1,3];
+    if (getEsCap()) v.push(2);
+    v.push(4);
+    return v;
   }
   function irPaso(n) {
     document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
@@ -269,11 +365,29 @@
     otroSync(k);
   }
 
+  // Muestra/oculta el paso "Capacitación" y otras secciones según el Tipo elegido
+  // (reemplaza al checkbox "Es capacitación").
+  function toggleTipoVisibility(){
+    var tipo = document.getElementById('tp-sel').value;
+    var esCap = getEsCap();
+    var tieneEvidencia = tipo === 'Capacitación' || tipo === 'Taller';
+    var sb2 = document.getElementById('sb2');
+    if (sb2) sb2.style.display = esCap ? '' : 'none';
+    // Si el paso Capacitación queda oculto mientras está activo, regresa a Generales.
+    if (!esCap && pasoActual === 2) irPaso(0);
+    var fotoCard = document.getElementById('foto-card');
+    if (fotoCard) fotoCard.style.display = tieneEvidencia ? '' : 'none';
+  }
+
   // Foto preview
   function previewFoto(input, imgId){
     var img=document.getElementById(imgId);
     if(input.files && input.files[0]){ img.src=URL.createObjectURL(input.files[0]); img.classList.add('has'); }
   }
+
+  // Editor de texto enriquecido (Desarrollo de la reunión)
+  function rteCmd(cmd){ document.getElementById('dev-rte').focus(); document.execCommand(cmd,false,null); syncDev(); }
+  function syncDev(){ document.getElementById('dev-val').value = document.getElementById('dev-rte').innerHTML; }
 
         var aIdx = @Model.Asistentes.Count, kIdx = @Model.Acuerdos.Count;
 
@@ -286,13 +400,14 @@
                 `<div class="asistente-row">` +
                   `<div class="field"><label>Nombre</label><input name="Asistentes[${i}].Nombre" /></div>` +
                   `<div class="field"><label>Cargo</label><input name="Asistentes[${i}].Cargo" /></div>` +
-                  `<div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[${i}].Institucion" /></div>` +
+                  `<div class="field"><label>Departamento / Área</label><input name="Asistentes[${i}].Departamento" /></div>` +
                 `</div>` +
                 `<div class="asistente-row">` +
+                  `<div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[${i}].Institucion" /></div>` +
                   `<div class="field"><label>Correo</label><input name="Asistentes[${i}].Correo" /></div>` +
                   `<div class="field"><label>Tel&eacute;fono</label><input name="Asistentes[${i}].Telefono" /></div>` +
-                  `<div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar</button></div>` +
-                `</div>`;
+                `</div>` +
+                `<div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar asistente</button></div>`;
             document.getElementById('asistentes-list').appendChild(div);
             actualizarResponsables();
         }
@@ -310,20 +425,34 @@
 
         function actualizarResponsables() {
             var nombres = nombresAsistentes();
+            var instituciones = institucionesSeleccionadas.map(function (id) { return nombreInstitucion(id); });
             document.querySelectorAll('#acuerdos-tbl .resp-select').forEach(function (sel) {
                 var actual = sel.dataset.selected !== undefined ? sel.dataset.selected : sel.value;
-                var opciones = nombres.slice();
-                if (actual && opciones.indexOf(actual) < 0) opciones.push(actual);
                 sel.innerHTML = '';
                 var blank = document.createElement('option');
                 blank.value = ''; blank.textContent = '— Seleccione —';
                 sel.appendChild(blank);
-                opciones.forEach(function (n) {
+
+                function agregarGrupo(etiqueta, valores) {
+                    if (!valores.length) return;
+                    var gp = document.createElement('optgroup');
+                    gp.label = etiqueta;
+                    valores.forEach(function (n) {
+                        var op = document.createElement('option');
+                        op.value = n; op.textContent = n;
+                        if (n === actual) op.selected = true;
+                        gp.appendChild(op);
+                    });
+                    sel.appendChild(gp);
+                }
+                agregarGrupo('Participantes', nombres);
+                agregarGrupo('Instituciones', instituciones);
+
+                if (actual && nombres.indexOf(actual) < 0 && instituciones.indexOf(actual) < 0) {
                     var op = document.createElement('option');
-                    op.value = n; op.textContent = n;
-                    if (n === actual) op.selected = true;
+                    op.value = actual; op.textContent = actual; op.selected = true;
                     sel.appendChild(op);
-                });
+                }
                 delete sel.dataset.selected;
             });
         }
@@ -341,13 +470,69 @@
             actualizarResponsables();
         }
 
-  function syncTodo(){ otroSync('md'); otroSync('tp'); }
+  // Llena el formulario completo a partir del JSON resumido de una transcripción (Cowork).
+  function aplicarJsonCowork(){
+    var errBox = document.getElementById('cowork-error');
+    errBox.style.display = 'none';
+    var raw = document.getElementById('cowork-json').value.trim();
+    if (!raw) return;
+
+    var d;
+    try { d = JSON.parse(raw); }
+    catch (e) { errBox.textContent = 'El texto pegado no es un JSON válido.'; errBox.style.display = ''; return; }
+
+    function setVal(name, value){
+      var el = document.querySelector('[name="' + name + '"]');
+      if (el && value != null) el.value = value;
+    }
+
+    setVal('Datos.Titulo', d.titulo);
+    setVal('Datos.Fecha', d.fecha);
+    setVal('Datos.Hora', d.hora);
+    setVal('Datos.Duracion', d.duracion);
+    setVal('Datos.Lugar', d.lugar);
+
+    if (d.modalidad){ initOtro('md', MODALIDADES, d.modalidad); }
+    if (d.tipo){ initOtro('tp', TIPOS, d.tipo); toggleTipoVisibility(); }
+
+    if (d.institucion) {
+      var m = INSTITUCIONES.find(function(i){ return i.Nombre.toLowerCase() === String(d.institucion).toLowerCase(); });
+      if (m && institucionesSeleccionadas.indexOf(m.Id) === -1) { institucionesSeleccionadas.push(m.Id); renderInstituciones(); }
+    }
+
+    if (d.objetivo != null) setVal('Datos.ObjetivoAgenda', d.objetivo);
+    if (d.desarrollo != null) {
+      document.getElementById('dev-rte').innerHTML = d.desarrollo;
+      syncDev();
+    }
+    if (d.documentos != null) setVal('Datos.DocsRecursos', d.documentos);
+    if (d.validador_diger != null) setVal('Datos.ValDiger', d.validador_diger);
+
+    if (Array.isArray(d.acuerdos) && d.acuerdos.length) {
+      document.querySelector('#acuerdos-tbl tbody').innerHTML = '';
+      d.acuerdos.forEach(function (a) {
+        addAcuerdo();
+        var tr = document.querySelector('#acuerdos-tbl tbody tr:last-child');
+        if (a.compromiso) tr.querySelector('[name$=".Compromiso"]').value = a.compromiso;
+        if (a.plazo) tr.querySelector('[name$=".Plazo"]').value = a.plazo;
+        if (a.responsable) tr.querySelector('.resp-select').dataset.selected = a.responsable;
+      });
+      actualizarResponsables();
+    }
+  }
+
+  function syncTodo(){ otroSync('md'); otroSync('tp'); syncDev(); }
 
   document.addEventListener('DOMContentLoaded', function(){
     initOtro('md', MODALIDADES, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.Modalidad ?? "")));
     initOtro('tp', TIPOS, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.Tipo ?? "")));
+    toggleTipoVisibility();
+    renderInstituciones();
     actualizarResponsables();
-    irPaso(0);
+    document.getElementById('dev-rte').innerHTML = document.getElementById('dev-val').value || '';
+    // Tras el autoguardado del paso Generales, la página recarga en el mismo paso (Generales) mostrando el QR.
+    var pasoInicial = parseInt(new URLSearchParams(window.location.search).get('paso'), 10);
+    irPaso(pasosVisibles().indexOf(pasoInicial) >= 0 ? pasoInicial : 0);
   });
 
   // Mantiene los selects de "Responsable" sincronizados con los nombres de la lista de asistentes.

@@ -7,22 +7,19 @@
 }
 
 <div class="container" style="max-width:1040px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
             <h2>Reuniones y Asistencias</h2>
             <p>Actas de reuniones y capacitaciones</p>
         </div>
         <div style="display:flex;gap:8px">
-            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaReuniones()">🗂 Vista por institución</button>
+            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaReuniones()">Vista por institución</button>
             @if (puedeGestionar)
             {
                 @if (User.IsInRole(nameof(RolUsuario.Administrador)))
                 {
-                    <a class="btns" asp-page="/Admin/ImportarReuniones">⇩ Importar de Supabase</a>
+                    <a class="btns" asp-page="/Admin/ImportarReuniones">Importar de Supabase</a>
                 }
                 <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
             }
@@ -38,7 +35,7 @@
     @if (Model.Resultado.Total == 0)
     {
         <div class="hist-empty">
-            <div class="ico">📅</div>
+            <div class="ico"></div>
             <p>@(string.IsNullOrEmpty(Model.Q) ? "No hay reuniones registradas." : "Sin resultados para la búsqueda.")</p>
         </div>
     }
@@ -119,7 +116,6 @@
             {
                 <div class="grupo-inst">
                     <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
-                        <span>🏛</span>
                         <strong>@grupo.Key</strong>
                         <span class="grupo-inst-badge">@grupo.Count() reuni@(grupo.Count() == 1 ? "ón" : "ones")</span>
                         <span class="grupo-inst-chevron">▾</span>
@@ -220,7 +216,7 @@
         var enLista = agrupada.style.display === 'none';
         lista.style.display = enLista ? 'none' : '';
         agrupada.style.display = enLista ? '' : 'none';
-        btn.textContent = enLista ? '📋 Vista de lista' : '🗂 Vista por institución';
+        btn.textContent = enLista ? 'Vista de lista' : 'Vista por institución';
     }
     function toggleGrupoInst(hdr) {
         var body = hdr.nextElementSibling;

@@ -19,6 +19,11 @@ public static class ReunionMapper
         r.Foto1Url = d.Foto1Url?.Trim(); r.Foto1Desc = d.Foto1Desc?.Trim();
         r.Foto2Url = d.Foto2Url?.Trim(); r.Foto2Desc = d.Foto2Desc?.Trim();
 
+        // Instituciones convocadas (reemplazo en bloque; preserva el orden de captura)
+        r.LimpiarInstituciones();
+        foreach (var institucionId in d.InstitucionesIds.Distinct())
+            r.AgregarInstitucion(institucionId);
+
         // Colecciones (reemplazo en bloque)
         r.LimpiarHijos();
         foreach (var a in asistentes.Where(x => !string.IsNullOrWhiteSpace(x.Nombre)))
@@ -52,7 +57,9 @@ public static class ReunionMapper
         var datos = new ReunionFormDto
         {
             Titulo = r.Titulo, Fecha = r.Fecha, Hora = r.Hora, Duracion = r.Duracion,
-            Modalidad = r.Modalidad, Lugar = r.Lugar, InstitucionId = r.InstitucionId, Tipo = r.Tipo,
+            Modalidad = r.Modalidad, Lugar = r.Lugar,
+            InstitucionesIds = r.InstitucionesParticipantes.OrderBy(x => x.Orden).Select(x => x.InstitucionId).ToList(),
+            Tipo = r.Tipo,
             EsCapacitacionPlataforma = r.EsCapacitacionPlataforma, Visibilidad = r.Visibilidad,
             ObjetivoAgenda = r.ObjetivoAgenda, Desarrollo = r.Desarrollo,
             Tema = r.Tema, ObjetivoCap = r.ObjetivoCap, Contenido = r.Contenido,

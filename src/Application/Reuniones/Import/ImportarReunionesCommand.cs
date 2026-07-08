@@ -42,7 +42,7 @@ public sealed class ImportarReunionesCommandHandler(
                 Institucion? inst = string.IsNullOrWhiteSpace(instNombre)
                     ? null
                     : await institucionRepo.GetByNombreAsync(instNombre, ct);
-                datos.InstitucionId = inst?.Id;
+                if (inst is not null) datos.InstitucionesIds = [inst.Id];
 
                 var r = Reunion.Crear(datos.Titulo);
                 r.OrigenExternoId = row.Id;
