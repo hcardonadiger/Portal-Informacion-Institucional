@@ -236,8 +236,8 @@
                                             }
                                         </td>
                                         <td class="res-meta">@TemaLbl(t)</td>
-                                        <td><span style="background:@pc.bg;color:@pc.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@t.Prioridad</span></td>
-                                        <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@EstadoLbl(t.Estado)</span></td>
+                                        <td><span class="prio-badge @PrioClase(t.Prioridad)" style="padding:2px 10px;font-size:12px">@t.Prioridad</span></td>
+                                        <td><span class="status-badge @EstadoClase(t.Estado)" style="padding:2px 10px;font-size:12px">@EstadoLbl(t.Estado)</span></td>
                                         <td class="res-meta">@(t.AsignadoA ?? "—")</td>
                                         <td style="white-space:nowrap;text-align:right">
                                             <a class="btns" asp-page="/Tickets/Detalle" asp-route-id="@t.Id"
