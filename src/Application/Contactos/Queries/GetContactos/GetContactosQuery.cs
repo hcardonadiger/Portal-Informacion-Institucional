@@ -5,7 +5,8 @@ public sealed record ContactoDto(
     string? Correo, string? Telefono, string? Notas, OrigenContacto Origen, bool Activo);
 
 public sealed record GetContactosQuery(
-    string? Buscar = null, string? Institucion = null, bool MostrarInactivos = false)
+    string? Buscar = null, string? Institucion = null, bool MostrarInactivos = false,
+    IReadOnlyList<string>? Instituciones = null)
     : IRequest<IReadOnlyList<ContactoDto>>;
 
 public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
@@ -18,7 +19,9 @@ public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
         if (!q.MostrarInactivos)
             query = query.Where(c => c.Activo);
 
-        if (!string.IsNullOrWhiteSpace(q.Institucion))
+        if (q.Instituciones is { Count: > 0 })
+            query = query.Where(c => q.Instituciones.Contains(c.Institucion));
+        else if (!string.IsNullOrWhiteSpace(q.Institucion))
             query = query.Where(c => c.Institucion == q.Institucion);
 
         if (!string.IsNullOrWhiteSpace(q.Buscar))

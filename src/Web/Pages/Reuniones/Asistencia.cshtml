@@ -7,10 +7,7 @@
 }
 
 <div class="container" style="max-width:1080px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
             <h2>Asistencia — @d.Titulo</h2>
@@ -38,8 +35,8 @@
                     <img id="qrImg" src="@Model.QrDataUri" alt="Código QR de registro" width="190" height="190" style="display:block" />
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px">
-                    <button class="btns" type="button" onclick="descargarQR()">⬇ Descargar QR</button>
-                    <button class="btns" type="button" onclick="imprimirQR()">🖨 Imprimir QR</button>
+                    <button class="btns" type="button" onclick="descargarQR()">Descargar QR</button>
+                    <button class="btns" type="button" onclick="imprimirQR()">Imprimir QR</button>
                 </div>
             </div>
         </div>
@@ -77,9 +74,11 @@
                 @if (Model.Directorio.Any())
                 {
                     <details class="seg-upd">
-                        <summary class="btns" style="font-size:12.5px">👥 Agregar del directorio</summary>
+                        <summary class="btns" style="font-size:12.5px">Agregar del directorio</summary>
                         <form method="post" asp-page-handler="AgregarDirectorio" asp-route-id="@d.ReunionId" class="seg-upd-form" style="width:320px">
-                            <p style="font-size:12px;color:#6b7fa3;margin:.2rem 0 .5rem">Contactos de @d.Institucion</p>
+                            <p style="font-size:12px;color:#6b7fa3;margin:.2rem 0 .5rem">
+                                Contactos de @(d.InstitucionesNombres.Count > 0 ? string.Join(", ", d.InstitucionesNombres) : d.Institucion)
+                            </p>
                             <div style="max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:4px">
                                 @foreach (var c in Model.Directorio)
                                 {
@@ -93,7 +92,7 @@
                         </form>
                     </details>
                 }
-                <a class="btns" asp-page-handler="Export" asp-route-id="@d.ReunionId" style="font-size:12.5px">⬇ Descargar Excel</a>
+                <a class="btns" asp-page-handler="Export" asp-route-id="@d.ReunionId" style="font-size:12.5px">Descargar Excel</a>
             </div>
         </div>
 

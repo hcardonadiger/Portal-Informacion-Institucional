@@ -21,6 +21,9 @@ public sealed class ActualizarReunionCommandHandler(
         var r = await repo.GetByIdWithDetailsAsync(cmd.Id, ct)
             ?? throw new NotFoundException(nameof(Reunion), cmd.Id);
 
+        // "Es capacitación de plataforma" ya no es un checkbox manual: se deriva del Tipo elegido.
+        cmd.Datos.EsCapacitacionPlataforma = cmd.Datos.Tipo == "Capacitación";
+
         ReunionMapper.Aplicar(r, cmd.Datos, cmd.Asistentes, cmd.Acuerdos);
 
         // Al volver privada una reunión sin dueño registrado, el editor pasa a ser el dueño
@@ -28,7 +31,9 @@ public sealed class ActualizarReunionCommandHandler(
         if (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId is null)
             r.CreadoPorId = currentUser.UserId;
 
-        if (cmd.Datos.InstitucionId is int id)
+        // Institución principal = la primera convocada (alcance, acta, tablero).
+        var principalId = r.InstitucionesParticipantes.OrderBy(x => x.Orden).Select(x => (int?)x.InstitucionId).FirstOrDefault();
+        if (principalId is int id)
         {
             var inst = await institucionRepo.GetByIdAsync(id, ct);
             r.InstitucionId = inst?.Id;

@@ -4,36 +4,25 @@
     var t = Model.Ticket;
     ViewData["Title"] = t.Numero + " — " + t.Titulo;
 
-    (string bg, string fg) EstadoColor(EstadoTicket e) => e switch
+    string EstadoClase(EstadoTicket e) => e switch
     {
-        EstadoTicket.Abierto => ("#e6f1fb", "#0c447c"), EstadoTicket.EnProgreso => ("#faeeda", "#854f0b"),
-        EstadoTicket.Resuelto => ("#eaf3de", "#27500a"), _ => ("#f1efe8", "#444441"),
+        EstadoTicket.Abierto => "abierto", EstadoTicket.EnProgreso => "enproceso",
+        EstadoTicket.Resuelto => "resuelto", _ => "default",
     };
-    (string bg, string fg) PrioColor(PrioridadTicket p) => p switch
+    string PrioClase(PrioridadTicket p) => p switch
     {
-        PrioridadTicket.Critica => ("#fcebeb", "#a32d2d"), PrioridadTicket.Alta => ("#faece7", "#993c1d"),
-        PrioridadTicket.Media => ("#e6f1fb", "#185fa5"), _ => ("#f1efe8", "#5f5e5a"),
+        PrioridadTicket.Critica => "critica", PrioridadTicket.Alta => "alta",
+        PrioridadTicket.Media => "media", _ => "default",
     };
     string EstadoLbl(EstadoTicket e) => e == EstadoTicket.EnProgreso ? "En progreso" : e.ToString();
     string Tam(long b) => b >= 1048576 ? $"{b / 1048576.0:0.#} MB" : $"{Math.Max(1, (int)(b / 1024))} KB";
     var slaVencido = Diger.TramitesEstado.Application.Tickets.Common.TicketSla.Vencido(t.Estado, t.HorasSla, t.FechaCreacion);
     var horasAbierto = (int)Diger.TramitesEstado.Application.Tickets.Common.TicketSla.HorasTranscurridas(t.FechaCreacion);
-    string IcoArchivo(string n) => System.IO.Path.GetExtension(n).ToLowerInvariant() switch
-    {
-        ".pdf" => "📕", ".png" or ".jpg" or ".jpeg" or ".webp" or ".gif" => "🖼",
-        ".doc" or ".docx" => "📘", ".xls" or ".xlsx" or ".csv" => "📗",
-        ".ppt" or ".pptx" => "📙", ".zip" => "🗜", _ => "📄"
-    };
-    var ec = EstadoColor(t.Estado);
-    var pc = PrioColor(t.Prioridad);
     var estados = new[] { EstadoTicket.Abierto, EstadoTicket.EnProgreso, EstadoTicket.Resuelto, EstadoTicket.Cerrado };
 }
 
 <div class="container" style="max-width:1040px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
     @if (!string.IsNullOrEmpty(Model.Error))
     {
         <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
@@ -45,7 +34,7 @@
         <h2 style="margin:0;font-size:18px;color:#0a2d6e;flex:1;min-width:200px">@t.Titulo</h2>
         @if (Model.PuedeGestionar)
         {
-            <a class="btns" asp-page="/Tickets/Editor" asp-route-id="@t.Id">✎ Editar</a>
+            <a class="btns" asp-page="/Tickets/Editor" asp-route-id="@t.Id">Editar</a>
         }
     </div>
 
@@ -61,7 +50,7 @@
                         @foreach (var a in adjCreacion)
                         {
                             <a class="tk-adj" href="@a.Url" target="_blank" rel="noopener" download="@a.Nombre" title="@a.Nombre">
-                                <span>@IcoArchivo(a.Nombre)</span> <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
+                                <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
                             </a>
                         }
                     </div>
@@ -94,7 +83,7 @@
                                             @foreach (var a in adjC)
                                             {
                                                 <a class="tk-adj" href="@a.Url" target="_blank" rel="noopener" download="@a.Nombre" title="@a.Nombre">
-                                                    <span>@IcoArchivo(a.Nombre)</span> <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
+                                                    <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
                                                 </a>
                                             }
                                         </div>
@@ -105,7 +94,7 @@
                             {
                                 <div style="font-size:12.5px;color:#6b7fa3;text-align:center;padding:2px">
                                     <span style="background:#f5f8ff;border-radius:20px;padding:3px 12px">
-                                        @(c.Tipo == TipoComentarioTicket.CambioEstado ? "🔄" : "👤") @c.Texto
+                                        @c.Texto
                                         <span style="opacity:.7">· @c.Autor · @c.Fecha.ToLocalTime().ToString("dd MMM HH:mm")</span>
                                     </span>
                                 </div>
@@ -138,8 +127,8 @@
             <div class="card">
                 <h3 class="sec-h">Estado</h3>
                 <div style="display:flex;gap:8px;margin-bottom:.9rem">
-                    <span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700">@EstadoLbl(t.Estado)</span>
-                    <span style="background:@pc.bg;color:@pc.fg;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700">@t.Prioridad</span>
+                    <span class="status-badge @EstadoClase(t.Estado)" style="padding:3px 12px;font-size:13px">@EstadoLbl(t.Estado)</span>
+                    <span class="prio-badge @PrioClase(t.Prioridad)" style="padding:3px 12px;font-size:13px">@t.Prioridad</span>
                 </div>
                 @if (Model.PuedeAtender)
                 {
@@ -169,7 +158,7 @@
                     @if (Model.PuedeTomar)
                     {
                         <form method="post" asp-page-handler="Tomar" asp-route-id="@t.Id">
-                            <button class="btnp" type="submit" style="width:100%">✋ Tomar ticket</button>
+                            <button class="btnp" type="submit" style="width:100%">Tomar ticket</button>
                         </form>
                         <p class="hint" style="margin:.5rem 0 0">Al tomarlo pasas a ser el responsable de iniciar el seguimiento.</p>
                     }
@@ -205,7 +194,7 @@
                             <br><span class="res-meta">SLA: @hs h</span>
                             @if (slaVencido)
                             {
-                                <span style="background:#fcebeb;color:#a32d2d;border-radius:20px;padding:1px 9px;font-size:11.5px;font-weight:700;margin-left:4px">⏱ Vencido</span>
+                                <span class="status-badge vencido" style="padding:1px 9px;font-size:11.5px;margin-left:4px">⏱ Vencido</span>
                             }
                             else if (Diger.TramitesEstado.Application.Tickets.Common.TicketSla.EstaAbierto(t.Estado))
                             {

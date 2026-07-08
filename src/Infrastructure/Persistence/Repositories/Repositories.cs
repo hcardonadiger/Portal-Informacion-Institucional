@@ -62,6 +62,12 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
     public Task<Institucion?> GetByIdAsync(int id, CancellationToken ct = default) =>
         ctx.Instituciones.FindAsync([id], ct).AsTask();
 
+    public async Task<IReadOnlyList<Institucion>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default) =>
+        await ctx.Instituciones
+            .Where(i => ids.Contains(i.Id))
+            .AsNoTracking()
+            .ToListAsync(ct);
+
     public Task<Institucion?> GetByIdWithTramitesAsync(int id, CancellationToken ct = default) =>
         ctx.Instituciones
             .Include(i => i.Tramites)
@@ -108,6 +114,14 @@ public sealed class ContactoRepository(AppDbContext ctx) : IContactoRepository
     public Task<Contacto?> GetByIdAsync(int id, CancellationToken ct = default) =>
         ctx.Contactos.FindAsync([id], ct).AsTask();
 
+    public Task<Contacto?> GetByCorreoAsync(string correo, CancellationToken ct = default)
+    {
+        var norm = correo.Trim().ToLower();
+        return ctx.Contactos.IgnoreQueryFilters()
+            .Where(c => c.Activo)
+            .FirstOrDefaultAsync(c => c.Correo == norm, ct);
+    }
+
     public Task<bool> ExisteCorreoAsync(string correo, CancellationToken ct = default)
     {
         var norm = correo.Trim().ToLower();
@@ -130,13 +144,16 @@ public sealed class ReunionRepository(AppDbContext ctx) : IReunionRepository
         ctx.Reuniones
             .Include(r => r.Asistentes)
             .Include(r => r.Acuerdos)
-            .AsSplitQuery()  // evita el producto cartesiano Asistentes × Acuerdos
+            .Include(r => r.InstitucionesParticipantes)
+            .AsSplitQuery()  // evita el producto cartesiano Asistentes × Acuerdos × Instituciones
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public Task<Reunion?> GetByTokenWithAsistentesAsync(Guid token, CancellationToken ct = default) =>
         ctx.Reuniones
             .IgnoreQueryFilters()           // el auto-registro es anónimo (sin alcance institucional)
             .Include(r => r.Asistentes)
+            .Include(r => r.InstitucionesParticipantes)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.RegistroToken == token, ct);
 
     public async Task<HashSet<string>> GetOrigenExternoIdsAsync(CancellationToken ct = default) =>

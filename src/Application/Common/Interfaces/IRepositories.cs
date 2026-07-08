@@ -18,6 +18,7 @@ public interface IInstitucionRepository
     Task<IReadOnlyList<Institucion>>       GetAllActivasAsync(CancellationToken ct = default);
     Task<IReadOnlyList<Institucion>>       GetAllAsync(CancellationToken ct = default);
     Task<Institucion?>                     GetByIdAsync(int id, CancellationToken ct = default);
+    Task<IReadOnlyList<Institucion>>       GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
     Task<Institucion?>                     GetByIdWithTramitesAsync(int id, CancellationToken ct = default);
     Task<Institucion?>                     GetByNombreAsync(string nombre, CancellationToken ct = default);
     Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(int institucionId, CancellationToken ct = default);
@@ -32,6 +33,8 @@ public interface IInstitucionRepository
 public interface IContactoRepository
 {
     Task<Contacto?>               GetByIdAsync(int id, CancellationToken ct = default);
+    /// <summary>Busca por correo ignorando el alcance institucional (uso desde flujos anónimos, p. ej. el auto-registro público).</summary>
+    Task<Contacto?>               GetByCorreoAsync(string correo, CancellationToken ct = default);
     Task<bool>                    ExisteCorreoAsync(string correo, CancellationToken ct = default);
     Task                          AddAsync(Contacto contacto, CancellationToken ct = default);
     void                          Update(Contacto contacto);

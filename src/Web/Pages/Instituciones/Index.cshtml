@@ -5,10 +5,7 @@
 }
 
 <div class="container" style="max-width:1040px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
     @if (TempData["ErrorMsg"] is string err)
     {
         <div class="alert-error" style="margin-bottom:1rem">@err</div>
@@ -30,7 +27,7 @@
     @if (Model.Resultado.Total == 0)
     {
         <div class="hist-empty">
-            <div class="ico">🏛</div>
+            <div class="ico"></div>
             <p>@(string.IsNullOrEmpty(Model.Q) ? "No hay instituciones registradas." : "Sin resultados para la búsqueda.")</p>
         </div>
     }
@@ -75,7 +72,7 @@
                             <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                 <input type="hidden" name="id" value="@i.Id" />
                                 <button class="hist-del" type="submit" style="margin-left:4px"
-                                        onclick="return confirm('¿Eliminar esta institución? (solo si no tiene registros asociados)')">✕</button>
+                                        data-confirm="¿Eliminar esta institución? (solo si no tiene registros asociados)">✕</button>
                             </form>
                         </td>
                     </tr>

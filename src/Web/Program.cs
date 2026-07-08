@@ -43,6 +43,7 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("PuedeAdministrarUsuarios", p => p.RequireRole(
         nameof(RolUsuario.Administrador)));
 
+
 builder.Services.AddRazorPages(opts =>
 {
     opts.RootDirectory = "/Pages";

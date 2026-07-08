@@ -1206,7 +1206,7 @@ async function guardar(){
     mostrarToast('✓ Expediente guardado');
     setTimeout(function(){ window.location.href = (meta.indexUrl || '/'); }, 600);
   }catch(err){
-    if(btn){ btn.disabled=false; btn.innerHTML='💾 Guardar'; }
+    if(btn){ btn.disabled=false; btn.innerHTML='Guardar'; }
     mostrarToast('✗ Error al guardar: ' + err.message);
   }
 }
@@ -1338,7 +1338,7 @@ function verHistorial(){
   var all=cargarTodos();
   var lista=document.getElementById('hist-lista');
   if(all.length===0){
-    lista.innerHTML='<div class="hist-empty"><div class="ico">📁</div><p>No hay expedientes registrados.<br>Crea el primero con el botón de arriba.</p></div>';
+    lista.innerHTML='<div class="hist-empty"><div class="ico"></div><p>No hay expedientes registrados.<br>Crea el primero con el botón de arriba.</p></div>';
   } else {
     lista.innerHTML=all.map(function(exp,i){
       var ts=exp._ts?new Date(exp._ts).toLocaleDateString('es-HN'):'—';

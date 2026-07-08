@@ -21,8 +21,8 @@
         </div>
     </div>
 
-    <form method="get" class="card" style="padding:.9rem 1rem;margin-bottom:1.1rem;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
-        <div class="field" style="margin:0;min-width:200px"><label>Institución</label>
+    <form method="get" class="seg-filters">
+        <div class="field" style="min-width:200px"><label>Institución</label>
             <select name="institucionId" onchange="this.form.submit()">
                 <option value="">Todas</option>
                 @foreach (var i in Model.Instituciones) { <option value="@i.Id" selected="@(Model.InstitucionId == i.Id)">@i.Nombre</option> }
@@ -83,7 +83,7 @@
                             <td class="res-meta">@(a.Responsable ?? "—")</td>
                             <td><a class="seg-inst" asp-page="/Reuniones/Acta" asp-route-id="@a.ReunionId" style="font-size:12.5px">@a.ReunionTitulo</a></td>
                             <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@CompromisoUi.Label(a.Estado)</span></td>
-                            <td style="text-align:right;white-space:nowrap;font-weight:700;color:@(a.Vencido ? "#a32d2d" : "#0a2d6e")">@(a.Plazo?.ToString("dd MMM yyyy")) @(a.Vencido ? "⚠" : "")</td>
+                            <td style="text-align:right;white-space:nowrap;font-weight:700;color:@(a.Vencido ? "#a32d2d" : "#0a2d6e")">@(a.Plazo?.ToString("dd MMM yyyy"))</td>
                         </tr>
                     }
                 </tbody>

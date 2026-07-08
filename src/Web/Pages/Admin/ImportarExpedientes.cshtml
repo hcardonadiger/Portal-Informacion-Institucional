@@ -18,7 +18,7 @@
     @if (Model.Resultado is { } r)
     {
         <div class="alert-ok" style="margin-bottom:1rem">
-            ✅ Importación finalizada — <strong>@r.Creados</strong> creados,
+            Importación finalizada — <strong>@r.Creados</strong> creados,
             <strong>@r.Omitidos</strong> omitidos (ya existían), de <strong>@r.Total</strong> en origen.
         </div>
         @if (r.Errores.Count > 0)
