@@ -20,6 +20,7 @@ public sealed class AppDbContext(
     public DbSet<Reunion>                  Reuniones          { get; init; } = default!;
     public DbSet<Asistente>                Asistentes         { get; init; } = default!;
     public DbSet<AcuerdoReunion>           Acuerdos           { get; init; } = default!;
+    public DbSet<ReunionInstitucion>       ReunionInstituciones { get; init; } = default!;
     public DbSet<Expediente>               Expedientes        { get; init; } = default!;
     public DbSet<ExpedienteTramite>        Tramites           { get; init; } = default!;
     public DbSet<TramiteRequisito>         Requisitos         { get; init; } = default!;
@@ -301,6 +302,22 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
             .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Acuerdos).WithOne()
             .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.InstitucionesParticipantes).WithOne()
+            .HasForeignKey(x => x.ReunionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>Instituciones convocadas a una reunión (join, acumulable — ver <see cref="Reunion.AgregarInstitucion"/>).</summary>
+public sealed class ReunionInstitucionConfiguration : IEntityTypeConfiguration<ReunionInstitucion>
+{
+    public void Configure(EntityTypeBuilder<ReunionInstitucion> b)
+    {
+        b.ToTable("ReunionInstituciones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.HasIndex(x => new { x.ReunionId, x.InstitucionId }).IsUnique();
+        b.HasOne<Institucion>().WithMany()
+            .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -598,6 +615,7 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         b.Property(x => x.Numero).HasMaxLength(30).IsRequired();
         b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
         b.Property(x => x.Descripcion).HasMaxLength(4000);
+        b.Property(x => x.TemaOtro).HasMaxLength(200);
         b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Institucion).HasMaxLength(120);

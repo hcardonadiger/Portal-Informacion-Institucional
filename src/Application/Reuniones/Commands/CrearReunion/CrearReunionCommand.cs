@@ -11,13 +11,22 @@ public sealed class CrearReunionCommandHandler(
     IInstitucionRepository institucionRepo,
     IContactoRepository contactoRepo,
     ICurrentUserService currentUser,
+    IApplicationDbContext ctx,
     IUnitOfWork uow)
     : IRequestHandler<CrearReunionCommand, int>
 {
     public async Task<int> Handle(CrearReunionCommand cmd, CancellationToken ct)
     {
-        if (!currentUser.PuedeAccederInstitucion(cmd.Datos.InstitucionId))
-            throw new DomainException("Debe seleccionar una institución dentro de su alcance asignado.");
+        if (!currentUser.EsGlobal)
+        {
+            if (cmd.Datos.InstitucionesIds.Count == 0)
+                throw new DomainException("Debe seleccionar al menos una institución dentro de su alcance asignado.");
+            if (cmd.Datos.InstitucionesIds.Any(id => !currentUser.PuedeAccederInstitucion(id)))
+                throw new DomainException("Solo puede seleccionar instituciones dentro de su alcance asignado.");
+        }
+
+        // "Es capacitación de plataforma" ya no es un checkbox manual: se deriva del Tipo elegido.
+        cmd.Datos.EsCapacitacionPlataforma = cmd.Datos.Tipo == "Capacitación";
 
         var r = Reunion.Crear(cmd.Datos.Titulo);
         ReunionMapper.Aplicar(r, cmd.Datos, cmd.Asistentes, cmd.Acuerdos);
@@ -31,7 +40,7 @@ public sealed class CrearReunionCommandHandler(
         }
 
         await repo.AddAsync(r, ct);
-        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ct);
+        await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ctx, uow, ct);
         await uow.SaveChangesAsync(ct);
         return r.Id;
     }

@@ -271,6 +271,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("AreaId")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Cargo")
                         .HasMaxLength(150)
@@ -1467,6 +1469,33 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Reuniones", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ReunionInstitucion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("InstitucionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReunionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstitucionId");
+
+                    b.HasIndex("ReunionId", "InstitucionId")
+                        .IsUnique();
+
+                    b.ToTable("ReunionInstituciones", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolModuloAcceso", b =>
                 {
                     b.Property<int>("Id")
@@ -1629,6 +1658,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.Property<int?>("TemaId")
                         .HasColumnType("int");
+
+                    b.Property<string>("TemaOtro")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Titulo")
                         .IsRequired()
@@ -2142,6 +2175,21 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ReunionInstitucion", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
+                        .WithMany()
+                        .HasForeignKey("InstitucionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Reunion", null)
+                        .WithMany("InstitucionesParticipantes")
+                        .HasForeignKey("ReunionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.TemaTicket", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.CategoriaTicket", "CategoriaRef")
@@ -2294,6 +2342,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Navigation("Acuerdos");
 
                     b.Navigation("Asistentes");
+
+                    b.Navigation("InstitucionesParticipantes");
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Ticket", b =>

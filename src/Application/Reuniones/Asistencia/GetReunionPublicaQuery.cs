@@ -14,7 +14,14 @@ public sealed class GetReunionPublicaQueryHandler(
         var r = await repo.GetByTokenWithAsistentesAsync(q.Token, ct)
             ?? throw new NotFoundException(nameof(Reunion), q.Token);
 
-        var insts = (await institucionRepo.GetAllActivasAsync(ct)).Select(i => i.Nombre).ToList();
+        // Si la reunión tiene instituciones convocadas, la asistencia solo permite elegir entre
+        // esas; si no se seleccionó ninguna (reuniones anteriores a esta funcionalidad), se ofrecen
+        // todas las activas para no dejar el formulario sin opciones.
+        var idsConvocados = r.InstitucionesParticipantes.Select(x => x.InstitucionId).ToList();
+        var institucionesActivas = idsConvocados.Count > 0
+            ? await institucionRepo.GetByIdsAsync(idsConvocados, ct)
+            : await institucionRepo.GetAllActivasAsync(ct);
+        var insts = institucionesActivas.Select(i => i.Nombre).OrderBy(n => n).ToList();
 
         return new ReunionPublicaDto(
             r.RegistroToken, r.Titulo, r.Fecha, r.Hora, r.Modalidad, r.Lugar,

@@ -15,7 +15,7 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page,
 /// <summary>Normaliza parámetros de paginación/búsqueda recibidos de la UI.</summary>
 public static class Paginacion
 {
-    public const int TamanoDefecto = 15;
+    public const int TamanoDefecto = 20;
 
     public static (string? q, int page, int size) Normalizar(string? q, int? page, int? size)
     {

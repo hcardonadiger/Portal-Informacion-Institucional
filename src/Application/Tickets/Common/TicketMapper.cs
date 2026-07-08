@@ -9,6 +9,7 @@ public static class TicketMapper
         t.EstablecerTitulo(d.Titulo);
         t.Descripcion = string.IsNullOrWhiteSpace(d.Descripcion) ? null : d.Descripcion.Trim();
         t.TemaId      = d.TemaId;
+        t.TemaOtro    = string.IsNullOrWhiteSpace(d.TemaOtro) ? null : d.TemaOtro.Trim();
         t.Prioridad   = d.Prioridad;
         t.InstitucionId = d.InstitucionId;
         t.ExpedienteId  = d.ExpedienteId;
@@ -17,7 +18,7 @@ public static class TicketMapper
 
     public static TicketFormDto ToForm(Ticket t) => new()
     {
-        Titulo = t.Titulo, Descripcion = t.Descripcion, TemaId = t.TemaId, Prioridad = t.Prioridad,
+        Titulo = t.Titulo, Descripcion = t.Descripcion, TemaId = t.TemaId, TemaOtro = t.TemaOtro, Prioridad = t.Prioridad,
         InstitucionId = t.InstitucionId, ExpedienteId = t.ExpedienteId,
         TramiteIds = t.Tramites.Where(x => x.TramiteDefinicionId != null)
                                .Select(x => x.TramiteDefinicionId!.Value).ToList()
@@ -25,7 +26,7 @@ public static class TicketMapper
 
     public static TicketDetailDto ToDetail(Ticket t) => new(
         t.Id, t.Numero, t.Titulo, t.Descripcion,
-        t.TemaId, t.TemaRef?.Nombre, t.TemaRef?.HorasResolucion, t.Prioridad, t.Estado,
+        t.TemaId, t.TemaRef?.Nombre, t.TemaOtro, t.TemaRef?.HorasResolucion, t.Prioridad, t.Estado,
         t.InstitucionId, t.Institucion, t.ExpedienteId, t.ExpedienteCodigo,
         t.ReportanteNombre, t.ReportanteCorreo, t.ReportanteTelefono,
         t.AsignadoAId, t.AsignadoA, t.FechaResolucion, t.NotaResolucion,

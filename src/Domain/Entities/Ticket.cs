@@ -16,6 +16,7 @@ public sealed class Ticket : BaseAuditableEntity, ISoftDeletable
     // Tema/categoría administrable (catálogo TemaTicket). Nullable = sin clasificar.
     public int?            TemaId    { get; set; }
     public TemaTicket?     TemaRef   { get; set; } // navegación (para nombre + SLA)
+    public string?         TemaOtro  { get; set; }
     public PrioridadTicket Prioridad { get; set; } = PrioridadTicket.Media;
     public EstadoTicket    Estado    { get; private set; } = EstadoTicket.Abierto;
 

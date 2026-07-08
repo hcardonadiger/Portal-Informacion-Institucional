@@ -9,7 +9,7 @@
     var gInt = (int)Math.Round(globalPct * 100);
     var estadoG = MetodologiaDigitalizacion.EstadoGlobal(globalPct);
     string EstadoCls(double p) => p >= 0.9999 ? "wf-completada" : p > 0 ? "wf-enproceso" : "wf-registrada";
-    var LABELS = new[] { "⬜ Pendiente", "🟡 En proceso", "✅ Completado" };
+    var LABELS = new[] { "Pendiente", "En proceso", "Completado" };
     int Est(string sub) => d.Estados.TryGetValue(sub, out var v) ? v : 0;
     var ro = Model.PuedeGestionar ? "" : " data-ro=\"1\"";
     var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
@@ -28,7 +28,7 @@
 @if (!d.Tramites.Any())
 {
     <div class="hist-empty" style="margin-top:1rem">
-        <div class="ico">📄</div>
+        <div class="ico"></div>
         <p>Este expediente no tiene trámites.<br />Agrégalos en el editor para hacer seguimiento por trámite.</p>
     </div>
 }
@@ -54,8 +54,8 @@ else
 
     @* ── Tabs ────────────────────────────────────────────────────── *@
     <div class="seg-tabs">
-        <button type="button" class="seg-tab on" id="tb-etapas" onclick="tab('etapas')">📊 Etapas detalladas</button>
-        <button type="button" class="seg-tab" id="tb-checklist" onclick="tab('checklist')">📋 Checklist</button>
+        <button type="button" class="seg-tab on" id="tb-etapas" onclick="tab('etapas')">Etapas detalladas</button>
+        <button type="button" class="seg-tab" id="tb-checklist" onclick="tab('checklist')">Checklist</button>
     </div>
 
     @* ── Etapas detalladas ───────────────────────────────────────── *@
@@ -127,7 +127,7 @@ else
   var ID      = @Model.Data.ExpedienteId;
   var TRAMITE = @Model.Data.TramiteActual;
   var TOKEN   = document.querySelector('input[name="__RequestVerificationToken"]').value;
-  var LABELS  = ['⬜ Pendiente', '🟡 En proceso', '✅ Completado'];
+  var LABELS  = ['Pendiente', 'En proceso', 'Completado'];
 
   function estadoDe(s){ return ESTADOS[s] || 0; }
   function aplicaDe(num){ var e = META.find(function(x){return x.Num===num;}); if(!e || !e.Toggle) return true; return APLICA[num] !== false; }

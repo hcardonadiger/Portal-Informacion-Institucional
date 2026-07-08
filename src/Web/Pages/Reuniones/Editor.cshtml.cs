@@ -82,14 +82,7 @@ public sealed class EditorModel(
 
         try
         {
-            var f1 = await GuardarFotoAsync(Foto1File, ct); if (f1 is not null) Datos.Foto1Url = f1;
-            var f2 = await GuardarFotoAsync(Foto2File, ct); if (f2 is not null) Datos.Foto2Url = f2;
-
-            if (id is null)
-                await sender.Send(new CrearReunionCommand(Datos, Asistentes, Acuerdos), ct);
-            else
-                await sender.Send(new ActualizarReunionCommand(id.Value, Datos, Asistentes, Acuerdos), ct);
-
+            await GuardarAsync(id, ct);
             TempData["SuccessMsg"] = id is null ? "Reunión creada." : "Reunión actualizada.";
             return RedirectToPage("/Reuniones/Index");
         }
@@ -98,5 +91,44 @@ public sealed class EditorModel(
             Error = ex.Message;
             return Page();
         }
+    }
+
+    /// <summary>Autoguardado del paso "Generales": crea o actualiza la reunión con lo capturado
+    /// hasta ahora y recarga la misma página, donde ya queda disponible el enlace/QR de
+    /// auto-registro (requiere que la reunión exista para tener un token).</summary>
+    public async Task<IActionResult> OnPostGuardarContinuarAsync(int? id, CancellationToken ct)
+    {
+        ReunionId = id;
+        Instituciones = await InstitucionesEnAlcanceAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(Datos.Titulo))
+        {
+            Error = "El título de la reunión es obligatorio.";
+            return Page();
+        }
+
+        try
+        {
+            var reunionId = await GuardarAsync(id, ct);
+            return RedirectToPage(new { id = reunionId });
+        }
+        catch (DomainException ex)
+        {
+            Error = ex.Message;
+            return Page();
+        }
+    }
+
+    /// <summary>Guarda las fotos adjuntas y crea/actualiza la reunión. Devuelve el Id resultante.</summary>
+    private async Task<int> GuardarAsync(int? id, CancellationToken ct)
+    {
+        var f1 = await GuardarFotoAsync(Foto1File, ct); if (f1 is not null) Datos.Foto1Url = f1;
+        var f2 = await GuardarFotoAsync(Foto2File, ct); if (f2 is not null) Datos.Foto2Url = f2;
+
+        if (id is null)
+            return await sender.Send(new CrearReunionCommand(Datos, Asistentes, Acuerdos), ct);
+
+        await sender.Send(new ActualizarReunionCommand(id.Value, Datos, Asistentes, Acuerdos), ct);
+        return id.Value;
     }
 }

@@ -4,7 +4,9 @@ public sealed record ContactoDto(
     int Id, string Nombre, string InstitucionId, string Institucion, string? Cargo,
     string? Correo, string? Telefono, string? Notas, OrigenContacto Origen);
 
-public sealed record GetContactosQuery(string? Buscar = null, string? Institucion = null)
+public sealed record GetContactosQuery(
+    string? Buscar = null, string? Institucion = null, bool MostrarInactivos = false,
+    IReadOnlyList<string>? Instituciones = null)
     : IRequest<IReadOnlyList<ContactoDto>>;
 
 public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
@@ -14,7 +16,12 @@ public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
     {
         var query = ctx.Contactos.AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(q.Institucion))
+        if (!q.MostrarInactivos)
+            query = query.Where(c => c.Activo);
+
+        if (q.Instituciones is { Count: > 0 })
+            query = query.Where(c => q.Instituciones.Contains(c.Institucion));
+        else if (!string.IsNullOrWhiteSpace(q.Institucion))
             query = query.Where(c => c.Institucion == q.Institucion);
 
         if (!string.IsNullOrWhiteSpace(q.Buscar))
@@ -28,7 +35,7 @@ public sealed class GetContactosQueryHandler(IApplicationDbContext ctx)
         return await query
             .OrderBy(c => c.Institucion).ThenBy(c => c.Nombre)
             .Select(c => new ContactoDto(
-                c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen))
+                c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen, c.Activo))
             .ToListAsync(ct);
     }
 }

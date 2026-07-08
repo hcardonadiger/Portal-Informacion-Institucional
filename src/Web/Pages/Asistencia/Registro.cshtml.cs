@@ -6,6 +6,11 @@ public sealed class RegistroModel(ISender sender) : PageModel
     public bool Registrado { get; private set; }
     public string? Error { get; set; }
 
+    /// <summary>Fase del formulario: "correo" (pide el correo), "confirmar" (contacto ya
+    /// encontrado en el directorio, registro rápido) o "formulario" (no se encontró, levantamiento completo).</summary>
+    [BindProperty] public string Fase { get; set; } = "correo";
+    [BindProperty] public string? CorreoBusqueda { get; set; }
+
     [BindProperty] public AsistenteAutoInput Datos { get; set; } = new();
 
     // Códigos de país (Centroamérica, México, EE. UU. y España).
@@ -21,6 +26,42 @@ public sealed class RegistroModel(ISender sender) : PageModel
         try { Reunion = await sender.Send(new GetReunionPublicaQuery(token), ct); }
         catch (NotFoundException) { return NotFound(); }
         Datos.CodigoPais ??= "+504";
+        return Page();
+    }
+
+    /// <summary>Paso previo al levantamiento: busca el correo en el directorio de contactos.
+    /// Si existe, precarga sus datos para un registro rápido; si no, continúa al levantamiento
+    /// normal con el correo ya capturado.</summary>
+    public async Task<IActionResult> OnPostBuscarAsync(Guid token, CancellationToken ct)
+    {
+        try { Reunion = await sender.Send(new GetReunionPublicaQuery(token), ct); }
+        catch (NotFoundException) { return NotFound(); }
+
+        var correo = CorreoBusqueda?.Trim();
+        if (string.IsNullOrWhiteSpace(correo) || !correo.Contains('@'))
+        {
+            Error = "Escribe un correo válido.";
+            Fase = "correo";
+            return Page();
+        }
+
+        Datos.Correo = correo;
+        Datos.CodigoPais ??= "+504";
+
+        var contacto = await sender.Send(new GetContactoPorCorreoQuery(correo), ct);
+        if (contacto is not null)
+        {
+            Fase = "confirmar";
+            Datos.Nombre       = contacto.Nombre;
+            Datos.Cargo        = contacto.Cargo;
+            Datos.Institucion  = contacto.Institucion;
+            Datos.Telefono     = contacto.Telefono;
+        }
+        else
+        {
+            Fase = "formulario";
+        }
+
         return Page();
     }
 

@@ -58,6 +58,7 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext ctx)
             {
                 t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad,
                 Tema = t.TemaRef != null ? t.TemaRef.Nombre : null,
+                t.TemaOtro,
                 Horas = t.TemaRef != null ? (int?)t.TemaRef.HorasResolucion : null,
                 t.Institucion, t.AsignadoA, t.CreatedAt, NumComentarios = t.Comentarios.Count
             })
@@ -65,7 +66,7 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext ctx)
 
         // El indicador de vencido para mostrar se calcula en memoria (hora actual).
         var items = raw.Select(t => new TicketListItemDto(
-                t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad, t.Tema, t.Horas,
+                t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad, t.Tema, t.TemaOtro, t.Horas,
                 TicketSla.Vencido(t.Estado, t.Horas, t.CreatedAt),
                 t.Institucion, t.AsignadoA, t.CreatedAt, t.NumComentarios))
             .ToList();

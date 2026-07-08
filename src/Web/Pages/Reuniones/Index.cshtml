@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model Diger.TramitesEstado.Web.Pages.Reuniones.IndexModel
 @{
     ViewData["Title"] = "Reuniones y Asistencias";
@@ -7,25 +7,23 @@
 }
 
 <div class="container" style="max-width:1040px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
             <h2>Reuniones y Asistencias</h2>
             <p>Actas de reuniones y capacitaciones</p>
         </div>
-        @if (puedeGestionar)
-        {
-            <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px">
+            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaReuniones()">Vista por institución</button>
+            @if (puedeGestionar)
+            {
                 @if (User.IsInRole(nameof(RolUsuario.Administrador)))
                 {
-                    <a class="btns" asp-page="/Admin/ImportarReuniones">⇩ Importar de Supabase</a>
+                    <a class="btns" asp-page="/Admin/ImportarReuniones">Importar de Supabase</a>
                 }
                 <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
-            </div>
-        }
+            }
+        </div>
     </div>
 
     <form method="get" class="lista-buscar">
@@ -37,37 +35,53 @@
     @if (Model.Resultado.Total == 0)
     {
         <div class="hist-empty">
-            <div class="ico">📅</div>
+            <div class="ico"></div>
             <p>@(string.IsNullOrEmpty(Model.Q) ? "No hay reuniones registradas." : "Sin resultados para la búsqueda.")</p>
         </div>
     }
     else
     {
-        <table class="seg-table">
+        <div id="vista-lista">
+                <div class="seg-filters" id="reunion-filters">
+            <div class="field" style="min-width:220px;flex:1">
+                <label style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Buscar</label>
+                <input type="text" id="f-titulo" placeholder="Título de la reunión…" class="field-input" oninput="filtrarReuniones()" />
+            </div>
+            <div class="field" style="min-width:180px">
+                <label style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Institución</label>
+                <select id="f-institucion" class="field-input" onchange="filtrarReuniones()">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="field" style="min-width:150px">
+                <label style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Tipo</label>
+                <select id="f-tipo" class="field-input" onchange="filtrarReuniones()">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="field" style="align-self:flex-end;margin-bottom:0">
+                <button type="button" class="btns" onclick="limpiarFiltros()">✕ Limpiar</button>
+            </div>
+        </div><table class="seg-table" id="reunion-tbl">
             <thead>
                 <tr>
                     <th>Título</th>
-                    <th>Fecha</th>
-                    <th>Institución</th>
-                    <th>Tipo</th>
+                    <th style="text-align:center">Fecha</th>
+                    <th style="text-align:center">Institución</th>
+                    <th style="text-align:center">Tipo</th>
                     <th style="text-align:center">Asistentes</th>
                     <th style="width:1%"></th>
                 </tr>
             </thead>
             <tbody>
+                <tr id="reunion-empty" style="display:none"><td colspan="6" style="text-align:center;padding:2rem;color:#9aadcc">No se encontraron reuniones con los filtros aplicados.</td></tr>
                 @foreach (var r in Model.Resultado.Items)
                 {
                     <tr>
-                        <td>
-                            @if (r.Visibilidad == VisibilidadReunion.Privada)
-                            {
-                                <span title="Privada — solo tú la ves" style="margin-right:3px">🔒</span>
-                            }
-                            <a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a>
-                        </td>
-                        <td class="res-meta">@(r.Fecha?.ToString("dd MMM yyyy") ?? "—")</td>
-                        <td>@(r.Institucion ?? "—")</td>
-                        <td class="res-meta">@(r.Tipo ?? "—")</td>
+                        <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a></td>
+                        <td class="res-meta" style="text-align:center">@(r.Fecha?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td style="text-align:center">@(r.Institucion ?? "—")</td>
+                        <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
                         <td style="text-align:center">@r.NumAsistentes</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
@@ -94,5 +108,121 @@
         </table>
 
         <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+        </div>
+
+        @* ── Vista agrupada por institución ───────────────────────── *@
+        <div id="vista-agrupada" style="display:none">
+            @foreach (var grupo in Model.Todas.GroupBy(r => r.Institucion ?? "Sin institución").OrderBy(g => g.Key))
+            {
+                <div class="grupo-inst">
+                    <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
+                        <strong>@grupo.Key</strong>
+                        <span class="grupo-inst-badge">@grupo.Count() reuni@(grupo.Count() == 1 ? "ón" : "ones")</span>
+                        <span class="grupo-inst-chevron">▾</span>
+                    </div>
+                    <div class="grupo-inst-body">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th style="text-align:center">Fecha</th>
+                                    <th style="text-align:center">Tipo</th>
+                                    <th style="text-align:center">Asistentes</th>
+                                    <th style="width:1%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in grupo.OrderByDescending(r => r.Fecha))
+                                {
+                                    <tr>
+                                        <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a></td>
+                                        <td class="res-meta" style="text-align:center">@(r.Fecha?.ToString("dd MMM yyyy") ?? "—")</td>
+                                        <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
+                                        <td style="text-align:center">@r.NumAsistentes</td>
+                                        <td style="white-space:nowrap;text-align:right">
+                                            <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
+                                               style="font-size:12.5px;padding:6px 12px">Acta</a>
+                                            @if (puedeGestionar)
+                                            {
+                                                <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
+                                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
+                                            }
+                                            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
+                                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
+                                            @if (puedeEliminar)
+                                            {
+                                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                                    <input type="hidden" name="id" value="@r.Id" />
+                                                    <button class="hist-del" type="submit" style="margin-left:4px"
+                                                            onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
     }
 </div>
+<script>
+    (function () {
+        // Populate dropdowns from table data
+        const rows = Array.from(document.querySelectorAll('#reunion-tbl tbody tr'));
+        const fill = (id, idx) => {
+            const sel = document.getElementById(id);
+            const vals = [...new Set(rows.map(r => r.children[idx]?.textContent.trim()).filter(v => v && v !== '—'))].sort();
+            vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
+        };
+        fill('f-institucion', 2);
+        fill('f-tipo', 3);
+    })();
+
+    function filtrarReuniones() {
+        const titulo = document.getElementById('f-titulo').value.trim().toLowerCase();
+        const inst   = document.getElementById('f-institucion').value;
+        const tipo   = document.getElementById('f-tipo').value;
+        const rows   = document.querySelectorAll('#reunion-tbl tbody tr');
+        let visible  = 0;
+        rows.forEach(r => {
+            const tit  = r.children[0]?.textContent.trim().toLowerCase() ?? '';
+            const rinst = r.children[2]?.textContent.trim() ?? '';
+            const rtipo = r.children[3]?.textContent.trim() ?? '';
+            const ok = (!titulo || tit.includes(titulo))
+                    && (!inst   || rinst === inst)
+                    && (!tipo   || rtipo === tipo);
+            r.style.display = ok ? '' : 'none';
+            if (ok) visible++;
+        });
+        const empty = document.getElementById('reunion-empty');
+        if (empty) empty.style.display = visible === 0 ? '' : 'none';
+    }
+
+    function limpiarFiltros() {
+        document.getElementById('f-titulo').value = '';
+        document.getElementById('f-institucion').value = '';
+        document.getElementById('f-tipo').value = '';
+        filtrarReuniones();
+    }
+
+    function toggleVistaReuniones() {
+        var lista = document.getElementById('vista-lista');
+        var agrupada = document.getElementById('vista-agrupada');
+        var btn = document.getElementById('btn-toggle-vista');
+        if (!lista || !agrupada) return;
+        var enLista = agrupada.style.display === 'none';
+        lista.style.display = enLista ? 'none' : '';
+        agrupada.style.display = enLista ? '' : 'none';
+        btn.textContent = enLista ? 'Vista de lista' : 'Vista por institución';
+    }
+    function toggleGrupoInst(hdr) {
+        var body = hdr.nextElementSibling;
+        var chevron = hdr.querySelector('.grupo-inst-chevron');
+        var abierto = body.style.display !== 'none';
+        body.style.display = abierto ? 'none' : '';
+        chevron.style.transform = abierto ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+</script>

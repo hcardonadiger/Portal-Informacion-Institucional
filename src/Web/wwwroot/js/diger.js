@@ -34,10 +34,16 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
-/* ── Confirmar antes de eliminar levantamiento ────────────────────────── */
+/* ── Confirmar antes de enviar (data-confirm="mensaje" en el botón) ──── */
 document.addEventListener('submit', function (e) {
     var btn = e.submitter;
-    if (btn && btn.classList.contains('hist-del')) {
+    if (!btn) return;
+    var msg = btn.dataset.confirm;
+    if (msg) {
+        if (!confirm(msg)) e.preventDefault();
+        return;
+    }
+    if (btn.classList.contains('hist-del')) {
         if (!confirm('¿Eliminar este levantamiento? Esta acción no se puede deshacer.')) {
             e.preventDefault();
         }
