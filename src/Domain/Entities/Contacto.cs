@@ -5,7 +5,7 @@ public sealed class Contacto : BaseAuditableEntity, ISoftDeletable
 {
     // ── Soft Delete ───────────────────────────────────────────────
     public bool IsDeleted { get; set; }
-    public string         InstitucionId { get; private set; }
+    public string         InstitucionId { get; private set; } = default!;
     public string?        AreaId        { get; private set; }
     public string?        UnidadId      { get; private set; }
     public string         Institucion   { get; private set; } = default!; // snapshot del nombre

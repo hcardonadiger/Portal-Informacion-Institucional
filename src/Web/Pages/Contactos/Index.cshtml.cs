@@ -40,7 +40,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public async Task<IActionResult> OnPostDarDeBajaAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.Coordinador)))
+        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.JefeInstitucion)))
             return Forbid();
         await sender.Send(new DarDeBajaContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto dado de baja.";
@@ -49,7 +49,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public async Task<IActionResult> OnPostReactivarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.Coordinador)))
+        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.JefeInstitucion)))
             return Forbid();
         await sender.Send(new ReactivarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto reactivado.";

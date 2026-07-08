@@ -268,11 +268,12 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
                     b.Property<string>("AreaId")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
-                    b.Property<bool>("Activo")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Cargo")
                         .HasMaxLength(150)
@@ -1477,8 +1478,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("InstitucionId")
-                        .HasColumnType("int");
+                    b.Property<string>("InstitucionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<int>("Orden")
                         .HasColumnType("int");

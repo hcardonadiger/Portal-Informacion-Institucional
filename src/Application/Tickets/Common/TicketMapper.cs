@@ -26,8 +26,8 @@ public static class TicketMapper
 
     public static TicketDetailDto ToDetail(Ticket t) => new(
         t.Id, t.Numero, t.Titulo, t.Descripcion,
-        t.TemaId, t.TemaRef?.Nombre, t.TemaOtro, t.TemaRef?.HorasResolucion, t.Prioridad, t.Estado,
         t.InstitucionId, t.Institucion, t.ExpedienteId, t.ExpedienteCodigo,
+        t.TemaId, t.TemaRef?.Nombre, t.TemaOtro, t.TemaRef?.HorasResolucion, t.Prioridad, t.Estado,
         t.ReportanteNombre, t.ReportanteCorreo, t.ReportanteTelefono,
         t.AsignadoAId, t.AsignadoA, t.FechaResolucion, t.NotaResolucion,
         t.CreatedAt, t.CreadoPor ?? t.CreatedBy,

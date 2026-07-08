@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -17,7 +17,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ReunionId = table.Column<int>(type: "int", nullable: false),
-                    InstitucionId = table.Column<int>(type: "int", nullable: false),
+                    InstitucionId = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
                     Orden = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>

@@ -4,9 +4,12 @@
     ViewData["Title"] = "Usuarios";
     (string bg, string fg) RolColor(string r) => r switch
     {
-        "Administrador" => ("#eeedfe", "#3c3489"),
-        "Coordinador"   => ("#e6f1fb", "#0c447c"),
-        _               => ("#e1f5ee", "#085041"),
+        "Administrador"    => ("#eeedfe", "#3c3489"),
+        "JefeInstitucion" => ("#e6f1fb", "#0c447c"),
+        "JefeArea"        => ("#e6f1fb", "#1a5fa0"),
+        "JefeUnidad"      => ("#e8f5e9", "#1b5e20"),
+        "Consultor"       => ("#fff8e1", "#6d4c00"),
+        _                  => ("#e1f5ee", "#085041"),
     };
 }
 
@@ -42,7 +45,7 @@
                 <tr>
                     <td><a class="seg-inst" asp-page="/Usuarios/Editor" asp-route-id="@u.Id">@u.Nombre</a></td>
                     <td class="res-meta">@u.Correo</td>
-                    <td><span class="rol-badge @RolClase(u.Rol)" style="padding:2px 10px;font-size:12px">@u.Rol</span></td>
+                    <td>@{ var (bg, fg) = RolColor(u.Rol); }<span class="rol-badge" style="padding:2px 10px;font-size:12px;background:@bg;color:@fg">@u.Rol</span></td>
                     <td>
                         @if (u.Activo)
                         {

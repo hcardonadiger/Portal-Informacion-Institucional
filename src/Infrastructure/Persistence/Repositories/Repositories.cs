@@ -62,7 +62,7 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
     public Task<Institucion?> GetByIdAsync(string id, CancellationToken ct = default) =>
         ctx.Instituciones.FindAsync([id], ct).AsTask();
 
-    public async Task<IReadOnlyList<Institucion>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<Institucion>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) =>
         await ctx.Instituciones
             .Where(i => ids.Contains(i.Id))
             .AsNoTracking()

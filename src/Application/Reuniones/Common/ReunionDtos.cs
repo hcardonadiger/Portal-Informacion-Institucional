@@ -39,7 +39,7 @@ public sealed class ReunionFormDto
     public string?   InstitucionId { get; set; }
     /// <summary>Instituciones convocadas a la reunión (acumulable). La primera queda como
     /// institución principal (alcance, acta, tablero).</summary>
-    public List<int> InstitucionesIds { get; set; } = [];
+    public List<string> InstitucionesIds { get; set; } = [];
     public string?   Tipo      { get; set; }
     public bool      EsCapacitacionPlataforma { get; set; }
     public VisibilidadReunion Visibilidad { get; set; } = VisibilidadReunion.Publica;
@@ -76,4 +76,4 @@ public sealed class ReunionFormDto
 }
 
 /// <summary>Referencia liviana (id + nombre) a una institución convocada a una reunión.</summary>
-public sealed record InstitucionRefDto(int Id, string Nombre);
+public sealed record InstitucionRefDto(string Id, string Nombre);

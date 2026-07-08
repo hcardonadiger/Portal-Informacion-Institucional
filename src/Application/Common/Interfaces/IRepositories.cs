@@ -19,7 +19,7 @@ public interface IInstitucionRepository
     Task<IReadOnlyList<Institucion>>       GetAllAsync(CancellationToken ct = default);
     Task<Institucion?>                     GetByIdAsync(string id, CancellationToken ct = default);
     Task<Institucion?>                     GetByIdWithTramitesAsync(string id, CancellationToken ct = default);
-    Task<IReadOnlyList<Institucion>>       GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct = default);
+    Task<IReadOnlyList<Institucion>>       GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default);
     Task<Institucion?>                     GetByNombreAsync(string nombre, CancellationToken ct = default);
     Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(string institucionId, CancellationToken ct = default);
     Task<IReadOnlyList<TramiteDefinicion>> GetAllTramitesAsync(CancellationToken ct = default);

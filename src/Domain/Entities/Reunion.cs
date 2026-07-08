@@ -115,10 +115,11 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public void LimpiarInstituciones() => _institucionesParticipantes.Clear();
 
     /// <summary>Agrega una institución convocada, preservando el orden de captura (ignora duplicados).</summary>
-    public void AgregarInstitucion(int institucionId)
+    public void AgregarInstitucion(string institucionId)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(institucionId);
         if (_institucionesParticipantes.Any(x => x.InstitucionId == institucionId)) return;
-        _institucionesParticipantes.Add(new ReunionInstitucion { InstitucionId = institucionId, Orden = _institucionesParticipantes.Count });
+        _institucionesParticipantes.Add(new ReunionInstitucion { InstitucionId = institucionId.Trim().ToUpper(), Orden = _institucionesParticipantes.Count });
     }
 
     /// <summary>Registra un participante desde el formulario público de auto-registro.</summary>
@@ -149,9 +150,10 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 /// pueden seleccionarse al pasar asistencia (auto-registro y directorio del organizador).</summary>
 public sealed class ReunionInstitucion : BaseEntity
 {
-    public int ReunionId     { get; set; }
-    public int InstitucionId { get; set; }
-    public int Orden         { get; set; }
+    public int    ReunionId     { get; set; }
+    /// <summary>FK a Instituciones.Id (string). Coincide con el PK nvarchar(120) de la tabla Instituciones.</summary>
+    public string InstitucionId { get; set; } = default!;
+    public int    Orden         { get; set; }
 }
 
 public sealed class Asistente : BaseEntity

@@ -51,8 +51,17 @@ internal static class ContactoFeeder
                 // La institución mencionada en la reunión todavía no existe en el catálogo: se crea
                 // automáticamente (activa) para no perder el contacto, y queda disponible de
                 // inmediato en todos los listados del portal (Instituciones, Reuniones, Contactos).
-                inst = Institucion.Crear(institucionTexto!);
-                await instRepo.AddAsync(inst, ct);
+                // El Id se deriva del nombre normalizado (mayúsculas, sin espacios ni símbolos).
+                var idGenerado = new string(institucionTexto!.ToUpperInvariant()
+                    .Where(c2 => char.IsLetterOrDigit(c2)).ToArray());
+                if (string.IsNullOrWhiteSpace(idGenerado)) continue;
+
+                // Si ya existe por Id (creado en otro flujo), se usa el existente.
+                inst = await instRepo.GetByIdAsync(idGenerado, ct)
+                    ?? Institucion.Crear(idGenerado, institucionTexto!);
+
+                if (inst.Id == idGenerado && !await instRepo.TieneExpedientesAsync(idGenerado, ct))
+                    await instRepo.AddAsync(inst, ct);
                 await uow.SaveChangesAsync(ct); // asigna el Id antes de usarlo en el contacto
             }
 
