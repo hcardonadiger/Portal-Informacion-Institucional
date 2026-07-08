@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Application.Instituciones.Commands.EliminarInstitucion;
 
-public sealed record EliminarInstitucionCommand(int Id) : IRequest<Unit>;
+public sealed record EliminarInstitucionCommand(string Id) : IRequest<Unit>;
 
 public sealed class EliminarInstitucionCommandHandler(
     IInstitucionRepository repo,
@@ -21,7 +21,7 @@ public sealed class EliminarInstitucionCommandHandler(
         if (await ctx.Tickets.IgnoreQueryFilters().AnyAsync(t => t.InstitucionId == id, ct))     motivos.Add("tickets");
         if (await ctx.Reuniones.IgnoreQueryFilters().AnyAsync(r => r.InstitucionId == id, ct))    motivos.Add("reuniones");
         if (await ctx.Contactos.IgnoreQueryFilters().AnyAsync(c => c.InstitucionId == id, ct))    motivos.Add("contactos");
-        if (await ctx.UsuarioInstituciones.AnyAsync(u => u.InstitucionId == id, ct))              motivos.Add("usuarios asignados");
+        if (await ctx.AsignacionesUsuario.AnyAsync(u => u.InstitucionId == id, ct))               motivos.Add("usuarios asignados");
 
         if (motivos.Count > 0)
             throw new DomainException(

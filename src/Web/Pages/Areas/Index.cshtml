@@ -1,0 +1,53 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Areas.IndexModel
+@{
+    ViewData["Title"] = "Catálogo de Áreas";
+}
+
+<div class="container" style="max-width:1040px">
+    <div class="hist-header">
+        <div>
+            <h2>Catálogo de Áreas</h2>
+            <p>Gestión de áreas de instituciones</p>
+        </div>
+        <a class="btnp" asp-page="./Editor">+ Nueva Área</a>
+    </div>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="hist-empty">
+            <div class="ico">🏢</div>
+            <p>No se encontraron áreas registradas.</p>
+        </div>
+    }
+    else
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Institución</th>
+                    <th>Nombre</th>
+                    <th>Nombre Corto</th>
+                    <th style="text-align:center">Unidades</th>
+                    <th style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td><span class="wf-badge wf-activa">@item.Id</span></td>
+                        <td>@item.InstitucionNombre</td>
+                        <td><a class="seg-inst" asp-page="./Editor" asp-route-id="@item.Id">@item.Nombre</a></td>
+                        <td>@(item.NombreCorto ?? "-")</td>
+                        <td style="text-align:center" class="res-meta">@item.Unidades</td>
+                        <td style="white-space:nowrap;text-align:right">
+                            <a class="btns" asp-page="./Editor" asp-route-id="@item.Id" style="font-size:12.5px;padding:6px 12px">Editar</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

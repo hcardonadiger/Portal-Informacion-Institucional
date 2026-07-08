@@ -21,7 +21,7 @@ public sealed record ReunionPublicaDto(
 /// <summary>Gestión de la lista de asistencia (vista del organizador).</summary>
 public sealed record AsistenciaAdminDto(
     int ReunionId, string Titulo, Guid Token, bool RegistroAbierto,
-    int? Convocados, int? InstitucionId, string? Institucion,
+    int? Convocados, string? InstitucionId, string? Institucion, IReadOnlyList<AsistenteVm> Asistentes);
     IReadOnlyList<string> InstitucionesNombres, IReadOnlyList<AsistenteVm> Asistentes);
 
 public sealed record AsistenteVm(

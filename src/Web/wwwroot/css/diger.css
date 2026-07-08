@@ -150,6 +150,21 @@ tr.contacto-inactivo td { color: var(--diger-text-muted); }
 .alert-ok    { background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 12px 16px; color: var(--diger-success); font-size: 13px; }
 .hint.error  { font-size: 12px; color: var(--diger-danger); margin-top: 4px; display: block; }
 
+/* ── TOP NAV CONTEXT (Comboboxes) ───────────────────────────── */
+.topnav-context { display: flex; align-items: center; background: #f5f8ff; border: 1.5px solid #dbe6f5; border-radius: 11px; padding: 2px; }
+.topnav-context form { display: flex; align-items: center; margin: 0; }
+.topnav-context select {
+    appearance: none; background: transparent; border: none; padding: 6px 26px 6px 12px;
+    font-size: 12px; font-weight: 700; color: #1455a4; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231455a4' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 12px;
+    transition: background-color .15s; border-radius: 8px; max-width: 170px;
+    text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+.topnav-context select:hover { background-color: #e8f0ff; }
+.topnav-context select:focus { outline: none; box-shadow: 0 0 0 3px rgba(20,85,164,.15); }
+.topnav-context-div { width: 1.5px; height: 16px; background: #c8d5ee; margin: 0 4px; }
+
 /* ── TOP NAV ────────────────────────────────────────────────── */
 .topnav { background: #fff; border-bottom: 1px solid var(--diger-border); box-shadow: var(--diger-shadow-sm); }
 .topnav-inner { max-width: 1200px; margin: 0 auto; padding: 1rem 2rem; display: flex; align-items: center; gap: 2.5rem; }

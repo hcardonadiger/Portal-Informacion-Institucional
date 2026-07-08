@@ -2,11 +2,11 @@
 @model Diger.TramitesEstado.Web.Pages.Usuarios.IndexModel
 @{
     ViewData["Title"] = "Usuarios";
-    string RolClase(RolUsuario r) => r switch
+    (string bg, string fg) RolColor(string r) => r switch
     {
-        RolUsuario.Administrador => "admin",
-        RolUsuario.Coordinador   => "coordinador",
-        _                        => "default",
+        "Administrador" => ("#eeedfe", "#3c3489"),
+        "Coordinador"   => ("#e6f1fb", "#0c447c"),
+        _               => ("#e1f5ee", "#085041"),
     };
 }
 

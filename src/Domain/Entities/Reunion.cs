@@ -4,8 +4,10 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// Reunión o capacitación documentada (acta + asistencia + acuerdos).
 /// Agregado de captura: escalares asignables; hijos reemplazados en bloque.
 /// </summary>
-public sealed class Reunion : BaseAuditableEntity
+public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     public string Titulo { get; private set; } = default!;
 
     /// <summary>Id del registro origen (p. ej. Supabase) cuando la reunión fue importada.
@@ -16,7 +18,7 @@ public sealed class Reunion : BaseAuditableEntity
     /// <summary>Pública (visible para su institución/alcance) o Privada (solo el creador).</summary>
     public VisibilidadReunion Visibilidad { get; set; } = VisibilidadReunion.Publica;
     /// <summary>Id del usuario que creó la reunión (para las reuniones privadas).</summary>
-    public int? CreadoPorId { get; set; }
+    public Guid? CreadoPorId { get; set; }
 
     // ── Auto-registro de asistencia (enlace + QR público) ─────────
     /// <summary>Token público (difícil de adivinar) del enlace de auto-registro de participantes.</summary>
@@ -32,7 +34,9 @@ public sealed class Reunion : BaseAuditableEntity
     public string?   Duracion  { get; set; }
     public string?   Modalidad { get; set; }   // Presencial / Virtual / Híbrida / Otro
     public string?   Lugar     { get; set; }
-    public int?      InstitucionId { get; set; } // beneficiaria (opcional; permite "Otro")
+    public string?   InstitucionId { get; set; } // beneficiaria (opcional; permite "Otro")
+    public string?   AreaId        { get; set; }
+    public string?   UnidadId      { get; set; }
     public string?   Institucion   { get; set; } // snapshot del nombre
     public string?   Tipo      { get; set; }     // Taller / Seminario / Reunión técnica / …
     public bool      EsCapacitacionPlataforma { get; set; }

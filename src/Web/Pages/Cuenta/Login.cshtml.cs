@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Diger.TramitesEstado.Infrastructure.Security;
@@ -32,12 +33,27 @@ public sealed class LoginModel(ISender sender) : PageModel
             new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
             new(AppClaims.UserId,          usuario.Id.ToString()),
             new(ClaimTypes.Name,           usuario.Nombre),
-            new(ClaimTypes.Email,          usuario.Correo),
-            new(ClaimTypes.Role,           usuario.Rol.ToString()),
-            new(AppClaims.Rol,             usuario.Rol.ToString()),
+            new(ClaimTypes.Email,          usuario.Correo)
         };
-        foreach (var instId in usuario.Instituciones)
-            claims.Add(new Claim(AppClaims.Institucion, instId.ToString()));
+        
+        if (usuario.Asignaciones.Count > 0)
+        {
+            var asignacionesJson = JsonSerializer.Serialize(usuario.Asignaciones);
+            claims.Add(new Claim(AppClaims.AsignacionesJson, asignacionesJson));
+
+            // Set the first assignment as the active context by default
+            var active = usuario.Asignaciones[0];
+            claims.Add(new Claim(ClaimTypes.Role,           active.Rol));
+            claims.Add(new Claim(AppClaims.ActiveRol,       active.Rol));
+            claims.Add(new Claim(AppClaims.ActiveInstitucion, active.InstitucionId));
+            if (active.AreaId != null) claims.Add(new Claim(AppClaims.ActiveArea, active.AreaId));
+            if (active.UnidadId != null) claims.Add(new Claim(AppClaims.ActiveUnidad, active.UnidadId));
+        }
+        else
+        {
+            claims.Add(new Claim(ClaimTypes.Role,           usuario.RolGlobal));
+            claims.Add(new Claim(AppClaims.ActiveRol,       usuario.RolGlobal));
+        }
 
         var identity  = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);

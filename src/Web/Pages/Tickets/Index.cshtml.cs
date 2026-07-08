@@ -9,7 +9,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public EstadoTicket?    Estado    { get; private set; }
     public PrioridadTicket? Prioridad { get; private set; }
-    public int?             InstitucionId { get; private set; }
+    public string?             InstitucionId { get; private set; }
     public bool             Mias      { get; private set; }
     public bool             MisTemas  { get; private set; }
     public bool             SoloVencidos { get; private set; }
@@ -21,20 +21,21 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
     public bool             EsTecnicoRestringido { get; private set; }
     public string           Vista     { get; private set; } = "temas"; // "temas" | "mios"
 
-    public async Task OnGetAsync(EstadoTicket? estado, PrioridadTicket? prioridad, int? institucionId, bool mias, bool misTemas, bool soloVencidos, string? vista, string? q, int? pg, CancellationToken ct)
+    public async Task OnGetAsync(EstadoTicket? estado, PrioridadTicket? prioridad, string? institucionId, bool mias, bool misTemas, bool soloVencidos, string? vista, string? q, int? pg, CancellationToken ct)
     {
         Estado = estado; Prioridad = prioridad; InstitucionId = institucionId; SoloVencidos = soloVencidos; Q = q;
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
 
         EsTecnicoRestringido =
-            User.IsInRole(nameof(RolUsuario.Tecnico))
-            && !User.IsInRole(nameof(RolUsuario.Administrador))
-            && !User.IsInRole(nameof(RolUsuario.Coordinador));
+            !User.IsInRole(nameof(RolUsuario.Administrador))
+            && !User.IsInRole(nameof(RolUsuario.JefeInstitucion))
+            && !User.IsInRole(nameof(RolUsuario.JefeArea))
+            && !User.IsInRole(nameof(RolUsuario.JefeUnidad));
 
-        int? asignado;
+        Guid? asignado;
         IReadOnlyList<int>? temaIds = null;
 
-        if (EsTecnicoRestringido && currentUser.UserId is int tid)
+        if (EsTecnicoRestringido && currentUser.UserId is Guid tid)
         {
             // Dos vistas exclusivas; sin acceso a "todos".
             Vista = vista == "mios" ? "mios" : "temas";
@@ -55,7 +56,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             // Admin/Coordinador: filtros opcionales, con acceso a todo su alcance institucional.
             Mias = mias; MisTemas = misTemas;
             asignado = mias ? currentUser.UserId : null;
-            if (misTemas && currentUser.UserId is int uid)
+            if (misTemas && currentUser.UserId is Guid uid)
             {
                 temaIds = await usuarioRepo.GetTemaIdsAsync(uid, ct);
                 SinTemas = temaIds.Count == 0;
@@ -70,7 +71,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.Coordinador)))
+        if (User.IsInRole(nameof(RolUsuario.Empleado)) || User.IsInRole(nameof(RolUsuario.Consultor)))
             return Forbid();
         await sender.Send(new EliminarTicketCommand(id), ct);
         TempData["SuccessMsg"] = "Ticket eliminado.";

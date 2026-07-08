@@ -438,14 +438,20 @@
 
       <div class="nav">
         <button class="btn btn-s" onclick="ir(5)">← Anterior</button>
-        <button class="btn btn-p" onclick="guardar()">Guardar expediente</button>
+        @if (User.CanMutate())
+        {
+            <button class="btn btn-p" onclick="guardar()">💾 Guardar expediente</button>
+        }
       </div>
     </div>
 
   </main>
 </div>
 
-<button class="btn-save-float" type="button" onclick="guardar()">Guardar</button>
+@if (User.CanMutate())
+{
+    <button class="btn-save-float" type="button" onclick="guardar()">💾 Guardar</button>
+}
 <div class="toast" id="toast"></div>
 
 @* ── Detalle de nodo de flujo (visor; ids consumidos por expediente.js → showNodeModal) ── *@

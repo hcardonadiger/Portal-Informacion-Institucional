@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
@@ -37,17 +38,16 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     public async Task<IActionResult> OnPostAsync(int? id, [FromBody] OriginalExpedienteDto datos, CancellationToken ct)
     {
         // Autorización por rol (Razor Pages no aplica [Authorize] a nivel de handler).
-        // Admin/Coordinador/Técnico pueden gestionar; el alcance institucional (filtro + validación
-        // en CrearExpediente) limita sobre qué instituciones pueden actuar.
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.Coordinador))
-            && !User.IsInRole(nameof(RolUsuario.Tecnico)))
+        // Admin, Jefes y Empleado pueden mutar; el alcance institucional (filtro + validación
+        // en CrearExpediente) limita sobre qué instituciones pueden actuar. Consultor es solo lectura.
+        if (!User.CanMutate())
             return Forbid();
 
         // Resolver la institución (el editor envía el nombre)
         var instituciones = await institucionRepo.GetAllActivasAsync(ct);
         var inst = instituciones.FirstOrDefault(i =>
             string.Equals(i.Nombre, datos.Inst?.Trim(), StringComparison.OrdinalIgnoreCase));
-        var institucionId = inst?.Id ?? 0;
+        var institucionId = inst?.Id ?? string.Empty;
 
         var input = OriginalShapeMapper.ToInput(datos, institucionId);
 

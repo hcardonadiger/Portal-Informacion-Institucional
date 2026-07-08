@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Application.Common.Catalogs;
 
 namespace Diger.TramitesEstado.Application.Expedientes.Queries.GetCatalogos;
 
-public sealed record InstitucionOpcion(int Id, string Nombre);
+public sealed record InstitucionOpcion(string Id, string Nombre);
 public sealed record InfraGrupoDto(string Grupo, IReadOnlyList<string> Items);
 
 public sealed record CatalogosDto(

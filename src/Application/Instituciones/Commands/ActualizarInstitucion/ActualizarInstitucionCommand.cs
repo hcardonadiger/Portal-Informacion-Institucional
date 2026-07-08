@@ -4,7 +4,7 @@ using Diger.TramitesEstado.Application.Instituciones.Commands.CrearInstitucion;
 
 namespace Diger.TramitesEstado.Application.Instituciones.Commands.ActualizarInstitucion;
 
-public sealed record ActualizarInstitucionCommand(int Id, string Nombre, bool Activo, List<string> Tramites)
+public sealed record ActualizarInstitucionCommand(string Id, string Nombre, bool Activo, List<string> Tramites)
     : IRequest<Unit>;
 
 public sealed class ActualizarInstitucionCommandHandler(
@@ -34,7 +34,7 @@ public sealed class ActualizarInstitucionCommandValidator : AbstractValidator<Ac
 {
     public ActualizarInstitucionCommandValidator()
     {
-        RuleFor(x => x.Id).GreaterThan(0);
+        RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Nombre).NotEmpty().MaximumLength(120);
         RuleForEach(x => x.Tramites).MaximumLength(400);
     }

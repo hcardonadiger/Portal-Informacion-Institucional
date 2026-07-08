@@ -3,8 +3,8 @@
 @{
     ViewData["Title"] = "Expedientes de Digitalización";
 
-    var puedeGestionar = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador)) || User.IsInRole(nameof(RolUsuario.Tecnico));
-    var puedeEliminar  = User.IsInRole(nameof(RolUsuario.Administrador)) || User.IsInRole(nameof(RolUsuario.Coordinador));
+    var puedeGestionar = User.CanMutate();
+    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
 
     static (string cls, string txt) Wf(EstadoExpediente e) => e switch
     {

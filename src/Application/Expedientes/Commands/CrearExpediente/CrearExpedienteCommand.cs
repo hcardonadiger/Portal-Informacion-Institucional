@@ -20,7 +20,7 @@ public sealed class CrearExpedienteCommandHandler(
             throw new DomainException("Debe seleccionar una institución dentro de su alcance asignado.");
         var codigo = await GenerarCodigoAsync(d.Institucion, ct);
 
-        var exp = Expediente.Crear(codigo, d.InstitucionId, d.Institucion, d.Analista);
+        var exp = Expediente.Crear(codigo, d.InstitucionId, d.Institucion, null, null, d.Analista);
         ExpedienteMapper.Aplicar(exp, d);
         exp.OrigenExternoId = cmd.OrigenExternoId;
 
@@ -52,7 +52,7 @@ public sealed class CrearExpedienteCommandValidator : AbstractValidator<CrearExp
 {
     public CrearExpedienteCommandValidator()
     {
-        RuleFor(x => x.Datos.InstitucionId).GreaterThan(0).WithMessage("Seleccione una institución.");
+        RuleFor(x => x.Datos.InstitucionId).NotEmpty().WithMessage("Seleccione una institución.");
         RuleFor(x => x.Datos.Institucion).NotEmpty().MaximumLength(120);
         RuleFor(x => x.Datos.Analista).NotEmpty().MaximumLength(150)
             .WithMessage("Indique el analista responsable.");

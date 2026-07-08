@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.WebUtilities;
+using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
@@ -15,14 +16,11 @@ public sealed class CompromisosModel(
 
     public string?           Q             { get; private set; }
     public EstadoCompromiso? Estado        { get; private set; }
-    public int?              InstitucionId { get; private set; }
+    public string?              InstitucionId { get; private set; }
     public string?           Responsable   { get; private set; }
     public bool              SoloVencidos  { get; private set; }
 
-    public bool PuedeGestionar =>
-        User.IsInRole(nameof(RolUsuario.Administrador)) ||
-        User.IsInRole(nameof(RolUsuario.Coordinador)) ||
-        User.IsInRole(nameof(RolUsuario.Tecnico));
+    public bool PuedeGestionar => User.CanMutate();
 
     private async Task<IReadOnlyList<Institucion>> InstitucionesEnAlcanceAsync(CancellationToken ct)
     {
@@ -32,8 +30,10 @@ public sealed class CompromisosModel(
     }
 
     public async Task OnGetAsync(
-        string? q, EstadoCompromiso? estado, int? institucionId, string? responsable,
+
+        string? q, EstadoCompromiso? estado, string? institucionId, string? responsable,
         bool soloVencidos, int? pg, CancellationToken ct)
+
     {
         Q = q; Estado = estado; InstitucionId = institucionId; Responsable = responsable; SoloVencidos = soloVencidos;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
@@ -45,7 +45,7 @@ public sealed class CompromisosModel(
 
     public async Task<IActionResult> OnPostActualizarAsync(
         int id, EstadoCompromiso estado, DateOnly? fechaCumplimiento, string? nota,
-        string? q, EstadoCompromiso? festado, int? finstitucionId, string? fresponsable, bool fsoloVencidos, int? fpage,
+        string? q, EstadoCompromiso? festado, string? finstitucionId, string? fresponsable, bool fsoloVencidos, int? fpage,
         CancellationToken ct)
     {
         if (!PuedeGestionar) return Forbid();

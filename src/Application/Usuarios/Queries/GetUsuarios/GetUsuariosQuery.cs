@@ -19,9 +19,11 @@ public sealed class GetUsuariosQueryHandler(IApplicationDbContext ctx)
 
         var total = await baseq.CountAsync(ct);
         var items = await baseq
-            .OrderBy(u => u.Rol).ThenBy(u => u.Nombre)
+            .OrderBy(u => u.Nombre)
             .Skip((page - 1) * size).Take(size)
-            .Select(u => new UsuarioListItemDto(u.Id, u.Nombre, u.Correo, u.Rol, u.Activo, u.CreatedAt))
+            .Select(u => new UsuarioListItemDto(u.Id, u.Nombre, u.Correo, 
+                ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).Select(a => a.Rol).FirstOrDefault() ?? "Empleado", 
+                u.Activo, u.CreatedAt))
             .ToListAsync(ct);
 
         return new PagedResult<UsuarioListItemDto>(items, total, page, size);

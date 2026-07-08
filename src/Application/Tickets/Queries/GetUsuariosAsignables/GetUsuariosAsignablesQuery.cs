@@ -13,6 +13,7 @@ public sealed class GetUsuariosAsignablesQueryHandler(IApplicationDbContext ctx)
             .AsNoTracking()
             .Where(u => u.Activo)
             .OrderBy(u => u.Nombre)
-            .Select(u => new UsuarioAsignableDto(u.Id, u.Nombre, u.Rol))
+            .Select(u => new UsuarioAsignableDto(u.Id, u.Nombre, 
+                ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).Select(a => a.Rol).FirstOrDefault() ?? "Empleado"))
             .ToListAsync(ct);
 }

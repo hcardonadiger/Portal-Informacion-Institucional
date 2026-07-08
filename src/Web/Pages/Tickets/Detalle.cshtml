@@ -103,7 +103,9 @@
                     </div>
                 }
 
-                <form method="post" asp-page-handler="Comentar" asp-route-id="@t.Id" enctype="multipart/form-data" style="margin-top:1rem">
+                @if (User.CanMutate())
+                {
+                    <form method="post" asp-page-handler="Comentar" asp-route-id="@t.Id" enctype="multipart/form-data" style="margin-top:1rem">
                     <div class="field" style="margin-bottom:.5rem">
                         <textarea name="texto" rows="2" placeholder="Escribe un comentario…" required></textarea>
                     </div>
@@ -120,6 +122,7 @@
                     </div>
                     <button class="btnp" type="submit" style="font-size:13px">Comentar</button>
                 </form>
+                }
             </div>
         </main>
 

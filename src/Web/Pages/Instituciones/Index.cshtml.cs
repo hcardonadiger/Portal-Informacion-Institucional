@@ -12,7 +12,7 @@ public sealed class IndexModel(ISender sender) : PageModel
         Resultado = await sender.Send(new GetInstitucionesQuery(q, pg), ct);
     }
 
-    public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
+    public async Task<IActionResult> OnPostEliminarAsync(string id, CancellationToken ct)
     {
         try
         {

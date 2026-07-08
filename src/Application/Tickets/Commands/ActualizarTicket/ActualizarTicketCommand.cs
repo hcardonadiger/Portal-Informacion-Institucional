@@ -33,14 +33,14 @@ public sealed class ActualizarTicketCommandHandler(
 
         t.InstitucionId    = institucionId;
         t.Institucion      = exp?.Institucion
-            ?? (institucionId is int iid ? (await institucionRepo.GetByIdAsync(iid, ct))?.Nombre : null);
+            ?? (!string.IsNullOrWhiteSpace(institucionId) ? (await institucionRepo.GetByIdAsync(institucionId, ct))?.Nombre : null);
         t.ExpedienteId     = exp?.Id;
         t.ExpedienteCodigo = exp?.Codigo;
 
         // Trámites afectados: solo los del catálogo de la institución del ticket (integridad).
-        if (institucionId is int itid && d.TramiteIds.Count > 0)
+        if (!string.IsNullOrWhiteSpace(institucionId) && d.TramiteIds.Count > 0)
         {
-            var catalogo = await institucionRepo.GetTramitesAsync(itid, ct);
+            var catalogo = await institucionRepo.GetTramitesAsync(institucionId, ct);
             t.EstablecerTramites(catalogo
                 .Where(td => d.TramiteIds.Contains(td.Id))
                 .Select(td => ((int?)td.Id, td.Nombre)));

@@ -11,6 +11,7 @@ internal static class ContactoFeeder
         IApplicationDbContext ctx, IUnitOfWork uow, CancellationToken ct)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var reunionInst = !string.IsNullOrWhiteSpace(r.InstitucionId) ? await instRepo.GetByIdAsync(r.InstitucionId, ct) : null;
 
         foreach (var a in r.Asistentes)
         {
@@ -56,7 +57,7 @@ internal static class ContactoFeeder
             }
 
             await contactoRepo.AddAsync(
-                Contacto.Crear(nombre, inst.Id, inst.Nombre, cargo, correo, telefono,
+                Contacto.Crear(a.Nombre, inst.Id, inst.Nombre, null, null, a.Cargo, correo, a.Telefono,
                     $"Registrado desde reunión: {r.Titulo}", OrigenContacto.Reunion), ct);
         }
     }

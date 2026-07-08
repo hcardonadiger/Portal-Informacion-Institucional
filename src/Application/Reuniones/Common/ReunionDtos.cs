@@ -35,6 +35,8 @@ public sealed class ReunionFormDto
     public string?   Duracion  { get; set; }
     public string?   Modalidad { get; set; }
     public string?   Lugar     { get; set; }
+
+    public string?   InstitucionId { get; set; }
     /// <summary>Instituciones convocadas a la reunión (acumulable). La primera queda como
     /// institución principal (alcance, acta, tablero).</summary>
     public List<int> InstitucionesIds { get; set; } = [];

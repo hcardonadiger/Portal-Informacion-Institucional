@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Application.Tickets.Commands.AsignarTicket;
 
-public sealed record AsignarTicketCommand(int Id, int? UsuarioId) : IRequest<Unit>;
+public sealed record AsignarTicketCommand(int Id, Guid? UsuarioId) : IRequest<Unit>;
 
 public sealed class AsignarTicketCommandHandler(
     ITicketRepository repo, IUsuarioRepository usuarioRepo, ICurrentUserService currentUser, IUnitOfWork uow)
@@ -14,7 +14,7 @@ public sealed class AsignarTicketCommandHandler(
             ?? throw new NotFoundException(nameof(Ticket), cmd.Id);
 
         string? nombre = null;
-        if (cmd.UsuarioId is int uid)
+        if (cmd.UsuarioId is Guid uid)
             nombre = (await usuarioRepo.GetByIdAsync(uid, ct))?.Nombre;
 
         var autor = currentUser.Nombre ?? currentUser.Correo ?? "Sistema";

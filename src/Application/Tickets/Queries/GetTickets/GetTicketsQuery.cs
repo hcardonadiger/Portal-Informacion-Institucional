@@ -5,8 +5,8 @@ namespace Diger.TramitesEstado.Application.Tickets.Queries.GetTickets;
 public sealed record GetTicketsQuery(
     EstadoTicket? Estado = null,
     PrioridadTicket? Prioridad = null,
-    int? InstitucionId = null,
-    int? AsignadoAId = null,
+    string? InstitucionId = null,
+    Guid? AsignadoAId = null,
     string? Q = null,
     int? Page = null,
     int? Size = null,

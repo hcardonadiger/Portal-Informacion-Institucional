@@ -51,7 +51,7 @@ public sealed record SeccionInput(int Seccion, EstadoSeccion Estado, string? Not
 
 // ── DTO raíz de entrada ───────────────────────────────────────────────────
 public sealed record ExpedienteInputDto(
-    int      InstitucionId,
+    string   InstitucionId,
     string   Institucion,
     DateOnly? FechaApertura,
     string   Analista,

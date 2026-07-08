@@ -5,11 +5,15 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// (formulario de 7 secciones); las propiedades escalares son asignables y las
 /// colecciones hijas se reemplazan en bloque al actualizar.
 /// </summary>
-public sealed class Expediente : BaseAuditableEntity
+public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     // ── Identificación (controlada) ───────────────────────────────
     public string Codigo        { get; private set; } = default!;
-    public int    InstitucionId { get; private set; }
+    public string InstitucionId { get; private set; } = default!;
+    public string? AreaId       { get; private set; }
+    public string? UnidadId     { get; private set; }
     public string Institucion   { get; private set; } = default!; // snapshot
 
     /// <summary>Id del registro origen (p. ej. Supabase) cuando el expediente fue importado.
@@ -92,17 +96,19 @@ public sealed class Expediente : BaseAuditableEntity
 
     private Expediente() { }
 
-    public static Expediente Crear(string codigo, int institucionId, string institucionNombre, string analista)
+    public static Expediente Crear(string codigo, string institucionId, string? areaId, string? unidadId, string institucionNombre, string analista)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(codigo);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(institucionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(institucionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(institucionNombre);
         ArgumentException.ThrowIfNullOrWhiteSpace(analista);
 
         var e = new Expediente
         {
             Codigo        = codigo.Trim().ToUpperInvariant(),
-            InstitucionId = institucionId,
+            InstitucionId = institucionId.Trim().ToUpper(),
+            AreaId        = areaId?.Trim().ToUpper(),
+            UnidadId      = unidadId?.Trim().ToUpper(),
             Institucion   = institucionNombre.Trim(),
             Analista      = analista.Trim()
         };

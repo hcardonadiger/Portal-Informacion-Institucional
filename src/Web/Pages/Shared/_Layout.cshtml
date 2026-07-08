@@ -1,11 +1,22 @@
 @using Diger.TramitesEstado.Application.Accesos
+@using System.Security.Claims
+@using System.Text.Json
+@using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario
+@using Diger.TramitesEstado.Infrastructure.Security
 @inject Diger.TramitesEstado.Web.Common.AccesoModulosService Acceso
+@inject Diger.TramitesEstado.Web.Common.JerarquiaUiService JerarquiaUi
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — DIGER</title>
+
+    @* Token Anti-CSRF disponible para peticiones AJAX/Fetch futuras *@
+    @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+    @{ var token = Antiforgery.GetAndStoreTokens(Context).RequestToken; }
+    <meta name="csrf-token" content="@token" />
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/diger.css" asp-append-version="true" />
 </head>
@@ -74,6 +85,97 @@
                     }
                 </nav>
                 <div class="topnav-user">
+                    @{
+                        var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
+                        List<Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario.AsignacionAuthDto>? asignaciones = null;
+                        if (!string.IsNullOrWhiteSpace(asignacionesJson))
+                        {
+                            try { asignaciones = JsonSerializer.Deserialize<List<Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario.AsignacionAuthDto>>(asignacionesJson); }
+                            catch { }
+                        }
+                    }
+
+                    @{
+                        var rolFiltro = User.FindFirstValue(AppClaims.ActiveRol);
+                        bool showAsignaciones = asignaciones != null && asignaciones.Count > 1;
+                        bool showJerarquia = rolFiltro == "JefeInstitucion" || rolFiltro == "JefeArea";
+                    }
+
+                    @if (showAsignaciones || showJerarquia)
+                    {
+                        <div class="topnav-context" style="margin-right: 15px;">
+                            @if (showAsignaciones)
+                            {
+                                var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
+                                var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+                                var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
+                                var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
+                                int currentIndex = asignaciones!.FindIndex(a => 
+                                    a.InstitucionId == activeInst && a.AreaId == activeArea && 
+                                    a.UnidadId == activeUnidad && a.Rol == activeRol);
+
+                                <form method="post" asp-page="/Cuenta/CambiarContexto">
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <select name="indiceSeleccionado" onchange="this.form.submit()">
+                                        @for (int i = 0; i < asignaciones.Count; i++)
+                                        {
+                                            var a = asignaciones[i];
+                                            var label = $"{a.Rol} - {a.InstitucionId}" + (a.AreaId != null ? $" / {a.AreaId}" : "") + (a.UnidadId != null ? $" / {a.UnidadId}" : "");
+                                            if (i == currentIndex) { <option value="@i" selected>@label</option> }
+                                            else { <option value="@i">@label</option> }
+                                        }
+                                    </select>
+                                </form>
+                            }
+
+                            @if (showAsignaciones && showJerarquia)
+                            {
+                                <div class="topnav-context-div"></div>
+                            }
+
+                            @if (showJerarquia)
+                            {
+                                var currentArea = User.FindFirstValue(AppClaims.ActiveArea);
+                                var currentUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+                                
+                                <form method="post" asp-page="/Cuenta/CambiarFiltroJerarquia">
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    
+                                    @if (rolFiltro == "JefeInstitucion")
+                                    {
+                                        var areas = await JerarquiaUi.GetAreasAsync();
+                                        <select name="areaId" onchange="this.form.submit()">
+                                            <option value="">-- Toda la Institución --</option>
+                                            @foreach (var a in areas)
+                                            {
+                                                if (a.Id == currentArea) { <option value="@a.Id" selected>@a.Nombre</option> }
+                                                else { <option value="@a.Id">@a.Nombre</option> }
+                                            }
+                                        </select>
+                                    }
+                                    else if (rolFiltro == "JefeArea")
+                                    {
+                                        <input type="hidden" name="areaId" value="@currentArea" />
+                                    }
+
+                                    @if ((rolFiltro == "JefeInstitucion" && !string.IsNullOrEmpty(currentArea)) || rolFiltro == "JefeArea")
+                                    {
+                                        @if (rolFiltro == "JefeInstitucion") { <div class="topnav-context-div"></div> }
+                                        var unidades = await JerarquiaUi.GetUnidadesAsync(currentArea);
+                                        <select name="unidadId" onchange="this.form.submit()">
+                                            <option value="">-- Todas las Unidades --</option>
+                                            @foreach (var u in unidades)
+                                            {
+                                                if (u.Id == currentUnidad) { <option value="@u.Id" selected>@u.Nombre</option> }
+                                                else { <option value="@u.Id">@u.Nombre</option> }
+                                            }
+                                        </select>
+                                    }
+                                </form>
+                            }
+                        </div>
+                    }
+
                     <span class="topnav-name">@User.Identity!.Name</span>
                     <span class="topnav-rol">@(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>
                     <form method="post" asp-page="/Cuenta/Logout" style="display:inline">
