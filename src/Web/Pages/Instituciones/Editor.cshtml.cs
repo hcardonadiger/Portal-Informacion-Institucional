@@ -6,14 +6,15 @@ public sealed class EditorModel(ISender sender) : PageModel
     public string? InstId { get; private set; }
     public InstitucionDetailDto? Detalle { get; private set; }
 
-    [BindProperty] public string  Id           { get; set; } = string.Empty;
+    private string _id = string.Empty;
+    [BindProperty] public string Id { get => _id; set => _id = value?.ToUpperInvariant() ?? string.Empty; }
     [BindProperty] public string  Nombre       { get; set; } = string.Empty;
     [BindProperty] public bool    Activo       { get; set; } = true;
     [BindProperty] public string? TramitesText { get; set; }
 
     public string? Error { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(string? id, CancellationToken ct)
+    public async Task<IActionResult> OnGetAsync([FromRoute] string? id, CancellationToken ct)
     {
         if (id is null) return Page();
 
@@ -34,7 +35,7 @@ public sealed class EditorModel(ISender sender) : PageModel
         }
     }
 
-    public async Task<IActionResult> OnPostAsync(string? id, CancellationToken ct)
+    public async Task<IActionResult> OnPostAsync([FromRoute] string? id, CancellationToken ct)
     {
         InstId = id;
         if (!ModelState.IsValid) return Page();

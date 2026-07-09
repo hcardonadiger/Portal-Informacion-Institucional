@@ -28,6 +28,9 @@
                 <a class="topnav-brand" asp-page="/Tableros/Index">
                     <img src="~/img/logo_diger.png" asp-append-version="true" class="topnav-logo-img" alt="DIGER" />
                 </a>
+                <button class="topnav-toggle" type="button" aria-label="Menú">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
                 <nav class="topnav-links">
                     @{
                         var puedeTableros    = await Acceso.PuedeAsync(ModulosPortal.Tableros);
@@ -70,7 +73,18 @@
                     @if (puedeContactos) { <a asp-page="/Contactos/Index">Contactos</a> }
                     @if (Acceso.EsAdministrador)
                     {
-                        <a asp-page="/Instituciones/Index">Instituciones</a>
+                        <div class="topnav-dropdown">
+                            <a href="javascript:void(0)" class="topnav-dropdown-trigger">
+                                Organización <span class="topnav-chevron">&#9662;</span>
+                            </a>
+                            <div class="topnav-dropdown-menu">
+                                <div class="topnav-dropdown-menu-inner">
+                                    <a asp-page="/Instituciones/Index">Instituciones</a>
+                                    <a asp-page="/Areas/Index">Áreas</a>
+                                    <a asp-page="/Unidades/Index">Unidades</a>
+                                </div>
+                            </div>
+                        </div>
                         <div class="topnav-dropdown">
                             <a href="javascript:void(0)" class="topnav-dropdown-trigger">
                                 Seguridad <span class="topnav-chevron">&#9662;</span>

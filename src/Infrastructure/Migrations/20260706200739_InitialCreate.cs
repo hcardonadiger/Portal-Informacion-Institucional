@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -289,6 +289,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     Telefono = table.Column<string>(type: "nvarchar(40)", maxLength: 40, nullable: true),
                     Notas = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     Origen = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Activo = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),

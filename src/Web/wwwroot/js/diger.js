@@ -34,6 +34,15 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
+/* ── Mobile Nav Toggle ───────────────────────────────────────────────── */
+document.addEventListener('click', function (e) {
+    var toggleBtn = e.target.closest('.topnav-toggle');
+    if (toggleBtn) {
+        var links = document.querySelector('.topnav-links');
+        if (links) links.classList.toggle('open');
+    }
+});
+
 /* ── Confirmar antes de enviar (data-confirm="mensaje" en el botón) ──── */
 document.addEventListener('submit', function (e) {
     var btn = e.submitter;
