@@ -55,7 +55,14 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
 
     public void VincularCertificado(string? thumbprint)
     {
-        CertificadoThumbprint = string.IsNullOrWhiteSpace(thumbprint) ? null : thumbprint.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(thumbprint))
+        {
+            CertificadoThumbprint = null;
+        }
+        else
+        {
+            CertificadoThumbprint = System.Text.RegularExpressions.Regex.Replace(thumbprint, @"[^\da-fA-F]", "").ToUpperInvariant();
+        }
     }
 
     public void Desactivar() => Activo = false;

@@ -1,0 +1,22 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Cuenta.LoginCertificadoModel
+@{
+    ViewData["Title"] = "Validando certificado...";
+    Layout = "_Layout";
+}
+
+<div class="container" style="max-width:440px">
+    <div class="card" style="margin-top:2rem;text-align:center">
+        <h2 style="color:#0a2d6e;font-size:20px;margin-bottom:1rem">Autenticación con Certificado</h2>
+        
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="alert-error" style="text-align:left;margin-bottom:1rem">@Model.Error</div>
+            <a href="https://localhost:49175/Cuenta/Login" class="btnp">Volver al inicio de sesión</a>
+        }
+        else
+        {
+            <p style="color:#6b7fa3;font-size:14px">Procesando tu certificado digital...</p>
+        }
+    </div>
+</div>

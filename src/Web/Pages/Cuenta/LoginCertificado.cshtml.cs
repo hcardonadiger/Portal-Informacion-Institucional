@@ -2,35 +2,38 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using MediatR;
+using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [AllowAnonymous]
-public sealed class LoginModel(ISender sender) : PageModel
+public sealed class LoginCertificadoModel(ISender sender) : PageModel
 {
-    [BindProperty] public string Correo   { get; set; } = string.Empty;
-    [BindProperty] public string Password { get; set; } = string.Empty;
+    public string? Error { get; set; }
 
-    public string? ReturnUrl { get; set; }
-    public string? Error     { get; set; }
-
-    public void OnGet(string? returnUrl = null) => ReturnUrl = returnUrl;
-
-    public async Task<IActionResult> OnPostAsync(string? returnUrl, CancellationToken ct)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl, CancellationToken ct)
     {
-        ReturnUrl = returnUrl;
+        var clientCert = await HttpContext.Connection.GetClientCertificateAsync();
+        if (clientCert is null)
+        {
+            Error = "No se detectó un certificado digital válido o el navegador no lo envió. Por favor intenta de nuevo o ingresa con correo y contraseña.";
+            return Page();
+        }
 
-        var usuario = await sender.Send(new AutenticarUsuarioQuery(Correo, Password), ct);
+        var usuario = await sender.Send(new AutenticarUsuarioCertificadoQuery(clientCert.Thumbprint), ct);
         if (usuario is null)
         {
-            Error = "Correo o contraseña incorrectos.";
+            Error = $"El certificado proporcionado (Huella: {clientCert.Thumbprint}) no está vinculado a ningún usuario activo.";
             return Page();
         }
 
         return await SignInUsuarioAsync(usuario, returnUrl);
     }
-
 
     private async Task<IActionResult> SignInUsuarioAsync(UsuarioAuthDto usuario, string? returnUrl)
     {
@@ -47,7 +50,6 @@ public sealed class LoginModel(ISender sender) : PageModel
             var asignacionesJson = JsonSerializer.Serialize(usuario.Asignaciones);
             claims.Add(new Claim(AppClaims.AsignacionesJson, asignacionesJson));
 
-            // Set the first assignment as the active context by default
             var active = usuario.Asignaciones[0];
             claims.Add(new Claim(ClaimTypes.Role,           active.Rol));
             claims.Add(new Claim(AppClaims.ActiveRol,       active.Rol));
@@ -69,9 +71,29 @@ public sealed class LoginModel(ISender sender) : PageModel
             principal,
             new AuthenticationProperties { IsPersistent = true });
 
-        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-            return LocalRedirect(returnUrl);
+        // Redirigir siempre de vuelta al puerto original o al returnUrl relativo al dominio.
+        // Como la cookie está asociada al localhost en general, funcionará perfectamente en el puerto 49175.
+        var finalUrl = !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) 
+            ? returnUrl 
+            : "/Tableros/Index";
 
-        return RedirectToPage("/Tableros/Index");
+        // Si estamos en localhost y acabamos en el puerto 49176, lo mejor es forzar la vuelta al puerto normal
+        var host = Request.Host.Host;
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        
+        if (environment == "Development" && host == "localhost")
+        {
+            return Redirect($"https://localhost:49175{finalUrl}");
+        }
+
+        // Si es prod y usamos subdominio, deberíamos forzar la vuelta al dominio principal. 
+        // Para simplificar, si estamos en cert.dominio.com volvemos a dominio.com
+        if (host.StartsWith("cert."))
+        {
+            var mainDomain = host.Substring(5);
+            return Redirect($"https://{mainDomain}{finalUrl}");
+        }
+
+        return LocalRedirect(finalUrl);
     }
 }

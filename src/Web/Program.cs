@@ -8,14 +8,41 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.ConfigureKestrel(options =>
+builder.WebHost.ConfigureKestrel((context, options) =>
 {
-    options.ConfigureHttpsDefaults(httpsOptions =>
+    if (context.HostingEnvironment.IsDevelopment())
     {
-        httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.AllowCertificate;
-        // Permitir certificados de prueba autofirmados (Solo para desarrollo)
-        //httpsOptions.ClientCertificateValidation = (certificate2, validationChain, policyErrors) => true;
-    });
+        // Puerto HTTPS principal (para navegación sin alertas)
+        options.ListenLocalhost(49175, listenOptions =>
+        {
+            listenOptions.UseHttps(httpsOptions =>
+            {
+                httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.NoCertificate;
+            });
+        });
+
+        // Puerto HTTPS de Autenticación (para pedir el certificado)
+        options.ListenLocalhost(49176, listenOptions =>
+        {
+            listenOptions.UseHttps(httpsOptions =>
+            {
+                httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.RequireCertificate;
+                // En desarrollo, permitimos certificados autofirmados (el certificado dev local)
+                httpsOptions.ClientCertificateValidation = (certificate2, validationChain, policyErrors) => true;
+            });
+        });
+
+        // Puerto HTTP local
+        options.ListenLocalhost(49177);
+    }
+    else
+    {
+        // En producción (si Kestrel es el servidor de borde, no IIS/Proxy)
+        options.ConfigureHttpsDefaults(httpsOptions =>
+        {
+            httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.NoCertificate;
+        });
+    }
 });
 
 builder.Services
