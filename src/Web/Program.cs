@@ -8,6 +8,16 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ConfigureHttpsDefaults(httpsOptions =>
+    {
+        httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.AllowCertificate;
+        // Permitir certificados de prueba autofirmados (Solo para desarrollo)
+        //httpsOptions.ClientCertificateValidation = (certificate2, validationChain, policyErrors) => true;
+    });
+});
+
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);

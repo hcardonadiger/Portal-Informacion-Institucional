@@ -15,6 +15,6 @@ public sealed class GetUsuarioByIdQueryHandler(IUsuarioRepository repo, IApplica
         var asignaciones = await repo.GetAsignacionesAsync(u.Id, ct);
         var temaIds       = await repo.GetTemaIdsAsync(u.Id, ct);
         var rol = await ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).Select(a => a.Rol).FirstOrDefaultAsync(ct) ?? "Empleado";
-        return new UsuarioDetailDto(u.Id, u.Nombre, u.Correo, rol, u.Activo, asignaciones, temaIds);
+        return new UsuarioDetailDto(u.Id, u.Nombre, u.Correo, rol, u.Activo, u.CertificadoThumbprint, asignaciones, temaIds);
     }
 }

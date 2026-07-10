@@ -3,7 +3,7 @@ using Diger.TramitesEstado.Domain.Enums;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.CrearUsuario;
 
-public sealed record CrearUsuarioCommand(string Nombre, string Correo, string Password)
+public sealed record CrearUsuarioCommand(string Nombre, string Correo, string Password, string? CertificadoThumbprint = null)
     : IRequest<Guid>;
 
 public sealed class CrearUsuarioCommandHandler(
@@ -16,6 +16,9 @@ public sealed class CrearUsuarioCommandHandler(
             throw new DomainException($"Ya existe un usuario con el correo {cmd.Correo.Trim().ToLowerInvariant()}.");
 
         var u = Usuario.Crear(cmd.Nombre, cmd.Correo, hasher.Hash(cmd.Password));
+        if (!string.IsNullOrWhiteSpace(cmd.CertificadoThumbprint))
+            u.VincularCertificado(cmd.CertificadoThumbprint);
+
         await repo.AddAsync(u, ct);
         await uow.SaveChangesAsync(ct);
         return u.Id;

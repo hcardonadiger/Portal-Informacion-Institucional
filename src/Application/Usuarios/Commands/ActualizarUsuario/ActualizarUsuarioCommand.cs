@@ -4,7 +4,7 @@ using Diger.TramitesEstado.Domain.Enums;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.ActualizarUsuario;
 
-public sealed record ActualizarUsuarioCommand(Guid Id, string Nombre, string Correo, bool Activo)
+public sealed record ActualizarUsuarioCommand(Guid Id, string Nombre, string Correo, bool Activo, string? CertificadoThumbprint = null)
     : IRequest<Unit>;
 
 public sealed class ActualizarUsuarioCommandHandler(IUsuarioRepository repo, IUnitOfWork uow)
@@ -20,6 +20,8 @@ public sealed class ActualizarUsuarioCommandHandler(IUsuarioRepository repo, IUn
 
         u.Renombrar(cmd.Nombre);
         u.CambiarCorreo(cmd.Correo);
+        u.VincularCertificado(cmd.CertificadoThumbprint);
+        
         if (cmd.Activo) u.Activar(); else u.Desactivar();
 
         repo.Update(u);

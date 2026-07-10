@@ -14,7 +14,7 @@ Este documento es la **fuente de verdad** del estado técnico y funcional del si
 | Mensajería | MediatR 12.4.1 | Todos los casos de uso son `IRequest<T>` manejados por `IRequestHandler` |
 | Validación | FluentValidation 11.11 | Validadores por Command; `ValidationBehavior` los corre antes del handler |
 | Persistencia | EF Core 9 + SQL Server | Migraciones gestionadas desde proyecto `Infrastructure` |
-| Autenticación | Cookie Auth (ASP.NET Core) | Hash PBKDF2-SHA256; sin Identity framework |
+| Autenticación | Cookie Auth y Certificado | Hash PBKDF2-SHA256; login opcional vía Certificado Digital (X.509). |
 | Caché | `IMemoryCache` (en proceso) | Para catálogos estáticos; integrado via `CachingBehavior` |
 | Front-end JS | Vanilla JS + jQuery (local) | Sin frameworks SPA; jQuery 3.7.1 alojado localmente en `wwwroot/lib/jquery/` |
 | Gráficas | Chart.js (local) | Alojado en `wwwroot/lib/chart/`; sin CDN externo |
@@ -205,6 +205,12 @@ Lee todos los claims del `IHttpContextAccessor`. Propiedades clave:
 - `PuedeAccederInstitucion(id)` → valida que el contexto activo corresponda a la institución indicada
 - `InstitucionesAsignadas` → deserializa `AsignacionesJson` para obtener la colección completa
 
+### Autenticación con Certificado Digital
+Los usuarios pueden iniciar sesión utilizando un certificado digital (X.509). 
+- El certificado se valida contra el campo `CertificadoThumbprint` del usuario.
+- Kestrel está configurado con `ClientCertificateMode.AllowCertificate`.
+- El proceso pasa por el query `AutenticarUsuarioCertificadoQuery` y, si es exitoso, emite la misma cookie que el inicio de sesión tradicional.
+
 ---
 
 ## 8. Seguridad Web (Configurada en Program.cs)
@@ -318,6 +324,7 @@ Los repositorios pueden usar `.IgnoreQueryFilters()` cuando necesitan datos glob
 - Jerarquia Institucion → Area → Unidad en BD y entidades de dominio
 - Combobox de cambio de contexto jerarquico en Navbar
 - Importacion idempotente desde Supabase (Expedientes y Reuniones)
+- Autenticación opcional por Certificado Digital (X.509) mapeado por Thumbprint a Usuarios
 
 ### Pendiente de implementar (proximas fases)
 - **`NotificationHandlers` para Domain Events:** Los eventos estan declarados pero sin handlers. Se deben crear para logica de notificacion/email desacoplada del Command.

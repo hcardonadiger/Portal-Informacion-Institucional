@@ -28,6 +28,32 @@ public sealed class LoginModel(ISender sender) : PageModel
             return Page();
         }
 
+        return await SignInUsuarioAsync(usuario, returnUrl);
+    }
+
+    public async Task<IActionResult> OnPostCertificadoAsync(string? returnUrl, CancellationToken ct)
+    {
+        ReturnUrl = returnUrl;
+        
+        var clientCert = await HttpContext.Connection.GetClientCertificateAsync();
+        if (clientCert is null)
+        {
+            Error = "No se detectó un certificado digital válido o el navegador no lo envió.";
+            return Page();
+        }
+
+        var usuario = await sender.Send(new AutenticarUsuarioCertificadoQuery(clientCert.Thumbprint), ct);
+        if (usuario is null)
+        {
+            Error = $"El certificado proporcionado (Huella: {clientCert.Thumbprint}) no está vinculado a ningún usuario activo.";
+            return Page();
+        }
+
+        return await SignInUsuarioAsync(usuario, returnUrl);
+    }
+
+    private async Task<IActionResult> SignInUsuarioAsync(UsuarioAuthDto usuario, string? returnUrl)
+    {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),

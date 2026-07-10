@@ -90,6 +90,7 @@ public interface IUsuarioRepository
 {
     Task<Usuario?>               GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<Usuario?>               GetByCorreoAsync(string correo, CancellationToken ct = default);
+    Task<Usuario?>               GetByCertificadoThumbprintAsync(string thumbprint, CancellationToken ct = default);
     Task<IReadOnlyList<Usuario>> GetByRolAsync(RolUsuario rol, bool soloActivos = true, CancellationToken ct = default);
     Task<IReadOnlyList<Usuario>> GetAllAsync(CancellationToken ct = default);
     Task<bool>                   ExisteCorreoAsync(string correo, Guid? exceptoId = null, CancellationToken ct = default);

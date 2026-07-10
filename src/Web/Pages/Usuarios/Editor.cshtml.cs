@@ -13,6 +13,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     [BindProperty] public string     Correo { get; set; } = string.Empty;
     [BindProperty] public string     Rol    { get; set; } = nameof(Diger.TramitesEstado.Domain.Enums.RolUsuario.Empleado);
     [BindProperty] public bool       Activo { get; set; } = true;
+    [BindProperty] public string?    CertificadoThumbprint { get; set; }
     [BindProperty] public string?    Password { get; set; }        // solo al crear
     [BindProperty] public string?    NuevaPassword { get; set; }   // restablecer
     [BindProperty] public List<AsignacionInput> Asignaciones { get; set; } = []; // alcance jerárquico
@@ -59,7 +60,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         try
         {
             var u = await sender.Send(new GetUsuarioByIdQuery(id.Value), ct);
-            UsuarioId = u.Id; Nombre = u.Nombre; Correo = u.Correo; Rol = u.Rol; Activo = u.Activo;
+            UsuarioId = u.Id; Nombre = u.Nombre; Correo = u.Correo; Rol = u.Rol; Activo = u.Activo; CertificadoThumbprint = u.CertificadoThumbprint;
             Asignaciones = u.Asignaciones.Select(a => new AsignacionInput {
                 InstitucionId = a.InstitucionId,
                 AreaId = a.AreaId,
@@ -92,11 +93,11 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
                     Error = "La contraseña inicial debe tener al menos 8 caracteres.";
                     return Page();
                 }
-                destinoId = await sender.Send(new CrearUsuarioCommand(Nombre, Correo, Password), ct);
+                destinoId = await sender.Send(new CrearUsuarioCommand(Nombre, Correo, Password, CertificadoThumbprint), ct);
             }
             else
             {
-                await sender.Send(new ActualizarUsuarioCommand(id.Value, Nombre, Correo, Activo), ct);
+                await sender.Send(new ActualizarUsuarioCommand(id.Value, Nombre, Correo, Activo, CertificadoThumbprint), ct);
                 destinoId = id.Value;
             }
             // Alcance jerárquico
