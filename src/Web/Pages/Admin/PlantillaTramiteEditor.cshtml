@@ -1,0 +1,110 @@
+@page "{id:int?}"
+@model Diger.TramitesEstado.Web.Pages.Admin.PlantillaTramiteEditorModel
+@{
+    ViewData["Title"] = Model.PlantillaId is null ? "Nueva plantilla de trámite" : "Editar plantilla de trámite";
+}
+
+<div class="container" style="max-width:960px">
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>@(Model.PlantillaId is null ? "Nueva plantilla de trámite" : "Editar plantilla de trámite")</h2>
+            <p>El nombre debe coincidir exactamente con el nombre del trámite capturado en "Ficha del trámite" para que se copie automáticamente.</p>
+        </div>
+        <a class="btns" asp-page="/Admin/PlantillasTramite">← Plantillas</a>
+    </div>
+
+    <form method="post">
+        <div class="card">
+            <div class="row2">
+                <div class="field"><label>Nombre del trámite <span style="color:#dc2626">*</span></label>
+                    <input asp-for="Nombre" placeholder="Ej: Registro de marca" maxlength="300" /></div>
+                @if (Model.PlantillaId is not null)
+                {
+                    <div class="field"><label>Activa</label>
+                        <label class="chk" style="margin-top:8px"><input type="checkbox" asp-for="Activa" /> <span>Disponible para copiar</span></label></div>
+                }
+            </div>
+        </div>
+
+        <div class="card accent">
+            <div class="ct">Fundamentos legales</div>
+            <table class="dtbl" id="tbl-legal">
+                <thead><tr><th>Instrumento legal</th><th>Artículos aplicables</th><th>Observación</th><th style="width:36px"></th></tr></thead>
+                <tbody id="legal-tbody">
+                    @for (int i = 0; i < Model.Legal.Count; i++)
+                    {
+                        <tr>
+                            <td><input type="text" name="Legal[@i].Instrumento" value="@Model.Legal[i].Instrumento" placeholder="Ej: Ley de Procedimiento Administrativo"></td>
+                            <td><input type="text" name="Legal[@i].Articulos" value="@Model.Legal[i].Articulos" placeholder="Arts. 12, 15"></td>
+                            <td><input type="text" name="Legal[@i].Obs" value="@Model.Legal[i].Obs" placeholder="Observación..."></td>
+                            <td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button type="button" class="btn-add" onclick="agregarLegal()">+ Agregar fundamento</button>
+        </div>
+
+        <div class="card">
+            <div class="ct">Requisitos</div>
+            <table class="dtbl" id="tbl-requisitos">
+                <thead><tr><th>Requisito</th><th>Observación</th><th style="width:36px"></th></tr></thead>
+                <tbody id="requisitos-tbody">
+                    @for (int i = 0; i < Model.Requisitos.Count; i++)
+                    {
+                        <tr>
+                            <td><input type="text" name="Requisitos[@i].Requisito" value="@Model.Requisitos[i].Requisito" placeholder="Ej: Copia de identidad"></td>
+                            <td><input type="text" name="Requisitos[@i].Obs" value="@Model.Requisitos[i].Obs" placeholder="Observación..."></td>
+                            <td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button type="button" class="btn-add" onclick="agregarRequisito()">+ Agregar requisito</button>
+        </div>
+
+        <div class="nav">
+            <button class="btn btn-p" type="submit">💾 Guardar plantilla</button>
+        </div>
+    </form>
+</div>
+
+<link rel="stylesheet" href="~/css/expediente.css" asp-append-version="true" />
+
+@section Scripts {
+<script>
+  function rmRow(btn){ btn.closest('tr').remove(); reindexar('legal-tbody','Legal',['Instrumento','Articulos','Obs']); reindexar('requisitos-tbody','Requisitos',['Requisito','Obs']); }
+
+  function reindexar(tbodyId, prefix, cols){
+    var tbody = document.getElementById(tbodyId);
+    Array.from(tbody.rows).forEach(function(tr, i){
+      var inputs = tr.querySelectorAll('input');
+      cols.forEach(function(col, j){ if(inputs[j]) inputs[j].name = prefix+'['+i+'].'+col; });
+    });
+  }
+
+  function agregarLegal(){
+    var tbody = document.getElementById('legal-tbody');
+    var n = tbody.rows.length;
+    var tr = tbody.insertRow();
+    tr.innerHTML = '<td><input type="text" name="Legal['+n+'].Instrumento" placeholder="Ej: Ley de Procedimiento Administrativo"></td>'
+      +'<td><input type="text" name="Legal['+n+'].Articulos" placeholder="Arts. 12, 15"></td>'
+      +'<td><input type="text" name="Legal['+n+'].Obs" placeholder="Observación..."></td>'
+      +'<td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>';
+  }
+
+  function agregarRequisito(){
+    var tbody = document.getElementById('requisitos-tbody');
+    var n = tbody.rows.length;
+    var tr = tbody.insertRow();
+    tr.innerHTML = '<td><input type="text" name="Requisitos['+n+'].Requisito" placeholder="Ej: Copia de identidad"></td>'
+      +'<td><input type="text" name="Requisitos['+n+'].Obs" placeholder="Observación..."></td>'
+      +'<td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>';
+  }
+</script>
+}

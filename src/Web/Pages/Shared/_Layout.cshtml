@@ -5,6 +5,26 @@
 @using Diger.TramitesEstado.Infrastructure.Security
 @inject Diger.TramitesEstado.Web.Common.AccesoModulosService Acceso
 @inject Diger.TramitesEstado.Web.Common.JerarquiaUiService JerarquiaUi
+@{
+    bool EsRuta(params string[] prefijos)
+    {
+        var path = Context.Request.Path;
+        foreach (var p in prefijos)
+        {
+            if (p == "/") { if (path == "/" || path == "") return true; }
+            else if (path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
+
+    string Iniciales(string? nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "?";
+        var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var s = partes.Length >= 2 ? $"{partes[0][0]}{partes[1][0]}" : partes[0][..Math.Min(2, partes[0].Length)];
+        return s.ToUpperInvariant();
+    }
+}
 
 <!DOCTYPE html>
 <html lang="es">
@@ -23,97 +43,91 @@
 <body>
     @if (User.Identity?.IsAuthenticated == true)
     {
-        <header class="topnav">
-            <div class="topnav-inner">
-                <a class="topnav-brand" asp-page="/Tableros/Index">
-                    <img src="~/img/logo_diger.png" asp-append-version="true" class="topnav-logo-img" alt="DIGER" />
-                </a>
-                <nav class="topnav-links">
-                    @{
-                        var puedeTableros    = await Acceso.PuedeAsync(ModulosPortal.Tableros);
-                        var puedeCalendario  = await Acceso.PuedeAsync(ModulosPortal.Calendario);
-                        var puedeExpedientes = await Acceso.PuedeAsync(ModulosPortal.Expedientes);
-                        var puedeReuniones   = await Acceso.PuedeAsync(ModulosPortal.Reuniones);
-                        var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
-                        var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
-                    }
+        var puedeTableros    = await Acceso.PuedeAsync(ModulosPortal.Tableros);
+        var puedeCalendario  = await Acceso.PuedeAsync(ModulosPortal.Calendario);
+        var puedeExpedientes = await Acceso.PuedeAsync(ModulosPortal.Expedientes);
+        var puedeReuniones   = await Acceso.PuedeAsync(ModulosPortal.Reuniones);
+        var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
+        var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
+
+        var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
+        List<AsignacionAuthDto>? asignaciones = null;
+        if (!string.IsNullOrWhiteSpace(asignacionesJson))
+        {
+            try { asignaciones = JsonSerializer.Deserialize<List<AsignacionAuthDto>>(asignacionesJson); }
+            catch { }
+        }
+
+        var rolFiltro = User.FindFirstValue(AppClaims.ActiveRol);
+        bool showAsignaciones = asignaciones != null && asignaciones.Count > 1;
+        bool showJerarquia = rolFiltro == "JefeInstitucion" || rolFiltro == "JefeArea";
+        <div class="app-shell">
+            <aside class="app-sidebar" id="appSidebar">
+                <div class="app-sidebar-brand">
+                    <a asp-page="/Tableros/Index">
+                        <img src="~/img/logo_diger.png" asp-append-version="true" class="app-sidebar-logo-img" alt="DIGER" />
+                    </a>
+                    <button type="button" class="sidebar-close" onclick="toggleSidebar(false)" aria-label="Cerrar menú">&#10005;</button>
+                </div>
+
+                <nav class="side-nav">
                     @if (puedeTableros || puedeCalendario || puedeExpedientes)
                     {
-                        <div class="topnav-dropdown">
-                            <a href="javascript:void(0)" class="topnav-dropdown-trigger">
-                                Seguimiento <span class="topnav-chevron">&#9662;</span>
-                            </a>
-                            <div class="topnav-dropdown-menu">
-                                <div class="topnav-dropdown-menu-inner">
-                                    @if (puedeTableros) { <a asp-page="/Tableros/Index">Tableros</a> }
-                                    @if (puedeCalendario) { <a asp-page="/Calendario/Index">Calendario</a> }
-                                    @if (puedeExpedientes) { <a asp-page="/Index">Expedientes</a> }
-                                </div>
-                            </div>
-                        </div>
+                        <div class="side-label">Seguimiento</div>
+                        @if (puedeTableros)
+                        {
+                            <a class="side-link @(EsRuta("/Tableros") ? "on" : "")" asp-page="/Tableros/Index"><span class="dash"></span>Tableros</a>
+                        }
+                        @if (puedeCalendario)
+                        {
+                            <a class="side-link @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index"><span class="dash"></span>Calendario</a>
+                        }
+                        @if (puedeExpedientes)
+                        {
+                            <a class="side-link @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index"><span class="dash"></span>Expedientes</a>
+                        }
                     }
                     @if (puedeReuniones)
                     {
-                        <div class="topnav-dropdown">
-                            <a href="javascript:void(0)" class="topnav-dropdown-trigger">
-                                Pendientes <span class="topnav-chevron">&#9662;</span>
-                            </a>
-                            <div class="topnav-dropdown-menu">
-                                <div class="topnav-dropdown-menu-inner">
-                                    <a asp-page="/Reuniones/Index">Reuniones</a>
-                                    <a asp-page="/Reuniones/Compromisos">Compromisos</a>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="side-label">Pendientes</div>
+                        <a class="side-link @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index"><span class="dash"></span>Reuniones</a>
+                        <a class="side-link @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos"><span class="dash"></span>Compromisos</a>
                     }
-                    @if (puedeTickets) { <a asp-page="/Tickets/Index">Tickets</a> }
-                    @if (puedeContactos) { <a asp-page="/Contactos/Index">Contactos</a> }
-                    @if (Acceso.EsAdministrador)
+                    @if (puedeTickets || puedeContactos)
                     {
-                        <a asp-page="/Instituciones/Index">Instituciones</a>
-                        <div class="topnav-dropdown">
-                            <a href="javascript:void(0)" class="topnav-dropdown-trigger">
-                                Seguridad <span class="topnav-chevron">&#9662;</span>
-                            </a>
-                            <div class="topnav-dropdown-menu">
-                                <div class="topnav-dropdown-menu-inner">
-                                    <a asp-page="/Usuarios/Index">Usuarios</a>
-                                    <a asp-page="/Accesos/Index">Accesos</a>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </nav>
-                <div class="topnav-user">
-                    @{
-                        var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
-                        List<Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario.AsignacionAuthDto>? asignaciones = null;
-                        if (!string.IsNullOrWhiteSpace(asignacionesJson))
+                        <div class="side-label">Trámites</div>
+                        @if (puedeTickets)
                         {
-                            try { asignaciones = JsonSerializer.Deserialize<List<Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario.AsignacionAuthDto>>(asignacionesJson); }
-                            catch { }
+                            <a class="side-link @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index"><span class="dash"></span>Tickets</a>
+                        }
+                        @if (puedeContactos)
+                        {
+                            <a class="side-link @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index"><span class="dash"></span>Contactos</a>
                         }
                     }
-
-                    @{
-                        var rolFiltro = User.FindFirstValue(AppClaims.ActiveRol);
-                        bool showAsignaciones = asignaciones != null && asignaciones.Count > 1;
-                        bool showJerarquia = rolFiltro == "JefeInstitucion" || rolFiltro == "JefeArea";
-                    }
-
-                    @if (showAsignaciones || showJerarquia)
+                    @if (Acceso.EsAdministrador)
                     {
-                        <div class="topnav-context" style="margin-right: 15px;">
-                            @if (showAsignaciones)
-                            {
-                                var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
-                                var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
-                                var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
-                                var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
-                                int currentIndex = asignaciones!.FindIndex(a => 
-                                    a.InstitucionId == activeInst && a.AreaId == activeArea && 
-                                    a.UnidadId == activeUnidad && a.Rol == activeRol);
+                        <div class="side-label">Administración</div>
+                        <a class="side-link @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index"><span class="dash"></span>Instituciones</a>
+                        <a class="side-link @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><span class="dash"></span>Usuarios</a>
+                        <a class="side-link @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index"><span class="dash"></span>Accesos</a>
+                    }
+                </nav>
 
+                <div class="side-user">
+                    <div class="side-user-panel" id="sideUserPanel">
+                        @if (showAsignaciones)
+                        {
+                            var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
+                            var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+                            var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
+                            var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
+                            int currentIndex = asignaciones!.FindIndex(a =>
+                                a.InstitucionId == activeInst && a.AreaId == activeArea &&
+                                a.UnidadId == activeUnidad && a.Rol == activeRol);
+
+                            <div class="side-panel-section">
+                                <div class="side-panel-label">Contexto activo</div>
                                 <form method="post" asp-page="/Cuenta/CambiarContexto">
                                     <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
                                     <select name="indiceSeleccionado" onchange="this.form.submit()">
@@ -126,21 +140,19 @@
                                         }
                                     </select>
                                 </form>
-                            }
+                            </div>
+                        }
 
-                            @if (showAsignaciones && showJerarquia)
-                            {
-                                <div class="topnav-context-div"></div>
-                            }
+                        @if (showJerarquia)
+                        {
+                            var currentArea = User.FindFirstValue(AppClaims.ActiveArea);
+                            var currentUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
 
-                            @if (showJerarquia)
-                            {
-                                var currentArea = User.FindFirstValue(AppClaims.ActiveArea);
-                                var currentUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
-                                
+                            <div class="side-panel-section">
+                                <div class="side-panel-label">Filtrar por jerarquía</div>
                                 <form method="post" asp-page="/Cuenta/CambiarFiltroJerarquia">
                                     <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                                    
+
                                     @if (rolFiltro == "JefeInstitucion")
                                     {
                                         var areas = await JerarquiaUi.GetAreasAsync();
@@ -160,7 +172,6 @@
 
                                     @if ((rolFiltro == "JefeInstitucion" && !string.IsNullOrEmpty(currentArea)) || rolFiltro == "JefeArea")
                                     {
-                                        @if (rolFiltro == "JefeInstitucion") { <div class="topnav-context-div"></div> }
                                         var unidades = await JerarquiaUi.GetUnidadesAsync(currentArea);
                                         <select name="unidadId" onchange="this.form.submit()">
                                             <option value="">-- Todas las Unidades --</option>
@@ -172,20 +183,38 @@
                                         </select>
                                     }
                                 </form>
-                            }
-                        </div>
-                    }
+                            </div>
+                        }
 
-                    <span class="topnav-name">@User.Identity!.Name</span>
-                    <span class="topnav-rol">@(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>
-                    <form method="post" asp-page="/Cuenta/Logout" style="display:inline">
-                        <button type="submit" class="topnav-logout" title="Cerrar sesión">Salir</button>
-                    </form>
+                        <button type="submit" form="logoutForm" class="side-panel-logout">Cerrar sesión</button>
+                    </div>
+
+                    <button type="button" class="side-user-btn" onclick="toggleUserPanel()">
+                        <span class="side-avatar">@Iniciales(User.Identity!.Name)</span>
+                        <span class="side-user-meta">
+                            <span class="side-user-name">@User.Identity!.Name</span>
+                            <span class="side-user-rol">@(User.FindFirst(ClaimTypes.Role)?.Value)</span>
+                        </span>
+                        <span class="side-user-chev">&#9652;</span>
+                    </button>
+                    <form id="logoutForm" method="post" asp-page="/Cuenta/Logout" style="display:none"></form>
                 </div>
+            </aside>
+            <div class="app-sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
+
+            <div class="app-main">
+                <div class="app-topbar">
+                    <button type="button" class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menú">&#9776;</button>
+                    <img src="~/img/logo_diger.png" asp-append-version="true" class="app-topbar-logo" alt="DIGER" />
+                </div>
+                @RenderBody()
             </div>
-        </header>
+        </div>
     }
-    @RenderBody()
+    else
+    {
+        @RenderBody()
+    }
     <script src="~/js/diger.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

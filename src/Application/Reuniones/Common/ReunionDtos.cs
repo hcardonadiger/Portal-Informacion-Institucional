@@ -63,6 +63,7 @@ public sealed class ReunionFormDto
     public int?    Convocados    { get; set; }
     public int?    NumAsistentes { get; set; }
     public int?    PctAsistencia { get; set; }
+    public int?    SatisfaccionCalificacion { get; set; }
     public string? Satisfaccion  { get; set; }
     public string? Compromisos   { get; set; }
 

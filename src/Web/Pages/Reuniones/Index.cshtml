@@ -79,7 +79,7 @@
                 {
                     <tr>
                         <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a></td>
-                        <td class="res-meta" style="text-align:center">@(r.Fecha?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                         <td style="text-align:center">@(r.Institucion ?? "—")</td>
                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
                         <td style="text-align:center">@r.NumAsistentes</td>
@@ -136,7 +136,7 @@
                                 {
                                     <tr>
                                         <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a></td>
-                                        <td class="res-meta" style="text-align:center">@(r.Fecha?.ToString("dd MMM yyyy") ?? "—")</td>
+                                        <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
                                         <td style="text-align:center">@r.NumAsistentes</td>
                                         <td style="white-space:nowrap;text-align:right">

@@ -49,7 +49,7 @@
                                     @foreach (var tm in grupo)
                                     {
                                         var esOtro = string.Equals(tm.Nombre.Trim(), "Otro", StringComparison.OrdinalIgnoreCase).ToString().ToLowerInvariant();
-                                        <option value="@tm.Id" data-es-otro="@esOtro">@tm.Nombre@(tm.HorasResolucion > 0 ? $" (SLA {tm.HorasResolucion} h)" : "")</option>
+                                        <option value="@tm.Id" data-es-otro="@esOtro">@tm.Nombre@(tm.HorasResolucion > 0 ? $" (máx. {tm.HorasResolucion} h)" : "")</option>
                                     }
                                 </optgroup>
                             }
@@ -129,7 +129,7 @@
             <section class="tkm-panel">
                 <h2>Resumen</h2>
                 <div class="tkm-sla-box">
-                    <strong>SLA segun tema</strong>
+                    <strong>Tiempo máximo según tema</strong>
                     <span>El tiempo de atencion se calcula con el tema seleccionado.</span>
                 </div>
                 <div class="tkm-kv"><span>Estado inicial</span><strong>Abierto</strong></div>

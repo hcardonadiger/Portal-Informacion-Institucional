@@ -269,7 +269,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Activo")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("AreaId")
                         .HasMaxLength(120)
@@ -874,6 +876,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<bool>("EsPersonalizado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<int>("ExpedienteId")
                         .HasColumnType("int");
 
@@ -887,6 +894,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PlantillaOrigenId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -1244,6 +1254,108 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Movimientos", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaFundamentoLegal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Articulos")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Instrumento")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Obs")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PlantillaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlantillaId");
+
+                    b.ToTable("PlantillaFundamentosLegales", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaRequisito", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Obs")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PlantillaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Requisito")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlantillaId");
+
+                    b.ToTable("PlantillaRequisitos", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaTramite", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activa")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("PlantillasTramite", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Prefijo", b =>
                 {
                     b.Property<string>("PrefijoInstitucion")
@@ -1408,6 +1520,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Satisfaccion")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<int?>("SatisfaccionCalificacion")
+                        .HasColumnType("int");
 
                     b.Property<string>("Tema")
                         .HasMaxLength(250)
@@ -1840,6 +1955,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<bool>("EsPersonalizado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<int>("ExpedienteId")
                         .HasColumnType("int");
 
@@ -1852,6 +1972,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(2000)");
 
                     b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PlantillaOrigenId")
                         .HasColumnType("int");
 
                     b.Property<string>("Requisito")
@@ -2154,6 +2277,24 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaFundamentoLegal", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.PlantillaTramite", null)
+                        .WithMany("Legal")
+                        .HasForeignKey("PlantillaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaRequisito", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.PlantillaTramite", null)
+                        .WithMany("Requisitos")
+                        .HasForeignKey("PlantillaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Reunion", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Area", null)
@@ -2337,6 +2478,13 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Institucion", b =>
                 {
                     b.Navigation("Tramites");
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaTramite", b =>
+                {
+                    b.Navigation("Legal");
+
+                    b.Navigation("Requisitos");
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Reunion", b =>

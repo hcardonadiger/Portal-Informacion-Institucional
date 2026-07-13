@@ -14,6 +14,7 @@ global using Diger.TramitesEstado.Application.Expedientes.Queries.GetExpedientes
 global using Diger.TramitesEstado.Application.Expedientes.Queries.GetExpedienteById;
 global using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 global using Diger.TramitesEstado.Application.Expedientes.Queries.GetCatalogos;
+global using Diger.TramitesEstado.Application.Expedientes.Plantillas;
 global using Diger.TramitesEstado.Application.Instituciones.Queries.GetInstituciones;
 global using Diger.TramitesEstado.Application.Instituciones.Queries.GetInstitucionById;
 global using Diger.TramitesEstado.Application.Instituciones.Commands.CrearInstitucion;

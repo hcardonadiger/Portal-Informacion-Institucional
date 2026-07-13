@@ -73,7 +73,8 @@ public static class ExpedienteMapper
             e.Agregar(new TramiteRequisito
             {
                 TramiteIndex = r.TramiteIndex, Orden = r.Orden, Requisito = r.Requisito.Trim(),
-                Obs = r.Obs, Accion = r.Accion, Justificacion = r.Justificacion
+                Obs = r.Obs, Accion = r.Accion, Justificacion = r.Justificacion,
+                PlantillaOrigenId = r.PlantillaOrigenId, EsPersonalizado = r.EsPersonalizado
             });
 
         foreach (var n in d.Flujos)
@@ -87,7 +88,8 @@ public static class ExpedienteMapper
         foreach (var l in d.Legal.Where(x => !string.IsNullOrWhiteSpace(x.Instrumento)))
             e.Agregar(new FundamentoLegal
             {
-                Orden = l.Orden, Instrumento = l.Instrumento.Trim(), Articulos = l.Articulos, Obs = l.Obs
+                Orden = l.Orden, Instrumento = l.Instrumento.Trim(), Articulos = l.Articulos, Obs = l.Obs,
+                PlantillaOrigenId = l.PlantillaOrigenId, EsPersonalizado = l.EsPersonalizado
             });
 
         foreach (var x in d.DocsSolicitados.Where(z => !string.IsNullOrWhiteSpace(z.Nombre)))
@@ -135,10 +137,12 @@ public static class ExpedienteMapper
             t.TgrMonto, t.DocEntregado, t.Objetivo, t.Alcance, t.AlcanceObs, t.Descripcion, t.Dirigido,
             t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb)).ToList(),
         e.Requisitos.OrderBy(r => r.TramiteIndex).ThenBy(r => r.Orden).Select(r => new RequisitoInput(
-            r.TramiteIndex, r.Orden, r.Requisito, r.Obs, r.Accion, r.Justificacion)).ToList(),
+            r.TramiteIndex, r.Orden, r.Requisito, r.Obs, r.Accion, r.Justificacion,
+            r.PlantillaOrigenId, r.EsPersonalizado)).ToList(),
         e.Flujos.OrderBy(n => n.TramiteIndex).ThenBy(n => n.Fase).ThenBy(n => n.Orden).Select(n => new FlujoNodoInput(
             n.TramiteIndex, n.Fase, n.Orden, n.Tipo, n.Titulo, n.Area, n.Tiempo, n.DocEmitido, n.Obs, n.RetornoA)).ToList(),
-        e.Legal.OrderBy(l => l.Orden).Select(l => new LegalInput(l.Orden, l.Instrumento, l.Articulos, l.Obs)).ToList(),
+        e.Legal.OrderBy(l => l.Orden).Select(l => new LegalInput(
+            l.Orden, l.Instrumento, l.Articulos, l.Obs, l.PlantillaOrigenId, l.EsPersonalizado)).ToList(),
         e.DocsSolicitados.OrderBy(x => x.Orden).Select(x => new DocSolicitadoInput(
             x.Orden, x.Nombre, x.Tipo, x.Recibido, x.Fecha, x.Url)).ToList(),
         e.DocsInternos.OrderBy(x => x.Orden).Select(x => new DocInternoInput(x.Orden, x.Documento, x.Area, x.Obs)).ToList(),

@@ -22,6 +22,7 @@ public sealed record ReunionPublicaDto(
 public sealed record AsistenciaAdminDto(
     int ReunionId, string Titulo, Guid Token, bool RegistroAbierto,
     int? Convocados, string? InstitucionId, string? Institucion,
+    DateOnly? Fecha, string? Tipo,
     IReadOnlyList<string> InstitucionesNombres, IReadOnlyList<AsistenteVm> Asistentes);
 
 public sealed record AsistenteVm(

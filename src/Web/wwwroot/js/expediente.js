@@ -411,7 +411,7 @@ function poblarInfra(inf){
 
 // ── NAVEGACIÓN ──────────────────────────────────────────────
 function ir(n){
-  if(n === 5) renderModeloReqs(activeTram);
+  if(n === 4) renderModeloReqs(activeTram);
   document.querySelectorAll('.sec').forEach(function(s){ s.classList.remove('active'); });
   document.querySelectorAll('.sbi').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('sec'+n).classList.add('active');
@@ -528,7 +528,7 @@ function tramRowHTML(i){
   return '<div class="tram-row" style="flex-direction:row;align-items:flex-start;gap:10px">'
     + '<div class="f" style="flex:1"><label>Trámite ' + (i+1) + ' <span class="star">*</span>'
     + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
-    + '<input type="text" id="tnam-'+i+'" placeholder="Nombre completo del trámite ' + (i+1) + '" oninput="actualizarMeta();actualizarTabsTramite();syncNombreTramite('+i+')"></div>'
+    + '<input type="text" id="tnam-'+i+'" placeholder="Nombre completo del trámite ' + (i+1) + '" oninput="actualizarMeta();actualizarTabsTramite();syncNombreTramite('+i+')" onblur="intentarCopiarPlantilla('+i+')"></div>'
     + '<div class="f" style="flex:1;max-width:380px"><label>Área o dirección responsable</label>'
     + '<input type="text" id="area_resp-'+i+'" placeholder="Unidad interna que gestiona el trámite"></div>'
     + rm
@@ -686,7 +686,7 @@ function syncAllNombreTramites(){
 function actualizarTabsTramite(){
   var names = getTramNombres();
   var codes = getTramCodigos();
-  var secIds = ['tram-tabs-1','tram-tabs-2','tram-tabs-3','tram-tabs-5'];
+  var secIds = ['tram-tabs-1','tram-tabs-2','tram-tabs-3','tram-tabs-4'];
   secIds.forEach(function(sid){
     var el = document.getElementById(sid);
     if(!el) return;
@@ -792,6 +792,7 @@ function fichaHTML(i, nombre, show){
     + '</div>'
     + '<div class="card"><div class="ct">Requisitos del trámite</div>'
       + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Registre cada requisito del trámite. Estos se traerán automáticamente al <strong>Modelo propuesto</strong> para definir su acción.</p>'
+      + '<div id="req-plantilla-badge-'+i+'"></div>'
       + '<table class="dtbl"><thead><tr><th>#</th><th>Requisito / descripción</th><th>Observación</th><th style="width:36px"></th></tr></thead>'
         + '<tbody id="req-ficha-tbody-'+i+'"></tbody></table>'
       + '<button class="btn-add" onclick="addReqFicha('+i+')">+ Agregar requisito</button>'
@@ -1017,6 +1018,71 @@ function agregarLegal(){
     +'<td style="text-align:center;padding:6px"><button class="btn-rm" onclick="rmRow(this)">✕</button></td>';
 }
 
+// ── PLANTILLAS DE TRÁMITE (Marco Legal / Requisitos compartidos) ──────
+async function intentarCopiarPlantilla(i){
+  var nombre = (gv('tnam-'+i) || '').trim();
+  if(!nombre) return;
+  var meta = window.__EXPMETA__ || {};
+  if(!meta.plantillaUrl) return;
+  try{
+    var sep = meta.plantillaUrl.indexOf('?') >= 0 ? '&' : '?';
+    var resp = await fetch(meta.plantillaUrl + sep + 'nombre=' + encodeURIComponent(nombre));
+    if(!resp.ok) return;
+    var p = await resp.json();
+    if(!p) return;
+
+    var legalTbody = document.getElementById('legal-tbody');
+    if(legalTbody && legalTbody.rows.length === 0 && p.legal && p.legal.length){
+      p.legal.forEach(function(l){
+        agregarLegal();
+        var tr = legalTbody.rows[legalTbody.rows.length-1];
+        var inputs = tr.querySelectorAll('input,textarea');
+        inputs[0].value = l.instrumento||''; inputs[1].value = l.articulos||''; inputs[2].value = l.obs||'';
+        tr.dataset.plantillaOrigenId = l.id;
+      });
+      renderLegalPlantillaBadge(p.nombre);
+    }
+
+    if((!reqsTram[i] || reqsTram[i].length === 0) && p.requisitos && p.requisitos.length){
+      reqsTram[i] = p.requisitos.map(function(r){
+        return { requisito: r.requisito, obs: r.obs||'', plantilla_origen_id: r.id, es_personalizado: false };
+      });
+      renderReqFichaRows(i);
+      actualizarNumReq();
+      renderReqPlantillaBadge(i, p.nombre);
+    }
+  }catch(err){ /* silencioso: no debe bloquear el flujo del wizard */ }
+}
+
+function renderLegalPlantillaBadge(nombre){
+  var el = document.getElementById('legal-plantilla-badge');
+  if(!el) return;
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--azul-c);border:1px solid #c8dbff;border-radius:8px;padding:6px 12px;margin-bottom:.7rem;font-size:12.5px">'
+    + '<span>📋 Copiado de plantilla — <strong>'+escHtml(nombre)+'</strong></span>'
+    + '<button type="button" class="btns" style="font-size:11.5px;padding:3px 10px" onclick="personalizarLegal()">Personalizar para este expediente</button>'
+    + '</div>';
+}
+function personalizarLegal(){
+  var tbody = document.getElementById('legal-tbody');
+  Array.from(tbody.rows).forEach(function(tr){ if(tr.dataset.plantillaOrigenId) tr.dataset.esPersonalizado = '1'; });
+  var el = document.getElementById('legal-plantilla-badge');
+  if(el) el.innerHTML = '<p class="hint" style="margin-bottom:.7rem">Personalizado para este expediente — ya no se sincroniza con la plantilla.</p>';
+}
+
+function renderReqPlantillaBadge(i, nombre){
+  var el = document.getElementById('req-plantilla-badge-'+i);
+  if(!el) return;
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--azul-c);border:1px solid #c8dbff;border-radius:8px;padding:6px 12px;margin-bottom:.7rem;font-size:12.5px">'
+    + '<span>📋 Copiado de plantilla — <strong>'+escHtml(nombre)+'</strong></span>'
+    + '<button type="button" class="btns" style="font-size:11.5px;padding:3px 10px" onclick="personalizarReq('+i+')">Personalizar para este expediente</button>'
+    + '</div>';
+}
+function personalizarReq(i){
+  (reqsTram[i]||[]).forEach(function(r){ if(r.plantilla_origen_id) r.es_personalizado = true; });
+  var el = document.getElementById('req-plantilla-badge-'+i);
+  if(el) el.innerHTML = '<p class="hint" style="margin-bottom:.7rem">Personalizado para este expediente — ya no se sincroniza con la plantilla.</p>';
+}
+
 function agregarDocSolicitado(){
   var tbody = document.getElementById('docs-tbody');
   var n = tbody.rows.length + 1;
@@ -1027,7 +1093,35 @@ function agregarDocSolicitado(){
     +'<td style="text-align:center"><select style="padding:8px 10px;border:none;background:transparent;font-size:12.5px;font-family:inherit"><option>Pendiente</option><option>Recibido</option><option>No disponible</option></select></td>'
     +'<td><input type="date"></td>'
     +'<td><input type="text" placeholder="URL de Drive o nombre del .zip" style="font-size:12px"></td>'
+    +'<td><input type="file" onchange="subirDocumento(this)" style="font-size:11px;max-width:105px"></td>'
     +'<td style="text-align:center;padding:6px"><button class="btn-rm" onclick="rmRow(this)">✕</button></td>';
+}
+
+async function subirDocumento(input){
+  var file = input.files[0];
+  if(!file) return;
+  var tr = input.closest('tr');
+  var urlInput = tr.querySelectorAll('input,select,textarea')[4]; // columna 'url'
+  var meta = window.__EXPMETA__ || {};
+  var fd = new FormData();
+  fd.append('archivo', file);
+  input.disabled = true;
+  try{
+    var sep = (meta.postUrl||'').indexOf('?') >= 0 ? '&' : '?';
+    var resp = await fetch((meta.postUrl||'') + sep + 'handler=SubirDocumento', {
+      method:'POST',
+      headers:{ 'RequestVerificationToken': meta.token || '' },
+      body: fd
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    var data = await resp.json();
+    if(data.url && urlInput) urlInput.value = data.url;
+    mostrarToast('✓ Documento subido');
+  }catch(err){
+    mostrarToast('✗ Error al subir el documento: ' + err.message);
+  }finally{
+    input.disabled = false;
+  }
 }
 
 function agregarDocInterno(){
@@ -1046,7 +1140,7 @@ function rmRow(btn){ btn.closest('tr').remove(); }
 
 // ── ESTADOS ──────────────────────────────────────────────────
 function actualizarEstados(){
-  var total=5, completadas=0;
+  var total=6, completadas=0;
   for(var i=0;i<6;i++){
     var el = document.getElementById('est-'+i);
     if(el && (el.value==='Completo'||el.value==='Validado')) completadas++;
@@ -1127,6 +1221,14 @@ function recolectar(){
 
   // Secciones compartidas (sólo trámite activo para tablas y flujos)
   d.legal   = tblData('legal-tbody',  ['instrumento','articulos','obs']);
+  (function(){
+    var tbody = document.getElementById('legal-tbody');
+    Array.from(tbody.rows).forEach(function(tr, idx){
+      if(!d.legal[idx]) return;
+      d.legal[idx].plantilla_origen_id = tr.dataset.plantillaOrigenId ? parseInt(tr.dataset.plantillaOrigenId,10) : null;
+      d.legal[idx].es_personalizado = tr.dataset.esPersonalizado === '1';
+    });
+  })();
   d.docs    = tblData('docs-tbody',   ['nombre','tipo','recibido','fecha','url']);
   d.obs_legal = gv('obs_legal');
   d.num_func  = gv('num_func');
@@ -1256,6 +1358,14 @@ function poblarFormulario(d){
 
   // Legal/docs
   recargarTabla('legal-tbody', d.legal||[], agregarLegal, ['instrumento','articulos','obs']);
+  (function(){
+    var tbody = document.getElementById('legal-tbody');
+    if(!tbody || !d.legal) return;
+    Array.from(tbody.rows).forEach(function(tr, i){
+      var row = d.legal[i];
+      if(row && row.plantilla_origen_id){ tr.dataset.plantillaOrigenId = row.plantilla_origen_id; if(row.es_personalizado) tr.dataset.esPersonalizado = '1'; }
+    });
+  })();
   recargarTabla('docs-tbody', d.docs||[], agregarDocSolicitado, ['nombre','tipo','recibido','fecha','url']);
   sv('obs_legal', d.obs_legal||'');
 
@@ -1401,7 +1511,7 @@ function nuevoExp(){
   renderFlujosPropuesto();
   renderModeloReqs(0);
   renderInfraAll();
-  ['tram-tabs-1','tram-tabs-2','tram-tabs-3','tram-tabs-5'].forEach(function(id){ var el=document.getElementById(id); if(el){el.style.display='none';el.innerHTML='';} });
+  ['tram-tabs-1','tram-tabs-2','tram-tabs-3','tram-tabs-4'].forEach(function(id){ var el=document.getElementById(id); if(el){el.style.display='none';el.innerHTML='';} });
   actualizarMeta(); actualizarEstados();
 }
 
@@ -1435,7 +1545,7 @@ function buildDiagHTML(key){
     +'<span style="font-size:11px;font-weight:700;color:var(--azul-m);min-width:26px;text-align:center">'+gap+'</span>'
     +'<button onclick="adjustDiagGAP(\''+key+'\',10)" style="width:22px;height:22px;border:1.5px solid var(--borde);border-radius:5px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);line-height:1;padding:0;display:flex;align-items:center;justify-content:center">+</button>'
     +'</div>';
-  return '<div class="flow-diag-wrap">'+ctrl+renderFlowSVG(key)+'</div>';
+  return '<div class="flow-diag-wrap'+(key==='propuesto'?' propuesto':'')+'">'+ctrl+renderFlowSVG(key)+'</div>';
 }
 
 function toggleFlowView(key, mode){
@@ -1628,10 +1738,13 @@ function renderFlowSVG(key){
     +els.join('')+'</svg>';
 }
 
+var nodeModalCtx = null;
+
 function showNodeModal(key, idx){
   var data = key==='actual' ? (flujosActual[activeTram]||[]) : (flujosPropuesto[activeTram]||[]);
   var step = data[idx];
   if(!step) return;
+  nodeModalCtx = {key:key, idx:idx};
   var tipo = step.tipo||'paso';
   var colors={inicio:'#16a34a',fin:'#2563eb',decision:'#d97706',paso:'#1455a4'};
   var labels={inicio:'INICIO',fin:'FIN',decision:'DECISIÓN',paso:'PASO'};
@@ -1655,6 +1768,15 @@ function showNodeModal(key, idx){
 
 function closeNodeModal(){
   document.getElementById('node-modal').style.display='none';
+  nodeModalCtx = null;
+}
+
+function eliminarNodoDesdeModal(){
+  if(!nodeModalCtx) return;
+  var ctx = nodeModalCtx;
+  removeFlowNode(ctx.key, ctx.idx);
+  refreshDiagIfVisible(ctx.key);
+  closeNodeModal();
 }
 
 document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeNodeModal(); closeFlowMenu(); } });

@@ -34,6 +34,54 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
+/* ── Sidebar tipo hamburguesa (todos los tamaños) + popover de usuario ── */
+var SIDEBAR_KEY = 'diger-sidebar-open';
+
+function toggleSidebar(open) {
+    var sb = document.getElementById('appSidebar');
+    var bd = document.getElementById('sidebarBackdrop');
+    if (!sb) return;
+    sb.classList.toggle('open', open);
+    if (bd) bd.classList.toggle('open', open);
+    try { localStorage.setItem(SIDEBAR_KEY, open ? 'true' : 'false'); } catch (e) { }
+}
+
+function toggleUserPanel() {
+    var p = document.getElementById('sideUserPanel');
+    if (p) p.classList.toggle('open');
+}
+
+/* Restaura el último estado (abierto/cerrado) sin animar el primer render */
+(function () {
+    var sb = document.getElementById('appSidebar');
+    if (!sb) return;
+    var open;
+    try { open = localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch (e) { open = false; }
+    if (open) {
+        var bd = document.getElementById('sidebarBackdrop');
+        sb.classList.add('no-anim', 'open');
+        if (bd) bd.classList.add('open');
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () { sb.classList.remove('no-anim'); });
+        });
+    }
+})();
+
+document.addEventListener('click', function (e) {
+    var panel = document.getElementById('sideUserPanel');
+    if (panel && panel.classList.contains('open') && !e.target.closest('.side-user')) {
+        panel.classList.remove('open');
+    }
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        toggleSidebar(false);
+        var panel = document.getElementById('sideUserPanel');
+        if (panel) panel.classList.remove('open');
+    }
+});
+
 /* ── Confirmar antes de enviar (data-confirm="mensaje" en el botón) ──── */
 document.addEventListener('submit', function (e) {
     var btn = e.submitter;

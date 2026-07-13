@@ -27,6 +27,7 @@ public sealed class AutenticarUsuarioQueryHandler(
 
         var asignacionesEntity = await ctx.AsignacionesUsuario
             .Where(a => a.UsuarioId == usuario.Id)
+            .OrderBy(a => a.CreatedAt).ThenBy(a => a.Id)
             .ToListAsync(ct);
 
         var asignaciones = asignacionesEntity

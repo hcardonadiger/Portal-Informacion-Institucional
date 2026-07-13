@@ -43,6 +43,11 @@ public sealed class TramiteRequisito : BaseEntity
     public string? Obs         { get; set; }
     public AccionRequisito? Accion { get; set; }
     public string? Justificacion  { get; set; }
+
+    /// <summary>Plantilla de la que se copió (null = escrito a mano para este expediente).</summary>
+    public int?  PlantillaOrigenId { get; set; }
+    /// <summary>true = ya no se sincroniza con la plantilla; queda fijo y editable para este expediente.</summary>
+    public bool  EsPersonalizado   { get; set; }
 }
 
 /// <summary>Nodo del constructor de flujos (actual o propuesto) de un trámite.</summary>

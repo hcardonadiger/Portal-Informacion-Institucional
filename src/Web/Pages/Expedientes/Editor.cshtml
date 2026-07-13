@@ -6,6 +6,7 @@
     var tokens = Xsrf.GetAndStoreTokens(HttpContext);
     var postUrl = Url.Page("/Expedientes/Editor", new { id = Model.ExpId });
     var contactosUrl = Url.Page("/Expedientes/Editor", "Contactos", new { id = Model.ExpId });
+    var plantillaUrl = Url.Page("/Expedientes/Editor", "Plantilla", new { id = Model.ExpId });
 }
 <link rel="stylesheet" href="~/css/expediente.css" asp-append-version="true" />
 
@@ -15,8 +16,8 @@
         @if (Model.ExpId is int segId)
         {
             <a class="btnp" asp-page="/Expedientes/Seguimiento" asp-route-id="@segId">Seguimiento de digitalización</a>
+            <a class="btns" asp-page="/Expedientes/Resumen" asp-route-id="@segId">PDF</a>
         }
-        <button class="btns" type="button" onclick="window.print()">PDF</button>
     </div>
 </div>
 
@@ -24,14 +25,16 @@
   <aside class="sidebar">
     <div class="sb-hdr">Generales del expediente</div>
     <div class="sbi active" id="sb0" onclick="ir(0)"><div class="sbi-dot"></div>Apertura del expediente</div>
-    <div class="sbi" id="sb2" onclick="ir(2)"><div class="sbi-dot"></div>Marco legal y documentación</div>
-    <div class="sbi" id="sb4" onclick="ir(4)"><div class="sbi-dot"></div>Infraestructura SOL</div>
-    <div class="sbi" id="sb6" onclick="ir(6)"><div class="sbi-dot"></div>Estado del expediente</div>
 
     <div class="sb-hdr" style="margin-top:.9rem">Por trámite</div>
     <div class="sbi" id="sb1" onclick="ir(1)"><div class="sbi-dot"></div>Ficha del trámite</div>
+    <div class="sbi" id="sb2" onclick="ir(2)"><div class="sbi-dot"></div>Marco legal y documentación</div>
     <div class="sbi" id="sb3" onclick="ir(3)"><div class="sbi-dot"></div>Proceso actual</div>
-    <div class="sbi" id="sb5" onclick="ir(5)"><div class="sbi-dot"></div>Modelo propuesto</div>
+    <div class="sbi" id="sb4" onclick="ir(4)"><div class="sbi-dot"></div>Modelo propuesto</div>
+
+    <div class="sb-hdr" style="margin-top:.9rem">Generales del expediente</div>
+    <div class="sbi" id="sb5" onclick="ir(5)"><div class="sbi-dot"></div>Infraestructura SOL</div>
+    <div class="sbi" id="sb6" onclick="ir(6)"><div class="sbi-dot"></div>Estado del expediente</div>
     <div class="sb-div"></div>
     <div class="sb-meta">
       <strong>Institución:</strong> <span id="sb-inst">—</span><br>
@@ -143,6 +146,7 @@
       <div class="card accent">
         <div class="ct">Fundamentos legales</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Registre cada ley, reglamento, acuerdo o normativa que sustenta el trámite.</p>
+        <div id="legal-plantilla-badge"></div>
         <table class="dtbl" id="tbl-legal">
           <thead><tr><th>#</th><th>Instrumento legal</th><th>Artículos aplicables</th><th>Observación</th><th style="width:36px"></th></tr></thead>
           <tbody id="legal-tbody"></tbody>
@@ -154,7 +158,7 @@
         <div class="ct">Documentación solicitada a la institución</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Registre cada documento solicitado. Adjunte el archivo o coloque el enlace de Google Drive.</p>
         <table class="dtbl" id="tbl-docs">
-          <thead><tr><th>#</th><th>Documento</th><th>Tipo</th><th>Recibido</th><th>Fecha</th><th>Archivo / URL Drive</th><th style="width:36px"></th></tr></thead>
+          <thead><tr><th>#</th><th>Documento</th><th>Tipo</th><th>Recibido</th><th>Fecha</th><th>Archivo / URL Drive</th><th style="width:110px">Adjuntar</th><th style="width:36px"></th></tr></thead>
           <tbody id="docs-tbody"></tbody>
         </table>
         <button class="btn-add" onclick="agregarDocSolicitado()">+ Agregar documento</button>
@@ -236,78 +240,10 @@
       </div>
     </div>
 
-    <!-- ══ SECCIÓN 4: INFRAESTRUCTURA SOL ══ -->
+    <!-- ══ SECCIÓN 4: MODELO PROPUESTO ══ -->
     <div class="sec" id="sec4">
-      <div class="sec-title">Requerimientos mínimos de infraestructura SOL</div>
-      <p style="font-size:12px;color:var(--muted);margin:-0.9rem 0 1.2rem">Evaluación de la institución frente a los requerimientos mínimos para alojar la plataforma SOL. Se completa una sola vez por expediente.</p>
-
-      <div class="card accent">
-        <div class="ct">Perfiles técnicos y transferencia de capacidades</div>
-        <div class="f">
-          <label>¿Cuenta con personal técnico capacitado?</label>
-          <div class="tg" id="tg-personal">
-            <label class="tp"><input type="radio" name="infra_personal" value="Sí"> Sí</label>
-            <label class="tp"><input type="radio" name="infra_personal" value="No"> No</label>
-            <label class="tp"><input type="radio" name="infra_personal" value="Parcialmente"> Parcialmente</label>
-          </div>
-        </div>
-        <div class="f">
-          <label>Perfiles disponibles o requeridos <span style="font-weight:400;color:var(--muted)">— marque cada perfil e indique nombre y correo institucional</span></label>
-          <div id="perfiles-grid" class="perfiles-grid"></div>
-        </div>
-        <div class="g2">
-          <div class="f"><label>Cantidad total de personal TI</label><input type="number" id="infra_personal_ti" placeholder="Ej: 8" min="0"></div>
-          <div class="f"><label>Responsable técnico de SOL</label><input type="text" id="infra_resp_sol" placeholder="Nombre, cargo y contacto"></div>
-        </div>
-        <div class="f">
-          <label>¿Requiere acompañamiento o talleres?</label>
-          <div class="tg" id="tg-acomp">
-            <label class="tp"><input type="radio" name="infra_acomp" value="Sí"> Sí</label>
-            <label class="tp"><input type="radio" name="infra_acomp" value="No"> No</label>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="ct">Data center y condiciones operativas</div>
-        <div class="g3">
-          <div class="f"><label>Modalidad</label>
-            <select id="infra_dc_modalidad"><option value="">— Seleccione —</option><option>Data center propio</option><option>Nube pública</option><option>Nube privada</option><option>Híbrido</option><option>Tercerizado / Hosting</option></select>
-          </div>
-          <div class="f"><label>Virtualización</label>
-            <select id="infra_dc_virt" onchange="toggleVirtOtro()"><option value="">— Seleccione —</option><option>VMware</option><option>Hyper-V</option><option>Proxmox</option><option>KVM</option><option>Sin virtualización</option><option>Otro</option></select>
-          </div>
-          <div class="f"><label>Disponibilidad estimada</label><input type="text" id="infra_dc_disp" placeholder="Ej: 99.5%"></div>
-        </div>
-        <div class="f" id="virt-otro-wrap" style="display:none"><label>Especifique la virtualización <span class="star">*</span></label><input type="text" id="infra_dc_virt_otro" placeholder="Indique la solución de virtualización utilizada"></div>
-        <div class="f">
-          <label>Condiciones operativas</label>
-          <div id="datacenter-grid"></div>
-        </div>
-        <div class="f"><label>Observaciones del data center</label><textarea id="infra_dc_obs" rows="2" placeholder="Detalles sobre las condiciones del data center..."></textarea></div>
-      </div>
-
-      <div class="card">
-        <div class="ct">Requerimientos mínimos por servidor</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Para cada requerimiento indique el estado de cumplimiento y registre la capacidad actual, brecha o evidencia.</p>
-        <div id="infra-checklist"></div>
-      </div>
-
-      <div class="card">
-        <div class="ct">Plan de adecuación</div>
-        <div class="f"><textarea id="infra_plan" rows="4" placeholder="Acciones necesarias para alcanzar los requerimientos mínimos, presupuesto o fecha estimada..."></textarea></div>
-      </div>
-
-      <div class="nav">
-        <button class="btn btn-s" onclick="ir(3)">← Anterior</button>
-        <button class="btn btn-p" onclick="ir(5)">Siguiente →</button>
-      </div>
-    </div>
-
-    <!-- ══ SECCIÓN 5: MODELO PROPUESTO ══ -->
-    <div class="sec" id="sec5">
       <div class="sec-title">Modelo propuesto (trámite racionalizado)</div>
-      <div class="tram-tab-bar" id="tram-tabs-5" style="display:none"></div>
+      <div class="tram-tab-bar" id="tram-tabs-4" style="display:none"></div>
 
       <!-- ANTES VS AHORA -->
       <div class="card accent">
@@ -374,6 +310,74 @@
       </div>
 
       <div class="nav">
+        <button class="btn btn-s" onclick="ir(3)">← Anterior</button>
+        <button class="btn btn-p" onclick="ir(5)">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- ══ SECCIÓN 5: INFRAESTRUCTURA SOL ══ -->
+    <div class="sec" id="sec5">
+      <div class="sec-title">Requerimientos mínimos de infraestructura SOL</div>
+      <p style="font-size:12px;color:var(--muted);margin:-0.9rem 0 1.2rem">Evaluación de la institución frente a los requerimientos mínimos para alojar la plataforma SOL. Se completa una sola vez por expediente.</p>
+
+      <div class="card accent">
+        <div class="ct">Perfiles técnicos y transferencia de capacidades</div>
+        <div class="f">
+          <label>¿Cuenta con personal técnico capacitado?</label>
+          <div class="tg" id="tg-personal">
+            <label class="tp"><input type="radio" name="infra_personal" value="Sí"> Sí</label>
+            <label class="tp"><input type="radio" name="infra_personal" value="No"> No</label>
+            <label class="tp"><input type="radio" name="infra_personal" value="Parcialmente"> Parcialmente</label>
+          </div>
+        </div>
+        <div class="f">
+          <label>Perfiles disponibles o requeridos <span style="font-weight:400;color:var(--muted)">— marque cada perfil e indique nombre y correo institucional</span></label>
+          <div id="perfiles-grid" class="perfiles-grid"></div>
+        </div>
+        <div class="g2">
+          <div class="f"><label>Cantidad total de personal TI</label><input type="number" id="infra_personal_ti" placeholder="Ej: 8" min="0"></div>
+          <div class="f"><label>Responsable técnico de SOL</label><input type="text" id="infra_resp_sol" placeholder="Nombre, cargo y contacto"></div>
+        </div>
+        <div class="f">
+          <label>¿Requiere acompañamiento o talleres?</label>
+          <div class="tg" id="tg-acomp">
+            <label class="tp"><input type="radio" name="infra_acomp" value="Sí"> Sí</label>
+            <label class="tp"><input type="radio" name="infra_acomp" value="No"> No</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ct">Data center y condiciones operativas</div>
+        <div class="g3">
+          <div class="f"><label>Modalidad</label>
+            <select id="infra_dc_modalidad"><option value="">— Seleccione —</option><option>Data center propio</option><option>Nube pública</option><option>Nube privada</option><option>Híbrido</option><option>Tercerizado / Hosting</option></select>
+          </div>
+          <div class="f"><label>Virtualización</label>
+            <select id="infra_dc_virt" onchange="toggleVirtOtro()"><option value="">— Seleccione —</option><option>VMware</option><option>Hyper-V</option><option>Proxmox</option><option>KVM</option><option>Sin virtualización</option><option>Otro</option></select>
+          </div>
+          <div class="f"><label>Disponibilidad estimada</label><input type="text" id="infra_dc_disp" placeholder="Ej: 99.5%"></div>
+        </div>
+        <div class="f" id="virt-otro-wrap" style="display:none"><label>Especifique la virtualización <span class="star">*</span></label><input type="text" id="infra_dc_virt_otro" placeholder="Indique la solución de virtualización utilizada"></div>
+        <div class="f">
+          <label>Condiciones operativas</label>
+          <div id="datacenter-grid"></div>
+        </div>
+        <div class="f"><label>Observaciones del data center</label><textarea id="infra_dc_obs" rows="2" placeholder="Detalles sobre las condiciones del data center..."></textarea></div>
+      </div>
+
+      <div class="card">
+        <div class="ct">Requerimientos mínimos por servidor</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Para cada requerimiento indique el estado de cumplimiento y registre la capacidad actual, brecha o evidencia.</p>
+        <div id="infra-checklist"></div>
+      </div>
+
+      <div class="card">
+        <div class="ct">Plan de adecuación</div>
+        <div class="f"><textarea id="infra_plan" rows="4" placeholder="Acciones necesarias para alcanzar los requerimientos mínimos, presupuesto o fecha estimada..."></textarea></div>
+      </div>
+
+      <div class="nav">
         <button class="btn btn-s" onclick="ir(4)">← Anterior</button>
         <button class="btn btn-p" onclick="ir(6)">Siguiente →</button>
       </div>
@@ -420,7 +424,8 @@
           <div class="estado-row"><span class="estado-label">Ficha del trámite</span><select class="estado-sel" id="est-1" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-1" placeholder="Nota..."></div>
           <div class="estado-row"><span class="estado-label">Marco legal y documentación</span><select class="estado-sel" id="est-2" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-2" placeholder="Nota..."></div>
           <div class="estado-row"><span class="estado-label">Proceso actual</span><select class="estado-sel" id="est-3" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-3" placeholder="Nota..."></div>
-          <div class="estado-row"><span class="estado-label">Modelo propuesto</span><select class="estado-sel" id="est-5" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-5" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Modelo propuesto</span><select class="estado-sel" id="est-4" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-4" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Infraestructura SOL</span><select class="estado-sel" id="est-5" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-5" placeholder="Nota..."></div>
         </div>
       </div>
 
@@ -474,6 +479,9 @@
       <div><div class="nm-lbl">Documento emitido</div><div id="nm-documento" style="font-size:14px">—</div></div>
       <div><div class="nm-lbl">Observación de campo</div><div id="nm-obs" style="font-size:14px">—</div></div>
     </div>
+    <div style="padding:.9rem 1.3rem;border-top:1px solid #eef1f7;text-align:right">
+      <button type="button" class="hist-del" onclick="eliminarNodoDesdeModal()">✕ Eliminar paso</button>
+    </div>
   </div>
 </div>
 
@@ -492,7 +500,8 @@
             postUrl: '@postUrl',
             token: '@tokens.RequestToken',
             indexUrl: '@Url.Page("/Index")',
-            contactosUrl: '@contactosUrl'
+            contactosUrl: '@contactosUrl',
+            plantillaUrl: '@plantillaUrl'
         };
         @if (Model.ExpJson is not null)
         {
