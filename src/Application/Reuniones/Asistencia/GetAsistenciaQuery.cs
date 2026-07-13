@@ -27,6 +27,6 @@ public sealed class GetAsistenciaQueryHandler(IReunionRepository repo, IInstituc
             : (await institucionRepo.GetByIdsAsync(institucionIds, ct)).Select(i => i.Nombre).OrderBy(n => n).ToList();
 
         return new AsistenciaAdminDto(r.Id, r.Titulo, r.RegistroToken, r.RegistroAbierto,
-            r.Convocados, r.InstitucionId, r.Institucion, institucionesNombres, asistentes);
+            r.Convocados, r.InstitucionId, r.Institucion, r.Fecha, r.Tipo, institucionesNombres, asistentes);
     }
 }

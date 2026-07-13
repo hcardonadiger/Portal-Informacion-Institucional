@@ -8,6 +8,11 @@ public sealed class FundamentoLegal : BaseEntity
     public string  Instrumento  { get; set; } = default!;
     public string? Articulos    { get; set; }
     public string? Obs          { get; set; }
+
+    /// <summary>Plantilla de la que se copió (null = escrito a mano para este expediente).</summary>
+    public int?  PlantillaOrigenId { get; set; }
+    /// <summary>true = ya no se sincroniza con la plantilla; queda fijo y editable para este expediente.</summary>
+    public bool  EsPersonalizado   { get; set; }
 }
 
 /// <summary>Documento solicitado a la institución.</summary>

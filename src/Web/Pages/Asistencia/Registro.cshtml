@@ -13,7 +13,7 @@
             <p style="color:#0a2d6e;font-weight:700;margin:.6rem 0 0;font-size:15px">@r.Titulo</p>
             <p style="color:#6b7fa3;font-size:13px;margin-top:4px">
                 @(r.Institucion is null ? "" : r.Institucion + " · ")
-                @(r.Fecha?.ToString("dd MMM yyyy"))
+                @(r.Fecha?.ToFechaCorta())
                 @(string.IsNullOrWhiteSpace(r.Hora) ? "" : " · " + r.Hora)
                 @(string.IsNullOrWhiteSpace(r.Modalidad) ? "" : " · " + r.Modalidad)
             </p>

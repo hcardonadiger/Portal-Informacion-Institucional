@@ -40,7 +40,7 @@
           <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" required /></div>
         <div class="row3">
           <div class="field"><label>Fecha</label><input asp-for="Datos.Fecha" type="date" /></div>
-          <div class="field"><label>Hora</label><input asp-for="Datos.Hora" placeholder="09:00" /></div>
+          <div class="field"><label>Hora</label><input asp-for="Datos.Hora" type="time" /></div>
           <div class="field"><label>Duración</label><input asp-for="Datos.Duracion" placeholder="2 horas" /></div>
         </div>
         <div class="row3">
@@ -239,7 +239,6 @@
                   <span class="hint">Si registra asistentes arriba, se usa ese conteo.</span></div>
               <div class="field"><label>% asistencia</label><input asp-for="Datos.PctAsistencia" type="number" min="0" max="100" /></div>
           </div>
-          <div class="field"><label>Satisfacción</label><input asp-for="Datos.Satisfaccion" placeholder="Ej: Alta / 4.5 de 5" /></div>
           <div class="field">
               <label>Compromisos <span class="hint">(uno por línea)</span></label>
               <textarea asp-for="Datos.Compromisos" rows="3"></textarea>
@@ -252,11 +251,20 @@
     <div class="sec" id="sec4">
       <div class="sec-title">Cierre</div>
       <div class="card">
-        <div class="row2">
-          <div class="field"><label>Satisfacción</label><input asp-for="Datos.Satisfaccion" placeholder="Ej: Alta / 4.5 de 5" /></div>
-          <div class="field"><label>Validación DIGER</label><input asp-for="Datos.ValDiger" /></div>
+        <div class="field">
+          <label>Calificación de satisfacción</label>
+          <div class="tg">
+            @for (int n = 1; n <= 5; n++)
+            {
+                <label class="tp"><input type="radio" asp-for="Datos.SatisfaccionCalificacion" value="@n" /> @n</label>
+            }
+          </div>
         </div>
-        <div class="field"><label>Validación institución</label><input asp-for="Datos.ValInst" /></div>
+        <div class="field"><label>Comentario de satisfacción <span class="hint">(opcional)</span></label><textarea asp-for="Datos.Satisfaccion" rows="2" placeholder="Comentario sobre la satisfacción de los participantes"></textarea></div>
+        <div class="row2">
+          <div class="field"><label>Validación DIGER</label><input asp-for="Datos.ValDiger" /></div>
+          <div class="field"><label>Validación institución</label><input asp-for="Datos.ValInst" /></div>
+        </div>
         <div class="field"><label>Documentos / recursos <span class="hint">(uno por línea)</span></label><textarea asp-for="Datos.DocsRecursos" rows="2"></textarea></div>
       </div>
       <div class="card" id="foto-card">
@@ -327,7 +335,7 @@
   }
   function addInstitucion() {
     var sel = document.getElementById('inst-add-sel');
-    var id = parseInt(sel.value, 10);
+    var id = sel.value;
     if (!id) return;
     if (institucionesSeleccionadas.indexOf(id) === -1) institucionesSeleccionadas.push(id);
     sel.value = '';

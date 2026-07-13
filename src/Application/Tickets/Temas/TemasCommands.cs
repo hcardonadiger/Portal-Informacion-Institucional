@@ -81,7 +81,7 @@ public sealed class CrearTemaCommandValidator : AbstractValidator<CrearTemaComma
     public CrearTemaCommandValidator()
     {
         RuleFor(x => x.Nombre).NotEmpty().WithMessage("El nombre del tema es obligatorio.").MaximumLength(80);
-        RuleFor(x => x.HorasResolucion).InclusiveBetween(0, 100000).WithMessage("El SLA en horas no es válido.");
+        RuleFor(x => x.HorasResolucion).InclusiveBetween(0, 100000).WithMessage("El tiempo máximo en horas no es válido.");
     }
 }
 
@@ -90,6 +90,6 @@ public sealed class ActualizarTemaCommandValidator : AbstractValidator<Actualiza
     public ActualizarTemaCommandValidator()
     {
         RuleFor(x => x.Nombre).NotEmpty().WithMessage("El nombre del tema es obligatorio.").MaximumLength(80);
-        RuleFor(x => x.HorasResolucion).InclusiveBetween(0, 100000).WithMessage("El SLA en horas no es válido.");
+        RuleFor(x => x.HorasResolucion).InclusiveBetween(0, 100000).WithMessage("El tiempo máximo en horas no es válido.");
     }
 }

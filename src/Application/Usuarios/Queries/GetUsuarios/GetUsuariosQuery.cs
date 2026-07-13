@@ -22,7 +22,7 @@ public sealed class GetUsuariosQueryHandler(IApplicationDbContext ctx)
             .OrderBy(u => u.Nombre)
             .Skip((page - 1) * size).Take(size)
             .Select(u => new UsuarioListItemDto(u.Id, u.Nombre, u.Correo, 
-                ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).Select(a => a.Rol).FirstOrDefault() ?? "Empleado", 
+                ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).OrderBy(a => a.CreatedAt).ThenBy(a => a.Id).Select(a => a.Rol).FirstOrDefault() ?? "Empleado",
                 u.Activo, u.CreatedAt))
             .ToListAsync(ct);
 

@@ -65,7 +65,8 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public int?    Convocados    { get; set; }
     public int?    NumAsistentes { get; set; }
     public int?    PctAsistencia { get; set; }
-    public string? Satisfaccion  { get; set; }
+    public int?    SatisfaccionCalificacion { get; set; } // 1-5
+    public string? Satisfaccion  { get; set; } // comentario libre
     public string? Compromisos   { get; set; } // uno por línea
 
     // ── Validación y evidencias ───────────────────────────────────

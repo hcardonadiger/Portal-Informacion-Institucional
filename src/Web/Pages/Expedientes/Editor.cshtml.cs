@@ -4,7 +4,7 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
 [Authorize]
-public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo) : PageModel
+public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo, IWebHostEnvironment env) : PageModel
 {
     public int?    ExpId   { get; private set; }
     public string  Codigo  { get; private set; } = "";
@@ -34,6 +34,24 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     /// <summary>Autocompletado de contactos por institución (consumido por expediente.js).</summary>
     public async Task<IActionResult> OnGetContactosAsync(string? institucion, CancellationToken ct)
         => new JsonResult(await sender.Send(new GetContactosPorInstitucionQuery(institucion ?? ""), ct));
+
+    /// <summary>Busca una plantilla de Marco Legal/Requisitos por nombre exacto de trámite (copiado automático en el wizard).</summary>
+    public async Task<IActionResult> OnGetPlantillaAsync(string? nombre, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return new JsonResult(null);
+        var plantilla = await sender.Send(new GetPlantillaPorNombreQuery(nombre), ct);
+        return new JsonResult(plantilla);
+    }
+
+    /// <summary>Sube un documento de "Documentación solicitada" y devuelve su URL (consumido por expediente.js).</summary>
+    public async Task<IActionResult> OnPostSubirDocumentoAsync(IFormFile archivo, CancellationToken ct)
+    {
+        if (!User.CanMutate())
+            return Forbid();
+
+        var guardados = await AdjuntoStorage.GuardarAsync([archivo], env, ct, carpeta: "expedientes");
+        return new JsonResult(new { url = guardados.FirstOrDefault()?.Url });
+    }
 
     public async Task<IActionResult> OnPostAsync(int? id, [FromBody] OriginalExpedienteDto datos, CancellationToken ct)
     {

@@ -36,7 +36,8 @@ public static class OriginalShapeMapper
             {
                 var acc = accs is not null && k < accs.Count ? accs[k] : null;
                 requisitos.Add(new RequisitoInput(t, k, reqs[k].Requisito ?? "", reqs[k].Obs,
-                    ParseAccion(acc?.Accion), acc?.Justificacion));
+                    ParseAccion(acc?.Accion), acc?.Justificacion,
+                    reqs[k].PlantillaOrigenId, reqs[k].EsPersonalizado));
             }
         }
 
@@ -44,7 +45,7 @@ public static class OriginalShapeMapper
         AddFlujos(flujos, o.FlujosActual, FaseFlujo.Actual, n);
         AddFlujos(flujos, o.FlujosPropuesto, FaseFlujo.Propuesto, n);
 
-        var legal = o.Legal.Select((l, i) => new LegalInput(i, l.Instrumento ?? "", l.Articulos, l.Obs)).ToList();
+        var legal = o.Legal.Select((l, i) => new LegalInput(i, l.Instrumento ?? "", l.Articulos, l.Obs, l.PlantillaOrigenId, l.EsPersonalizado)).ToList();
         var docs  = o.Docs.Select((d, i) => new DocSolicitadoInput(
             i, d.Nombre ?? "", d.Tipo, string.Equals(d.Recibido, "Recibido", StringComparison.OrdinalIgnoreCase),
             ParseDate(d.Fecha), d.Url)).ToList();
@@ -129,7 +130,7 @@ public static class OriginalShapeMapper
         foreach (var r in d.Requisitos.OrderBy(x => x.TramiteIndex).ThenBy(x => x.Orden))
         {
             if (r.TramiteIndex < 0 || r.TramiteIndex >= nt) continue;
-            o.ReqsTram[r.TramiteIndex].Add(new() { Requisito = r.Requisito, Obs = r.Obs });
+            o.ReqsTram[r.TramiteIndex].Add(new() { Requisito = r.Requisito, Obs = r.Obs, PlantillaOrigenId = r.PlantillaOrigenId, EsPersonalizado = r.EsPersonalizado });
             o.AccionesTram[r.TramiteIndex].Add(new() { Accion = FmtAccion(r.Accion), Justificacion = r.Justificacion });
         }
 
@@ -146,7 +147,7 @@ public static class OriginalShapeMapper
             });
         }
 
-        o.Legal = d.Legal.OrderBy(x => x.Orden).Select(l => new OriginalExpedienteDto.LegalOrig { Instrumento = l.Instrumento, Articulos = l.Articulos, Obs = l.Obs }).ToList();
+        o.Legal = d.Legal.OrderBy(x => x.Orden).Select(l => new OriginalExpedienteDto.LegalOrig { Instrumento = l.Instrumento, Articulos = l.Articulos, Obs = l.Obs, PlantillaOrigenId = l.PlantillaOrigenId, EsPersonalizado = l.EsPersonalizado }).ToList();
         o.Docs = d.DocsSolicitados.OrderBy(x => x.Orden).Select(x => new OriginalExpedienteDto.DocOrig { Nombre = x.Nombre, Tipo = x.Tipo, Recibido = x.Recibido ? "Recibido" : "Pendiente", Fecha = Fmt(x.Fecha), Url = x.Url }).ToList();
         o.DocsInternos = d.DocsInternos.OrderBy(x => x.Orden).Select(x => new OriginalExpedienteDto.DocIntOrig { Documento = x.Documento, Area = x.Area, Obs = x.Obs }).ToList();
 

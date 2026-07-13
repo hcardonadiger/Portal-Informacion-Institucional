@@ -11,8 +11,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--text
 .btn-sec:hover{background:rgba(255,255,255,.25)}
 .btn-pdf{background:#fff;color:var(--azul);font-weight:700}
 .btn-pdf:hover{background:#e8f0ff}
-.wrap{display:grid;grid-template-columns:230px 1fr;max-width:1280px;margin:0 auto;min-height:calc(100vh - 48px)}
-.sidebar{background:#fff;border-right:1px solid var(--borde);padding:1.25rem 1rem;position:sticky;top:48px;height:calc(100vh - 48px);overflow-y:auto}
+.wrap{display:grid;grid-template-columns:230px 1fr;max-width:1280px;margin:0 auto;min-height:100vh}
+.sidebar{background:#fff;border-right:1px solid var(--borde);padding:1.25rem 1rem;position:sticky;top:0;height:100vh;overflow-y:auto}
 .main{padding:1.75rem 2rem 4rem}
 .sb-hdr{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem;padding-left:10px}
 .sbi{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--muted);transition:all .18s;margin-bottom:2px}
@@ -122,6 +122,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--text
 .ftog:hover{border-color:var(--azul-m);color:var(--azul-m);background:var(--azul-c)}
 .ftog.active{background:var(--azul-m);color:#fff;border-color:var(--azul-m)}
 .flow-diag-wrap{background:#fafbfd;border:1.5px solid var(--borde);border-radius:10px;padding:1.25rem;overflow-x:auto;text-align:center}
+/* Modelo propuesto: los pasos y decisiones tienden a verse más densos; se refuerza el contraste de bordes y texto. */
+.flow-diag-wrap.propuesto svg rect,
+.flow-diag-wrap.propuesto svg polygon,
+.flow-diag-wrap.propuesto svg ellipse{stroke-width:2.2px}
+.flow-diag-wrap.propuesto svg text{font-weight:800}
 /* BEFORE/AFTER */
 .bva{display:grid;grid-template-columns:1fr 90px 1fr;gap:1rem;align-items:center}
 .bva-col{border:1.5px solid var(--borde);border-radius:12px;padding:1rem;background:#fff}
