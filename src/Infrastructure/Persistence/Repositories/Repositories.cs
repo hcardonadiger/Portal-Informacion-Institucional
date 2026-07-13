@@ -207,6 +207,9 @@ public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
     public Task<Usuario?> GetByCorreoAsync(string correo, CancellationToken ct = default) =>
         ctx.Usuarios.FirstOrDefaultAsync(u => u.Correo == correo, ct);
 
+    public Task<Usuario?> GetByCertificadoThumbprintAsync(string thumbprint, CancellationToken ct = default) =>
+        ctx.Usuarios.FirstOrDefaultAsync(u => u.CertificadoThumbprint == thumbprint, ct);
+
     public async Task<IReadOnlyList<Usuario>> GetByRolAsync(
         RolUsuario rol, bool soloActivos = true, CancellationToken ct = default) =>
         await ctx.Usuarios

@@ -8,6 +8,7 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
     public string     Correo       { get; private set; } = default!; // login (único)
     public string     PasswordHash { get; private set; } = default!;
     public string?    Telefono     { get; private set; }
+    public string?    CertificadoThumbprint { get; private set; }
     public bool       Activo       { get; private set; } = true;
 
     private Usuario() { }
@@ -50,6 +51,18 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
     public void ActualizarTelefono(string? telefono)
     {
         Telefono = telefono?.Trim();
+    }
+
+    public void VincularCertificado(string? thumbprint)
+    {
+        if (string.IsNullOrWhiteSpace(thumbprint))
+        {
+            CertificadoThumbprint = null;
+        }
+        else
+        {
+            CertificadoThumbprint = System.Text.RegularExpressions.Regex.Replace(thumbprint, @"[^\da-fA-F]", "").ToUpperInvariant();
+        }
     }
 
     public void Desactivar() => Activo = false;

@@ -8,12 +8,63 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    if (context.HostingEnvironment.IsDevelopment())
+    {
+        // Puerto HTTPS principal (para navegación sin alertas)
+        options.ListenLocalhost(49175, listenOptions =>
+        {
+            listenOptions.UseHttps(httpsOptions =>
+            {
+                httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.NoCertificate;
+            });
+        });
+
+        // Puerto HTTPS de Autenticación (para pedir el certificado)
+        options.ListenLocalhost(49176, listenOptions =>
+        {
+            listenOptions.UseHttps(httpsOptions =>
+            {
+                httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.RequireCertificate;
+                
+                // Hacks para Tokens Físicos (Bit4Id, etc) que fallan en TLS 1.3 o sin internet para CRL
+                httpsOptions.CheckCertificateRevocation = false;
+                httpsOptions.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
+
+                // En desarrollo, permitimos certificados autofirmados (el certificado dev local)
+                if (context.HostingEnvironment.IsDevelopment())
+                {
+                    httpsOptions.ClientCertificateValidation = (certificate2, validationChain, policyErrors) => true;
+                }
+            });
+        });
+
+        // Puerto HTTP local
+        options.ListenLocalhost(49177);
+    }
+    else
+    {
+        // En producción (si Kestrel es el servidor de borde, no IIS/Proxy)
+        options.ConfigureHttpsDefaults(httpsOptions =>
+        {
+            httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.NoCertificate;
+        });
+    }
+});
+
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
 // Importador de expedientes desde el portal demo (Supabase) — usado por Admin/ImportarExpedientes
 builder.Services.AddHttpClient<Diger.TramitesEstado.Web.Import.SupabaseExpedienteImporter>();
+
+// Configuración para permitir el reenvío de certificados si IIS actúa como Reverse Proxy
+builder.Services.AddCertificateForwarding(options =>
+{
+    options.CertificateHeader = "X-ARR-ClientCert";
+});
 
 // ── Autenticación por cookie ──────────────────────────────────────────────
 builder.Services
@@ -101,6 +152,9 @@ app.Use(async (ctx, next) =>
 
 app.UseStaticFiles();
 app.UseRouting();
+
+// Debe estar antes de UseAuthentication para que el certificado esté disponible
+app.UseCertificateForwarding();
 
 app.UseAuthentication();
 app.UseAuthorization();

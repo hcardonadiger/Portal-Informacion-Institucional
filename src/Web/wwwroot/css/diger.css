@@ -207,6 +207,36 @@ tr.contacto-inactivo td { color: var(--diger-text-muted); }
 
 .app-sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(10,45,110,.35); z-index: 150; }
 .app-sidebar-backdrop.open { display: block; }
+.topnav-context select:hover { background-color: #e8f0ff; }
+.topnav-context select:focus { outline: none; box-shadow: 0 0 0 3px rgba(20,85,164,.15); }
+.topnav-context-div { width: 1.5px; height: 16px; background: #c8d5ee; margin: 0 4px; }
+
+/* ── TOP NAV ────────────────────────────────────────────────── */
+.topnav { background: #fff; border-bottom: 1px solid var(--diger-border); box-shadow: var(--diger-shadow-sm); }
+.topnav-inner { max-width: 1200px; margin: 0 auto; padding: 1rem 2rem; display: flex; align-items: center; gap: 2.5rem; }
+.topnav-brand { display: flex; align-items: center; text-decoration: none; }
+.topnav-logo-img { height: 34px; width: auto; display: block; }
+.topnav-toggle { display: none; background: none; border: none; cursor: pointer; color: var(--diger-blue-dark); padding: 4px; border-radius: 6px; }
+.topnav-toggle:hover { background: #f0f4ff; }
+.topnav-links { display: flex; gap: 4px; flex: 1; }
+.topnav-links a { font-size: 13.5px; color: var(--diger-text-secondary); text-decoration: none; padding: 8px 18px; border-radius: 9px; font-weight: 600; transition: all .15s; }
+.topnav-links a:hover { background: #f0f4ff; color: var(--diger-blue); }
+.topnav-user { display: flex; align-items: center; gap: 14px; }
+.topnav-name { font-size: 13px; font-weight: 700; color: var(--diger-blue-dark); }
+.topnav-rol { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--diger-blue); background: var(--diger-blue-light); padding: 3px 10px; border-radius: 10px; }
+.topnav-logout { background: #fff; border: 1.5px solid var(--diger-border); color: var(--diger-text-muted); border-radius: 9px; padding: 7px 16px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.topnav-logout:hover { border-color: var(--diger-danger); color: var(--diger-danger); }
+
+/* ── TOP NAV DROPDOWN ───────────────────────────────────────── */
+.topnav-dropdown { position: relative; }
+.topnav-dropdown-trigger { display: flex; align-items: center; gap: 5px; }
+.topnav-chevron { font-size: 10px; opacity: .7; transition: transform .2s; }
+.topnav-dropdown:hover .topnav-chevron { transform: rotate(180deg); }
+.topnav-dropdown-menu { position: absolute; top: 100%; left: 0; padding-top: 8px; display: none; z-index: 100; min-width: 160px; }
+.topnav-dropdown:hover .topnav-dropdown-menu { display: block; }
+.topnav-dropdown-menu-inner { background: #fff; border: 1px solid var(--diger-border); border-radius: 11px; box-shadow: 0 8px 24px rgba(10,45,110,.12); padding: 6px; }
+.topnav-dropdown-menu a { display: block; font-size: 13.5px; color: var(--diger-text-secondary); text-decoration: none; padding: 8px 14px; border-radius: 7px; font-weight: 600; transition: all .15s; }
+.topnav-dropdown-menu a:hover { background: #f0f4ff; color: var(--diger-blue); }
 
 /* ── WORKFLOW BADGES ────────────────────────────────────────── */
 .wf-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: var(--diger-radius-md); font-size: 11px; font-weight: 700; }
@@ -279,6 +309,12 @@ tr.contacto-inactivo td { color: var(--diger-text-muted); }
 
 /* ── MOBILE ─────────────────────────────────────────────────── */
 @media (max-width: 600px) {
+    .topnav-inner { flex-wrap: wrap; gap: .75rem; justify-content: space-between; }
+    .topnav-toggle { display: block; }
+    .topnav-links { order: 3; flex-basis: 100%; display: none; flex-direction: column; gap: 4px; }
+    .topnav-links.open { display: flex; }
+    .topnav-dropdown-menu { position: static; min-width: auto; padding-top: 2px; }
+    .topnav-dropdown-menu-inner { border: none; box-shadow: none; padding-left: 12px; border-left: 2px solid var(--diger-border); border-radius: 0; margin-left: 10px; margin-top: 4px; margin-bottom: 4px; }
     .seg-table { display: block; overflow-x: auto; }
     .container { padding: 1rem .75rem 2rem; }
     .card { padding: 1.1rem; border-radius: var(--diger-radius-md); }

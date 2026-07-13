@@ -24,6 +24,11 @@
             <label>Correo (login) <span style="color:#dc2626">*</span></label>
             <input asp-for="Correo" type="email" placeholder="usuario@diger.gob.hn" />
         </div>
+        <div class="field">
+            <label>Thumbprint (Huella) del Certificado Digital</label>
+            <input asp-for="CertificadoThumbprint" type="text" placeholder="Ej. A1B2C3D4..." style="font-family:monospace; text-transform:uppercase;" />
+            <p class="hint" style="margin-top:4px">Opcional. Permite iniciar sesión con certificado digital.</p>
+        </div>
         <div class="row2">
             <div class="field">
                 <label>Rol</label>

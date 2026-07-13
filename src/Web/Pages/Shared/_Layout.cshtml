@@ -206,6 +206,11 @@
                 <div class="app-topbar">
                     <button type="button" class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menú">&#9776;</button>
                     <img src="~/img/logo_diger.png" asp-append-version="true" class="app-topbar-logo" alt="DIGER" />
+                    <a asp-page="/Cuenta/Perfil" class="topnav-name" title="Mi Perfil" style="text-decoration:underline;text-underline-offset:2px">@User.Identity!.Name</a>
+                    <span class="topnav-rol">@(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>
+                    <form method="post" asp-page="/Cuenta/Logout" style="display:inline">
+                        <button type="submit" class="topnav-logout" title="Cerrar sesión">Salir</button>
+                    </form>
                 </div>
                 @RenderBody()
             </div>

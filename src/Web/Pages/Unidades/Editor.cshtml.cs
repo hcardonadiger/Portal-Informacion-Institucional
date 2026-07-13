@@ -15,7 +15,8 @@ public class EditorModel(ISender sender) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? IdFromRoute { get; set; }
 
-    [BindProperty] public string Id { get; set; } = string.Empty;
+    private string _id = string.Empty;
+    [BindProperty] public string Id { get => _id; set => _id = value?.ToUpperInvariant() ?? string.Empty; }
     [BindProperty] public string AreaId { get; set; } = string.Empty;
     [BindProperty] public string Nombre { get; set; } = string.Empty;
     [BindProperty] public string? NombreCorto { get; set; }
@@ -24,7 +25,7 @@ public class EditorModel(ISender sender) : PageModel
 
     public IReadOnlyList<AreaListItemDto> Areas { get; set; } = [];
 
-    public async Task<IActionResult> OnGetAsync(string? id, CancellationToken ct)
+    public async Task<IActionResult> OnGetAsync([FromRoute] string? id, CancellationToken ct)
     {
         IdFromRoute = id;
         Areas = await sender.Send(new GetAreasQuery(), ct);
@@ -50,7 +51,7 @@ public class EditorModel(ISender sender) : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAsync(string? id, CancellationToken ct)
+    public async Task<IActionResult> OnPostAsync([FromRoute] string? id, CancellationToken ct)
     {
         IdFromRoute = id;
 
