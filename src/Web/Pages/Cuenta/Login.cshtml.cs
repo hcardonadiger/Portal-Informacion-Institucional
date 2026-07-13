@@ -28,6 +28,27 @@ public sealed class LoginModel(ISender sender) : PageModel
             return Page();
         }
 
+        return await SignInUsuarioAsync(usuario, returnUrl);
+    }
+
+    public IActionResult OnPostCertificado(string? returnUrl)
+    {
+        var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        var host = Request.Host.Host;
+        
+        var targetUrl = isDev 
+            ? $"https://localhost:49176/Cuenta/LoginCertificado" 
+            : $"https://cert.{host.Replace("cert.", "")}/Cuenta/LoginCertificado";
+
+        if (!string.IsNullOrEmpty(returnUrl))
+        {
+            targetUrl += $"?returnUrl={Uri.EscapeDataString(returnUrl)}";
+        }
+
+        return Redirect(targetUrl);
+    }
+    private async Task<IActionResult> SignInUsuarioAsync(UsuarioAuthDto usuario, string? returnUrl)
+    {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
