@@ -60,6 +60,12 @@ builder.Services
 // Importador de expedientes desde el portal demo (Supabase) — usado por Admin/ImportarExpedientes
 builder.Services.AddHttpClient<Diger.TramitesEstado.Web.Import.SupabaseExpedienteImporter>();
 
+// Configuración para permitir el reenvío de certificados si IIS actúa como Reverse Proxy
+builder.Services.AddCertificateForwarding(options =>
+{
+    options.CertificateHeader = "X-ARR-ClientCert";
+});
+
 // ── Autenticación por cookie ──────────────────────────────────────────────
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -146,6 +152,9 @@ app.Use(async (ctx, next) =>
 
 app.UseStaticFiles();
 app.UseRouting();
+
+// Debe estar antes de UseAuthentication para que el certificado esté disponible
+app.UseCertificateForwarding();
 
 app.UseAuthentication();
 app.UseAuthorization();

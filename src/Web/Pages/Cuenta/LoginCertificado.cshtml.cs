@@ -16,12 +16,35 @@ public sealed class LoginCertificadoModel(ISender sender) : PageModel
 {
     public string? Error { get; set; }
 
+    public string? ReturnUrl { get; set; }
+
     public async Task<IActionResult> OnGetAsync(string? returnUrl, CancellationToken ct)
     {
+        ReturnUrl = returnUrl;
         var clientCert = await HttpContext.Connection.GetClientCertificateAsync();
         if (clientCert is null)
         {
             Error = "No se detectó un certificado digital válido o el navegador no lo envió. Por favor intenta de nuevo o ingresa con correo y contraseña.";
+            return Page();
+        }
+
+        // Si existe el certificado, mostramos la interfaz y dejamos que el POST haga la validación asíncrona
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync(string? returnUrl, CancellationToken ct)
+    {
+        ReturnUrl = returnUrl;
+        var clientCert = await HttpContext.Connection.GetClientCertificateAsync();
+        if (clientCert is null)
+        {
+            Error = "No se detectó un certificado digital válido en la petición. Por favor intenta de nuevo.";
+            return Page();
+        }
+
+        if (DateTime.Now < clientCert.NotBefore || DateTime.Now > clientCert.NotAfter)
+        {
+            Error = "El certificado digital ha expirado o aún no es válido.";
             return Page();
         }
 
