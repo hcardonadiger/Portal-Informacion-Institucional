@@ -56,7 +56,10 @@ function toggleUserPanel() {
     var sb = document.getElementById('appSidebar');
     if (!sb) return;
     var open;
-    try { open = localStorage.getItem(SIDEBAR_KEY) === 'true'; } catch (e) { open = false; }
+    try { 
+        var val = localStorage.getItem(SIDEBAR_KEY);
+        open = val === null ? true : val === 'true'; 
+    } catch (e) { open = true; }
     if (open) {
         var bd = document.getElementById('sidebarBackdrop');
         sb.classList.add('no-anim', 'open');

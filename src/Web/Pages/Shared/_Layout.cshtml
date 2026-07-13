@@ -109,6 +109,8 @@
                     {
                         <div class="side-label">Administración</div>
                         <a class="side-link @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index"><span class="dash"></span>Instituciones</a>
+                        <a class="side-link @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index"><span class="dash"></span>Áreas</a>
+                        <a class="side-link @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index"><span class="dash"></span>Unidades</a>
                         <a class="side-link @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><span class="dash"></span>Usuarios</a>
                         <a class="side-link @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index"><span class="dash"></span>Accesos</a>
                     }
@@ -206,11 +208,23 @@
                 <div class="app-topbar">
                     <button type="button" class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menú">&#9776;</button>
                     <img src="~/img/logo_diger.png" asp-append-version="true" class="app-topbar-logo" alt="DIGER" />
-                    <a asp-page="/Cuenta/Perfil" class="topnav-name" title="Mi Perfil" style="text-decoration:underline;text-underline-offset:2px">@User.Identity!.Name</a>
-                    <span class="topnav-rol">@(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>
-                    <form method="post" asp-page="/Cuenta/Logout" style="display:inline">
-                        <button type="submit" class="topnav-logout" title="Cerrar sesión">Salir</button>
-                    </form>
+                    
+                    <div style="flex:1; display:flex; justify-content:center; margin: 0 1rem;">
+                        <div style="width: 100%; max-width: 450px; display: flex; align-items: center; background: #f0f4fa; border-radius: 20px; padding: 7px 16px; border: 1.5px solid transparent; color: #94a3b8; font-size: 13px; opacity: 0.8; user-select: none;">
+                            <span style="margin-right:8px; font-size: 14px;">🔍</span> 
+                            <span>Buscar expedientes, trámites o reuniones... (Próximamente)</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap: 16px;">
+                        <button type="button" style="background:none; border:none; color:#6b7fa3; font-size: 17px; cursor: pointer; padding: 4px; transition: transform 0.2s;" title="Notificaciones (0)">
+                            🔔
+                        </button>
+                        <a asp-page="/Cuenta/Perfil" class="topnav-name" title="Mi Perfil" style="text-decoration:none; display:flex; align-items:center; gap: 10px; padding: 2px; border-radius: 30px; transition: background 0.2s;">
+                            <span style="color:var(--diger-blue-dark); font-weight: 700;">@User.Identity!.Name</span>
+                            <span class="side-avatar" style="width:34px; height:34px; font-size:13px; box-shadow: 0 2px 6px rgba(10,45,110,0.15);">@Iniciales(User.Identity!.Name)</span>
+                        </a>
+                    </div>
                 </div>
                 @RenderBody()
             </div>

@@ -4,7 +4,8 @@
     ViewData["Title"] = "Mi Perfil";
 }
 
-<div class="header-action">
+<div class="container" style="max-width: 900px;">
+    <div class="header-action" style="margin-bottom: 2.5rem;">
     <div>
         <h1 class="page-title">Mi Perfil</h1>
         <p class="page-subtitle">Administra tu información personal y credenciales de acceso</p>
@@ -80,7 +81,7 @@
                 <div style="display:flex;gap:1rem;justify-content:center">
                     <a href="@Model.CertUrl" class="btnp">Actualizar Certificado</a>
                     <form method="post" asp-page-handler="Desvincular" style="display:inline">
-                        <button type="submit" class="btnd" onclick="return confirm('¿Seguro que deseas desvincular tu certificado digital?')">Desvincular</button>
+                        <button type="submit" class="btns" style="color: var(--diger-danger); border-color: #fca5a5; background: #fef2f2; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" onclick="return confirm('¿Seguro que deseas desvincular tu certificado digital?')">Desvincular</button>
                     </form>
                 </div>
             }
@@ -101,6 +102,7 @@
             <strong>Nota:</strong> Al hacer clic en Vincular/Actualizar, se te solicitará seleccionar tu certificado y colocar tu PIN.
         </p>
     </div>
+</div>
 </div>
 
 @section Scripts {

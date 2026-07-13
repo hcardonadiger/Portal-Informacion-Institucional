@@ -76,6 +76,21 @@ builder.Services
         opts.AccessDeniedPath = "/Cuenta/Denegado";
         opts.ExpireTimeSpan   = TimeSpan.FromHours(8);
         opts.SlidingExpiration = true;
+        
+        // Compartir la cookie de sesión entre el subdominio cert.* y el dominio principal
+        opts.Events = new CookieAuthenticationEvents
+        {
+            OnSigningIn = context =>
+            {
+                var host = context.Request.Host.Host;
+                if (host != "localhost" && host.Contains('.'))
+                {
+                    var mainDomain = host.StartsWith("cert.") ? host.Substring(5) : host;
+                    context.CookieOptions.Domain = "." + mainDomain;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorizationBuilder()
