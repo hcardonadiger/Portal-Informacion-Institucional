@@ -28,7 +28,7 @@ public sealed class LoginCertificadoModel(ISender sender) : PageModel
         var usuario = await sender.Send(new AutenticarUsuarioCertificadoQuery(clientCert.Thumbprint), ct);
         if (usuario is null)
         {
-            Error = $"El certificado proporcionado (Huella: {clientCert.Thumbprint}) no está vinculado a ningún usuario activo.";
+            Error = "El certificado digital proporcionado no está vinculado a ninguna cuenta activa. Inicia sesión con correo y contraseña, y vincúlalo en la sección Mi Perfil.";
             return Page();
         }
 

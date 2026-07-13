@@ -11,8 +11,10 @@
         
         @if (!string.IsNullOrEmpty(Model.Error))
         {
+            var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+            var backUrl = isDev ? "https://localhost:49175/Cuenta/Login" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Login";
             <div class="alert-error" style="text-align:left;margin-bottom:1rem">@Model.Error</div>
-            <a href="https://localhost:49175/Cuenta/Login" class="btnp">Volver al inicio de sesión</a>
+            <a href="@backUrl" class="btnp">Volver al inicio de sesión</a>
         }
         else
         {

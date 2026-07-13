@@ -190,7 +190,7 @@
                         </div>
                     }
 
-                    <span class="topnav-name">@User.Identity!.Name</span>
+                    <a asp-page="/Cuenta/Perfil" class="topnav-name" title="Mi Perfil" style="text-decoration:underline;text-underline-offset:2px">@User.Identity!.Name</a>
                     <span class="topnav-rol">@(User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>
                     <form method="post" asp-page="/Cuenta/Logout" style="display:inline">
                         <button type="submit" class="topnav-logout" title="Cerrar sesión">Salir</button>
