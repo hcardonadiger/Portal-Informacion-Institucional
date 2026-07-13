@@ -3,9 +3,9 @@ using Diger.TramitesEstado.Application.Dashboards.Common;
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetTicketsDashboard;
 
 public sealed record GetTicketsDashboardQuery(
-    int? InstitucionId = null, DateOnly? Desde = null, DateOnly? Hasta = null,
+    string? InstitucionId = null, DateOnly? Desde = null, DateOnly? Hasta = null,
     // Alcance del técnico: cuando TecnicoUserId != null, se limita a sus temas o sus tickets asignados.
-    IReadOnlyList<int>? TecnicoTemaIds = null, int? TecnicoUserId = null)
+    IReadOnlyList<int>? TecnicoTemaIds = null, Guid? TecnicoUserId = null)
     : IRequest<TicketsDashboardDto>;
 
 public sealed class GetTicketsDashboardQueryHandler(IApplicationDbContext ctx)
@@ -14,11 +14,11 @@ public sealed class GetTicketsDashboardQueryHandler(IApplicationDbContext ctx)
     public async Task<TicketsDashboardDto> Handle(GetTicketsDashboardQuery q, CancellationToken ct)
     {
         // Base: alcance (filtro global) + institución elegida. Las tendencias usan esta base (12 meses).
-        var baseq = ctx.Tickets.AsQueryable();
-        if (q.InstitucionId is int iid) baseq = baseq.Where(t => t.InstitucionId == iid);
+        var baseq = ctx.Tickets.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(q.InstitucionId)) baseq = baseq.Where(t => t.InstitucionId == q.InstitucionId);
 
         // Alcance del técnico: solo sus temas (que atiende) o los tickets asignados a él.
-        if (q.TecnicoUserId is int tuid)
+        if (q.TecnicoUserId is Guid tuid)
         {
             var temaIds = q.TecnicoTemaIds ?? [];
             baseq = baseq.Where(t => (t.TemaId != null && temaIds.Contains(t.TemaId.Value)) || t.AsignadoAId == tuid);

@@ -1,0 +1,78 @@
+@page "{id?}"
+@model Diger.TramitesEstado.Web.Pages.Areas.EditorModel
+@{
+    var isNew = string.IsNullOrEmpty(Model.IdFromRoute);
+    ViewData["Title"] = isNew ? "Nueva Área" : "Editar Área";
+}
+
+<div class="container" style="max-width:620px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
+        <a class="btns" asp-page="./Index" style="font-size:13px">← Volver</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">@ViewData["Title"]</h2>
+    </div>
+
+    <form method="post" class="card">
+        <div asp-validation-summary="ModelOnly" class="alert-error"></div>
+
+        @if (isNew)
+        {
+            <div class="row2">
+                <div class="field">
+                    <label>ID (Código Único) <span style="color:#dc2626">*</span></label>
+                    <input asp-for="Id" style="text-transform: uppercase;" required placeholder="Ej: AREA-01" />
+                </div>
+                <div class="field">
+                    <label>Institución <span style="color:#dc2626">*</span></label>
+                    <select asp-for="InstitucionId" required>
+                        <option value="">Seleccione...</option>
+                        @foreach (var inst in Model.Instituciones)
+                        {
+                            <option value="@inst.Id">@inst.Nombre</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row2">
+                <div class="field">
+                    <label>ID</label>
+                    <input value="@Model.IdFromRoute" disabled style="background:#f4f6fb" />
+                    <input type="hidden" asp-for="Id" />
+                </div>
+                <div class="field">
+                    <label>Institución</label>
+                    <input value="@Model.InstitucionId" disabled style="background:#f4f6fb" />
+                    <input type="hidden" asp-for="InstitucionId" />
+                </div>
+            </div>
+        }
+
+        <div class="field">
+            <label>Nombre del Área <span style="color:#dc2626">*</span></label>
+            <input asp-for="Nombre" required placeholder="Nombre completo del área" />
+        </div>
+
+        <div class="row2">
+            <div class="field">
+                <label>Nombre Corto (Opcional)</label>
+                <input asp-for="NombreCorto" />
+            </div>
+            <div class="field">
+                <label>URL del Logo (Opcional)</label>
+                <input asp-for="LogoUrl" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Descripción (Opcional)</label>
+            <textarea asp-for="Descripcion" rows="3"></textarea>
+        </div>
+
+        <div class="nav">
+            <a class="btns" asp-page="./Index">Cancelar</a>
+            <button class="btnp" type="submit">@(isNew ? "Crear" : "Guardar cambios")</button>
+        </div>
+    </form>
+</div>

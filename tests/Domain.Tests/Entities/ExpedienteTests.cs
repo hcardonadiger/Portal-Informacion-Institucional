@@ -9,7 +9,7 @@ namespace Diger.TramitesEstado.Domain.Tests.Entities;
 public class ExpedienteTests
 {
     private static Expediente CrearValido() =>
-        Expediente.Crear("EXP-CNBS-2026-01", 7, "CNBS", "Ana Analista");
+        Expediente.Crear("EXP-CNBS-2026-01", "CNBS", null, null, "CNBS", "Ana Analista");
 
     [Fact]
     public void Crear_DatosValidos_CreaExpediente()
@@ -17,7 +17,7 @@ public class ExpedienteTests
         var e = CrearValido();
 
         e.Codigo.Should().Be("EXP-CNBS-2026-01");
-        e.InstitucionId.Should().Be(7);
+        e.InstitucionId.Should().Be("CNBS");
         e.Institucion.Should().Be("CNBS");
         e.Analista.Should().Be("Ana Analista");
         e.EstadoExpediente.Should().Be(EstadoExpediente.EnExploracion);
@@ -37,15 +37,15 @@ public class ExpedienteTests
     [InlineData("   ")]
     public void Crear_CodigoVacio_LanzaArgumentException(string codigo)
     {
-        var act = () => Expediente.Crear(codigo, 7, "CNBS", "Ana");
+        var act = () => Expediente.Crear(codigo, "CNBS", null, null, "CNBS", "Ana");
         act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public void Crear_InstitucionInvalida_LanzaArgumentException()
     {
-        var act = () => Expediente.Crear("EXP-X-2026-01", 0, "CNBS", "Ana");
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        var act = () => Expediente.Crear("EXP-X-2026-01", "", null, null, "CNBS", "Ana");
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]

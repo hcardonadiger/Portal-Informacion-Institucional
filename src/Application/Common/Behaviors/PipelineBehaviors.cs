@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace Diger.TramitesEstado.Application.Common.Behaviors;
@@ -58,5 +59,45 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
             logger.LogError(ex, "✗ {Request} falló después de {Ms}ms", name, sw.ElapsedMilliseconds);
             throw;
         }
+    }
+}
+
+// ── Caching pipeline behavior ─────────────────────────────────────────────
+/// <summary>
+/// Intercepta Queries que implementen <see cref="ICacheableQuery"/> y los cachea
+/// en <see cref="IMemoryCache"/>. Solo se activa cuando TRequest implementa
+/// ICacheableQuery; el compilador de genéricos garantiza que no afecta Commands
+/// ni Queries sin la interfaz.
+/// COMPATIBILIDAD CON ESCALABILIDAD: Incluir el contexto de usuario en CacheKey
+/// cuando los datos son sensibles al RLS (ver ICacheableQuery.CacheKey doc).
+/// </summary>
+public sealed class CachingBehavior<TRequest, TResponse>(
+    IMemoryCache cache,
+    ILogger<CachingBehavior<TRequest, TResponse>> logger)
+    : IPipelineBehavior<TRequest, TResponse>
+    where TRequest : ICacheableQuery, IRequest<TResponse>
+    where TResponse : notnull
+{
+    public async Task<TResponse> Handle(
+        TRequest request,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken ct)
+    {
+        var key = request.CacheKey;
+
+        if (cache.TryGetValue(key, out TResponse? cached) && cached is not null)
+        {
+            logger.LogInformation("🗃 Cache HIT: {Key}", key);
+            return cached;
+        }
+
+        logger.LogInformation("🗃 Cache MISS: {Key} — consultando BD", key);
+        var result = await next();
+
+        var duration = request.CacheDuration ?? TimeSpan.FromMinutes(30);
+        cache.Set(key, result, duration);
+        logger.LogInformation("🗃 Cache SET: {Key} (TTL={Duration})", key, duration);
+
+        return result;
     }
 }

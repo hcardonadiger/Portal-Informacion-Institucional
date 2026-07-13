@@ -15,6 +15,7 @@ public sealed class ImportarReunionesCommandHandler(
     IReunionRepository repo,
     IInstitucionRepository institucionRepo,
     IContactoRepository contactoRepo,
+    IApplicationDbContext ctx,
     IUnitOfWork uow)
     : IRequestHandler<ImportarReunionesCommand, ImportarReunionesResult>
 {
@@ -41,7 +42,7 @@ public sealed class ImportarReunionesCommandHandler(
                 Institucion? inst = string.IsNullOrWhiteSpace(instNombre)
                     ? null
                     : await institucionRepo.GetByNombreAsync(instNombre, ct);
-                datos.InstitucionId = inst?.Id;
+                if (inst is not null) datos.InstitucionesIds = [inst.Id];
 
                 var r = Reunion.Crear(datos.Titulo);
                 r.OrigenExternoId = row.Id;
@@ -52,7 +53,7 @@ public sealed class ImportarReunionesCommandHandler(
                 r.Institucion   = inst?.Nombre ?? instNombre;
 
                 await repo.AddAsync(r, ct);
-                await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ct);
+                await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ctx, uow, ct);
                 await uow.SaveChangesAsync(ct);
 
                 existentes.Add(row.Id);

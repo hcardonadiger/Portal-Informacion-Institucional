@@ -11,16 +11,19 @@ namespace Diger.TramitesEstado.Application.Tests.Reuniones;
 public class VisibilidadReunionTests
 {
     // Usuario configurable para probar el filtro global por alcance + privacidad.
-    private sealed class Usuario(int? id, bool global, int[] inst) : ICurrentUserService
+    private sealed class Usuario(Guid? id, bool global, string[] inst) : ICurrentUserService
     {
-        public int?        UserId          => id;
-        public string?     Nombre          => "u" + id;
-        public string?     Correo          => $"u{id}@x.com";
-        public RolUsuario? Rol             => RolUsuario.Tecnico;
-        public bool        IsAuthenticated => true;
-        public bool        EsGlobal        => global;
-        public IReadOnlyCollection<int> InstitucionesAsignadas => inst;
-        public bool        PuedeAccederInstitucion(int? institucionId) => global || (institucionId is int i && inst.Contains(i));
+        public Guid?       UserId               => id;
+        public string?     Nombre               => "u" + id;
+        public string?     Correo               => $"u{id}@x.com";
+        public string?     Rol                  => "Tecnico";
+        public bool        IsAuthenticated       => true;
+        public bool        EsGlobal             => global;
+        public string?     ActiveInstitucionId   => inst.Length > 0 ? inst[0] : null;
+        public string?     ActiveAreaId          => null;
+        public string?     ActiveUnidadId        => null;
+        public IReadOnlyCollection<string> InstitucionesAsignadas => inst;
+        public bool        PuedeAccederInstitucion(string? institucionId) => global || (institucionId is string i && inst.Contains(i));
     }
 
     private static DbContextOptions<AppDbContext> Opts(string db) =>
@@ -32,27 +35,28 @@ public class VisibilidadReunionTests
         var db = Guid.NewGuid().ToString();
 
         // El dueño (usuario 1, alcance a institución 7) crea una privada y una pública.
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(1, false, [7])))
+        var uid1 = Guid.NewGuid();
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(uid1, false, ["7"])))
         {
-            var priv = Reunion.Crear("Privada"); priv.InstitucionId = 7; priv.Institucion = "SENASA";
-            priv.Visibilidad = VisibilidadReunion.Privada; priv.CreadoPorId = 1;
-            var pub = Reunion.Crear("Pública"); pub.InstitucionId = 7; pub.Institucion = "SENASA";
+            var priv = Reunion.Crear("Privada"); priv.InstitucionId = "7"; priv.Institucion = "SENASA";
+            priv.Visibilidad = VisibilidadReunion.Privada; priv.CreadoPorId = uid1;
+            var pub = Reunion.Crear("Pública"); pub.InstitucionId = "7"; pub.Institucion = "SENASA";
             await ctx.Reuniones.AddRangeAsync(priv, pub);
             await ctx.SaveChangesAsync();
         }
 
         // El dueño ve ambas.
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(1, false, [7])))
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(uid1, false, ["7"])))
             (await ctx.Reuniones.Select(r => r.Titulo).ToListAsync())
                 .Should().BeEquivalentTo(["Privada", "Pública"]);
 
         // Otro usuario con alcance a la misma institución NO ve la privada.
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(2, false, [7])))
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(Guid.NewGuid(), false, ["7"])))
             (await ctx.Reuniones.Select(r => r.Titulo).ToListAsync())
                 .Should().BeEquivalentTo(["Pública"]);
 
         // Un administrador global tampoco ve la privada de otro.
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(3, true, [])))
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(Guid.NewGuid(), true, [])))
             (await ctx.Reuniones.Select(r => r.Titulo).ToListAsync())
                 .Should().BeEquivalentTo(["Pública"]);
     }

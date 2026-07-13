@@ -3,17 +3,18 @@ using Diger.TramitesEstado.Application.Usuarios.Common;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarioById;
 
-public sealed record GetUsuarioByIdQuery(int Id) : IRequest<UsuarioDetailDto>;
+public sealed record GetUsuarioByIdQuery(Guid Id) : IRequest<UsuarioDetailDto>;
 
-public sealed class GetUsuarioByIdQueryHandler(IUsuarioRepository repo)
+public sealed class GetUsuarioByIdQueryHandler(IUsuarioRepository repo, IApplicationDbContext ctx)
     : IRequestHandler<GetUsuarioByIdQuery, UsuarioDetailDto>
 {
     public async Task<UsuarioDetailDto> Handle(GetUsuarioByIdQuery q, CancellationToken ct)
     {
         var u = await repo.GetByIdAsync(q.Id, ct)
             ?? throw new NotFoundException(nameof(Usuario), q.Id);
-        var instituciones = await repo.GetInstitucionIdsAsync(u.Id, ct);
+        var asignaciones = await repo.GetAsignacionesAsync(u.Id, ct);
         var temaIds       = await repo.GetTemaIdsAsync(u.Id, ct);
-        return new UsuarioDetailDto(u.Id, u.Nombre, u.Correo, u.Rol, u.Activo, instituciones, temaIds);
+        var rol = await ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).Select(a => a.Rol).FirstOrDefaultAsync(ct) ?? "Empleado";
+        return new UsuarioDetailDto(u.Id, u.Nombre, u.Correo, rol, u.Activo, u.CertificadoThumbprint, asignaciones, temaIds);
     }
 }

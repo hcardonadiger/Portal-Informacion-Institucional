@@ -11,7 +11,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     public IReadOnlyList<TramiteOpcion> Tramites { get; private set; } = [];
     public IReadOnlyList<TemaOpcionDto> Temas { get; private set; } = [];
 
-    public sealed record TramiteOpcion(int Id, string Nombre, int InstitucionId);
+    public sealed record TramiteOpcion(int Id, string Nombre, string InstitucionId);
 
     [BindProperty] public TicketFormDto Datos { get; set; } = new();
     [BindProperty] public List<IFormFile> Archivos { get; set; } = [];
@@ -53,7 +53,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
             TicketId = d.Id;
             Datos = new TicketFormDto
             {
-                Titulo = d.Titulo, Descripcion = d.Descripcion, TemaId = d.TemaId, Prioridad = d.Prioridad,
+                Titulo = d.Titulo, Descripcion = d.Descripcion, TemaId = d.TemaId, TemaOtro = d.TemaOtro, Prioridad = d.Prioridad,
                 InstitucionId = d.InstitucionId, ExpedienteId = d.ExpedienteId
             };
             ReportanteView = string.Join(" · ",

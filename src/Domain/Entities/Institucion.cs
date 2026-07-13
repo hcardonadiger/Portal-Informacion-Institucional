@@ -1,25 +1,60 @@
+using System.Text.RegularExpressions;
+using Diger.TramitesEstado.Domain.Common;
+
 namespace Diger.TramitesEstado.Domain.Entities;
 
-public sealed class Institucion : BaseEntity
+public sealed class Institucion : BaseAuditableEntity<string>
 {
-    public string Nombre { get; private set; } = default!;
-    public bool   Activo { get; private set; } = true;
+    public string Nombre      { get; private set; } = default!;
+    public string? Descripcion { get; private set; }
+    public string? NombreCorto { get; private set; }
+    public string? LogoUrl     { get; private set; }
+    public string? InfoExtra   { get; private set; }
+    public bool   Activo      { get; private set; } = true;
 
     private readonly List<TramiteDefinicion> _tramites = [];
     public IReadOnlyCollection<TramiteDefinicion> Tramites => _tramites.AsReadOnly();
 
     private Institucion() { }
 
-    public static Institucion Crear(string nombre)
+    public static Institucion Crear(string id, string nombre, string? descripcion = null, string? nombreCorto = null, string? logoUrl = null, string? infoExtra = null)
     {
+        ValidarId(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
-        return new() { Nombre = nombre.Trim().ToUpper(), Activo = true };
+        
+        return new Institucion 
+        { 
+            Id = id.Trim().ToUpper(),
+            Nombre = nombre.Trim().ToUpper(), 
+            Descripcion = descripcion?.Trim(),
+            NombreCorto = nombreCorto?.Trim().ToUpper(),
+            LogoUrl = logoUrl?.Trim(),
+            InfoExtra = infoExtra?.Trim(),
+            Activo = true 
+        };
+    }
+
+    private static void ValidarId(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (!Regex.IsMatch(id.Trim(), @"^[A-Z0-9]+$"))
+        {
+            throw new DomainException("El Id de la Institución solo puede contener letras mayúsculas y números, sin espacios ni símbolos.");
+        }
     }
 
     public void Renombrar(string nombre)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         Nombre = nombre.Trim().ToUpper();
+    }
+    
+    public void ActualizarDetalles(string? descripcion, string? nombreCorto, string? logoUrl, string? infoExtra)
+    {
+        Descripcion = descripcion?.Trim();
+        NombreCorto = nombreCorto?.Trim().ToUpper();
+        LogoUrl = logoUrl?.Trim();
+        InfoExtra = infoExtra?.Trim();
     }
 
     public void Activar()    => Activo = true;
@@ -36,12 +71,12 @@ public sealed class Institucion : BaseEntity
 
 public sealed class TramiteDefinicion : BaseEntity
 {
-    public int    InstitucionId { get; private set; }
+    public string InstitucionId { get; private set; } = default!;
     public string Nombre        { get; private set; } = default!;
     public int    Orden         { get; private set; }
 
     private TramiteDefinicion() { }
 
-    public static TramiteDefinicion Crear(int institucionId, string nombre, int orden) =>
+    public static TramiteDefinicion Crear(string institucionId, string nombre, int orden) =>
         new() { InstitucionId = institucionId, Nombre = nombre.Trim(), Orden = orden };
 }

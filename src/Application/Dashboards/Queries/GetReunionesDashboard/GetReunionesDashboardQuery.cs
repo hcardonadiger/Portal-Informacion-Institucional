@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Application.Dashboards.Common;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetReunionesDashboard;
 
-public sealed record GetReunionesDashboardQuery(int? InstitucionId = null) : IRequest<ReunionesDashboardDto>;
+public sealed record GetReunionesDashboardQuery(string? InstitucionId = null) : IRequest<ReunionesDashboardDto>;
 
 public sealed class GetReunionesDashboardQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetReunionesDashboardQuery, ReunionesDashboardDto>
@@ -13,8 +13,8 @@ public sealed class GetReunionesDashboardQueryHandler(IApplicationDbContext ctx)
         var primerDiaMes = new DateOnly(hoy.Year, hoy.Month, 1);
         var finMes = primerDiaMes.AddMonths(1).AddDays(-1);
 
-        var r = ctx.Reuniones.AsQueryable();
-        if (q.InstitucionId is int iid) r = r.Where(x => x.InstitucionId == iid);
+        var r = ctx.Reuniones.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(q.InstitucionId)) r = r.Where(x => x.InstitucionId == q.InstitucionId);
         var total = await r.CountAsync(ct);
         var mes = await r.CountAsync(x => x.Fecha >= primerDiaMes && x.Fecha <= finMes, ct);
         var asistentes = total == 0 ? 0 : await r.SumAsync(x => x.Asistentes.Count, ct);

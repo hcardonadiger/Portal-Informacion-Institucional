@@ -4,8 +4,10 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// Reunión o capacitación documentada (acta + asistencia + acuerdos).
 /// Agregado de captura: escalares asignables; hijos reemplazados en bloque.
 /// </summary>
-public sealed class Reunion : BaseAuditableEntity
+public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     public string Titulo { get; private set; } = default!;
 
     /// <summary>Id del registro origen (p. ej. Supabase) cuando la reunión fue importada.
@@ -16,7 +18,7 @@ public sealed class Reunion : BaseAuditableEntity
     /// <summary>Pública (visible para su institución/alcance) o Privada (solo el creador).</summary>
     public VisibilidadReunion Visibilidad { get; set; } = VisibilidadReunion.Publica;
     /// <summary>Id del usuario que creó la reunión (para las reuniones privadas).</summary>
-    public int? CreadoPorId { get; set; }
+    public Guid? CreadoPorId { get; set; }
 
     // ── Auto-registro de asistencia (enlace + QR público) ─────────
     /// <summary>Token público (difícil de adivinar) del enlace de auto-registro de participantes.</summary>
@@ -32,7 +34,9 @@ public sealed class Reunion : BaseAuditableEntity
     public string?   Duracion  { get; set; }
     public string?   Modalidad { get; set; }   // Presencial / Virtual / Híbrida / Otro
     public string?   Lugar     { get; set; }
-    public int?      InstitucionId { get; set; } // beneficiaria (opcional; permite "Otro")
+    public string?   InstitucionId { get; set; } // beneficiaria (opcional; permite "Otro")
+    public string?   AreaId        { get; set; }
+    public string?   UnidadId      { get; set; }
     public string?   Institucion   { get; set; } // snapshot del nombre
     public string?   Tipo      { get; set; }     // Taller / Seminario / Reunión técnica / …
     public bool      EsCapacitacionPlataforma { get; set; }
@@ -74,11 +78,16 @@ public sealed class Reunion : BaseAuditableEntity
     public string? Foto2Desc { get; set; }
 
     // ── Hijos ─────────────────────────────────────────────────────
-    private readonly List<Asistente>      _asistentes = [];
-    private readonly List<AcuerdoReunion> _acuerdos   = [];
+    private readonly List<Asistente>          _asistentes  = [];
+    private readonly List<AcuerdoReunion>     _acuerdos    = [];
+    private readonly List<ReunionInstitucion> _institucionesParticipantes = [];
 
-    public IReadOnlyCollection<Asistente>      Asistentes => _asistentes.AsReadOnly();
-    public IReadOnlyCollection<AcuerdoReunion> Acuerdos   => _acuerdos.AsReadOnly();
+    public IReadOnlyCollection<Asistente>          Asistentes             => _asistentes.AsReadOnly();
+    public IReadOnlyCollection<AcuerdoReunion>     Acuerdos               => _acuerdos.AsReadOnly();
+    /// <summary>Instituciones convocadas a la reunión (acumulables). La primera agregada
+    /// se conserva como <see cref="InstitucionId"/>/<see cref="Institucion"/> (institución principal),
+    /// usada para el alcance institucional, el acta y el tablero.</summary>
+    public IReadOnlyCollection<ReunionInstitucion> InstitucionesParticipantes => _institucionesParticipantes.AsReadOnly();
 
     private Reunion() { }
 
@@ -102,6 +111,17 @@ public sealed class Reunion : BaseAuditableEntity
     public void Agregar(Asistente a)      => _asistentes.Add(a);
     public void Agregar(AcuerdoReunion a) => _acuerdos.Add(a);
 
+    /// <summary>Vacía la lista de instituciones convocadas (reemplazo en bloque).</summary>
+    public void LimpiarInstituciones() => _institucionesParticipantes.Clear();
+
+    /// <summary>Agrega una institución convocada, preservando el orden de captura (ignora duplicados).</summary>
+    public void AgregarInstitucion(string institucionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(institucionId);
+        if (_institucionesParticipantes.Any(x => x.InstitucionId == institucionId)) return;
+        _institucionesParticipantes.Add(new ReunionInstitucion { InstitucionId = institucionId.Trim().ToUpper(), Orden = _institucionesParticipantes.Count });
+    }
+
     /// <summary>Registra un participante desde el formulario público de auto-registro.</summary>
     public Asistente RegistrarAsistente(string nombre, string? cargo, string? institucion,
         string? departamento, string? correo, string? telefono)
@@ -124,6 +144,16 @@ public sealed class Reunion : BaseAuditableEntity
         var a = _asistentes.FirstOrDefault(x => x.Id == asistenteId);
         if (a is not null) { _asistentes.Remove(a); NumAsistentes = _asistentes.Count; }
     }
+}
+
+/// <summary>Institución convocada a una reunión (lista acumulable). Restringe qué instituciones
+/// pueden seleccionarse al pasar asistencia (auto-registro y directorio del organizador).</summary>
+public sealed class ReunionInstitucion : BaseEntity
+{
+    public int    ReunionId     { get; set; }
+    /// <summary>FK a Instituciones.Id (string). Coincide con el PK nvarchar(120) de la tabla Instituciones.</summary>
+    public string InstitucionId { get; set; } = default!;
+    public int    Orden         { get; set; }
 }
 
 public sealed class Asistente : BaseEntity

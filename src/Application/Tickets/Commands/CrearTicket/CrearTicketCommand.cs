@@ -10,6 +10,7 @@ public sealed class CrearTicketCommandHandler(
     IInstitucionRepository institucionRepo,
     IExpedienteRepository expedienteRepo,
     ICurrentUserService currentUser,
+    IApplicationDbContext ctx,
     IUnitOfWork uow)
     : IRequestHandler<CrearTicketCommand, int>
 {
@@ -25,6 +26,7 @@ public sealed class CrearTicketCommandHandler(
 
         var numero = await GenerarNumeroAsync(ct);
         var t = Ticket.Crear(numero, d.Titulo);
+        await NormalizarTemaOtroAsync(d, ct);
         TicketMapper.Aplicar(t, d);
         t.EstablecerCreador(currentUser.UserId, currentUser.Nombre ?? currentUser.Correo);
         // "Reportado por" se obtiene del usuario que registra el ticket.
@@ -32,14 +34,14 @@ public sealed class CrearTicketCommandHandler(
 
         t.InstitucionId    = institucionId;
         t.Institucion      = exp?.Institucion
-            ?? (institucionId is int iid ? (await institucionRepo.GetByIdAsync(iid, ct))?.Nombre : null);
+            ?? (!string.IsNullOrWhiteSpace(institucionId) ? (await institucionRepo.GetByIdAsync(institucionId, ct))?.Nombre : null);
         t.ExpedienteId     = exp?.Id;
         t.ExpedienteCodigo = exp?.Codigo;
 
         // Trámites afectados: solo los del catálogo de la institución del ticket (integridad).
-        if (institucionId is int itid && d.TramiteIds.Count > 0)
+        if (!string.IsNullOrWhiteSpace(institucionId) && d.TramiteIds.Count > 0)
         {
-            var catalogo = await institucionRepo.GetTramitesAsync(itid, ct);
+            var catalogo = await institucionRepo.GetTramitesAsync(institucionId, ct);
             t.EstablecerTramites(catalogo
                 .Where(td => d.TramiteIds.Contains(td.Id))
                 .Select(td => ((int?)td.Id, td.Nombre)));
@@ -64,6 +66,31 @@ public sealed class CrearTicketCommandHandler(
         while (await repo.NumeroExisteAsync(numero, ct));
         return numero;
     }
+
+    private async Task NormalizarTemaOtroAsync(TicketFormDto d, CancellationToken ct)
+    {
+        if (d.TemaId is not int temaId)
+        {
+            d.TemaOtro = null;
+            return;
+        }
+
+        var nombreTema = await ctx.TemasTicket
+            .AsNoTracking()
+            .Where(t => t.Id == temaId)
+            .Select(t => t.Nombre)
+            .FirstOrDefaultAsync(ct);
+
+        if (!string.Equals(nombreTema?.Trim(), "Otro", StringComparison.OrdinalIgnoreCase))
+        {
+            d.TemaOtro = null;
+            return;
+        }
+
+        d.TemaOtro = string.IsNullOrWhiteSpace(d.TemaOtro) ? null : d.TemaOtro.Trim();
+        if (d.TemaOtro is null)
+            throw new DomainException("Debe indicar cual es el otro tema.");
+    }
 }
 
 public sealed class CrearTicketCommandValidator : AbstractValidator<CrearTicketCommand>
@@ -72,5 +99,6 @@ public sealed class CrearTicketCommandValidator : AbstractValidator<CrearTicketC
     {
         RuleFor(x => x.Datos.Titulo).NotEmpty().WithMessage("El título es obligatorio.").MaximumLength(200);
         RuleFor(x => x.Datos.Descripcion).MaximumLength(4000);
+        RuleFor(x => x.Datos.TemaOtro).MaximumLength(200);
     }
 }

@@ -19,7 +19,11 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
         Data = await sender.Send(new GetAsistenciaQuery(id), ct);
         PublicUrl = BuildPublicUrl(Data.Token);
         QrDataUri = QrImagen.DataUri(PublicUrl);
-        if (!string.IsNullOrWhiteSpace(Data.Institucion))
+        // El directorio solo ofrece contactos de las instituciones convocadas a la reunión; si no
+        // se seleccionó ninguna (reuniones anteriores), se usa la institución principal como antes.
+        if (Data.InstitucionesNombres.Count > 0)
+            Directorio = await sender.Send(new GetContactosQuery(Instituciones: Data.InstitucionesNombres), ct);
+        else if (!string.IsNullOrWhiteSpace(Data.Institucion))
             Directorio = await sender.Send(new GetContactosQuery(null, Data.Institucion), ct);
     }
 

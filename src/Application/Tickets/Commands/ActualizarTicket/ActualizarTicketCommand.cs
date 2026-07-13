@@ -11,6 +11,7 @@ public sealed class ActualizarTicketCommandHandler(
     IInstitucionRepository institucionRepo,
     IExpedienteRepository expedienteRepo,
     ICurrentUserService currentUser,
+    IApplicationDbContext ctx,
     IUnitOfWork uow)
     : IRequestHandler<ActualizarTicketCommand, Unit>
 {
@@ -27,18 +28,19 @@ public sealed class ActualizarTicketCommandHandler(
         if (!currentUser.PuedeAccederInstitucion(institucionId))
             throw new DomainException("Debe seleccionar una institución dentro de su alcance asignado.");
 
+        await NormalizarTemaOtroAsync(d, ct);
         TicketMapper.Aplicar(t, d);
 
         t.InstitucionId    = institucionId;
         t.Institucion      = exp?.Institucion
-            ?? (institucionId is int iid ? (await institucionRepo.GetByIdAsync(iid, ct))?.Nombre : null);
+            ?? (!string.IsNullOrWhiteSpace(institucionId) ? (await institucionRepo.GetByIdAsync(institucionId, ct))?.Nombre : null);
         t.ExpedienteId     = exp?.Id;
         t.ExpedienteCodigo = exp?.Codigo;
 
         // Trámites afectados: solo los del catálogo de la institución del ticket (integridad).
-        if (institucionId is int itid && d.TramiteIds.Count > 0)
+        if (!string.IsNullOrWhiteSpace(institucionId) && d.TramiteIds.Count > 0)
         {
-            var catalogo = await institucionRepo.GetTramitesAsync(itid, ct);
+            var catalogo = await institucionRepo.GetTramitesAsync(institucionId, ct);
             t.EstablecerTramites(catalogo
                 .Where(td => d.TramiteIds.Contains(td.Id))
                 .Select(td => ((int?)td.Id, td.Nombre)));
@@ -50,6 +52,31 @@ public sealed class ActualizarTicketCommandHandler(
         await uow.SaveChangesAsync(ct);
         return Unit.Value;
     }
+
+    private async Task NormalizarTemaOtroAsync(TicketFormDto d, CancellationToken ct)
+    {
+        if (d.TemaId is not int temaId)
+        {
+            d.TemaOtro = null;
+            return;
+        }
+
+        var nombreTema = await ctx.TemasTicket
+            .AsNoTracking()
+            .Where(t => t.Id == temaId)
+            .Select(t => t.Nombre)
+            .FirstOrDefaultAsync(ct);
+
+        if (!string.Equals(nombreTema?.Trim(), "Otro", StringComparison.OrdinalIgnoreCase))
+        {
+            d.TemaOtro = null;
+            return;
+        }
+
+        d.TemaOtro = string.IsNullOrWhiteSpace(d.TemaOtro) ? null : d.TemaOtro.Trim();
+        if (d.TemaOtro is null)
+            throw new DomainException("Debe indicar cual es el otro tema.");
+    }
 }
 
 public sealed class ActualizarTicketCommandValidator : AbstractValidator<ActualizarTicketCommand>
@@ -59,5 +86,6 @@ public sealed class ActualizarTicketCommandValidator : AbstractValidator<Actuali
         RuleFor(x => x.Id).GreaterThan(0);
         RuleFor(x => x.Datos.Titulo).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Datos.Descripcion).MaximumLength(4000);
+        RuleFor(x => x.Datos.TemaOtro).MaximumLength(200);
     }
 }

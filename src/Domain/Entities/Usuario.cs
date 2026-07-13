@@ -1,16 +1,19 @@
+using Diger.TramitesEstado.Domain.Common;
+
 namespace Diger.TramitesEstado.Domain.Entities;
 
-public sealed class Usuario : BaseAuditableEntity
+public sealed class Usuario : BaseAuditableEntity<Guid>
 {
     public string     Nombre       { get; private set; } = default!;
     public string     Correo       { get; private set; } = default!; // login (único)
     public string     PasswordHash { get; private set; } = default!;
-    public RolUsuario Rol          { get; private set; }
+    public string?    Telefono     { get; private set; }
+    public string?    CertificadoThumbprint { get; private set; }
     public bool       Activo       { get; private set; } = true;
 
     private Usuario() { }
 
-    public static Usuario Crear(string nombre, string correo, string passwordHash, RolUsuario rol)
+    public static Usuario Crear(string nombre, string correo, string passwordHash, string? telefono = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         ArgumentException.ThrowIfNullOrWhiteSpace(correo);
@@ -18,10 +21,11 @@ public sealed class Usuario : BaseAuditableEntity
 
         return new Usuario
         {
+            Id           = Guid.NewGuid(),
             Nombre       = nombre.Trim(),
             Correo       = correo.Trim().ToLowerInvariant(),
             PasswordHash = passwordHash,
-            Rol          = rol,
+            Telefono     = telefono?.Trim(),
             Activo       = true
         };
     }
@@ -44,7 +48,23 @@ public sealed class Usuario : BaseAuditableEntity
         Correo = correo.Trim().ToLowerInvariant();
     }
 
-    public void CambiarRol(RolUsuario rol) => Rol = rol;
-    public void Desactivar()              => Activo = false;
-    public void Activar()                 => Activo = true;
+    public void ActualizarTelefono(string? telefono)
+    {
+        Telefono = telefono?.Trim();
+    }
+
+    public void VincularCertificado(string? thumbprint)
+    {
+        if (string.IsNullOrWhiteSpace(thumbprint))
+        {
+            CertificadoThumbprint = null;
+        }
+        else
+        {
+            CertificadoThumbprint = System.Text.RegularExpressions.Regex.Replace(thumbprint, @"[^\da-fA-F]", "").ToUpperInvariant();
+        }
+    }
+
+    public void Desactivar() => Activo = false;
+    public void Activar()    => Activo = true;
 }

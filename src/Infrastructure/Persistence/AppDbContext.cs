@@ -9,12 +9,18 @@ public sealed class AppDbContext(
     : DbContext(options), IApplicationDbContext, IUnitOfWork
 {
     public DbSet<Institucion>              Instituciones      { get; init; } = default!;
+    public DbSet<Area>                     Areas              { get; init; } = default!;
+    public DbSet<Unidad>                   Unidades           { get; init; } = default!;
+    public DbSet<AsignacionUsuario>        AsignacionesUsuario{ get; init; } = default!;
+    public DbSet<Movimiento>               Movimientos        { get; init; } = default!;
+    public DbSet<Prefijo>                  Prefijos           { get; init; } = default!;
     public DbSet<TramiteDefinicion>        TramitesDefinicion { get; init; } = default!;
     public DbSet<Usuario>                  Usuarios           { get; init; } = default!;
     public DbSet<Contacto>                 Contactos          { get; init; } = default!;
     public DbSet<Reunion>                  Reuniones          { get; init; } = default!;
     public DbSet<Asistente>                Asistentes         { get; init; } = default!;
     public DbSet<AcuerdoReunion>           Acuerdos           { get; init; } = default!;
+    public DbSet<ReunionInstitucion>       ReunionInstituciones { get; init; } = default!;
     public DbSet<Expediente>               Expedientes        { get; init; } = default!;
     public DbSet<ExpedienteTramite>        Tramites           { get; init; } = default!;
     public DbSet<TramiteRequisito>         Requisitos         { get; init; } = default!;
@@ -31,35 +37,122 @@ public sealed class AppDbContext(
     public DbSet<TicketComentario>         TicketComentarios  { get; init; } = default!;
     public DbSet<CategoriaTicket>          CategoriasTicket   { get; init; } = default!;
     public DbSet<TemaTicket>               TemasTicket        { get; init; } = default!;
-    public DbSet<UsuarioInstitucion>       UsuarioInstituciones { get; init; } = default!;
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
-    private readonly bool       _alcanceGlobal = currentUser.EsGlobal;
-    private readonly List<int>  _alcanceInst   = currentUser.InstitucionesAsignadas.ToList();
-    private readonly int?       _usuarioId     = currentUser.UserId;
+    private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
+    private readonly string? _activeInst    = currentUser.ActiveInstitucionId;
+    private readonly string? _activeArea    = currentUser.ActiveAreaId;
+    private readonly string? _activeUnidad  = currentUser.ActiveUnidadId;
+    private readonly string? _activeRol     = currentUser.Rol;
+    private readonly Guid?   _usuarioId     = currentUser.UserId;
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
         mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        // Filtros globales por institución: el usuario sin acceso global solo ve registros
-        // de sus instituciones asignadas. Los registros sin institución quedan fuera de su alcance.
-        mb.Entity<Expediente>().HasQueryFilter(e => _alcanceGlobal || EF.Constant(_alcanceInst).Contains(e.InstitucionId));
-        mb.Entity<Contacto>()  .HasQueryFilter(c => _alcanceGlobal || EF.Constant(_alcanceInst).Contains(c.InstitucionId));
-        mb.Entity<Ticket>()    .HasQueryFilter(t => _alcanceGlobal || (t.InstitucionId != null && EF.Constant(_alcanceInst).Contains(t.InstitucionId.Value)));
-        // Reuniones: las públicas siguen el alcance institucional; las privadas solo las ve su creador.
-        mb.Entity<Reunion>()   .HasQueryFilter(r =>
-            (r.Visibilidad != VisibilidadReunion.Privada
-                && (_alcanceGlobal || (r.InstitucionId != null && EF.Constant(_alcanceInst).Contains(r.InstitucionId.Value))))
-            || (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId));
+        // ── Filtros Globales RLS (Row-Level Security) ───────────────────────
+        // JefeInstitucion: ve todo de su institución.
+        // JefeArea: ve todo lo asignado a su área.
+        // JefeUnidad / Empleado: ven lo asignado a su unidad.
+        // Administrador (_alcanceGlobal = true): ve todo.
+
+        // ── Filtros RLS + Soft-Delete (fusionados) ─────────────────────────
+        // Soft-Delete (!IsDeleted) se AND-ea con el filtro RLS existente.
+        // COMPATIBILIDAD ESCALABILIDAD: al añadir jerarquía futura (Área/Unidad),
+        // solo hay que extender la condición RLS; el !IsDeleted permanece invariante.
+
+        mb.Entity<Expediente>().HasQueryFilter(e => !e.IsDeleted && (
+            _alcanceGlobal ||
+            (_activeRol == "JefeInstitucion" && e.InstitucionId == _activeInst && 
+                (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea) &&
+                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad)) ||
+            (_activeRol == "JefeArea"        && e.AreaId == _activeArea &&
+                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad)) ||
+            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && e.UnidadId == _activeUnidad)
+        ));
+
+        mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
+            _alcanceGlobal ||
+            (_activeRol == "JefeInstitucion" && c.InstitucionId == _activeInst && 
+                (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea) &&
+                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad)) ||
+            (_activeRol == "JefeArea"        && c.AreaId == _activeArea &&
+                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad)) ||
+            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && c.UnidadId == _activeUnidad)
+        ));
+
+        mb.Entity<Ticket>().HasQueryFilter(t => !t.IsDeleted && (
+            _alcanceGlobal ||
+            (_activeRol == "JefeInstitucion" && t.InstitucionId == _activeInst && 
+                (string.IsNullOrEmpty(_activeArea) || t.AreaId == _activeArea) &&
+                (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
+            (_activeRol == "JefeArea"        && t.AreaId == _activeArea &&
+                (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
+            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && t.UnidadId == _activeUnidad)
+        ));
+
+        // Reuniones: las públicas respetan la jerarquía, las privadas solo las ve el creador.
+        // Soft-Delete se evalúa primero para corto-circuitar todo el filtro si IsDeleted=true.
+        mb.Entity<Reunion>().HasQueryFilter(r => !r.IsDeleted && (
+            (r.Visibilidad != VisibilidadReunion.Privada && (
+                _alcanceGlobal ||
+                (_activeRol == "JefeInstitucion" && r.InstitucionId == _activeInst && 
+                    (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad)) ||
+                (_activeRol == "JefeArea"        && r.AreaId == _activeArea &&
+                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad)) ||
+                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && r.UnidadId == _activeUnidad)
+            )) ||
+            (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
+        ));
 
         base.OnModelCreating(mb);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
+        // ── Bloqueo de seguridad duro para rol Consultor (Solo lectura) ────────
+        var hasMutations = ChangeTracker.Entries().Any(e => 
+            e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted);
+            
+        if (hasMutations && _activeRol == "Consultor")
+        {
+            throw new UnauthorizedAccessException("El rol Consultor es de solo lectura y no puede mutar datos.");
+        }
+
+        // ── Inyección automática de jerarquía institucional en inserciones ──────
+        foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
+        {
+            var instProp = entry.Metadata.FindProperty("InstitucionId");
+            if (instProp != null && string.IsNullOrEmpty(entry.Property("InstitucionId").CurrentValue as string))
+            {
+                entry.Property("InstitucionId").CurrentValue = _activeInst;
+            }
+
+            var areaProp = entry.Metadata.FindProperty("AreaId");
+            if (areaProp != null && string.IsNullOrEmpty(entry.Property("AreaId").CurrentValue as string))
+            {
+                entry.Property("AreaId").CurrentValue = _activeArea;
+            }
+
+            var unidadProp = entry.Metadata.FindProperty("UnidadId");
+            if (unidadProp != null && string.IsNullOrEmpty(entry.Property("UnidadId").CurrentValue as string))
+            {
+                entry.Property("UnidadId").CurrentValue = _activeUnidad;
+            }
+        }
+
+        // ── Soft-Delete: convierte eliminaciones físicas en borrado lógico ──────
+        foreach (var entry in ChangeTracker.Entries<ISoftDeletable>()
+            .Where(e => e.State == EntityState.Deleted))
+        {
+            entry.State = EntityState.Modified;
+            entry.Entity.IsDeleted = true;
+        }
+
+        // ── Auditoría automática ──────────────────────────────────────────────
         var actor = currentUser.Nombre ?? currentUser.Correo;
         foreach (var entry in ChangeTracker.Entries<BaseAuditableEntity>())
         {
@@ -85,7 +178,7 @@ public sealed class InstitucionConfiguration : IEntityTypeConfiguration<Instituc
     {
         b.ToTable("Instituciones");
         b.HasKey(x => x.Id);
-        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
         b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
         b.HasIndex(x => x.Nombre).IsUnique();
         b.HasMany(x => x.Tramites).WithOne()
@@ -117,7 +210,6 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         b.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
         b.Property(x => x.Correo).HasMaxLength(200).IsRequired();
         b.Property(x => x.PasswordHash).HasMaxLength(300).IsRequired();
-        b.Property(x => x.Rol).HasConversion<string>().HasMaxLength(30);
         b.HasIndex(x => x.Correo).IsUnique();
     }
 }
@@ -137,8 +229,14 @@ public sealed class ContactoConfiguration : IEntityTypeConfiguration<Contacto>
         b.Property(x => x.Notas).HasMaxLength(1000);
         b.Property(x => x.Origen).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.InstitucionId).IsRequired();
+        b.Property(x => x.AreaId).HasMaxLength(120);
+        b.Property(x => x.UnidadId).HasMaxLength(120);
         b.HasOne<Institucion>().WithMany()
             .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Area>().WithMany()
+            .HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Unidad>().WithMany()
+            .HasForeignKey(x => x.UnidadId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => x.InstitucionId);
         b.HasIndex(x => x.Institucion);
         b.HasIndex(x => x.Nombre);
@@ -193,6 +291,10 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
             .HasFilter("[OrigenExternoId] IS NOT NULL");
         b.HasOne<Institucion>().WithMany()
             .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Area>().WithMany()
+            .HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Unidad>().WithMany()
+            .HasForeignKey(x => x.UnidadId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Usuario>().WithMany()
             .HasForeignKey(x => x.CreadoPorId).OnDelete(DeleteBehavior.SetNull);
 
@@ -200,6 +302,22 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
             .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Acuerdos).WithOne()
             .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.InstitucionesParticipantes).WithOne()
+            .HasForeignKey(x => x.ReunionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>Instituciones convocadas a una reunión (join, acumulable — ver <see cref="Reunion.AgregarInstitucion"/>).</summary>
+public sealed class ReunionInstitucionConfiguration : IEntityTypeConfiguration<ReunionInstitucion>
+{
+    public void Configure(EntityTypeBuilder<ReunionInstitucion> b)
+    {
+        b.ToTable("ReunionInstituciones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.HasIndex(x => new { x.ReunionId, x.InstitucionId }).IsUnique();
+        b.HasOne<Institucion>().WithMany()
+            .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -291,6 +409,10 @@ public sealed class ExpedienteConfiguration : IEntityTypeConfiguration<Expedient
 
         b.HasOne<Institucion>().WithMany()
             .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Area>().WithMany()
+            .HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Unidad>().WithMany()
+            .HasForeignKey(x => x.UnidadId).OnDelete(DeleteBehavior.Restrict);
 
         b.HasMany(x => x.Tramites).WithOne().HasForeignKey(t => t.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Requisitos).WithOne().HasForeignKey(t => t.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
@@ -493,6 +615,7 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         b.Property(x => x.Numero).HasMaxLength(30).IsRequired();
         b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
         b.Property(x => x.Descripcion).HasMaxLength(4000);
+        b.Property(x => x.TemaOtro).HasMaxLength(200);
         b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Institucion).HasMaxLength(120);
@@ -510,6 +633,10 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         b.HasOne<Institucion>().WithMany()
             .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.SetNull);
+        b.HasOne<Area>().WithMany()
+            .HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<Unidad>().WithMany()
+            .HasForeignKey(x => x.UnidadId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Expediente>().WithMany()
             .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.SetNull);
         b.HasOne<Usuario>().WithMany()
@@ -573,16 +700,68 @@ public sealed class TicketComentarioConfiguration : IEntityTypeConfiguration<Tic
     }
 }
 
-public sealed class UsuarioInstitucionConfiguration : IEntityTypeConfiguration<UsuarioInstitucion>
+public sealed class AsignacionUsuarioConfiguration : IEntityTypeConfiguration<AsignacionUsuario>
 {
-    public void Configure(EntityTypeBuilder<UsuarioInstitucion> b)
+    public void Configure(EntityTypeBuilder<AsignacionUsuario> b)
     {
-        b.ToTable("UsuarioInstituciones");
+        b.ToTable("AsignacionesUsuario");
         b.HasKey(x => x.Id);
-        b.Property(x => x.Id).ValueGeneratedOnAdd();
-        b.HasIndex(x => new { x.UsuarioId, x.InstitucionId }).IsUnique();
+        b.Property(x => x.Id).ValueGeneratedNever(); // GUID is generated in domain
+        b.Property(x => x.InstitucionId).HasMaxLength(120).IsRequired();
+        b.Property(x => x.AreaId).HasMaxLength(120);
+        b.Property(x => x.UnidadId).HasMaxLength(120);
+        b.Property(x => x.Rol).HasMaxLength(60).IsRequired();
+        b.HasIndex(x => new { x.UsuarioId, x.InstitucionId, x.AreaId, x.UnidadId }).IsUnique();
         b.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<Institucion>().WithMany().HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class AreaConfiguration : IEntityTypeConfiguration<Area>
+{
+    public void Configure(EntityTypeBuilder<Area> b)
+    {
+        b.ToTable("Areas");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
+        b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
+        b.Property(x => x.InstitucionId).HasMaxLength(120).IsRequired();
+        b.HasOne<Institucion>().WithMany().HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class UnidadConfiguration : IEntityTypeConfiguration<Unidad>
+{
+    public void Configure(EntityTypeBuilder<Unidad> b)
+    {
+        b.ToTable("Unidades");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
+        b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
+        b.Property(x => x.AreaId).HasMaxLength(120).IsRequired();
+        b.HasOne<Area>().WithMany().HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class MovimientoConfiguration : IEntityTypeConfiguration<Movimiento>
+{
+    public void Configure(EntityTypeBuilder<Movimiento> b)
+    {
+        b.ToTable("Movimientos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
+        b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
+    }
+}
+
+public sealed class PrefijoConfiguration : IEntityTypeConfiguration<Prefijo>
+{
+    public void Configure(EntityTypeBuilder<Prefijo> b)
+    {
+        b.ToTable("Prefijos");
+        b.HasKey(x => new { x.PrefijoInstitucion, x.PrefijoMovimiento });
+        b.Property(x => x.PrefijoInstitucion).HasMaxLength(120);
+        b.Property(x => x.PrefijoMovimiento).HasMaxLength(120);
     }
 }
 
@@ -647,32 +826,34 @@ public sealed class UsuarioTemaConfiguration : IEntityTypeConfiguration<UsuarioT
 // ── Datos semilla (catálogo de instituciones) ─────────────────────────────
 internal static class Seed
 {
+    internal static readonly DateTime SeedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     internal static readonly object[] Instituciones =
     [
-        new { Id = 1,  Nombre = "CONVIVIENDA",    Activo = true },
-        new { Id = 2,  Nombre = "COPECO",         Activo = true },
-        new { Id = 3,  Nombre = "SIT",            Activo = true },
-        new { Id = 4,  Nombre = "IHADFA",         Activo = true },
-        new { Id = 5,  Nombre = "BANHPROVI",      Activo = true },
-        new { Id = 6,  Nombre = "INPREUNAH",      Activo = true },
-        new { Id = 7,  Nombre = "CNBS",           Activo = true },
-        new { Id = 8,  Nombre = "INPREMA",        Activo = true },
-        new { Id = 9,  Nombre = "IHTT",           Activo = true },
-        new { Id = 10, Nombre = "SEN",            Activo = true },
-        new { Id = 11, Nombre = "CONSUCOOP",      Activo = true },
-        new { Id = 12, Nombre = "CONATEL",        Activo = true },
-        new { Id = 13, Nombre = "IHCINE",         Activo = true },
-        new { Id = 14, Nombre = "SAG",            Activo = true },
-        new { Id = 15, Nombre = "SECAPPH",        Activo = true },
-        new { Id = 16, Nombre = "SRECI",          Activo = true },
-        new { Id = 17, Nombre = "SERNA",          Activo = true },
-        new { Id = 18, Nombre = "SGJD",           Activo = true },
-        new { Id = 19, Nombre = "CANATURH / IHT", Activo = true },
-        new { Id = 20, Nombre = "IP",             Activo = true },
-        new { Id = 21, Nombre = "SENASA",         Activo = true },
-        new { Id = 22, Nombre = "SESAL",          Activo = true },
-        new { Id = 23, Nombre = "FOSOVI",         Activo = true },
-        new { Id = 24, Nombre = "IHT",            Activo = true },
+        new { Id = "DIGER",       Nombre = "Dirección de Gestión por Resultados", Activo = true, CreatedAt = SeedDate },
+        new { Id = "CONVIVIENDA", Nombre = "Comisión Nacional de Vivienda y Asentamientos Humanos", Activo = true, CreatedAt = SeedDate },
+        new { Id = "COPECO",      Nombre = "Secretaría de Estado en los Despachos de Gestión de Riesgos y Contingencias Nacionales", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SIT",         Nombre = "Secretaría de Infraestructura y Transporte", Activo = true, CreatedAt = SeedDate },
+        new { Id = "IHADFA",      Nombre = "Instituto Hondureño para la Prevención del Alcoholismo, Drogadicción y Farmacodependencia", Activo = true, CreatedAt = SeedDate },
+        new { Id = "BANHPROVI",   Nombre = "Banco Hondureño para la Producción y la Vivienda", Activo = true, CreatedAt = SeedDate },
+        new { Id = "INPREUNAH",   Nombre = "Instituto de Previsión de la Universidad Nacional Autónoma de Honduras", Activo = true, CreatedAt = SeedDate },
+        new { Id = "CNBS",        Nombre = "Comisión Nacional de Bancos y Seguros", Activo = true, CreatedAt = SeedDate },
+        new { Id = "INPREMA",     Nombre = "Instituto Nacional de Previsión del Magisterio", Activo = true, CreatedAt = SeedDate },
+        new { Id = "IHTT",        Nombre = "Instituto Hondureño del Transporte Terrestre", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SEN",         Nombre = "Secretaría de Energía", Activo = true, CreatedAt = SeedDate },
+        new { Id = "CONSUCOOP",   Nombre = "Consejo Nacional Supervisor de Cooperativas", Activo = true, CreatedAt = SeedDate },
+        new { Id = "CONATEL",     Nombre = "Comisión Nacional de Telecomunicaciones", Activo = true, CreatedAt = SeedDate },
+        new { Id = "IHCINE",      Nombre = "Instituto Hondureño de Cinematografía", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SAG",         Nombre = "Secretaría de Agricultura y Ganadería", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SECAPPH",     Nombre = "Secretaría de las Culturas, las Artes y los Patrimonios de los Pueblos de Honduras", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SRECI",       Nombre = "Secretaría de Relaciones Exteriores y Cooperación Internacional", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SERNA",       Nombre = "Secretaría de Recursos Naturales y Ambiente", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SGJD",        Nombre = "Secretaría de Gobernación, Justicia y Descentralización", Activo = true, CreatedAt = SeedDate },
+        new { Id = "CANATURH",    Nombre = "Cámara Nacional de Turismo de Honduras", Activo = true, CreatedAt = SeedDate },
+        new { Id = "IP",          Nombre = "Instituto de la Propiedad", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SENASA",      Nombre = "Servicio Nacional de Sanidad e Inocuidad Agroalimentaria", Activo = true, CreatedAt = SeedDate },
+        new { Id = "SESAL",       Nombre = "Secretaría de Salud", Activo = true, CreatedAt = SeedDate },
+        new { Id = "FOSOVI",      Nombre = "Fondo Social de Vivienda", Activo = true, CreatedAt = SeedDate },
+        new { Id = "IHT",         Nombre = "Instituto Hondureño de Turismo", Activo = true, CreatedAt = SeedDate },
     ];
 
     internal static readonly object[] TramitesDefinicion = [];

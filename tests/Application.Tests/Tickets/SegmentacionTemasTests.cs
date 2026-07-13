@@ -65,7 +65,7 @@ public class SegmentacionTemasTests : IDisposable
         var t1 = await SeedTemaAsync("Error");
         var t2 = await SeedTemaAsync("Config");
         var t3 = await SeedTemaAsync("Acceso");
-        var u = Usuario.Crear("Ana", "ana@x.com", "hash", RolUsuario.Tecnico);
+        var u = Usuario.Crear("Ana", "ana@x.com", "hash", "Tecnico");
         await _ctx.Usuarios.AddAsync(u);
         await _ctx.SaveChangesAsync();
         var repo = new UsuarioRepository(_ctx);

@@ -1,0 +1,44 @@
+/* ══════════════════════════════════════════════════════════════════
+   DIGER — Design tokens
+   Valores extraídos de diger.css tal como estaban (sin cambios visuales).
+   Ver DESIGN.md para la referencia completa y las inconsistencias
+   conocidas que quedan pendientes a propósito.
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+    /* Color — texto y superficies */
+    --diger-blue: #1455a4;
+    --diger-blue-dark: #0a2d6e;
+    --diger-blue-light: #e8f0ff;
+    --diger-blue-pale: #c8d5ee;
+    --diger-border: #e2e8f0;
+    --diger-text: #1a1a1a;
+    --diger-text-secondary: #4a5568;
+    --diger-text-muted: #6b7fa3;
+    --diger-text-faint: #9aadcc;
+    --diger-bg: #eef1f7;
+    --diger-bg-soft: #fafbfd;
+
+    /* Color — estado semántico */
+    --diger-success: #15803d;
+    --diger-success-bg: #dcfce7;
+    --diger-warning: #b45309;
+    --diger-warning-bg: #fef3c7;
+    --diger-danger: #dc2626;
+    --diger-danger-text: #b91c1c;
+    --diger-danger-bg: #fee2e2;
+
+    /* Radios de borde — solo valores que ya se repiten idénticos 3+ veces.
+       El resto de radios (16px, 14px, 10px, 9px, 8px, 7px, 6px) se dejan
+       como literales por componente: ver DESIGN.md, "Inconsistencias
+       conocidas". */
+    --diger-radius-md: 12px;
+    --diger-radius-pill: 20px;
+
+    /* Sombras */
+    --diger-shadow-sm: 0 2px 8px rgba(10,45,110,.06);
+    --diger-shadow-md: 0 6px 20px rgba(10,45,110,.12);
+    --diger-shadow-lg: 0 4px 14px rgba(10,45,110,.3);
+
+    /* Transición estándar (la mayoría de las reglas ya usa .2s/.22s/.25s) */
+    --diger-transition: .2s;
+}

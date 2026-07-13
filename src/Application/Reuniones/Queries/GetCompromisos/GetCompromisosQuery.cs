@@ -5,7 +5,7 @@ public sealed record CompromisoListItemDto(
     int              ReunionId,
     string           ReunionTitulo,
     DateOnly?        ReunionFecha,
-    int?             InstitucionId,
+    string?          InstitucionId,
     string?          Institucion,
     string           Compromiso,
     string?          Responsable,
@@ -29,7 +29,7 @@ public sealed record CompromisosResult(
 public sealed record GetCompromisosQuery(
     string?          Q             = null,
     EstadoCompromiso? Estado       = null,
-    int?             InstitucionId = null,
+    string?          InstitucionId = null,
     string?          Responsable   = null,
     bool             SoloVencidos  = false,
     int?             Page          = null,

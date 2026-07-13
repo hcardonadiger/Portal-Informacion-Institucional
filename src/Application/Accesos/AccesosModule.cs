@@ -39,7 +39,7 @@ public static class ModulosPortal
         Configurables.FirstOrDefault(m => m.Clave == clave).Nombre ?? clave;
 
     /// <summary>Roles cuyo acceso es configurable (Administrador siempre tiene todo).</summary>
-    public static readonly IReadOnlyList<RolUsuario> RolesConfigurables = [RolUsuario.Coordinador, RolUsuario.Tecnico];
+    public static readonly IReadOnlyList<RolUsuario> RolesConfigurables = [RolUsuario.JefeInstitucion, RolUsuario.JefeArea, RolUsuario.JefeUnidad, RolUsuario.Empleado, RolUsuario.Consultor];
 }
 
 public sealed record RolAccesoDto(RolUsuario Rol, IReadOnlyList<string> Modulos);

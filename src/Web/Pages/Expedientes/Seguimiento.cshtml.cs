@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Exceptions;
+using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
@@ -7,10 +8,7 @@ public sealed class SeguimientoModel(ISender sender) : PageModel
 {
     public SeguimientoExpedienteDto Data { get; private set; } = default!;
 
-    public bool PuedeGestionar =>
-        User.IsInRole(nameof(RolUsuario.Administrador)) ||
-        User.IsInRole(nameof(RolUsuario.Coordinador)) ||
-        User.IsInRole(nameof(RolUsuario.Tecnico));
+    public bool PuedeGestionar => User.CanMutate();
 
     public async Task<IActionResult> OnGetAsync(int id, int? t, CancellationToken ct)
     {

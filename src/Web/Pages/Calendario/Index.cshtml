@@ -12,10 +12,7 @@
 }
 
 <div class="container" style="max-width:1280px">
-    @if (TempData["SuccessMsg"] is string ok)
-    {
-        <div class="alert-ok" style="margin-bottom:1rem">✅ @ok</div>
-    }
+    <partial name="_SuccessBanner" />
 
     <div class="cal-toolbar">
         <div class="cal-nav">
@@ -60,8 +57,7 @@
                         {
                             var destino = Model.PuedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta";
                             <a class="cal-chip" data-tipo="Reunion" asp-page="@destino" asp-route-id="@r.Id"
-                               title="@(r.Privada ? "🔒 Privada · " : "")@(string.IsNullOrWhiteSpace(r.Hora) ? "" : r.Hora + " · ")@r.Titulo@(string.IsNullOrWhiteSpace(r.Institucion) ? "" : " — " + r.Institucion)">
-                                @if (r.Privada) { <text>🔒 </text> }
+                               title="@(r.Privada ? "Privada · " : "")@(string.IsNullOrWhiteSpace(r.Hora) ? "" : r.Hora + " · ")@r.Titulo@(string.IsNullOrWhiteSpace(r.Institucion) ? "" : " — " + r.Institucion)">
                                 @if (!string.IsNullOrWhiteSpace(r.Hora)) { <b>@r.Hora</b> }
                                 @r.Titulo
                             </a>

@@ -5,8 +5,10 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// Agregado: escalares de captura editables; estado y asignación se controlan por métodos;
 /// el seguimiento (comentarios, cambios de estado) se agrega de forma incremental.
 /// </summary>
-public sealed class Ticket : BaseAuditableEntity
+public sealed class Ticket : BaseAuditableEntity, ISoftDeletable
 {
+    // ── Soft Delete ───────────────────────────────────────────────
+    public bool IsDeleted { get; set; }
     public string Numero { get; private set; } = default!; // TCK-2026-0001 (controlado)
     public string Titulo { get; private set; } = default!;
     public string? Descripcion { get; set; }
@@ -14,11 +16,14 @@ public sealed class Ticket : BaseAuditableEntity
     // Tema/categoría administrable (catálogo TemaTicket). Nullable = sin clasificar.
     public int?            TemaId    { get; set; }
     public TemaTicket?     TemaRef   { get; set; } // navegación (para nombre + SLA)
+    public string?         TemaOtro  { get; set; }
     public PrioridadTicket Prioridad { get; set; } = PrioridadTicket.Media;
     public EstadoTicket    Estado    { get; private set; } = EstadoTicket.Abierto;
 
     // ── Vínculos (opcionales) ─────────────────────────────────────
-    public int?    InstitucionId    { get; set; }
+    public string? InstitucionId    { get; set; }
+    public string? AreaId           { get; set; }
+    public string? UnidadId         { get; set; }
     public string? Institucion      { get; set; } // snapshot del nombre
     public int?    ExpedienteId     { get; set; }
     public string? ExpedienteCodigo { get; set; } // snapshot del código
@@ -29,11 +34,11 @@ public sealed class Ticket : BaseAuditableEntity
     public string? ReportanteTelefono { get; private set; }
 
     // ── Autoría ───────────────────────────────────────────────────
-    public int?      CreadoPorId { get; private set; } // usuario que lo creó (null = sistema)
+    public Guid?      CreadoPorId { get; private set; } // usuario que lo creó (null = sistema)
     public string?   CreadoPor   { get; private set; } // snapshot del nombre
 
     // ── Asignación / resolución ───────────────────────────────────
-    public int?      AsignadoAId   { get; private set; }
+    public Guid?     AsignadoAId   { get; private set; }
     public string?   AsignadoA     { get; private set; } // snapshot del nombre del usuario
     public DateTime? FechaResolucion { get; private set; }
     public string?   NotaResolucion  { get; private set; }
@@ -87,7 +92,7 @@ public sealed class Ticket : BaseAuditableEntity
     }
 
     /// <summary>Registra el autor del ticket (por defecto el usuario actual; "Sistema" si no hay).</summary>
-    public void EstablecerCreador(int? usuarioId, string? nombre)
+    public void EstablecerCreador(Guid? usuarioId, string? nombre)
     {
         CreadoPorId = usuarioId;
         CreadoPor   = string.IsNullOrWhiteSpace(nombre) ? "Sistema" : nombre.Trim();
@@ -104,16 +109,16 @@ public sealed class Ticket : BaseAuditableEntity
     public void MarcarActualizado() => UpdatedAt = DateTime.UtcNow;
 
     /// <summary>Asigna (o reasigna) el ticket a un usuario. Si estaba Abierto, pasa a En progreso.</summary>
-    public void Asignar(int? usuarioId, string? nombre, string autor)
+    public void Asignar(Guid? usuarioId, string? nombre, string actualizadoPor)
     {
         AsignadoAId = usuarioId;
         AsignadoA   = string.IsNullOrWhiteSpace(nombre) ? null : nombre.Trim();
         if (Estado == EstadoTicket.Abierto && usuarioId is not null)
-            CambiarEstadoInterno(EstadoTicket.EnProgreso, autor, null);
+            CambiarEstadoInterno(EstadoTicket.EnProgreso, actualizadoPor, null);
 
         _comentarios.Add(TicketComentario.Sistema(
-            TipoComentarioTicket.Asignacion, autor,
-            AsignadoA is null ? "Asignación removida." : $"Asignado a {AsignadoA}."));
+            TipoComentarioTicket.Asignacion, actualizadoPor,
+            string.IsNullOrWhiteSpace(nombre) ? "El ticket fue desasignado." : $"Asignado a: {nombre}"));
     }
 
     /// <summary>Cambia el estado registrando el evento de seguimiento. Al resolver guarda fecha y nota.</summary>

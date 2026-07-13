@@ -1,4 +1,4 @@
-@page "{id:int?}"
+@page "{id:guid?}"
 @model Diger.TramitesEstado.Web.Pages.Usuarios.EditorModel
 @{
     ViewData["Title"] = Model.UsuarioId is null ? "Nuevo usuario" : "Editar usuario";
@@ -23,6 +23,11 @@
         <div class="field">
             <label>Correo (login) <span style="color:#dc2626">*</span></label>
             <input asp-for="Correo" type="email" placeholder="usuario@diger.gob.hn" />
+        </div>
+        <div class="field">
+            <label>Thumbprint (Huella) del Certificado Digital</label>
+            <input asp-for="CertificadoThumbprint" type="text" placeholder="Ej. A1B2C3D4..." style="font-family:monospace; text-transform:uppercase;" />
+            <p class="hint" style="margin-top:4px">Opcional. Permite iniciar sesión con certificado digital.</p>
         </div>
         <div class="row2">
             <div class="field">
@@ -54,21 +59,117 @@
         </div>
 
         <div class="field" style="margin-top:.4rem">
-            <label>Instituciones asignadas (alcance)</label>
+            <label>Asignaciones (Alcance Jerárquico)</label>
             <p class="hint" style="margin:0 0 .6rem">
-                Define a qué instituciones puede acceder este usuario (ver/gestionar tickets, expedientes,
-                reuniones y contactos). <strong>No aplica al Administrador</strong>, que tiene acceso global.
+                Define a qué instituciones, áreas o unidades puede acceder este usuario. <strong>No aplica al Administrador</strong>.
             </p>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 14px;max-height:240px;overflow:auto;border:1px solid #eef1f7;border-radius:10px;padding:.7rem .9rem">
-                @foreach (var i in Model.Instituciones)
-                {
-                    <label class="chk" style="margin:0">
-                        <input type="checkbox" name="InstitucionIds" value="@i.Id" checked="@(Model.InstitucionIds.Contains(i.Id))" />
-                        <span>@i.Nombre</span>
-                    </label>
-                }
+            <div style="border:1px solid #eef1f7;border-radius:10px;padding:.7rem;background:#fcfcfd">
+                <table style="width:100%;border-collapse:collapse;margin-bottom:1rem" id="tblAsignaciones">
+                    <thead>
+                        <tr style="text-align:left;border-bottom:1px solid #eef1f7;font-size:12px;color:#6b7280">
+                            <th style="padding-bottom:6px">Institución</th>
+                            <th style="padding-bottom:6px">Área (Opcional)</th>
+                            <th style="padding-bottom:6px">Unidad (Opcional)</th>
+                            <th style="padding-bottom:6px;width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyAsignaciones"></tbody>
+                </table>
+                <button type="button" class="btns" style="padding:4px 10px;font-size:13px" onclick="addAsignacion()">+ Agregar Asignación</button>
             </div>
         </div>
+
+        <script>
+            const jerarquia = @Html.Raw(Model.JerarquiaJson);
+            let asignaciones = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Asignaciones));
+            if (!asignaciones) asignaciones = [];
+            
+            function renderAsignaciones() {
+                const tbody = document.getElementById('tbodyAsignaciones');
+                tbody.innerHTML = '';
+                if(asignaciones.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="hint" style="text-align:center;padding:1rem">No hay asignaciones</td></tr>';
+                    return;
+                }
+                
+                asignaciones.forEach((asig, index) => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid #eef1f7';
+                    
+                    const tdInst = document.createElement('td');
+                    tdInst.style.padding = '6px 4px';
+                    let selInst = `<select name="Asignaciones[${index}].InstitucionId" class="form-select form-select-sm" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px" required onchange="cambiarInstitucion(${index}, this.value)">`;
+                    selInst += `<option value="">Seleccione...</option>`;
+                    jerarquia.forEach(i => {
+                        selInst += `<option value="${i.Id}" ${i.Id === asig.InstitucionId ? 'selected' : ''}>${i.Nombre}</option>`;
+                    });
+                    selInst += `</select>`;
+                    tdInst.innerHTML = selInst;
+                    
+                    const instObj = jerarquia.find(i => i.Id === asig.InstitucionId);
+                    const tdArea = document.createElement('td');
+                    tdArea.style.padding = '6px 4px';
+                    let selArea = `<select name="Asignaciones[${index}].AreaId" class="form-select form-select-sm" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px" onchange="cambiarArea(${index}, this.value)">`;
+                    selArea += `<option value="">-- Todas --</option>`;
+                    if (instObj && instObj.Areas) {
+                        instObj.Areas.forEach(a => {
+                            selArea += `<option value="${a.Id}" ${a.Id === asig.AreaId ? 'selected' : ''}>${a.Nombre}</option>`;
+                        });
+                    }
+                    selArea += `</select>`;
+                    tdArea.innerHTML = selArea;
+
+                    const areaObj = instObj && instObj.Areas ? instObj.Areas.find(a => a.Id === asig.AreaId) : null;
+                    const tdUnidad = document.createElement('td');
+                    tdUnidad.style.padding = '6px 4px';
+                    let selUnidad = `<select name="Asignaciones[${index}].UnidadId" class="form-select form-select-sm" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px">`;
+                    selUnidad += `<option value="">-- Todas --</option>`;
+                    if (areaObj && areaObj.Unidades) {
+                        areaObj.Unidades.forEach(u => {
+                            selUnidad += `<option value="${u.Id}" ${u.Id === asig.UnidadId ? 'selected' : ''}>${u.Nombre}</option>`;
+                        });
+                    }
+                    selUnidad += `</select>`;
+                    tdUnidad.innerHTML = selUnidad;
+
+                    const tdBtn = document.createElement('td');
+                    tdBtn.style.padding = '6px 4px';
+                    tdBtn.style.textAlign = 'right';
+                    tdBtn.innerHTML = `<button type="button" style="background:none;border:none;color:#dc2626;cursor:pointer;padding:4px" onclick="removeAsignacion(${index})">✕</button>`;
+
+                    tr.appendChild(tdInst);
+                    tr.appendChild(tdArea);
+                    tr.appendChild(tdUnidad);
+                    tr.appendChild(tdBtn);
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function addAsignacion() {
+                asignaciones.push({ InstitucionId: '', AreaId: '', UnidadId: '' });
+                renderAsignaciones();
+            }
+
+            function removeAsignacion(index) {
+                asignaciones.splice(index, 1);
+                renderAsignaciones();
+            }
+
+            function cambiarInstitucion(index, instId) {
+                asignaciones[index].InstitucionId = instId;
+                asignaciones[index].AreaId = '';
+                asignaciones[index].UnidadId = '';
+                renderAsignaciones();
+            }
+
+            function cambiarArea(index, areaId) {
+                asignaciones[index].AreaId = areaId;
+                asignaciones[index].UnidadId = '';
+                renderAsignaciones();
+            }
+
+            document.addEventListener('DOMContentLoaded', renderAsignaciones);
+        </script>
 
         <div class="field" style="margin-top:.4rem">
             <label>Temas que atiende</label>

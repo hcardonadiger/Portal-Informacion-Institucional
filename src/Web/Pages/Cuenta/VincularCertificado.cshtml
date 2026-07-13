@@ -1,0 +1,24 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Cuenta.VincularCertificadoModel
+@{
+    ViewData["Title"] = "Vinculando Certificado...";
+    Layout = "_Layout";
+}
+
+<div class="container" style="max-width:440px">
+    <div class="card" style="margin-top:2rem;text-align:center">
+        <h2 style="color:#0a2d6e;font-size:20px;margin-bottom:1rem">Vinculación de Certificado</h2>
+        
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="alert-error" style="text-align:left;margin-bottom:1rem">@Model.Error</div>
+            var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+            var backUrl = isDev ? "https://localhost:49175/Cuenta/Perfil" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Perfil";
+            <a href="@backUrl" class="btnp">Volver a Mi Perfil</a>
+        }
+        else
+        {
+            <p style="color:#6b7fa3;font-size:14px">Leyendo tu certificado digital y vinculándolo a tu cuenta...</p>
+        }
+    </div>
+</div>

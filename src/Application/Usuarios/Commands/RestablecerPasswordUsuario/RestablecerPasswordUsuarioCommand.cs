@@ -3,7 +3,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.RestablecerPasswordUsuario;
 
-public sealed record RestablecerPasswordUsuarioCommand(int Id, string NuevaPassword) : IRequest<Unit>;
+public sealed record RestablecerPasswordUsuarioCommand(Guid Id, string NuevaPassword) : IRequest<Unit>;
 
 public sealed class RestablecerPasswordUsuarioCommandHandler(
     IUsuarioRepository repo, IPasswordHasher hasher, IUnitOfWork uow)
@@ -25,7 +25,7 @@ public sealed class RestablecerPasswordUsuarioCommandValidator : AbstractValidat
 {
     public RestablecerPasswordUsuarioCommandValidator()
     {
-        RuleFor(x => x.Id).GreaterThan(0);
+        RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.NuevaPassword).NotEmpty().MinimumLength(8)
             .WithMessage("La contraseña debe tener al menos 8 caracteres.");
     }

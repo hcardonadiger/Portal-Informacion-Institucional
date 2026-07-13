@@ -22,7 +22,11 @@ public sealed class GetCategoriasQueryHandler(IApplicationDbContext ctx)
             .ToListAsync(ct);
 }
 
-public sealed record GetCategoriasActivasQuery : IRequest<IReadOnlyList<CategoriaOpcionDto>>;
+public sealed record GetCategoriasActivasQuery : IRequest<IReadOnlyList<CategoriaOpcionDto>>, ICacheableQuery
+{
+    public string CacheKey => "categorias-activas";
+    public TimeSpan? CacheDuration => TimeSpan.FromMinutes(60);
+}
 
 public sealed class GetCategoriasActivasQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetCategoriasActivasQuery, IReadOnlyList<CategoriaOpcionDto>>
