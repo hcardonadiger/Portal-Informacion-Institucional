@@ -12,7 +12,7 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [AllowAnonymous]
-public sealed class LoginCertificadoModel(ISender sender) : PageModel
+public sealed class LoginCertificadoModel(ISender sender, IConfiguration config) : PageModel
 {
     public string? Error { get; set; }
 
@@ -109,14 +109,13 @@ public sealed class LoginCertificadoModel(ISender sender) : PageModel
             return Redirect($"https://localhost:49175{finalUrl}");
         }
 
-        // Si es prod y usamos subdominio, deberíamos forzar la vuelta al dominio principal. 
-        // Para simplificar, si estamos en cert.dominio.com volvemos a dominio.com
-        if (host.StartsWith("cert."))
-        {
-            var mainDomain = host.Substring(5);
-            return Redirect($"https://{mainDomain}{finalUrl}");
-        }
-
-        return LocalRedirect(finalUrl);
+        // Forzamos el regreso al puerto principal en la misma IP/Host
+        var mainPort = config.GetValue<int>("Ports:Main", 443);
+        var portSuffix = mainPort == 443 ? "" : $":{mainPort}";
+        
+        // Si aún entran por subdominio (híbrido) quitamos el cert.
+        var mainDomain = host.StartsWith("cert.") ? host.Substring(5) : host;
+        
+        return Redirect($"https://{mainDomain}{portSuffix}{finalUrl}");
     }
 }
