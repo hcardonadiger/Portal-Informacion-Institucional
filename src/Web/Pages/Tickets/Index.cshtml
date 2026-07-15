@@ -50,7 +50,7 @@
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaTickets()">🗂 Vista por institución</button>
             @if (puedeEliminar)
             {
-                <a class="btns" asp-page="/Tickets/Temas">Temas y SLA</a>
+                <a class="btns" asp-page="/Tickets/Temas">Temas y tiempos de atención</a>
             }
             @if (puedeGestionar)
             {
@@ -62,7 +62,7 @@
     <div class="tkm-metrics">
         <div class="tkm-metric"><span>Abiertos</span><strong>@abiertos</strong><small>pendientes de toma</small></div>
         <div class="tkm-metric"><span>En progreso</span><strong>@progreso</strong><small>con responsable</small></div>
-        <div class="tkm-metric tkm-metric-alert"><span>SLA vencido</span><strong>@vencidos</strong><small>requieren prioridad</small></div>
+        <div class="tkm-metric tkm-metric-alert"><span>Vencidos</span><strong>@vencidos</strong><small>requieren prioridad</small></div>
         <div class="tkm-metric"><span>Resueltos</span><strong>@resueltos</strong><small>en esta vista</small></div>
     </div>
 
@@ -117,9 +117,9 @@
                 <span>Mis temas</span>
             </label>
         }
-        <label class="chk" style="margin:0 0 .45rem" title="Tickets abiertos que superaron el SLA del tema">
+        <label class="chk" style="margin:0 0 .45rem" title="Tickets abiertos que superaron el tiempo máximo de atención del tema">
             <input type="checkbox" name="soloVencidos" value="true" checked="@Model.SoloVencidos" onchange="this.form.submit()" />
-            <span>SLA vencido</span>
+            <span>Vencidos</span>
         </label>
         <div class="field" style="min-width:190px;flex:1">
             <label>Buscar</label>

@@ -14,6 +14,6 @@ public sealed class GetUsuariosAsignablesQueryHandler(IApplicationDbContext ctx)
             .Where(u => u.Activo)
             .OrderBy(u => u.Nombre)
             .Select(u => new UsuarioAsignableDto(u.Id, u.Nombre, 
-                ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).Select(a => a.Rol).FirstOrDefault() ?? "Empleado"))
+                ctx.AsignacionesUsuario.Where(a => a.UsuarioId == u.Id).OrderBy(a => a.CreatedAt).ThenBy(a => a.Id).Select(a => a.Rol).FirstOrDefault() ?? "Empleado"))
             .ToListAsync(ct);
 }

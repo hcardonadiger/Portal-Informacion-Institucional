@@ -1,6 +1,6 @@
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
-[Authorize(Roles = "Administrador,Coordinador")]
+[Authorize(Roles = nameof(RolUsuario.Administrador))]
 public sealed class TemasModel(ISender sender) : PageModel
 {
     public IReadOnlyList<TemaAdminDto> Temas { get; private set; } = [];

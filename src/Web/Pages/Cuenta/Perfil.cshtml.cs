@@ -8,7 +8,7 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
-public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser) : PageModel
+public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser, IConfiguration config) : PageModel
 {
     [BindProperty] public string Nombre { get; set; } = string.Empty;
     [BindProperty] public string Correo { get; set; } = string.Empty;
@@ -29,9 +29,12 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
         TieneCertificadoVinculado = !string.IsNullOrWhiteSpace(dto.CertificadoThumbprint);
 
         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        var certPort = config.GetValue<int>("Ports:Cert", 444);
+        var host = Request.Host.Host;
+        
         CertUrl = isDev 
             ? "https://localhost:49176/Cuenta/VincularCertificado" 
-            : $"https://cert.{Request.Host.Host.Replace("cert.", "")}/Cuenta/VincularCertificado";
+            : $"https://{host}:{certPort}/Cuenta/VincularCertificado";
 
         return Page();
     }
@@ -81,8 +84,11 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
         TieneCertificadoVinculado = !string.IsNullOrWhiteSpace(dto.CertificadoThumbprint);
         
         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        var certPort = config.GetValue<int>("Ports:Cert", 444);
+        var host = Request.Host.Host;
+        
         CertUrl = isDev 
             ? "https://localhost:49176/Cuenta/VincularCertificado" 
-            : $"https://cert.{Request.Host.Host.Replace("cert.", "")}/Cuenta/VincularCertificado";
+            : $"https://{host}:{certPort}/Cuenta/VincularCertificado";
     }
 }

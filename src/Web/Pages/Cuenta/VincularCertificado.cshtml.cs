@@ -8,7 +8,7 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [Authorize]
-public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService currentUser) : PageModel
+public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService currentUser, IConfiguration config) : PageModel
 {
     public string? Error { get; set; }
 
@@ -44,12 +44,10 @@ public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService
             return Redirect($"https://localhost:49175{backUrl}");
         }
 
-        if (host.StartsWith("cert."))
-        {
-            var mainDomain = host.Substring(5);
-            return Redirect($"https://{mainDomain}{backUrl}");
-        }
-
-        return LocalRedirect(backUrl);
+        var mainPort = config.GetValue<int>("Ports:Main", 443);
+        var portSuffix = mainPort == 443 ? "" : $":{mainPort}";
+        var mainDomain = host.StartsWith("cert.") ? host.Substring(5) : host;
+        
+        return Redirect($"https://{mainDomain}{portSuffix}{backUrl}");
     }
 }

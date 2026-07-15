@@ -100,6 +100,7 @@ BEGIN
         Correo NVARCHAR(200) NOT NULL,
         Telefono NVARCHAR(50) NULL,
         ContrasenaHash NVARCHAR(500) NULL,
+        CertificadoThumbprint NVARCHAR(100) NULL,
         
         -- Auditoría
         UsuarioCreo NVARCHAR(150) NOT NULL DEFAULT 'Sistema',

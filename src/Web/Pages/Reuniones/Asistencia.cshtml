@@ -5,6 +5,7 @@
     var d = Model.Data;
     var autoCount = d.Asistentes.Count(a => a.AutoRegistro);
 }
+<link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
 
 <div class="container" style="max-width:1080px">
     <partial name="_SuccessBanner" />
@@ -32,11 +33,10 @@
 
             <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:.5rem">
                 <div style="background:#fff;padding:10px;border:1px solid #e2e8f0;border-radius:12px;line-height:0">
-                    <img id="qrImg" src="@Model.QrDataUri" alt="Código QR de registro" width="190" height="190" style="display:block" />
+                    <img src="@Model.QrDataUri" alt="Código QR de registro" width="110" height="110" style="display:block" />
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px">
-                    <button class="btns" type="button" onclick="descargarQR()">Descargar QR</button>
-                    <button class="btns" type="button" onclick="imprimirQR()">Imprimir QR</button>
+                    <button class="btnp" type="button" onclick="abrirModalQR()">Ver QR</button>
                 </div>
             </div>
         </div>
@@ -129,7 +129,7 @@
                                     <span class="res-meta">Manual</span>
                                 }
                             </td>
-                            <td class="res-meta" style="white-space:nowrap">@(a.RegistradoEl?.ToLocalTime().ToString("dd MMM HH:mm") ?? "—")</td>
+                            <td class="res-meta" style="white-space:nowrap">@(a.RegistradoEl?.ToLocalTime().ToFechaHoraCorta() ?? "—")</td>
                             <td style="text-align:right">
                                 <form method="post" asp-page-handler="Eliminar" asp-route-id="@d.ReunionId" style="display:inline">
                                     <input type="hidden" name="asistenteId" value="@a.Id" />
@@ -142,6 +142,31 @@
             </table>
         }
     </div>
+
+    @* ── Modal QR ─────────────────────────────────────────────────── *@
+    <div id="qr-modal-overlay" class="modal-overlay" onclick="if(event.target===this) cerrarModalQR()">
+        <div class="modal-card">
+            <div class="modal-qr-hdr">
+                <img src="~/img/logo_diger.png" asp-append-version="true" alt="DIGER" class="modal-qr-logo" />
+                <div class="modal-qr-title">@d.Titulo</div>
+                <div class="modal-qr-sub">
+                    @(d.Fecha?.ToFechaCorta())@(string.IsNullOrWhiteSpace(d.Tipo) ? "" : " · " + d.Tipo)
+                </div>
+            </div>
+            <div class="modal-qr-box">
+                <img id="qrImg" src="@Model.QrDataUri" alt="Código QR de registro" width="240" height="240" />
+            </div>
+            <div class="modal-qr-caption">
+                <strong>Escanee el código QR</strong>
+                <span>Abra la cámara de su teléfono y apúntela al código</span>
+            </div>
+            <div class="modal-qr-actions">
+                <button class="btnp" type="button" onclick="descargarQR()">Descargar QR</button>
+                <button class="btns" type="button" onclick="imprimirQR()">Imprimir</button>
+            </div>
+            <button class="btns modal-qr-close" type="button" onclick="cerrarModalQR()">Cerrar</button>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -152,6 +177,10 @@
   var TITULO  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data.Titulo));
 
   function obtenerQR(){ var i = document.getElementById('qrImg'); return i ? i.src : null; }
+
+  function abrirModalQR(){ document.getElementById('qr-modal-overlay').classList.add('open'); }
+  function cerrarModalQR(){ document.getElementById('qr-modal-overlay').classList.remove('open'); }
+  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') cerrarModalQR(); });
 
   function escHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 

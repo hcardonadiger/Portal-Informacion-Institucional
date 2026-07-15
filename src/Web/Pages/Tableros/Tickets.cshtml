@@ -45,7 +45,7 @@
         <div class="kpi-card @(d.CriticosAbiertos > 0 ? "alert" : "")"><div class="kpi-num">@d.CriticosAbiertos</div><div class="kpi-lbl">Críticos abiertos</div></div>
         <div class="kpi-card ok"><div class="kpi-num">@d.PorcentajeResueltos%</div><div class="kpi-lbl">Resueltos</div></div>
         <div class="kpi-card"><div class="kpi-num">@d.DiasPromedioResolucion</div><div class="kpi-lbl">Días prom. resolución</div></div>
-        <div class="kpi-card @(d.SlaVencidos > 0 ? "alert" : "")"><div class="kpi-num">@d.SlaVencidos</div><div class="kpi-lbl">SLA vencido</div></div>
+        <div class="kpi-card @(d.SlaVencidos > 0 ? "alert" : "")"><div class="kpi-num">@d.SlaVencidos</div><div class="kpi-lbl">Vencidos</div></div>
         <div class="kpi-card"><div class="kpi-num">@d.TendenciaCreados.Actual <span style="font-size:15px;color:@trendColor">@flecha @(Math.Abs(t.PorcentajeCambio))%</span></div><div class="kpi-lbl">Creados este mes</div></div>
     </div>
 

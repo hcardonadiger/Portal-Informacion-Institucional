@@ -39,6 +39,7 @@ public sealed class AppDbContext(
     public DbSet<TemaTicket>               TemasTicket        { get; init; } = default!;
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
+    public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -231,6 +232,7 @@ public sealed class ContactoConfiguration : IEntityTypeConfiguration<Contacto>
         b.Property(x => x.InstitucionId).IsRequired();
         b.Property(x => x.AreaId).HasMaxLength(120);
         b.Property(x => x.UnidadId).HasMaxLength(120);
+        b.Property(x => x.Activo).HasDefaultValue(true);
         b.HasOne<Institucion>().WithMany()
             .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Area>().WithMany()
@@ -472,6 +474,7 @@ public sealed class TramiteRequisitoConfiguration : IEntityTypeConfiguration<Tra
         b.Property(x => x.Obs).HasMaxLength(2000);
         b.Property(x => x.Justificacion).HasMaxLength(2000);
         b.Property(x => x.Accion).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.EsPersonalizado).HasDefaultValue(false);
         b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
     }
 }
@@ -505,7 +508,51 @@ public sealed class FundamentoLegalConfiguration : IEntityTypeConfiguration<Fund
         b.Property(x => x.Instrumento).HasMaxLength(400).IsRequired();
         b.Property(x => x.Articulos).HasMaxLength(300);
         b.Property(x => x.Obs).HasMaxLength(1000);
+        b.Property(x => x.EsPersonalizado).HasDefaultValue(false);
         b.HasIndex(x => x.ExpedienteId);
+    }
+}
+
+public sealed class PlantillaTramiteConfiguration : IEntityTypeConfiguration<PlantillaTramite>
+{
+    public void Configure(EntityTypeBuilder<PlantillaTramite> b)
+    {
+        b.ToTable("PlantillasTramite");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Activa).HasDefaultValue(true);
+        b.HasIndex(x => x.Nombre).IsUnique();
+
+        b.HasMany(x => x.Legal).WithOne().HasForeignKey(l => l.PlantillaId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Requisitos).WithOne().HasForeignKey(r => r.PlantillaId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PlantillaFundamentoLegalConfiguration : IEntityTypeConfiguration<PlantillaFundamentoLegal>
+{
+    public void Configure(EntityTypeBuilder<PlantillaFundamentoLegal> b)
+    {
+        b.ToTable("PlantillaFundamentosLegales");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Instrumento).HasMaxLength(400).IsRequired();
+        b.Property(x => x.Articulos).HasMaxLength(300);
+        b.Property(x => x.Obs).HasMaxLength(1000);
+        b.HasIndex(x => x.PlantillaId);
+    }
+}
+
+public sealed class PlantillaRequisitoConfiguration : IEntityTypeConfiguration<PlantillaRequisito>
+{
+    public void Configure(EntityTypeBuilder<PlantillaRequisito> b)
+    {
+        b.ToTable("PlantillaRequisitos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Requisito).HasMaxLength(500).IsRequired();
+        b.Property(x => x.Obs).HasMaxLength(2000);
+        b.HasIndex(x => x.PlantillaId);
     }
 }
 

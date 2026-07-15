@@ -12,7 +12,7 @@ public static class AdjuntoStorage
     private const long MaxBytes = 10 * 1024 * 1024; // 10 MB por archivo
 
     public static async Task<List<AdjuntoInput>> GuardarAsync(
-        IEnumerable<IFormFile>? files, IWebHostEnvironment env, CancellationToken ct)
+        IEnumerable<IFormFile>? files, IWebHostEnvironment env, CancellationToken ct, string carpeta = "tickets")
     {
         var res = new List<AdjuntoInput>();
         if (files is null) return res;
@@ -26,13 +26,13 @@ public static class AdjuntoStorage
             if (!ExtPermitidas.Contains(ext))
                 throw new DomainException($"Tipo de archivo no permitido: {ext}. Permitidos: PDF, imágenes, Office, TXT/CSV/LOG, ZIP.");
 
-            var dir = Path.Combine(env.WebRootPath, "uploads", "tickets");
+            var dir = Path.Combine(env.WebRootPath, "uploads", carpeta);
             Directory.CreateDirectory(dir);
             var nombre = $"{Guid.NewGuid():N}{ext}";
             await using (var fs = File.Create(Path.Combine(dir, nombre)))
                 await f.CopyToAsync(fs, ct);
 
-            res.Add(new AdjuntoInput(f.FileName, $"/uploads/tickets/{nombre}", f.Length));
+            res.Add(new AdjuntoInput(f.FileName, $"/uploads/{carpeta}/{nombre}", f.Length));
         }
         return res;
     }

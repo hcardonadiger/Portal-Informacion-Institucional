@@ -1,0 +1,198 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Expedientes.ResumenModel
+@{
+    var d = Model.Datos;
+    ViewData["Title"] = "Resumen — " + Model.Codigo;
+
+    static bool Hay(string? s) => !string.IsNullOrWhiteSpace(s);
+}
+
+<div class="acta-toolbar">
+    <a class="btns" asp-page="/Index">← Volver</a>
+    <div style="display:flex;gap:8px">
+        <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@Model.ExpedienteId">Editar</a>
+        <button class="btnp" type="button" onclick="window.print()">Imprimir / PDF</button>
+    </div>
+</div>
+
+<article class="acta">
+    <header class="acta-head">
+        <div class="acta-brand"><span class="acta-logo">DG</span> DIGER</div>
+        <div class="acta-kind">Resumen de levantamiento</div>
+    </header>
+
+    <h1 class="acta-title">@d.Institucion — @Model.Codigo</h1>
+
+    <section class="acta-meta">
+        @if (d.FechaApertura is not null) { <div><span>Apertura</span>@d.FechaApertura.Value.ToFechaCorta()</div> }
+        <div><span>Analista</span>@d.Analista</div>
+        @if (Hay(d.DirSede)) { <div><span>Sede</span>@d.DirSede</div> }
+        <div><span>Trámites en producción</span>@d.NumTramitesProd</div>
+    </section>
+
+    @* ── 0. Apertura del expediente ─────────────────────────────── *@
+    @if (Hay(d.ContactoNombre))
+    {
+        <section class="acta-sec">
+            <h2>Apertura del expediente</h2>
+            <p class="acta-person">
+                <strong>Contacto institucional principal:</strong> @d.ContactoNombre
+                @if (Hay(d.ContactoCargo)) { <text> · @d.ContactoCargo</text> }
+                @if (Hay(d.ContactoCorreo)) { <br/> @d.ContactoCorreo }
+                @if (Hay(d.ContactoTel)) { <text> · @d.ContactoTel</text> }
+            </p>
+        </section>
+    }
+
+    @* ── 1. Ficha del trámite ───────────────────────────────────── *@
+    @foreach (var t in d.Tramites)
+    {
+        var reqs = d.Requisitos.Where(r => r.TramiteIndex == t.TramiteIndex).OrderBy(r => r.Orden).ToList();
+        <section class="acta-sec">
+            <h2>Ficha del trámite — @t.NombreTramite</h2>
+            <div class="acta-stats">
+                @if (Hay(t.Modalidad)) { <div><b>@t.Modalidad</b><span>Modalidad</span></div> }
+                @if (Hay(t.PlazoLegal)) { <div><b>@t.PlazoLegal</b><span>Plazo legal</span></div> }
+                @if (Hay(t.TiempoReal)) { <div><b>@t.TiempoReal</b><span>Tiempo real</span></div> }
+                @if (Hay(t.AreaResponsable)) { <div><b>@t.AreaResponsable</b><span>Área responsable</span></div> }
+            </div>
+            @if (Hay(t.Objetivo)) { <h3>Objetivo</h3> <p>@t.Objetivo</p> }
+            @if (Hay(t.Descripcion)) { <h3>Descripción</h3> <p>@t.Descripcion</p> }
+            @if (reqs.Count > 0)
+            {
+                <h3>Requisitos (@reqs.Count)</h3>
+                <ul>
+                    @foreach (var r in reqs)
+                    {
+                        <li>@r.Requisito @(r.Accion is not null ? $"— {r.Accion}" : "")</li>
+                    }
+                </ul>
+            }
+        </section>
+    }
+
+    @* ── 2. Marco legal y documentación ─────────────────────────── *@
+    @if (d.Legal.Count > 0 || d.DocsSolicitados.Count > 0 || Hay(d.ObsLegal))
+    {
+        <section class="acta-sec">
+            <h2>Marco legal y documentación</h2>
+            @if (d.Legal.Count > 0)
+            {
+                <h3>Fundamentos legales (@d.Legal.Count)</h3>
+                <ul>@foreach (var l in d.Legal.OrderBy(x => x.Orden)) { <li>@l.Instrumento @(Hay(l.Articulos) ? $"— {l.Articulos}" : "")</li> }</ul>
+            }
+            @if (d.DocsSolicitados.Count > 0)
+            {
+                var recibidos = d.DocsSolicitados.Count(x => x.Recibido);
+                <h3>Documentación solicitada</h3>
+                <p>@recibidos de @d.DocsSolicitados.Count documentos recibidos.</p>
+            }
+            @if (Hay(d.ObsLegal)) { <h3>Observaciones</h3> <p>@d.ObsLegal</p> }
+        </section>
+    }
+
+    @* ── 3. Proceso actual ──────────────────────────────────────── *@
+    @if (d.NumFuncionarios is not null || d.VolumenAnual is not null || Hay(d.DescProceso))
+    {
+        <section class="acta-sec">
+            <h2>Proceso actual</h2>
+            <div class="acta-stats">
+                @if (d.NumFuncionarios is not null) { <div><b>@d.NumFuncionarios</b><span>Funcionarios involucrados</span></div> }
+                @if (d.VolumenAnual is not null) { <div><b>@d.VolumenAnual</b><span>Volumen anual</span></div> }
+                @if (Hay(d.TiempoObservado)) { <div><b>@d.TiempoObservado</b><span>Tiempo observado</span></div> }
+                @if (Hay(d.TiempoNorma)) { <div><b>@d.TiempoNorma</b><span>Tiempo según normativa</span></div> }
+            </div>
+            @if (Hay(d.DescProceso)) { <h3>Descripción general</h3> <p>@d.DescProceso</p> }
+            @{ var pasosActual = d.Flujos.Count(f => f.Fase == FaseFlujo.Actual); }
+            @if (pasosActual > 0) { <p><b>@pasosActual</b> pasos registrados en el flujo actual.</p> }
+        </section>
+    }
+
+    @* ── 4. Modelo propuesto ─────────────────────────────────────── *@
+    @if (d.FuncionariosDig is not null || Hay(d.TiempoDig) || Hay(d.ObsModelo))
+    {
+        <section class="acta-sec">
+            <h2>Modelo propuesto</h2>
+            <div class="acta-stats">
+                @if (d.FuncionariosDig is not null) { <div><b>@d.FuncionariosDig</b><span>Funcionarios (digitalizado)</span></div> }
+                @if (Hay(d.TiempoDig)) { <div><b>@d.TiempoDig</b><span>Tiempo estimado</span></div> }
+            </div>
+            @{ var pasosProp = d.Flujos.Count(f => f.Fase == FaseFlujo.Propuesto); }
+            @if (pasosProp > 0) { <p><b>@pasosProp</b> pasos registrados en el flujo propuesto.</p> }
+            @if (Hay(d.ObsModelo)) { <h3>Observaciones del modelo</h3> <p>@d.ObsModelo</p> }
+        </section>
+    }
+
+    @* ── 5. Infraestructura SOL ─────────────────────────────────── *@
+    @if (Hay(d.InfraPersonal) || Hay(d.InfraDcModalidad) || Hay(d.InfraPlan))
+    {
+        <section class="acta-sec">
+            <h2>Infraestructura SOL</h2>
+            <div class="acta-stats">
+                @if (Hay(d.InfraPersonal)) { <div><b>@d.InfraPersonal</b><span>Personal técnico capacitado</span></div> }
+                @if (d.InfraPersonalTI is not null) { <div><b>@d.InfraPersonalTI</b><span>Personal TI</span></div> }
+                @if (Hay(d.InfraDcModalidad)) { <div><b>@d.InfraDcModalidad</b><span>Data center</span></div> }
+            </div>
+            @if (Hay(d.InfraPlan)) { <h3>Plan de adecuación</h3> <p>@d.InfraPlan</p> }
+        </section>
+    }
+
+    @* ── 6. Estado del expediente ────────────────────────────────── *@
+    <section class="acta-sec">
+        <h2>Estado del expediente</h2>
+        <div class="acta-stats">
+            <div><b>@d.EstadoExpediente</b><span>Estado general</span></div>
+            @if (d.EstadoLevantamiento is not null) { <div><b>@d.EstadoLevantamiento</b><span>Estado del levantamiento</span></div> }
+        </div>
+        @if (Hay(d.ObsExpediente)) { <h3>Observaciones generales</h3> <p>@d.ObsExpediente</p> }
+        @if (d.Secciones.Count > 0)
+        {
+            var completas = d.Secciones.Count(s => s.Estado is EstadoSeccion.Completo or EstadoSeccion.Validado);
+            <p><b>@completas</b> de <b>@d.Secciones.Count</b> secciones completas o validadas.</p>
+        }
+        @if (Hay(d.ValidadoDiger) || Hay(d.ValidadoInst))
+        {
+            <div class="acta-cols">
+                @if (Hay(d.ValidadoDiger)) { <div><h3>Validado por DIGER</h3><p>@d.ValidadoDiger</p></div> }
+                @if (Hay(d.ValidadoInst)) { <div><h3>Validado por institución</h3><p>@d.ValidadoInst</p></div> }
+            </div>
+        }
+    </section>
+</article>
+
+<style>
+    .acta-toolbar { max-width: 820px; margin: 1rem auto 0; padding: 0 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .acta { max-width: 820px; margin: 1rem auto 3rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 2.4rem 2.6rem; box-shadow: 0 2px 12px rgba(10,45,110,.07); color: #1c2333; }
+    .acta-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 3px solid #0a2d6e; }
+    .acta-brand { font-weight: 800; font-size: 18px; color: #0a2d6e; display: flex; align-items: center; gap: 8px; }
+    .acta-logo { background: #0a2d6e; color: #fff; border-radius: 7px; padding: 3px 8px; font-size: 13px; letter-spacing: .04em; }
+    .acta-kind { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #6b7fa3; }
+    .acta-title { font-size: 24px; color: #0a2d6e; margin: 1.4rem 0 1rem; line-height: 1.25; }
+    .acta-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7rem 1.4rem; margin-bottom: 1.8rem; }
+    .acta-meta div { font-size: 14px; }
+    .acta-meta span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8a96ad; margin-bottom: 2px; }
+    .acta-sec { margin: 1.8rem 0; }
+    .acta-sec h2 { font-size: 14px; color: #0a2d6e; text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid #eef1f7; padding-bottom: .45rem; margin: 0 0 .9rem; }
+    .acta-sec h3 { font-size: 12.5px; color: #4a5568; margin: .9rem 0 .3rem; text-transform: uppercase; letter-spacing: .04em; }
+    .acta-sec p { font-size: 14px; line-height: 1.55; margin: .2rem 0; white-space: pre-line; }
+    .acta-sec ul { margin: .3rem 0; padding-left: 1.2rem; }
+    .acta-sec li { font-size: 14px; line-height: 1.5; margin-bottom: .25rem; }
+    .acta-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+    .acta-person { font-size: 14px; line-height: 1.5; }
+    .acta-stats { display: flex; flex-wrap: wrap; gap: 1.6rem; margin: .4rem 0 .6rem; }
+    .acta-stats div { display: flex; flex-direction: column; }
+    .acta-stats b { font-size: 22px; color: #0a2d6e; }
+    .acta-stats span { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #8a96ad; }
+
+    @@media (max-width: 700px) {
+        .acta { padding: 1.4rem 1.2rem; }
+        .acta-meta, .acta-cols { grid-template-columns: 1fr; }
+    }
+
+    @@media print {
+        .app-sidebar, .app-topbar, .acta-toolbar { display: none !important; }
+        body { background: #fff; }
+        .acta { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+        .acta-sec, .acta-table tr, figure { break-inside: avoid; }
+    }
+</style>

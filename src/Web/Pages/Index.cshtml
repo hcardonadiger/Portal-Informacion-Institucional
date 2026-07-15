@@ -30,6 +30,7 @@
                 @if (User.IsInRole(nameof(RolUsuario.Administrador)))
                 {
                     <a class="btns" asp-page="/Admin/ImportarExpedientes">Importar de Supabase</a>
+                    <a class="btns" asp-page="/Admin/PlantillasTramite">Plantillas de trámite</a>
                 }
                 <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
             }
@@ -84,7 +85,7 @@
                         <td><span class="wf-badge @w.cls">@w.txt</span></td>
                         <td>@e.Analista</td>
                         <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                        <td class="res-meta">@e.FechaCreacion.ToString("dd MMM yyyy")</td>
+                        <td class="res-meta">@e.FechaCreacion.ToFechaCorta()</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
@@ -139,7 +140,7 @@
                                         <td><span class="wf-badge @w.cls">@w.txt</span></td>
                                         <td>@e.Analista</td>
                                         <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                                        <td class="res-meta">@e.FechaCreacion.ToString("dd MMM yyyy")</td>
+                                        <td class="res-meta">@e.FechaCreacion.ToFechaCorta()</td>
                                         <td style="white-space:nowrap;text-align:right">
                                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>

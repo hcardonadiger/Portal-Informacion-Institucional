@@ -54,9 +54,9 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         try
         {
             if (id is null)
-                await sender.Send(new CrearContactoCommand(Nombre, InstitucionId, Cargo, Correo, Telefono, Notas, null, null), ct);
+                await sender.Send(new CrearContactoCommand(Nombre, InstitucionId, null, null, Cargo, Correo, Telefono, Notas), ct);
             else
-                await sender.Send(new ActualizarContactoCommand(id.Value, Nombre, InstitucionId, Cargo, Correo, Telefono, Notas, null, null), ct);
+                await sender.Send(new ActualizarContactoCommand(id.Value, Nombre, InstitucionId, null, null, Cargo, Correo, Telefono, Notas), ct);
 
             TempData["SuccessMsg"] = id is null ? "Contacto creado." : "Contacto actualizado.";
             return RedirectToPage("/Contactos/Index");

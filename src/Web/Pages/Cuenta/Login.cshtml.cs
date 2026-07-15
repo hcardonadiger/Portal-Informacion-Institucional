@@ -7,7 +7,7 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [AllowAnonymous]
-public sealed class LoginModel(ISender sender) : PageModel
+public sealed class LoginModel(ISender sender, IConfiguration config) : PageModel
 {
     [BindProperty] public string Correo   { get; set; } = string.Empty;
     [BindProperty] public string Password { get; set; } = string.Empty;
@@ -35,10 +35,11 @@ public sealed class LoginModel(ISender sender) : PageModel
     {
         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
         var host = Request.Host.Host;
+        var certPort = config.GetValue<int>("Ports:Cert", 444);
         
         var targetUrl = isDev 
             ? $"https://localhost:49176/Cuenta/LoginCertificado" 
-            : $"https://cert.{host.Replace("cert.", "")}/Cuenta/LoginCertificado";
+            : $"https://{host}:{certPort}/Cuenta/LoginCertificado";
 
         if (!string.IsNullOrEmpty(returnUrl))
         {

@@ -189,7 +189,7 @@
                         <tr>
                             <td>@(i + 1)</td><td>@ac.Compromiso</td><td>@ac.Responsable</td>
                             <td>
-                                @(ac.Plazo?.ToString("dd MMM yyyy") ?? "—")
+                                @(ac.Plazo?.ToFechaCorta() ?? "—")
                                 @if (vencido) { <span style="background:@CompromisoUi.Vencido.bg;color:@CompromisoUi.Vencido.fg;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;margin-left:4px">Vencido</span> }
                             </td>
                             <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@CompromisoUi.Label(ac.Estado)</span></td>
@@ -275,7 +275,7 @@
     }
 
     @@media print {
-        .topnav, .acta-toolbar { display: none !important; }
+        .app-sidebar, .app-topbar, .acta-toolbar { display: none !important; }
         body { background: #fff; }
         .acta { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
         .acta-sec, .acta-table tr, figure { break-inside: avoid; }

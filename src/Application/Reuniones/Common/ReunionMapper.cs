@@ -13,7 +13,8 @@ public static class ReunionMapper
         r.Tema = d.Tema?.Trim(); r.ObjetivoCap = d.ObjetivoCap; r.Contenido = d.Contenido;
         r.EpNombre = d.EpNombre?.Trim(); r.EpCargo = d.EpCargo?.Trim(); r.EpCorreo = d.EpCorreo?.Trim(); r.EpTel = d.EpTel?.Trim();
         r.FacNombre = d.FacNombre?.Trim(); r.FacCargo = d.FacCargo?.Trim(); r.FacCorreo = d.FacCorreo?.Trim();
-        r.Convocados = d.Convocados; r.PctAsistencia = d.PctAsistencia; r.Satisfaccion = d.Satisfaccion?.Trim();
+        r.Convocados = d.Convocados; r.PctAsistencia = d.PctAsistencia;
+        r.SatisfaccionCalificacion = d.SatisfaccionCalificacion; r.Satisfaccion = d.Satisfaccion?.Trim();
         r.Compromisos = d.Compromisos;
         r.ValDiger = d.ValDiger?.Trim(); r.ValInst = d.ValInst?.Trim(); r.DocsRecursos = d.DocsRecursos;
         r.Foto1Url = d.Foto1Url?.Trim(); r.Foto1Desc = d.Foto1Desc?.Trim();
@@ -66,7 +67,7 @@ public static class ReunionMapper
             EpNombre = r.EpNombre, EpCargo = r.EpCargo, EpCorreo = r.EpCorreo, EpTel = r.EpTel,
             FacNombre = r.FacNombre, FacCargo = r.FacCargo, FacCorreo = r.FacCorreo,
             Convocados = r.Convocados, NumAsistentes = r.Asistentes.Count > 0 ? r.Asistentes.Count : r.NumAsistentes, PctAsistencia = r.PctAsistencia,
-            Satisfaccion = r.Satisfaccion, Compromisos = r.Compromisos,
+            SatisfaccionCalificacion = r.SatisfaccionCalificacion, Satisfaccion = r.Satisfaccion, Compromisos = r.Compromisos,
             ValDiger = r.ValDiger, ValInst = r.ValInst, DocsRecursos = r.DocsRecursos,
             Foto1Url = r.Foto1Url, Foto1Desc = r.Foto1Desc, Foto2Url = r.Foto2Url, Foto2Desc = r.Foto2Desc
         };

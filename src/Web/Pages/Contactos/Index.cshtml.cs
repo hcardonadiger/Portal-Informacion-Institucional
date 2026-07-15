@@ -7,22 +7,26 @@ namespace Diger.TramitesEstado.Web.Pages.Contactos;
 [Authorize]
 public sealed class IndexModel(ISender sender, IInstitucionRepository institucionRepo) : PageModel
 {
+    private IReadOnlyList<ContactoDto> _todos = [];
+
     public IReadOnlyList<ContactoDto> Contactos { get; private set; } = [];
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
     public PagedResult<ContactoDto> Resultado { get; private set; } = PagedResult<ContactoDto>.Empty(Paginacion.TamanoDefecto);
 
     [BindProperty(SupportsGet = true)] public string? Buscar      { get; set; }
     [BindProperty(SupportsGet = true)] public string? Institucion { get; set; }
+    [BindProperty(SupportsGet = true)] public bool MostrarInactivos { get; set; }
 
-    public int TotalContactos     => Contactos.Count;
-    public int TotalInstituciones => Contactos.Select(c => c.Institucion).Distinct().Count();
-    public int TotalManuales      => Contactos.Count(c => c.Origen == OrigenContacto.Manual);
-    public int TotalInactivos     => Contactos.Count(c => !c.Activo);
+    public int TotalContactos     => _todos.Count;
+    public int TotalInstituciones => _todos.Select(c => c.Institucion).Distinct().Count();
+    public int TotalManuales      => _todos.Count(c => c.Origen == OrigenContacto.Manual);
+    public int TotalInactivos     => _todos.Count(c => !c.Activo);
 
     public async Task OnGetAsync(int? pg, CancellationToken ct)
     {
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
-        Contactos = await sender.Send(new GetContactosQuery(Buscar, Institucion, MostrarInactivos: true), ct);
+        _todos = await sender.Send(new GetContactosQuery(Buscar, Institucion, MostrarInactivos: true), ct);
+        Contactos = MostrarInactivos ? _todos : _todos.Where(c => c.Activo).ToList();
 
         var (_, p, size) = Paginacion.Normalizar(null, pg, 20);
         var items = Contactos.Skip((p - 1) * size).Take(size).ToList();
@@ -35,7 +39,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             return Forbid();
         await sender.Send(new EliminarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto eliminado.";
-        return RedirectToPage(new { Buscar, Institucion });
+        return RedirectToPage(new { Buscar, Institucion, MostrarInactivos });
     }
 
     public async Task<IActionResult> OnPostDarDeBajaAsync(int id, CancellationToken ct)
@@ -44,7 +48,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             return Forbid();
         await sender.Send(new DarDeBajaContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto dado de baja.";
-        return RedirectToPage(new { Buscar, Institucion });
+        return RedirectToPage(new { Buscar, Institucion, MostrarInactivos });
     }
 
     public async Task<IActionResult> OnPostReactivarAsync(int id, CancellationToken ct)
@@ -53,7 +57,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             return Forbid();
         await sender.Send(new ReactivarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto reactivado.";
-        return RedirectToPage(new { Buscar, Institucion });
+        return RedirectToPage(new { Buscar, Institucion, MostrarInactivos });
     }
 
     public async Task<IActionResult> OnGetExportAsync(CancellationToken ct)

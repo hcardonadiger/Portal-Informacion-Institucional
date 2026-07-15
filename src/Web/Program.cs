@@ -5,6 +5,7 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Diger.TramitesEstado.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +58,10 @@ builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
+builder.Services.AddDataProtection()
+    .SetApplicationName("PortalDigital")
+    .PersistKeysToFileSystem(new DirectoryInfo(@"C:\PortalDigital_Keys"));
+
 // Importador de expedientes desde el portal demo (Supabase) — usado por Admin/ImportarExpedientes
 builder.Services.AddHttpClient<Diger.TramitesEstado.Web.Import.SupabaseExpedienteImporter>();
 
@@ -76,6 +81,24 @@ builder.Services
         opts.AccessDeniedPath = "/Cuenta/Denegado";
         opts.ExpireTimeSpan   = TimeSpan.FromHours(8);
         opts.SlidingExpiration = true;
+        
+        // Compartir la cookie de sesión entre el subdominio cert.* y el dominio principal
+        opts.Events = new CookieAuthenticationEvents
+        {
+            OnSigningIn = context =>
+            {
+                var host = context.Request.Host.Host;
+                // Si el host es una IP pura (ej. 192.168.x.x), NO configuramos un dominio
+                // porque los navegadores rechazan cookies de dominio ".192.168.x.x".
+                // Las cookies por defecto se comparten entre puertos de la misma IP.
+                if (host != "localhost" && host.Contains('.') && !System.Net.IPAddress.TryParse(host, out _))
+                {
+                    var mainDomain = host.StartsWith("cert.") ? host.Substring(5) : host;
+                    context.CookieOptions.Domain = "." + mainDomain;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorizationBuilder()

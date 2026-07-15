@@ -1,0 +1,60 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Admin.PlantillasTramiteModel
+@{
+    ViewData["Title"] = "Plantillas de trámite";
+}
+
+<div class="container" style="max-width:960px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string terr)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@terr</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Plantillas de trámite</h2>
+            <p>El Marco Legal y los Requisitos de una plantilla se copian automáticamente cuando se registra un trámite con el mismo nombre en un expediente.</p>
+        </div>
+        <a class="btnp" asp-page="/Admin/PlantillaTramiteEditor">+ Nueva plantilla</a>
+    </div>
+
+    <div class="card">
+        @if (!Model.Plantillas.Any())
+        {
+            <p class="res-meta">Aún no hay plantillas.</p>
+        }
+        else
+        {
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th style="width:90px">Activa</th>
+                        <th style="width:110px">Marco legal</th>
+                        <th style="width:110px">Requisitos</th>
+                        <th style="width:1%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Plantillas)
+                    {
+                        <tr>
+                            <td>@p.Nombre</td>
+                            <td style="text-align:center">@(p.Activa ? "Sí" : "No")</td>
+                            <td class="res-meta" style="text-align:center">@p.NumLegal</td>
+                            <td class="res-meta" style="text-align:center">@p.NumRequisitos</td>
+                            <td style="text-align:right;white-space:nowrap">
+                                <a class="btns" asp-page="/Admin/PlantillaTramiteEditor" asp-route-id="@p.Id" style="font-size:12.5px;padding:6px 12px">Editar</a>
+                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                    <input type="hidden" name="id" value="@p.Id" />
+                                    <button class="hist-del" type="submit" data-confirm="¿Eliminar la plantilla «@p.Nombre»?">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

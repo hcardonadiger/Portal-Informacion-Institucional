@@ -29,14 +29,17 @@ public sealed record TramiteInput(
 
 public sealed record RequisitoInput(
     int TramiteIndex, int Orden, string Requisito, string? Obs,
-    AccionRequisito? Accion, string? Justificacion);
+    AccionRequisito? Accion, string? Justificacion,
+    int? PlantillaOrigenId = null, bool EsPersonalizado = false);
 
 public sealed record FlujoNodoInput(
     int TramiteIndex, FaseFlujo Fase, int Orden, TipoNodoFlujo Tipo,
     string? Titulo, string? Area, string? Tiempo, string? DocEmitido,
     string? Obs, string? RetornoA);
 
-public sealed record LegalInput(int Orden, string Instrumento, string? Articulos, string? Obs);
+public sealed record LegalInput(
+    int Orden, string Instrumento, string? Articulos, string? Obs,
+    int? PlantillaOrigenId = null, bool EsPersonalizado = false);
 
 public sealed record DocSolicitadoInput(
     int Orden, string Nombre, string? Tipo, bool Recibido, DateOnly? Fecha, string? Url);
