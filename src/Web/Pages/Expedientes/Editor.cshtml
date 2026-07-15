@@ -4,9 +4,11 @@
 @{
     ViewData["Title"] = Model.ExpId is null ? "Nuevo expediente" : "Editar expediente";
     var tokens = Xsrf.GetAndStoreTokens(HttpContext);
-    var postUrl = Url.Page("/Expedientes/Editor", new { id = Model.ExpId });
-    var contactosUrl = Url.Page("/Expedientes/Editor", "Contactos", new { id = Model.ExpId });
-    var plantillaUrl = Url.Page("/Expedientes/Editor", "Plantilla", new { id = Model.ExpId });
+    var postUrl = Model.ExpId.HasValue 
+        ? Url.Page("/Expedientes/Editor", new { id = Model.ExpId })
+        : Url.Page("/Expedientes/Editor");
+    var contactosUrl = Url.Page("/Expedientes/Editor", "Contactos");
+    var plantillaUrl = Url.Page("/Expedientes/Editor", "Plantilla");
 }
 <link rel="stylesheet" href="~/css/expediente.css" asp-append-version="true" />
 

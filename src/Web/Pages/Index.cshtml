@@ -29,7 +29,7 @@
             {
                 @if (User.IsInRole(nameof(RolUsuario.Administrador)))
                 {
-                    <a class="btns" asp-page="/Admin/ImportarExpedientes">Importar de Supabase</a>
+
                     <a class="btns" asp-page="/Admin/PlantillasTramite">Plantillas de trámite</a>
                 }
                 <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
@@ -167,6 +167,15 @@
 </div>
 
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var agrupada = sessionStorage.getItem('vistaExpedientesAgrupada');
+        if (agrupada === 'true') {
+            document.getElementById('vista-lista').style.display = 'none';
+            document.getElementById('vista-agrupada').style.display = '';
+            document.getElementById('btn-toggle-vista').textContent = 'Vista de lista';
+        }
+    });
+
     function toggleVistaExpedientes() {
         var lista = document.getElementById('vista-lista');
         var agrupada = document.getElementById('vista-agrupada');
@@ -176,6 +185,7 @@
         lista.style.display = enLista ? 'none' : '';
         agrupada.style.display = enLista ? '' : 'none';
         btn.textContent = enLista ? 'Vista de lista' : 'Vista por institución';
+        sessionStorage.setItem('vistaExpedientesAgrupada', enLista ? 'true' : 'false');
     }
     function toggleGrupoInst(hdr) {
         var body = hdr.nextElementSibling;
