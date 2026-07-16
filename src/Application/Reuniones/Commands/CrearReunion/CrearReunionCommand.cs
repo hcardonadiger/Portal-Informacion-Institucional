@@ -32,11 +32,17 @@ public sealed class CrearReunionCommandHandler(
         ReunionMapper.Aplicar(r, cmd.Datos, cmd.Asistentes, cmd.Acuerdos);
         r.CreadoPorId = currentUser.UserId;   // dueño (relevante para reuniones privadas)
 
-        if (!string.IsNullOrWhiteSpace(cmd.Datos.InstitucionId))
+        var principalId = cmd.Datos.InstitucionesIds.FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(principalId))
         {
-            var inst = await institucionRepo.GetByIdAsync(cmd.Datos.InstitucionId, ct);
+            var inst = await institucionRepo.GetByIdAsync(principalId, ct);
             r.InstitucionId = inst?.Id;
             r.Institucion   = inst?.Nombre;
+        }
+        else
+        {
+            r.InstitucionId = null;
+            r.Institucion   = null;
         }
 
         await repo.AddAsync(r, ct);

@@ -40,7 +40,7 @@ public class AsistenciaTests : IDisposable
     public async Task Registrar_AgregaAsistenteYActualizaConteo()
     {
         var r = await SembrarAsync();
-        var handler = new RegistrarAsistenciaCommandHandler(_repo, _ctx);
+        var handler = new RegistrarAsistenciaCommandHandler(_repo, new ContactoRepository(_ctx), new InstitucionRepository(_ctx), _ctx);
 
         var titulo = await handler.Handle(
             new RegistrarAsistenciaCommand(r.RegistroToken, Datos("Ana", "ana@x.com")), CancellationToken.None);
@@ -57,7 +57,7 @@ public class AsistenciaTests : IDisposable
     public async Task Registrar_RechazaCorreoDuplicado()
     {
         var r = await SembrarAsync();
-        var handler = new RegistrarAsistenciaCommandHandler(_repo, _ctx);
+        var handler = new RegistrarAsistenciaCommandHandler(_repo, new ContactoRepository(_ctx), new InstitucionRepository(_ctx), _ctx);
         await handler.Handle(new RegistrarAsistenciaCommand(r.RegistroToken, Datos("Ana", "dup@x.com")), CancellationToken.None);
 
         var act = () => handler.Handle(
@@ -70,7 +70,7 @@ public class AsistenciaTests : IDisposable
     public async Task Registrar_RechazaCuandoCerrado()
     {
         var r = await SembrarAsync(abierto: false);
-        var handler = new RegistrarAsistenciaCommandHandler(_repo, _ctx);
+        var handler = new RegistrarAsistenciaCommandHandler(_repo, new ContactoRepository(_ctx), new InstitucionRepository(_ctx), _ctx);
 
         var act = () => handler.Handle(
             new RegistrarAsistenciaCommand(r.RegistroToken, Datos("Ana")), CancellationToken.None);

@@ -31,9 +31,10 @@ public sealed class ActualizarReunionCommandHandler(
         if (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId is null)
             r.CreadoPorId = currentUser.UserId;
 
-        if (!string.IsNullOrWhiteSpace(cmd.Datos.InstitucionId))
+        var principalId = cmd.Datos.InstitucionesIds.FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(principalId))
         {
-            var inst = await institucionRepo.GetByIdAsync(cmd.Datos.InstitucionId, ct);
+            var inst = await institucionRepo.GetByIdAsync(principalId, ct);
             r.InstitucionId = inst?.Id;
             r.Institucion   = inst?.Nombre;
         }

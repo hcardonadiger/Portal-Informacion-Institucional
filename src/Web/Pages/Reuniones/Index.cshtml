@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model Diger.TramitesEstado.Web.Pages.Reuniones.IndexModel
 @{
     ViewData["Title"] = "Reuniones y Asistencias";
@@ -17,10 +17,7 @@
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaReuniones()">Vista por institución</button>
             @if (puedeGestionar)
             {
-                @if (User.IsInRole(nameof(RolUsuario.Administrador)))
-                {
-                    <a class="btns" asp-page="/Admin/ImportarReuniones">Importar de Supabase</a>
-                }
+
                 <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
             }
         </div>

@@ -15,7 +15,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     [BindProperty(SupportsGet = true)] public string? Buscar      { get; set; }
     [BindProperty(SupportsGet = true)] public string? Institucion { get; set; }
-    [BindProperty(SupportsGet = true)] public bool MostrarInactivos { get; set; }
+    [BindProperty(SupportsGet = true)] public string? EstadoFiltro { get; set; }
 
     public int TotalContactos     => _todos.Count;
     public int TotalInstituciones => _todos.Select(c => c.Institucion).Distinct().Count();
@@ -24,9 +24,15 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public async Task OnGetAsync(int? pg, CancellationToken ct)
     {
+        EstadoFiltro ??= "Activos";
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
         _todos = await sender.Send(new GetContactosQuery(Buscar, Institucion, MostrarInactivos: true), ct);
-        Contactos = MostrarInactivos ? _todos : _todos.Where(c => c.Activo).ToList();
+        Contactos = EstadoFiltro switch
+        {
+            "Inactivos" => _todos.Where(c => !c.Activo).ToList(),
+            "Todos"     => _todos.ToList(),
+            _           => _todos.Where(c => c.Activo).ToList()
+        };
 
         var (_, p, size) = Paginacion.Normalizar(null, pg, 20);
         var items = Contactos.Skip((p - 1) * size).Take(size).ToList();
@@ -39,7 +45,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             return Forbid();
         await sender.Send(new EliminarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto eliminado.";
-        return RedirectToPage(new { Buscar, Institucion, MostrarInactivos });
+        return RedirectToPage(new { Buscar, Institucion, EstadoFiltro });
     }
 
     public async Task<IActionResult> OnPostDarDeBajaAsync(int id, CancellationToken ct)
@@ -48,7 +54,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             return Forbid();
         await sender.Send(new DarDeBajaContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto dado de baja.";
-        return RedirectToPage(new { Buscar, Institucion, MostrarInactivos });
+        return RedirectToPage(new { Buscar, Institucion, EstadoFiltro });
     }
 
     public async Task<IActionResult> OnPostReactivarAsync(int id, CancellationToken ct)
@@ -57,7 +63,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             return Forbid();
         await sender.Send(new ReactivarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto reactivado.";
-        return RedirectToPage(new { Buscar, Institucion, MostrarInactivos });
+        return RedirectToPage(new { Buscar, Institucion, EstadoFiltro });
     }
 
     public async Task<IActionResult> OnGetExportAsync(CancellationToken ct)

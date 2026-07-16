@@ -1,4 +1,4 @@
-﻿@page "{id:int?}"
+@page "{id:int?}"
 @model Diger.TramitesEstado.Web.Pages.Reuniones.EditorModel
 @{
     ViewData["Title"] = Model.ReunionId is null ? "Nueva reunión" : "Editar reunión";
@@ -20,6 +20,7 @@
 }
 
 <form method="post" enctype="multipart/form-data" id="reu-form">
+<input type="hidden" name="paso" id="paso-hidden" value="0" />
 <div class="wrap">
   <aside class="sidebar">
     <div class="sb-hdr">Pasos</div>
@@ -110,7 +111,14 @@
       <div class="nav">
         <span></span>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-p" type="submit" asp-page-handler="GuardarContinuar" onclick="syncTodo()">Guardar y generar QR</button>
+          @if (Model.ReunionId is null)
+          {
+            <button class="btn btn-p" type="submit" asp-page-handler="GuardarContinuar" onclick="syncTodo()">Guardar y generar QR</button>
+          }
+          else
+          {
+            <button class="btn btn-p" type="submit" asp-page-handler="GuardarContinuar" onclick="syncTodo()">Guardar cambios</button>
+          }
           <button class="btn btn-s" type="button" onclick="siguiente()">Siguiente →</button>
         </div>
       </div>
@@ -145,7 +153,16 @@
           <button type="button" class="btns" style="margin-top:.6rem" onclick="addAsistente()">+ Agregar asistente</button>
       </div>
 
-      <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
+      <div class="nav">
+        <button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button>
+        <div style="display:flex;gap:8px">
+          @if (Model.ReunionId is not null)
+          {
+            <button class="btn btn-p" type="submit" asp-page-handler="GuardarContinuar" onclick="syncTodo()">Guardar cambios</button>
+          }
+          <button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button>
+        </div>
+      </div>
     </div>
 
     @* ══ PASO 3: MEMORIA ══ *@
@@ -212,7 +229,16 @@
           <span class="hint" style="display:block;margin-top:6px">El responsable puede ser un participante registrado en Asistencia o una de las instituciones convocadas.</span>
       </div>
 
-      <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
+      <div class="nav">
+        <button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button>
+        <div style="display:flex;gap:8px">
+          @if (Model.ReunionId is not null)
+          {
+            <button class="btn btn-p" type="submit" asp-page-handler="GuardarContinuar" onclick="syncTodo()">Guardar cambios</button>
+          }
+          <button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button>
+        </div>
+      </div>
     </div>
 
     @* ══ PASO 2: CAPACITACIÓN (solo si Tipo = Capacitación) ══ *@
@@ -244,7 +270,16 @@
               <textarea asp-for="Datos.Compromisos" rows="3"></textarea>
           </div>
       </div>
-      <div class="nav"><button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button><button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button></div>
+      <div class="nav">
+        <button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button>
+        <div style="display:flex;gap:8px">
+          @if (Model.ReunionId is not null)
+          {
+            <button class="btn btn-p" type="submit" asp-page-handler="GuardarContinuar" onclick="syncTodo()">Guardar cambios</button>
+          }
+          <button class="btn btn-p" type="button" onclick="siguiente()">Siguiente →</button>
+        </div>
+      </div>
     </div>
 
     @* ══ PASO 4: CIERRE ══ *@
@@ -355,7 +390,7 @@
     document.querySelectorAll('.sbi').forEach(function(s){ s.classList.remove('active'); });
     document.getElementById('sec'+n).classList.add('active');
     document.getElementById('sb'+n).classList.add('active');
-    pasoActual = n; window.scrollTo(0,0);
+    pasoActual = n; document.getElementById('paso-hidden').value = n; window.scrollTo(0,0);
   }
   function siguiente(){ var v=pasosVisibles(), i=v.indexOf(pasoActual); if(i<v.length-1) irPaso(v[i+1]); }
   function anterior(){ var v=pasosVisibles(), i=v.indexOf(pasoActual); if(i>0) irPaso(v[i-1]); }
