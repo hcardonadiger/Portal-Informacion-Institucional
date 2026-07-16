@@ -123,14 +123,14 @@
         <section class="acta-sec">
             <h2>Asistentes <span class="acta-count">@Model.Asistentes.Count</span></h2>
             <table class="acta-table">
-                <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Institución</th><th>Correo</th><th>Teléfono</th></tr></thead>
+                <thead><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Institución</th><th>Correo</th></tr></thead>
                 <tbody>
                     @for (var i = 0; i < Model.Asistentes.Count; i++)
                     {
                         var a = Model.Asistentes[i];
                         <tr>
                             <td>@(i + 1)</td><td>@a.Nombre</td><td>@a.Cargo</td>
-                            <td>@a.Institucion</td><td>@a.Correo</td><td>@a.Telefono</td>
+                            <td>@a.Institucion</td><td>@a.Correo</td>
                         </tr>
                     }
                 </tbody>

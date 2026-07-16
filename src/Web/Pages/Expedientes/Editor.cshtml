@@ -503,7 +503,8 @@
             token: '@tokens.RequestToken',
             indexUrl: '@Url.Page("/Index")',
             contactosUrl: '@contactosUrl',
-            plantillaUrl: '@plantillaUrl'
+            plantillaUrl: '@plantillaUrl',
+            plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas))
         };
         @if (Model.ExpJson is not null)
         {
