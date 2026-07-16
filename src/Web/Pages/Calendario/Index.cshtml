@@ -44,7 +44,7 @@
                     var esHoy = dia == Model.Hoy;
                     var reus = Model.ReunionesPorDia[dia].ToList();
                     var acts = Model.ActividadPorDia[dia].ToList();
-                    <div class="cal-cell@(esMes ? "" : " cal-out")@(esHoy ? " cal-today" : "")">
+                    <div class="cal-cell@(esMes ? "" : " cal-out")@(esHoy ? " cal-today" : "")" onclick="seleccionarDia('@dia.ToString("yyyy-MM-dd")')" style="cursor:pointer">
                         <div class="cal-cell-top">
                             <span class="cal-num">@dia.Day</span>
                             @if (Model.PuedeGestionar && esMes)
@@ -95,7 +95,10 @@
 
         @* ── Feed de actividad ───────────────────────────────────── *@
         <div class="cal-feed">
-            <h3>Actividad del mes</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h3 style="margin:0" id="feed-title">Actividad del mes</h3>
+                <button type="button" class="btns" id="btn-ver-todo" style="display:none;font-size:12px;padding:4px 8px" onclick="verTodoElMes()">Ver todo el mes</button>
+            </div>
             @if (!Model.Data.Actividad.Any())
             {
                 <p class="res-meta" style="padding:.5rem 0">Sin acciones registradas en el portal este mes.</p>
@@ -108,10 +111,10 @@
                     if (ultimoDia != e.Fecha)
                     {
                         ultimoDia = e.Fecha;
-                        <div class="cal-feed-day">@e.Fecha.ToString("dddd dd 'de' MMMM", cultEs)</div>
+                        <div class="cal-feed-day" data-fecha="@e.Fecha.ToString("yyyy-MM-dd")">@e.Fecha.ToString("dddd dd 'de' MMMM", cultEs)</div>
                     }
                     var ui = CalendarioUi.Evento(e.Tipo);
-                    <a class="cal-ev" data-tipo="@e.Tipo" asp-page="@e.Pagina" asp-route-id="@e.RefId">
+                    <a class="cal-ev" data-tipo="@e.Tipo" data-fecha="@e.Fecha.ToString("yyyy-MM-dd")" asp-page="@e.Pagina" asp-route-id="@e.RefId">
                         <span class="cal-ev-ico" style="background:@(ui.Color)1a;color:@ui.Color">@ui.Icono</span>
                         <span class="cal-ev-body">
                             <span class="cal-ev-top">
@@ -137,17 +140,47 @@
   var CAL_KEY = 'cal.filtros.ocultos';
   function ocultos(){ try { return new Set(JSON.parse(localStorage.getItem(CAL_KEY) || '[]')); } catch (e) { return new Set(); } }
 
+  var diaSeleccionado = null;
+
+  function seleccionarDia(fecha) {
+    diaSeleccionado = fecha;
+    document.querySelectorAll('.cal-cell').forEach(function(c) {
+      if (c.getAttribute('onclick').includes(fecha)) c.style.background = '#eef3fc';
+      else c.style.background = '';
+    });
+    var d = new Date(fecha + 'T12:00:00');
+    var opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+    document.getElementById('feed-title').textContent = 'Actividad del ' + d.toLocaleDateString('es-ES', opciones);
+    document.getElementById('btn-ver-todo').style.display = '';
+    aplicarFiltros();
+  }
+
+  function verTodoElMes() {
+    diaSeleccionado = null;
+    document.querySelectorAll('.cal-cell').forEach(function(c) { c.style.background = ''; });
+    document.getElementById('feed-title').textContent = 'Actividad del mes';
+    document.getElementById('btn-ver-todo').style.display = 'none';
+    aplicarFiltros();
+  }
+
   function aplicarFiltros(){
     var off = ocultos();
     document.querySelectorAll('[data-tipo]').forEach(function(el){
-      el.style.display = off.has(el.getAttribute('data-tipo')) ? 'none' : '';
+      var esDelDia = !diaSeleccionado || el.getAttribute('data-fecha') === diaSeleccionado;
+      // Para los chips del calendario (.cal-chip, .cal-mas, .cal-dot) data-fecha no existe, asi que siempre es true
+      if (!el.hasAttribute('data-fecha')) esDelDia = true;
+      el.style.display = (off.has(el.getAttribute('data-tipo')) || !esDelDia) ? 'none' : '';
     });
     document.querySelectorAll('.cal-filtro').forEach(function(b){
       var on = !off.has(b.getAttribute('data-filtro'));
       b.classList.toggle('on', on); b.classList.toggle('off', !on);
     });
-    // Oculta encabezados de día del feed que quedaron sin eventos visibles.
+    // Oculta encabezados de día del feed que quedaron sin eventos visibles o si no corresponden al día
     document.querySelectorAll('.cal-feed-day').forEach(function(h){
+      if (diaSeleccionado && h.getAttribute('data-fecha') !== diaSeleccionado) {
+          h.style.display = 'none';
+          return;
+      }
       var visible = false, n = h.nextElementSibling;
       while (n && n.classList.contains('cal-ev')) {
         if (n.style.display !== 'none') { visible = true; break; }

@@ -265,6 +265,15 @@
 </div>
 
 <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var agrupada = sessionStorage.getItem('vistaCompromisosAgrupada');
+        if (agrupada === 'true') {
+            document.getElementById('vista-lista').style.display = 'none';
+            document.getElementById('vista-agrupada').style.display = '';
+            document.getElementById('btn-toggle-vista').textContent = 'Vista de lista';
+        }
+    });
+
     function toggleVistaCompromisos() {
         var lista = document.getElementById('vista-lista');
         var agrupada = document.getElementById('vista-agrupada');
@@ -274,6 +283,7 @@
         lista.style.display = enLista ? 'none' : '';
         agrupada.style.display = enLista ? '' : 'none';
         btn.textContent = enLista ? 'Vista de lista' : 'Vista por institución';
+        sessionStorage.setItem('vistaCompromisosAgrupada', enLista ? 'true' : 'false');
     }
     function toggleGrupoInst(hdr) {
         var body = hdr.nextElementSibling;

@@ -60,10 +60,14 @@
                 }
             </select>
         </div>
-        <label class="chk" style="margin:0 0 .45rem">
-            <input type="checkbox" name="MostrarInactivos" value="true" checked="@Model.MostrarInactivos" onchange="this.form.submit()" />
-            <span>Mostrar inactivos</span>
-        </label>
+        <div class="field" style="min-width:140px">
+            <label>Estado</label>
+            <select asp-for="EstadoFiltro" onchange="this.form.submit()">
+                <option value="Activos">Solo activos</option>
+                <option value="Inactivos">Solo inactivos</option>
+                <option value="Todos">Todos</option>
+            </select>
+        </div>
         <button class="btnp" type="submit">Filtrar</button>
         <a class="btns" asp-page="/Contactos/Index">Limpiar</a>
     </form>

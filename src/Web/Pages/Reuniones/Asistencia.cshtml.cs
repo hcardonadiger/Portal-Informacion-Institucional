@@ -10,6 +10,8 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
     public string PublicUrl { get; private set; } = "";
     public string QrDataUri { get; private set; } = "";
     public IReadOnlyList<ContactoDto> Directorio { get; private set; } = [];
+    
+    [BindProperty(SupportsGet = true)] public bool TodosLosContactos { get; set; }
 
     private string BuildPublicUrl(Guid token) =>
         $"{Request.Scheme}://{Request.Host}{Url.Page("/Asistencia/Registro", new { token })}";
@@ -19,12 +21,18 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
         Data = await sender.Send(new GetAsistenciaQuery(id), ct);
         PublicUrl = BuildPublicUrl(Data.Token);
         QrDataUri = QrImagen.DataUri(PublicUrl);
-        // El directorio solo ofrece contactos de las instituciones convocadas a la reunión; si no
-        // se seleccionó ninguna (reuniones anteriores), se usa la institución principal como antes.
-        if (Data.InstitucionesNombres.Count > 0)
-            Directorio = await sender.Send(new GetContactosQuery(Instituciones: Data.InstitucionesNombres), ct);
-        else if (!string.IsNullOrWhiteSpace(Data.Institucion))
-            Directorio = await sender.Send(new GetContactosQuery(null, Data.Institucion), ct);
+        // El directorio ofrece contactos de las instituciones convocadas, o todos si se solicita.
+        if (TodosLosContactos)
+        {
+            Directorio = await sender.Send(new GetContactosQuery(), ct);
+        }
+        else
+        {
+            if (Data.InstitucionesNombres.Count > 0)
+                Directorio = await sender.Send(new GetContactosQuery(Instituciones: Data.InstitucionesNombres), ct);
+            else if (!string.IsNullOrWhiteSpace(Data.Institucion))
+                Directorio = await sender.Send(new GetContactosQuery(null, Data.Institucion), ct);
+        }
     }
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)

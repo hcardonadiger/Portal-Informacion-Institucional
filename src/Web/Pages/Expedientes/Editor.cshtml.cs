@@ -9,11 +9,13 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     public int?    ExpId   { get; private set; }
     public string  Codigo  { get; private set; } = "";
     public string? ExpJson { get; private set; }   // OriginalExpedienteDto serializado (edición)
+    public List<string> Plantillas { get; private set; } = [];
 
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
         if (id is null) return Page();
 
         try
