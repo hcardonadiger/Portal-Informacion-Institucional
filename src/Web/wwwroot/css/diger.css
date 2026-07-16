@@ -2847,6 +2847,12 @@ tr.contacto-inactivo td {
     border-radius: 8px;
     padding: 14px 15px;
     box-shadow: 0 8px 24px rgba(10, 45, 110, .08);
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s;
+}
+.tkm-metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(10, 45, 110, .12);
 }
 
 .tkm-metric span {

@@ -96,6 +96,21 @@ public sealed class GetCalendarioQueryHandler(IApplicationDbContext ctx)
             Agregar(e.CreatedAt, TipoEventoCalendario.ExpedienteCreado, e.Institucion,
                 "Expediente abierto", e.Codigo, "/Expedientes/Editor", e.Id);
 
+        foreach (var r in reuniones)
+        {
+            DateTime dtLocal;
+            if (!string.IsNullOrWhiteSpace(r.Hora) && TimeOnly.TryParse(r.Hora, out var t))
+                dtLocal = r.Fecha.ToDateTime(t);
+            else
+                dtLocal = r.Fecha.ToDateTime(new TimeOnly(12, 0));
+                
+            var etiqueta = r.Tipo;
+            if (r.Privada) etiqueta = "Privada · " + etiqueta;
+            
+            eventos.Add(new EventoCalendarioDto(
+                r.Fecha, dtLocal, TipoEventoCalendario.Reunion, r.Titulo, r.Institucion, etiqueta, "/Reuniones/Editor", r.Id));
+        }
+
         var actividad = eventos.OrderByDescending(e => e.Cuando).ToList();
         return new CalendarioDto(q.Anio, q.Mes, reuniones, actividad);
     }

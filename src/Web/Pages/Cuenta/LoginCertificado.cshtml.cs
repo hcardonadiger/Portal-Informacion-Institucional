@@ -96,7 +96,7 @@ public sealed class LoginCertificadoModel(ISender sender, IConfiguration config)
 
         // Redirigir siempre de vuelta al puerto original o al returnUrl relativo al dominio.
         // Como la cookie está asociada al localhost en general, funcionará perfectamente en el puerto 49175.
-        var finalUrl = !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) 
+        var finalUrl = !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/"
             ? returnUrl 
             : "/Tableros/Index";
 

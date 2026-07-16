@@ -27,10 +27,10 @@
         ? (x.Tema ?? "\u2014")
         : $"{x.Tema ?? "Otro"}: {x.TemaOtro}";
     var estados = new[] { EstadoTicket.Abierto, EstadoTicket.EnProgreso, EstadoTicket.Resuelto, EstadoTicket.Cerrado };
-    var abiertos = Model.Todos.Count(x => x.Estado == EstadoTicket.Abierto);
-    var progreso = Model.Todos.Count(x => x.Estado == EstadoTicket.EnProgreso);
-    var vencidos = Model.Todos.Count(x => x.SlaVencido);
-    var resueltos = Model.Todos.Count(x => x.Estado == EstadoTicket.Resuelto || x.Estado == EstadoTicket.Cerrado);
+    var abiertos = Model.TodosParaKpis.Count(x => x.Estado == EstadoTicket.Abierto);
+    var progreso = Model.TodosParaKpis.Count(x => x.Estado == EstadoTicket.EnProgreso);
+    var vencidos = Model.TodosParaKpis.Count(x => x.SlaVencido);
+    var resueltos = Model.TodosParaKpis.Count(x => x.Estado == EstadoTicket.Resuelto || x.Estado == EstadoTicket.Cerrado);
 }
 
 <div class="tkm-shell">
@@ -60,10 +60,10 @@
     </div>
 
     <div class="tkm-metrics">
-        <div class="tkm-metric"><span>Abiertos</span><strong>@abiertos</strong><small>pendientes de toma</small></div>
-        <div class="tkm-metric"><span>En progreso</span><strong>@progreso</strong><small>con responsable</small></div>
-        <div class="tkm-metric tkm-metric-alert"><span>Vencidos</span><strong>@vencidos</strong><small>requieren prioridad</small></div>
-        <div class="tkm-metric"><span>Resueltos</span><strong>@resueltos</strong><small>en esta vista</small></div>
+        <div class="tkm-metric" onclick="aplicarFiltroMetrica('Abierto', false)"><span>Abiertos</span><strong>@abiertos</strong><small>pendientes de toma</small></div>
+        <div class="tkm-metric" onclick="aplicarFiltroMetrica('EnProgreso', false)"><span>En progreso</span><strong>@progreso</strong><small>con responsable</small></div>
+        <div class="tkm-metric tkm-metric-alert" onclick="aplicarFiltroMetrica('', true)"><span>Vencidos</span><strong>@vencidos</strong><small>requieren prioridad</small></div>
+        <div class="tkm-metric" onclick="aplicarFiltroMetrica('Resuelto', false)"><span>Resueltos</span><strong>@resueltos</strong><small>en esta vista</small></div>
     </div>
 
     @if (Model.EsTecnicoRestringido)
@@ -263,6 +263,16 @@
 </div>
 
 <script>
+    function aplicarFiltroMetrica(estado, vencidos) {
+        var form = document.querySelector('.tkm-filterbar');
+        if (!form) return;
+        var selEstado = form.querySelector('select[name="estado"]');
+        var chkVencidos = form.querySelector('input[name="soloVencidos"]');
+        if (selEstado) selEstado.value = estado;
+        if (chkVencidos) chkVencidos.checked = vencidos;
+        form.submit();
+    }
+
     function toggleVistaTickets() {
         var lista = document.getElementById('vista-lista');
         var agrupada = document.getElementById('vista-agrupada');

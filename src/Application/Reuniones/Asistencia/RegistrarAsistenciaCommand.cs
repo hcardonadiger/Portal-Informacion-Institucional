@@ -6,7 +6,11 @@ namespace Diger.TramitesEstado.Application.Reuniones.Asistencia;
 /// <summary>Auto-registro anónimo de un participante mediante el token público de la reunión.</summary>
 public sealed record RegistrarAsistenciaCommand(Guid Token, AsistenteAutoInput Datos) : IRequest<string>;
 
-public sealed class RegistrarAsistenciaCommandHandler(IReunionRepository repo, IUnitOfWork uow)
+public sealed class RegistrarAsistenciaCommandHandler(
+    IReunionRepository repo, 
+    IContactoRepository contactoRepo,
+    IInstitucionRepository institucionRepo,
+    IUnitOfWork uow)
     : IRequestHandler<RegistrarAsistenciaCommand, string>
 {
     public async Task<string> Handle(RegistrarAsistenciaCommand cmd, CancellationToken ct)
@@ -31,6 +35,38 @@ public sealed class RegistrarAsistenciaCommandHandler(IReunionRepository repo, I
 
         r.RegistrarAsistente(d.Nombre, d.Cargo, d.Institucion, d.Departamento, correo, tel);
         repo.Update(r);
+
+        if (!string.IsNullOrWhiteSpace(correo))
+        {
+            var contacto = await contactoRepo.GetByCorreoAsync(correo, ct);
+            Institucion? inst = null;
+            if (!string.IsNullOrWhiteSpace(d.Institucion))
+            {
+                inst = await institucionRepo.GetByNombreAsync(d.Institucion, ct);
+            }
+
+            if (contacto is not null)
+            {
+                // Actualizar contacto existente.
+                var instIdToUse = inst?.Id ?? contacto.InstitucionId;
+                var instNameToUse = inst?.Nombre ?? contacto.Institucion;
+                
+                contacto.Actualizar(
+                    d.Nombre, instIdToUse, instNameToUse, contacto.AreaId, contacto.UnidadId,
+                    d.Cargo, correo, tel, contacto.Notas
+                );
+                contactoRepo.Update(contacto);
+            }
+            else if (inst is not null)
+            {
+                // Crear nuevo contacto
+                var nuevoContacto = Contacto.Crear(
+                    d.Nombre, inst.Id, inst.Nombre, null, null, d.Cargo, correo, tel, null, OrigenContacto.Reunion
+                );
+                await contactoRepo.AddAsync(nuevoContacto, ct);
+            }
+        }
+
         await uow.SaveChangesAsync(ct);
         return r.Titulo;
     }
