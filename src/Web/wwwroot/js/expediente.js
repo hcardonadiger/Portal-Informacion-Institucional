@@ -523,6 +523,8 @@ var FICHA_FIELDS = ['nombre_corto','modalidad','plazo_legal','tercero','tiempo_r
   'pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto','doc_entregado','objetivo',
   'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web'];
 
+function tramRowHTML(i){
+  var rm = i > 0 ? '<button type="button" class="btn-rm-tramite" onclick="removerTramiteApertura('+i+')" title="Quitar trámite">✕</button>' : '';
   var opts = '<option value="">— Ninguna (Personalizado) —</option>';
   if(window.__EXPMETA__ && window.__EXPMETA__.plantillas){
     window.__EXPMETA__.plantillas.forEach(function(p){ opts += '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; });
