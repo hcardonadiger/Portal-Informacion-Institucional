@@ -85,7 +85,7 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
             principal,
             new AuthenticationProperties { IsPersistent = true });
 
-        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/")
             return LocalRedirect(returnUrl);
 
         return RedirectToPage("/Tableros/Index");

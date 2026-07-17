@@ -96,7 +96,7 @@ public sealed class EditorModel(
     /// <summary>Autoguardado del paso "Generales": crea o actualiza la reunión con lo capturado
     /// hasta ahora y recarga la misma página, donde ya queda disponible el enlace/QR de
     /// auto-registro (requiere que la reunión exista para tener un token).</summary>
-    public async Task<IActionResult> OnPostGuardarContinuarAsync(int? id, CancellationToken ct)
+    public async Task<IActionResult> OnPostGuardarContinuarAsync(int? id, [FromForm] int paso, CancellationToken ct)
     {
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
@@ -110,7 +110,8 @@ public sealed class EditorModel(
         try
         {
             var reunionId = await GuardarAsync(id, ct);
-            return RedirectToPage(new { id = reunionId });
+            TempData["SuccessMsg"] = "Cambios guardados.";
+            return RedirectToPage(new { id = reunionId, paso = paso });
         }
         catch (DomainException ex)
         {

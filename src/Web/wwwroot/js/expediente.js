@@ -484,7 +484,9 @@ async function filtrarContactosPorInstitucion(){
   if(!inst || !meta.contactosUrl) return;
   try{
     var sep = meta.contactosUrl.indexOf('?') >= 0 ? '&' : '?';
-    var resp = await fetch(meta.contactosUrl + sep + 'institucion=' + encodeURIComponent(inst));
+    var resp = await fetch(meta.contactosUrl + sep + 'institucion=' + encodeURIComponent(inst), {
+      headers:{ 'Accept':'application/json' }
+    });
     if(!resp.ok) return;
     _contactosAsis = await resp.json();
   }catch(e){ _contactosAsis = []; }
@@ -522,13 +524,17 @@ var FICHA_FIELDS = ['nombre_corto','modalidad','plazo_legal','tercero','tiempo_r
   'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web'];
 
 function tramRowHTML(i){
-  var rm = tramiteCount > 1
-    ? '<button type="button" class="btn-rm" title="Quitar trámite" style="align-self:start;margin-top:24px" onclick="quitarTramiteApertura('+i+')">✕</button>'
-    : '';
-  return '<div class="tram-row" style="flex-direction:row;align-items:flex-start;gap:10px">'
-    + '<div class="f" style="flex:1"><label>Trámite ' + (i+1) + ' <span class="star">*</span>'
+  var rm = i > 0 ? '<button type="button" class="btn-rm-tramite" onclick="removerTramiteApertura('+i+')" title="Quitar trámite">✕</button>' : '';
+  var opts = '<option value="">— Ninguna (Personalizado) —</option>';
+  if(window.__EXPMETA__ && window.__EXPMETA__.plantillas){
+    window.__EXPMETA__.plantillas.forEach(function(p){ opts += '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; });
+  }
+  return '<div class="tram-row" style="flex-direction:row;align-items:flex-start;gap:10px;flex-wrap:wrap">'
+    + '<div class="f" style="flex:1;min-width:250px"><label>Trámite ' + (i+1) + ' <span class="star">*</span>'
     + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
-    + '<input type="text" id="tnam-'+i+'" placeholder="Nombre completo del trámite ' + (i+1) + '" oninput="actualizarMeta();actualizarTabsTramite();syncNombreTramite('+i+')" onblur="intentarCopiarPlantilla('+i+')"></div>'
+    + '<input type="text" id="tnam-'+i+'" placeholder="Nombre completo del trámite ' + (i+1) + '" oninput="actualizarMeta();actualizarTabsTramite();syncNombreTramite('+i+')"></div>'
+    + '<div class="f" style="flex:1;min-width:200px"><label>Plantilla base</label>'
+    + '<select id="tplan-'+i+'" onchange="seleccionarPlantilla('+i+', this.value)" style="padding:11px 12px;border:1px solid var(--borde);border-radius:8px;font-size:14px;background:#fafbfd;font-family:inherit;width:100%">' + opts + '</select></div>'
     + '<div class="f" style="flex:1;max-width:380px"><label>Área o dirección responsable</label>'
     + '<input type="text" id="area_resp-'+i+'" placeholder="Unidad interna que gestiona el trámite"></div>'
     + rm
@@ -1019,14 +1025,22 @@ function agregarLegal(){
 }
 
 // ── PLANTILLAS DE TRÁMITE (Marco Legal / Requisitos compartidos) ──────
-async function intentarCopiarPlantilla(i){
-  var nombre = (gv('tnam-'+i) || '').trim();
+async function seleccionarPlantilla(i, nombre){
   if(!nombre) return;
+  var tnam = document.getElementById('tnam-'+i);
+  if(tnam && !tnam.value.trim()){
+      tnam.value = nombre;
+      actualizarMeta();
+      actualizarTabsTramite();
+      syncNombreTramite(i);
+  }
   var meta = window.__EXPMETA__ || {};
   if(!meta.plantillaUrl) return;
   try{
     var sep = meta.plantillaUrl.indexOf('?') >= 0 ? '&' : '?';
-    var resp = await fetch(meta.plantillaUrl + sep + 'nombre=' + encodeURIComponent(nombre));
+    var resp = await fetch(meta.plantillaUrl + sep + 'nombre=' + encodeURIComponent(nombre), {
+      headers:{ 'Accept':'application/json' }
+    });
     if(!resp.ok) return;
     var p = await resp.json();
     if(!p) return;
@@ -1110,7 +1124,7 @@ async function subirDocumento(input){
     var sep = (meta.postUrl||'').indexOf('?') >= 0 ? '&' : '?';
     var resp = await fetch((meta.postUrl||'') + sep + 'handler=SubirDocumento', {
       method:'POST',
-      headers:{ 'RequestVerificationToken': meta.token || '' },
+      headers:{ 'Accept':'application/json', 'RequestVerificationToken': meta.token || '' },
       body: fd
     });
     if(!resp.ok) throw new Error('HTTP '+resp.status);
@@ -1300,11 +1314,22 @@ async function guardar(){
     var data = recolectar();
     var resp = await fetch(meta.postUrl || window.location.href, {
       method:'POST',
-      headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': meta.token || '' },
+      headers:{
+        'Content-Type':'application/json',
+        'Accept':'application/json',
+        'RequestVerificationToken': meta.token || ''
+      },
       body: JSON.stringify(data)
     });
-    if(!resp.ok){ throw new Error('HTTP '+resp.status); }
+    var ct = resp.headers.get('content-type') || '';
+    if(!ct.includes('application/json')){
+      // El servidor devolvió HTML (redirect a login, error page, etc.)
+      throw new Error('Respuesta inesperada del servidor. Recargue la página e intente de nuevo.');
+    }
     var result = await resp.json();
+    if(!resp.ok){
+      throw new Error(result.detail || result.title || ('HTTP '+resp.status));
+    }
     mostrarToast('✓ Expediente guardado');
     setTimeout(function(){ window.location.href = (meta.indexUrl || '/'); }, 600);
   }catch(err){

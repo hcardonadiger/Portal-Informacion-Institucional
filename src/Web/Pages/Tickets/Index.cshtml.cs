@@ -5,6 +5,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 {
     public PagedResult<TicketListItemDto> Resultado { get; private set; } = PagedResult<TicketListItemDto>.Empty(Paginacion.TamanoDefecto);
     public IReadOnlyList<TicketListItemDto> Todos { get; private set; } = [];
+    public IReadOnlyList<TicketListItemDto> TodosParaKpis { get; private set; } = [];
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
 
     public EstadoTicket?    Estado    { get; private set; }
@@ -67,6 +68,8 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             new GetTicketsQuery(estado, prioridad, institucionId, asignado, q, pg, TemaIds: temaIds, SoloVencidos: soloVencidos), ct);
         Todos = (await sender.Send(
             new GetTicketsQuery(estado, prioridad, institucionId, asignado, q, Page: 1, Size: 100, TemaIds: temaIds, SoloVencidos: soloVencidos), ct)).Items;
+        TodosParaKpis = (await sender.Send(
+            new GetTicketsQuery(null, prioridad, institucionId, asignado, q, Page: 1, Size: 100, TemaIds: temaIds, SoloVencidos: false), ct)).Items;
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)

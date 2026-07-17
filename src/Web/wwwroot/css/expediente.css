@@ -58,8 +58,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--text
 .tg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .tp{display:flex;align-items:center;gap:7px;padding:7px 15px;border:1.5px solid var(--borde);border-radius:99px;cursor:pointer;font-size:13px;font-weight:500;transition:all .18s;background:var(--gris-f)}
 .tp:hover{border-color:var(--azul-m);background:var(--azul-c)}
-.tp.on{border-color:var(--azul-m);background:linear-gradient(135deg,#dde9ff,#c8dbff);color:var(--azul);font-weight:700}
-.tp.on-v{border-color:var(--verde);background:var(--verde-c);color:var(--verde);font-weight:700}
+.tp.on, .tp:has(input:checked){border-color:var(--azul-m);background:linear-gradient(135deg,#dde9ff,#c8dbff);color:var(--azul);font-weight:700}
+.tp.on-v, .tp.on-v:has(input:checked){border-color:var(--verde);background:var(--verde-c);color:var(--verde);font-weight:700}
 .tp input{display:none}
 /* PERFILES (estilo etapas de instituciones.html) */
 .perfiles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.5rem;margin-top:.5rem}

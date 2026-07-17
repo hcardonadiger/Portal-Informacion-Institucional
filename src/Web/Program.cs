@@ -27,7 +27,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
         {
             listenOptions.UseHttps(httpsOptions =>
             {
-                httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.RequireCertificate;
+                httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.AllowCertificate;
                 
                 // Hacks para Tokens Físicos (Bit4Id, etc) que fallan en TLS 1.3 o sin internet para CRL
                 httpsOptions.CheckCertificateRevocation = false;
@@ -149,7 +149,6 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 

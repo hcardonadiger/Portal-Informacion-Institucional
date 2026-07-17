@@ -51,3 +51,16 @@ public sealed class GetPlantillaPorNombreQueryHandler(IApplicationDbContext ctx)
         return p is null ? null : GetPlantillaByIdQueryHandler.ToDetalle(p);
     }
 }
+
+public sealed record GetNombresPlantillasActivasQuery : IRequest<List<string>>;
+
+public sealed class GetNombresPlantillasActivasQueryHandler(IApplicationDbContext ctx)
+    : IRequestHandler<GetNombresPlantillasActivasQuery, List<string>>
+{
+    public async Task<List<string>> Handle(GetNombresPlantillasActivasQuery q, CancellationToken ct)
+        => await ctx.PlantillasTramite
+            .Where(p => p.Activa)
+            .OrderBy(p => p.Nombre)
+            .Select(p => p.Nombre)
+            .ToListAsync(ct);
+}
