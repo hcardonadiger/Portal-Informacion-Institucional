@@ -34,54 +34,38 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
-/* ── Sidebar tipo hamburguesa (todos los tamaños) + popover de usuario ── */
-var SIDEBAR_KEY = 'diger-sidebar-open';
-
-function toggleSidebar(open) {
-    var sb = document.getElementById('appSidebar');
-    var bd = document.getElementById('sidebarBackdrop');
-    if (!sb) return;
-    sb.classList.toggle('open', open);
-    if (bd) bd.classList.toggle('open', open);
-    try { localStorage.setItem(SIDEBAR_KEY, open ? 'true' : 'false'); } catch (e) { }
-}
-
-function toggleUserPanel() {
-    var p = document.getElementById('sideUserPanel');
-    if (p) p.classList.toggle('open');
-}
-
-/* Restaura el último estado (abierto/cerrado) sin animar el primer render */
-(function () {
-    var sb = document.getElementById('appSidebar');
-    if (!sb) return;
-    var open;
-    try { 
-        var val = localStorage.getItem(SIDEBAR_KEY);
-        open = val === null ? true : val === 'true'; 
-    } catch (e) { open = true; }
-    if (open) {
-        var bd = document.getElementById('sidebarBackdrop');
-        sb.classList.add('no-anim', 'open');
-        if (bd) bd.classList.add('open');
-        requestAnimationFrame(function () {
-            requestAnimationFrame(function () { sb.classList.remove('no-anim'); });
-        });
+/* ── Mobile Navbar Toggle & Dropdowns ── */
+document.addEventListener('click', function(e) {
+    // Hamburger toggle
+    var toggler = e.target.closest('#navbarToggler');
+    if (toggler) {
+        var menu = document.getElementById('navbarMenu');
+        if (menu) menu.classList.toggle('open');
+        return;
     }
-})();
 
-document.addEventListener('click', function (e) {
-    var panel = document.getElementById('sideUserPanel');
-    if (panel && panel.classList.contains('open') && !e.target.closest('.side-user')) {
-        panel.classList.remove('open');
+    // Dropdown toggle on mobile
+    var navLink = e.target.closest('.nav-item.has-dropdown > .nav-link');
+    if (navLink) {
+        if (window.innerWidth <= 900) {
+            e.preventDefault();
+            var parent = navLink.closest('.nav-item');
+            parent.classList.toggle('open');
+        }
+        return;
+    }
+
+    // Close menu if clicking outside on mobile
+    var menu = document.getElementById('navbarMenu');
+    if (menu && menu.classList.contains('open') && !e.target.closest('.main-navbar')) {
+        menu.classList.remove('open');
     }
 });
 
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-        toggleSidebar(false);
-        var panel = document.getElementById('sideUserPanel');
-        if (panel) panel.classList.remove('open');
+        var menu = document.getElementById('navbarMenu');
+        if (menu) menu.classList.remove('open');
     }
 });
 
