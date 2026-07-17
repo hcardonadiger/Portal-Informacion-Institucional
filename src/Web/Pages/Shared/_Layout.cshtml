@@ -141,7 +141,7 @@
                                     <div class="dropdown-user-role">@(User.FindFirst(ClaimTypes.Role)?.Value)</div>
                                 </div>
                                 
-                                <a asp-page="/Cuenta/Perfil" class="dropdown-item">Mi Perfil</a>
+                                <a asp-page="/Cuenta/Manage/Index" class="dropdown-item">Mi Perfil</a>
 
                                 @if (showAsignaciones || showJerarquia)
                                 {
