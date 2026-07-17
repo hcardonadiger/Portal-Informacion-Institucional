@@ -61,173 +61,175 @@
         var rolFiltro = User.FindFirstValue(AppClaims.ActiveRol);
         bool showAsignaciones = asignaciones != null && asignaciones.Count > 1;
         bool showJerarquia = rolFiltro == "JefeInstitucion" || rolFiltro == "JefeArea";
-        <div class="app-shell">
-            <aside class="app-sidebar" id="appSidebar">
-                <div class="app-sidebar-brand">
-                    <a asp-page="/Tableros/Index">
-                        <img src="~/img/logo_diger.png" asp-append-version="true" class="app-sidebar-logo-img" alt="DIGER" />
+
+        <div class="app-layout">
+            <header class="main-navbar">
+                <div class="navbar-container">
+                    <a asp-page="/Tableros/Index" class="navbar-brand">
+                        <img src="~/img/logo_diger.png" asp-append-version="true" alt="DIGER" />
                     </a>
-                    <button type="button" class="sidebar-close" onclick="toggleSidebar(false)" aria-label="Cerrar menú">&#10005;</button>
-                </div>
 
-                <nav class="side-nav">
-                    @if (puedeTableros || puedeCalendario || puedeExpedientes)
-                    {
-                        <div class="side-label">Seguimiento</div>
-                        @if (puedeTableros)
-                        {
-                            <a class="side-link @(EsRuta("/Tableros") ? "on" : "")" asp-page="/Tableros/Index"><span class="dash"></span>Tableros</a>
-                        }
-                        @if (puedeCalendario)
-                        {
-                            <a class="side-link @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index"><span class="dash"></span>Calendario</a>
-                        }
-                        @if (puedeExpedientes)
-                        {
-                            <a class="side-link @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index"><span class="dash"></span>Expedientes</a>
-                        }
-                    }
-                    @if (puedeReuniones)
-                    {
-                        <div class="side-label">Pendientes</div>
-                        <a class="side-link @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index"><span class="dash"></span>Reuniones</a>
-                        <a class="side-link @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos"><span class="dash"></span>Compromisos</a>
-                    }
-                    @if (puedeTickets || puedeContactos)
-                    {
-                        <div class="side-label">Trámites</div>
-                        @if (puedeTickets)
-                        {
-                            <a class="side-link @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index"><span class="dash"></span>Tickets</a>
-                        }
-                        @if (puedeContactos)
-                        {
-                            <a class="side-link @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index"><span class="dash"></span>Contactos</a>
-                        }
-                    }
-                    @if (Acceso.EsAdministrador)
-                    {
-                        <div class="side-label">Administración</div>
-                        <a class="side-link @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index"><span class="dash"></span>Instituciones</a>
-                        <a class="side-link @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index"><span class="dash"></span>Áreas</a>
-                        <a class="side-link @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index"><span class="dash"></span>Unidades</a>
-                        <a class="side-link @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><span class="dash"></span>Usuarios</a>
-                        <a class="side-link @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index"><span class="dash"></span>Accesos</a>
-                    }
-                </nav>
-
-                <div class="side-user">
-                    <div class="side-user-panel" id="sideUserPanel">
-                        @if (showAsignaciones)
-                        {
-                            var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
-                            var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
-                            var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
-                            var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
-                            int currentIndex = asignaciones!.FindIndex(a =>
-                                a.InstitucionId == activeInst && a.AreaId == activeArea &&
-                                a.UnidadId == activeUnidad && a.Rol == activeRol);
-
-                            <div class="side-panel-section">
-                                <div class="side-panel-label">Contexto activo</div>
-                                <form method="post" asp-page="/Cuenta/CambiarContexto">
-                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                                    <select name="indiceSeleccionado" onchange="this.form.submit()">
-                                        @for (int i = 0; i < asignaciones.Count; i++)
-                                        {
-                                            var a = asignaciones[i];
-                                            var label = $"{a.Rol} - {a.InstitucionId}" + (a.AreaId != null ? $" / {a.AreaId}" : "") + (a.UnidadId != null ? $" / {a.UnidadId}" : "");
-                                            if (i == currentIndex) { <option value="@i" selected>@label</option> }
-                                            else { <option value="@i">@label</option> }
-                                        }
-                                    </select>
-                                </form>
-                            </div>
-                        }
-
-                        @if (showJerarquia)
-                        {
-                            var currentArea = User.FindFirstValue(AppClaims.ActiveArea);
-                            var currentUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
-
-                            <div class="side-panel-section">
-                                <div class="side-panel-label">Filtrar por jerarquía</div>
-                                <form method="post" asp-page="/Cuenta/CambiarFiltroJerarquia">
-                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-
-                                    @if (rolFiltro == "JefeInstitucion")
-                                    {
-                                        var areas = await JerarquiaUi.GetAreasAsync();
-                                        <select name="areaId" onchange="this.form.submit()">
-                                            <option value="">-- Toda la Institución --</option>
-                                            @foreach (var a in areas)
-                                            {
-                                                if (a.Id == currentArea) { <option value="@a.Id" selected>@a.Nombre</option> }
-                                                else { <option value="@a.Id">@a.Nombre</option> }
-                                            }
-                                        </select>
-                                    }
-                                    else if (rolFiltro == "JefeArea")
-                                    {
-                                        <input type="hidden" name="areaId" value="@currentArea" />
-                                    }
-
-                                    @if ((rolFiltro == "JefeInstitucion" && !string.IsNullOrEmpty(currentArea)) || rolFiltro == "JefeArea")
-                                    {
-                                        var unidades = await JerarquiaUi.GetUnidadesAsync(currentArea);
-                                        <select name="unidadId" onchange="this.form.submit()">
-                                            <option value="">-- Todas las Unidades --</option>
-                                            @foreach (var u in unidades)
-                                            {
-                                                if (u.Id == currentUnidad) { <option value="@u.Id" selected>@u.Nombre</option> }
-                                                else { <option value="@u.Id">@u.Nombre</option> }
-                                            }
-                                        </select>
-                                    }
-                                </form>
-                            </div>
-                        }
-
-                        <button type="submit" form="logoutForm" class="side-panel-logout">Cerrar sesión</button>
-                    </div>
-
-                    <button type="button" class="side-user-btn" onclick="toggleUserPanel()">
-                        <span class="side-avatar">@Iniciales(User.Identity!.Name)</span>
-                        <span class="side-user-meta">
-                            <span class="side-user-name">@User.Identity!.Name</span>
-                            <span class="side-user-rol">@(User.FindFirst(ClaimTypes.Role)?.Value)</span>
-                        </span>
-                        <span class="side-user-chev">&#9652;</span>
+                    <button type="button" class="navbar-toggler" id="navbarToggler" aria-label="Abrir menú">
+                        &#9776;
                     </button>
-                    <form id="logoutForm" method="post" asp-page="/Cuenta/Logout" style="display:none"></form>
-                </div>
-            </aside>
-            <div class="app-sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
 
-            <div class="app-main">
-                <div class="app-topbar">
-                    <button type="button" class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menú">&#9776;</button>
-                    <img src="~/img/logo_diger.png" asp-append-version="true" class="app-topbar-logo" alt="DIGER" />
-                    
-                    <div style="flex:1; display:flex; justify-content:center; margin: 0 1rem;">
-                        <div style="width: 100%; max-width: 450px; display: flex; align-items: center; background: #f0f4fa; border-radius: 20px; padding: 7px 16px; border: 1.5px solid transparent; color: #94a3b8; font-size: 13px; opacity: 0.8; user-select: none;">
-                            <span style="margin-right:8px; font-size: 14px;">🔍</span> 
-                            <span>Buscar expedientes, trámites o reuniones... (Próximamente)</span>
+                    <nav class="navbar-menu" id="navbarMenu">
+                        @if (puedeTableros || puedeCalendario || puedeExpedientes)
+                        {
+                            <div class="nav-item has-dropdown">
+                                <span class="nav-link">Seguimiento <span class="caret">&#9662;</span></span>
+                                <div class="nav-dropdown">
+                                    @if (puedeTableros) { <a class="dropdown-item @(EsRuta("/Tableros") ? "on" : "")" asp-page="/Tableros/Index">Tableros</a> }
+                                    @if (puedeCalendario) { <a class="dropdown-item @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index">Calendario</a> }
+                                    @if (puedeExpedientes) { <a class="dropdown-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index">Expedientes</a> }
+                                </div>
+                            </div>
+                        }
+
+                        @if (puedeReuniones)
+                        {
+                            <div class="nav-item has-dropdown">
+                                <span class="nav-link">Pendientes <span class="caret">&#9662;</span></span>
+                                <div class="nav-dropdown">
+                                    <a class="dropdown-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index">Reuniones</a>
+                                    <a class="dropdown-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos">Compromisos</a>
+                                </div>
+                            </div>
+                        }
+
+                        @if (puedeTickets || puedeContactos)
+                        {
+                            <div class="nav-item has-dropdown">
+                                <span class="nav-link">Trámites <span class="caret">&#9662;</span></span>
+                                <div class="nav-dropdown">
+                                    @if (puedeTickets) { <a class="dropdown-item @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index">Tickets</a> }
+                                    @if (puedeContactos) { <a class="dropdown-item @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index">Contactos</a> }
+                                </div>
+                            </div>
+                        }
+
+                        @if (Acceso.EsAdministrador)
+                        {
+                            <div class="nav-item has-dropdown">
+                                <span class="nav-link">Administración <span class="caret">&#9662;</span></span>
+                                <div class="nav-dropdown">
+                                    <a class="dropdown-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index">Instituciones</a>
+                                    <a class="dropdown-item @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index">Áreas</a>
+                                    <a class="dropdown-item @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index">Unidades</a>
+                                </div>
+                            </div>
+                            <div class="nav-item has-dropdown">
+                                <span class="nav-link">Seguridad <span class="caret">&#9662;</span></span>
+                                <div class="nav-dropdown">
+                                    <a class="dropdown-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index">Usuarios</a>
+                                    <a class="dropdown-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index">Accesos</a>
+                                </div>
+                            </div>
+                        }
+                    </nav>
+
+                    <div class="navbar-user">
+                        <div class="nav-item has-dropdown user-menu">
+                            <a href="#" class="nav-link user-profile-link" onclick="event.preventDefault();">
+                                <span class="user-name">@User.Identity!.Name</span>
+                                <span class="user-avatar">@Iniciales(User.Identity!.Name)</span>
+                                <span class="caret">&#9662;</span>
+                            </a>
+                            <div class="nav-dropdown right-aligned user-dropdown">
+                                <div class="dropdown-header">
+                                    <div class="dropdown-user-name">@User.Identity!.Name</div>
+                                    <div class="dropdown-user-role">@(User.FindFirst(ClaimTypes.Role)?.Value)</div>
+                                </div>
+                                
+                                <a asp-page="/Cuenta/Perfil" class="dropdown-item">Mi Perfil</a>
+
+                                @if (showAsignaciones || showJerarquia)
+                                {
+                                    <div class="dropdown-divider"></div>
+                                }
+
+                                @if (showAsignaciones)
+                                {
+                                    var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
+                                    var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+                                    var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
+                                    var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
+                                    int currentIndex = asignaciones!.FindIndex(a =>
+                                        a.InstitucionId == activeInst && a.AreaId == activeArea &&
+                                        a.UnidadId == activeUnidad && a.Rol == activeRol);
+
+                                    <div class="dropdown-section">
+                                        <div class="dropdown-label">Contexto activo</div>
+                                        <form method="post" asp-page="/Cuenta/CambiarContexto">
+                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                            <select name="indiceSeleccionado" onchange="this.form.submit()" class="dropdown-select">
+                                                @for (int i = 0; i < asignaciones.Count; i++)
+                                                {
+                                                    var a = asignaciones[i];
+                                                    var label = $"{a.Rol} - {a.InstitucionId}" + (a.AreaId != null ? $" / {a.AreaId}" : "") + (a.UnidadId != null ? $" / {a.UnidadId}" : "");
+                                                    if (i == currentIndex) { <option value="@i" selected>@label</option> }
+                                                    else { <option value="@i">@label</option> }
+                                                }
+                                            </select>
+                                        </form>
+                                    </div>
+                                }
+
+                                @if (showJerarquia)
+                                {
+                                    var currentArea = User.FindFirstValue(AppClaims.ActiveArea);
+                                    var currentUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+
+                                    <div class="dropdown-section">
+                                        <div class="dropdown-label">Filtrar por jerarquía</div>
+                                        <form method="post" asp-page="/Cuenta/CambiarFiltroJerarquia">
+                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                                            @if (rolFiltro == "JefeInstitucion")
+                                            {
+                                                var areas = await JerarquiaUi.GetAreasAsync();
+                                                <select name="areaId" onchange="this.form.submit()" class="dropdown-select">
+                                                    <option value="">-- Toda la Institución --</option>
+                                                    @foreach (var a in areas)
+                                                    {
+                                                        if (a.Id == currentArea) { <option value="@a.Id" selected>@a.Nombre</option> }
+                                                        else { <option value="@a.Id">@a.Nombre</option> }
+                                                    }
+                                                </select>
+                                            }
+                                            else if (rolFiltro == "JefeArea")
+                                            {
+                                                <input type="hidden" name="areaId" value="@currentArea" />
+                                            }
+
+                                            @if ((rolFiltro == "JefeInstitucion" && !string.IsNullOrEmpty(currentArea)) || rolFiltro == "JefeArea")
+                                            {
+                                                var unidades = await JerarquiaUi.GetUnidadesAsync(currentArea);
+                                                <select name="unidadId" onchange="this.form.submit()" class="dropdown-select">
+                                                    <option value="">-- Todas las Unidades --</option>
+                                                    @foreach (var u in unidades)
+                                                    {
+                                                        if (u.Id == currentUnidad) { <option value="@u.Id" selected>@u.Nombre</option> }
+                                                        else { <option value="@u.Id">@u.Nombre</option> }
+                                                    }
+                                                </select>
+                                            }
+                                        </form>
+                                    </div>
+                                }
+
+                                <div class="dropdown-divider"></div>
+                                <button type="submit" form="logoutForm" class="dropdown-logout">Cerrar sesión</button>
+                            </div>
                         </div>
-                    </div>
-
-                    <div style="display:flex; align-items:center; gap: 16px;">
-                        <button type="button" style="background:none; border:none; color:#6b7fa3; font-size: 17px; cursor: pointer; padding: 4px; transition: transform 0.2s;" title="Notificaciones (0)">
-                            🔔
-                        </button>
-                        <a asp-page="/Cuenta/Perfil" class="topnav-name" title="Mi Perfil" style="text-decoration:none; display:flex; align-items:center; gap: 10px; padding: 2px; border-radius: 30px; transition: background 0.2s;">
-                            <span style="color:var(--diger-blue-dark); font-weight: 700;">@User.Identity!.Name</span>
-                            <span class="side-avatar" style="width:34px; height:34px; font-size:13px; box-shadow: 0 2px 6px rgba(10,45,110,0.15);">@Iniciales(User.Identity!.Name)</span>
-                        </a>
+                        <form id="logoutForm" method="post" asp-page="/Cuenta/Logout" style="display:none"></form>
                     </div>
                 </div>
+            </header>
+
+            <main class="app-main-content">
                 @RenderBody()
-            </div>
+            </main>
         </div>
     }
     else
