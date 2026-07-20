@@ -20,6 +20,18 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     /// <summary>Id del usuario que creó la reunión (para las reuniones privadas).</summary>
     public Guid? CreadoPorId { get; set; }
 
+    // ── Hilo (reuniones enlazadas) ────────────────────────────────
+    /// <summary>Identificador del hilo al que pertenece la reunión. Las reuniones que comparten
+    /// el mismo <see cref="HiloId"/> forman una secuencia enlazada para dar seguimiento a acciones
+    /// y tareas a través del tiempo. <c>null</c> = no pertenece a ningún hilo.</summary>
+    public Guid? HiloId { get; private set; }
+
+    /// <summary>Enlaza la reunión al hilo indicado.</summary>
+    public void EnlazarAHilo(Guid hiloId) => HiloId = hiloId;
+
+    /// <summary>Saca la reunión de su hilo actual.</summary>
+    public void SalirDelHilo() => HiloId = null;
+
     // ── Auto-registro de asistencia (enlace + QR público) ─────────
     /// <summary>Token público (difícil de adivinar) del enlace de auto-registro de participantes.</summary>
     public Guid RegistroToken  { get; private set; } = Guid.NewGuid();
@@ -139,6 +151,30 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
         return a;
     }
 
+    /// <summary>Pre-registra un invitado por el organizador antes de la reunión.
+    /// El pre-registro queda pendiente hasta que el invitado confirme su asistencia (presencialmente o por QR).</summary>
+    public Asistente PreRegistrar(string nombre, string? cargo, string? institucion,
+        string? departamento, string? correo, string? telefono)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
+        var a = new Asistente
+        {
+            Nombre = nombre.Trim(), Cargo = cargo?.Trim(), Institucion = institucion?.Trim(),
+            Departamento = departamento?.Trim(), Correo = correo?.Trim().ToLowerInvariant(),
+            Telefono = telefono?.Trim(), EsPreregistro = true
+        };
+        _asistentes.Add(a);
+        NumAsistentes = _asistentes.Count;
+        return a;
+    }
+
+    /// <summary>Confirma o marca como ausente un asistente pre-registrado.</summary>
+    public void ConfirmarAsistencia(int asistenteId, bool asistio)
+    {
+        var a = _asistentes.FirstOrDefault(x => x.Id == asistenteId);
+        if (a is not null) a.Confirmado = asistio;
+    }
+
     /// <summary>Elimina un asistente puntual (gestión de la lista en vivo) sin tocar el resto.</summary>
     public void EliminarAsistente(int asistenteId)
     {
@@ -168,8 +204,14 @@ public sealed class Asistente : BaseEntity
     public string?   Telefono     { get; set; }
 
     // ── Trazabilidad del auto-registro ────────────────────────────
-    public bool      AutoRegistro { get; set; }
-    public DateTime? RegistradoEl { get; set; }
+    public bool      AutoRegistro  { get; set; }
+    public DateTime? RegistradoEl  { get; set; }
+
+    // ── Pre-registro ──────────────────────────────────────────────
+    /// <summary>true = fue pre-registrado por el organizador antes de la reunión.</summary>
+    public bool  EsPreregistro { get; set; }
+    /// <summary>null = pendiente de confirmar; true = asistió; false = ausente.</summary>
+    public bool? Confirmado    { get; set; }
 }
 
 public sealed class AcuerdoReunion : BaseEntity

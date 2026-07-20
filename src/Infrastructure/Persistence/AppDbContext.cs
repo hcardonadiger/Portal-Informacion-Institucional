@@ -286,6 +286,7 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
         b.Property(x => x.Visibilidad).HasConversion<string>().HasMaxLength(20).HasDefaultValue(VisibilidadReunion.Publica);
 
         b.HasIndex(x => x.Fecha);
+        b.HasIndex(x => x.HiloId);
         b.HasIndex(x => new { x.Visibilidad, x.CreadoPorId });
         b.HasIndex(x => x.RegistroToken).IsUnique();
         b.HasIndex(x => x.OrigenExternoId)
@@ -336,7 +337,10 @@ public sealed class AsistenteConfiguration : IEntityTypeConfiguration<Asistente>
         b.Property(x => x.Departamento).HasMaxLength(150);
         b.Property(x => x.Correo).HasMaxLength(200);
         b.Property(x => x.Telefono).HasMaxLength(40);
+        b.Property(x => x.EsPreregistro).HasDefaultValue(false);
+        b.Property(x => x.Confirmado);
         b.HasIndex(x => x.ReunionId);
+        b.HasIndex(x => x.EsPreregistro);
     }
 }
 

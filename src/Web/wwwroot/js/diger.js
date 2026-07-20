@@ -34,56 +34,94 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
-/* ── Sidebar tipo hamburguesa (todos los tamaños) + popover de usuario ── */
-var SIDEBAR_KEY = 'diger-sidebar-open';
+/* ── Navegación de cabecera: grupos desplegables + menú de usuario ────── */
+function closeAllNavGroups(except) {
+    document.querySelectorAll('.nav-group.open').forEach(function (g) {
+        if (g !== except) g.classList.remove('open');
+    });
+}
 
-function toggleSidebar(open) {
-    var sb = document.getElementById('appSidebar');
-    var bd = document.getElementById('sidebarBackdrop');
-    if (!sb) return;
-    sb.classList.toggle('open', open);
-    if (bd) bd.classList.toggle('open', open);
-    try { localStorage.setItem(SIDEBAR_KEY, open ? 'true' : 'false'); } catch (e) { }
+function closeUserPanel() {
+    var p = document.getElementById('sideUserPanel');
+    if (p) p.classList.remove('open');
+}
+
+function toggleNavGroup(btn) {
+    var g = btn.closest('.nav-group');
+    if (!g) return;
+    var willOpen = !g.classList.contains('open');
+    closeAllNavGroups(g);
+    closeUserPanel();
+    g.classList.toggle('open', willOpen);
 }
 
 function toggleUserPanel() {
     var p = document.getElementById('sideUserPanel');
-    if (p) p.classList.toggle('open');
+    if (!p) return;
+    closeAllNavGroups();
+    p.classList.toggle('open');
 }
 
-/* Restaura el último estado (abierto/cerrado) sin animar el primer render */
-(function () {
-    var sb = document.getElementById('appSidebar');
-    if (!sb) return;
-    var open;
-    try { 
-        var val = localStorage.getItem(SIDEBAR_KEY);
-        open = val === null ? true : val === 'true'; 
-    } catch (e) { open = true; }
-    if (open) {
-        var bd = document.getElementById('sidebarBackdrop');
-        sb.classList.add('no-anim', 'open');
-        if (bd) bd.classList.add('open');
-        requestAnimationFrame(function () {
-            requestAnimationFrame(function () { sb.classList.remove('no-anim'); });
-        });
-    }
-})();
+/* Menú principal en pantallas pequeñas (hamburguesa) */
+function toggleMainNav(open) {
+    var nav = document.getElementById('mainNav');
+    var bd = document.getElementById('navBackdrop');
+    if (!nav) return;
+    if (typeof open === 'undefined') open = !nav.classList.contains('open');
+    nav.classList.toggle('open', open);
+    if (bd) bd.classList.toggle('open', open);
+    if (!open) closeAllNavGroups();
+}
 
 document.addEventListener('click', function (e) {
+    if (!e.target.closest('.nav-group')) closeAllNavGroups();
     var panel = document.getElementById('sideUserPanel');
-    if (panel && panel.classList.contains('open') && !e.target.closest('.side-user')) {
+    if (panel && panel.classList.contains('open') && !e.target.closest('.user-menu')) {
         panel.classList.remove('open');
     }
 });
 
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-        toggleSidebar(false);
-        var panel = document.getElementById('sideUserPanel');
-        if (panel) panel.classList.remove('open');
+        closeAllNavGroups();
+        closeUserPanel();
+        toggleMainNav(false);
     }
 });
+
+/* ── seg-upd: dropdown Actualizar (position:fixed para escapar overflow:hidden) ─ */
+(function () {
+    function posicionar(det) {
+        var form    = det.querySelector('.seg-upd-form');
+        var summary = det.querySelector('summary');
+        if (!form || !summary) return;
+        var r = summary.getBoundingClientRect();
+        form.style.position = 'fixed';
+        form.style.zIndex   = '9999';
+        form.style.top      = (r.bottom + 6) + 'px';
+        form.style.left     = 'auto';
+        var right = Math.max(8, window.innerWidth - r.right);
+        form.style.right = right + 'px';
+    }
+
+    document.addEventListener('toggle', function (e) {
+        var det = e.target;
+        if (!(det instanceof HTMLDetailsElement) || !det.classList.contains('seg-upd')) return;
+        if (!det.open) return;
+        document.querySelectorAll('details.seg-upd[open]').forEach(function (other) {
+            if (other !== det) other.removeAttribute('open');
+        });
+        posicionar(det);
+    }, true);
+
+    window.addEventListener('scroll', function () {
+        document.querySelectorAll('details.seg-upd[open]').forEach(posicionar);
+    }, { passive: true, capture: true });
+
+    window.addEventListener('resize', function () {
+        document.querySelectorAll('details.seg-upd[open]').forEach(posicionar);
+    });
+})();
 
 /* ── Confirmar antes de enviar (data-confirm="mensaje" en el botón) ──── */
 document.addEventListener('submit', function (e) {

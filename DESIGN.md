@@ -18,10 +18,13 @@ Todas las variables usan el prefijo `--diger-` para no colisionar con las de
 
 | Token | Valor | Uso típico |
 |---|---|---|
-| `--diger-blue` | `#1455a4` | Color de marca — botones primarios, enlaces, foco |
-| `--diger-blue-dark` | `#0a2d6e` | Texto de énfasis (títulos, montos), degradados |
+| `--diger-blue` | `#02395e` | Color de marca (azul gobierno, Manual de Marca 2026) — botones primarios, enlaces, foco |
+| `--diger-blue-dark` | `#022a45` | Texto de énfasis (títulos, montos), degradados, hover |
 | `--diger-blue-light` | `#e8f0ff` | Fondos suaves (pills activos, badges, topnav-rol) |
 | `--diger-blue-pale` | `#c8d5ee` | Bordes suaves sobre fondo azul claro |
+| `--diger-gold` | `#ad8411` | Acento institucional — subrayado de títulos, realces de marca |
+| `--diger-gold-light` | `#c79621` | Dorado claro — degradados de acento |
+| `--diger-cyan` | `#7acbdd` | Acento secundario (cian) |
 | `--diger-border` | `#e2e8f0` | Borde por defecto de cards, inputs, tablas |
 | `--diger-text` | `#1a1a1a` | Texto principal |
 | `--diger-text-secondary` | `#4a5568` | Labels, texto secundario |

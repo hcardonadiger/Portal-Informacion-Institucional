@@ -4,6 +4,7 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Diger.TramitesEstado.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717202416_AddReunionHilo")]
+    partial class AddReunionHilo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -188,9 +191,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<bool?>("Confirmado")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Correo")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -198,10 +198,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Departamento")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
-
-                    b.Property<bool>("EsPreregistro")
-                        .HasDefaultValue(false)
-                        .HasColumnType("bit");
 
                     b.Property<string>("Institucion")
                         .HasMaxLength(120)
@@ -223,8 +219,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(40)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("EsPreregistro");
 
                     b.HasIndex("ReunionId");
 
@@ -1022,9 +1016,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Color")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Descripcion")

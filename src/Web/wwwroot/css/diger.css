@@ -8,7 +8,7 @@
 }
 
 body {
-    font-family: system-ui, sans-serif;
+    font-family: 'Poppins', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 15px;
     color: var(--diger-text);
     background: var(--diger-bg);
@@ -20,6 +20,47 @@ body {
     max-width: 780px;
     margin: 0 auto;
     padding: 2rem 1rem 3rem;
+}
+
+/* ── ENCABEZADO DE PÁGINA (Manual de Marca: navy + subrayado dorado) ── */
+.page-title {
+    color: var(--diger-blue);
+    font-weight: 700;
+    font-size: 1.6rem;
+    line-height: 1.2;
+    border-bottom: 3px solid var(--diger-gold);
+    padding-bottom: .45rem;
+    margin-bottom: .5rem;
+    display: inline-block;
+}
+
+.page-subtitle {
+    color: var(--diger-text-muted);
+    font-size: .95rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Badge "hilo" en listados de reuniones */
+.hilo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--diger-blue);
+    background: var(--diger-blue-light);
+    padding: 2px 8px;
+    border-radius: var(--diger-radius-pill);
+    text-decoration: none;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.hilo-badge:hover {
+    background: var(--diger-blue);
+    color: #fff;
 }
 
 /* ── STEP BAR ───────────────────────────────────────────────── */
@@ -762,42 +803,72 @@ select.field-input:focus {
 
 /* ── ASISTENTE CARDS ────────────────────────────────────────── */
 .asistente-item {
-    background: #f8fbff;
+    background: var(--diger-bg-soft);
     border: 1.5px solid var(--diger-border);
     border-radius: var(--diger-radius-md);
-    padding: 14px 16px;
+    padding: 12px 14px 14px;
     margin-bottom: 10px;
+    transition: border-color .15s;
+}
+.asistente-item:focus-within {
+    border-color: var(--diger-blue-pale);
 }
 
-.asistente-row {
-    display: grid;
-    grid-template-columns: 2fr 1.5fr 1.5fr;
-    gap: 12px;
-    margin-bottom: 10px;
-}
-
-.asistente-row:last-child {
-    margin-bottom: 0;
-    align-items: end;
-}
-
-.asistente-del-wrap {
+/* Header: avatar + nombre como campo prominente + botón eliminar */
+.asi-hdr {
     display: flex;
-    justify-content: flex-end;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--diger-bg);
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--diger-border);
 }
 
-.asistente-del-wrap .hist-del {
-    color: var(--diger-danger);
-    border-color: #f3d0d0;
-    background: #fff5f5;
+.asi-nombre {
+    flex: 1;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--diger-blue-dark) !important;
+    border: none !important;
+    border-bottom: 1.5px solid var(--diger-border) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding: 3px 4px !important;
+    box-shadow: none !important;
 }
+.asi-nombre:focus {
+    outline: none;
+    border-bottom-color: var(--diger-blue) !important;
+}
+.asi-nombre::placeholder { font-weight: 400; color: var(--diger-text-faint); }
 
-.asistente-del-wrap .hist-del:hover {
-    background: var(--diger-danger-bg);
+/* Botón eliminar compacto en esquina */
+.asi-del {
+    flex: none;
+    border: 1.5px solid var(--diger-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--diger-text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 8px;
+    line-height: 1;
+    transition: all .15s;
+}
+.asi-del:hover {
     border-color: var(--diger-danger);
+    color: var(--diger-danger);
+    background: var(--diger-danger-bg);
+}
+
+/* Grid de campos secundarios */
+.asi-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
+}
+.asi-fields .field {
+    margin-bottom: 0;
 }
 
 /* ── MIEMBRO ────────────────────────────────────────────────── */
@@ -923,11 +994,396 @@ tr.contacto-inactivo td {
     display: block;
 }
 
-/* ── APP SHELL (sidebar tipo hamburguesa, en todos los tamaños de pantalla) ── */
+/* ── APP SHELL: cascarón institucional (Manual de Marca 2026) ─────────── */
 .app-shell {
-    display: flex;
-    align-items: stretch;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Franja de gobierno */
+.gov-bar {
+    background: var(--diger-blue-dark);
+    color: rgba(255, 255, 255, .85);
+    font-size: 12px;
+}
+
+.gov-bar-inner {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: .35rem 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.gov-bar-inner a {
+    color: rgba(255, 255, 255, .85);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.gov-bar-inner a:hover {
+    color: #fff;
+}
+
+/* Header azul gobierno con línea dorada */
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--diger-blue);
+    border-bottom: 3px solid var(--diger-gold);
+    box-shadow: 0 2px 10px rgba(2, 42, 69, .18);
+}
+
+.app-header-inner {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .5rem 1.4rem;
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    text-decoration: none;
+    flex: none;
+    margin-right: .6rem;
+}
+
+.app-brand-word {
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: .04em;
+    color: #fff;
+}
+
+.app-brand-divider {
+    width: 1px;
+    height: 26px;
+    background: rgba(255, 255, 255, .3);
+}
+
+.app-brand-title {
+    color: rgba(255, 255, 255, .92);
+    font-weight: 500;
+    font-size: 14.5px;
+    white-space: nowrap;
+}
+
+.nav-toggle {
+    display: none;
+    border: 1.5px solid rgba(255, 255, 255, .4);
+    background: transparent;
+    border-radius: 9px;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    color: #fff;
+    flex: none;
+}
+
+/* Navegación por grupos (desplegables) */
+.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-group {
+    position: relative;
+}
+
+.nav-group-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, .85);
+    padding: 9px 14px;
+    border-radius: 9px;
+    white-space: nowrap;
+}
+
+.nav-group-btn:hover {
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+}
+
+.nav-group.on > .nav-group-btn {
+    color: #fff;
+    background: rgba(255, 255, 255, .1);
+}
+
+.nav-group.open > .nav-group-btn {
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+}
+
+.nav-caret {
+    font-size: 9px;
+    opacity: .6;
+    transition: transform .18s ease;
+}
+
+.nav-group.open .nav-caret {
+    transform: rotate(180deg);
+}
+
+.nav-group-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 210px;
+    background: #fff;
+    border: 1px solid var(--diger-border);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(10, 45, 110, .15);
+    padding: 6px;
+    display: none;
+    z-index: 120;
+}
+
+.nav-group.open .nav-group-menu {
+    display: block;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    white-space: nowrap;
+}
+
+.nav-item:hover {
+    background: var(--diger-bg-soft);
+    color: var(--diger-blue);
+}
+
+.nav-item.on {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+/* Lado derecho: notificaciones + usuario */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: none;
+    margin-left: auto;
+}
+
+.header-icon {
+    background: none;
+    border: 0;
+    color: rgba(255, 255, 255, .8);
+    font-size: 17px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+}
+
+.header-icon:hover {
+    color: #fff;
+}
+
+.user-menu {
+    position: relative;
+}
+
+.user-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 4px 6px;
+    border-radius: 30px;
+    text-align: left;
+}
+
+.user-menu-btn:hover {
+    background: rgba(255, 255, 255, .12);
+}
+
+/* Avatar dorado en el header (Manual de Marca) */
+.user-menu-btn .side-avatar {
+    background: var(--diger-gold);
+}
+
+.user-menu-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    min-width: 0;
+}
+
+.user-menu-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+}
+
+.user-menu-rol {
+    font-size: 10.5px;
+    color: rgba(255, 255, 255, .65);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+}
+
+.user-menu-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    background: #fff;
+    border: 1px solid var(--diger-border);
+    border-radius: 13px;
+    box-shadow: 0 12px 30px rgba(10, 45, 110, .16);
+    padding: .85rem;
+    display: none;
+    z-index: 120;
+}
+
+.user-menu-panel.open {
+    display: block;
+}
+
+.user-menu-panel select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid var(--diger-border);
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-family: inherit;
+    background: var(--diger-bg-soft);
+    color: var(--diger-text);
+    margin-bottom: .4rem;
+}
+
+.user-menu-panel select:last-child {
+    margin-bottom: 0;
+}
+
+.user-panel-link {
+    display: block;
+    padding: 8px 10px;
+    margin-bottom: .5rem;
+    border-radius: 9px;
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--diger-blue-dark);
+    border: 1.5px solid var(--diger-border);
+    text-align: center;
+}
+
+.user-panel-link:hover {
+    background: var(--diger-blue-light);
+    border-color: var(--diger-blue);
+    color: var(--diger-blue);
+}
+
+.nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 45, 110, .35);
+    z-index: 150;
+}
+
+/* Cabecera responsiva: menú lateral deslizable en pantallas pequeñas */
+@media (max-width: 900px) {
+    .nav-toggle {
+        display: flex;
+    }
+
+    .main-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 264px;
+        background: #fff;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+        padding: 1rem .7rem;
+        transform: translateX(-100%);
+        transition: transform .22s ease;
+        z-index: 200;
+        overflow-y: auto;
+        box-shadow: var(--diger-shadow-md);
+    }
+
+    .main-nav.open {
+        transform: translateX(0);
+    }
+
+    /* En el drawer móvil (fondo blanco) los botones vuelven a color de marca */
+    .nav-group-btn {
+        width: 100%;
+        justify-content: space-between;
+        color: var(--diger-text-secondary);
+    }
+
+    .nav-group-btn:hover,
+    .nav-group.on > .nav-group-btn,
+    .nav-group.open > .nav-group-btn {
+        background: var(--diger-blue-light);
+        color: var(--diger-blue);
+    }
+
+    .nav-group-menu {
+        position: static;
+        display: block;
+        min-width: 0;
+        border: 0;
+        box-shadow: none;
+        padding: 0 0 .3rem .6rem;
+    }
+
+    .nav-caret {
+        display: none;
+    }
+
+    .nav-backdrop.open {
+        display: block;
+    }
+
+    .user-menu-meta {
+        display: none;
+    }
 }
 
 .app-sidebar {
@@ -1190,6 +1646,36 @@ tr.contacto-inactivo td {
 .app-main {
     flex: 1;
     min-width: 0;
+}
+
+/* Footer institucional (navy + línea dorada superior) */
+.diger-footer {
+    background: var(--diger-blue);
+    border-top: 3px solid var(--diger-gold);
+    color: rgba(255, 255, 255, .8);
+    margin-top: 2rem;
+}
+
+.diger-footer-inner {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 1rem 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+}
+
+.diger-footer-inner a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.diger-footer-inner a:hover {
+    color: var(--diger-gold-light);
 }
 
 .app-topbar {
@@ -3064,10 +3550,142 @@ tr.contacto-inactivo td {
     }
 }
 
-/* Fix para el desborde de dropdowns de actualizacion en las tablas */
-/* details.seg-upd[open] {
-    margin-bottom: 230px;
+/* ── MI CUENTA: perfil con pestañas laterales ─────────────────────────── */
+.cuenta-shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 1.6rem;
+    align-items: start;
 }
-.seg-table tr:has(details.seg-upd[open]) td {
-    vertical-align: top;
-} */
+
+.cuenta-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: sticky;
+    top: 80px;
+}
+
+.cuenta-nav-link {
+    display: block;
+    padding: 10px 14px;
+    border-radius: 9px;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    border: 1px solid transparent;
+}
+
+.cuenta-nav-link:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue);
+}
+
+.cuenta-nav-link.on {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+.cuenta-body {
+    min-width: 0;
+}
+
+.cuenta-card-title {
+    margin: 0 0 1.4rem;
+    color: var(--diger-blue-dark);
+    font-size: 16px;
+    border-bottom: 1px solid var(--diger-border);
+    padding-bottom: 10px;
+}
+
+.cuenta-readonly-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.cuenta-ro-label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--diger-text-faint);
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.cuenta-ro-value {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--diger-text);
+}
+
+@media (max-width: 760px) {
+    .cuenta-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .cuenta-nav {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .cuenta-readonly-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Avatares de institución / persona — compartido entre páginas
+   ══════════════════════════════════════════════════════════════ */
+
+/* Círculo base */
+.inst-av, .asist-av {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-weight: 700; letter-spacing: .02em;
+    flex: none; color: #fff; text-transform: uppercase; line-height: 1;
+}
+.inst-av      { width: 36px; height: 36px; font-size: 13px; }
+.asist-av     { width: 36px; height: 36px; font-size: 12.5px; }
+.inst-av.av-lg { width: 44px; height: 44px; font-size: 16px; }
+.inst-av.av-sm, .asist-av.av-sm { width: 28px; height: 28px; font-size: 10.5px; }
+
+/* Paleta de 8 colores por institución */
+.ic0 { background: #02395e; }
+.ic1 { background: #6d28d9; }
+.ic2 { background: #0e7490; }
+.ic3 { background: #15803d; }
+.ic4 { background: #9a3412; }
+.ic5 { background: #be185d; }
+.ic6 { background: #b45309; }
+.ic7 { background: #374151; }
+
+/* Pill de institución */
+.inst-pill {
+    display: inline-block; padding: 2px 9px; border-radius: 20px;
+    font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap;
+}
+
+/* ── Branding de institución en la barra de navegación ─────── */
+.app-brand-inst {
+    color: rgba(255, 255, 255, .92);
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-brand-inst-logo {
+    height: 26px;
+    width: auto;
+    max-width: 100px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: .92;
+}
+

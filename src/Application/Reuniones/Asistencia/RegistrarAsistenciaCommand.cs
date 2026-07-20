@@ -23,17 +23,36 @@ public sealed class RegistrarAsistenciaCommandHandler(
 
         var d = cmd.Datos;
         var correo = d.Correo?.Trim().ToLowerInvariant();
-
-        // Evita el doble registro por correo.
-        if (!string.IsNullOrWhiteSpace(correo) &&
-            r.Asistentes.Any(a => a.Correo != null && a.Correo == correo))
-            throw new DomainException("Ya existe un registro con ese correo para esta reunión.");
-
         var tel = string.IsNullOrWhiteSpace(d.Telefono)
             ? null
             : $"{d.CodigoPais} {d.Telefono.Trim()}".Trim();
 
-        r.RegistrarAsistente(d.Nombre, d.Cargo, d.Institucion, d.Departamento, correo, tel);
+        // Si hay un pre-registro pendiente para este correo, confirmarlo en lugar de crear un duplicado.
+        var preregistrado = !string.IsNullOrWhiteSpace(correo)
+            ? r.Asistentes.FirstOrDefault(a => a.EsPreregistro && a.Correo == correo)
+            : null;
+
+        if (preregistrado is not null)
+        {
+            preregistrado.Confirmado   = true;
+            preregistrado.AutoRegistro = true;
+            preregistrado.RegistradoEl = DateTime.UtcNow;
+            if (!string.IsNullOrWhiteSpace(d.Nombre))       preregistrado.Nombre      = d.Nombre.Trim();
+            if (!string.IsNullOrWhiteSpace(d.Cargo))        preregistrado.Cargo       = d.Cargo.Trim();
+            if (!string.IsNullOrWhiteSpace(d.Institucion))  preregistrado.Institucion = d.Institucion.Trim();
+            if (!string.IsNullOrWhiteSpace(d.Departamento)) preregistrado.Departamento = d.Departamento.Trim();
+            if (!string.IsNullOrWhiteSpace(tel))            preregistrado.Telefono    = tel;
+        }
+        else
+        {
+            // Evita el doble registro por correo.
+            if (!string.IsNullOrWhiteSpace(correo) &&
+                r.Asistentes.Any(a => a.Correo != null && a.Correo == correo))
+                throw new DomainException("Ya existe un registro con ese correo para esta reunión.");
+
+            r.RegistrarAsistente(d.Nombre, d.Cargo, d.Institucion, d.Departamento, correo, tel);
+        }
+
         repo.Update(r);
 
         if (!string.IsNullOrWhiteSpace(correo))
