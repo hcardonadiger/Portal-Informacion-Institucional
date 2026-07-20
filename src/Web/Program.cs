@@ -131,8 +131,11 @@ builder.Services.AddRazorPages(opts =>
     options.Filters.Add<Diger.TramitesEstado.Web.Common.ConsultorReadOnlyPageFilter>();
 });
 
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.AccesoModulosService>();
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.JerarquiaUiService>();
+builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.IInstitucionBrandingService,
+                            Diger.TramitesEstado.Web.Common.InstitucionBrandingService>();
 builder.Services.AddExceptionHandler<WebExceptionHandler>();
 builder.Services.AddProblemDetails();
 

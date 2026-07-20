@@ -174,5 +174,6 @@ public interface IApplicationDbContext
     DbSet<Movimiento>               Movimientos         { get; }
     DbSet<Prefijo>                  Prefijos            { get; }
     DbSet<PlantillaTramite>         PlantillasTramite   { get; }
+    DbSet<Notificacion>             Notificaciones      { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

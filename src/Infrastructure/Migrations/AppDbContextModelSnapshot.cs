@@ -188,6 +188,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<bool?>("Confirmado")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Correo")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -195,6 +198,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Departamento")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("EsPreregistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Institucion")
                         .HasMaxLength(120)
@@ -216,6 +224,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(40)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EsPreregistro");
 
                     b.HasIndex("ReunionId");
 
@@ -1009,6 +1019,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Color")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1254,6 +1267,49 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Movimientos", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Notificacion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("DestinatarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaLectura")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Leida")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaCreacion");
+
+                    b.HasIndex("DestinatarioId", "Leida");
+
+                    b.ToTable("Notificaciones", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaFundamentoLegal", b =>
                 {
                     b.Property<int>("Id")
@@ -1469,6 +1525,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(600)
                         .HasColumnType("nvarchar(600)");
 
+                    b.Property<Guid?>("HiloId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Hora")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -1568,6 +1627,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("CreadoPorId");
 
                     b.HasIndex("Fecha");
+
+                    b.HasIndex("HiloId");
 
                     b.HasIndex("InstitucionId");
 

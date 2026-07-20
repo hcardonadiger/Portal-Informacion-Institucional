@@ -1,0 +1,144 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Notificaciones.IndexModel
+@using Diger.TramitesEstado.Application.Notificaciones
+@{
+    ViewData["Title"] = "Notificaciones";
+
+    string TipoIcono(TipoNotificacion tipo) => tipo switch
+    {
+        TipoNotificacion.TicketAsignado    => "🎫",
+        TipoNotificacion.TicketResuelto    => "✅",
+        TipoNotificacion.CompromisoVencido => "⏰",
+        TipoNotificacion.CompromisoProximo => "📌",
+        TipoNotificacion.ReuniónMañana     => "📅",
+        _                                  => "🔔",
+    };
+
+    string TipoLabel(TipoNotificacion tipo) => tipo switch
+    {
+        TipoNotificacion.TicketAsignado    => "Ticket",
+        TipoNotificacion.TicketResuelto    => "Ticket",
+        TipoNotificacion.CompromisoVencido => "Compromiso",
+        TipoNotificacion.CompromisoProximo => "Compromiso",
+        TipoNotificacion.ReuniónMañana     => "Reunión",
+        _                                  => "Sistema",
+    };
+}
+
+<div class="pg-wrap">
+    <div class="pg-hdr">
+        <div class="pg-hdr-left">
+            <h1 class="pg-title">Notificaciones</h1>
+            @if (Model.TotalNoLeidas > 0)
+            {
+                <span class="badge-pill">@Model.TotalNoLeidas sin leer</span>
+            }
+        </div>
+        @if (Model.TotalNoLeidas > 0)
+        {
+            <form method="post" asp-page-handler="MarcarTodas" id="fmMarcarTodas">
+                <button type="button" class="btn-sec" onclick="marcarTodas()">Marcar todas como leídas</button>
+            </form>
+        }
+    </div>
+
+    @if (Model.Notificaciones.Count == 0)
+    {
+        <div class="card" style="text-align:center;padding:48px 24px;color:var(--diger-text-muted);">
+            <div style="font-size:40px;margin-bottom:12px;">🔔</div>
+            <div style="font-weight:600;">Sin notificaciones pendientes</div>
+            <div style="font-size:13px;margin-top:4px;">Todo está al día.</div>
+        </div>
+    }
+    else
+    {
+        <div class="notif-list">
+            @foreach (var n in Model.Notificaciones)
+            {
+                <div class="notif-row @(n.Leida ? "leida" : "")" id="nr-@n.Id">
+                    <div class="notif-icon-wrap">@TipoIcono(n.Tipo)</div>
+                    <div class="notif-content">
+                        <div class="notif-titulo">@n.Titulo</div>
+                        <div class="notif-meta">
+                            <span class="notif-tipo-tag">@TipoLabel(n.Tipo)</span>
+                            <span class="notif-fecha">@n.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    </div>
+                    <div class="notif-actions">
+                        @if (!n.Leida)
+                        {
+                            <button type="button" class="notif-mark-btn" onclick="marcarLeida(@n.Id)" title="Marcar como leída">✓</button>
+                        }
+                        @if (!string.IsNullOrEmpty(n.Url))
+                        {
+                            <a href="@n.Url" class="notif-link-btn" title="Ver">→</a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+.notif-list { display: flex; flex-direction: column; gap: 6px; }
+.notif-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; background: #fff;
+    border: 1.5px solid var(--diger-border); border-radius: 10px;
+    transition: border-color .15s, background .15s;
+}
+.notif-row:not(.leida) { border-left: 3px solid var(--diger-blue-mid); }
+.notif-row.leida { background: var(--diger-bg-soft); opacity: .75; }
+.notif-icon-wrap { font-size: 22px; flex: none; width: 36px; text-align: center; }
+.notif-content { flex: 1; min-width: 0; }
+.notif-titulo { font-size: 13.5px; font-weight: 600; color: var(--diger-text); }
+.notif-meta { display: flex; gap: 8px; margin-top: 3px; align-items: center; flex-wrap: wrap; }
+.notif-tipo-tag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    background: var(--diger-blue-light); color: var(--diger-blue-mid);
+    padding: 2px 7px; border-radius: 10px;
+}
+.notif-fecha { font-size: 11.5px; color: var(--diger-text-muted); }
+.notif-actions { display: flex; gap: 6px; flex: none; }
+.notif-mark-btn, .notif-link-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px; font-size: 14px;
+    border: 1.5px solid var(--diger-border); background: var(--diger-bg-soft);
+    color: var(--diger-text-muted); cursor: pointer; transition: all .15s; text-decoration: none;
+}
+.notif-mark-btn:hover { background: var(--diger-success-bg); border-color: var(--diger-success); color: var(--diger-success); }
+.notif-link-btn:hover { background: var(--diger-blue-light); border-color: var(--diger-blue-mid); color: var(--diger-blue-mid); }
+.badge-pill {
+    display: inline-flex; align-items: center; padding: 4px 12px;
+    background: var(--diger-blue-light); color: var(--diger-blue-mid);
+    font-size: 12px; font-weight: 700; border-radius: 20px;
+}
+</style>
+
+<script>
+const antiForgery = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+async function marcarLeida(id) {
+    const res = await fetch(`/Notificaciones?handler=MarcarLeida&id=${id}`, {
+        method: 'POST',
+        headers: { 'RequestVerificationToken': antiForgery, 'Content-Type': 'application/json' }
+    });
+    if (res.ok) {
+        const row = document.getElementById(`nr-${id}`);
+        if (row) {
+            row.classList.add('leida');
+            row.style.borderLeftWidth = '';
+            row.querySelector('.notif-mark-btn')?.remove();
+        }
+    }
+}
+
+async function marcarTodas() {
+    const res = await fetch('/Notificaciones?handler=MarcarTodas', {
+        method: 'POST',
+        headers: { 'RequestVerificationToken': antiForgery, 'Content-Type': 'application/json' }
+    });
+    if (res.ok) location.reload();
+}
+</script>

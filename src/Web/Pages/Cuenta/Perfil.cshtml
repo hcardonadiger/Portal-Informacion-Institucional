@@ -1,0 +1,62 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Cuenta.PerfilModel
+@{
+    ViewData["Title"] = "Perfil";
+    Layout = "_CuentaLayout";
+}
+
+<div class="card">
+    <h3 class="cuenta-card-title">Datos personales</h3>
+
+    <form method="post">
+        <div class="field">
+            <label>Nombre completo</label>
+            <input asp-for="Nombre" required maxlength="150" />
+            <span asp-validation-for="Nombre" class="text-error"></span>
+        </div>
+
+        <div class="field">
+            <label>Correo institucional (usuario de acceso)</label>
+            <input asp-for="Correo" type="email" required maxlength="200" />
+            <span asp-validation-for="Correo" class="text-error"></span>
+        </div>
+
+        <div class="field">
+            <label>Teléfono</label>
+            <input asp-for="Telefono" maxlength="50" placeholder="+504 0000-0000" />
+            <span asp-validation-for="Telefono" class="text-error"></span>
+        </div>
+
+        <div style="margin-top:1.5rem">
+            <button type="submit" class="btnp">Guardar cambios</button>
+        </div>
+    </form>
+
+    <h3 class="cuenta-card-title" style="margin-top:2rem">Contexto institucional</h3>
+    <p style="font-size:12px;color:#9aadcc;margin:-0.4rem 0 1rem">
+        Tu institución, área y rol los asigna un administrador. Para cambiarlos, contacta a soporte.
+    </p>
+
+    <div class="cuenta-readonly-grid">
+        <div>
+            <span class="cuenta-ro-label">Rol</span>
+            <span class="cuenta-ro-value">@(string.IsNullOrWhiteSpace(Model.RolActivo) ? "—" : Model.RolActivo)</span>
+        </div>
+        <div>
+            <span class="cuenta-ro-label">Institución</span>
+            <span class="cuenta-ro-value">@(string.IsNullOrWhiteSpace(Model.InstitucionActiva) ? "—" : Model.InstitucionActiva)</span>
+        </div>
+        <div>
+            <span class="cuenta-ro-label">Área</span>
+            <span class="cuenta-ro-value">@(string.IsNullOrWhiteSpace(Model.AreaActiva) ? "—" : Model.AreaActiva)</span>
+        </div>
+        <div>
+            <span class="cuenta-ro-label">Unidad</span>
+            <span class="cuenta-ro-value">@(string.IsNullOrWhiteSpace(Model.UnidadActiva) ? "—" : Model.UnidadActiva)</span>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

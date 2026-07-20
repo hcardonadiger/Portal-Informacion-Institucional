@@ -1,36 +1,128 @@
 @page "{id:int}"
 @model Diger.TramitesEstado.Web.Pages.Reuniones.AsistenciaModel
+@functions {
+    static string Ini(string nombre)
+    {
+        var p = nombre.Trim().Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+        if (p.Length == 0) return "?";
+        return p.Length == 1 ? p[0][0].ToString().ToUpper() : $"{p[0][0]}{p[^1][0]}".ToUpper();
+    }
+
+    static string IC(string? inst)
+    {
+        if (string.IsNullOrEmpty(inst)) return "ic7";
+        var h = 0; foreach (var c in inst) h = (h * 31 + c) & 0x7FFFFFFF;
+        return $"ic{h % 8}";
+    }
+
+    static string Pct(int n, int total) => total > 0
+        ? (n * 100.0 / total).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)
+        : "0";
+}
 @{
     ViewData["Title"] = "Asistencia de la reunión";
     var d = Model.Data;
-    var autoCount = d.Asistentes.Count(a => a.AutoRegistro);
+    var preregPendientes  = d.Asistentes.Count(a => a.EsPreregistro && !a.Confirmado.HasValue);
+    var preregConfirmados = d.Asistentes.Count(a => a.EsPreregistro && a.Confirmado == true);
+    var preregAusentes    = d.Asistentes.Count(a => a.EsPreregistro && a.Confirmado == false);
+    var walkIns           = d.Asistentes.Count(a => !a.EsPreregistro && a.AutoRegistro);
+    var manuales          = d.Asistentes.Count(a => !a.EsPreregistro && !a.AutoRegistro);
+    var totalPreregistros = d.Asistentes.Count(a => a.EsPreregistro);
+    var total             = d.Asistentes.Count;
 }
 <link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
 
 <div class="container" style="max-width:1080px">
     <partial name="_SuccessBanner" />
+
+    @* ── Header ───────────────────────────────────────────────────── *@
     <div class="hist-header">
         <div>
-            <h2>Asistencia — @d.Titulo</h2>
-            <p>Auto-registro de participantes (enlace + QR) y lista en vivo</p>
+            <h2 style="margin-bottom:4px">@d.Titulo</h2>
+            <p style="font-size:12.5px;color:var(--diger-text-muted);margin:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+                @if (d.Fecha.HasValue)
+                {
+                    <span>@d.Fecha.Value.ToFechaCorta()</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(d.Tipo))
+                {
+                    <span class="asist-sep">·</span><span>@d.Tipo</span>
+                }
+                @if (d.InstitucionesNombres.Count > 0)
+                {
+                    <span class="asist-sep">·</span>
+                    <span>@string.Join(", ", d.InstitucionesNombres)</span>
+                }
+                else if (!string.IsNullOrWhiteSpace(d.Institucion))
+                {
+                    <span class="asist-sep">·</span><span>@d.Institucion</span>
+                }
+            </p>
         </div>
         <div style="display:flex;gap:8px">
             <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@d.ReunionId">← Editar reunión</a>
         </div>
     </div>
 
+    @* ── Panel de resumen ─────────────────────────────────────────── *@
+    <div class="dash-card asist-resumen" style="margin-bottom:16px">
+        <div class="asist-resumen-top">
+            <div class="asist-total">
+                <span class="asist-total-n">@total</span>
+                <span class="asist-total-l">Total en lista</span>
+            </div>
+            <div class="asist-kpis">
+                <div class="asist-kpi asist-kpi-prereg">
+                    <span class="asist-kpi-n">@totalPreregistros</span>
+                    <span class="asist-kpi-l">Pre-registrados</span>
+                </div>
+                <div class="asist-kpi asist-kpi-pend">
+                    <span class="asist-kpi-n">@preregPendientes</span>
+                    <span class="asist-kpi-l">Pendientes</span>
+                </div>
+                <div class="asist-kpi asist-kpi-conf">
+                    <span class="asist-kpi-n">@preregConfirmados</span>
+                    <span class="asist-kpi-l">Confirmados</span>
+                </div>
+                <div class="asist-kpi asist-kpi-qr">
+                    <span class="asist-kpi-n">@walkIns</span>
+                    <span class="asist-kpi-l">QR walk-in</span>
+                </div>
+                <div class="asist-kpi asist-kpi-aus">
+                    <span class="asist-kpi-n">@preregAusentes</span>
+                    <span class="asist-kpi-l">Ausentes</span>
+                </div>
+            </div>
+        </div>
+        @if (total > 0)
+        {
+            <div class="asist-bar" title="Verde = confirmados · Violeta = QR · Azul = manual · Amarillo = pendientes · Gris = ausentes">
+                @if (preregConfirmados > 0) { <div class="asist-seg seg-conf"  style="width:@(Pct(preregConfirmados, total))%" title="Confirmados: @preregConfirmados"></div> }
+                @if (walkIns > 0)           { <div class="asist-seg seg-qr"   style="width:@(Pct(walkIns, total))%"           title="QR walk-in: @walkIns"></div> }
+                @if (manuales > 0)          { <div class="asist-seg seg-man"  style="width:@(Pct(manuales, total))%"          title="Manual: @manuales"></div> }
+                @if (preregPendientes > 0)  { <div class="asist-seg seg-pend" style="width:@(Pct(preregPendientes, total))%"  title="Pendientes: @preregPendientes"></div> }
+                @if (preregAusentes > 0)    { <div class="asist-seg seg-aus"  style="width:@(Pct(preregAusentes, total))%"   title="Ausentes: @preregAusentes"></div> }
+            </div>
+            <div class="asist-bar-leyenda">
+                @if (preregConfirmados > 0) { <span><span class="asist-dot dot-conf"></span>Confirmados</span> }
+                @if (walkIns > 0)           { <span><span class="asist-dot dot-qr"></span>QR walk-in</span> }
+                @if (manuales > 0)          { <span><span class="asist-dot dot-man"></span>Manual</span> }
+                @if (preregPendientes > 0)  { <span><span class="asist-dot dot-pend"></span>Pendientes</span> }
+                @if (preregAusentes > 0)    { <span><span class="asist-dot dot-aus"></span>Ausentes</span> }
+            </div>
+        }
+    </div>
+
     <div class="dash-grid" style="grid-template-columns:1.4fr 1fr">
-        @* ── Enlace + QR ─────────────────────────────────────────── *@
+        @* ── Enlace y QR ──────────────────────────────────────────── *@
         <div class="dash-card">
             <h3>Enlace y QR para participantes</h3>
-            <p style="font-size:12.5px;color:#6b7fa3;margin-top:-4px">Comparte el QR o el enlace; cada participante se registra desde su teléfono.</p>
-
+            <p style="font-size:12.5px;color:#6b7fa3;margin-top:-4px">Comparte el QR o el enlace; cada participante confirma su asistencia desde su teléfono.</p>
             <div style="display:flex;gap:8px;margin:.6rem 0">
                 <input id="urlBox" value="@Model.PublicUrl" readonly style="flex:1;font-size:12.5px" />
                 <button class="btns" type="button" onclick="copiar(event)">Copiar</button>
                 <a class="btns" href="@Model.PublicUrl" target="_blank" rel="noopener">Abrir</a>
             </div>
-
             <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:.5rem">
                 <div style="background:#fff;padding:10px;border:1px solid #e2e8f0;border-radius:12px;line-height:0">
                     <img src="@Model.QrDataUri" alt="Código QR de registro" width="110" height="110" style="display:block" />
@@ -41,14 +133,9 @@
             </div>
         </div>
 
-        @* ── Estado del registro ─────────────────────────────────── *@
+        @* ── Estado del registro ───────────────────────────────────── *@
         <div class="dash-card">
             <h3>Registro</h3>
-            <div class="kpi-grid" style="grid-template-columns:1fr 1fr;margin:.4rem 0 1rem">
-                <div class="kpi-card"><div class="kpi-num">@d.Asistentes.Count</div><div class="kpi-lbl">Registrados</div></div>
-                <div class="kpi-card"><div class="kpi-num">@autoCount</div><div class="kpi-lbl">Auto-registro</div></div>
-            </div>
-
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:.8rem">
                 <span class="wf-badge @(d.RegistroAbierto ? "wf-completada" : "wf-cancelada")">
                     @(d.RegistroAbierto ? "Abierto" : "Cerrado")
@@ -58,7 +145,6 @@
                     <button class="btns" type="submit">@(d.RegistroAbierto ? "Cerrar registro" : "Abrir registro")</button>
                 </form>
             </div>
-
             <form method="post" asp-page-handler="Regenerar" asp-route-id="@d.ReunionId"
                   onsubmit="return confirm('Se generará un enlace/QR nuevo y el anterior dejará de funcionar. ¿Continuar?')">
                 <button class="btns" type="submit" style="font-size:12.5px">↻ Regenerar enlace</button>
@@ -66,15 +152,71 @@
         </div>
     </div>
 
-    @* ── Lista en vivo ───────────────────────────────────────────── *@
+    @* ── Pre-registro de invitados ────────────────────────────────── *@
+    @if (Model.DirectorioPreregistro.Any())
+    {
+        <div class="dash-card" style="margin-top:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.8rem">
+                <div>
+                    <h3 style="margin:0">Pre-registro de invitados</h3>
+                    <p style="font-size:12.5px;color:var(--diger-text-muted);margin:.2rem 0 0">
+                        Contactos de @string.Join(", ", d.InstitucionesNombres.Count > 0 ? d.InstitucionesNombres : new[] { d.Institucion ?? "la institución" })
+                        seleccionados para esta reunión.
+                    </p>
+                </div>
+                <a href="?VerTodosPreregistro=@(!Model.VerTodosPreregistro).ToString().ToLowerInvariant()"
+                   style="font-size:12px;color:var(--diger-blue);font-weight:600;text-decoration:none"
+                   class="@(Model.VerTodosPreregistro ? "btns" : "")">
+                    @(Model.VerTodosPreregistro ? "← Solo por institución" : "Ver directorio completo")
+                </a>
+            </div>
+            <form method="post" asp-page-handler="Preregistrar" asp-route-id="@d.ReunionId">
+                @if (Model.VerTodosPreregistro)
+                {
+                    <input type="text" id="filtroPreregistro" placeholder="Buscar contacto…"
+                           style="width:100%;max-width:420px;padding:7px 10px;font-size:13px;margin-bottom:.7rem;border:1.5px solid var(--diger-border);border-radius:8px"
+                           oninput="filtrarPreregistro()" autocomplete="off" />
+                }
+                <div id="listaPreregistro" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;max-height:320px;overflow-y:auto;padding:2px 2px 4px">
+                    @foreach (var grp in Model.DirectorioPreregistro.GroupBy(c => c.Institucion ?? "—").OrderBy(g => g.Key))
+                    {
+                        <div class="prereg-grupo" data-inst="@grp.Key">
+                            @if (Model.DirectorioPreregistro.Select(c => c.Institucion).Distinct().Count() > 1)
+                            {
+                                <div class="prereg-inst-hdr">@grp.Key</div>
+                            }
+                            @foreach (var c in grp.OrderBy(c => c.Nombre))
+                            {
+                                <label class="prereg-item" data-nombre="@c.Nombre.ToLowerInvariant()" data-inst="@(c.Institucion?.ToLowerInvariant())">
+                                    <input type="checkbox" name="contactoIds" value="@c.Id" />
+                                    <span class="asist-av av-sm @IC(c.Institucion)">@Ini(c.Nombre)</span>
+                                    <div style="display:flex;flex-direction:column;line-height:1.25;flex:1;min-width:0">
+                                        <span class="prereg-nombre">@c.Nombre</span>
+                                        <span class="prereg-sub">@(string.IsNullOrWhiteSpace(c.Cargo) ? c.Institucion : c.Cargo)</span>
+                                    </div>
+                                </label>
+                            }
+                        </div>
+                    }
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:.9rem">
+                    <button class="btnp" type="submit">Pre-registrar seleccionados</button>
+                    <button type="button" class="btns" onclick="seleccionarTodos(true)">Todos</button>
+                    <button type="button" class="btns" onclick="seleccionarTodos(false)">Ninguno</button>
+                </div>
+            </form>
+        </div>
+    }
+
+    @* ── Lista de asistencia ──────────────────────────────────────── *@
     <div class="dash-card" style="margin-top:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-            <h3 style="margin:0">Registros (@d.Asistentes.Count)</h3>
+            <h3 style="margin:0">Lista de asistencia (@d.Asistentes.Count)</h3>
             <div style="display:flex;gap:8px">
-                @if (Model.Directorio.Any())
+                @if (Model.DirectorioManual.Any())
                 {
                     <details class="seg-upd" @(Model.TodosLosContactos ? "open" : "")>
-                        <summary class="btns" style="font-size:12.5px">Agregar del directorio</summary>
+                        <summary class="btns" style="font-size:12.5px">+ Agregar del directorio</summary>
                         <form method="post" asp-page-handler="AgregarDirectorio" asp-route-id="@d.ReunionId" class="seg-upd-form" style="width:360px">
                             @if (!Model.TodosLosContactos)
                             {
@@ -88,22 +230,20 @@
                             else
                             {
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-                                    <p style="font-size:12px;color:#6b7fa3;margin:0">
-                                        Directorio completo
-                                    </p>
+                                    <p style="font-size:12px;color:#6b7fa3;margin:0">Directorio completo</p>
                                     <a href="?TodosLosContactos=false" style="font-size:11.5px;color:#1455a4;text-decoration:none;font-weight:600">Solo sugeridos</a>
                                 </div>
                                 <input type="text" id="filtroContactos" placeholder="Buscar contacto..." style="width:100%;padding:6px;font-size:12px;margin-bottom:8px;border:1px solid #dbe5ef;border-radius:4px" onkeyup="filtrarContactos()" autocomplete="off" />
                             }
-
                             <div id="listaContactos" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:4px">
-                                @foreach (var c in Model.Directorio)
+                                @foreach (var c in Model.DirectorioManual)
                                 {
-                                    <label class="contacto-item" style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;background:#fff;transition:all 0.2s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
-                                        <input type="checkbox" name="contactoIds" value="@c.Id" style="width:auto;margin-top:3px" />
+                                    <label class="dir-item">
+                                        <input type="checkbox" name="contactoIds" value="@c.Id" style="width:auto;flex:none" />
+                                        <span class="asist-av av-sm @IC(c.Institucion)">@Ini(c.Nombre)</span>
                                         <div style="display:flex;flex-direction:column;line-height:1.2;flex:1">
                                             <span style="font-weight:600;color:#0a2d6e;font-size:13px">@c.Nombre</span>
-                                            <span style="font-size:11.5px;color:#6b7fa3;margin-top:3px">@(string.IsNullOrWhiteSpace(c.Cargo) ? c.Institucion : $"{c.Cargo} · {c.Institucion}")</span>
+                                            <span style="font-size:11.5px;color:#6b7fa3;margin-top:2px">@(string.IsNullOrWhiteSpace(c.Cargo) ? c.Institucion : $"{c.Cargo} · {c.Institucion}")</span>
                                         </div>
                                     </label>
                                 }
@@ -118,48 +258,107 @@
 
         @if (!d.Asistentes.Any())
         {
-            <p style="font-size:13px;color:#6b7fa3;margin-top:.8rem">Aún no hay registros. Comparte el enlace o QR de arriba.</p>
+            <div class="asist-empty">
+                <div class="asist-empty-icon">⊘</div>
+                <p>Aún no hay registros.<br />Usa el pre-registro arriba o comparte el enlace/QR con los participantes.</p>
+            </div>
         }
         else
         {
-            <table class="seg-table" style="margin-top:.6rem">
-                <thead>
-                    <tr>
-                        <th>Nombre</th><th>Cargo</th><th>Institución</th><th>Depto.</th>
-                        <th>Correo</th><th>Teléfono</th><th>Origen</th><th>Registrado</th><th style="width:1%"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var a in d.Asistentes)
-                    {
+            <div style="overflow-x:auto;margin-top:.7rem">
+                <table class="seg-table asist-table">
+                    <thead>
                         <tr>
-                            <td style="font-weight:600;color:#0a2d6e">@a.Nombre</td>
-                            <td class="res-meta">@(a.Cargo ?? "—")</td>
-                            <td class="res-meta">@(a.Institucion ?? "—")</td>
-                            <td class="res-meta">@(a.Departamento ?? "—")</td>
-                            <td class="res-meta">@(a.Correo ?? "—")</td>
-                            <td class="res-meta">@(a.Telefono ?? "—")</td>
-                            <td>
-                                @if (a.AutoRegistro)
-                                {
-                                    <span class="wf-badge wf-asignada">Auto</span>
-                                }
-                                else
-                                {
-                                    <span class="res-meta">Manual</span>
-                                }
-                            </td>
-                            <td class="res-meta" style="white-space:nowrap">@(a.RegistradoEl?.ToLocalTime().ToFechaHoraCorta() ?? "—")</td>
-                            <td style="text-align:right">
-                                <form method="post" asp-page-handler="Eliminar" asp-route-id="@d.ReunionId" style="display:inline">
-                                    <input type="hidden" name="asistenteId" value="@a.Id" />
-                                    <button class="hist-del" type="submit" onclick="return confirm('¿Eliminar este registro?')">✕</button>
-                                </form>
-                            </td>
+                            <th>Participante</th>
+                            <th>Institución</th>
+                            <th class="res-meta">Correo</th>
+                            <th style="text-align:center;white-space:nowrap">Estado</th>
+                            <th class="res-meta" style="text-align:center">Hora</th>
+                            <th style="width:1%"></th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in d.Asistentes)
+                        {
+                            <tr class="@(a.EsPreregistro && !a.Confirmado.HasValue ? "row-pend" : "")">
+                                <td>
+                                    <div class="asist-persona">
+                                        <span class="asist-av @IC(a.Institucion)">@Ini(a.Nombre)</span>
+                                        <div>
+                                            <div class="asist-nombre">@a.Nombre</div>
+                                            @if (!string.IsNullOrWhiteSpace(a.Cargo))
+                                            {
+                                                <div class="asist-cargo">@a.Cargo</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(a.Institucion))
+                                    {
+                                        <span class="inst-pill @IC(a.Institucion)">@a.Institucion</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="res-meta">—</span>
+                                    }
+                                </td>
+                                <td class="res-meta">@(a.Correo ?? "—")</td>
+                                <td style="text-align:center">
+                                    @if (a.EsPreregistro)
+                                    {
+                                        if (a.Confirmado == true)
+                                        {
+                                            <span class="asist-badge badge-conf">✓&nbsp;Confirmado</span>
+                                        }
+                                        else if (a.Confirmado == false)
+                                        {
+                                            <span class="asist-badge badge-aus">Ausente</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="asist-badge badge-pend">Invitado</span>
+                                        }
+                                    }
+                                    else if (a.AutoRegistro)
+                                    {
+                                        <span class="asist-badge badge-qr">QR</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="asist-badge badge-man">Manual</span>
+                                    }
+                                </td>
+                                <td class="res-meta" style="text-align:center;white-space:nowrap">
+                                    @(a.RegistradoEl?.ToLocalTime().ToFechaHoraCorta() ?? "—")
+                                </td>
+                                <td style="text-align:right;white-space:nowrap">
+                                    @if (a.EsPreregistro && a.Confirmado != true)
+                                    {
+                                        <form method="post" asp-page-handler="Confirmar" asp-route-id="@d.ReunionId" style="display:inline">
+                                            <input type="hidden" name="asistenteId" value="@a.Id" />
+                                            <input type="hidden" name="asistio" value="true" />
+                                            <button class="btns btn-conf-asistio" type="submit" title="Marcar como asistió">✓</button>
+                                        </form>
+                                    }
+                                    @if (a.EsPreregistro && a.Confirmado != false)
+                                    {
+                                        <form method="post" asp-page-handler="Confirmar" asp-route-id="@d.ReunionId" style="display:inline;margin-left:4px">
+                                            <input type="hidden" name="asistenteId" value="@a.Id" />
+                                            <input type="hidden" name="asistio" value="false" />
+                                            <button class="btns btn-conf-ausente" type="submit" title="Marcar como ausente">✗</button>
+                                        </form>
+                                    }
+                                    <form method="post" asp-page-handler="Eliminar" asp-route-id="@d.ReunionId" style="display:inline;margin-left:4px">
+                                        <input type="hidden" name="asistenteId" value="@a.Id" />
+                                        <button class="hist-del" type="submit" onclick="return confirm('¿Eliminar este registro?')">✕</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         }
     </div>
 
@@ -189,19 +388,94 @@
     </div>
 </div>
 
+<style>
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .asist-sep { color: var(--diger-text-faint); }
+
+    /* ── Panel de resumen ────────────────────────────────────────────── */
+    .asist-resumen-top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+    .asist-total      { display: flex; flex-direction: column; align-items: center; min-width: 60px; padding-right: 20px; border-right: 2px solid var(--diger-border); }
+    .asist-total-n    { font-size: 40px; font-weight: 800; line-height: 1; color: var(--diger-blue); }
+    .asist-total-l    { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--diger-text-muted); margin-top: 4px; white-space: nowrap; }
+
+    .asist-kpis       { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+    .asist-kpi        { display: flex; flex-direction: column; align-items: center; padding: 8px 14px; border-radius: 10px; min-width: 68px; }
+    .asist-kpi-n      { font-size: 22px; font-weight: 800; line-height: 1; }
+    .asist-kpi-l      { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; white-space: nowrap; }
+    .asist-kpi-prereg { background: var(--diger-blue-light);    color: var(--diger-blue); }
+    .asist-kpi-pend   { background: #fef9c3;                    color: #854d0e; }
+    .asist-kpi-conf   { background: var(--diger-success-bg);    color: var(--diger-success); }
+    .asist-kpi-qr     { background: #ede9fe;                    color: #6d28d9; }
+    .asist-kpi-aus    { background: var(--diger-bg);            color: var(--diger-text-secondary); }
+
+    /* Barra de progreso apilada */
+    .asist-bar  { display: flex; height: 10px; border-radius: 6px; overflow: hidden; margin-top: 16px; background: var(--diger-border); }
+    .asist-seg  { height: 100%; transition: width .4s ease; }
+    .seg-conf   { background: var(--diger-success); }
+    .seg-qr     { background: #7c3aed; }
+    .seg-man    { background: var(--diger-blue); }
+    .seg-pend   { background: #f59e0b; }
+    .seg-aus    { background: #94a3b8; }
+
+    .asist-bar-leyenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+    .asist-bar-leyenda span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--diger-text-muted); }
+    .asist-dot        { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .dot-conf         { background: var(--diger-success); }
+    .dot-qr           { background: #7c3aed; }
+    .dot-man          { background: var(--diger-blue); }
+    .dot-pend         { background: #f59e0b; }
+    .dot-aus          { background: #94a3b8; }
+
+    /* ── Celda persona ───────────────────────────────────────────────── */
+    .asist-persona { display: flex; align-items: center; gap: 10px; }
+    .asist-nombre  { font-weight: 600; color: var(--diger-blue-dark); font-size: 13.5px; line-height: 1.2; }
+    .asist-cargo   { font-size: 11.5px; color: var(--diger-text-muted); line-height: 1.3; margin-top: 1px; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Badges de estado ────────────────────────────────────────────── */
+    .asist-badge  { display: inline-block; border-radius: 20px; font-size: 11.5px; font-weight: 700; padding: 3px 10px; white-space: nowrap; }
+    .badge-conf   { background: var(--diger-success-bg); color: var(--diger-success); }
+    .badge-pend   { background: #fef9c3; color: #854d0e; }
+    .badge-aus    { background: #f1f5f9; color: var(--diger-text-muted); }
+    .badge-qr     { background: #ede9fe; color: #6d28d9; }
+    .badge-man    { background: var(--diger-bg); color: var(--diger-text-secondary); font-weight: 500; }
+
+    /* ── Botones de confirmación ─────────────────────────────────────── */
+    .btn-conf-asistio { font-size: 12px; padding: 4px 10px; color: var(--diger-success); border-color: #86efac; }
+    .btn-conf-ausente { font-size: 12px; padding: 4px 10px; color: var(--diger-text-muted); }
+
+    /* ── Tabla ───────────────────────────────────────────────────────── */
+    .asist-table td { vertical-align: middle; }
+    .row-pend       { background: #fffbf0; }
+
+    /* ── Pre-registro ────────────────────────────────────────────────── */
+    .prereg-inst-hdr { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--diger-text-muted); padding: 6px 2px 2px; }
+    .prereg-item     { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid var(--diger-border); border-radius: 8px; cursor: pointer; background: var(--diger-bg-soft); transition: background .15s, border-color .15s; }
+    .prereg-item:hover { background: var(--diger-blue-light); border-color: var(--diger-blue-pale); }
+    .prereg-item:has(input:checked) { background: var(--diger-blue-light); border-color: var(--diger-blue); }
+    .prereg-item input[type=checkbox] { width: auto; flex: none; }
+    .prereg-nombre   { font-weight: 600; color: var(--diger-blue-dark); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prereg-sub      { font-size: 11.5px; color: var(--diger-text-muted); margin-top: 1px; }
+
+    /* ── Ítem del directorio manual ──────────────────────────────────── */
+    .dir-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; background: #fff; transition: background .15s; }
+    .dir-item:hover { background: #f8fafc; }
+
+    /* ── Estado vacío ────────────────────────────────────────────────── */
+    .asist-empty      { text-align: center; padding: 3rem 1rem; color: var(--diger-text-muted); }
+    .asist-empty-icon { font-size: 36px; margin-bottom: .6rem; opacity: .35; }
+    .asist-empty p    { font-size: 13.5px; line-height: 1.6; max-width: 400px; margin: 0 auto; }
+</style>
+
 @section Scripts {
 <script>
-  // El QR se genera en el servidor (etiqueta <img id="qrImg">). Aquí solo se usa su data-URI
-  // para descargar/imprimir; no hay librería ni <canvas> en el cliente.
   var URL_REG = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PublicUrl));
   var TITULO  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data.Titulo));
 
   function obtenerQR(){ var i = document.getElementById('qrImg'); return i ? i.src : null; }
-
   function abrirModalQR(){ document.getElementById('qr-modal-overlay').classList.add('open'); }
   function cerrarModalQR(){ document.getElementById('qr-modal-overlay').classList.remove('open'); }
   document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') cerrarModalQR(); });
-
   function escHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
   function copiar(ev){
@@ -213,15 +487,14 @@
   }
   function descargarQR(){
     var data = obtenerQR();
-    if (!data) { alert('El QR aún se está generando; intenta de nuevo en un momento.'); return; }
+    if (!data) { alert('El QR aún se está generando; intenta de nuevo.'); return; }
     var a = document.createElement('a');
     a.href = data; a.download = 'qr-asistencia.png';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
   function imprimirQR(){
     var data = obtenerQR();
-    if (!data) { alert('El QR aún se está generando; intenta de nuevo en un momento.'); return; }
-    // Impresión vía iframe oculto (evita el bloqueo de ventanas emergentes).
+    if (!data) { alert('El QR aún se está generando; intenta de nuevo.'); return; }
     var ifr = document.createElement('iframe');
     ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(ifr);
@@ -230,7 +503,7 @@
     doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR asistencia<\/title><\/head>'
       + '<body style="text-align:center;font-family:system-ui;margin:0;padding:24px">'
       + '<h2 style="color:#0a2d6e">' + escHtml(TITULO) + '<\/h2>'
-      + '<p>Escanea para registrar tu asistencia<\/p>'
+      + '<p>Escanea para confirmar tu asistencia<\/p>'
       + '<img src="' + data + '" style="width:300px;height:300px" />'
       + '<p style="font-size:12px;color:#666;word-break:break-all">' + escHtml(URL_REG) + '<\/p>'
       + '<\/body><\/html>');
@@ -246,12 +519,25 @@
     else { imprimir(); }
   }
 
-  function filtrarContactos() {
+  function filtrarContactos(){
     var q = document.getElementById('filtroContactos').value.toLowerCase();
-    var labels = document.querySelectorAll('#listaContactos .contacto-item');
-    labels.forEach(function(lbl) {
-        var text = lbl.innerText.toLowerCase();
-        lbl.style.display = text.includes(q) ? 'flex' : 'none';
+    document.querySelectorAll('#listaContactos .dir-item').forEach(function(lbl){
+      lbl.style.display = lbl.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+    });
+  }
+
+  function filtrarPreregistro(){
+    var q = document.getElementById('filtroPreregistro').value.toLowerCase();
+    document.querySelectorAll('#listaPreregistro .prereg-item').forEach(function(lbl){
+      var match = (lbl.dataset.nombre || '').includes(q) || (lbl.dataset.inst || '').includes(q);
+      lbl.style.display = match ? 'flex' : 'none';
+    });
+  }
+
+  function seleccionarTodos(marcar){
+    document.querySelectorAll('#listaPreregistro input[type=checkbox]').forEach(function(cb){
+      var item = cb.closest('.prereg-item');
+      if (!item || item.style.display !== 'none') cb.checked = marcar;
     });
   }
 </script>

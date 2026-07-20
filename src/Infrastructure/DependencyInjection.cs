@@ -1,5 +1,7 @@
+using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Reuniones.Import;
 using Diger.TramitesEstado.Infrastructure.Import;
+using Diger.TramitesEstado.Infrastructure.Notifications;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
 using Diger.TramitesEstado.Infrastructure.Security;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -30,6 +32,10 @@ public static class DependencyInjection
 
         // Importación de reuniones desde el portal demo (Supabase)
         services.AddHttpClient<IReunionImportSource, SupabaseReunionImportSource>();
+
+        // Notificaciones
+        services.AddScoped<INotificacionService, NotificacionService>();
+        services.AddHostedService<RecordatorioBackgroundService>();
 
         // Seguridad / identidad
         services.AddHttpContextAccessor();
