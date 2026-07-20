@@ -68,6 +68,7 @@ global using Diger.TramitesEstado.Application.Usuarios.Commands.AsignarInstituci
 global using Diger.TramitesEstado.Application.Usuarios.Commands.AsignarTemasUsuario;
 global using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarios;
 global using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarioById;
+global using Diger.TramitesEstado.Application.Notificaciones;
 global using MediatR;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Mvc;

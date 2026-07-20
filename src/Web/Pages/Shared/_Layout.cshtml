@@ -1,4 +1,5 @@
 @using Diger.TramitesEstado.Application.Accesos
+@using Diger.TramitesEstado.Application.Notificaciones
 @using System.Security.Claims
 @using System.Text.Json
 @using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario
@@ -7,6 +8,7 @@
 @inject AccesoModulosService Acceso
 @inject JerarquiaUiService JerarquiaUi
 @inject IInstitucionBrandingService BrandingSvc
+@inject INotificacionService _notifSvc
 @{
     var _activeInstId = User.FindFirstValue(AppClaims.ActiveInstitucion);
     var _instBranding = await BrandingSvc.GetAsync(_activeInstId);
@@ -169,8 +171,70 @@
                         }
                     </nav>
 
+                    @{
+                        var _notifUid = Guid.TryParse(User.FindFirstValue(AppClaims.UserId), out var _nuid) ? _nuid : (Guid?)null;
+                        int _noLeidas = 0;
+                        IReadOnlyList<NotificacionDto> _notifs = [];
+                        if (_notifUid.HasValue)
+                        {
+                            _noLeidas = await _notifSvc.ConteoNoLeidasAsync(_notifUid.Value);
+                            _notifs   = await _notifSvc.GetNoLeidasAsync(_notifUid.Value, 8);
+                        }
+
+                        string NotifIcono(TipoNotificacion t) => t switch
+                        {
+                            TipoNotificacion.TicketAsignado    => "🎫",
+                            TipoNotificacion.TicketResuelto    => "✅",
+                            TipoNotificacion.CompromisoVencido => "⏰",
+                            TipoNotificacion.CompromisoProximo => "📌",
+                            TipoNotificacion.ReuniónMañana     => "📅",
+                            _                                  => "🔔",
+                        };
+                    }
                     <div class="header-right">
-                        <button type="button" class="header-icon" title="Notificaciones (0)">&#128276;</button>
+                        <div class="notif-wrap" id="notifWrap">
+                            <button type="button" class="header-icon notif-btn" onclick="toggleNotifPanel(event)" title="Notificaciones" aria-haspopup="true">
+                                &#128276;
+                                @if (_noLeidas > 0)
+                                {
+                                    <span class="notif-badge">@(_noLeidas > 9 ? "9+" : _noLeidas.ToString())</span>
+                                }
+                            </button>
+                            <div class="notif-panel" id="notifPanel" hidden>
+                                <div class="notif-panel-hdr">
+                                    <span class="notif-panel-title">Notificaciones</span>
+                                    @if (_noLeidas > 0)
+                                    {
+                                        <button type="button" class="notif-mark-all-btn" onclick="notifMarcarTodas()">Marcar todas</button>
+                                    }
+                                </div>
+                                @if (_notifs.Count == 0)
+                                {
+                                    <div class="notif-empty">Sin notificaciones pendientes</div>
+                                }
+                                else
+                                {
+                                    foreach (var _n in _notifs)
+                                    {
+                                        <div class="notif-item" id="ni-@_n.Id">
+                                            <span class="ni-ico">@NotifIcono(_n.Tipo)</span>
+                                            <div class="ni-body">
+                                                <div class="ni-titulo">@_n.Titulo</div>
+                                                <div class="ni-fecha">@_n.FechaCreacion.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                                            </div>
+                                            <div class="ni-actions">
+                                                <button type="button" class="ni-check" onclick="notifMarcar(@_n.Id)" title="Marcar leída">✓</button>
+                                                @if (!string.IsNullOrEmpty(_n.Url))
+                                                {
+                                                    <a class="ni-go" href="@_n.Url" title="Ver">→</a>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                <a href="/Notificaciones" class="notif-ver-todas">Ver todas las notificaciones →</a>
+                            </div>
+                        </div>
                         <div class="user-menu">
                             <button type="button" class="user-menu-btn" onclick="toggleUserPanel()">
                                 <span class="side-avatar">@Iniciales(User.Identity!.Name)</span>
@@ -279,5 +343,128 @@
     }
     <script src="~/js/diger.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+<style>
+/* ── Notificaciones: campana + panel ───────────────────────────────── */
+.notif-wrap { position: relative; }
+.notif-btn  { position: relative; }
+.notif-badge {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 17px; height: 17px; border-radius: 10px;
+    background: var(--diger-danger); color: #fff;
+    font-size: 9px; font-weight: 800; line-height: 17px;
+    text-align: center; padding: 0 4px; pointer-events: none;
+    border: 2px solid var(--diger-blue, #02395e);
+}
+.notif-panel {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    width: 340px; max-height: 480px;
+    background: #fff; border: 1.5px solid var(--diger-border);
+    border-radius: 12px; box-shadow: var(--diger-shadow-md);
+    display: flex; flex-direction: column;
+    z-index: 900; overflow: hidden;
+}
+.notif-panel[hidden] { display: none; }
+.notif-panel-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px 10px; border-bottom: 1px solid var(--diger-border);
+    flex: none;
+}
+.notif-panel-title { font-size: 13px; font-weight: 800; color: var(--diger-text); }
+.notif-mark-all-btn {
+    font-size: 11px; color: var(--diger-blue-mid); font-weight: 600;
+    background: none; border: none; cursor: pointer; padding: 0;
+}
+.notif-mark-all-btn:hover { text-decoration: underline; }
+.notif-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px; border-bottom: 1px solid var(--diger-bg);
+    transition: background .1s;
+}
+.notif-item:hover { background: var(--diger-bg-soft); }
+.ni-ico { font-size: 18px; flex: none; padding-top: 1px; }
+.ni-body { flex: 1; min-width: 0; }
+.ni-titulo { font-size: 12.5px; font-weight: 600; color: var(--diger-text); line-height: 1.4; }
+.ni-fecha  { font-size: 11px; color: var(--diger-text-muted); margin-top: 2px; }
+.ni-actions { display: flex; gap: 4px; flex: none; align-items: center; }
+.ni-check, .ni-go {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; border: 1.5px solid var(--diger-border);
+    background: var(--diger-bg-soft); color: var(--diger-text-muted);
+    cursor: pointer; text-decoration: none; transition: all .13s;
+}
+.ni-check:hover { background: var(--diger-success-bg); border-color: var(--diger-success); color: var(--diger-success); }
+.ni-go:hover    { background: var(--diger-blue-light); border-color: var(--diger-blue-mid); color: var(--diger-blue-mid); }
+.notif-empty    { padding: 24px 14px; text-align: center; color: var(--diger-text-muted); font-size: 13px; }
+.notif-ver-todas {
+    display: block; text-align: center; padding: 10px;
+    font-size: 12px; font-weight: 600; color: var(--diger-blue-mid);
+    border-top: 1px solid var(--diger-border); text-decoration: none;
+    background: var(--diger-bg-soft); flex: none;
+}
+.notif-ver-todas:hover { background: var(--diger-blue-light); }
+@@media (prefers-color-scheme: dark) {
+    .notif-panel { background: #1e293b; border-color: #334155; }
+    .notif-item:hover { background: #0f172a; }
+    .ni-titulo { color: #e2e8f0; }
+    .notif-panel-title { color: #f1f5f9; }
+    .ni-check, .ni-go { background: #0f172a; border-color: #334155; }
+    .notif-ver-todas { background: #1e293b; }
+}
+</style>
+<script>
+(function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    window.toggleNotifPanel = function(e) {
+        e?.stopPropagation();
+        const panel = document.getElementById('notifPanel');
+        if (!panel) return;
+        const open = !panel.hidden;
+        panel.hidden = open;
+        if (!open) {
+            document.addEventListener('click', closeOnClickOutside, { once: true });
+        }
+    };
+
+    function closeOnClickOutside(e) {
+        const wrap = document.getElementById('notifWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            const panel = document.getElementById('notifPanel');
+            if (panel) panel.hidden = true;
+        } else {
+            document.addEventListener('click', closeOnClickOutside, { once: true });
+        }
+    }
+
+    window.notifMarcar = async function(id) {
+        await fetch(`/Notificaciones?handler=MarcarLeida&id=${id}`, {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': csrf }
+        });
+        const el = document.getElementById(`ni-${id}`);
+        if (el) el.remove();
+        actualizarBadge(-1);
+    };
+
+    window.notifMarcarTodas = async function() {
+        await fetch('/Notificaciones?handler=MarcarTodas', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': csrf }
+        });
+        document.querySelectorAll('.notif-item').forEach(el => el.remove());
+        actualizarBadge(0, true);
+    };
+
+    function actualizarBadge(delta, clear = false) {
+        const badge = document.querySelector('.notif-badge');
+        if (!badge) return;
+        if (clear) { badge.remove(); return; }
+        const n = Math.max(0, (parseInt(badge.textContent) || 0) + delta);
+        if (n === 0) badge.remove();
+        else badge.textContent = n > 9 ? '9+' : n;
+    }
+})();
+</script>
 </body>
 </html>

@@ -40,6 +40,7 @@ public sealed class AppDbContext(
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
     public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
+    public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -871,6 +872,21 @@ public sealed class UsuarioTemaConfiguration : IEntityTypeConfiguration<UsuarioT
         b.HasIndex(x => new { x.UsuarioId, x.TemaId }).IsUnique();
         b.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<TemaTicket>().WithMany().HasForeignKey(x => x.TemaId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class NotificacionConfiguration : IEntityTypeConfiguration<Notificacion>
+{
+    public void Configure(EntityTypeBuilder<Notificacion> b)
+    {
+        b.ToTable("Notificaciones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Url).HasMaxLength(500);
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30);
+        b.HasIndex(x => new { x.DestinatarioId, x.Leida });
+        b.HasIndex(x => x.FechaCreacion);
     }
 }
 
