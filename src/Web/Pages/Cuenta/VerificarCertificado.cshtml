@@ -13,7 +13,7 @@
         {
             <div class="alert-error" style="text-align:left;margin-bottom:1rem">@Model.Error</div>
             var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
-            var backUrl = isDev ? "https://localhost:49175/Cuenta/Manage/Certificate" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Manage/Certificate";
+            var backUrl = isDev ? "https://localhost:49175/Cuenta/Certificado" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Certificado";
             <a href="@backUrl" class="btnp">Volver al Perfil</a>
         }
         else

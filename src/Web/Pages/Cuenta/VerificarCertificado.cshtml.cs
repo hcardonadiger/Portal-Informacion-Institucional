@@ -48,7 +48,7 @@ public sealed class VerificarCertificadoModel(ISender sender, ICurrentUserServic
     {
         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
         var host = Request.Host.Host;
-        var backUrl = "/Cuenta/Manage/Certificate";
+        var backUrl = "/Cuenta/Certificado";
         
         if (isDev && host == "localhost")
         {
