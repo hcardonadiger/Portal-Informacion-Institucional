@@ -130,6 +130,17 @@ public enum TipoNotificacion
     CompromisoVencido = 3,
     CompromisoProximo = 4,
     ReuniónMañana     = 5,
+    ChatRecibido      = 6,
+}
+
+// ── Estado de una sesión de chat de soporte ───────────────────────────────
+public enum ChatEstado
+{
+    EnCola     = 1,
+    Activo     = 2,
+    Resuelto   = 3,
+    Abandonado = 4,
+    Expirado   = 5,
 }
 
 // ── Visibilidad de una reunión ────────────────────────────────────────────

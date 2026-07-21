@@ -1,0 +1,303 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Chat.IndexModel
+@{
+    ViewData["Title"] = "Chat de Soporte";
+}
+
+<div class="pg-wrap">
+  <div class="pg-hdr">
+    <div class="pg-hdr-left">
+      <h1 class="pg-title">Chat de Soporte</h1>
+      @if (Model.Cola.Count > 0)
+      {
+        <span class="badge-alert">@Model.Cola.Count en cola</span>
+      }
+    </div>
+  </div>
+
+  <div class="chat-layout">
+
+    <!-- ── Panel izquierdo: listas ─────────────────────────── -->
+    <div class="chat-sidebar">
+
+      @if (Model.Cola.Count > 0)
+      {
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">En cola</div>
+          @foreach (var s in Model.Cola)
+          {
+            <div class="chat-item cola" id="ci-@s.Id">
+              <div class="ci-avatar">👤</div>
+              <div class="ci-info">
+                <div class="ci-nombre">@s.UsuarioNombre</div>
+                <div class="ci-tema">@(s.TemaNombre ?? "Sin tema")</div>
+                <div class="ci-hora">@s.Inicio.ToLocalTime().ToString("HH:mm")</div>
+              </div>
+              <form method="post" asp-page-handler="Tomar" style="margin:0">
+                <input type="hidden" name="sesionId" value="@s.Id" />
+                <button type="submit" class="btn-tomar">Tomar</button>
+              </form>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Mis chats activos</div>
+        @if (Model.SesionesActivas.Count == 0)
+        {
+          <div class="sidebar-empty">Sin chats activos</div>
+        }
+        @foreach (var s in Model.SesionesActivas)
+        {
+          <a href="/Chat?sesion=@s.Id" class="chat-item @(s.Id == Model.SesionAbiertoId ? "activo" : "")">
+            <div class="ci-avatar">💬</div>
+            <div class="ci-info">
+              <div class="ci-nombre">@s.UsuarioNombre</div>
+              <div class="ci-tema">@(s.TemaNombre ?? "General")</div>
+            </div>
+            @if (s.MensajesNoLeidos > 0)
+            {
+              <span class="ci-badge">@s.MensajesNoLeidos</span>
+            }
+          </a>
+        }
+      </div>
+    </div>
+
+    <!-- ── Panel derecho: conversación ────────────────────── -->
+    <div class="chat-main">
+      @if (Model.SesionAbierta is null)
+      {
+        <div class="chat-placeholder">
+          <div style="font-size:40px">💬</div>
+          <div>Selecciona un chat o toma uno de la cola</div>
+        </div>
+      }
+      else
+      {
+        var s = Model.SesionAbierta.Sesion;
+        <div class="chat-conv-header">
+          <div>
+            <div class="chat-conv-nombre">@s.UsuarioNombre</div>
+            <div class="chat-conv-meta">@(s.TemaNombre ?? "General") · @s.Estado</div>
+          </div>
+          @if (s.Estado == ChatEstado.Activo)
+          {
+            <form method="post" asp-page-handler="Cerrar" style="margin:0">
+              <input type="hidden" name="sesionId" value="@s.Id" />
+              <button type="submit" class="btn-sec" onclick="return confirm('¿Marcar como resuelto?')">
+                ✓ Resolver
+              </button>
+            </form>
+          }
+        </div>
+
+        <div class="chat-mensajes" id="chatMensajes">
+          @foreach (var m in Model.SesionAbierta.Mensajes)
+          {
+            <div class="msg-row @(m.EsSistema ? "sistema" : m.EsDelTecnico ? "tecnico" : "usuario")">
+              <div class="msg-burbuja">
+                <div class="msg-texto">@m.Texto</div>
+                <div class="msg-hora">@m.Enviado.ToLocalTime().ToString("HH:mm")</div>
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (s.Estado == ChatEstado.Activo)
+        {
+          <div class="chat-input-bar">
+            <textarea id="txtRespuesta" class="chat-textarea" placeholder="Escribe tu respuesta..." rows="2"></textarea>
+            <button type="button" class="btn-prim" onclick="enviarRespuesta()">Enviar</button>
+          </div>
+        }
+      }
+    </div>
+
+  </div>
+</div>
+
+<style>
+.badge-alert {
+  display:inline-flex;padding:3px 12px;border-radius:12px;
+  background:#fef2f2;color:#e11d48;font-size:12px;font-weight:700;
+}
+.chat-layout {
+  display:grid;grid-template-columns:280px 1fr;gap:0;
+  border:1.5px solid var(--diger-border);border-radius:12px;
+  overflow:hidden;background:#fff;min-height:600px;
+}
+.chat-sidebar {
+  border-right:1.5px solid var(--diger-border);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.sidebar-section { padding:12px 0; border-bottom:1px solid var(--diger-border); }
+.sidebar-section:last-child { border-bottom:none; flex:1; }
+.sidebar-section-title {
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--diger-text-muted);padding:0 14px 8px;
+}
+.sidebar-empty { font-size:12px;color:var(--diger-text-muted);padding:4px 14px; }
+.chat-item {
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  cursor:pointer;text-decoration:none;color:inherit;transition:background .12s;
+  border-left:3px solid transparent;
+}
+.chat-item:hover,.chat-item.activo { background:var(--diger-bg-soft);border-left-color:var(--diger-blue-mid); }
+.chat-item.cola { border-left-color:var(--diger-danger,#e11d48); }
+.ci-avatar { font-size:20px;flex:none; }
+.ci-info { flex:1;min-width:0; }
+.ci-nombre { font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.ci-tema { font-size:11px;color:var(--diger-text-muted); }
+.ci-hora { font-size:10px;color:var(--diger-text-muted); }
+.ci-badge {
+  flex:none;width:20px;height:20px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:10px;font-weight:700;
+  background:var(--diger-blue-mid);color:#fff;
+}
+.btn-tomar {
+  flex:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;
+  background:var(--diger-blue);color:#fff;border:none;cursor:pointer;
+}
+.chat-main { display:flex;flex-direction:column;min-height:0; }
+.chat-placeholder {
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;color:var(--diger-text-muted);font-size:13px;
+}
+.chat-conv-header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;border-bottom:1.5px solid var(--diger-border);background:var(--diger-bg-soft);
+}
+.chat-conv-nombre { font-size:14px;font-weight:700; }
+.chat-conv-meta   { font-size:11.5px;color:var(--diger-text-muted); }
+.chat-mensajes {
+  flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;
+}
+.msg-row { display:flex; }
+.msg-row.tecnico { justify-content:flex-end; }
+.msg-row.usuario { justify-content:flex-start; }
+.msg-row.sistema { justify-content:center; }
+.msg-burbuja {
+  max-width:70%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.45;
+}
+.tecnico .msg-burbuja { background:var(--diger-blue);color:#fff;border-bottom-right-radius:3px; }
+.usuario .msg-burbuja { background:var(--diger-bg-soft);border:1px solid var(--diger-border);border-bottom-left-radius:3px; }
+.sistema .msg-burbuja {
+  background:var(--diger-blue-pale,#eff6ff);border:1px dashed var(--diger-border);
+  font-style:italic;font-size:11.5px;color:var(--diger-text-muted);border-radius:8px;
+}
+.msg-hora { font-size:10px;opacity:.65;margin-top:3px;text-align:right; }
+.chat-input-bar {
+  padding:12px 16px;border-top:1.5px solid var(--diger-border);
+  display:flex;gap:10px;align-items:flex-end;background:#fff;
+}
+.chat-textarea {
+  flex:1;border:1.5px solid var(--diger-border);border-radius:8px;
+  padding:8px 12px;font-size:13px;resize:none;font-family:inherit;
+}
+.chat-textarea:focus { outline:none;border-color:var(--diger-blue-mid); }
+</style>
+
+<script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+<script>
+const sesionId    = @(Model.SesionAbiertoId);
+const esTecnico   = true;
+const antiForgery = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+// ── SignalR ──────────────────────────────────────────────────────────────
+const conn = new signalR.HubConnectionBuilder()
+    .withUrl('/hubs/soporte')
+    .withAutomaticReconnect()
+    .build();
+
+conn.on('MensajeRecibido', (msg) => {
+    if (sesionId && msg.sesionId == sesionId) agregarMensaje(msg);
+});
+
+conn.on('SesionCerrada', (estado, msg) => {
+    if (msg) agregarMensaje(msg);
+    document.querySelector('.chat-input-bar')?.remove();
+    mostrarSistema(`Sesión ${estado.toLowerCase()}.`);
+});
+
+conn.on('NuevoChat', (sid, nombre, tema) => {
+    mostrarToast(`Nuevo chat de ${nombre} · ${tema}`, sid);
+    actualizarBadge(1);
+});
+
+conn.start().then(() => {
+    if (sesionId) {
+        conn.invoke('UnirseASesion', sesionId);
+        conn.invoke('MarcarLeidos', sesionId, esTecnico);
+    }
+}).catch(err => console.error('SignalR error:', err));
+
+// ── Enviar respuesta ─────────────────────────────────────────────────────
+function enviarRespuesta() {
+    const txt = document.getElementById('txtRespuesta').value.trim();
+    if (!txt || !sesionId) return;
+    conn.invoke('EnviarRespuesta', sesionId, txt);
+    document.getElementById('txtRespuesta').value = '';
+}
+
+document.getElementById('txtRespuesta')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarRespuesta(); }
+});
+
+// ── Scroll y burbuja ─────────────────────────────────────────────────────
+function agregarMensaje(m) {
+    const cont = document.getElementById('chatMensajes');
+    if (!cont) return;
+    const cls  = m.esSistema ? 'sistema' : m.esDelTecnico ? 'tecnico' : 'usuario';
+    const hora = new Date(m.enviado).toLocaleTimeString('es-HN', {hour:'2-digit',minute:'2-digit'});
+    cont.insertAdjacentHTML('beforeend',
+        `<div class="msg-row ${cls}">
+           <div class="msg-burbuja">
+             <div class="msg-texto">${escHtml(m.texto)}</div>
+             <div class="msg-hora">${hora}</div>
+           </div>
+         </div>`);
+    cont.scrollTop = cont.scrollHeight;
+}
+
+function mostrarSistema(txt) {
+    agregarMensaje({ texto: txt, esSistema: true, enviado: new Date().toISOString() });
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function mostrarToast(msg, sid) {
+    const t = document.createElement('div');
+    t.className = 'chat-toast';
+    t.innerHTML = `<span>${escHtml(msg)}</span>
+        <a href="/Chat?sesion=${sid}" class="toast-link">Atender</a>`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 7000);
+}
+
+// Scroll inicial al fondo
+window.addEventListener('load', () => {
+    const c = document.getElementById('chatMensajes');
+    if (c) c.scrollTop = c.scrollHeight;
+});
+</script>
+
+<style>
+.chat-toast {
+  position:fixed;bottom:80px;right:20px;background:#1a56db;color:#fff;
+  padding:12px 16px;border-radius:10px;font-size:13px;display:flex;
+  align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.2);
+  animation:slideUp .2s ease;z-index:9999;
+}
+.toast-link {
+  background:rgba(255,255,255,.2);color:#fff;padding:4px 10px;
+  border-radius:6px;text-decoration:none;font-weight:700;font-size:12px;
+  white-space:nowrap;
+}
+@@keyframes slideUp {
+  from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1}
+}
+</style>

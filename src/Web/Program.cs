@@ -2,6 +2,7 @@ using Diger.TramitesEstado.Application;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Infrastructure;
 using Diger.TramitesEstado.Infrastructure.Persistence;
+using Diger.TramitesEstado.Web.Hubs;
 using Diger.TramitesEstado.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -131,6 +132,7 @@ builder.Services.AddRazorPages(opts =>
     options.Filters.Add<Diger.TramitesEstado.Web.Common.ConsultorReadOnlyPageFilter>();
 });
 
+builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.AccesoModulosService>();
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.JerarquiaUiService>();
@@ -171,7 +173,7 @@ app.Use(async (ctx, next) =>
         "style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; " +
         "font-src 'self'; " +
-        "connect-src 'self';";
+        "connect-src 'self' wss: ws:;";
     await next();
 });
 
@@ -189,5 +191,6 @@ app.UseMiddleware<Diger.TramitesEstado.Web.Common.ModuloAccesoMiddleware>();
 
 app.UseExceptionHandler();
 app.MapRazorPages();
+app.MapHub<SoporteHub>("/hubs/soporte");
 
 await app.RunAsync();
