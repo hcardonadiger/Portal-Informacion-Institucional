@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text;
 
 namespace Diger.TramitesEstado.Web.Pages.Chat;
 
@@ -14,7 +16,9 @@ public sealed class IndexModel(
     IChatService chatSvc,
     ICurrentUserService currentUser,
     IHubContext<SoporteHub> hub,
-    INotificacionService notifSvc) : PageModel
+    INotificacionService notifSvc,
+    ISender mediator,
+    IApplicationDbContext ctx) : PageModel
 {
     public IReadOnlyList<ChatSesionDto> SesionesActivas { get; private set; } = [];
     public IReadOnlyList<ChatSesionDto> Cola            { get; private set; } = [];
@@ -107,4 +111,78 @@ public sealed class IndexModel(
     }
 
     public sealed record IniciarSesionRequest(int? TemaId, string? Mensaje);
+
+    // Generar ticket de soporte a partir del historial de chat
+    public async Task<IActionResult> OnPostCrearTicketDesdeChatAsync(
+        [FromBody] CrearTicketDesdeChatRequest req, CancellationToken ct)
+    {
+        var uid = currentUser.UserId;
+        if (uid is null) return Forbid();
+
+        var detalle = await chatSvc.GetDetalleAsync(req.SesionId, ct);
+        if (detalle is null) return NotFound();
+
+        // Idempotencia: si ya hay ticket vinculado, devolver el existente
+        if (detalle.Sesion.TicketId.HasValue)
+        {
+            var numeroExistente = await ctx.Tickets.AsNoTracking()
+                .Where(t => t.Id == detalle.Sesion.TicketId.Value)
+                .Select(t => t.Numero)
+                .FirstOrDefaultAsync(ct);
+            return new JsonResult(new { ticketId = detalle.Sesion.TicketId.Value, numero = numeroExistente, yaExistia = true });
+        }
+
+        // Construir transcripción como descripción del ticket
+        var sb = new StringBuilder();
+        sb.AppendLine($"Ticket generado desde chat de soporte #{req.SesionId}.");
+        sb.AppendLine($"Inicio: {detalle.Sesion.Inicio.ToLocalTime():dd/MM/yyyy HH:mm}");
+        if (detalle.Sesion.TemaNombre is { } tema) sb.AppendLine($"Tema: {tema}");
+        if (detalle.Sesion.TecnicoNombre is { } tec) sb.AppendLine($"Técnico: {tec}");
+        sb.AppendLine();
+        sb.AppendLine("--- Transcripción del chat ---");
+        foreach (var m in detalle.Mensajes.Where(m => !m.EsSistema))
+        {
+            var hora  = m.Enviado.ToLocalTime().ToString("HH:mm");
+            var quien = m.EsDelTecnico ? m.AutorNombre : detalle.Sesion.UsuarioNombre;
+            sb.AppendLine($"[{hora}] {quien}: {m.Texto}");
+        }
+        var desc = sb.ToString();
+        if (desc.Length > 3900) desc = desc[..3900] + "\n... (transcripción truncada)";
+
+        var tituloRaw = string.IsNullOrWhiteSpace(req.Titulo)
+            ? (detalle.Sesion.TemaNombre is { } t ? $"Consulta: {t}" : "Consulta de soporte")
+            : req.Titulo.Trim();
+
+        var form = new TicketFormDto
+        {
+            Titulo        = tituloRaw[..Math.Min(200, tituloRaw.Length)],
+            Descripcion   = desc,
+            TemaId        = detalle.Sesion.TemaId,
+            Prioridad     = PrioridadTicket.Media,
+            InstitucionId = currentUser.ActiveInstitucionId,
+        };
+
+        try
+        {
+            var ticketId = await mediator.Send(new CrearTicketCommand(form), ct);
+            await chatSvc.VincularTicketAsync(req.SesionId, ticketId, ct);
+
+            var numero = await ctx.Tickets.AsNoTracking()
+                .Where(t => t.Id == ticketId)
+                .Select(t => t.Numero)
+                .FirstOrDefaultAsync(ct);
+
+            // Notificar al técnico (si está en el grupo) que se creó un ticket
+            await hub.Clients.Group(SoporteHub.GrupoSesion(req.SesionId))
+                .SendAsync("TicketCreado", ticketId, numero, cancellationToken: ct);
+
+            return new JsonResult(new { ticketId, numero });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    public sealed record CrearTicketDesdeChatRequest(int SesionId, string? Titulo);
 }

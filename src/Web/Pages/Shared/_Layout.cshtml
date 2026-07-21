@@ -496,7 +496,22 @@
         <div class="chat-widget-panel" id="chatWidgetPanel" style="display:none">
             <div class="cwp-head">
                 <span>💬 Soporte DIGER</span>
-                <button type="button" onclick="toggleChatWidget()" class="cwp-close">✕</button>
+                <div class="cwp-head-actions">
+                    @if (_sesionActiva is not null)
+                    {
+                        <div id="cwpTicketZone" class="cwp-head-ticket">
+                            @if (_sesionActiva.TicketId.HasValue)
+                            {
+                                <a href="/Tickets/Detalle/@_sesionActiva.TicketId" target="_blank" class="cwp-head-ticket-link" title="Ver ticket asociado">📋</a>
+                            }
+                            else
+                            {
+                                <button type="button" class="cwp-head-ticket-btn" onclick="cwpMostrarFormTicket()" title="Crear ticket de soporte">📋</button>
+                            }
+                        </div>
+                    }
+                    <button type="button" onclick="toggleChatWidget()" class="cwp-close">✕</button>
+                </div>
             </div>
             <div class="cwp-body" id="cwpBody">
                 @if (_sesionActiva is null)
@@ -545,6 +560,17 @@
                                 <button type="button" class="cwp-send" onclick="cwpEnviar()">→</button>
                             </div>
                         }
+                        <div id="cwpFormTicket" class="cwp-ticket-form" style="display:none">
+                            <label class="cwp-label">Título del ticket</label>
+                            <input type="text" id="cwpTicketTitulo" class="cwp-input"
+                                   placeholder="Describe el problema..."
+                                   value="@(string.IsNullOrEmpty(_sesionActiva.TemaNombre) ? "Consulta de soporte" : $"Consulta: {_sesionActiva.TemaNombre}")"
+                                   maxlength="200" />
+                            <div class="cwp-ticket-actions">
+                                <button type="button" class="cwp-ticket-cancel" onclick="cwpOcultarFormTicket()">Cancelar</button>
+                                <button type="button" id="cwpTicketConfirm" class="cwp-ticket-confirm" onclick="cwpCrearTicket()">Crear ticket</button>
+                            </div>
+                        </div>
                     </div>
                 }
             </div>
@@ -557,6 +583,8 @@
         const antiForgery = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
         let sesionId = @(_sesionActiva?.Id.ToString() ?? "null");
         let hubConn  = null;
+        const _temas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            _chatTemas.Select(t => new { id = t.Id, nombre = t.Nombre })));
 
         // ── Widget toggle ────────────────────────────────────────────────
         let mensajesCargados = false;
@@ -636,8 +664,27 @@
             });
 
             hubConn.on('SesionCerrada', (estado) => {
-                agregarMensajeCwp('El chat ha sido cerrado. ¡Hasta pronto!', false, true);
+                sesionId = null;
+                mensajesCargados = false;
                 document.querySelector('.cwp-input-bar')?.remove();
+                document.getElementById('cwpFormTicket')?.remove();
+                // Ocultar el botón de ticket en el encabezado
+                const tz = document.getElementById('cwpTicketZone');
+                if (tz) tz.innerHTML = '';
+                // Mostrar mensaje de cierre y opción de nueva consulta
+                const cont = document.getElementById('cwpMensajes');
+                if (cont) {
+                    cont.insertAdjacentHTML('beforeend',
+                        `<div class="cwp-msg sis"><div class="cwp-burbuja">El chat ha sido cerrado. ¡Hasta pronto!</div></div>`);
+                    cont.scrollTop = cont.scrollHeight;
+                }
+                setTimeout(() => mostrarFormNuevoChat(), 1500);
+            });
+
+            hubConn.on('TicketCreado', (tId, numero) => {
+                const zone = document.getElementById('cwpTicketZone');
+                if (zone) zone.innerHTML = `<a href="/Tickets/Detalle/${tId}" target="_blank" class="cwp-head-ticket-link" title="${numero ?? 'Ver ticket'}">📋</a>`;
+                document.getElementById('cwpFormTicket')?.style.setProperty('display', 'none');
             });
 
             hubConn.start().then(() => {
@@ -676,6 +723,75 @@
 
         // Auto-conectar si hay sesión activa
         if (sesionId) iniciarHub();
+
+        // ── Restablecer widget tras cierre de sesión ─────────────────────
+        function mostrarFormNuevoChat() {
+            const body = document.getElementById('cwpBody');
+            if (!body) return;
+            const opts = _temas.map(t =>
+                `<option value="${t.id}">${escHtml(t.nombre)}</option>`).join('');
+            body.innerHTML =
+                `<div id="cwpInicio">
+                    <p class="cwp-intro">¿En qué más podemos ayudarte?</p>
+                    <div class="cwp-form">
+                        <label class="cwp-label">Tema de tu consulta</label>
+                        <select id="cwpTema" class="cwp-select">
+                            <option value="">-- Selecciona un tema --</option>
+                            ${opts}
+                        </select>
+                        <label class="cwp-label" style="margin-top:10px">Mensaje inicial</label>
+                        <textarea id="cwpMensaje" class="cwp-textarea" rows="3"
+                            placeholder="Describe tu consulta..."></textarea>
+                        <button type="button" class="btn-prim"
+                            style="width:100%;margin-top:10px" onclick="iniciarChat()">
+                            Iniciar chat
+                        </button>
+                    </div>
+                </div>`;
+        }
+
+        // ── Crear ticket desde el chat ────────────────────────────────────
+        window.cwpMostrarFormTicket = function() {
+            document.querySelector('.cwp-head-ticket-btn')?.style.setProperty('display', 'none');
+            document.getElementById('cwpFormTicket')?.style.setProperty('display', 'flex');
+        };
+
+        window.cwpOcultarFormTicket = function() {
+            document.getElementById('cwpFormTicket')?.style.setProperty('display', 'none');
+            document.querySelector('.cwp-head-ticket-btn')?.style.setProperty('display', '');
+        };
+
+        window.cwpCrearTicket = async function() {
+            const titulo = document.getElementById('cwpTicketTitulo')?.value?.trim() ?? '';
+            if (!titulo) { alert('Escribe un título para el ticket.'); return; }
+
+            const btn = document.getElementById('cwpTicketConfirm');
+            if (btn) { btn.disabled = true; btn.textContent = 'Creando...'; }
+
+            try {
+                const res = await fetch('/Chat?handler=CrearTicketDesdeChat', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': antiForgery, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sesionId: sesionId, titulo: titulo })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert('No se pudo crear el ticket: ' + (err.error ?? res.statusText));
+                    if (btn) { btn.disabled = false; btn.textContent = 'Crear ticket'; }
+                    return;
+                }
+
+                const data = await res.json();
+                document.getElementById('cwpFormTicket')?.style.setProperty('display', 'none');
+                const zone = document.getElementById('cwpTicketZone');
+                if (zone) zone.innerHTML =
+                    `<a href="/Tickets/Detalle/${data.ticketId}" target="_blank" class="cwp-head-ticket-link" title="${data.numero ?? 'Ver ticket'}">📋</a>`;
+            } catch {
+                alert('Error de conexión al crear el ticket.');
+                if (btn) { btn.disabled = false; btn.textContent = 'Crear ticket'; }
+            }
+        };
     })();
     </script>
 
@@ -735,6 +851,31 @@
     .cwp-input-bar { display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--diger-border); }
     .cwp-input { flex:1; }
     .cwp-send { padding:6px 12px;background:var(--diger-blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px; }
+    .cwp-head-actions { display:flex;align-items:center;gap:6px; }
+    .cwp-head-ticket { display:flex;align-items:center; }
+    .cwp-head-ticket-btn,.cwp-head-ticket-link {
+        background:rgba(255,255,255,.15);border:none;color:#fff;
+        width:28px;height:28px;border-radius:6px;cursor:pointer;
+        font-size:14px;display:flex;align-items:center;justify-content:center;
+        text-decoration:none;transition:background .12s;
+    }
+    .cwp-head-ticket-btn:hover,.cwp-head-ticket-link:hover { background:rgba(255,255,255,.28); }
+    .cwp-ticket-form {
+        padding:10px 12px;border-top:1px solid var(--diger-border);
+        background:var(--diger-bg-soft);flex-direction:column;gap:8px;flex:none;
+    }
+    .cwp-ticket-actions { display:flex;gap:6px;justify-content:flex-end;margin-top:2px; }
+    .cwp-ticket-cancel {
+        background:none;border:1px solid var(--diger-border);color:var(--diger-text-muted);
+        border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;
+    }
+    .cwp-ticket-cancel:hover { background:var(--diger-border); }
+    .cwp-ticket-confirm {
+        background:var(--diger-blue);color:#fff;border:none;
+        border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;
+    }
+    .cwp-ticket-confirm:hover { opacity:.9; }
+    .cwp-ticket-confirm:disabled { opacity:.55;cursor:not-allowed; }
     </style>
 }
 </body>

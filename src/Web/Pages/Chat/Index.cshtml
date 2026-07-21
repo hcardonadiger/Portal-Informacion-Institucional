@@ -82,15 +82,25 @@
             <div class="chat-conv-nombre">@s.UsuarioNombre</div>
             <div class="chat-conv-meta">@(s.TemaNombre ?? "General") · @s.Estado</div>
           </div>
-          @if (s.Estado == ChatEstado.Activo)
-          {
-            <form method="post" asp-page-handler="Cerrar" style="margin:0">
-              <input type="hidden" name="sesionId" value="@s.Id" />
-              <button type="submit" class="btn-sec" onclick="return confirm('¿Marcar como resuelto?')">
-                ✓ Resolver
-              </button>
-            </form>
-          }
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="convTicketBadge">
+              @if (s.TicketId.HasValue)
+              {
+                <a href="/Tickets/Detalle/@s.TicketId" target="_blank" class="ticket-badge-link" title="Ver ticket asociado">
+                  📋 Ticket vinculado
+                </a>
+              }
+            </div>
+            @if (s.Estado == ChatEstado.Activo)
+            {
+              <form method="post" asp-page-handler="Cerrar" style="margin:0">
+                <input type="hidden" name="sesionId" value="@s.Id" />
+                <button type="submit" class="btn-sec" onclick="return confirm('¿Marcar como resuelto?')">
+                  ✓ Resolver
+                </button>
+              </form>
+            }
+          </div>
         </div>
 
         <div class="chat-mensajes" id="chatMensajes">
@@ -197,6 +207,13 @@
   padding:8px 12px;font-size:13px;resize:none;font-family:inherit;
 }
 .chat-textarea:focus { outline:none;border-color:var(--diger-blue-mid); }
+.ticket-badge-link {
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:600;
+  background:var(--diger-bg-soft);border:1.5px solid var(--diger-blue-mid);
+  color:var(--diger-blue-mid);text-decoration:none;white-space:nowrap;
+}
+.ticket-badge-link:hover { background:var(--diger-blue-light,#eff6ff); }
 </style>
 
 <script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
@@ -219,6 +236,17 @@ conn.on('SesionCerrada', (estado, msg) => {
     if (msg) agregarMensaje(msg);
     document.querySelector('.chat-input-bar')?.remove();
     mostrarSistema(`Sesión ${estado.toLowerCase()}.`);
+});
+
+conn.on('TicketCreado', (tId, numero) => {
+    const badge = document.getElementById('convTicketBadge');
+    if (badge) badge.innerHTML = `<a href="/Tickets/Detalle/${tId}" target="_blank" class="ticket-badge-link">📋 ${escHtml(numero ?? 'Ticket vinculado')}</a>`;
+    const n = escHtml(numero ?? '#' + tId);
+    const t = document.createElement('div');
+    t.className = 'chat-toast';
+    t.innerHTML = `<span>El usuario creó el ticket ${n}</span><a href="/Tickets/Detalle/${tId}" target="_blank" class="toast-link">Ver ticket</a>`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 7000);
 });
 
 conn.on('NuevoChat', (sid, nombre, tema) => {
