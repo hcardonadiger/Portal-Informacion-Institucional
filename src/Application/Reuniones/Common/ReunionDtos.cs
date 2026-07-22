@@ -5,6 +5,8 @@ public sealed class AsistenteInput
 {
     public string  Nombre       { get; set; } = string.Empty;
     public string? Cargo        { get; set; }
+    /// <summary>Id del catálogo de instituciones; null = texto libre (legado).</summary>
+    public string? InstitucionId { get; set; }
     public string? Institucion  { get; set; }
     public string? Departamento { get; set; }
     public string? Correo       { get; set; }
@@ -18,6 +20,8 @@ public sealed class AsistenteInput
 public sealed class AcuerdoInput
 {
     public string    Compromiso  { get; set; } = string.Empty;
+    /// <summary>Contacto del directorio responsable; null = texto libre.</summary>
+    public int?      ResponsableContactoId { get; set; }
     public string?   Responsable { get; set; }
     public DateOnly? Plazo       { get; set; }
 

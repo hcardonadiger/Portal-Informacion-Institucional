@@ -125,12 +125,14 @@ public enum TipoComentarioTicket
 // ── Tipo de evento que genera una notificación ────────────────────────────
 public enum TipoNotificacion
 {
-    TicketAsignado    = 1,
-    TicketResuelto    = 2,
-    CompromisoVencido = 3,
-    CompromisoProximo = 4,
-    ReuniónMañana     = 5,
-    ChatRecibido      = 6,
+    TicketAsignado          = 1,
+    TicketResuelto          = 2,
+    CompromisoVencido       = 3,
+    CompromisoProximo       = 4,
+    ReuniónMañana           = 5,
+    ChatRecibido            = 6,
+    EtapaCronogramaVencida  = 7,
+    EtapaCronogramaProxima  = 8,
 }
 
 // ── Estado de una sesión de chat de soporte ───────────────────────────────
@@ -148,6 +150,23 @@ public enum VisibilidadReunion
 {
     Publica = 1, // visible para las instituciones dentro del alcance
     Privada = 2  // visible solo para quien la creó
+}
+
+// ── Plan de trabajo anual por institución ─────────────────────────────────
+public enum EstadoPlanTrabajo
+{
+    Borrador = 1,
+    Activo   = 2,
+    Cerrado  = 3
+}
+
+public enum EstadoMeta
+{
+    Pendiente  = 1,
+    EnProgreso = 2,
+    Cumplida   = 3,
+    Postergada = 4,
+    Cancelada  = 5
 }
 
 // ── Estado de seguimiento de un compromiso/acuerdo de reunión ──────────────

@@ -1,0 +1,626 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.PlanTrabajo.EditorModel
+@{
+    var p = Model.Plan;
+    ViewData["Title"] = $"Plan {p.Anio} – {p.Institucion}";
+
+    string EstadoLabel(EstadoMeta e) => e switch
+    {
+        EstadoMeta.Pendiente  => "Pendiente",
+        EstadoMeta.EnProgreso => "En progreso",
+        EstadoMeta.Cumplida   => "Cumplida",
+        EstadoMeta.Postergada => "Postergada",
+        EstadoMeta.Cancelada  => "Cancelada",
+        _                     => e.ToString()
+    };
+    string MetaBadge(EstadoMeta e) => e switch
+    {
+        EstadoMeta.Cumplida   => "badge-success",
+        EstadoMeta.EnProgreso => "badge-info",
+        EstadoMeta.Postergada => "badge-warning",
+        EstadoMeta.Cancelada  => "badge-secondary",
+        _                     => "badge-light"
+    };
+    string ExpLabel(EstadoExpediente? e) => e switch
+    {
+        EstadoExpediente.EnExploracion   => "Exploración",
+        EstadoExpediente.EnLevantamiento => "Levantamiento",
+        EstadoExpediente.EnModelado      => "Modelado",
+        EstadoExpediente.EnValidacion    => "Validación",
+        EstadoExpediente.Cerrado         => "Cerrado",
+        _                                => "—"
+    };
+    string ExpBadge(EstadoExpediente? e) => e switch
+    {
+        EstadoExpediente.Cerrado      => "badge-success",
+        EstadoExpediente.EnValidacion => "badge-info",
+        EstadoExpediente.EnModelado   => "badge-primary",
+        _                             => "badge-secondary"
+    };
+}
+
+<div class="page-header">
+    <div>
+        <a asp-page="/PlanTrabajo/Index" class="text-muted" style="font-size:.85em">← Planes de trabajo</a>
+        <h1 class="page-title mb-0">@p.Institucion – @p.Anio</h1>
+    </div>
+    <div class="btns-group align-items-center">
+        @if (Model.PuedeEditar && p.Estado == EstadoPlanTrabajo.Borrador)
+        {
+            <button class="btns btns-primary" onclick="cambiarEstado(2)">Activar plan</button>
+        }
+        @if (Model.PuedeEditar && p.Estado == EstadoPlanTrabajo.Activo)
+        {
+            <button class="btns" onclick="cambiarEstado(3)">Cerrar plan</button>
+        }
+        @if (p.Estado == EstadoPlanTrabajo.Cerrado)
+        {
+            <button class="btns" onclick="cambiarEstado(2)">Reabrir plan</button>
+        }
+    </div>
+</div>
+
+<!-- Métricas -->
+<div class="stats-row mb-4">
+    <div class="stat-card">
+        <div class="stat-value">@p.TotalMetas</div>
+        <div class="stat-label">Total metas</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value text-success">@p.MetasCumplidas</div>
+        <div class="stat-label">Cumplidas</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value text-info">@p.MetasEnProgreso</div>
+        <div class="stat-label">En progreso</div>
+    </div>
+    @if (p.MetasVencidas > 0)
+    {
+        <div class="stat-card">
+            <div class="stat-value text-danger">@p.MetasVencidas</div>
+            <div class="stat-label">Vencidas</div>
+        </div>
+    }
+    <div class="stat-card" style="flex:2">
+        <div class="stat-label mb-1">Cumplimiento @p.CumplimientoPct%</div>
+        <div class="progress" style="height:10px">
+            <div class="progress-bar @(p.CumplimientoPct >= 80 ? "bg-success" : p.CumplimientoPct >= 40 ? "bg-warning" : "bg-danger")"
+                 style="width:@p.CumplimientoPct%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Estado + observaciones -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label text-muted">Estado</label>
+                <div>
+                    @{
+                        string badgeCls = p.Estado switch
+                        {
+                            EstadoPlanTrabajo.Activo  => "badge-success",
+                            EstadoPlanTrabajo.Cerrado => "badge-secondary",
+                            _                         => "badge-warning"
+                        };
+                        string estadoNombre = p.Estado switch
+                        {
+                            EstadoPlanTrabajo.Activo  => "Activo",
+                            EstadoPlanTrabajo.Cerrado => "Cerrado",
+                            _                         => "Borrador"
+                        };
+                    }
+                    <span class="badge @badgeCls">@estadoNombre</span>
+                    @if (p.FechaAprobacion.HasValue)
+                    {
+                        <small class="text-muted d-block">Activado @p.FechaAprobacion.Value.ToString("dd/MM/yyyy")</small>
+                    }
+                </div>
+            </div>
+            <div class="col">
+                <label class="form-label text-muted">Observaciones</label>
+                @if (Model.PuedeEditar)
+                {
+                    <div class="d-flex gap-2">
+                        <textarea id="obs-plan" class="form-control" rows="1"
+                                  style="resize:none">@p.Observaciones</textarea>
+                        <button class="btns btns-sm" onclick="guardarObs()">Guardar</button>
+                    </div>
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">@(p.Observaciones ?? "—")</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de metas -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Trámites planificados</span>
+        @if (Model.PuedeEditar)
+        {
+            <button class="btns btns-sm btns-primary" onclick="agregarFila()">+ Agregar trámite</button>
+        }
+    </div>
+    <div class="card-body p-0">
+        <div style="overflow-x:auto">
+            <table class="table table-sm mb-0" id="tabla-metas">
+                <thead>
+                    <tr>
+                        <th style="width:32px">#</th>
+                        <th style="min-width:200px">Nombre del trámite</th>
+                        <th style="width:120px">F. Inicio est.</th>
+                        <th style="width:120px">F. Fin est.</th>
+                        <th style="width:120px">F. Real fin</th>
+                        <th style="width:140px">Responsable</th>
+                        <th style="width:120px">Estado</th>
+                        <th style="min-width:140px">Observaciones</th>
+                        <th style="width:150px">Expediente</th>
+                        @if (Model.PuedeEditar)
+                        {
+                            <th style="width:110px"></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody id="metas-tbody">
+                    @foreach (var m in p.Metas)
+                    {
+                        <tr class="meta-row @(m.EstaVencida ? "table-danger" : "")" data-meta-id="@m.Id">
+                            <td class="text-muted align-middle">@m.Orden</td>
+                            @if (Model.PuedeEditar)
+                            {
+                                <td><input type="text" class="form-control form-control-sm f-nombre" value="@m.NombreTramite" /></td>
+                                <td><input type="date" class="form-control form-control-sm f-inicio" value="@m.FechaEstimadaInicio?.ToString("yyyy-MM-dd")" /></td>
+                                <td><input type="date" class="form-control form-control-sm f-fin" value="@m.FechaEstimadaFin?.ToString("yyyy-MM-dd")" /></td>
+                                <td><input type="date" class="form-control form-control-sm f-realfin" value="@m.FechaRealFin?.ToString("yyyy-MM-dd")" /></td>
+                                <td>
+                                    <select class="form-select form-select-sm f-responsable">
+                                        <option value="">— Sin asignar</option>
+                                        @foreach (var u in Model.Usuarios)
+                                        {
+                                            var sel = m.ResponsableId == u.Id
+                                                   || (m.ResponsableId is null && m.Responsable == u.Nombre);
+                                            if (sel) { <option value="@u.Id" selected>@u.Nombre</option> }
+                                            else     { <option value="@u.Id">@u.Nombre</option> }
+                                        }
+                                        @if (m.ResponsableId is null && m.Responsable is not null
+                                             && !Model.Usuarios.Any(u => u.Nombre == m.Responsable))
+                                        {
+                                            <option value="" selected>@m.Responsable (texto)</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm f-estado">
+                                        @foreach (EstadoMeta est in Enum.GetValues(typeof(EstadoMeta)))
+                                        {
+                                            if (m.Estado == est) { <option value="@((int)est)" selected>@EstadoLabel(est)</option> }
+                                            else { <option value="@((int)est)">@EstadoLabel(est)</option> }
+                                        }
+                                    </select>
+                                </td>
+                                <td><input type="text" class="form-control form-control-sm f-obs" value="@m.Observaciones" /></td>
+                                <td>
+                                    <div class="exp-link-cell">
+                                        @if (m.ExpedienteId.HasValue)
+                                        {
+                                            var chipTexto = m.ExpedienteTramiteNombre is not null
+                                                ? $"{m.ExpedienteCodigo} · {m.ExpedienteTramiteNombre}"
+                                                : m.ExpedienteCodigo;
+                                            <span class="exp-chip f-exp-chip" title="@chipTexto">
+                                                <span class="exp-chip-text">@chipTexto</span>
+                                                <button type="button" class="exp-chip-remove" onclick="desvincularExp(this)" title="Desvincular">×</button>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="exp-chip f-exp-chip" style="display:none"></span>
+                                        }
+                                        <button type="button" class="btns btns-sm @(m.ExpedienteId.HasValue ? "" : "btns-primary") f-exp-btn"
+                                                onclick="abrirPickerExp(this)">
+                                            @(m.ExpedienteId.HasValue ? "Cambiar" : "+ Vincular")
+                                        </button>
+                                    </div>
+                                    <input type="hidden" class="f-expid" value="@(m.ExpedienteId?.ToString() ?? "")" />
+                                    <input type="hidden" class="f-tramiteidx" value="@(m.ExpedienteTramiteIndex?.ToString() ?? "")" />
+                                </td>
+                                <td>
+                                    <div class="btns-group">
+                                        <button class="btns btns-sm btns-primary" onclick="guardarMeta(this)">Guardar</button>
+                                        <button class="btns btns-sm" onclick="eliminarMeta(this)">✕</button>
+                                    </div>
+                                </td>
+                            }
+                            else
+                            {
+                                <td class="align-middle">@m.NombreTramite</td>
+                                <td class="align-middle text-muted">@(m.FechaEstimadaInicio?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td class="align-middle text-muted">@(m.FechaEstimadaFin?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td class="align-middle text-muted">@(m.FechaRealFin?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td class="align-middle">@(m.Responsable ?? "—")</td>
+                                <td class="align-middle">
+                                    <span class="badge @MetaBadge(m.Estado)">@EstadoLabel(m.Estado)</span>
+                                </td>
+                                <td class="align-middle text-muted">@(m.Observaciones ?? "—")</td>
+                                <td class="align-middle">
+                                    @if (m.ExpedienteId.HasValue)
+                                    {
+                                        <a href="/Expedientes/Editor?id=@m.ExpedienteId" class="fw-semibold" style="font-size:.85em">@m.ExpedienteCodigo</a>
+                                        @if (m.ExpedienteTramiteNombre is not null)
+                                        {
+                                            <br />
+                                            <span class="text-muted" style="font-size:.78em">@m.ExpedienteTramiteNombre</span>
+                                        }
+                                        <br />
+                                        <span class="badge @ExpBadge(m.EstadoExpedienteVinculado)" style="margin-top:3px">@ExpLabel(m.EstadoExpedienteVinculado)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (!p.Metas.Any())
+            {
+                <div class="text-center text-muted py-4">
+                    @if (Model.PuedeEditar)
+                    {
+                        <span>Sin trámites planificados — haz clic en <strong>+ Agregar trámite</strong> para comenzar.</span>
+                    }
+                    else
+                    {
+                        <span>Este plan no tiene trámites planificados.</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
+<style>
+    .exp-link-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .exp-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        background: var(--diger-blue-bg, #eaf1ff); color: var(--diger-blue-dark, #0a2d6e);
+        border: 1px solid var(--diger-border); border-radius: 8px;
+        padding: 3px 6px 3px 9px; font-size: 12px; font-weight: 700; white-space: nowrap;
+        max-width: 100%;
+    }
+    .exp-chip-text { overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+    .exp-chip-remove {
+        border: none; background: transparent; cursor: pointer;
+        font-size: 14px; line-height: 1; color: inherit; opacity: .55; padding: 0 2px;
+    }
+    .exp-chip-remove:hover { opacity: 1; }
+    .exp-result {
+        display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        width: 100%; text-align: left; background: #fff; cursor: pointer;
+        border: 1px solid var(--diger-border); border-radius: 10px;
+        padding: 9px 13px; margin-bottom: 7px; font: inherit;
+    }
+    .exp-result:hover { border-color: var(--diger-blue, #1a56c4); background: #f5f8ff; }
+    .exp-result .exp-cod { font-weight: 700; font-size: 13px; }
+    .exp-result .exp-meta { font-size: 11.5px; color: var(--diger-text-muted, #6b7fa3); }
+</style>
+
+<!-- Modal picker de expediente -->
+@if (Model.PuedeEditar)
+{
+<div class="modal-overlay" id="modal-exp-picker" onclick="cerrarPickerExp(event)">
+    <div class="modal-card" style="max-width:540px;align-items:stretch;text-align:left;padding:0;gap:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 12px;border-bottom:1px solid var(--diger-border)">
+            <strong style="font-size:15px" id="exp-picker-title">Seleccionar expediente</strong>
+            <button class="btns btns-sm" onclick="cerrarPickerExp()" type="button">✕</button>
+        </div>
+        <div style="padding:14px 20px 10px" id="exp-picker-search-box">
+            <input type="text" id="exp-picker-search" class="form-control"
+                   placeholder="Buscar por código o analista…"
+                   oninput="buscarExpedientesModal(this)" autocomplete="off" />
+        </div>
+        <div id="exp-picker-results" style="padding:0 20px 16px;max-height:340px;overflow-y:auto">
+            <p class="text-muted" style="font-size:.85em;margin:8px 0">Escribe para buscar, o espera los más recientes.</p>
+        </div>
+    </div>
+</div>
+}
+
+<input type="hidden" id="plan-id" value="@p.Id" />
+
+@section Scripts {
+<script>
+const PLAN_ID  = parseInt(document.getElementById('plan-id').value);
+const INST_ID  = '@p.InstitucionId';
+const TOKEN    = document.querySelector('[name=__RequestVerificationToken]')?.value ?? '';
+const USUARIOS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre })));
+
+async function postJson(handler, body) {
+    const r = await fetch(`/PlanTrabajo/Editor/${PLAN_ID}?handler=${handler}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': TOKEN },
+          body: JSON.stringify(body) });
+    return r.json();
+}
+
+async function guardarMeta(btn) {
+    const row    = btn.closest('.meta-row');
+    const metaId = row.dataset.metaId ? parseInt(row.dataset.metaId) : null;
+    const nombre = row.querySelector('.f-nombre').value.trim();
+    if (!nombre) { alert('El nombre del trámite es requerido.'); return; }
+
+    btn.disabled = true; btn.textContent = '...';
+
+    const expIdRaw  = row.querySelector('.f-expid')?.value;
+    const traIdxRaw = row.querySelector('.f-tramiteidx')?.value;
+    const data = await postJson('GuardarMeta', {
+        metaId,
+        nombreTramite:       nombre,
+        fechaEstimadaInicio: row.querySelector('.f-inicio').value   || null,
+        fechaEstimadaFin:    row.querySelector('.f-fin').value      || null,
+        fechaRealFin:        row.querySelector('.f-realfin').value  || null,
+        responsableId:       row.querySelector('.f-responsable').value || null,
+        estado:              parseInt(row.querySelector('.f-estado').value),
+        observaciones:       row.querySelector('.f-obs').value      || null,
+        expedienteId:        expIdRaw ? parseInt(expIdRaw) : null,
+        expedienteTramiteIndex: traIdxRaw !== '' && traIdxRaw != null ? parseInt(traIdxRaw) : null
+    });
+
+    btn.disabled = false;
+    if (data.ok) {
+        row.dataset.metaId = data.metaId;
+        btn.textContent = '✓ Guardado';
+        const estado = parseInt(row.querySelector('.f-estado').value);
+        row.classList.toggle('table-success', estado === 3);
+        row.classList.remove('table-danger');
+        setTimeout(() => btn.textContent = 'Guardar', 2000);
+    } else {
+        btn.textContent = 'Guardar';
+        alert(data.error ?? 'Error al guardar.');
+    }
+}
+
+async function eliminarMeta(btn) {
+    const row    = btn.closest('.meta-row');
+    const metaId = row.dataset.metaId ? parseInt(row.dataset.metaId) : null;
+    if (!metaId) { row.remove(); return; }
+    if (!confirm('¿Eliminar este trámite del plan?')) return;
+
+    const data = await postJson('EliminarMeta', { metaId });
+    if (data.ok) { row.remove(); actualizarOrdenes(); }
+    else alert(data.error ?? 'Error al eliminar.');
+}
+
+async function cambiarEstado(nuevoEstado) {
+    const labels = { 2: 'Activar el plan', 3: 'Cerrar el plan' };
+    if (!confirm(`¿${labels[nuevoEstado] ?? 'Cambiar estado'} de trabajo?`)) return;
+    const data = await postJson('CambiarEstado', { nuevoEstado });
+    if (data.ok) window.location.reload();
+    else alert(data.error ?? 'Error al cambiar estado.');
+}
+
+async function guardarObs() {
+    const obs = document.getElementById('obs-plan').value;
+    await postJson('ActualizarObs', { observaciones: obs });
+}
+
+function agregarFila() {
+    const tbody = document.getElementById('metas-tbody');
+    const orden = tbody.querySelectorAll('.meta-row').length + 1;
+    const estados = [
+        [1,'Pendiente'],[2,'En progreso'],[3,'Cumplida'],[4,'Postergada'],[5,'Cancelada']
+    ].map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+    const usuarios = '<option value="">— Sin asignar</option>' +
+        USUARIOS.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
+
+    const row = document.createElement('tr');
+    row.className = 'meta-row';
+    row.dataset.metaId = '';
+    row.innerHTML = `
+        <td class="text-muted align-middle">${orden}</td>
+        <td><input type="text" class="form-control form-control-sm f-nombre" placeholder="Nombre del trámite" /></td>
+        <td><input type="date" class="form-control form-control-sm f-inicio" /></td>
+        <td><input type="date" class="form-control form-control-sm f-fin" /></td>
+        <td><input type="date" class="form-control form-control-sm f-realfin" /></td>
+        <td><select class="form-select form-select-sm f-responsable">${usuarios}</select></td>
+        <td><select class="form-select form-select-sm f-estado">${estados}</select></td>
+        <td><input type="text" class="form-control form-control-sm f-obs" /></td>
+        <td>
+            <div class="exp-link-cell">
+                <span class="exp-chip f-exp-chip" style="display:none"></span>
+                <button type="button" class="btns btns-sm btns-primary f-exp-btn" onclick="abrirPickerExp(this)">+ Vincular</button>
+            </div>
+            <input type="hidden" class="f-expid" value="" />
+            <input type="hidden" class="f-tramiteidx" value="" />
+        </td>
+        <td>
+            <div class="btns-group">
+                <button class="btns btns-sm btns-primary" onclick="guardarMeta(this)">Guardar</button>
+                <button class="btns btns-sm" onclick="eliminarMeta(this)">✕</button>
+            </div>
+        </td>`;
+    tbody.appendChild(row);
+    row.querySelector('.f-nombre').focus();
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── Picker de expediente (modal) ────────────────────────────────────────
+const EXP_ESTADOS = {
+    1: ['Exploración',   'badge-secondary'],
+    2: ['Levantamiento', 'badge-secondary'],
+    3: ['Modelado',      'badge-primary'],
+    4: ['Validación',    'badge-info'],
+    5: ['Cerrado',       'badge-success']
+};
+
+let _pickerRow = null;
+let _buscaTimer = null;
+
+function abrirPickerExp(btn) {
+    _pickerRow = btn.closest('.meta-row');
+    const modal  = document.getElementById('modal-exp-picker');
+    const search = document.getElementById('exp-picker-search');
+    modal.classList.add('open');
+    modoPickerExpedientes();
+    search.value = '';
+    search.focus();
+    consultarExpedientes('');
+}
+
+function modoPickerExpedientes() {
+    document.getElementById('exp-picker-title').textContent = 'Seleccionar expediente';
+    document.getElementById('exp-picker-search-box').style.display = '';
+}
+
+function cerrarPickerExp(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('modal-exp-picker').classList.remove('open');
+    _pickerRow = null;
+}
+
+function buscarExpedientesModal(inp) {
+    clearTimeout(_buscaTimer);
+    _buscaTimer = setTimeout(() => consultarExpedientes(inp.value.trim()), 300);
+}
+
+async function consultarExpedientes(q) {
+    const cont = document.getElementById('exp-picker-results');
+    cont.innerHTML = '<p class="text-muted" style="font-size:.85em;margin:8px 0">Buscando…</p>';
+    try {
+        const url = `/PlanTrabajo/Editor/${PLAN_ID}?handler=BuscarExpedientes&q=${encodeURIComponent(q)}&institucionId=${encodeURIComponent(INST_ID)}`;
+        const r    = await fetch(url);
+        const data = await r.json();
+
+        if (!data.length) {
+            cont.innerHTML = '<p class="text-muted" style="font-size:.85em;margin:8px 0">Sin resultados para esta institución.</p>';
+            return;
+        }
+
+        cont.innerHTML = '';
+        data.forEach(x => {
+            const [lbl, cls] = EXP_ESTADOS[x.estadoExp] ?? ['—', 'badge-light'];
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'exp-result';
+            b.innerHTML = `
+                <span>
+                    <span class="exp-cod"></span><br/>
+                    <span class="exp-meta"></span>
+                </span>
+                <span class="badge ${cls}">${lbl}</span>`;
+            b.querySelector('.exp-cod').textContent  = x.codigo;
+            b.querySelector('.exp-meta').textContent = x.analista ? `Analista: ${x.analista}` : '';
+            b.onclick = () => elegirExp(x.id, x.codigo);
+            cont.appendChild(b);
+        });
+    } catch (_) {
+        cont.innerHTML = '<p class="text-danger" style="font-size:.85em;margin:8px 0">Error al buscar expedientes.</p>';
+    }
+}
+
+// Paso 2: elegir el trámite dentro del expediente seleccionado
+async function elegirExp(id, codigo) {
+    if (!_pickerRow) return;
+
+    const cont = document.getElementById('exp-picker-results');
+    cont.innerHTML = '<p class="text-muted" style="font-size:.85em;margin:8px 0">Cargando trámites…</p>';
+    document.getElementById('exp-picker-title').textContent = `Trámite de ${codigo}`;
+    document.getElementById('exp-picker-search-box').style.display = 'none';
+
+    let tramites = [];
+    try {
+        const r = await fetch(`/PlanTrabajo/Editor/${PLAN_ID}?handler=TramitesExpediente&expedienteId=${id}`);
+        tramites = await r.json();
+    } catch (_) {}
+
+    // Sin trámites registrados: vincular directo al expediente completo
+    if (!tramites.length) { vincular(id, codigo, null, null); return; }
+
+    cont.innerHTML = '';
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'btns btns-sm';
+    back.style.marginBottom = '10px';
+    back.textContent = '← Expedientes';
+    back.onclick = () => { modoPickerExpedientes(); consultarExpedientes(document.getElementById('exp-picker-search').value.trim()); };
+    cont.appendChild(back);
+
+    const todo = document.createElement('button');
+    todo.type = 'button';
+    todo.className = 'exp-result';
+    todo.innerHTML = `<span><span class="exp-cod">Todo el expediente</span><br/>
+        <span class="exp-meta">Sin trámite específico</span></span>`;
+    todo.onclick = () => vincular(id, codigo, null, null);
+    cont.appendChild(todo);
+
+    tramites.forEach(t => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'exp-result';
+        b.innerHTML = `<span><span class="exp-cod"></span><br/><span class="exp-meta"></span></span>`;
+        b.querySelector('.exp-cod').textContent  = t.nombre;
+        b.querySelector('.exp-meta').textContent = t.areaResponsable ? `Área: ${t.areaResponsable}` : `Trámite ${t.tramiteIndex + 1}`;
+        b.onclick = () => vincular(id, codigo, t.tramiteIndex, t.nombre);
+        cont.appendChild(b);
+    });
+}
+
+function vincular(expId, codigo, tramiteIdx, tramiteNombre) {
+    if (!_pickerRow) return;
+    _pickerRow.querySelector('.f-expid').value      = expId;
+    _pickerRow.querySelector('.f-tramiteidx').value = tramiteIdx ?? '';
+
+    const texto = tramiteNombre ? `${codigo} · ${tramiteNombre}` : codigo;
+    const chip  = _pickerRow.querySelector('.f-exp-chip');
+    chip.innerHTML = '';
+    chip.title = texto;
+    const span = document.createElement('span');
+    span.className = 'exp-chip-text';
+    span.textContent = texto;
+    chip.appendChild(span);
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'exp-chip-remove'; x.title = 'Desvincular';
+    x.textContent = '×';
+    x.onclick = () => desvincularExp(x);
+    chip.appendChild(x);
+    chip.style.display = '';
+
+    const btn = _pickerRow.querySelector('.f-exp-btn');
+    btn.textContent = 'Cambiar';
+    btn.classList.remove('btns-primary');
+
+    cerrarPickerExp();
+}
+
+function desvincularExp(el) {
+    const row = el.closest('.meta-row');
+    row.querySelector('.f-expid').value      = '';
+    row.querySelector('.f-tramiteidx').value = '';
+    const chip = row.querySelector('.f-exp-chip');
+    chip.style.display = 'none';
+    chip.innerHTML = '';
+    const btn = row.querySelector('.f-exp-btn');
+    btn.textContent = '+ Vincular';
+    btn.classList.add('btns-primary');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') cerrarPickerExp();
+});
+
+function actualizarOrdenes() {
+    document.querySelectorAll('#metas-tbody .meta-row').forEach((row, i) => {
+        const cell = row.querySelector('td:first-child');
+        if (cell) cell.textContent = i + 1;
+    });
+}
+</script>
+}

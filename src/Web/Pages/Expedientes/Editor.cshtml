@@ -84,7 +84,13 @@
         <div class="g2">
           <div class="f">
             <label>Analista DIGER responsable <span class="star">*</span></label>
-            <input type="text" id="analista" placeholder="Nombre completo" oninput="actualizarMeta()">
+            <select id="analista" oninput="actualizarMeta()">
+              <option value="">— Seleccione —</option>
+              @foreach (var u in Model.Usuarios)
+              {
+                <option>@u.Nombre</option>
+              }
+            </select>
           </div>
           <div class="f">
             <label>Código de expediente</label>
@@ -504,7 +510,9 @@
             indexUrl: '@Url.Page("/Index")',
             contactosUrl: '@contactosUrl',
             plantillaUrl: '@plantillaUrl',
-            plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas))
+            plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
+            usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre })))
         };
         @if (Model.ExpJson is not null)
         {

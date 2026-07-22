@@ -13,6 +13,15 @@ global using Diger.TramitesEstado.Application.Expedientes.Commands.EliminarExped
 global using Diger.TramitesEstado.Application.Expedientes.Queries.GetExpedientes;
 global using Diger.TramitesEstado.Application.Expedientes.Queries.GetExpedienteById;
 global using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
+global using Diger.TramitesEstado.Application.Expedientes.Cronograma;
+global using Diger.TramitesEstado.Application.Informes;
+global using Diger.TramitesEstado.Application.Informes.Common;
+global using Diger.TramitesEstado.Application.Informes.Queries;
+global using Diger.TramitesEstado.Application.PlanTrabajo.Common;
+global using Diger.TramitesEstado.Application.PlanTrabajo.Queries;
+global using Diger.TramitesEstado.Application.PlanTrabajo.Commands;
+global using Diger.TramitesEstado.Application.Levantamientos.Common;
+global using Diger.TramitesEstado.Application.Levantamientos.Queries.GetLevantamientoById;
 global using Diger.TramitesEstado.Application.Expedientes.Queries.GetCatalogos;
 global using Diger.TramitesEstado.Application.Expedientes.Plantillas;
 global using Diger.TramitesEstado.Application.Instituciones.Queries.GetInstituciones;
@@ -68,6 +77,7 @@ global using Diger.TramitesEstado.Application.Usuarios.Commands.AsignarInstituci
 global using Diger.TramitesEstado.Application.Usuarios.Commands.AsignarTemasUsuario;
 global using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarios;
 global using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarioById;
+global using Diger.TramitesEstado.Application.AI;
 global using Diger.TramitesEstado.Application.Chat;
 global using Diger.TramitesEstado.Application.Notificaciones;
 global using MediatR;

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Diger.TramitesEstado.Infrastructure.Notifications;
 
-/// <summary>Genera notificaciones de sistema: compromisos vencidos y reuniones del día siguiente.</summary>
+/// <summary>Genera notificaciones de sistema: compromisos vencidos, reuniones del día siguiente y etapas de cronograma.</summary>
 public sealed class RecordatorioBackgroundService(
     IServiceScopeFactory scopeFactory,
     ILogger<RecordatorioBackgroundService> logger) : BackgroundService
@@ -31,14 +31,17 @@ public sealed class RecordatorioBackgroundService(
         var ctx      = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var notifSvc = scope.ServiceProvider.GetRequiredService<INotificacionService>();
 
-        var hoyUtc    = DateTime.UtcNow.Date;
-        var mañana    = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
-        var hoy       = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoyUtc = DateTime.UtcNow.Date;
+        var mañana = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+        var hoy    = DateOnly.FromDateTime(DateTime.UtcNow);
 
         // ── Pre-carga de notificaciones ya enviadas hoy (evita duplicados) ──
         var enviadas = await ctx.Notificaciones
             .Where(n => n.FechaCreacion >= hoyUtc
-                     && (n.Tipo == TipoNotificacion.ReuniónMañana || n.Tipo == TipoNotificacion.CompromisoVencido))
+                     && (n.Tipo == TipoNotificacion.ReuniónMañana
+                      || n.Tipo == TipoNotificacion.CompromisoVencido
+                      || n.Tipo == TipoNotificacion.EtapaCronogramaVencida
+                      || n.Tipo == TipoNotificacion.EtapaCronogramaProxima))
             .Select(n => new { n.DestinatarioId, n.Tipo, n.Url })
             .ToListAsync(ct);
 
@@ -90,7 +93,62 @@ public sealed class RecordatorioBackgroundService(
             }
         }
 
-        logger.LogInformation("RecordatorioBackgroundService: {Reuniones} reuniones, {Compromisos} compromisos procesados.",
-            reunionesMañana.Count, acuerdosVencidos.Count);
+        // ── Etapas de cronograma vencidas / próximas → notificar por nombre ──
+        var tresDias = hoy.AddDays(3);
+
+        var etapasVencidas = await ctx.EtapaCronogramas
+            .Where(e => e.FechaFin < hoy && e.FechaRealFin == null)
+            .Join(ctx.Expedientes.IgnoreQueryFilters(),
+                  e => e.ExpedienteId, x => x.Id,
+                  (e, x) => new { e.ExpedienteId, e.TramiteIndex, e.EtapaNum, e.Responsable, x.Codigo })
+            .Take(60)
+            .ToListAsync(ct);
+
+        var etapasProximas = await ctx.EtapaCronogramas
+            .Where(e => e.FechaFin >= hoy && e.FechaFin <= tresDias && e.FechaRealFin == null)
+            .Join(ctx.Expedientes.IgnoreQueryFilters(),
+                  e => e.ExpedienteId, x => x.Id,
+                  (e, x) => new { e.ExpedienteId, e.TramiteIndex, e.EtapaNum, e.Responsable, x.Codigo })
+            .Take(60)
+            .ToListAsync(ct);
+
+        var nombresEtapas = etapasVencidas
+            .Concat(etapasProximas)
+            .Where(e => e.Responsable is not null and not "")
+            .Select(e => e.Responsable!)
+            .Distinct()
+            .ToList();
+
+        if (nombresEtapas.Count > 0)
+        {
+            var usuariosCrono = await ctx.Usuarios
+                .Where(u => nombresEtapas.Contains(u.Nombre) && u.Activo)
+                .Select(u => new { u.Id, u.Nombre })
+                .ToListAsync(ct);
+
+            var mapaCrono = usuariosCrono.ToDictionary(u => u.Nombre, u => u.Id);
+
+            foreach (var e in etapasVencidas)
+            {
+                if (e.Responsable is null || !mapaCrono.TryGetValue(e.Responsable, out var uid)) continue;
+                var url = $"/Expedientes/Cronograma/{e.ExpedienteId}?t={e.TramiteIndex}";
+                var tit = $"Etapa {e.EtapaNum} vencida – {e.Codigo}";
+                if (!YaEnviada(uid, TipoNotificacion.EtapaCronogramaVencida, url))
+                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaVencida, tit, url, ct);
+            }
+
+            foreach (var e in etapasProximas)
+            {
+                if (e.Responsable is null || !mapaCrono.TryGetValue(e.Responsable, out var uid)) continue;
+                var url = $"/Expedientes/Cronograma/{e.ExpedienteId}?t={e.TramiteIndex}";
+                var tit = $"Etapa {e.EtapaNum} próxima a vencer – {e.Codigo}";
+                if (!YaEnviada(uid, TipoNotificacion.EtapaCronogramaProxima, url))
+                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaProxima, tit, url, ct);
+            }
+        }
+
+        logger.LogInformation(
+            "RecordatorioBackgroundService: {Reuniones} reuniones, {Compromisos} compromisos, {Vencidas} etapas vencidas, {Proximas} etapas próximas procesadas.",
+            reunionesMañana.Count, acuerdosVencidos.Count, etapasVencidas.Count, etapasProximas.Count);
     }
 }

@@ -22,7 +22,10 @@
             <h2>Seguimiento de digitalización</h2>
             <p><strong>@d.Codigo</strong> · @d.Institucion</p>
         </div>
-        <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@d.ExpedienteId">← Expediente</a>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <a class="btns" asp-page="/Expedientes/Cronograma" asp-route-id="@d.ExpedienteId">Cronograma</a>
+            <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@d.ExpedienteId">← Expediente</a>
+        </div>
     </div>
 
 @if (!d.Tramites.Any())
