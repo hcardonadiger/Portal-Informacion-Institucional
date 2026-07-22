@@ -8,6 +8,7 @@ public static class ExpedienteMapper
     {
         // Apertura
         e.FechaApertura   = d.FechaApertura;
+        e.AnalistaId      = d.AnalistaId;
         e.Analista        = d.Analista.Trim();
         e.DirSede         = d.DirSede?.Trim();
         e.NumTramitesProd = d.NumTramitesProd;
@@ -149,5 +150,6 @@ public static class ExpedienteMapper
         e.Perfiles.Select(p => new PerfilInput(p.Perfil, p.Nombre, p.Correo)).ToList(),
         e.Condiciones.Select(c => c.Condicion).ToList(),
         e.ChecklistInfra.OrderBy(c => c.Orden).Select(c => new ChecklistInput(c.Orden, c.Grupo, c.Requisito, c.Status, c.Obs)).ToList(),
-        e.Secciones.OrderBy(s => s.Seccion).Select(s => new SeccionInput(s.Seccion, s.Estado, s.Nota)).ToList());
+        e.Secciones.OrderBy(s => s.Seccion).Select(s => new SeccionInput(s.Seccion, s.Estado, s.Nota)).ToList(),
+        e.AnalistaId);
 }

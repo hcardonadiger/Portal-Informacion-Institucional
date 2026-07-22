@@ -1,0 +1,189 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.PlanTrabajo.IndexModel
+@{
+    ViewData["Title"] = "Plan de Trabajo";
+    string EstadoLabel(EstadoPlanTrabajo e) => e switch
+    {
+        EstadoPlanTrabajo.Borrador => "Borrador",
+        EstadoPlanTrabajo.Activo   => "Activo",
+        EstadoPlanTrabajo.Cerrado  => "Cerrado",
+        _                          => e.ToString()
+    };
+    string EstadoBadge(EstadoPlanTrabajo e) => e switch
+    {
+        EstadoPlanTrabajo.Activo  => "badge-success",
+        EstadoPlanTrabajo.Cerrado => "badge-secondary",
+        _                         => "badge-warning"
+    };
+    string SemaforoCls(int pct, int vencidas) =>
+        vencidas > 0 ? "text-danger" : pct >= 80 ? "text-success" : pct >= 40 ? "text-warning" : "text-muted";
+}
+
+<div class="page-header">
+    <h1 class="page-title">Plan de Trabajo</h1>
+    <div class="btns-group">
+        <button class="btns btns-primary" onclick="document.getElementById('modal-nuevo').style.display='flex'">
+            + Nuevo plan
+        </button>
+    </div>
+</div>
+
+<!-- Filtros -->
+<form method="get" class="card card-body mb-4">
+    <div class="row g-3 align-items-end">
+        @if (Model.EsAdmin)
+        {
+            <div class="col-md-5">
+                <label class="form-label">Institución</label>
+                <select name="InstitucionId" class="form-select">
+                    <option value="">— Todas —</option>
+                    @foreach (var (id, nombre) in Model.Instituciones)
+                    {
+                        if (Model.InstitucionId == id) { <option value="@id" selected>@nombre</option> }
+                        else { <option value="@id">@nombre</option> }
+                    }
+                </select>
+            </div>
+        }
+        <div class="col-md-2">
+            <label class="form-label">Año</label>
+            <select name="Anio" class="form-select">
+                @for (int y = DateTime.UtcNow.Year + 1; y >= DateTime.UtcNow.Year - 3; y--)
+                {
+                    if (Model.Anio == y) { <option value="@y" selected>@y</option> }
+                    else { <option value="@y">@y</option> }
+                }
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-md-auto">
+            <button type="submit" class="btns">Filtrar</button>
+        </div>
+    </div>
+</form>
+
+@if (!Model.Planes.Any())
+{
+    <div class="empty-state">
+        <p>No hay planes de trabajo para los filtros seleccionados.</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Institución</th>
+                        <th class="text-center">Año</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center">Metas</th>
+                        <th style="width:160px">Cumplimiento</th>
+                        <th class="text-center">Vencidas</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Planes)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@p.Institucion</td>
+                            <td class="text-center">@p.Anio</td>
+                            <td class="text-center">
+                                <span class="badge @EstadoBadge(p.Estado)">@EstadoLabel(p.Estado)</span>
+                            </td>
+                            <td class="text-center">@p.TotalMetas</td>
+                            <td>
+                                @if (p.TotalMetas > 0)
+                                {
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height:6px">
+                                            <div class="progress-bar @(p.CumplimientoPct >= 80 ? "bg-success" : p.CumplimientoPct >= 40 ? "bg-warning" : "bg-danger")"
+                                                 style="width:@p.CumplimientoPct%"></div>
+                                        </div>
+                                        <span class="@SemaforoCls(p.CumplimientoPct, p.MetasVencidas)" style="width:32px;text-align:right;font-size:.8em;font-weight:600">
+                                            @p.CumplimientoPct%
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">@p.MetasCumplidas / @p.TotalMetas cumplidas</small>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin metas</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (p.MetasVencidas > 0)
+                                {
+                                    <span class="badge badge-danger">@p.MetasVencidas</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-page="/PlanTrabajo/Editor" asp-route-id="@p.Id" class="btns btns-sm">
+                                    Editar
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Modal nuevo plan -->
+<div id="modal-nuevo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+    <div class="card" style="width:480px;max-width:95vw">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Nuevo plan de trabajo</h2>
+            <form method="post" asp-page-handler="Crear">
+                <div class="mb-3">
+                    <label class="form-label">Institución <span class="text-danger">*</span></label>
+                    <select name="NuevaInstitucionId" class="form-select" id="sel-inst" required
+                            onchange="document.getElementById('hid-inst-nombre').value = this.options[this.selectedIndex].text">
+                        <option value="">— Seleccionar —</option>
+                        @foreach (var (id, nombre) in Model.Instituciones)
+                        {
+                            <option value="@id">@nombre</option>
+                        }
+                    </select>
+                    <input type="hidden" name="NuevaInstitucion" id="hid-inst-nombre" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Año <span class="text-danger">*</span></label>
+                    <select name="NuevoAnio" class="form-select" required>
+                        @for (int y = DateTime.UtcNow.Year + 1; y >= DateTime.UtcNow.Year - 2; y--)
+                        {
+                            if (y == DateTime.UtcNow.Year) { <option value="@y" selected>@y</option> }
+                            else { <option value="@y">@y</option> }
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Observaciones</label>
+                    <textarea name="NuevasObs" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="d-flex gap-2 justify-content-end">
+                    <button type="button" class="btns" onclick="document.getElementById('modal-nuevo').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btns btns-primary">Crear plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('modal-nuevo').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('modal-nuevo').style.display = 'none';
+});
+</script>
+}

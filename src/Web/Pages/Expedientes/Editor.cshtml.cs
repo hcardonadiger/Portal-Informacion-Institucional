@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Diger.TramitesEstado.Application.Tickets.Common;
+using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
 using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
@@ -10,12 +12,14 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     public string  Codigo  { get; private set; } = "";
     public string? ExpJson { get; private set; }   // OriginalExpedienteDto serializado (edición)
     public List<string> Plantillas { get; private set; } = [];
+    public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
+        Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         if (id is null) return Page();
 
         try

@@ -27,6 +27,11 @@ public sealed class RegistrarAsistenciaCommandHandler(
             ? null
             : $"{d.CodigoPais} {d.Telefono.Trim()}".Trim();
 
+        // Vincular la institución con el catálogo (null cuando es texto libre / "Otra")
+        Institucion? inst = null;
+        if (!string.IsNullOrWhiteSpace(d.Institucion))
+            inst = await institucionRepo.GetByNombreAsync(d.Institucion, ct);
+
         // Si hay un pre-registro pendiente para este correo, confirmarlo en lugar de crear un duplicado.
         var preregistrado = !string.IsNullOrWhiteSpace(correo)
             ? r.Asistentes.FirstOrDefault(a => a.EsPreregistro && a.Correo == correo)
@@ -39,7 +44,11 @@ public sealed class RegistrarAsistenciaCommandHandler(
             preregistrado.RegistradoEl = DateTime.UtcNow;
             if (!string.IsNullOrWhiteSpace(d.Nombre))       preregistrado.Nombre      = d.Nombre.Trim();
             if (!string.IsNullOrWhiteSpace(d.Cargo))        preregistrado.Cargo       = d.Cargo.Trim();
-            if (!string.IsNullOrWhiteSpace(d.Institucion))  preregistrado.Institucion = d.Institucion.Trim();
+            if (!string.IsNullOrWhiteSpace(d.Institucion))
+            {
+                preregistrado.InstitucionId = inst?.Id;
+                preregistrado.Institucion   = inst?.Nombre ?? d.Institucion.Trim();
+            }
             if (!string.IsNullOrWhiteSpace(d.Departamento)) preregistrado.Departamento = d.Departamento.Trim();
             if (!string.IsNullOrWhiteSpace(tel))            preregistrado.Telefono    = tel;
         }
@@ -50,7 +59,8 @@ public sealed class RegistrarAsistenciaCommandHandler(
                 r.Asistentes.Any(a => a.Correo != null && a.Correo == correo))
                 throw new DomainException("Ya existe un registro con ese correo para esta reunión.");
 
-            r.RegistrarAsistente(d.Nombre, d.Cargo, d.Institucion, d.Departamento, correo, tel);
+            r.RegistrarAsistente(d.Nombre, d.Cargo, inst?.Nombre ?? d.Institucion, d.Departamento, correo, tel,
+                institucionId: inst?.Id);
         }
 
         repo.Update(r);
@@ -58,11 +68,6 @@ public sealed class RegistrarAsistenciaCommandHandler(
         if (!string.IsNullOrWhiteSpace(correo))
         {
             var contacto = await contactoRepo.GetByCorreoAsync(correo, ct);
-            Institucion? inst = null;
-            if (!string.IsNullOrWhiteSpace(d.Institucion))
-            {
-                inst = await institucionRepo.GetByNombreAsync(d.Institucion, ct);
-            }
 
             if (contacto is not null)
             {
