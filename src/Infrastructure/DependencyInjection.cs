@@ -1,5 +1,7 @@
+using Diger.TramitesEstado.Application.Chat;
 using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Reuniones.Import;
+using Diger.TramitesEstado.Infrastructure.Chat;
 using Diger.TramitesEstado.Infrastructure.Import;
 using Diger.TramitesEstado.Infrastructure.Notifications;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
@@ -36,6 +38,9 @@ public static class DependencyInjection
         // Notificaciones
         services.AddScoped<INotificacionService, NotificacionService>();
         services.AddHostedService<RecordatorioBackgroundService>();
+
+        // Chat de soporte
+        services.AddScoped<IChatService, ChatService>();
 
         // Seguridad / identidad
         services.AddHttpContextAccessor();

@@ -41,6 +41,8 @@ public sealed class AppDbContext(
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
     public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
     public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
+    public DbSet<ChatSesion>               ChatSesiones         { get; init; } = default!;
+    public DbSet<ChatMensaje>              ChatMensajes         { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -887,6 +889,39 @@ public sealed class NotificacionConfiguration : IEntityTypeConfiguration<Notific
         b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30);
         b.HasIndex(x => new { x.DestinatarioId, x.Leida });
         b.HasIndex(x => x.FechaCreacion);
+    }
+}
+
+// ── Chat de soporte ───────────────────────────────────────────────────────
+public sealed class ChatSesionConfiguration : IEntityTypeConfiguration<ChatSesion>
+{
+    public void Configure(EntityTypeBuilder<ChatSesion> b)
+    {
+        b.ToTable("ChatSesiones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.UsuarioNombre).HasMaxLength(120).IsRequired();
+        b.Property(x => x.TecnicoNombre).HasMaxLength(120);
+        b.Property(x => x.TemaNombre).HasMaxLength(80);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
+        b.HasMany(x => x.Mensajes).WithOne()
+            .HasForeignKey(m => m.SesionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => x.UsuarioId);
+        b.HasIndex(x => new { x.TecnicoId, x.Estado });
+        b.HasIndex(x => x.Inicio);
+    }
+}
+
+public sealed class ChatMensajeConfiguration : IEntityTypeConfiguration<ChatMensaje>
+{
+    public void Configure(EntityTypeBuilder<ChatMensaje> b)
+    {
+        b.ToTable("ChatMensajes");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Texto).HasMaxLength(2000).IsRequired();
+        b.Property(x => x.AutorNombre).HasMaxLength(120).IsRequired();
+        b.HasIndex(x => new { x.SesionId, x.Leido });
     }
 }
 
