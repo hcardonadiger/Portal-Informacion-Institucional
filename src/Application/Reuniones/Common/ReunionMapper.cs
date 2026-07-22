@@ -30,7 +30,9 @@ public static class ReunionMapper
         foreach (var a in asistentes.Where(x => !string.IsNullOrWhiteSpace(x.Nombre)))
             r.Agregar(new Asistente
             {
-                Nombre = a.Nombre.Trim(), Cargo = a.Cargo?.Trim(), Institucion = a.Institucion?.Trim(),
+                Nombre = a.Nombre.Trim(), Cargo = a.Cargo?.Trim(),
+                InstitucionId = string.IsNullOrWhiteSpace(a.InstitucionId) ? null : a.InstitucionId.Trim(),
+                Institucion = a.Institucion?.Trim(),
                 Departamento = a.Departamento?.Trim(),
                 Correo = a.Correo?.Trim().ToLowerInvariant(), Telefono = a.Telefono?.Trim(),
                 AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl
@@ -41,6 +43,7 @@ public static class ReunionMapper
             r.Agregar(new AcuerdoReunion
             {
                 Orden = orden++, Compromiso = ac.Compromiso.Trim(),
+                ResponsableContactoId = ac.ResponsableContactoId > 0 ? ac.ResponsableContactoId : null,
                 Responsable = ac.Responsable?.Trim(), Plazo = ac.Plazo,
                 Estado = ac.Estado,
                 FechaCumplimiento = ac.Estado == EstadoCompromiso.Cumplido
@@ -73,12 +76,14 @@ public static class ReunionMapper
         };
         var asistentes = r.Asistentes.Select(a => new AsistenteInput
         {
-            Nombre = a.Nombre, Cargo = a.Cargo, Institucion = a.Institucion, Departamento = a.Departamento,
+            Nombre = a.Nombre, Cargo = a.Cargo,
+            InstitucionId = a.InstitucionId, Institucion = a.Institucion, Departamento = a.Departamento,
             Correo = a.Correo, Telefono = a.Telefono, AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl
         }).ToList();
         var acuerdos = r.Acuerdos.OrderBy(a => a.Orden).Select(a => new AcuerdoInput
         {
-            Compromiso = a.Compromiso, Responsable = a.Responsable, Plazo = a.Plazo,
+            Compromiso = a.Compromiso, ResponsableContactoId = a.ResponsableContactoId,
+            Responsable = a.Responsable, Plazo = a.Plazo,
             Estado = a.Estado, FechaCumplimiento = a.FechaCumplimiento, NotaSeguimiento = a.NotaSeguimiento
         }).ToList();
         return (datos, asistentes, acuerdos);

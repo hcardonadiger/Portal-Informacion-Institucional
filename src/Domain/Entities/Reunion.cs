@@ -137,12 +137,13 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 
     /// <summary>Registra un participante desde el formulario público de auto-registro.</summary>
     public Asistente RegistrarAsistente(string nombre, string? cargo, string? institucion,
-        string? departamento, string? correo, string? telefono)
+        string? departamento, string? correo, string? telefono, string? institucionId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         var a = new Asistente
         {
-            Nombre = nombre.Trim(), Cargo = cargo?.Trim(), Institucion = institucion?.Trim(),
+            Nombre = nombre.Trim(), Cargo = cargo?.Trim(),
+            InstitucionId = institucionId, Institucion = institucion?.Trim(),
             Departamento = departamento?.Trim(), Correo = correo?.Trim().ToLowerInvariant(), Telefono = telefono?.Trim(),
             AutoRegistro = true, RegistradoEl = DateTime.UtcNow
         };
@@ -154,12 +155,13 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     /// <summary>Pre-registra un invitado por el organizador antes de la reunión.
     /// El pre-registro queda pendiente hasta que el invitado confirme su asistencia (presencialmente o por QR).</summary>
     public Asistente PreRegistrar(string nombre, string? cargo, string? institucion,
-        string? departamento, string? correo, string? telefono)
+        string? departamento, string? correo, string? telefono, string? institucionId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         var a = new Asistente
         {
-            Nombre = nombre.Trim(), Cargo = cargo?.Trim(), Institucion = institucion?.Trim(),
+            Nombre = nombre.Trim(), Cargo = cargo?.Trim(),
+            InstitucionId = institucionId, Institucion = institucion?.Trim(),
             Departamento = departamento?.Trim(), Correo = correo?.Trim().ToLowerInvariant(),
             Telefono = telefono?.Trim(), EsPreregistro = true
         };
@@ -198,6 +200,9 @@ public sealed class Asistente : BaseEntity
     public int       ReunionId    { get; set; }
     public string    Nombre       { get; set; } = default!;
     public string?   Cargo        { get; set; }
+    /// <summary>Id del catálogo de instituciones; null cuando la institución es texto libre (legado u "Otra").</summary>
+    public string?   InstitucionId { get; set; }
+    /// <summary>Snapshot del nombre de la institución para visualización.</summary>
     public string?   Institucion  { get; set; }
     public string?   Departamento { get; set; }
     public string?   Correo       { get; set; }
@@ -219,7 +224,11 @@ public sealed class AcuerdoReunion : BaseEntity
     public int       ReunionId   { get; set; }
     public int       Orden       { get; set; }
     public string    Compromiso  { get; set; } = default!;
-    public string?   Responsable { get; set; }   // responsable (texto libre)
+    /// <summary>Contacto del directorio responsable del compromiso; null cuando es texto libre
+    /// (institución, persona fuera del directorio o dato legado).</summary>
+    public int?      ResponsableContactoId { get; set; }
+    /// <summary>Snapshot del nombre del responsable para visualización.</summary>
+    public string?   Responsable { get; set; }
     public DateOnly? Plazo       { get; set; }
 
     // ── Seguimiento ───────────────────────────────────────────────

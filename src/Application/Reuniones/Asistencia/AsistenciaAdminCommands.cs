@@ -28,7 +28,8 @@ public sealed class PreregistrarAsistentesCommandHandler(
         foreach (var c in contactos)
         {
             if (c.Correo != null && correosExistentes.Contains(c.Correo)) continue;
-            r.PreRegistrar(c.Nombre, c.Cargo, c.Institucion, null, c.Correo, c.Telefono);
+            r.PreRegistrar(c.Nombre, c.Cargo, c.Institucion, null, c.Correo, c.Telefono,
+                institucionId: c.InstitucionId);
             if (c.Correo != null) correosExistentes.Add(c.Correo);
             agregados++;
         }
@@ -138,7 +139,8 @@ public sealed class AgregarAsistentesDirectorioCommandHandler(
             if (c.Correo != null && correosExistentes.Contains(c.Correo)) continue;
             r.Agregar(new Asistente
             {
-                Nombre = c.Nombre, Cargo = c.Cargo, Institucion = c.Institucion,
+                Nombre = c.Nombre, Cargo = c.Cargo,
+                InstitucionId = c.InstitucionId, Institucion = c.Institucion,
                 Correo = c.Correo?.ToLowerInvariant(), Telefono = c.Telefono
             });
             if (c.Correo != null) correosExistentes.Add(c.Correo);

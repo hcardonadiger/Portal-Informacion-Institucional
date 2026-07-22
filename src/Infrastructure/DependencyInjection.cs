@@ -1,10 +1,14 @@
+using Diger.TramitesEstado.Application.AI;
 using Diger.TramitesEstado.Application.Chat;
+using Diger.TramitesEstado.Application.Informes;
 using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Reuniones.Import;
+using Diger.TramitesEstado.Infrastructure.AI;
 using Diger.TramitesEstado.Infrastructure.Chat;
 using Diger.TramitesEstado.Infrastructure.Import;
 using Diger.TramitesEstado.Infrastructure.Notifications;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
+using Diger.TramitesEstado.Infrastructure.Reports;
 using Diger.TramitesEstado.Infrastructure.Security;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -35,12 +39,24 @@ public static class DependencyInjection
         // Importación de reuniones desde el portal demo (Supabase)
         services.AddHttpClient<IReunionImportSource, SupabaseReunionImportSource>();
 
+        // Informes (PDF + Excel)
+        services.AddScoped<IInformeService, InformeService>();
+
         // Notificaciones
         services.AddScoped<INotificacionService, NotificacionService>();
         services.AddHostedService<RecordatorioBackgroundService>();
 
         // Chat de soporte
         services.AddScoped<IChatService, ChatService>();
+
+        // Agente IA (asistente virtual en cola de chat)
+        services.Configure<AgenteOptions>(configuration.GetSection("Ai"));
+        services.AddHttpClient<IAgenteService, AgenteService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.anthropic.com");
+            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         // Seguridad / identidad
         services.AddHttpContextAccessor();

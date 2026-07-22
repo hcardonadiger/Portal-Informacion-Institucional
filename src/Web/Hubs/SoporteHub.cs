@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.AI;
 using Diger.TramitesEstado.Application.Chat;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Notificaciones;
@@ -12,6 +13,7 @@ namespace Diger.TramitesEstado.Web.Hubs;
 public sealed class SoporteHub(
     IChatService chatSvc,
     ICurrentUserService currentUser,
+    IAgenteService agente,
     ILogger<SoporteHub> logger) : Hub
 {
     // ── Constantes de grupos SignalR ──────────────────────────────────────
@@ -54,13 +56,24 @@ public sealed class SoporteHub(
     {
         if (string.IsNullOrWhiteSpace(texto) || texto.Length > 2000) return;
 
-        var uid    = UserId();
         var nombre = currentUser.Nombre ?? currentUser.Correo ?? "Usuario";
         var msg    = await chatSvc.EnviarMensajeAsync(sesionId, texto.Trim(),
             esDelTecnico: false, esSistema: false, autorNombre: nombre);
 
-        await Clients.Group(GrupoSesion(sesionId))
-            .SendAsync("MensajeRecibido", msg);
+        await Clients.Group(GrupoSesion(sesionId)).SendAsync("MensajeRecibido", msg);
+
+        // Si la sesión sigue en cola (sin técnico), el asistente IA responde
+        var detalle = await chatSvc.GetDetalleAsync(sesionId);
+        if (detalle?.Sesion.Estado == ChatEstado.EnCola)
+        {
+            var respuesta = await agente.ResponderAsync(detalle);
+            if (!string.IsNullOrEmpty(respuesta))
+            {
+                var msgAgente = await chatSvc.EnviarMensajeAsync(sesionId, respuesta,
+                    esDelTecnico: true, esSistema: false, autorNombre: "Asistente DIGER");
+                await Clients.Group(GrupoSesion(sesionId)).SendAsync("MensajeRecibido", msgAgente);
+            }
+        }
     }
 
     /// <summary>El usuario cierra voluntariamente el chat.</summary>

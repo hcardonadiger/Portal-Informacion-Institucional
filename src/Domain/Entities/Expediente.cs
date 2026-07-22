@@ -22,6 +22,9 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
 
     // ── Apertura ──────────────────────────────────────────────────
     public DateOnly? FechaApertura { get; set; }
+    /// <summary>Usuario del sistema responsable (analista DIGER); null en expedientes legados con solo texto.</summary>
+    public Guid?     AnalistaId    { get; set; }
+    /// <summary>Snapshot del nombre del analista para visualización e histórico.</summary>
     public string    Analista      { get; set; } = default!;
     public string?   DirSede       { get; set; }
     public int       NumTramitesProd { get; set; }

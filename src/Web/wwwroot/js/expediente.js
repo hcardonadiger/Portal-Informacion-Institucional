@@ -1223,6 +1223,10 @@ function recolectar(){
   // Apertura
   ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
    'contacto_correo','contacto_tel'].forEach(function(id){ d[id]=gv(id); });
+  // Vincular al usuario del sistema por nombre (null si es texto legado)
+  var uAna = ((window.__EXPMETA__ && __EXPMETA__.usuarios) || [])
+    .filter(function(u){ return u.nombre === d.analista; })[0];
+  d.analista_id = uAna ? uAna.id : null;
   d.num_tramites = tramiteCount;
   d.num_tramites_prod = parseInt(gv('num_tramites_prod'))||0;
   d.tramite_nombres = [];
@@ -1361,6 +1365,15 @@ function poblarFormulario(d){
   // Apertura
   ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
    'contacto_correo','contacto_tel'].forEach(function(id){ sv(id, d[id]||''); });
+  // Analista legado (texto sin usuario del sistema): agregar opción ad-hoc para no perderlo
+  var selAna = document.getElementById('analista');
+  if(selAna && d.analista && selAna.value !== d.analista){
+    var optAna = document.createElement('option');
+    optAna.value = d.analista;
+    optAna.textContent = d.analista + ' (texto)';
+    selAna.appendChild(optAna);
+    selAna.value = d.analista;
+  }
   filtrarContactosPorInstitucion();
 
   // Requisitos/acciones por trámite (antes de render para que aparezcan)

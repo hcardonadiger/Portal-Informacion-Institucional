@@ -59,6 +59,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("ResponsableContactoId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ReunionId")
                         .HasColumnType("int");
 
@@ -74,6 +77,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("Estado");
 
                     b.HasIndex("Plazo");
+
+                    b.HasIndex("ResponsableContactoId");
 
                     b.HasIndex("ReunionId");
 
@@ -210,6 +215,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasDefaultValue(false);
 
                     b.Property<string>("Institucion")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("InstitucionId")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
@@ -504,6 +513,44 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Contactos", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.DocumentoAdjunto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly?>("FechaDocumento")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LevantamientoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Tipo")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LevantamientoId");
+
+                    b.ToTable("LevantamientoDocumentos", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.DocumentoInterno", b =>
                 {
                     b.Property<int>("Id")
@@ -590,6 +637,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<Guid?>("AnalistaId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AreaId")
                         .HasColumnType("nvarchar(120)");
@@ -818,6 +868,50 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ExpedienteEtapaAvances", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteEtapaCronograma", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EtapaNum")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
+                    b.Property<int>("ExpedienteId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("FechaFin")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("FechaInicio")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("FechaRealFin")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Observacion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Responsable")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("TramiteIndex")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpedienteId", "TramiteIndex", "EtapaNum")
+                        .IsUnique();
+
+                    b.ToTable("ExpedienteEtapaCronogramas", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteSeccionEstado", b =>
@@ -1384,6 +1478,187 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Levantamiento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Celular")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Correo")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Encargado")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("Habilidad")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("HabilidadObs")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Institucion")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<bool>("Limitante")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LimitanteObs")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("MigradaSOL")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ObsEstado")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ObsGenerales")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("Personal")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PersonalObs")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("RequiereAcompanamiento")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Estado");
+
+                    b.HasIndex("Institucion");
+
+                    b.ToTable("Levantamientos", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.MetaTramite", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("ExpedienteId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ExpedienteTramiteIndex")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("FechaEstimadaFin")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("FechaEstimadaInicio")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("FechaRealFin")
+                        .HasColumnType("date");
+
+                    b.Property<string>("NombreTramite")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PlanTrabajoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Responsable")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ResponsableId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanTrabajoId", "Orden");
+
+                    b.ToTable("PlanTrabajoMetas", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.MiembroEquipo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Contacto")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Funcion")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("LevantamientoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LevantamientoId");
+
+                    b.ToTable("LevantamientoEquipo", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Movimiento", b =>
                 {
                     b.Property<string>("Id")
@@ -1456,6 +1731,65 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("DestinatarioId", "Leida");
 
                     b.ToTable("Notificaciones", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlanTrabajo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Anio")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("AprobadoPorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateOnly?>("FechaAprobacion")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Institucion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("InstitucionId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstitucionId", "Anio")
+                        .IsUnique();
+
+                    b.ToTable("PlanTrabajo", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaFundamentoLegal", b =>
@@ -2125,6 +2459,48 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("TicketTramites", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.TramiteChecklist", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("ActaFirmada")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LevantamientoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NombreTramite")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RequiereMejoras")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Socializado")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TieneInstructivo")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LevantamientoId", "Orden");
+
+                    b.ToTable("LevantamientoTramites", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.TramiteDefinicion", b =>
                 {
                     b.Property<int>("Id")
@@ -2326,6 +2702,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.AcuerdoReunion", b =>
                 {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Contacto", null)
+                        .WithMany()
+                        .HasForeignKey("ResponsableContactoId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Reunion", null)
                         .WithMany("Acuerdos")
                         .HasForeignKey("ReunionId")
@@ -2405,6 +2786,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.DocumentoAdjunto", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Levantamiento", null)
+                        .WithMany("Documentos")
+                        .HasForeignKey("LevantamientoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.DocumentoInterno", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
@@ -2443,6 +2833,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteEtapaAvance", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
+                        .WithMany()
+                        .HasForeignKey("ExpedienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteEtapaCronograma", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
                         .WithMany()
@@ -2510,6 +2909,24 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
                         .WithMany("Perfiles")
                         .HasForeignKey("ExpedienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.MetaTramite", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.PlanTrabajo", null)
+                        .WithMany("Metas")
+                        .HasForeignKey("PlanTrabajoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.MiembroEquipo", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Levantamiento", null)
+                        .WithMany("Equipo")
+                        .HasForeignKey("LevantamientoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -2647,6 +3064,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.TramiteChecklist", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Levantamiento", null)
+                        .WithMany("Tramites")
+                        .HasForeignKey("LevantamientoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.TramiteDefinicion", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
@@ -2725,6 +3151,20 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Institucion", b =>
                 {
                     b.Navigation("Tramites");
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Levantamiento", b =>
+                {
+                    b.Navigation("Documentos");
+
+                    b.Navigation("Equipo");
+
+                    b.Navigation("Tramites");
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlanTrabajo", b =>
+                {
+                    b.Navigation("Metas");
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaTramite", b =>

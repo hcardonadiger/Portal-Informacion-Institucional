@@ -1,0 +1,344 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Expedientes.CronogramaModel
+@{
+    ViewData["Title"] = "Cronograma de actividades";
+    var d   = Model.Data;
+    var hoy = DateOnly.FromDateTime(DateTime.Today);
+
+    // Fechas extremas para el Gantt
+    var conFechas  = d.Etapas.Where(e => e.FechaInicio.HasValue || e.FechaFin.HasValue).ToList();
+    var tieneGantt = conFechas.Any();
+    var todas = conFechas
+        .SelectMany(e => new[] { e.FechaInicio, e.FechaFin, e.FechaRealFin })
+        .Where(f => f.HasValue).Select(f => f!.Value).ToList();
+    var minF  = todas.Any() ? todas.Min() : hoy;
+    var maxF  = todas.Any() ? todas.Max() : hoy.AddMonths(3);
+    if (maxF <= minF) maxF = minF.AddDays(1);
+    var span  = (maxF.ToDateTime(TimeOnly.MinValue) - minF.ToDateTime(TimeOnly.MinValue)).TotalDays;
+
+    string Fmt(DateOnly? d)  => d?.ToString("yyyy-MM-dd") ?? "";
+    string FmtEs(DateOnly? d) => d?.ToString("dd/MM/yyyy") ?? "–";
+
+    double GLeft(DateOnly? f) =>
+        f.HasValue ? Math.Clamp((f.Value.ToDateTime(TimeOnly.MinValue) - minF.ToDateTime(TimeOnly.MinValue)).TotalDays / span * 100, 0, 100) : 0;
+    double GWidth(DateOnly? ini, DateOnly? fin) {
+        if (!ini.HasValue || !fin.HasValue) return 0;
+        return Math.Max(0.5, (fin.Value.ToDateTime(TimeOnly.MinValue) - ini.Value.ToDateTime(TimeOnly.MinValue)).TotalDays / span * 100);
+    }
+
+    string EstCls(EtapaCronogramaDto e) {
+        if (e.AvancePct >= 0.9999 || e.FechaRealFin.HasValue) return "cron-ok";
+        if (e.FechaFin.HasValue && e.FechaFin < hoy)          return "cron-venc";
+        if (e.AvancePct > 0)                                   return "cron-proc";
+        if (e.FechaInicio.HasValue && e.FechaInicio <= hoy.AddDays(7)) return "cron-prox";
+        return "cron-pend";
+    }
+    string EstLbl(EtapaCronogramaDto e) {
+        if (e.AvancePct >= 0.9999 || e.FechaRealFin.HasValue) return "Completada";
+        if (e.FechaFin.HasValue && e.FechaFin < hoy)          return "Vencida";
+        if (e.AvancePct > 0)                                   return "En proceso";
+        if (e.FechaInicio.HasValue && e.FechaInicio <= hoy.AddDays(7)) return "Próxima";
+        return "Pendiente";
+    }
+}
+
+@Html.AntiForgeryToken()
+<div class="container cron-wrap">
+
+    <div class="hist-header">
+        <div>
+            <h2>Cronograma de actividades</h2>
+            <p><strong>@d.Codigo</strong> · @d.Institucion</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@d.ExpedienteId">Seguimiento</a>
+            <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@d.ExpedienteId">← Expediente</a>
+        </div>
+    </div>
+
+@if (!d.Tramites.Any())
+{
+    <div class="hist-empty" style="margin-top:1rem">
+        <div class="ico"></div>
+        <p>Este expediente no tiene trámites. Agrégalos en el editor para registrar el cronograma.</p>
+    </div>
+}
+else
+{
+    @* ── Selector de trámite ─────────────────────────────────────── *@
+    <div class="seg-tramites">
+        <span class="res-meta" style="align-self:center;font-size:12px">Trámite:</span>
+        <a class="seg-tram cron-tab-central@(d.EsCentralizado ? " on" : "")"
+           asp-page="/Expedientes/Cronograma" asp-route-id="@d.ExpedienteId" asp-route-t="-1"
+           title="Administrar el cronograma de todos los trámites a la vez">⚙ Todos (centralizado)</a>
+        @foreach (var tr in d.Tramites)
+        {
+            <a class="seg-tram@(!d.EsCentralizado && tr.Index == d.TramiteActual ? " on" : "")"
+               asp-page="/Expedientes/Cronograma" asp-route-id="@d.ExpedienteId" asp-route-t="@tr.Index"
+               title="@tr.Nombre">@(tr.Index + 1). @tr.Nombre</a>
+        }
+    </div>
+
+    @if (d.EsCentralizado)
+    {
+        <div class="cron-central-info">
+            <strong>Modo centralizado:</strong> al guardar una etapa, las fechas, responsable y observación
+            se aplican a los <strong>@d.Tramites.Count trámites</strong> del expediente.
+            Las etapas marcadas con <span class="cron-varia">≠</span> tienen valores distintos entre trámites
+            (los campos muestran solo lo que es común a todos); al guardarlas se igualarán.
+            Para ajustes individuales usa las pestañas de cada trámite.
+        </div>
+    }
+
+    @* ── Resumen de estado ───────────────────────────────────────── *@
+    <div class="card cron-resumen">
+        @{ var stats = d.Etapas.GroupBy(e => EstLbl(e)).ToDictionary(g => g.Key, g => g.Count()); }
+        @foreach (var (lbl, cls) in new[] {("Completada","cron-ok"),("En proceso","cron-proc"),("Próxima","cron-prox"),("Vencida","cron-venc"),("Pendiente","cron-pend")})
+        {
+            var cnt = stats.GetValueOrDefault(lbl, 0);
+            <div class="cron-stat">
+                <span class="cron-badge @cls">@lbl</span>
+                <span class="cron-stat-n">@cnt</span>
+            </div>
+        }
+    </div>
+
+    @* ── Tabla de cronograma ─────────────────────────────────────── *@
+    <div class="card" style="overflow-x:auto;padding:0">
+        <table class="cron-tbl">
+            <thead>
+                <tr>
+                    <th style="width:220px">Etapa</th>
+                    <th style="width:120px">Inicio plan.</th>
+                    <th style="width:120px">Fin comprom.</th>
+                    <th style="width:120px">Fin real</th>
+                    <th style="width:90px">Avance</th>
+                    <th style="width:100px">Estado</th>
+                    <th style="width:130px">Responsable</th>
+                    <th>Observación</th>
+                    @if (Model.PuedeGestionar) { <th style="width:56px"></th> }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var e in d.Etapas)
+            {
+                var avInt = (int)Math.Round(e.AvancePct * 100);
+                <tr class="cron-row" data-etapa="@e.EtapaNum" data-varia="@(e.Variaciones ? "1" : "0")">
+                    <td class="cron-td-etapa">
+                        <span class="cron-num">@e.EtapaNum</span>
+                        <span class="cron-lbl">@e.Label</span>
+                        @if (e.Variaciones)
+                        {
+                            <span class="cron-varia" title="Los trámites tienen valores distintos en esta etapa">≠</span>
+                        }
+                    </td>
+                    <td><input type="date" class="cron-in" name="fi" value="@Fmt(e.FechaInicio)" @(Model.PuedeGestionar ? "" : "disabled") /></td>
+                    <td><input type="date" class="cron-in cron-fin" name="ff" value="@Fmt(e.FechaFin)" @(Model.PuedeGestionar ? "" : "disabled") /></td>
+                    <td><input type="date" class="cron-in" name="fr" value="@Fmt(e.FechaRealFin)" @(Model.PuedeGestionar ? "" : "disabled") /></td>
+                    <td>
+                        <div class="cron-avbar">
+                            <i style="width:@avInt%"></i>
+                        </div>
+                        <span class="cron-avpct">@avInt%</span>
+                    </td>
+                    <td><span class="cron-badge @EstCls(e)" id="est-@e.EtapaNum">@EstLbl(e)</span></td>
+                    <td><input type="text" class="cron-in" name="resp" value="@e.Responsable" maxlength="150" placeholder="—" @(Model.PuedeGestionar ? "" : "disabled") /></td>
+                    <td><input type="text" class="cron-in" name="obs" value="@e.Observacion" maxlength="1000" placeholder="—" @(Model.PuedeGestionar ? "" : "disabled") /></td>
+                    @if (Model.PuedeGestionar)
+                    {
+                        <td class="cron-td-act">
+                            <button type="button" class="cron-save" title="Guardar esta etapa" onclick="guardarFila(this)">💾</button>
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    @* ── Gantt visual ────────────────────────────────────────────── *@
+    @if (tieneGantt)
+    {
+        <div class="card cron-gantt-card">
+            <div class="cron-gantt-title">Vista de línea de tiempo</div>
+            @{ var hoyLeft = GLeft(hoy); }
+            <div class="cron-gantt">
+                @foreach (var e in d.Etapas)
+                {
+                    var hasBar = e.FechaInicio.HasValue && e.FechaFin.HasValue;
+                    <div class="cron-gantt-row">
+                        <span class="cron-gantt-lbl" title="@e.Label">@e.EtapaNum</span>
+                        <div class="cron-gantt-track">
+                            @if (hasBar)
+                            {
+                                var left  = GLeft(e.FechaInicio);
+                                var width = GWidth(e.FechaInicio, e.FechaFin);
+                                <div class="cron-gantt-bar @EstCls(e)" style="left:@left.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;width:@width.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%"
+                                     title="@FmtEs(e.FechaInicio) – @FmtEs(e.FechaFin)"></div>
+                            }
+                        </div>
+                    </div>
+                }
+                @* Marcador de hoy *@
+                <div class="cron-gantt-hoy" style="left:calc(@hoyLeft.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)% + 60px)" title="Hoy @FmtEs(hoy)"></div>
+            </div>
+            <div class="cron-gantt-axis">
+                <span>@FmtEs(minF)</span>
+                <span>Hoy (@FmtEs(hoy))</span>
+                <span>@FmtEs(maxF)</span>
+            </div>
+        </div>
+    }
+}
+</div>
+
+@section Scripts {
+<script>
+const TOKEN   = document.querySelector('input[name="__RequestVerificationToken"]').value;
+const EXP_ID  = @d.ExpedienteId;
+const TRAM    = @d.TramiteActual;
+const CENTRAL = @(d.EsCentralizado ? "true" : "false");
+
+async function guardarFila(btn) {
+    const row = btn.closest('tr');
+    const etapa = row.dataset.etapa;
+    const get = n => row.querySelector(`[name="${n}"]`).value || null;
+
+    if (CENTRAL && row.dataset.varia === '1'
+        && !confirm(`La etapa ${etapa} tiene valores distintos entre trámites; al guardar se sobrescribirán todos con estos valores. ¿Continuar?`)) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '…';
+
+    const url = CENTRAL
+        ? `/Expedientes/Cronograma/${EXP_ID}?handler=GuardarTodos`
+        : `/Expedientes/Cronograma/${EXP_ID}?handler=Guardar&tramite=${TRAM}`;
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': TOKEN },
+            body: JSON.stringify({
+                etapaNum:    etapa,
+                fechaInicio: get('fi'),
+                fechaFin:    get('ff'),
+                fechaRealFin: get('fr'),
+                responsable: get('resp'),
+                observacion: get('obs'),
+            })
+        });
+        if (res.ok) {
+            btn.textContent = '✓';
+            btn.classList.add('cron-saved');
+            if (CENTRAL) {
+                // Tras igualar todos los trámites, la etapa ya no tiene variaciones
+                row.dataset.varia = '0';
+                const marca = row.querySelector('.cron-varia');
+                if (marca) marca.remove();
+            }
+            setTimeout(() => { btn.textContent = '💾'; btn.classList.remove('cron-saved'); btn.disabled = false; }, 1600);
+        } else {
+            const { msg } = await res.json().catch(() => ({ msg: 'Error al guardar.' }));
+            alert(msg || 'Error al guardar.');
+            btn.textContent = '💾'; btn.disabled = false;
+        }
+    } catch {
+        alert('No se pudo conectar al servidor.');
+        btn.textContent = '💾'; btn.disabled = false;
+    }
+}
+</script>
+}
+
+<style>
+.cron-wrap { max-width: 1100px; }
+
+/* modo centralizado */
+.cron-tab-central { font-weight: 700; }
+.cron-central-info {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+    padding: 10px 14px; font-size: 12.5px; color: #1e3a8a;
+    margin: 10px 0 4px; line-height: 1.5;
+}
+.cron-varia {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
+    border-radius: 50%; width: 18px; height: 18px;
+    font-size: 12px; font-weight: 800; margin-left: 6px; cursor: help;
+}
+
+/* resumen */
+.cron-resumen { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.cron-stat    { display: flex; align-items: center; gap: 6px; }
+.cron-stat-n  { font-weight: 700; font-size: 18px; color: #0a2d6e; }
+
+/* badges */
+.cron-badge { font-size: 11px; font-weight: 600; border-radius: 20px; padding: 2px 8px; white-space: nowrap; }
+.cron-ok    { background: #d1fae5; color: #065f46; }
+.cron-proc  { background: #dbeafe; color: #1e3a8a; }
+.cron-prox  { background: #fef9c3; color: #713f12; }
+.cron-venc  { background: #fee2e2; color: #991b1b; }
+.cron-pend  { background: #f1f5f9; color: #475569; }
+
+/* tabla */
+.cron-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cron-tbl th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; text-align: left; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+.cron-tbl td { padding: 7px 10px; border-bottom: 1px solid #f0f3f8; vertical-align: middle; }
+.cron-row:last-child td { border-bottom: none; }
+.cron-row:hover td { background: #f8fafc; }
+
+.cron-td-etapa { min-width: 180px; }
+.cron-num { display: inline-block; font-weight: 700; color: #0a2d6e; font-size: 12px; min-width: 20px; }
+.cron-lbl { font-size: 12px; color: #334155; margin-left: 4px; }
+
+.cron-in { border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 6px; font-size: 12px; width: 100%; background: #fff; color: #1e293b; box-sizing: border-box; }
+.cron-in:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px #93c5fd40; }
+.cron-in[disabled] { background: #f8fafc; color: #94a3b8; cursor: default; }
+
+/* avance */
+.cron-avbar { height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 2px; }
+.cron-avbar i { display: block; height: 100%; background: #10b981; border-radius: 4px; transition: width .3s; }
+.cron-avpct { font-size: 11px; color: #64748b; }
+
+.cron-td-act { text-align: center; }
+.cron-save { background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 14px; width: 32px; height: 28px; display: inline-flex; align-items: center; justify-content: center; transition: border-color .2s, background .2s; }
+.cron-save:hover { border-color: #3b82f6; background: #eff6ff; }
+.cron-save.cron-saved { border-color: #10b981; color: #10b981; background: #f0fdf4; }
+
+/* Gantt */
+.cron-gantt-card { padding: 16px 20px; }
+.cron-gantt-title { font-weight: 700; font-size: 13px; color: #0a2d6e; margin-bottom: 12px; }
+.cron-gantt { position: relative; }
+.cron-gantt-row { display: flex; align-items: center; gap: 0; height: 26px; margin-bottom: 4px; }
+.cron-gantt-lbl { width: 60px; flex-shrink: 0; font-size: 11px; font-weight: 700; color: #334155; text-align: right; padding-right: 8px; }
+.cron-gantt-track { flex: 1; height: 18px; background: #f1f5f9; border-radius: 4px; position: relative; overflow: visible; }
+.cron-gantt-bar { position: absolute; top: 2px; height: 14px; border-radius: 3px; opacity: .9; min-width: 4px; }
+.cron-gantt-bar.cron-ok   { background: #34d399; }
+.cron-gantt-bar.cron-proc { background: #60a5fa; }
+.cron-gantt-bar.cron-prox { background: #fbbf24; }
+.cron-gantt-bar.cron-venc { background: #f87171; }
+.cron-gantt-bar.cron-pend { background: #cbd5e1; }
+.cron-gantt-hoy { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; opacity: .7; pointer-events: none; }
+.cron-gantt-axis { display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 6px; padding-left: 60px; }
+
+@@media (prefers-color-scheme: dark) {
+    .cron-central-info  { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
+    .cron-varia         { background: #78350f; color: #fde68a; border-color: #92400e; }
+    .cron-tbl th        { background: #1e293b; color: #94a3b8; border-bottom-color: #334155; }
+    .cron-tbl td        { border-bottom-color: #1e293b; }
+    .cron-row:hover td  { background: #1e293b; }
+    .cron-in            { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+    .cron-in[disabled]  { background: #1e293b; color: #475569; }
+    .cron-avbar         { background: #334155; }
+    .cron-gantt-track   { background: #1e293b; }
+    .cron-save          { border-color: #334155; }
+    .cron-save:hover    { border-color: #60a5fa; background: #1e3a5f; }
+    .cron-ok    { background: #064e3b; color: #6ee7b7; }
+    .cron-proc  { background: #1e3a8a; color: #93c5fd; }
+    .cron-prox  { background: #78350f; color: #fde68a; }
+    .cron-venc  { background: #7f1d1d; color: #fca5a5; }
+    .cron-pend  { background: #1e293b; color: #94a3b8; }
+}
+</style>

@@ -184,7 +184,27 @@
                       </div>
                       <div class="asi-fields">
                           <div class="field"><label>Cargo</label><input name="Asistentes[@i].Cargo" value="@Model.Asistentes[i].Cargo" /></div>
-                          <div class="field"><label>Institución</label><input name="Asistentes[@i].Institucion" value="@Model.Asistentes[i].Institucion" /></div>
+                          <div class="field"><label>Institución</label>
+                              @{
+                                  var asis = Model.Asistentes[i];
+                                  var instMatch = Model.Instituciones.FirstOrDefault(x =>
+                                      x.Id == asis.InstitucionId
+                                      || (asis.InstitucionId is null && x.Nombre == asis.Institucion));
+                              }
+                              <select name="Asistentes[@i].InstitucionId" class="asi-inst" onchange="syncAsisInst(this)">
+                                  <option value="" data-nombre="">— Sin institución</option>
+                                  @foreach (var inst in Model.Instituciones)
+                                  {
+                                      if (instMatch?.Id == inst.Id) { <option value="@inst.Id" data-nombre="@inst.Nombre" selected>@inst.Nombre</option> }
+                                      else { <option value="@inst.Id" data-nombre="@inst.Nombre">@inst.Nombre</option> }
+                                  }
+                                  @if (instMatch is null && !string.IsNullOrWhiteSpace(asis.Institucion))
+                                  {
+                                      <option value="" data-nombre="@asis.Institucion" selected>@asis.Institucion (texto)</option>
+                                  }
+                              </select>
+                              <input type="hidden" name="Asistentes[@i].Institucion" value="@asis.Institucion" />
+                          </div>
                           <div class="field"><label>Departamento / Área</label><input name="Asistentes[@i].Departamento" value="@Model.Asistentes[i].Departamento" /></div>
                           <div class="field"><label>Correo</label><input name="Asistentes[@i].Correo" value="@Model.Asistentes[i].Correo" type="email" /></div>
                           <div class="field"><label>Teléfono</label><input name="Asistentes[@i].Telefono" value="@Model.Asistentes[i].Telefono" type="tel" /></div>
@@ -265,7 +285,11 @@
                       <div class="ac-meta">
                           <div class="field" style="flex:1;min-width:0">
                               <label>Responsable</label>
-                              <select name="Acuerdos[@i].Responsable" class="resp-select" data-selected="@Model.Acuerdos[i].Responsable"></select>
+                              <select name="Acuerdos[@i].Responsable" class="resp-select"
+                                      data-selected="@Model.Acuerdos[i].Responsable"
+                                      data-selected-cid="@(Model.Acuerdos[i].ResponsableContactoId?.ToString() ?? "")"></select>
+                              <input type="hidden" name="Acuerdos[@i].ResponsableContactoId" class="resp-cid"
+                                     value="@(Model.Acuerdos[i].ResponsableContactoId?.ToString() ?? "")" />
                           </div>
                           <div class="field" style="width:160px;flex:none">
                               <label>Plazo</label>
@@ -531,7 +555,14 @@
   var INSTITUCIONES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Instituciones.Select(i => new { i.Id, i.Nombre })));
   var institucionesSeleccionadas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.InstitucionesIds));
   var CONTACTOS_DIR = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-      Model.ContactosDirectorio.Select(c => new { nombre = c.Nombre, cargo = c.Cargo, inst = c.Institucion })));
+      Model.ContactosDirectorio.Select(c => new { id = c.Id, nombre = c.Nombre, cargo = c.Cargo, inst = c.Institucion })));
+
+  // Mantiene el snapshot del nombre (hidden) alineado con la opción elegida del catálogo
+  function syncAsisInst(sel) {
+      var hidden = sel.parentElement.querySelector('input[type="hidden"]');
+      var opt = sel.selectedOptions[0];
+      if (hidden) hidden.value = (opt && opt.dataset.nombre) || '';
+  }
 
   function nombreInstitucion(id) {
     var m = INSTITUCIONES.find(function(i){ return i.Id === id; });
@@ -638,7 +669,12 @@
                 `</div>` +
                 `<div class="asi-fields">` +
                   `<div class="field"><label>Cargo</label><input name="Asistentes[${i}].Cargo" /></div>` +
-                  `<div class="field"><label>Institución</label><input name="Asistentes[${i}].Institucion" /></div>` +
+                  `<div class="field"><label>Institución</label>` +
+                  `<select name="Asistentes[${i}].InstitucionId" class="asi-inst" onchange="syncAsisInst(this)">` +
+                  `<option value="" data-nombre="">— Sin institución</option>` +
+                  INSTITUCIONES.map(function(x){ return '<option value="' + x.Id + '" data-nombre="' + x.Nombre + '">' + x.Nombre + '</option>'; }).join('') +
+                  `</select>` +
+                  `<input type="hidden" name="Asistentes[${i}].Institucion" value="" /></div>` +
                   `<div class="field"><label>Departamento / Área</label><input name="Asistentes[${i}].Departamento" /></div>` +
                   `<div class="field"><label>Correo</label><input name="Asistentes[${i}].Correo" type="email" /></div>` +
                   `<div class="field"><label>Teléfono</label><input name="Asistentes[${i}].Telefono" type="tel" /></div>` +
@@ -670,11 +706,25 @@
                 .filter(function (v) { return v.length > 0; });
         }
 
+        // Contacto del directorio cuyo nombre coincide (para vincular participantes al directorio)
+        function contactoPorNombre(nombre) {
+            return CONTACTOS_DIR.filter(function (c) { return c.nombre === nombre; })[0] || null;
+        }
+
+        // Mantiene el hidden ResponsableContactoId alineado con la opción elegida
+        function syncRespCid(sel) {
+            var hid = sel.parentElement.querySelector('.resp-cid');
+            if (!hid) return;
+            var op = sel.selectedOptions[0];
+            hid.value = (op && op.dataset.cid) || '';
+        }
+
         function actualizarResponsables() {
             var nombres = nombresAsistentes();
             var instituciones = institucionesSeleccionadas.map(function (id) { return nombreInstitucion(id); });
             document.querySelectorAll('#acuerdos-list .resp-select').forEach(function (sel) {
                 var actual = sel.dataset.selected !== undefined ? sel.dataset.selected : sel.value;
+                var actualCid = sel.dataset.selectedCid || '';
                 sel.innerHTML = '';
                 var blank = document.createElement('option');
                 blank.value = ''; blank.textContent = '— Seleccione —';
@@ -687,6 +737,9 @@
                     valores.forEach(function (n) {
                         var op = document.createElement('option');
                         op.value = n; op.textContent = n;
+                        // Un participante que existe en el directorio hereda su id de contacto
+                        var c = contactoPorNombre(n);
+                        if (c) op.dataset.cid = c.id;
                         if (n === actual) op.selected = true;
                         gp.appendChild(op);
                     });
@@ -701,8 +754,9 @@
                     CONTACTOS_DIR.forEach(function (c) {
                         var op = document.createElement('option');
                         op.value = c.nombre;
+                        op.dataset.cid = c.id;
                         op.textContent = c.cargo ? c.nombre + ' — ' + c.cargo : c.nombre;
-                        if (c.nombre === actual) op.selected = true;
+                        if (actualCid ? String(c.id) === actualCid : c.nombre === actual) op.selected = true;
                         gp.appendChild(op);
                     });
                     sel.appendChild(gp);
@@ -716,6 +770,10 @@
                     sel.appendChild(op);
                 }
                 delete sel.dataset.selected;
+                delete sel.dataset.selectedCid;
+
+                sel.onchange = function () { syncRespCid(sel); };
+                syncRespCid(sel);
             });
         }
 
@@ -734,7 +792,8 @@
                 `<textarea name="Acuerdos[${i}].Compromiso" class="ac-compromiso" rows="2" placeholder="Describa el compromiso…"></textarea>` +
                 `<div class="ac-meta">` +
                   `<div class="field" style="flex:1;min-width:0"><label>Responsable</label>` +
-                  `<select name="Acuerdos[${i}].Responsable" class="resp-select"></select></div>` +
+                  `<select name="Acuerdos[${i}].Responsable" class="resp-select"></select>` +
+                  `<input type="hidden" name="Acuerdos[${i}].ResponsableContactoId" class="resp-cid" value="" /></div>` +
                   `<div class="field" style="width:160px;flex:none"><label>Plazo</label>` +
                   `<input name="Acuerdos[${i}].Plazo" type="date" /></div>` +
                 `</div>`;
