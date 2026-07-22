@@ -175,5 +175,7 @@ public interface IApplicationDbContext
     DbSet<Prefijo>                  Prefijos            { get; }
     DbSet<PlantillaTramite>         PlantillasTramite   { get; }
     DbSet<Notificacion>             Notificaciones      { get; }
+    DbSet<ChatSesion>               ChatSesiones        { get; }
+    DbSet<ChatMensaje>              ChatMensajes        { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }
