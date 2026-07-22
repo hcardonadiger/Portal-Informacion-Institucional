@@ -521,7 +521,7 @@
             contactosUrl: '@contactosUrl',
             plantillaUrl: '@plantillaUrl',
             plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
-            esAdmin: @(Model.EsAdmin ? "true" : "false")
+            esAdmin: @(Model.EsAdmin ? "true" : "false"),
             usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre })))
         };

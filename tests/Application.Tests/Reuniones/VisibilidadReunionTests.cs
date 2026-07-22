@@ -16,7 +16,7 @@ public class VisibilidadReunionTests
         public Guid?       UserId               => id;
         public string?     Nombre               => "u" + id;
         public string?     Correo               => $"u{id}@x.com";
-        public string?     Rol                  => "Tecnico";
+        public string?     Rol                  => "Empleado";
         public bool        IsAuthenticated       => true;
         public bool        EsGlobal             => global;
         public string?     ActiveInstitucionId   => inst.Length > 0 ? inst[0] : null;
