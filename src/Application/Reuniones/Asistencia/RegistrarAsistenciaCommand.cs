@@ -85,7 +85,7 @@ public sealed class RegistrarAsistenciaCommandHandler(
             {
                 // Crear nuevo contacto
                 var nuevoContacto = Contacto.Crear(
-                    d.Nombre, inst.Id, inst.Nombre, null, null, d.Cargo, correo, tel, null, OrigenContacto.Reunion
+                    d.Nombre, inst.Id, inst.Nombre, r.AreaId, r.UnidadId, d.Cargo, correo, tel, null, OrigenContacto.Reunion
                 );
                 await contactoRepo.AddAsync(nuevoContacto, ct);
             }

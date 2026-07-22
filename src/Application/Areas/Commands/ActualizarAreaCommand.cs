@@ -2,7 +2,7 @@ using FluentValidation;
 
 namespace Diger.TramitesEstado.Application.Areas.Commands;
 
-public sealed record ActualizarAreaCommand(string Id, string Nombre, string? Descripcion, string? NombreCorto, string? LogoUrl)
+public sealed record ActualizarAreaCommand(string Id, string Nombre, bool Activo, string? Descripcion, string? NombreCorto, string? LogoUrl)
     : IRequest<Unit>;
 
 public sealed class ActualizarAreaCommandHandler(IAreaRepository repo, IUnitOfWork uow)
@@ -18,6 +18,9 @@ public sealed class ActualizarAreaCommandHandler(IAreaRepository repo, IUnitOfWo
 
         area.Renombrar(cmd.Nombre);
         area.ActualizarDetalles(cmd.Descripcion, cmd.NombreCorto, cmd.LogoUrl);
+        
+        if (cmd.Activo) area.Activar();
+        else area.Desactivar();
         
         repo.Update(area);
         await uow.SaveChangesAsync(ct);

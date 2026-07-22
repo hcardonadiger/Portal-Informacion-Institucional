@@ -150,6 +150,7 @@ public interface IApplicationDbContext
     DbSet<Reunion>                  Reuniones     { get; }
     DbSet<Asistente>                Asistentes    { get; }
     DbSet<AcuerdoReunion>           Acuerdos      { get; }
+    DbSet<ComentarioCompromiso>     ComentariosCompromisos { get; }
     DbSet<Expediente>               Expedientes   { get; }
     DbSet<ExpedienteTramite>        Tramites      { get; }
     DbSet<TramiteRequisito>         Requisitos    { get; }

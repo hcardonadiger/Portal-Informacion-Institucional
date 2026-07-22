@@ -22,7 +22,10 @@ public sealed class CrearContactoCommandHandler(
         var inst = await institucionRepo.GetByIdAsync(cmd.InstitucionId, ct)
             ?? throw new NotFoundException(nameof(Institucion), cmd.InstitucionId);
 
-        var c = Contacto.Crear(cmd.Nombre, inst.Id, inst.Nombre, cmd.AreaId, cmd.UnidadId, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas);
+        var areaId = string.IsNullOrEmpty(cmd.AreaId) ? currentUser.ActiveAreaId : cmd.AreaId;
+        var unidadId = string.IsNullOrEmpty(cmd.UnidadId) ? currentUser.ActiveUnidadId : cmd.UnidadId;
+
+        var c = Contacto.Crear(cmd.Nombre, inst.Id, inst.Nombre, areaId, unidadId, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas);
         await repo.AddAsync(c, ct);
         await uow.SaveChangesAsync(ct);
         return c.Id;

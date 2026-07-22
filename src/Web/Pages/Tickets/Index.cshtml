@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Tickets de soporte";
     var puedeGestionar = User.CanMutate();
-    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
+    var puedeEliminar  = User.IsInRole(nameof(RolUsuario.Administrador));
 
     string EstadoClase(EstadoTicket e) => e switch
     {

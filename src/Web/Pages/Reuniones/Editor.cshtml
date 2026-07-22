@@ -58,7 +58,17 @@
     </div>
   </aside>
 
-  <main class="main">
+  <main class="main @(Model.EsAdmin ? "" : "mode-read-only")" id="reu-main">
+    @if (!Model.EsAdmin)
+    {
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 18px;border-radius:12px;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13.5px;box-shadow:0 2px 8px rgba(30,64,175,.06)">
+            <span style="font-size:18px">👁️</span>
+            <div>
+                <strong>Modo de Solo Lectura</strong>
+                <div style="font-size:12px;font-weight:400;color:#3b82f6;margin-top:2px">Estás en modo visualización. Las reuniones solo pueden ser editadas por un Administrador de la DIGER.</div>
+            </div>
+        </div>
+    }
 
     @* ══ PASO 0: GENERALES ══ *@
     <div class="sec active" id="sec0">
@@ -389,7 +399,10 @@
       </div>
       <div class="nav">
         <button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button>
-        <button class="btn btn-p" type="submit" onclick="syncTodo()">@(Model.ReunionId is null ? "Crear reunión" : "Guardar cambios")</button>
+        @if (Model.EsAdmin)
+        {
+            <button class="btn btn-p" type="submit" onclick="syncTodo()">@(Model.ReunionId is null ? "Crear reunión" : "Guardar cambios")</button>
+        }
       </div>
     </div>
 
@@ -868,4 +881,19 @@
     }
   });
     </script>
+    @if (!Model.EsAdmin)
+    {
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                function disableReadOnlyInputs() {
+                    document.querySelectorAll("#reu-main input, #reu-main select, #reu-main textarea").forEach(function(el) {
+                        el.disabled = true;
+                    });
+                }
+                disableReadOnlyInputs();
+                setTimeout(disableReadOnlyInputs, 300);
+                setTimeout(disableReadOnlyInputs, 1000);
+            });
+        </script>
+    }
 }

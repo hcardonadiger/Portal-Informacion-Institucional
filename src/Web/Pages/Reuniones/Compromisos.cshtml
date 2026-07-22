@@ -20,26 +20,30 @@
     </div>
 
     @* ── KPIs ──────────────────────────────────────────────────── *@
-    <div class="row2" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.25rem">
+    <div class="row2" style="grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:1.25rem">
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos">
-            <div style="font-size:24px;font-weight:800;color:#0a2d6e">@res.Total</div>
+            <div style="font-size:22px;font-weight:800;color:#0a2d6e">@res.Total</div>
             <div class="prog-label">Total</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.Pendiente">
-            <div style="font-size:24px;font-weight:800;color:#0c447c">@res.Pendientes</div>
-            <div class="prog-label">Pendientes</div>
+            <div style="font-size:22px;font-weight:800;color:#0c447c">@res.Pendientes</div>
+            <div class="prog-label">Pendiente revisar</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.EnProgreso">
-            <div style="font-size:24px;font-weight:800;color:#854f0b">@res.EnProgreso</div>
-            <div class="prog-label">En progreso</div>
+            <div style="font-size:22px;font-weight:800;color:#854f0b">@res.EnProgreso</div>
+            <div class="prog-label">En proceso</div>
+        </a>
+        <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.EnRevision">
+            <div style="font-size:22px;font-weight:800;color:#6b21a8">@res.EnRevision</div>
+            <div class="prog-label">En revisión</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-soloVencidos="true">
-            <div style="font-size:24px;font-weight:800;color:#a32d2d">@res.Vencidos</div>
+            <div style="font-size:22px;font-weight:800;color:#a32d2d">@res.Vencidos</div>
             <div class="prog-label">Vencidos</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.Cumplido">
-            <div style="font-size:24px;font-weight:800;color:#27500a">@res.Cumplidos</div>
-            <div class="prog-label">Cumplidos</div>
+            <div style="font-size:22px;font-weight:800;color:#27500a">@res.Cumplidos</div>
+            <div class="prog-label">Aceptados</div>
         </a>
     </div>
 
@@ -103,7 +107,7 @@
                     <th>Responsable</th>
                     <th>Plazo</th>
                     <th>Estado</th>
-                    @if (Model.PuedeGestionar) { <th style="width:1%"></th> }
+                    <th style="text-align:right">Acción</th>
                 </tr>
             </thead>
             <tbody>
@@ -112,7 +116,14 @@
                     var ec = CompromisoUi.Color(c.Estado);
                     <tr>
                         <td style="font-weight:600;color:#0a2d6e">
-                            @c.Compromiso
+                            <a asp-page="/Reuniones/CompromisoDetalle" asp-route-id="@c.Id" style="color:#0a2d6e;text-decoration:none">@c.Compromiso</a>
+                            @if (c.NumComentarios > 0 || c.NumArchivos > 0)
+                            {
+                                <div style="display:flex;gap:8px;margin-top:3px;font-size:11.5px;color:#64748b;font-weight:400">
+                                    @if (c.NumComentarios > 0) { <span>💬 @c.NumComentarios comentario@(c.NumComentarios == 1 ? "" : "s")</span> }
+                                    @if (c.NumArchivos > 0) { <span>📎 @c.NumArchivos archivo@(c.NumArchivos == 1 ? "" : "s")</span> }
+                                </div>
+                            }
                             @if (!string.IsNullOrWhiteSpace(c.NotaSeguimiento))
                             {
                                 <div class="res-meta" style="font-weight:400;margin-top:2px">@c.NotaSeguimiento</div>
@@ -135,36 +146,9 @@
                             }
                         </td>
                         <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@CompromisoUi.Label(c.Estado)</span></td>
-                        @if (Model.PuedeGestionar)
-                        {
-                            <td style="text-align:right">
-                                <details class="seg-upd">
-                                    <summary class="btns" style="font-size:12.5px;padding:6px 12px">Actualizar</summary>
-                                    <form method="post" asp-page-handler="Actualizar" class="seg-upd-form">
-                                        <input type="hidden" name="id" value="@c.Id" />
-                                        @* preservar filtros *@
-                                        <input type="hidden" name="q" value="@Model.Q" />
-                                        <input type="hidden" name="festado" value="@(Model.Estado?.ToString())" />
-                                        <input type="hidden" name="finstitucionId" value="@(Model.InstitucionId?.ToString())" />
-                                        <input type="hidden" name="fresponsable" value="@Model.Responsable" />
-                                        <input type="hidden" name="fsoloVencidos" value="@Model.SoloVencidos.ToString().ToLowerInvariant()" />
-                                        <input type="hidden" name="fpage" value="@r.Pagina.Page" />
-                                        <label>Estado</label>
-                                        <select name="estado">
-                                            @foreach (var e in CompromisoUi.Estados)
-                                            {
-                                                <option value="@e" selected="@(c.Estado == e)">@CompromisoUi.Label(e)</option>
-                                            }
-                                        </select>
-                                        <label>Fecha de cumplimiento</label>
-                                        <input type="date" name="fechaCumplimiento" value="@(c.FechaCumplimiento?.ToString("yyyy-MM-dd"))" />
-                                        <label>Nota de seguimiento</label>
-                                        <textarea name="nota" rows="2" placeholder="Avance / observación…">@c.NotaSeguimiento</textarea>
-                                        <button class="btnp" type="submit" style="margin-top:.5rem">Guardar</button>
-                                    </form>
-                                </details>
-                            </td>
-                        }
+                        <td style="text-align:right;white-space:nowrap">
+                            <a class="btns" asp-page="/Reuniones/CompromisoDetalle" asp-route-id="@c.Id" style="font-size:12.5px;padding:6px 12px">💬 Avance</a>
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -192,7 +176,7 @@
                                     <th>Responsable</th>
                                     <th>Plazo</th>
                                     <th>Estado</th>
-                                    @if (Model.PuedeGestionar) { <th style="width:1%"></th> }
+                                    <th style="text-align:right">Acción</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -223,36 +207,9 @@
                                             }
                                         </td>
                                         <td><span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700">@CompromisoUi.Label(c.Estado)</span></td>
-                                        @if (Model.PuedeGestionar)
-                                        {
-                                            <td style="text-align:right">
-                                                <details class="seg-upd">
-                                                    <summary class="btns" style="font-size:12.5px;padding:6px 12px">Actualizar</summary>
-                                                    <form method="post" asp-page-handler="Actualizar" class="seg-upd-form">
-                                                        <input type="hidden" name="id" value="@c.Id" />
-                                                        @* preservar filtros *@
-                                                        <input type="hidden" name="q" value="@Model.Q" />
-                                                        <input type="hidden" name="festado" value="@(Model.Estado?.ToString())" />
-                                                        <input type="hidden" name="finstitucionId" value="@(Model.InstitucionId?.ToString())" />
-                                                        <input type="hidden" name="fresponsable" value="@Model.Responsable" />
-                                                        <input type="hidden" name="fsoloVencidos" value="@Model.SoloVencidos.ToString().ToLowerInvariant()" />
-                                                        <input type="hidden" name="fpage" value="@r.Pagina.Page" />
-                                                        <label>Estado</label>
-                                                        <select name="estado">
-                                                            @foreach (var e in CompromisoUi.Estados)
-                                                            {
-                                                                <option value="@e" selected="@(c.Estado == e)">@CompromisoUi.Label(e)</option>
-                                                            }
-                                                        </select>
-                                                        <label>Fecha de cumplimiento</label>
-                                                        <input type="date" name="fechaCumplimiento" value="@(c.FechaCumplimiento?.ToString("yyyy-MM-dd"))" />
-                                                        <label>Nota de seguimiento</label>
-                                                        <textarea name="nota" rows="2" placeholder="Avance / observación…">@c.NotaSeguimiento</textarea>
-                                                        <button class="btnp" type="submit" style="margin-top:.5rem">Guardar</button>
-                                                    </form>
-                                                </details>
-                                            </td>
-                                        }
+                                        <td style="text-align:right;white-space:nowrap">
+                                            <a class="btns" asp-page="/Reuniones/CompromisoDetalle" asp-route-id="@c.Id" style="font-size:12.5px;padding:6px 12px">💬 Avance</a>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>

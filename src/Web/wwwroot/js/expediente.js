@@ -314,6 +314,7 @@ function renderPerfilesInfra(){
   }).join('');
 }
 function togglePerfil(k, forceState){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin && forceState === undefined) return;
   var chk = document.getElementById('perfil_chk_'+k);
   if(!chk) return;
   if(forceState===undefined) chk.checked = !chk.checked; else chk.checked = forceState;
@@ -339,6 +340,7 @@ function renderDatacenterCond(){
   }).join('');
 }
 function toggleDcCond(k, forceState){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin && forceState === undefined) return;
   var chk = document.getElementById('dc_cond_'+k);
   if(!chk) return;
   if(forceState===undefined) chk.checked = !chk.checked; else chk.checked = forceState;
@@ -409,6 +411,14 @@ function poblarInfra(inf){
   }); });
 }
 
+function aplicarModoReadOnly(){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin){
+    document.querySelectorAll('#form-main input, #form-main select, #form-main textarea').forEach(function(el){
+      el.disabled = true;
+    });
+  }
+}
+
 // ── NAVEGACIÓN ──────────────────────────────────────────────
 function ir(n){
   if(n === 4) renderModeloReqs(activeTram);
@@ -416,6 +426,7 @@ function ir(n){
   document.querySelectorAll('.sbi').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('sec'+n).classList.add('active');
   document.getElementById('sb'+n).classList.add('active');
+  aplicarModoReadOnly();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -643,6 +654,7 @@ function actualizarCodsTramite(){
 }
 
 function migrarDatosTramite(i){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin) return;
   var sel = document.getElementById('migrar-src-'+i);
   var j = parseInt(sel && sel.value);
   if(isNaN(j) || j < 0 || j >= i) return;
@@ -717,6 +729,7 @@ function selTram(i){
   renderFlujosPropuesto();
   renderModeloReqs(i);
   actualizarBVA();
+  aplicarModoReadOnly();
 }
 
 // ── FICHAS POR TRÁMITE ──────────────────────────────────────
@@ -739,7 +752,7 @@ function fichaHTML(i, nombre, show){
   var codBadge = codes[i] ? ' <span class="tram-cod">'+escHtml(codes[i])+'</span>' : '';
 
   var migrarHTML = '';
-  if(i > 0){
+  if(i > 0 && window.__EXPMETA__ && window.__EXPMETA__.esAdmin){
     var opts = '';
     for(var j=0;j<i;j++){
       var lbl = (codes[j]||('Trámite '+(j+1))) + (names[j]?' — '+escHtml(names[j].length>35?names[j].slice(0,33)+'…':names[j]):'');
@@ -1174,6 +1187,7 @@ function actualizarEstados(){
 // ── PILLS ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function(){
   document.addEventListener('click', function(e){
+    if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin) return;
     var pill = e.target.closest('.tp');
     if(!pill) return;
     var tg = pill.closest('.tg');

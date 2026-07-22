@@ -30,7 +30,10 @@
 <div class="acta-toolbar">
     <a class="btns" asp-page="/Reuniones/Index">← Volver</a>
     <div style="display:flex;gap:8px">
-        <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
+        @if (Model.EsAdmin)
+        {
+            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
+        }
         <button class="btnp" type="button" onclick="window.print()">Imprimir / PDF</button>
     </div>
 </div>
@@ -74,32 +77,38 @@
                 </li>
             }
         </ul>
-        <form method="post" asp-page-handler="Desenlazar" asp-route-id="@Model.ReunionId" style="margin-top:.6rem">
-            <button type="submit" class="btns" style="color:var(--diger-danger);border-color:#fca5a5"
-                    onclick="return confirm('¿Quitar esta reunión del hilo?')">Quitar esta reunión del hilo</button>
-        </form>
+        @if (Model.EsAdmin)
+        {
+            <form method="post" asp-page-handler="Desenlazar" asp-route-id="@Model.ReunionId" style="margin-top:.6rem">
+                <button type="submit" class="btns" style="color:var(--diger-danger);border-color:#fca5a5"
+                        onclick="return confirm('¿Quitar esta reunión del hilo?')">Quitar esta reunión del hilo</button>
+            </form>
+        }
     }
 
-    <form method="post" asp-page-handler="Enlazar" asp-route-id="@Model.ReunionId"
-          style="margin-top:1rem;border-top:1px solid var(--diger-border);padding-top:1rem">
-        <label style="display:block;font-size:13px;font-weight:600;color:var(--diger-text-secondary);margin-bottom:6px">
-            Enlazar con otra reunión
-        </label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <select name="otraReunionId" style="flex:1;min-width:260px;padding:9px 12px;border:1.5px solid var(--diger-border);border-radius:9px;font-family:inherit;font-size:14px;background:var(--diger-bg-soft)">
-                <option value="0">— Seleccione una reunión —</option>
-                @foreach (var e in Model.Enlazables)
-                {
-                    <option value="@e.Id">@e.Titulo@(e.Fecha is null ? "" : " (" + e.Fecha.Value.ToString("dd/MM/yyyy") + ")")</option>
-                }
-            </select>
-            <button type="submit" class="btnp">Enlazar</button>
-        </div>
-        @if (Model.Enlazables.Count == 0)
-        {
-            <p style="color:var(--diger-text-faint);font-size:12px;margin:.5rem 0 0">No hay otras reuniones disponibles para enlazar.</p>
-        }
-    </form>
+    @if (Model.EsAdmin)
+    {
+        <form method="post" asp-page-handler="Enlazar" asp-route-id="@Model.ReunionId"
+              style="margin-top:1rem;border-top:1px solid var(--diger-border);padding-top:1rem">
+            <label style="display:block;font-size:13px;font-weight:600;color:var(--diger-text-secondary);margin-bottom:6px">
+                Enlazar con otra reunión
+            </label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select name="otraReunionId" style="flex:1;min-width:260px;padding:9px 12px;border:1.5px solid var(--diger-border);border-radius:9px;font-family:inherit;font-size:14px;background:var(--diger-bg-soft)">
+                    <option value="0">— Seleccione una reunión —</option>
+                    @foreach (var e in Model.Enlazables)
+                    {
+                        <option value="@e.Id">@e.Titulo@(e.Fecha is null ? "" : " (" + e.Fecha.Value.ToString("dd/MM/yyyy") + ")")</option>
+                    }
+                </select>
+                <button type="submit" class="btnp">Enlazar</button>
+            </div>
+            @if (Model.Enlazables.Count == 0)
+            {
+                <p style="color:var(--diger-text-faint);font-size:12px;margin:.5rem 0 0">No hay otras reuniones disponibles para enlazar.</p>
+            }
+        </form>
+    }
 </section>
 
 <article class="acta">
