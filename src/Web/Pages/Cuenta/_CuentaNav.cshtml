@@ -1,0 +1,10 @@
+@{
+    string cur = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+    string Cls(string p) => string.Equals(cur, p, StringComparison.OrdinalIgnoreCase)
+        ? "cuenta-nav-link on" : "cuenta-nav-link";
+}
+<nav class="cuenta-nav">
+    <a class="@Cls("/Cuenta/Perfil")" asp-page="/Cuenta/Perfil">Perfil</a>
+    <a class="@Cls("/Cuenta/Contrasena")" asp-page="/Cuenta/Contrasena">Contraseña</a>
+    <a class="@Cls("/Cuenta/Certificado")" asp-page="/Cuenta/Certificado">Certificado digital</a>
+</nav>

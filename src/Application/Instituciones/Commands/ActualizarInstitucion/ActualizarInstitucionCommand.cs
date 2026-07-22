@@ -4,7 +4,10 @@ using Diger.TramitesEstado.Application.Instituciones.Commands.CrearInstitucion;
 
 namespace Diger.TramitesEstado.Application.Instituciones.Commands.ActualizarInstitucion;
 
-public sealed record ActualizarInstitucionCommand(string Id, string Nombre, bool Activo, List<string> Tramites)
+public sealed record ActualizarInstitucionCommand(
+    string Id, string Nombre, bool Activo, List<string> Tramites,
+    string? LogoUrl = null, string? NombreCorto = null,
+    string? Color = null, string? Descripcion = null)
     : IRequest<Unit>;
 
 public sealed class ActualizarInstitucionCommandHandler(
@@ -22,6 +25,7 @@ public sealed class ActualizarInstitucionCommandHandler(
 
         inst.Renombrar(cmd.Nombre);
         if (cmd.Activo) inst.Activar(); else inst.Desactivar();
+        inst.ActualizarDetalles(cmd.Descripcion, cmd.NombreCorto, cmd.LogoUrl, null, cmd.Color);
         CrearInstitucionCommandHandler.AsignarTramites(inst, cmd.Tramites);
 
         repo.Update(inst);

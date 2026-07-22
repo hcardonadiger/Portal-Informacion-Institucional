@@ -1,59 +1,202 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Cuenta.AyudaCertificadoModel
 @{
-    ViewData["Title"] = "Ayuda de Certificado Digital";
+    ViewData["Title"] = "Ayuda: inicio de sesión con certificado digital";
     Layout = "_Layout";
 }
 
-<div class="container" style="max-width:700px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;margin-top:2rem;">
-        <a class="btns" asp-page="/Cuenta/Login" style="font-size:13px">← Volver al Login</a>
-        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Uso de Certificado Digital</h2>
+<div class="container" style="max-width:860px">
+    <div style="display:flex;align-items:center;gap:14px;margin:2rem 0 1.5rem;flex-wrap:wrap">
+        <a class="btns" asp-page="/Cuenta/Login" style="font-size:13px">← Volver al inicio de sesión</a>
     </div>
 
-    <div class="card" style="line-height:1.6; color:#374151;">
-        <h3 class="sec-h" style="margin-bottom:.5rem;">¿Qué es el inicio de sesión con certificado?</h3>
-        <p style="margin-top:0; margin-bottom:1.5rem;">
-            El inicio de sesión por certificado te permite acceder a la plataforma DIGER sin necesidad de ingresar tu correo y contraseña. Utiliza una llave criptográfica instalada en tu equipo para identificarte de forma automática y mucho más segura.
+    <div style="margin-bottom:1.5rem">
+        <h1 class="page-title">🪪 Inicio de sesión con certificado digital</h1>
+        <p class="page-subtitle">
+            Además de su usuario y contraseña, puede ingresar al portal de Digitalización de Trámites con su
+            certificado digital emitido por una autoridad certificadora reconocida. El certificado lo identifica
+            de forma segura sin necesidad de escribir su contraseña.
         </p>
+    </div>
 
-        <h3 class="sec-h" style="margin-bottom:.5rem;">Pasos para usar tu certificado digital</h3>
-        
-        <ol style="padding-left:1.5rem; margin-bottom:1.5rem;">
-            <li style="margin-bottom:.8rem;">
-                <strong>Obtén tu certificado:</strong>
-                <br/>
-                Debes tener un certificado personal en formato <code>.pfx</code> o <code>.cer</code> (con clave privada) que haya sido emitido por tu institución, o puedes crear uno autofirmado para pruebas de desarrollo.
-            </li>
-            <li style="margin-bottom:.8rem;">
-                <strong>Instala el certificado en tu PC:</strong>
-                <br/>
-                Haz doble clic en el archivo <code>.pfx</code> en Windows, sigue el asistente de instalación y colócalo en tu almacén "Personal" (Current User).
-            </li>
-            <li style="margin-bottom:.8rem;">
-                <strong>Obtén la Huella (Thumbprint):</strong>
-                <br/>
-                Abre el certificado instalado (puedes buscar "Administrar certificados de usuario" en Windows). Haz doble clic en tu certificado, ve a la pestaña <strong>Detalles</strong>, busca la propiedad <strong>Huella digital (Thumbprint)</strong> y copia los caracteres (ej. <code>a1b2c3d4...</code>).
-            </li>
-            <li style="margin-bottom:.8rem;">
-                <strong>Vincula tu certificado a tu cuenta:</strong>
-                <br/>
-                Entra al portal con tu correo y contraseña (o pídele a un Administrador que lo haga). Ve a la sección de <strong>Usuarios</strong>, edita tu perfil y pega la Huella en el campo "Thumbprint del Certificado Digital". Guarda los cambios.
-            </li>
-            <li style="margin-bottom:.8rem;">
-                <strong>Inicia sesión:</strong>
-                <br/>
-                Cierra sesión. Vuelve a la página de login y da clic en <strong>"Ingresar con Certificado"</strong>. Tu navegador abrirá una ventana para que selecciones tu certificado. ¡Eso es todo!
-            </li>
+    <div class="card" style="line-height:1.65;color:var(--diger-text-secondary)">
+        <h3 class="cuenta-card-title">¿Qué necesita?</h3>
+        <ul style="padding-left:1.4rem;margin:0 0 .5rem">
+            <li style="margin-bottom:.6rem">Un <strong>certificado digital vigente</strong> con uso de autenticación de cliente,
+                instalado en su equipo o disponible mediante su token, tarjeta o servicio de firma en la nube (por ejemplo, Bit4id).</li>
+            <li style="margin-bottom:.6rem">Si su certificado es de firma remota (nube), el <strong>cliente de Bit4id</strong> debe estar
+                instalado y su sesión activa; el sistema le pedirá su <strong>PIN</strong> cuando sea necesario.</li>
+            <li>Un navegador actualizado (Chrome o Edge recomendados).</li>
+        </ul>
+    </div>
+
+    <div class="card" style="line-height:1.65;color:var(--diger-text-secondary)">
+        <h3 class="cuenta-card-title">Primera vez: vincular su certificado</h3>
+        <p style="margin-top:0">Antes de poder ingresar con certificado debe vincularlo a su cuenta <strong>una única vez</strong>:</p>
+        <ol style="padding-left:1.4rem;margin:0 0 1rem">
+            <li style="margin-bottom:.5rem">Inicie sesión normalmente con su <strong>correo y contraseña</strong>.</li>
+            <li style="margin-bottom:.5rem">Abra su menú de usuario (arriba a la derecha) y entre a <strong>Mi perfil</strong>.</li>
+            <li style="margin-bottom:.5rem">En las pestañas elija <strong>Certificado digital</strong>.</li>
+            <li>Presione <strong>"Vincular certificado"</strong>. Si el navegador le muestra un selector, elija su certificado;
+                si su certificado usa PIN, escríbalo cuando se lo pida.</li>
         </ol>
-
-        <div style="background-color:#fcfcfd; border:1px solid #eef1f7; border-radius:8px; padding:1rem;">
-            <strong style="color:#0a2d6e; font-size:14px;">¿Necesitas un certificado falso para pruebas locales?</strong>
-            <p style="margin:0; margin-top:.5rem; font-size:13px; color:#6b7280;">
-                Si eres desarrollador, puedes abrir PowerShell como administrador y ejecutar el siguiente comando para generar un certificado válido para pruebas:
-            </p>
-            <pre style="background:#1e1e1e; color:#d4d4d4; padding:1rem; border-radius:6px; overflow-x:auto; margin-top:.5rem; font-size:12px;"><code>$cert = New-SelfSignedCertificate -Type Custom -Subject "CN=UsuarioPruebaDIGER" -KeyUsage DigitalSignature -FriendlyName "Certificado Falso DIGER" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @@("2.5.29.37={text}1.3.6.1.5.5.7.3.2")
-Write-Host "Huella (Thumbprint): $($cert.Thumbprint)"</code></pre>
+        <div class="ayuda-info">
+            <span>ℹ️</span>
+            <div>Su cuenta admite <strong>un certificado a la vez</strong>. Si necesita cambiarlo, vuelva a
+                <strong>Mi perfil → Certificado digital</strong> y use <strong>"Actualizar certificado"</strong>.</div>
         </div>
     </div>
+
+    <div class="card" style="line-height:1.65;color:var(--diger-text-secondary)">
+        <h3 class="cuenta-card-title">Ingresar con su certificado</h3>
+        <ol style="padding-left:1.4rem;margin:0">
+            <li style="margin-bottom:.5rem">En la pantalla de inicio de sesión presione <strong>"Ingresar con Certificado"</strong>.</li>
+            <li style="margin-bottom:.5rem">El navegador mostrará la lista de sus certificados: <strong>seleccione el suyo</strong> y acepte.</li>
+            <li style="margin-bottom:.5rem">Si su certificado es de nube o token, escriba su <strong>PIN</strong> cuando se lo solicite.</li>
+            <li>Listo: entrará directamente al portal.</li>
+        </ol>
+    </div>
+
+    <div class="card" style="line-height:1.65;color:var(--diger-text-secondary)">
+        <h3 class="cuenta-card-title">Problemas frecuentes</h3>
+
+        <details class="ayuda-faq">
+            <summary>No aparece la ventana para elegir el certificado</summary>
+            <div class="ayuda-faq-body">
+                <ul style="padding-left:1.2rem;margin:0">
+                    <li>Verifique que su certificado esté instalado: presione la tecla Windows, escriba
+                        <code>certmgr.msc</code> y revise la carpeta <strong>Personal → Certificados</strong>.</li>
+                    <li>Si usa token o tarjeta, conéctelo <strong>antes</strong> de abrir el navegador.</li>
+                    <li>Cierre <strong>todas</strong> las ventanas del navegador y vuelva a intentar: el navegador
+                        recuerda decisiones anteriores durante toda su sesión.</li>
+                </ul>
+            </div>
+        </details>
+
+        <details class="ayuda-faq">
+            <summary>"Este certificado aún no está vinculado a ninguna cuenta"</summary>
+            <div class="ayuda-faq-body">
+                Su certificado es válido pero el sistema no sabe a qué cuenta pertenece. Siga los pasos de
+                <strong>"Primera vez: vincular su certificado"</strong>: entre con su contraseña y vincúlelo desde
+                <strong>Mi perfil → Certificado digital</strong>.
+            </div>
+        </details>
+
+        <details class="ayuda-faq">
+            <summary>"El certificado digital presentado no es válido"</summary>
+            <div class="ayuda-faq-body">
+                El mensaje indica la razón: certificado <strong>vencido</strong>, <strong>revocado</strong> o emitido por una
+                autoridad <strong>no reconocida</strong> por el sistema. Verifique la vigencia de su certificado y, si considera
+                que es un error, contacte al administrador del sistema indicando el mensaje exacto.
+            </div>
+        </details>
+
+        <details class="ayuda-faq">
+            <summary>Elegí el certificado equivocado y quiero usar otro</summary>
+            <div class="ayuda-faq-body">
+                El navegador recuerda el certificado elegido mientras esté abierto. Para volver a elegir:
+                <ul style="padding-left:1.2rem;margin:.4rem 0 0">
+                    <li>abra el sitio en una <strong>ventana de incógnito/InPrivate</strong>, o</li>
+                    <li>cierre todas las ventanas del navegador y vuelva a entrar
+                        (en Chrome/Edge: escriba <code>chrome://restart</code> en la barra de direcciones).</li>
+                </ul>
+            </div>
+        </details>
+
+        <details class="ayuda-faq">
+            <summary>No me pidió el PIN, ¿es normal?</summary>
+            <div class="ayuda-faq-body">
+                Sí. El PIN se solicita únicamente cuando el certificado firma por primera vez en la sesión del navegador;
+                después la sesión queda establecida y no vuelve a pedirse hasta que cierre el navegador o expire la sesión
+                de su proveedor de firma. Por esta razón, <strong>no deje su equipo desatendido con el navegador abierto</strong>.
+            </div>
+        </details>
+
+        <details class="ayuda-faq">
+            <summary>¿Puedo quitar el certificado de mi cuenta?</summary>
+            <div class="ayuda-faq-body">
+                Sí. Entre a <strong>Mi perfil → Certificado digital</strong> y presione <strong>"Desvincular"</strong>.
+                Su contraseña seguirá funcionando normalmente.
+            </div>
+        </details>
+    </div>
+
+    <div style="margin:1.5rem 0 2rem">
+        <a class="btns" asp-page="/Cuenta/Login">← Volver al inicio de sesión</a>
+    </div>
 </div>
+
+<style>
+    .ayuda-info {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        background: var(--diger-blue-light);
+        color: var(--diger-blue-dark);
+        border: 1px solid var(--diger-blue-pale);
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 13.5px;
+        line-height: 1.55;
+    }
+
+    .ayuda-faq {
+        border: 1px solid var(--diger-border);
+        border-radius: 10px;
+        margin-bottom: .6rem;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .ayuda-faq[open] {
+        box-shadow: var(--diger-shadow-sm);
+    }
+
+    .ayuda-faq > summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--diger-blue-dark);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .ayuda-faq > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .ayuda-faq > summary::after {
+        content: "▾";
+        color: var(--diger-text-muted);
+        font-size: 12px;
+        transition: transform .18s ease;
+    }
+
+    .ayuda-faq[open] > summary::after {
+        transform: rotate(180deg);
+    }
+
+    .ayuda-faq > summary:hover {
+        background: var(--diger-bg-soft);
+    }
+
+    .ayuda-faq-body {
+        padding: 0 16px 14px;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--diger-text-secondary);
+    }
+
+    .ayuda-faq-body code,
+    .card code {
+        background: var(--diger-blue-light);
+        color: var(--diger-blue-dark);
+        padding: 1px 6px;
+        border-radius: 5px;
+        font-size: 12.5px;
+    }
+</style>

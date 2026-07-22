@@ -47,6 +47,43 @@
             </div>
         }
 
+        @* ── Identidad visual ── *@
+        <div style="border-top:1px solid var(--diger-border);margin:16px 0 14px;padding-top:14px">
+            <div style="font-size:12px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Identidad visual</div>
+            <div class="row2" style="gap:14px">
+                <div class="field">
+                    <label>Nombre corto / sigla</label>
+                    <input asp-for="NombreCorto" placeholder="Ej: CNBS" maxlength="20" style="text-transform:uppercase" />
+                    <span class="hint">Se muestra en el encabezado de la aplicación para los usuarios de esta institución.</span>
+                </div>
+                <div class="field" style="max-width:160px">
+                    <label>Color institucional</label>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input type="color" asp-for="Color" id="color-picker" style="width:44px;height:38px;padding:2px;border-radius:6px;border:1.5px solid var(--diger-border);cursor:pointer" />
+                        <input asp-for="Color" id="color-hex" placeholder="#02395e" maxlength="7"
+                               style="flex:1;font-family:monospace;font-size:13px"
+                               oninput="syncColor('hex')" />
+                    </div>
+                    <span class="hint">Color primario de la institución (hex, ej: #1a5276).</span>
+                </div>
+            </div>
+            <div class="field">
+                <label>URL del logo</label>
+                <input asp-for="LogoUrl" type="url" placeholder="https://…/logo.png" />
+                <span class="hint">Imagen cuadrada o rectangular, fondo transparente recomendado (PNG/SVG).</span>
+                @if (!string.IsNullOrEmpty(Model.LogoUrl))
+                {
+                    <div style="margin-top:8px">
+                        <img src="@Model.LogoUrl" alt="Logo actual" style="max-height:48px;max-width:180px;object-fit:contain;border:1px solid var(--diger-border);border-radius:6px;padding:4px;background:#f8fafc" />
+                    </div>
+                }
+            </div>
+            <div class="field">
+                <label>Descripción</label>
+                <textarea asp-for="Descripcion" rows="2" placeholder="Descripción corta de la institución (opcional)"></textarea>
+            </div>
+        </div>
+
         <div class="field">
             <label>Trámites de la institución <span style="font-weight:400;color:#6b7fa3">— uno por línea</span></label>
             <textarea asp-for="TramitesText" style="min-height:200px;font-family:inherit"
@@ -82,4 +119,14 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        var picker = document.getElementById('color-picker');
+        var hex    = document.getElementById('color-hex');
+        if (picker && hex) {
+            picker.addEventListener('input', function () { hex.value = picker.value; });
+            hex.addEventListener('input', function () {
+                if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) picker.value = hex.value;
+            });
+        }
+    </script>
 }

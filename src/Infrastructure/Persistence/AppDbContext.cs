@@ -40,6 +40,7 @@ public sealed class AppDbContext(
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
     public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
+    public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -286,6 +287,7 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
         b.Property(x => x.Visibilidad).HasConversion<string>().HasMaxLength(20).HasDefaultValue(VisibilidadReunion.Publica);
 
         b.HasIndex(x => x.Fecha);
+        b.HasIndex(x => x.HiloId);
         b.HasIndex(x => new { x.Visibilidad, x.CreadoPorId });
         b.HasIndex(x => x.RegistroToken).IsUnique();
         b.HasIndex(x => x.OrigenExternoId)
@@ -336,7 +338,10 @@ public sealed class AsistenteConfiguration : IEntityTypeConfiguration<Asistente>
         b.Property(x => x.Departamento).HasMaxLength(150);
         b.Property(x => x.Correo).HasMaxLength(200);
         b.Property(x => x.Telefono).HasMaxLength(40);
+        b.Property(x => x.EsPreregistro).HasDefaultValue(false);
+        b.Property(x => x.Confirmado);
         b.HasIndex(x => x.ReunionId);
+        b.HasIndex(x => x.EsPreregistro);
     }
 }
 
@@ -867,6 +872,21 @@ public sealed class UsuarioTemaConfiguration : IEntityTypeConfiguration<UsuarioT
         b.HasIndex(x => new { x.UsuarioId, x.TemaId }).IsUnique();
         b.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<TemaTicket>().WithMany().HasForeignKey(x => x.TemaId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class NotificacionConfiguration : IEntityTypeConfiguration<Notificacion>
+{
+    public void Configure(EntityTypeBuilder<Notificacion> b)
+    {
+        b.ToTable("Notificaciones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Url).HasMaxLength(500);
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30);
+        b.HasIndex(x => new { x.DestinatarioId, x.Leida });
+        b.HasIndex(x => x.FechaCreacion);
     }
 }
 

@@ -31,6 +31,9 @@ global using Diger.TramitesEstado.Application.Reuniones.Common;
 global using Diger.TramitesEstado.Application.Reuniones.Queries.GetReuniones;
 global using Diger.TramitesEstado.Application.Reuniones.Queries.GetReunionById;
 global using Diger.TramitesEstado.Application.Reuniones.Queries.GetCompromisos;
+global using Diger.TramitesEstado.Application.Reuniones.Queries.Hilo;
+global using Diger.TramitesEstado.Application.Reuniones.Commands.EnlazarReuniones;
+global using Diger.TramitesEstado.Application.Reuniones.Commands.DesenlazarReunion;
 global using Diger.TramitesEstado.Application.Reuniones.Commands.ActualizarSeguimiento;
 global using Diger.TramitesEstado.Application.Reuniones.Asistencia;
 global using Diger.TramitesEstado.Application.Calendario.Queries.GetCalendario;
@@ -65,6 +68,7 @@ global using Diger.TramitesEstado.Application.Usuarios.Commands.AsignarInstituci
 global using Diger.TramitesEstado.Application.Usuarios.Commands.AsignarTemasUsuario;
 global using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarios;
 global using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarioById;
+global using Diger.TramitesEstado.Application.Notificaciones;
 global using MediatR;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Mvc;

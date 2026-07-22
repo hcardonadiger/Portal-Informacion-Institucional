@@ -1,15 +1,23 @@
 /* ══════════════════════════════════════════════════════════════════
    DIGER — Design tokens
-   Valores extraídos de diger.css tal como estaban (sin cambios visuales).
-   Ver DESIGN.md para la referencia completa y las inconsistencias
-   conocidas que quedan pendientes a propósito.
+   Alineados al Manual de Marca DIGER 2026 (azul gobierno + acento dorado
+   + cian), homologados con el portal de Encuestas. Los nombres de token se
+   conservan (--diger-blue*) para no romper referencias existentes.
+   Ver DESIGN.md para la referencia completa.
    ══════════════════════════════════════════════════════════════════ */
 :root {
-    /* Color — texto y superficies */
-    --diger-blue: #1455a4;
-    --diger-blue-dark: #0a2d6e;
-    --diger-blue-light: #e8f0ff;
-    --diger-blue-pale: #c8d5ee;
+    /* Color — marca (azul gobierno, Manual de Marca 2026) */
+    --diger-blue: #02395e;          /* azul gobierno (primario) */
+    --diger-blue-dark: #022a45;     /* azul oscuro — énfasis/degradados/hover */
+    --diger-blue-mid: #1455a4;      /* azul interactivo — estados activos, focus, badges */
+    --diger-blue-light: #e8f0ff;    /* fondo azul muy suave (pills, badges) */
+    --diger-blue-pale: #c8d5ee;     /* borde suave sobre azul claro */
+
+    /* Color — acentos institucionales (Manual de Marca 2026) */
+    --diger-gold: #ad8411;          /* dorado institucional (acento primario) */
+    --diger-gold-light: #c79621;    /* dorado claro */
+    --diger-cyan: #7acbdd;          /* cian (acento secundario) */
+
     --diger-border: #e2e8f0;
     --diger-text: #1a1a1a;
     --diger-text-secondary: #4a5568;

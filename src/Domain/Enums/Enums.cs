@@ -122,6 +122,16 @@ public enum TipoComentarioTicket
     Asignacion   = 3
 }
 
+// ── Tipo de evento que genera una notificación ────────────────────────────
+public enum TipoNotificacion
+{
+    TicketAsignado    = 1,
+    TicketResuelto    = 2,
+    CompromisoVencido = 3,
+    CompromisoProximo = 4,
+    ReuniónMañana     = 5,
+}
+
 // ── Visibilidad de una reunión ────────────────────────────────────────────
 public enum VisibilidadReunion
 {
