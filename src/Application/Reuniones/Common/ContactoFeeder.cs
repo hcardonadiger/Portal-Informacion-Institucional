@@ -66,7 +66,7 @@ internal static class ContactoFeeder
             }
 
             await contactoRepo.AddAsync(
-                Contacto.Crear(a.Nombre, inst.Id, inst.Nombre, null, null, a.Cargo, correo, a.Telefono,
+                Contacto.Crear(a.Nombre, inst.Id, inst.Nombre, r.AreaId, r.UnidadId, a.Cargo, correo, a.Telefono,
                     $"Registrado desde reunión: {r.Titulo}", OrigenContacto.Reunion), ct);
         }
     }

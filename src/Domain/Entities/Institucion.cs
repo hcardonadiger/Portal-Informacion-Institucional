@@ -38,9 +38,9 @@ public sealed class Institucion : BaseAuditableEntity<string>
     private static void ValidarId(string id)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        if (!Regex.IsMatch(id.Trim(), @"^[A-Z0-9]+$"))
+        if (!Regex.IsMatch(id.Trim(), @"^[A-Z0-9\-_]+$"))
         {
-            throw new DomainException("El Id de la Institución solo puede contener letras mayúsculas y números, sin espacios ni símbolos.");
+            throw new DomainException("El Id de la Institución solo puede contener letras mayúsculas, números, guiones (-) y guiones bajos (_), sin espacios.");
         }
     }
 

@@ -159,17 +159,23 @@
                                 </div>
                             </div>
                         }
-                        @if (Acceso.EsAdministrador)
+                        @if (Acceso.EsAdministrador || User.FindFirstValue(AppClaims.ActiveRol) == "JefeInstitucion")
                         {
                             var grpAdmin = EsRuta("/Instituciones") || EsRuta("/Areas") || EsRuta("/Unidades") || EsRuta("/Usuarios") || EsRuta("/Accesos");
                             <div class="nav-group @(grpAdmin ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Administración<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
-                                    <a class="nav-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index">Instituciones</a>
+                                    @if (Acceso.EsAdministrador)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index">Instituciones</a>
+                                    }
                                     <a class="nav-item @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index">Áreas</a>
                                     <a class="nav-item @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index">Unidades</a>
-                                    <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index">Usuarios</a>
-                                    <a class="nav-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index">Accesos</a>
+                                    @if (Acceso.EsAdministrador)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index">Usuarios</a>
+                                        <a class="nav-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index">Accesos</a>
+                                    }
                                 </div>
                             </div>
                         }

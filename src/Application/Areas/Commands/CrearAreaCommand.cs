@@ -27,7 +27,7 @@ public sealed class CrearAreaCommandValidator : AbstractValidator<CrearAreaComma
 {
     public CrearAreaCommandValidator()
     {
-        RuleFor(x => x.Id).NotEmpty().Matches(@"^[A-Z0-9]+$").MaximumLength(20);
+        RuleFor(x => x.Id).NotEmpty().Matches(@"^[A-Z0-9\-_]+$").WithMessage("El ID solo puede contener letras mayúsculas, números, guiones (-) y guiones bajos (_).").MaximumLength(20);
         RuleFor(x => x.InstitucionId).NotEmpty();
         RuleFor(x => x.Nombre).NotEmpty().MaximumLength(150);
     }

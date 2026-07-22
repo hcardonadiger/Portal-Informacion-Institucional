@@ -20,6 +20,7 @@ public sealed class AppDbContext(
     public DbSet<Reunion>                  Reuniones          { get; init; } = default!;
     public DbSet<Asistente>                Asistentes         { get; init; } = default!;
     public DbSet<AcuerdoReunion>           Acuerdos           { get; init; } = default!;
+    public DbSet<ComentarioCompromiso>     ComentariosCompromisos { get; init; } = default!;
     public DbSet<ReunionInstitucion>       ReunionInstituciones { get; init; } = default!;
     public DbSet<Expediente>               Expedientes        { get; init; } = default!;
     public DbSet<ExpedienteTramite>        Tramites           { get; init; } = default!;
@@ -70,21 +71,21 @@ public sealed class AppDbContext(
         mb.Entity<Expediente>().HasQueryFilter(e => !e.IsDeleted && (
             _alcanceGlobal ||
             (_activeRol == "JefeInstitucion" && e.InstitucionId == _activeInst && 
-                (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea) &&
-                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad)) ||
-            (_activeRol == "JefeArea"        && e.AreaId == _activeArea &&
-                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad)) ||
-            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && e.UnidadId == _activeUnidad)
+                (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea || e.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
+            (_activeRol == "JefeArea"        && (e.AreaId == _activeArea || e.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
+            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (e.UnidadId == _activeUnidad || e.UnidadId == null))
         ));
 
         mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
             _alcanceGlobal ||
             (_activeRol == "JefeInstitucion" && c.InstitucionId == _activeInst && 
-                (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea) &&
-                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad)) ||
-            (_activeRol == "JefeArea"        && c.AreaId == _activeArea &&
-                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad)) ||
-            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && c.UnidadId == _activeUnidad)
+                (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea || c.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
+            (_activeRol == "JefeArea"        && (c.AreaId == _activeArea || c.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
+            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (c.UnidadId == _activeUnidad || c.UnidadId == null))
         ));
 
         mb.Entity<Ticket>().HasQueryFilter(t => !t.IsDeleted && (
@@ -103,14 +104,30 @@ public sealed class AppDbContext(
             (r.Visibilidad != VisibilidadReunion.Privada && (
                 _alcanceGlobal ||
                 (_activeRol == "JefeInstitucion" && r.InstitucionId == _activeInst && 
-                    (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea) &&
-                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad)) ||
-                (_activeRol == "JefeArea"        && r.AreaId == _activeArea &&
-                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad)) ||
-                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && r.UnidadId == _activeUnidad)
+                    (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea || r.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
+                (_activeRol == "JefeArea"        && (r.AreaId == _activeArea || r.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
+                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (r.UnidadId == _activeUnidad || r.UnidadId == null))
             )) ||
             (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
         ));
+
+        mb.Entity<Area>().HasQueryFilter(a =>
+            _alcanceGlobal || a.InstitucionId == _activeInst
+        );
+
+        mb.Entity<Unidad>().HasQueryFilter(u =>
+            _alcanceGlobal || Areas.Any(a => a.Id == u.AreaId && a.InstitucionId == _activeInst)
+        );
+
+        mb.Entity<Institucion>().HasQueryFilter(i =>
+            _alcanceGlobal || i.Id == _activeInst
+        );
+
+        mb.Entity<TramiteDefinicion>().HasQueryFilter(t =>
+            _alcanceGlobal || t.InstitucionId == _activeInst
+        );
 
         base.OnModelCreating(mb);
     }
@@ -124,6 +141,30 @@ public sealed class AppDbContext(
         if (hasMutations && _activeRol == "Consultor")
         {
             throw new UnauthorizedAccessException("El rol Consultor es de solo lectura y no puede mutar datos.");
+        }
+
+        // ── Validación de seguridad dura para mutaciones de Áreas y Unidades por Institución ──
+        if (!_alcanceGlobal)
+        {
+            foreach (var entry in ChangeTracker.Entries<Area>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
+            {
+                if (entry.Entity.InstitucionId != _activeInst)
+                {
+                    throw new UnauthorizedAccessException($"No tiene permisos para gestionar áreas en la institución {entry.Entity.InstitucionId}.");
+                }
+            }
+
+            foreach (var entry in ChangeTracker.Entries<Unidad>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
+            {
+                var areaId = entry.Entity.AreaId;
+                var area = Areas.IgnoreQueryFilters().FirstOrDefault(a => a.Id == areaId);
+                if (area == null || area.InstitucionId != _activeInst)
+                {
+                    throw new UnauthorizedAccessException($"No tiene permisos para gestionar unidades en el área {areaId}.");
+                }
+            }
         }
 
         // ── Inyección automática de jerarquía institucional en inserciones ──────
@@ -362,6 +403,23 @@ public sealed class AcuerdoReunionConfiguration : IEntityTypeConfiguration<Acuer
         b.HasIndex(x => x.ReunionId);
         b.HasIndex(x => x.Estado);
         b.HasIndex(x => x.Plazo);
+    }
+}
+
+public sealed class ComentarioCompromisoConfiguration : IEntityTypeConfiguration<ComentarioCompromiso>
+{
+    public void Configure(EntityTypeBuilder<ComentarioCompromiso> b)
+    {
+        b.ToTable("ComentariosCompromisos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Comentario).HasMaxLength(4000);
+        b.Property(x => x.ArchivoNombre).HasMaxLength(255);
+        b.Property(x => x.ArchivoUrl).HasMaxLength(1000);
+        b.Property(x => x.CreadoPor).HasMaxLength(200).IsRequired();
+        b.Property(x => x.CreadoPorRol).HasMaxLength(100);
+        b.HasOne(x => x.Acuerdo).WithMany(a => a.Comentarios).HasForeignKey(x => x.AcuerdoReunionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => x.AcuerdoReunionId);
     }
 }
 
@@ -780,6 +838,7 @@ public sealed class AreaConfiguration : IEntityTypeConfiguration<Area>
         b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
         b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
         b.Property(x => x.InstitucionId).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Activo).HasDefaultValue(true);
         b.HasOne<Institucion>().WithMany().HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -793,6 +852,7 @@ public sealed class UnidadConfiguration : IEntityTypeConfiguration<Unidad>
         b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
         b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
         b.Property(x => x.AreaId).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Activo).HasDefaultValue(true);
         b.HasOne<Area>().WithMany().HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Cascade);
     }
 }

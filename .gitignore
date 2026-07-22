@@ -30,3 +30,4 @@ Thumbs.db
 
 # Archivos subidos por usuarios (no versionar)
 src/Web/wwwroot/uploads/
+src/Web/App_Data/uploads/

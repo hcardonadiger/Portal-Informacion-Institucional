@@ -1,6 +1,6 @@
 namespace Diger.TramitesEstado.Application.Areas.Queries;
 
-public sealed record AreaDetailDto(string Id, string InstitucionId, string Nombre, string? Descripcion, string? NombreCorto, string? LogoUrl);
+public sealed record AreaDetailDto(string Id, string InstitucionId, string Nombre, string? Descripcion, string? NombreCorto, string? LogoUrl, bool Activo);
 
 public sealed record GetAreaByIdQuery(string Id) : IRequest<AreaDetailDto>;
 
@@ -12,6 +12,6 @@ public sealed class GetAreaByIdQueryHandler(IAreaRepository repo)
         var area = await repo.GetByIdAsync(query.Id, ct)
             ?? throw new NotFoundException(nameof(Area), query.Id);
             
-        return new AreaDetailDto(area.Id, area.InstitucionId, area.Nombre, area.Descripcion, area.NombreCorto, area.LogoUrl);
+        return new AreaDetailDto(area.Id, area.InstitucionId, area.Nombre, area.Descripcion, area.NombreCorto, area.LogoUrl, area.Activo);
     }
 }

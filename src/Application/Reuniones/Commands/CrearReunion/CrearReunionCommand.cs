@@ -31,6 +31,8 @@ public sealed class CrearReunionCommandHandler(
         var r = Reunion.Crear(cmd.Datos.Titulo);
         ReunionMapper.Aplicar(r, cmd.Datos, cmd.Asistentes, cmd.Acuerdos);
         r.CreadoPorId = currentUser.UserId;   // dueño (relevante para reuniones privadas)
+        r.AreaId      = currentUser.ActiveAreaId;
+        r.UnidadId    = currentUser.ActiveUnidadId;
 
         var principalId = cmd.Datos.InstitucionesIds.FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(principalId))

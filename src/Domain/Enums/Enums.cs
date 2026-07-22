@@ -159,5 +159,6 @@ public enum EstadoCompromiso
     EnProgreso   = 2,
     Cumplido     = 3,
     Reprogramado = 4,
-    Cancelado    = 5
+    Cancelado    = 5,
+    EnRevision   = 6
 }

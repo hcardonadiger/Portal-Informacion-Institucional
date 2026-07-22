@@ -20,7 +20,10 @@ public sealed class CrearExpedienteCommandHandler(
             throw new DomainException("Debe seleccionar una institución dentro de su alcance asignado.");
         var codigo = await GenerarCodigoAsync(d.Institucion, ct);
 
-        var exp = Expediente.Crear(codigo, d.InstitucionId, null, null, d.Institucion, d.Analista);
+        var areaId = currentUser.ActiveAreaId;
+        var unidadId = currentUser.ActiveUnidadId;
+
+        var exp = Expediente.Crear(codigo, d.InstitucionId, areaId, unidadId, d.Institucion, d.Analista);
         ExpedienteMapper.Aplicar(exp, d);
         exp.OrigenExternoId = cmd.OrigenExternoId;
 

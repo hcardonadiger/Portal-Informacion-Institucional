@@ -3,8 +3,9 @@
 @{
     ViewData["Title"] = "Expedientes de Digitalización";
 
-    var puedeGestionar = User.CanMutate();
-    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
+    var esAdmin = User.IsInRole(nameof(RolUsuario.Administrador));
+    var puedeGestionar = esAdmin;
+    var puedeEliminar  = esAdmin;
 
     static (string cls, string txt) Wf(EstadoExpediente e) => e switch
     {
@@ -25,13 +26,9 @@
         </div>
         <div style="display:flex;gap:8px">
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
-            @if (puedeGestionar)
+            @if (esAdmin)
             {
-                @if (User.IsInRole(nameof(RolUsuario.Administrador)))
-                {
-
-                    <a class="btns" asp-page="/Admin/PlantillasTramite">Plantillas de trámite</a>
-                }
+                <a class="btns" asp-page="/Admin/PlantillasTramite">Plantillas de trámite</a>
                 <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
             }
         </div>
@@ -90,7 +87,7 @@
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
                             <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
-                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
+                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(esAdmin ? "Editar" : "Ver")</a>
                             @if (puedeEliminar)
                             {
                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">

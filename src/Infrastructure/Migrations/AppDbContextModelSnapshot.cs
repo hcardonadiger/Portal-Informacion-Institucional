@@ -86,6 +86,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -268,6 +273,51 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("CategoriasTicket", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ComentarioCompromiso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AcuerdoReunionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ArchivoNombre")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long?>("ArchivoTamano")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ArchivoUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Comentario")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreadoEl")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CreadoPorRol")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcuerdoReunionId");
+
+                    b.ToTable("ComentariosCompromisos", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ChatMensaje", b =>
@@ -2157,6 +2207,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("AreaId")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -2309,6 +2364,17 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasForeignKey("ReunionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ComentarioCompromiso", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.AcuerdoReunion", "Acuerdo")
+                        .WithMany("Comentarios")
+                        .HasForeignKey("AcuerdoReunionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Acuerdo");
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ChatMensaje", b =>
@@ -2621,6 +2687,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.AcuerdoReunion", b =>
+                {
+                    b.Navigation("Comentarios");
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ChatSesion", b =>
