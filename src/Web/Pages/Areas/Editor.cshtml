@@ -70,6 +70,15 @@
             <textarea asp-for="Descripcion" rows="3"></textarea>
         </div>
 
+        @if (!isNew)
+        {
+            <div class="field">
+                <label class="rpill @(Model.Activo ? "on" : "")" style="display:inline-flex;width:fit-content">
+                    <input type="checkbox" asp-for="Activo" style="margin-right:6px" /> Área activa
+                </label>
+            </div>
+        }
+
         <div class="nav">
             <a class="btns" asp-page="./Index">Cancelar</a>
             <button class="btnp" type="submit">@(isNew ? "Crear" : "Guardar cambios")</button>

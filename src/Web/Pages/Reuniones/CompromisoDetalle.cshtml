@@ -1,0 +1,263 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Reuniones.CompromisoDetalleModel
+@{
+    if (Model.Compromiso is null)
+    {
+        <div class="container" style="max-width:960px;margin-top:2rem">
+            <partial name="_SuccessBanner" />
+            @if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+            }
+            <a class="btns" asp-page="/Reuniones/Compromisos">← Volver a compromisos</a>
+        </div>
+        return;
+    }
+
+    var c = Model.Compromiso;
+    ViewData["Title"] = "Avance de Compromiso — " + c.Compromiso;
+    var ec = CompromisoUi.Color(c.Estado);
+    var estaBloqueadoForm = c.Estado == EstadoCompromiso.Cumplido || (!Model.EsAdmin && c.Estado == EstadoCompromiso.EnRevision);
+}
+
+<div class="container" style="max-width:960px">
+    <partial name="_SuccessBanner" />
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1rem">
+        <a class="btns" asp-page="/Reuniones/Compromisos">← Volver a compromisos</a>
+        <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@c.ReunionId">Ver acta de reunión</a>
+    </div>
+
+    @* ── Tarjeta de Información Principal ────────────────────────── *@
+    <div class="card" style="margin-bottom:1.25rem;border-left:5px solid @ec.fg">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:280px">
+                <span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;display:inline-block;margin-bottom:8px">
+                    @CompromisoUi.Label(c.Estado)
+                </span>
+                @if (c.Vencido)
+                {
+                    <span style="background:@CompromisoUi.Vencido.bg;color:@CompromisoUi.Vencido.fg;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;display:inline-block;margin-left:4px">
+                        Vencido
+                    </span>
+                }
+                <h2 style="margin:4px 0 10px;font-size:20px;color:#0a2d6e">@c.Compromiso</h2>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:#475569">
+                    <div><strong>Reunión:</strong> <a asp-page="/Reuniones/Acta" asp-route-id="@c.ReunionId" style="color:#1455a4;font-weight:600">@c.ReunionTitulo</a></div>
+                    <div><strong>Institución:</strong> @(c.Institucion ?? "—")</div>
+                    <div><strong>Responsable:</strong> @(c.Responsable ?? "—")</div>
+                </div>
+            </div>
+            <div style="text-align:right;min-width:180px">
+                <div style="font-size:12px;color:#64748b">Plazo límite</div>
+                <div style="font-size:16px;font-weight:800;color:@(c.Vencido ? "#a32d2d" : "#0a2d6e")">
+                    @(c.Plazo?.ToFechaCorta() ?? "Sin plazo")
+                </div>
+                @if (c.FechaCumplimiento is not null)
+                {
+                    <div style="font-size:12px;color:#27500a;margin-top:4px;font-weight:600">
+                        Cumplido el @c.FechaCumplimiento.Value.ToFechaCorta()
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(c.ActualizadoPor))
+        {
+            <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px">
+                <span style="font-size:14px">⏱️</span>
+                <span>Último cambio de estado realizado por <strong>@c.ActualizadoPor</strong> @(c.ActualizadoEl is not null ? "el " + c.ActualizadoEl.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "")</span>
+            </div>
+        }
+    </div>
+
+    @* ── Acciones de Estado (Transiciones de Flujo) ───────────────── *@
+    <div class="card" style="margin-bottom:1.5rem;background:#f8fafc">
+        <h3 style="margin:0 0 10px;font-size:15px;color:#1e293b">Acciones y Estado del Flujo</h3>
+        
+        @if (c.Estado == EstadoCompromiso.Cumplido)
+        {
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between">
+                <span>🔒 Compromiso Aceptado / Cumplido. Está congelado para nuevos avances o modificaciones.</span>
+                @if (Model.EsAdmin)
+                {
+                    <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                        <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnProgreso" />
+                        <input type="hidden" name="nota" value="Reabierto desde Aceptado por Administrador" />
+                        <button class="btns" type="submit" style="font-size:12px">Reabrir para edición</button>
+                    </form>
+                }
+            </div>
+        }
+        else if (c.Estado == EstadoCompromiso.EnRevision)
+        {
+            <div style="background:#faf5ff;border:1px solid #e9d5ff;color:#6b21a8;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px">
+                <strong>⏳ Compromiso En Revisión:</strong> La evidencia ha sido enviada para la evaluación del Administrador.
+                @if (!Model.EsAdmin)
+                {
+                    <span style="display:block;margin-top:4px;font-size:12px;color:#7e22ce">
+                        Para realizar cambios o adjuntar más información, debes regresar el compromiso al estado "En Proceso".
+                    </span>
+                }
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                @if (Model.EsAdmin)
+                {
+                    <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                        <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.Cumplido" />
+                        <input type="hidden" name="nota" value="Evidencia revisada y aceptada" />
+                        <button class="btnp" type="submit" style="background:#27500a;border-color:#27500a">✓ Aceptar (Marcar Cumplido)</button>
+                    </form>
+                    <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                        <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.Pendiente" />
+                        <input type="hidden" name="nota" value="Devuelto para observaciones/correcciones" />
+                        <button class="btns" type="submit" style="color:#c2410c;border-color:#ffedd5">↺ Solicitar Correcciones</button>
+                    </form>
+                    <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                        <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnProgreso" />
+                        <input type="hidden" name="nota" value="Puesto en proceso nuevamente" />
+                        <button class="btns" type="submit">⚙ Poner En Proceso</button>
+                    </form>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                        <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnProgreso" />
+                        <input type="hidden" name="nota" value="Regresado a En Proceso por el usuario para agregar más cambios" />
+                        <button class="btnp" type="submit">⚙ Regresar a En Proceso para Editar</button>
+                    </form>
+                }
+            </div>
+        }
+        else if (c.Estado == EstadoCompromiso.EnProgreso)
+        {
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:13px;color:#475569">Actualmente se encuentra <strong>En Proceso</strong>.</span>
+                <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                    <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnRevision" />
+                    <input type="hidden" name="nota" value="Enviado a revisión para evaluación" />
+                    <button class="btnp" type="submit" style="background:#6b21a8;border-color:#6b21a8">📤 Enviar a Revisión</button>
+                </form>
+                @if (Model.EsAdmin)
+                {
+                    <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                        <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.Cumplido" />
+                        <input type="hidden" name="nota" value="Aceptado directamente por Administrador" />
+                        <button class="btnp" type="submit" style="background:#27500a;border-color:#27500a">✓ Aceptar (Cumplido)</button>
+                    </form>
+                }
+            </div>
+        }
+        else
+        {
+            @* Pendiente / Reprogramado / Cancelado *@
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:13px;color:#475569">Estado actual: <strong>@CompromisoUi.Label(c.Estado)</strong>.</span>
+                <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                    <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnProgreso" />
+                    <input type="hidden" name="nota" value="Iniciado proceso de trabajo" />
+                    <button class="btnp" type="submit">⚙ Poner En Proceso</button>
+                </form>
+                <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                    <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnRevision" />
+                    <input type="hidden" name="nota" value="Enviado directamente a revisión" />
+                    <button class="btns" type="submit">📤 Enviar a Revisión</button>
+                </form>
+                @if (Model.EsAdmin)
+                {
+                    <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
+                        <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.Cumplido" />
+                        <input type="hidden" name="nota" value="Aceptado por Administrador" />
+                        <button class="btnp" type="submit" style="background:#27500a;border-color:#27500a">✓ Aceptar (Cumplido)</button>
+                    </form>
+                }
+            </div>
+        }
+    </div>
+
+    @* ── Formulario de Comentario / Subida de Archivo ──────────────── *@
+    @if (!estaBloqueadoForm)
+    {
+        <div class="card" style="margin-bottom:1.5rem">
+            <h3 style="margin:0 0 12px;font-size:16px;color:#0a2d6e">💬 Registrar Avance o Evidencia</h3>
+            <form method="post" asp-page-handler="Comentar" asp-route-id="@c.Id" enctype="multipart/form-data">
+                <div class="field" style="margin-bottom:12px">
+                    <label>Comentario / Observación de avance</label>
+                    <textarea name="comentario" id="comentario" rows="3" placeholder="Describe los avances realizados, respuestas o notas de la evidencia…" style="width:100%"></textarea>
+                </div>
+                <div class="field" style="margin-bottom:12px">
+                    <label>Adjuntar archivo / evidencia <span style="font-weight:400;color:#64748b">(Documentos PDF, imágenes, Excel, Office, ZIP, etc. Máx 10 MB)</span></label>
+                    <input type="file" name="archivos" id="archivoFile" style="font-size:13px;padding:6px" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.log,.zip" />
+                </div>
+                <button class="btnp" type="submit">📤 Publicar Avance</button>
+            </form>
+        </div>
+    }
+
+    @* ── Historial y Comentarios (Línea de Tiempo) ────────────────── *@
+    <div class="card">
+        <h3 style="margin:0 0 16px;font-size:16px;color:#0a2d6e">📋 Historial de Avances y Evidencias (@c.Comentarios.Count)</h3>
+
+        @if (c.Comentarios.Count == 0)
+        {
+            <div style="text-align:center;padding:2rem 1rem;color:#94a3b8;font-size:13.5px">
+                <div style="font-size:32px;margin-bottom:6px">💬</div>
+                No hay comentarios ni archivos registrados en este compromiso aún.
+            </div>
+        }
+        else
+        {
+            <div style="display:flex;flex-direction:column;gap:14px">
+                @foreach (var item in c.Comentarios)
+                {
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;position:relative">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <span style="background:#0a2d6e;color:#fff;border-radius:50%;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">
+                                    @(item.CreadoPor.Substring(0, Math.Min(2, item.CreadoPor.Length)).ToUpper())
+                                </span>
+                                <div>
+                                    <strong style="font-size:13.5px;color:#0a2d6e">@item.CreadoPor</strong>
+                                    @if (!string.IsNullOrWhiteSpace(item.CreadoPorRol))
+                                    {
+                                        <span style="background:#e2e8f0;color:#334155;border-radius:12px;padding:1px 8px;font-size:11px;margin-left:4px">
+                                            @item.CreadoPorRol
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                            <span style="font-size:11.5px;color:#64748b">
+                                @item.CreadoEl.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </span>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(item.Comentario))
+                        {
+                            <div style="font-size:13.5px;color:#1e293b;white-space:pre-wrap;line-height:1.45;margin-bottom:8px">@item.Comentario</div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(item.ArchivoUrl))
+                        {
+                            <div style="margin-top:8px">
+                                <a href="@item.ArchivoUrl" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none">
+                                    <span>📎</span>
+                                    <span>@(item.ArchivoNombre ?? "Archivo adjunto")</span>
+                                    @if (item.ArchivoTamano is not null)
+                                    {
+                                        <span style="font-weight:400;color:#3b82f6">(@(item.ArchivoTamano.Value / 1024) KB)</span>
+                                    }
+                                </a>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

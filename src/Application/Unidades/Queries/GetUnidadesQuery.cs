@@ -1,6 +1,6 @@
 namespace Diger.TramitesEstado.Application.Unidades.Queries;
 
-public sealed record UnidadListItemDto(string Id, string AreaId, string AreaNombre, string Nombre, string? NombreCorto);
+public sealed record UnidadListItemDto(string Id, string AreaId, string AreaNombre, string Nombre, string? NombreCorto, bool Activo);
 
 public sealed record GetUnidadesQuery(string? AreaId = null) : IRequest<IReadOnlyList<UnidadListItemDto>>;
 
@@ -20,7 +20,8 @@ public sealed class GetUnidadesQueryHandler(IApplicationDbContext ctx)
                 u.AreaId, 
                 ctx.Areas.Where(a => a.Id == u.AreaId).Select(a => a.Nombre).FirstOrDefault() ?? u.AreaId,
                 u.Nombre, 
-                u.NombreCorto))
+                u.NombreCorto,
+                u.Activo))
             .ToListAsync(ct);
     }
 }

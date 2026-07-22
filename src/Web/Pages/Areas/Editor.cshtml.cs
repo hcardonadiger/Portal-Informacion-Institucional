@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MediatR;
+using FluentValidation;
 using Diger.TramitesEstado.Application.Areas.Commands;
 using Diger.TramitesEstado.Application.Areas.Queries;
 using Diger.TramitesEstado.Application.Instituciones.Queries.GetInstituciones;
@@ -10,7 +11,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Web.Pages.Areas;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+[Authorize(Roles = $"{nameof(RolUsuario.Administrador)},{nameof(RolUsuario.JefeInstitucion)}")]
 public class EditorModel(ISender sender) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? IdFromRoute { get; set; }
@@ -22,6 +23,7 @@ public class EditorModel(ISender sender) : PageModel
     [BindProperty] public string? NombreCorto { get; set; }
     [BindProperty] public string? Descripcion { get; set; }
     [BindProperty] public string? LogoUrl { get; set; }
+    [BindProperty] public bool Activo { get; set; } = true;
 
     public IReadOnlyList<InstitucionListItemDto> Instituciones { get; set; } = [];
 
@@ -41,11 +43,17 @@ public class EditorModel(ISender sender) : PageModel
                 NombreCorto = area.NombreCorto;
                 Descripcion = area.Descripcion;
                 LogoUrl = area.LogoUrl;
+                Activo = area.Activo;
             }
             catch (NotFoundException)
             {
                 return NotFound();
             }
+        }
+        else if (Instituciones.Count == 1)
+        {
+            // Pre-seleccionar la única institución disponible para no-admins
+            InstitucionId = Instituciones[0].Id;
         }
 
         return Page();
@@ -69,9 +77,18 @@ public class EditorModel(ISender sender) : PageModel
             }
             else
             {
-                await sender.Send(new ActualizarAreaCommand(id, Nombre, Descripcion, NombreCorto, LogoUrl), ct);
+                await sender.Send(new ActualizarAreaCommand(id, Nombre, Activo, Descripcion, NombreCorto, LogoUrl), ct);
             }
             return RedirectToPage("./Index");
+        }
+        catch (ValidationException ex)
+        {
+            foreach (var error in ex.Errors)
+            {
+                ModelState.AddModelError(error.PropertyName ?? string.Empty, error.ErrorMessage);
+            }
+            Instituciones = (await sender.Send(new GetInstitucionesQuery(Size: 1000), ct)).Items;
+            return Page();
         }
         catch (DomainException ex)
         {

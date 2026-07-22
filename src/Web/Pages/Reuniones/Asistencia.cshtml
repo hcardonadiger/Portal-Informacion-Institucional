@@ -60,9 +60,20 @@
             </p>
         </div>
         <div style="display:flex;gap:8px">
-            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@d.ReunionId">← Editar reunión</a>
+            <a class="btns" asp-page="/Reuniones/Index">← Regresar a Reuniones</a>
         </div>
     </div>
+
+    @if (!Model.EsAdmin)
+    {
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 18px;border-radius:12px;margin-bottom:1rem;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13.5px">
+            <span style="font-size:18px">👁️</span>
+            <div>
+                <strong>Modo Visualización de Asistencia</strong>
+                <div style="font-size:12px;font-weight:400;color:#3b82f6;margin-top:2px">Solo los administradores pueden registrar asistencia, abrir/cerrar el código QR o invitar contactos.</div>
+            </div>
+        </div>
+    }
 
     @* ── Panel de resumen ─────────────────────────────────────────── *@
     <div class="dash-card asist-resumen" style="margin-bottom:16px">
@@ -134,26 +145,29 @@
         </div>
 
         @* ── Estado del registro ───────────────────────────────────── *@
-        <div class="dash-card">
-            <h3>Registro</h3>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:.8rem">
-                <span class="wf-badge @(d.RegistroAbierto ? "wf-completada" : "wf-cancelada")">
-                    @(d.RegistroAbierto ? "Abierto" : "Cerrado")
-                </span>
-                <form method="post" asp-page-handler="Toggle" asp-route-id="@d.ReunionId" style="display:inline">
-                    <input type="hidden" name="abrir" value="@((!d.RegistroAbierto).ToString().ToLowerInvariant())" />
-                    <button class="btns" type="submit">@(d.RegistroAbierto ? "Cerrar registro" : "Abrir registro")</button>
+        @if (Model.EsAdmin)
+        {
+            <div class="dash-card">
+                <h3>Registro</h3>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:.8rem">
+                    <span class="wf-badge @(d.RegistroAbierto ? "wf-completada" : "wf-cancelada")">
+                        @(d.RegistroAbierto ? "Abierto" : "Cerrado")
+                    </span>
+                    <form method="post" asp-page-handler="Toggle" asp-route-id="@d.ReunionId" style="display:inline">
+                        <input type="hidden" name="abrir" value="@((!d.RegistroAbierto).ToString().ToLowerInvariant())" />
+                        <button class="btns" type="submit">@(d.RegistroAbierto ? "Cerrar registro" : "Abrir registro")</button>
+                    </form>
+                </div>
+                <form method="post" asp-page-handler="Regenerar" asp-route-id="@d.ReunionId"
+                      onsubmit="return confirm('Se generará un enlace/QR nuevo y el anterior dejará de funcionar. ¿Continuar?')">
+                    <button class="btns" type="submit" style="font-size:12.5px">↻ Regenerar enlace</button>
                 </form>
             </div>
-            <form method="post" asp-page-handler="Regenerar" asp-route-id="@d.ReunionId"
-                  onsubmit="return confirm('Se generará un enlace/QR nuevo y el anterior dejará de funcionar. ¿Continuar?')">
-                <button class="btns" type="submit" style="font-size:12.5px">↻ Regenerar enlace</button>
-            </form>
-        </div>
+        }
     </div>
 
     @* ── Pre-registro de invitados ────────────────────────────────── *@
-    @if (Model.DirectorioPreregistro.Any())
+    @if (Model.EsAdmin && Model.DirectorioPreregistro.Any())
     {
         <div class="dash-card" style="margin-top:16px">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.8rem">
@@ -213,7 +227,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
             <h3 style="margin:0">Lista de asistencia (@d.Asistentes.Count)</h3>
             <div style="display:flex;gap:8px">
-                @if (Model.DirectorioManual.Any())
+                @if (Model.EsAdmin && Model.DirectorioManual.Any())
                 {
                     <details class="seg-upd" @(Model.TodosLosContactos ? "open" : "")>
                         <summary class="btns" style="font-size:12.5px">+ Agregar del directorio</summary>
@@ -333,26 +347,29 @@
                                     @(a.RegistradoEl?.ToLocalTime().ToFechaHoraCorta() ?? "—")
                                 </td>
                                 <td style="text-align:right;white-space:nowrap">
-                                    @if (a.EsPreregistro && a.Confirmado != true)
+                                    @if (Model.EsAdmin)
                                     {
-                                        <form method="post" asp-page-handler="Confirmar" asp-route-id="@d.ReunionId" style="display:inline">
+                                        if (a.EsPreregistro && a.Confirmado != true)
+                                        {
+                                            <form method="post" asp-page-handler="Confirmar" asp-route-id="@d.ReunionId" style="display:inline">
+                                                <input type="hidden" name="asistenteId" value="@a.Id" />
+                                                <input type="hidden" name="asistio" value="true" />
+                                                <button class="btns btn-conf-asistio" type="submit" title="Marcar como asistió">✓</button>
+                                            </form>
+                                        }
+                                        if (a.EsPreregistro && a.Confirmado != false)
+                                        {
+                                            <form method="post" asp-page-handler="Confirmar" asp-route-id="@d.ReunionId" style="display:inline;margin-left:4px">
+                                                <input type="hidden" name="asistenteId" value="@a.Id" />
+                                                <input type="hidden" name="asistio" value="false" />
+                                                <button class="btns btn-conf-ausente" type="submit" title="Marcar como ausente">✗</button>
+                                            </form>
+                                        }
+                                        <form method="post" asp-page-handler="Eliminar" asp-route-id="@d.ReunionId" style="display:inline;margin-left:4px">
                                             <input type="hidden" name="asistenteId" value="@a.Id" />
-                                            <input type="hidden" name="asistio" value="true" />
-                                            <button class="btns btn-conf-asistio" type="submit" title="Marcar como asistió">✓</button>
+                                            <button class="hist-del" type="submit" onclick="return confirm('¿Eliminar este registro?')">✕</button>
                                         </form>
                                     }
-                                    @if (a.EsPreregistro && a.Confirmado != false)
-                                    {
-                                        <form method="post" asp-page-handler="Confirmar" asp-route-id="@d.ReunionId" style="display:inline;margin-left:4px">
-                                            <input type="hidden" name="asistenteId" value="@a.Id" />
-                                            <input type="hidden" name="asistio" value="false" />
-                                            <button class="btns btn-conf-ausente" type="submit" title="Marcar como ausente">✗</button>
-                                        </form>
-                                    }
-                                    <form method="post" asp-page-handler="Eliminar" asp-route-id="@d.ReunionId" style="display:inline;margin-left:4px">
-                                        <input type="hidden" name="asistenteId" value="@a.Id" />
-                                        <button class="hist-del" type="submit" onclick="return confirm('¿Eliminar este registro?')">✕</button>
-                                    </form>
                                 </td>
                             </tr>
                         }

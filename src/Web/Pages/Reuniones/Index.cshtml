@@ -15,8 +15,9 @@
 }
 @{
     ViewData["Title"] = "Reuniones y Asistencias";
-    var puedeGestionar = User.CanMutate();
-    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
+    var esAdmin = User.IsInRole(nameof(RolUsuario.Administrador));
+    var puedeGestionar = esAdmin;
+    var puedeEliminar  = esAdmin;
 }
 
 <div class="container" style="max-width:1040px">
@@ -28,9 +29,8 @@
         </div>
         <div style="display:flex;gap:8px">
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaReuniones()">Vista por institución</button>
-            @if (puedeGestionar)
+            @if (esAdmin)
             {
-
                 <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
             }
         </div>
@@ -92,7 +92,7 @@
                             <div class="reun-titulo-cell">
                                 <span class="inst-av av-sm @IC(r.Institucion)" aria-hidden="true">@InstIni(r.Institucion)</span>
                                 <div>
-                                    <a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a>
+                                    <a class="seg-inst" asp-page="@(esAdmin ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>
                                     @if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }
                                 </div>
                             </div>
@@ -110,15 +110,12 @@
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
                                style="font-size:12.5px;padding:6px 12px">Acta</a>
-                            @if (puedeGestionar)
+                            <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
+                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
+                            @if (esAdmin)
                             {
-                                <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
-                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
-                            }
-                            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
-                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
-                            @if (puedeEliminar)
-                            {
+                                <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
+                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Editar</a>
                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                     <input type="hidden" name="id" value="@r.Id" />
                                     <button class="hist-del" type="submit" style="margin-left:4px"
@@ -160,7 +157,7 @@
                                 @foreach (var r in grupo.OrderByDescending(r => r.Fecha))
                                 {
                                     <tr>
-                                        <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
+                                        <td><a class="seg-inst" asp-page="@(esAdmin ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
                                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
                                         <td style="text-align:center">
@@ -170,15 +167,12 @@
                                         <td style="white-space:nowrap;text-align:right">
                                             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
                                                style="font-size:12.5px;padding:6px 12px">Acta</a>
-                                            @if (puedeGestionar)
+                                            <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
+                                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
+                                            @if (esAdmin)
                                             {
-                                                <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
-                                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
-                                            }
-                                            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
-                                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
-                                            @if (puedeEliminar)
-                                            {
+                                                <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
+                                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Editar</a>
                                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                                     <input type="hidden" name="id" value="@r.Id" />
                                                     <button class="hist-del" type="submit" style="margin-left:4px"

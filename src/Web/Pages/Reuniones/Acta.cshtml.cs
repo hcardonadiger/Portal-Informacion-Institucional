@@ -3,6 +3,7 @@ namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 [Authorize]
 public sealed class ActaModel(ISender sender) : PageModel
 {
+    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
     public int ReunionId { get; private set; }
     public ReunionFormDto      Datos      { get; private set; } = new();
     public List<AsistenteInput> Asistentes { get; private set; } = [];
@@ -57,6 +58,7 @@ public sealed class ActaModel(ISender sender) : PageModel
 
     public async Task<IActionResult> OnPostEnlazarAsync(int id, int otraReunionId, CancellationToken ct)
     {
+        if (!EsAdmin) return Forbid();
         if (otraReunionId <= 0)
         {
             TempData["ErrorMessage"] = "Seleccione una reunión para enlazar.";
@@ -76,6 +78,7 @@ public sealed class ActaModel(ISender sender) : PageModel
 
     public async Task<IActionResult> OnPostDesenlazarAsync(int id, CancellationToken ct)
     {
+        if (!EsAdmin) return Forbid();
         try
         {
             await sender.Send(new DesenlazarReunionCommand(id), ct);

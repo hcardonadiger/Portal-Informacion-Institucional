@@ -238,6 +238,8 @@ public sealed class AcuerdoReunion : BaseEntity
     public DateTime?        SeguimientoActualizadoEl  { get; set; }
     public string?          SeguimientoActualizadoPor { get; set; }
 
+    public ICollection<ComentarioCompromiso> Comentarios { get; set; } = [];
+
     /// <summary>True si el plazo ya venció y el compromiso sigue abierto.</summary>
     public bool EstaVencido(DateOnly hoy) =>
         Plazo is { } p && p < hoy &&

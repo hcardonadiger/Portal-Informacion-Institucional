@@ -10,8 +10,25 @@ using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Diagnóstico: capturar cualquier excepción que mate el proceso ──────────
+var crashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    var ex = e.ExceptionObject as Exception;
+    var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UNHANDLED (IsTerminating={e.IsTerminating}): {ex}\n";
+    File.AppendAllText(crashLogPath, msg);
+};
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UNOBSERVED TASK: {e.Exception}\n";
+    File.AppendAllText(crashLogPath, msg);
+    e.SetObserved();
+};
+
 builder.WebHost.ConfigureKestrel((context, options) =>
 {
+    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+
     if (context.HostingEnvironment.IsDevelopment())
     {
         // Puerto HTTPS principal (para navegación sin alertas)
@@ -53,6 +70,12 @@ builder.WebHost.ConfigureKestrel((context, options) =>
             httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.NoCertificate;
         });
     }
+});
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 50 * 1024 * 1024;
+    options.ValueLengthLimit = 10 * 1024 * 1024;
 });
 
 builder.Services
@@ -178,6 +201,15 @@ app.Use(async (ctx, next) =>
 });
 
 app.UseStaticFiles();
+
+var uploadsDir = Path.Combine(app.Environment.ContentRootPath, "App_Data", "uploads");
+Directory.CreateDirectory(uploadsDir);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
+    RequestPath = "/uploads"
+});
+
 app.UseRouting();
 
 // Debe estar antes de UseAuthentication para que el certificado esté disponible

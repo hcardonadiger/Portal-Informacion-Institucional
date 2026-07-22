@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MediatR;
+using FluentValidation;
 using Diger.TramitesEstado.Application.Unidades.Commands;
 using Diger.TramitesEstado.Application.Unidades.Queries;
 using Diger.TramitesEstado.Application.Areas.Queries;
@@ -10,7 +11,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Web.Pages.Unidades;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+[Authorize(Roles = $"{nameof(RolUsuario.Administrador)},{nameof(RolUsuario.JefeInstitucion)}")]
 public class EditorModel(ISender sender) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? IdFromRoute { get; set; }
@@ -22,6 +23,7 @@ public class EditorModel(ISender sender) : PageModel
     [BindProperty] public string? NombreCorto { get; set; }
     [BindProperty] public string? Descripcion { get; set; }
     [BindProperty] public string? LogoUrl { get; set; }
+    [BindProperty] public bool Activo { get; set; } = true;
 
     public IReadOnlyList<AreaListItemDto> Areas { get; set; } = [];
 
@@ -41,11 +43,17 @@ public class EditorModel(ISender sender) : PageModel
                 NombreCorto = unidad.NombreCorto;
                 Descripcion = unidad.Descripcion;
                 LogoUrl = unidad.LogoUrl;
+                Activo = unidad.Activo;
             }
             catch (NotFoundException)
             {
                 return NotFound();
             }
+        }
+        else if (Areas.Count == 1)
+        {
+            // Pre-seleccionar la única área disponible si solo hay una
+            AreaId = Areas[0].Id;
         }
 
         return Page();
@@ -69,9 +77,18 @@ public class EditorModel(ISender sender) : PageModel
             }
             else
             {
-                await sender.Send(new ActualizarUnidadCommand(id, Nombre, Descripcion, NombreCorto, LogoUrl), ct);
+                await sender.Send(new ActualizarUnidadCommand(id, Nombre, Activo, Descripcion, NombreCorto, LogoUrl), ct);
             }
             return RedirectToPage("./Index");
+        }
+        catch (ValidationException ex)
+        {
+            foreach (var error in ex.Errors)
+            {
+                ModelState.AddModelError(error.PropertyName ?? string.Empty, error.ErrorMessage);
+            }
+            Areas = await sender.Send(new GetAreasQuery(), ct);
+            return Page();
         }
         catch (DomainException ex)
         {
