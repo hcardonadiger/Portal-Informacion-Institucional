@@ -23,9 +23,7 @@ public sealed class RegistrarAsistenciaCommandHandler(
 
         var d = cmd.Datos;
         var correo = d.Correo?.Trim().ToLowerInvariant();
-        var tel = string.IsNullOrWhiteSpace(d.Telefono)
-            ? null
-            : $"{d.CodigoPais} {d.Telefono.Trim()}".Trim();
+        var tel = FormatearTelefono(d.CodigoPais, d.Telefono);
 
         // Vincular la institución con el catálogo (null cuando es texto libre / "Otra")
         Institucion? inst = null;
@@ -68,16 +66,22 @@ public sealed class RegistrarAsistenciaCommandHandler(
         if (!string.IsNullOrWhiteSpace(correo))
         {
             var contacto = await contactoRepo.GetByCorreoAsync(correo, ct);
+            Institucion? inst = null;
+            if (!string.IsNullOrWhiteSpace(d.Institucion))
+            {
+                inst = await institucionRepo.GetByNombreAsync(d.Institucion, ct);
+            }
+            var areaToUse = !string.IsNullOrWhiteSpace(d.Departamento) ? d.Departamento.Trim() : contacto?.Area;
 
             if (contacto is not null)
             {
                 // Actualizar contacto existente.
                 var instIdToUse = inst?.Id ?? contacto.InstitucionId;
                 var instNameToUse = inst?.Nombre ?? contacto.Institucion;
-                
+
                 contacto.Actualizar(
                     d.Nombre, instIdToUse, instNameToUse, contacto.AreaId, contacto.UnidadId,
-                    d.Cargo, correo, tel, contacto.Notas
+                    d.Cargo, correo, tel, contacto.Notas, area: areaToUse
                 );
                 contactoRepo.Update(contacto);
             }
@@ -85,7 +89,7 @@ public sealed class RegistrarAsistenciaCommandHandler(
             {
                 // Crear nuevo contacto
                 var nuevoContacto = Contacto.Crear(
-                    d.Nombre, inst.Id, inst.Nombre, r.AreaId, r.UnidadId, d.Cargo, correo, tel, null, OrigenContacto.Reunion
+                    d.Nombre, inst.Id, inst.Nombre, r.AreaId, r.UnidadId, d.Cargo, correo, tel, null, OrigenContacto.Reunion, area: areaToUse
                 );
                 await contactoRepo.AddAsync(nuevoContacto, ct);
             }
@@ -93,6 +97,37 @@ public sealed class RegistrarAsistenciaCommandHandler(
 
         await uow.SaveChangesAsync(ct);
         return r.Titulo;
+    }
+
+    public static string? FormatearTelefono(string? codigoPais, string? telefono)
+    {
+        if (string.IsNullOrWhiteSpace(telefono))
+            return null;
+
+        var clean = telefono.Trim();
+        var code = codigoPais?.Trim();
+
+        if (!string.IsNullOrWhiteSpace(code))
+        {
+            while (clean.StartsWith(code + " ", StringComparison.OrdinalIgnoreCase) ||
+                   clean.StartsWith(code, StringComparison.OrdinalIgnoreCase))
+            {
+                clean = clean[code.Length..].Trim();
+            }
+
+            if (clean.StartsWith("+"))
+            {
+                var parts = clean.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 2 && parts[0].StartsWith("+"))
+                {
+                    clean = parts[1].Trim();
+                }
+            }
+
+            return string.IsNullOrWhiteSpace(clean) ? null : $"{code} {clean}";
+        }
+
+        return clean;
     }
 }
 

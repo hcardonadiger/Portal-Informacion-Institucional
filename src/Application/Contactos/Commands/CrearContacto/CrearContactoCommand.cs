@@ -4,7 +4,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 namespace Diger.TramitesEstado.Application.Contactos.Commands.CrearContacto;
 
 public sealed record CrearContactoCommand(
-    string Nombre, string InstitucionId, string? AreaId, string? UnidadId, string? Cargo, string? Correo, string? Telefono, string? Notas)
+    string Nombre, string InstitucionId, string? AreaId, string? UnidadId, string? Cargo, string? Correo, string? Telefono, string? Notas, string? Area = null)
     : IRequest<int>;
 
 public sealed class CrearContactoCommandHandler(
@@ -25,7 +25,7 @@ public sealed class CrearContactoCommandHandler(
         var areaId = string.IsNullOrEmpty(cmd.AreaId) ? currentUser.ActiveAreaId : cmd.AreaId;
         var unidadId = string.IsNullOrEmpty(cmd.UnidadId) ? currentUser.ActiveUnidadId : cmd.UnidadId;
 
-        var c = Contacto.Crear(cmd.Nombre, inst.Id, inst.Nombre, areaId, unidadId, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas);
+        var c = Contacto.Crear(cmd.Nombre, inst.Id, inst.Nombre, areaId, unidadId, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas, area: cmd.Area);
         await repo.AddAsync(c, ct);
         await uow.SaveChangesAsync(ct);
         return c.Id;

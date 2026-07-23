@@ -3,8 +3,10 @@ using Diger.TramitesEstado.Application.Chat;
 using Diger.TramitesEstado.Application.Informes;
 using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Reuniones.Import;
+using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Infrastructure.AI;
 using Diger.TramitesEstado.Infrastructure.Chat;
+using Diger.TramitesEstado.Infrastructure.Email;
 using Diger.TramitesEstado.Infrastructure.Import;
 using Diger.TramitesEstado.Infrastructure.Notifications;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
@@ -57,6 +59,10 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
             client.Timeout = TimeSpan.FromSeconds(30);
         });
+
+        // Servicio de correo SMTP (Office 365 / Configurable)
+        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
+        services.AddScoped<IEmailService, SmtpEmailService>();
 
         // Seguridad / identidad
         services.AddHttpContextAccessor();
