@@ -1,7 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
-public sealed class ActaModel(ISender sender) : PageModel
+public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageModel
 {
     public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
     public int ReunionId { get; private set; }
@@ -49,6 +49,29 @@ public sealed class ActaModel(ISender sender) : PageModel
             DesgloseAsistenciaPorInstitucion = desglose;
 
             return Page();
+        }
+        catch (NotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    public async Task<IActionResult> OnGetPdfAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            var d = await sender.Send(new GetReunionByIdQuery(id), ct);
+            var dto = new ActaPdfDto(d.Datos, d.Asistentes, d.Acuerdos, d.InstitucionNombre);
+            var bytes = actaPdf.Generar(dto);
+
+            var slug = string.Concat((d.Datos.Titulo ?? "reunion")
+                .Where(ch => char.IsLetterOrDigit(ch) || ch is ' ' or '-' or '_'))
+                .Trim().Replace(' ', '_');
+            if (string.IsNullOrWhiteSpace(slug)) slug = "reunion";
+            var fecha = d.Datos.Fecha?.ToString("yyyy-MM-dd") ?? DateTime.Now.ToString("yyyy-MM-dd");
+            var nombre = $"Registro_{slug}_{fecha}.pdf";
+
+            return File(bytes, "application/pdf", nombre);
         }
         catch (NotFoundException)
         {

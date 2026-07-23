@@ -141,6 +141,10 @@
                                 <div class="nav-group-menu">
                                     <a class="nav-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index">Reuniones</a>
                                     <a class="nav-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos">Compromisos</a>
+                                    @if (Acceso.EsAdministrador)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase">Migrar desde Supabase</a>
+                                    }
                                 </div>
                             </div>
                         }
