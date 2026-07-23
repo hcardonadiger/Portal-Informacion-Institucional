@@ -66,3 +66,49 @@ GO
 ```
 
 ---
+
+## [2026-07-23] Recuperación de Contraseña (Campos `PasswordResetToken` y `PasswordResetTokenExpiration` en `Usuarios`)
+
+### Descripción
+Se agregaron los campos `PasswordResetToken` (`nvarchar(256) NULL`) y `PasswordResetTokenExpiration` (`datetime2 NULL`) a la tabla `Usuarios` para permitir el proceso de recuperación de contraseña olvidada mediante tokens temporales por correo electrónico.
+
+### Migración EF Core Asociada
+- **Nombre de Migración:** `20260723100000_AddPasswordResetTokenToUsuario` (o `dotnet ef migrations add AddPasswordResetTokenToUsuario`)
+- **Comando EF:** `dotnet ef database update`
+
+### Script SQL Directo para Ejecutar en SQL Server:
+
+```sql
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Usuarios]') AND name = 'PasswordResetToken')
+BEGIN
+    ALTER TABLE [Usuarios] ADD [PasswordResetToken] nvarchar(256) NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Usuarios]') AND name = 'PasswordResetTokenExpiration')
+BEGIN
+    ALTER TABLE [Usuarios] ADD [PasswordResetTokenExpiration] datetime2 NULL;
+END;
+GO
+```
+
+---
+
+## [2026-07-23] Agregar Campo `Area` a la Tabla `Contactos`
+
+### Descripción
+Se agregó la columna `Area` (`nvarchar(150) NULL`) a la tabla `Contactos` para almacenar el nombre del área o departamento de la institución (seleccionada del catálogo o ingresada manualmente como "Otros") tanto desde la gestión de contactos como en la captura de asistencia de reuniones.
+
+### Migración EF Core Asociada
+- **Nombre de Migración:** `AddAreaToContacto`
+- **Comando EF:** `dotnet ef database update`
+
+### Script SQL Directo para Ejecutar en SQL Server:
+
+```sql
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Contactos]') AND name = 'Area')
+BEGIN
+    ALTER TABLE [Contactos] ADD [Area] nvarchar(150) NULL;
+END;
+GO
+```

@@ -113,4 +113,18 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageMod
         }
         return RedirectToPage(new { id });
     }
+
+    public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioReunionCommand(id, mensaje), ct);
+            TempData["SuccessMessage"] = "Notificaciones de recordatorio enviadas a los asistentes con correo.";
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+        return RedirectToPage(new { id });
+    }
 }

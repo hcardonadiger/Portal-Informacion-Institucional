@@ -284,51 +284,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("CategoriasTicket", (string)null);
                 });
 
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ComentarioCompromiso", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AcuerdoReunionId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ArchivoNombre")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<long?>("ArchivoTamano")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("ArchivoUrl")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("Comentario")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<DateTime>("CreadoEl")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreadoPor")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("CreadoPorRol")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AcuerdoReunionId");
-
-                    b.ToTable("ComentariosCompromisos", (string)null);
-                });
-
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ChatMensaje", b =>
                 {
                     b.Property<int>("Id")
@@ -427,6 +382,51 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("ChatSesiones", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ComentarioCompromiso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AcuerdoReunionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ArchivoNombre")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<long?>("ArchivoTamano")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ArchivoUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Comentario")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreadoEl")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CreadoPorRol")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcuerdoReunionId");
+
+                    b.ToTable("ComentariosCompromisos", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Contacto", b =>
                 {
                     b.Property<int>("Id")
@@ -439,6 +439,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
+
+                    b.Property<string>("Area")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("AreaId")
                         .HasMaxLength(120)
@@ -2659,6 +2663,13 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("PasswordResetToken")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpiration")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Telefono")
                         .HasColumnType("nvarchar(max)");
 
@@ -2747,6 +2758,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ChatMensaje", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.ChatSesion", null)
+                        .WithMany("Mensajes")
+                        .HasForeignKey("SesionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ComentarioCompromiso", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.AcuerdoReunion", "Acuerdo")
@@ -2756,15 +2776,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Acuerdo");
-                });
-
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ChatMensaje", b =>
-                {
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.ChatSesion", null)
-                        .WithMany("Mensajes")
-                        .HasForeignKey("SesionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Contacto", b =>

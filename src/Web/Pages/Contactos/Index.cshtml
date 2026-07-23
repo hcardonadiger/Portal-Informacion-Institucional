@@ -105,7 +105,13 @@
                                         <span class="badge-baja">Baja</span>
                                     }
                                 </div>
-                                <div class="res-meta" style="margin-top:2px">@(c.Cargo ?? "—")</div>
+                                <div class="res-meta" style="margin-top:2px">
+                                    @(c.Cargo ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(c.Area))
+                                    {
+                                        <span style="color:#475569"> · 🏢 @c.Area</span>
+                                    }
+                                </div>
                             </td>
                             <td>@c.Institucion</td>
                             <td class="res-meta">@(c.Correo ?? "—")</td>
@@ -187,7 +193,13 @@
                                                     <span class="badge-baja">Baja</span>
                                                 }
                                             </div>
-                                            <div class="res-meta" style="margin-top:2px">@(c.Cargo ?? "—")</div>
+                                            <div class="res-meta" style="margin-top:2px">
+                                    @(c.Cargo ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(c.Area))
+                                    {
+                                        <span style="color:#475569"> · 🏢 @c.Area</span>
+                                    }
+                                </div>
                                         </td>
                                         <td class="res-meta">@(c.Correo ?? "—")</td>
                                         <td class="res-meta">@(c.Telefono ?? "—")</td>
