@@ -88,4 +88,19 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
         return new JsonResult(new { id = expedienteId });
     }
+
+    public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioExpedienteCommand(id, mensaje), ct);
+            TempData["SuccessMsg"] = "Notificación de recordatorio enviada exitosamente.";
+            return RedirectToPage(new { id });
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMsg"] = ex.Message;
+            return RedirectToPage(new { id });
+        }
+    }
 }

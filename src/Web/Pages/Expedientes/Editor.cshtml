@@ -17,6 +17,9 @@
     <div style="display:flex;gap:8px">
         @if (Model.ExpId is int segId)
         {
+            <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@segId" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio al analista y contacto de este expediente?');">
+                <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Recordar</button>
+            </form>
             <a class="btnp" asp-page="/Expedientes/Seguimiento" asp-route-id="@segId">Seguimiento de digitalización</a>
             <a class="btns" asp-page="/Expedientes/Resumen" asp-route-id="@segId">PDF</a>
         }

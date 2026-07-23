@@ -66,11 +66,6 @@ public sealed class RegistrarAsistenciaCommandHandler(
         if (!string.IsNullOrWhiteSpace(correo))
         {
             var contacto = await contactoRepo.GetByCorreoAsync(correo, ct);
-            Institucion? inst = null;
-            if (!string.IsNullOrWhiteSpace(d.Institucion))
-            {
-                inst = await institucionRepo.GetByNombreAsync(d.Institucion, ct);
-            }
             var areaToUse = !string.IsNullOrWhiteSpace(d.Departamento) ? d.Departamento.Trim() : contacto?.Area;
 
             if (contacto is not null)

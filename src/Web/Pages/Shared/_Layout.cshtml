@@ -118,7 +118,8 @@
                                 <div class="nav-group-menu">
                                     @if (puedeTableros)
                                     {
-                                        <a class="nav-item @(EsRuta("/Tableros") ? "on" : "")" asp-page="/Tableros/Index">Tableros</a>
+                                        <a class="nav-item @(EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/MiTablero">Mi Tablero</a>
+                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/Index">Tableros General</a>
                                     }
                                     @if (puedeCalendario)
                                     {
@@ -203,6 +204,10 @@
                             TipoNotificacion.ChatRecibido             => "💬",
                             TipoNotificacion.EtapaCronogramaVencida   => "🚨",
                             TipoNotificacion.EtapaCronogramaProxima   => "📆",
+                            TipoNotificacion.RecordatorioManualTicket     => "🎫",
+                            TipoNotificacion.RecordatorioManualExpediente => "📂",
+                            TipoNotificacion.RecordatorioManualReunion    => "📅",
+                            TipoNotificacion.RecordatorioManualCompromiso => "📋",
                             _                                         => "🔔",
                         };
                     }
@@ -330,6 +335,7 @@
                             </div>
                         }
 
+                        <a class="user-panel-link" asp-page="/Tableros/MiTablero">📊 Mi Tablero</a>
                         <a class="user-panel-link" asp-page="/Cuenta/Perfil">Mi perfil</a>
                         <button type="submit" form="logoutForm" class="side-panel-logout">Cerrar sesión</button>
                     </div>
