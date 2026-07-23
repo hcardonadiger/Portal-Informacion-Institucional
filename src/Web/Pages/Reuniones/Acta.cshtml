@@ -37,7 +37,7 @@
         {
             <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
         }
-        <button class="btnp" type="button" onclick="window.print()">Imprimir / PDF</button>
+        <a class="btnp" asp-page-handler="Pdf" asp-route-id="@Model.ReunionId">⬇ Descargar PDF</a>
     </div>
 </div>
 

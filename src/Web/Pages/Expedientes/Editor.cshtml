@@ -30,21 +30,19 @@
   <aside class="sidebar">
     <div class="sb-hdr">Generales del expediente</div>
     <div class="sbi active" id="sb0" onclick="ir(0)"><div class="sbi-dot"></div>Apertura del expediente</div>
+    <div class="sbi" id="sb5" onclick="ir(5)"><div class="sbi-dot"></div>Infraestructura SOL</div>
+    <div class="sbi" id="sb6" onclick="ir(6)"><div class="sbi-dot"></div>Estado del expediente</div>
 
     <div class="sb-hdr" style="margin-top:.9rem">Por trámite</div>
     <div class="sbi" id="sb1" onclick="ir(1)"><div class="sbi-dot"></div>Ficha del trámite</div>
     <div class="sbi" id="sb2" onclick="ir(2)"><div class="sbi-dot"></div>Marco legal y documentación</div>
     <div class="sbi" id="sb3" onclick="ir(3)"><div class="sbi-dot"></div>Proceso actual</div>
     <div class="sbi" id="sb4" onclick="ir(4)"><div class="sbi-dot"></div>Modelo propuesto</div>
-
-    <div class="sb-hdr" style="margin-top:.9rem">Generales del expediente</div>
-    <div class="sbi" id="sb5" onclick="ir(5)"><div class="sbi-dot"></div>Infraestructura SOL</div>
-    <div class="sbi" id="sb6" onclick="ir(6)"><div class="sbi-dot"></div>Estado del expediente</div>
     <div class="sb-div"></div>
     <div class="sb-meta">
       <strong>Institución:</strong> <span id="sb-inst">—</span><br>
       <strong>Expediente:</strong> <span id="sb-codigo">—</span><br>
-      <strong>Analista:</strong> <span id="sb-analista">—</span><br>
+      <strong>Responsable del Acta:</strong> <span id="sb-analista">—</span><br>
       <strong>Apertura:</strong> <span id="sb-fecha">—</span>
     </div>
     <div class="pb-wrap">
@@ -54,6 +52,25 @@
   </aside>
 
   <main class="main @(Model.EsAdmin ? "" : "mode-read-only")" id="form-main">
+    @if (Model.ExpId is not null)
+    {
+        <div class="exp-fixed-header" id="exp-fixed-header">
+            <div class="efh-top">
+                <div class="efh-ident">
+                    <span class="efh-cod" id="efh-codigo">—</span>
+                    <span class="efh-inst" id="efh-inst">—</span>
+                </div>
+                <div class="efh-meta">
+                    <span class="efh-meta-item"><span class="efh-meta-lbl">Responsable del Acta</span><span id="efh-analista">—</span></span>
+                    <span class="efh-meta-item"><span class="efh-meta-lbl">Apertura</span><span id="efh-fecha">—</span></span>
+                </div>
+            </div>
+            <div class="efh-tram" id="efh-tram" style="display:none">
+                <span class="efh-tram-lbl">Trámite</span>
+                <span class="efh-tram-nombre" id="efh-tram-nombre">—</span>
+            </div>
+        </div>
+    }
     @if (!Model.EsAdmin)
     {
         <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 18px;border-radius:12px;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13.5px;box-shadow:0 2px 8px rgba(30,64,175,.06)">
@@ -74,7 +91,7 @@
         <div class="g2">
           <div class="f">
             <label>Institución <span class="star">*</span></label>
-            <select id="inst" oninput="actualizarMeta();generarCodigo()">
+            <select id="inst" onchange="actualizarMeta();generarCodigo()">
               <option value="">— Seleccione —</option>
               <option>BANHPROVI</option><option>CANATURH / IHT</option><option>CNBS</option>
               <option>CONATEL</option><option>CONSUCOOP</option><option>CONVIVIENDA</option>
@@ -96,8 +113,8 @@
         </div>
         <div class="g2">
           <div class="f">
-            <label>Analista DIGER responsable <span class="star">*</span></label>
-            <select id="analista" oninput="actualizarMeta()">
+            <label>Responsable del Acta <span class="star">*</span></label>
+            <select id="analista" onchange="actualizarMeta()">
               <option value="">— Seleccione —</option>
               @foreach (var u in Model.Usuarios)
               {
@@ -477,6 +494,7 @@
 @if (Model.EsAdmin)
 {
     <button class="btn-save-float" type="button" onclick="guardar()">💾 Guardar</button>
+    <div class="autosave-ind" id="autosave-ind"><span class="dot"></span><span class="as-txt">Borrador guardado</span></div>
 }
 <div class="toast" id="toast"></div>
 
