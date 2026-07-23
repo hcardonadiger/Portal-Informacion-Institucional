@@ -30,7 +30,12 @@
 
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1rem">
         <a class="btns" asp-page="/Reuniones/Compromisos">← Volver a compromisos</a>
-        <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@c.ReunionId">Ver acta de reunión</a>
+        <div style="display:flex;gap:8px">
+            <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@c.Id" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio al responsable asignado de este compromiso?');">
+                <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Recordar Responsable</button>
+            </form>
+            <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@c.ReunionId">Ver acta de reunión</a>
+        </div>
     </div>
 
     @* ── Tarjeta de Información Principal ────────────────────────── *@

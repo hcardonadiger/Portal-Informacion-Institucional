@@ -4,7 +4,7 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 namespace Diger.TramitesEstado.Application.Contactos.Commands.ActualizarContacto;
 
 public sealed record ActualizarContactoCommand(
-    int Id, string Nombre, string InstitucionId, string? AreaId, string? UnidadId, string? Cargo, string? Correo, string? Telefono, string? Notas)
+    int Id, string Nombre, string InstitucionId, string? AreaId, string? UnidadId, string? Cargo, string? Correo, string? Telefono, string? Notas, string? Area = null)
     : IRequest<Unit>;
 
 public sealed class ActualizarContactoCommandHandler(
@@ -21,7 +21,7 @@ public sealed class ActualizarContactoCommandHandler(
         var inst = await institucionRepo.GetByIdAsync(cmd.InstitucionId, ct)
             ?? throw new NotFoundException(nameof(Institucion), cmd.InstitucionId);
 
-        c.Actualizar(cmd.Nombre, inst.Id, inst.Nombre, cmd.AreaId, cmd.UnidadId, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas);
+        c.Actualizar(cmd.Nombre, inst.Id, inst.Nombre, cmd.AreaId, cmd.UnidadId, cmd.Cargo, cmd.Correo, cmd.Telefono, cmd.Notas, area: cmd.Area);
         repo.Update(c);
         await uow.SaveChangesAsync(ct);
         return Unit.Value;

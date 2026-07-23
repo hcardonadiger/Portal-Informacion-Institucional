@@ -32,6 +32,9 @@
         <a class="btns" asp-page="/Tickets/Index" style="font-size:13px">← Volver</a>
         <span class="res-meta" style="font-variant-numeric:tabular-nums;font-weight:700">@t.Numero</span>
         <h2 style="margin:0;font-size:18px;color:#0a2d6e;flex:1;min-width:200px">@t.Titulo</h2>
+        <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@t.Id" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio a las personas asignadas o vinculadas a este ticket?');">
+            <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Recordar</button>
+        </form>
         @if (Model.PuedeGestionar)
         {
             <a class="btns" asp-page="/Tickets/Editor" asp-route-id="@t.Id">Editar</a>

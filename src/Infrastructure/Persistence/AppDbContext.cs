@@ -266,6 +266,8 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         b.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
         b.Property(x => x.Correo).HasMaxLength(200).IsRequired();
         b.Property(x => x.PasswordHash).HasMaxLength(300).IsRequired();
+        b.Property(x => x.PasswordResetToken).HasMaxLength(256);
+        b.Property(x => x.PasswordResetTokenExpiration);
         b.HasIndex(x => x.Correo).IsUnique();
     }
 }
@@ -279,6 +281,7 @@ public sealed class ContactoConfiguration : IEntityTypeConfiguration<Contacto>
         b.Property(x => x.Id).ValueGeneratedOnAdd();
         b.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
         b.Property(x => x.Institucion).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Area).HasMaxLength(150);
         b.Property(x => x.Cargo).HasMaxLength(150);
         b.Property(x => x.Correo).HasMaxLength(200);
         b.Property(x => x.Telefono).HasMaxLength(40);
