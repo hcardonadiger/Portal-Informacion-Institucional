@@ -51,9 +51,10 @@ internal static class ContactoFeeder
                 // La institución mencionada en la reunión todavía no existe en el catálogo: se crea
                 // automáticamente (activa) para no perder el contacto, y queda disponible de
                 // inmediato en todos los listados del portal (Instituciones, Reuniones, Contactos).
-                // El Id se deriva del nombre normalizado (mayúsculas, sin espacios ni símbolos).
-                var idGenerado = new string(institucionTexto!.ToUpperInvariant()
-                    .Where(c2 => char.IsLetterOrDigit(c2)).ToArray());
+                // El Id se deriva del nombre normalizado. Debe quedar sólo con A-Z y 0-9: hay que
+                // quitar los acentos primero, porque char.IsLetterOrDigit acepta 'Í'/'Ó' y el
+                // dominio los rechaza (rompía la creación de instituciones como "SECRETARÍA…").
+                var idGenerado = NormalizarId(institucionTexto!);
                 if (string.IsNullOrWhiteSpace(idGenerado)) continue;
 
                 // Si ya existe por Id (creado en otro flujo), se usa el existente.
@@ -69,5 +70,19 @@ internal static class ContactoFeeder
                 Contacto.Crear(a.Nombre, inst.Id, inst.Nombre, r.AreaId, r.UnidadId, a.Cargo, correo, a.Telefono,
                     $"Registrado desde reunión: {r.Titulo}", OrigenContacto.Reunion), ct);
         }
+    }
+
+    /// <summary>Id de institución válido: mayúsculas sin acentos, sólo A-Z y 0-9.</summary>
+    private static string NormalizarId(string nombre)
+    {
+        var desc = nombre.Trim().ToUpperInvariant().Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(desc.Length);
+        foreach (var ch in desc)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch)
+                == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+            if (ch is >= 'A' and <= 'Z' or >= '0' and <= '9') sb.Append(ch);
+        }
+        return sb.ToString();
     }
 }

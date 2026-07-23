@@ -25,7 +25,7 @@
 
     <section class="acta-meta">
         @if (d.FechaApertura is not null) { <div><span>Apertura</span>@d.FechaApertura.Value.ToFechaCorta()</div> }
-        <div><span>Analista</span>@d.Analista</div>
+        <div><span>Responsable del Acta</span>@d.Analista</div>
         @if (Hay(d.DirSede)) { <div><span>Sede</span>@d.DirSede</div> }
         <div><span>Trámites en producción</span>@d.NumTramitesProd</div>
     </section>
