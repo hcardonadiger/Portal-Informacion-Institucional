@@ -1,11 +1,22 @@
 @using Diger.TramitesEstado.Application.Accesos
+@using Diger.TramitesEstado.Application.Notificaciones
+@using Diger.TramitesEstado.Application.Chat
 @using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario
 @using Diger.TramitesEstado.Infrastructure.Security
-@inject Diger.TramitesEstado.Web.Common.AccesoModulosService Acceso
-@inject Diger.TramitesEstado.Web.Common.JerarquiaUiService JerarquiaUi
+@using Diger.TramitesEstado.Web.Common
+@inject AccesoModulosService Acceso
+@inject JerarquiaUiService JerarquiaUi
+@inject IInstitucionBrandingService BrandingSvc
+@inject INotificacionService _notifSvc
+@inject IChatService chatSvc
+@inject IApplicationDbContext ctx
 @{
+    var _activeInstId = User.FindFirstValue(AppClaims.ActiveInstitucion);
+    var _instBranding = await BrandingSvc.GetAsync(_activeInstId);
+
     bool EsRuta(params string[] prefijos)
     {
         var path = Context.Request.Path;
@@ -31,14 +42,22 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="@(_instBranding?.Color ?? "#02395e")" />
     <title>@ViewData["Title"] — DIGER</title>
 
     @* Token Anti-CSRF disponible para peticiones AJAX/Fetch futuras *@
     @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
     @{ var token = Antiforgery.GetAndStoreTokens(Context).RequestToken; }
     <meta name="csrf-token" content="@token" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/diger.css" asp-append-version="true" />
+    @if (_instBranding?.Color is { Length: > 0 } instColor)
+    {
+        <style>:root { --diger-blue: @instColor; --diger-blue-dark: @instColor; --diger-blue-mid: @instColor; }</style>
+    }
 </head>
 <body>
     @if (User.Identity?.IsAuthenticated == true)
@@ -61,175 +80,276 @@
         var rolFiltro = User.FindFirstValue(AppClaims.ActiveRol);
         bool showAsignaciones = asignaciones != null && asignaciones.Count > 1;
         bool showJerarquia = rolFiltro == "JefeInstitucion" || rolFiltro == "JefeArea";
-
-        <div class="app-layout">
-            <header class="main-navbar">
-                <div class="navbar-container">
-                    <a asp-page="/Tableros/Index" class="navbar-brand">
-                        <img src="~/img/logo_diger.png" asp-append-version="true" alt="DIGER" />
+        <div class="app-shell">
+            <div class="gov-bar">
+                <div class="gov-bar-inner">
+                    <span>Gobierno de la República de Honduras</span>
+                    <a href="https://www.diger.gob.hn" target="_blank" rel="noopener">diger.gob.hn</a>
+                </div>
+            </div>
+            <header class="app-header">
+                <div class="app-header-inner">
+                    <a class="app-brand" asp-page="/Tableros/Index" title="Inicio">
+                        <span class="app-brand-word">DIGER</span>
+                        <span class="app-brand-divider"></span>
+                        @if (_instBranding is not null)
+                        {
+                            if (!string.IsNullOrEmpty(_instBranding.LogoUrl))
+                            {
+                                <img src="@_instBranding.LogoUrl" class="app-brand-inst-logo"
+                                     alt="@(_instBranding.NombreCorto ?? _instBranding.Nombre)" />
+                            }
+                            <span class="app-brand-inst">@(_instBranding.NombreCorto ?? _instBranding.Nombre)</span>
+                        }
+                        else
+                        {
+                            <span class="app-brand-title">Digitalización de Trámites</span>
+                        }
                     </a>
 
-                    <button type="button" class="navbar-toggler" id="navbarToggler" aria-label="Abrir menú">
-                        &#9776;
-                    </button>
+                    <button type="button" class="nav-toggle" onclick="toggleMainNav()" aria-label="Abrir menú">&#9776;</button>
 
-                    <nav class="navbar-menu" id="navbarMenu">
+                    <nav class="main-nav" id="mainNav">
                         @if (puedeTableros || puedeCalendario || puedeExpedientes)
                         {
-                            <div class="nav-item has-dropdown">
-                                <span class="nav-link">Seguimiento <span class="caret">&#9662;</span></span>
-                                <div class="nav-dropdown">
-                                    @if (puedeTableros) { <a class="dropdown-item @(EsRuta("/Tableros") ? "on" : "")" asp-page="/Tableros/Index">Tableros</a> }
-                                    @if (puedeCalendario) { <a class="dropdown-item @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index">Calendario</a> }
-                                    @if (puedeExpedientes) { <a class="dropdown-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index">Expedientes</a> }
+                            var grpSeg = EsRuta("/Tableros") || EsRuta("/Calendario") || EsRuta("/", "/Expedientes") || EsRuta("/Informes") || EsRuta("/PlanTrabajo");
+                            <div class="nav-group @(grpSeg ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Seguimiento<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    @if (puedeTableros)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Tableros") ? "on" : "")" asp-page="/Tableros/Index">Tableros</a>
+                                    }
+                                    @if (puedeCalendario)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index">Calendario</a>
+                                    }
+                                    @if (puedeExpedientes)
+                                    {
+                                        <a class="nav-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index">Expedientes</a>
+                                        <a class="nav-item @(EsRuta("/Informes") ? "on" : "")" asp-page="/Informes/Index">Informes</a>
+                                        <a class="nav-item @(EsRuta("/PlanTrabajo") ? "on" : "")" asp-page="/PlanTrabajo/Index">Plan de Trabajo</a>
+                                    }
                                 </div>
                             </div>
                         }
-
                         @if (puedeReuniones)
                         {
-                            <div class="nav-item has-dropdown">
-                                <span class="nav-link">Pendientes <span class="caret">&#9662;</span></span>
-                                <div class="nav-dropdown">
-                                    <a class="dropdown-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index">Reuniones</a>
-                                    <a class="dropdown-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos">Compromisos</a>
+                            var grpPend = EsRuta("/Reuniones");
+                            <div class="nav-group @(grpPend ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Pendientes<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    <a class="nav-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index">Reuniones</a>
+                                    <a class="nav-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos">Compromisos</a>
                                 </div>
                             </div>
                         }
-
                         @if (puedeTickets || puedeContactos)
                         {
-                            <div class="nav-item has-dropdown">
-                                <span class="nav-link">Trámites <span class="caret">&#9662;</span></span>
-                                <div class="nav-dropdown">
-                                    @if (puedeTickets) { <a class="dropdown-item @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index">Tickets</a> }
-                                    @if (puedeContactos) { <a class="dropdown-item @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index">Contactos</a> }
+                            var grpTram = EsRuta("/Tickets") || EsRuta("/Contactos");
+                            <div class="nav-group @(grpTram ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Trámites<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    @if (puedeTickets)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index">Tickets</a>
+                                    }
+                                    @if (puedeContactos)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index">Contactos</a>
+                                    }
                                 </div>
                             </div>
                         }
-
-                        @if (Acceso.EsAdministrador)
+                        @if (Acceso.EsAdministrador || User.FindFirstValue(AppClaims.ActiveRol) == "JefeInstitucion")
                         {
-                            <div class="nav-item has-dropdown">
-                                <span class="nav-link">Administración <span class="caret">&#9662;</span></span>
-                                <div class="nav-dropdown">
-                                    <a class="dropdown-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index">Instituciones</a>
-                                    <a class="dropdown-item @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index">Áreas</a>
-                                    <a class="dropdown-item @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index">Unidades</a>
-                                </div>
-                            </div>
-                            <div class="nav-item has-dropdown">
-                                <span class="nav-link">Seguridad <span class="caret">&#9662;</span></span>
-                                <div class="nav-dropdown">
-                                    <a class="dropdown-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index">Usuarios</a>
-                                    <a class="dropdown-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index">Accesos</a>
+                            var grpAdmin = EsRuta("/Instituciones") || EsRuta("/Areas") || EsRuta("/Unidades") || EsRuta("/Usuarios") || EsRuta("/Accesos");
+                            <div class="nav-group @(grpAdmin ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Administración<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    @if (Acceso.EsAdministrador)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index">Instituciones</a>
+                                    }
+                                    <a class="nav-item @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index">Áreas</a>
+                                    <a class="nav-item @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index">Unidades</a>
+                                    @if (Acceso.EsAdministrador)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index">Usuarios</a>
+                                        <a class="nav-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index">Accesos</a>
+                                    }
                                 </div>
                             </div>
                         }
                     </nav>
 
-                    <div class="navbar-user">
-                        <div class="nav-item has-dropdown user-menu">
-                            <a href="#" class="nav-link user-profile-link" onclick="event.preventDefault();">
-                                <span class="user-name">@User.Identity!.Name</span>
-                                <span class="user-avatar">@Iniciales(User.Identity!.Name)</span>
-                                <span class="caret">&#9662;</span>
-                            </a>
-                            <div class="nav-dropdown right-aligned user-dropdown">
-                                <div class="dropdown-header">
-                                    <div class="dropdown-user-name">@User.Identity!.Name</div>
-                                    <div class="dropdown-user-role">@(User.FindFirst(ClaimTypes.Role)?.Value)</div>
+                    @{
+                        var _notifUid = Guid.TryParse(User.FindFirstValue(AppClaims.UserId), out var _nuid) ? _nuid : (Guid?)null;
+                        int _noLeidas = 0;
+                        IReadOnlyList<NotificacionDto> _notifs = [];
+                        if (_notifUid.HasValue)
+                        {
+                            _noLeidas = await _notifSvc.ConteoNoLeidasAsync(_notifUid.Value);
+                            _notifs   = await _notifSvc.GetNoLeidasAsync(_notifUid.Value, 8);
+                        }
+
+                        string NotifIcono(TipoNotificacion t) => t switch
+                        {
+                            TipoNotificacion.TicketAsignado           => "🎫",
+                            TipoNotificacion.TicketResuelto           => "✅",
+                            TipoNotificacion.CompromisoVencido        => "⏰",
+                            TipoNotificacion.CompromisoProximo        => "📌",
+                            TipoNotificacion.ReuniónMañana            => "📅",
+                            TipoNotificacion.ChatRecibido             => "💬",
+                            TipoNotificacion.EtapaCronogramaVencida   => "🚨",
+                            TipoNotificacion.EtapaCronogramaProxima   => "📆",
+                            _                                         => "🔔",
+                        };
+                    }
+                    <div class="header-right">
+                        <div class="notif-wrap" id="notifWrap">
+                            <button type="button" class="header-icon notif-btn" onclick="toggleNotifPanel(event)" title="Notificaciones" aria-haspopup="true">
+                                &#128276;
+                                @if (_noLeidas > 0)
+                                {
+                                    <span class="notif-badge">@(_noLeidas > 9 ? "9+" : _noLeidas.ToString())</span>
+                                }
+                            </button>
+                            <div class="notif-panel" id="notifPanel" hidden>
+                                <div class="notif-panel-hdr">
+                                    <span class="notif-panel-title">Notificaciones</span>
+                                    @if (_noLeidas > 0)
+                                    {
+                                        <button type="button" class="notif-mark-all-btn" onclick="notifMarcarTodas()">Marcar todas</button>
+                                    }
                                 </div>
-                                
-                                <a asp-page="/Cuenta/Manage/Index" class="dropdown-item">Mi Perfil</a>
-
-                                @if (showAsignaciones || showJerarquia)
+                                @if (_notifs.Count == 0)
                                 {
-                                    <div class="dropdown-divider"></div>
+                                    <div class="notif-empty">Sin notificaciones pendientes</div>
                                 }
-
-                                @if (showAsignaciones)
+                                else
                                 {
-                                    var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
-                                    var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
-                                    var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
-                                    var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
-                                    int currentIndex = asignaciones!.FindIndex(a =>
-                                        a.InstitucionId == activeInst && a.AreaId == activeArea &&
-                                        a.UnidadId == activeUnidad && a.Rol == activeRol);
-
-                                    <div class="dropdown-section">
-                                        <div class="dropdown-label">Contexto activo</div>
-                                        <form method="post" asp-page="/Cuenta/CambiarContexto">
-                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                                            <select name="indiceSeleccionado" onchange="this.form.submit()" class="dropdown-select">
-                                                @for (int i = 0; i < asignaciones.Count; i++)
+                                    foreach (var _n in _notifs)
+                                    {
+                                        <div class="notif-item" id="ni-@_n.Id">
+                                            <span class="ni-ico">@NotifIcono(_n.Tipo)</span>
+                                            <div class="ni-body">
+                                                <div class="ni-titulo">@_n.Titulo</div>
+                                                <div class="ni-fecha">@_n.FechaCreacion.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                                            </div>
+                                            <div class="ni-actions">
+                                                <button type="button" class="ni-check" onclick="notifMarcar(@_n.Id)" title="Marcar leída">✓</button>
+                                                @if (!string.IsNullOrEmpty(_n.Url))
                                                 {
-                                                    var a = asignaciones[i];
-                                                    var label = $"{a.Rol} - {a.InstitucionId}" + (a.AreaId != null ? $" / {a.AreaId}" : "") + (a.UnidadId != null ? $" / {a.UnidadId}" : "");
-                                                    if (i == currentIndex) { <option value="@i" selected>@label</option> }
-                                                    else { <option value="@i">@label</option> }
+                                                    <a class="ni-go" href="@_n.Url" title="Ver">→</a>
                                                 }
-                                            </select>
-                                        </form>
-                                    </div>
+                                            </div>
+                                        </div>
+                                    }
                                 }
-
-                                @if (showJerarquia)
-                                {
-                                    var currentArea = User.FindFirstValue(AppClaims.ActiveArea);
-                                    var currentUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
-
-                                    <div class="dropdown-section">
-                                        <div class="dropdown-label">Filtrar por jerarquía</div>
-                                        <form method="post" asp-page="/Cuenta/CambiarFiltroJerarquia">
-                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-
-                                            @if (rolFiltro == "JefeInstitucion")
-                                            {
-                                                var areas = await JerarquiaUi.GetAreasAsync();
-                                                <select name="areaId" onchange="this.form.submit()" class="dropdown-select">
-                                                    <option value="">-- Toda la Institución --</option>
-                                                    @foreach (var a in areas)
-                                                    {
-                                                        if (a.Id == currentArea) { <option value="@a.Id" selected>@a.Nombre</option> }
-                                                        else { <option value="@a.Id">@a.Nombre</option> }
-                                                    }
-                                                </select>
-                                            }
-                                            else if (rolFiltro == "JefeArea")
-                                            {
-                                                <input type="hidden" name="areaId" value="@currentArea" />
-                                            }
-
-                                            @if ((rolFiltro == "JefeInstitucion" && !string.IsNullOrEmpty(currentArea)) || rolFiltro == "JefeArea")
-                                            {
-                                                var unidades = await JerarquiaUi.GetUnidadesAsync(currentArea);
-                                                <select name="unidadId" onchange="this.form.submit()" class="dropdown-select">
-                                                    <option value="">-- Todas las Unidades --</option>
-                                                    @foreach (var u in unidades)
-                                                    {
-                                                        if (u.Id == currentUnidad) { <option value="@u.Id" selected>@u.Nombre</option> }
-                                                        else { <option value="@u.Id">@u.Nombre</option> }
-                                                    }
-                                                </select>
-                                            }
-                                        </form>
-                                    </div>
-                                }
-
-                                <div class="dropdown-divider"></div>
-                                <button type="submit" form="logoutForm" class="dropdown-logout">Cerrar sesión</button>
+                                <a href="/Notificaciones" class="notif-ver-todas">Ver todas las notificaciones →</a>
                             </div>
                         </div>
-                        <form id="logoutForm" method="post" asp-page="/Cuenta/Logout" style="display:none"></form>
+                        <div class="user-menu">
+                            <button type="button" class="user-menu-btn" onclick="toggleUserPanel()">
+                                <span class="side-avatar">@Iniciales(User.Identity!.Name)</span>
+                                <span class="user-menu-meta">
+                                    <span class="user-menu-name">@User.Identity!.Name</span>
+                                    <span class="user-menu-rol">@(User.FindFirst(ClaimTypes.Role)?.Value)</span>
+                                </span>
+                                <span class="nav-caret">&#9662;</span>
+                            </button>
+                            <div class="user-menu-panel" id="sideUserPanel">
+                        @if (showAsignaciones)
+                        {
+                            var activeArea = User.FindFirstValue(AppClaims.ActiveArea);
+                            var activeUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+                            var activeInst = User.FindFirstValue(AppClaims.ActiveInstitucion);
+                            var activeRol = User.FindFirstValue(AppClaims.ActiveRol);
+                            int currentIndex = asignaciones!.FindIndex(a =>
+                                a.InstitucionId == activeInst && a.AreaId == activeArea &&
+                                a.UnidadId == activeUnidad && a.Rol == activeRol);
+
+                            <div class="side-panel-section">
+                                <div class="side-panel-label">Contexto activo</div>
+                                <form method="post" asp-page="/Cuenta/CambiarContexto">
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <select name="indiceSeleccionado" onchange="this.form.submit()">
+                                        @for (int i = 0; i < asignaciones.Count; i++)
+                                        {
+                                            var a = asignaciones[i];
+                                            var label = $"{a.Rol} - {a.InstitucionId}" + (a.AreaId != null ? $" / {a.AreaId}" : "") + (a.UnidadId != null ? $" / {a.UnidadId}" : "");
+                                            if (i == currentIndex) { <option value="@i" selected>@label</option> }
+                                            else { <option value="@i">@label</option> }
+                                        }
+                                    </select>
+                                </form>
+                            </div>
+                        }
+
+                        @if (showJerarquia)
+                        {
+                            var currentArea = User.FindFirstValue(AppClaims.ActiveArea);
+                            var currentUnidad = User.FindFirstValue(AppClaims.ActiveUnidad);
+
+                            <div class="side-panel-section">
+                                <div class="side-panel-label">Filtrar por jerarquía</div>
+                                <form method="post" asp-page="/Cuenta/CambiarFiltroJerarquia">
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                                    @if (rolFiltro == "JefeInstitucion")
+                                    {
+                                        var areas = await JerarquiaUi.GetAreasAsync();
+                                        <select name="areaId" onchange="this.form.submit()">
+                                            <option value="">-- Toda la Institución --</option>
+                                            @foreach (var a in areas)
+                                            {
+                                                if (a.Id == currentArea) { <option value="@a.Id" selected>@a.Nombre</option> }
+                                                else { <option value="@a.Id">@a.Nombre</option> }
+                                            }
+                                        </select>
+                                    }
+                                    else if (rolFiltro == "JefeArea")
+                                    {
+                                        <input type="hidden" name="areaId" value="@currentArea" />
+                                    }
+
+                                    @if ((rolFiltro == "JefeInstitucion" && !string.IsNullOrEmpty(currentArea)) || rolFiltro == "JefeArea")
+                                    {
+                                        var unidades = await JerarquiaUi.GetUnidadesAsync(currentArea);
+                                        <select name="unidadId" onchange="this.form.submit()">
+                                            <option value="">-- Todas las Unidades --</option>
+                                            @foreach (var u in unidades)
+                                            {
+                                                if (u.Id == currentUnidad) { <option value="@u.Id" selected>@u.Nombre</option> }
+                                                else { <option value="@u.Id">@u.Nombre</option> }
+                                            }
+                                        </select>
+                                    }
+                                </form>
+                            </div>
+                        }
+
+                        <a class="user-panel-link" asp-page="/Cuenta/Perfil">Mi perfil</a>
+                        <button type="submit" form="logoutForm" class="side-panel-logout">Cerrar sesión</button>
                     </div>
-                </div>
+                            <form id="logoutForm" method="post" asp-page="/Cuenta/Logout" style="display:none"></form>
+                        </div>
+                    </div>
+            </div>
+                <div class="nav-backdrop" id="navBackdrop" onclick="toggleMainNav(false)"></div>
             </header>
 
-            <main class="app-main-content">
+            <main class="app-main">
                 @RenderBody()
             </main>
+
+            <footer class="diger-footer">
+                <div class="diger-footer-inner">
+                    <span>© @DateTime.Now.Year DIGER — Gobierno de la República de Honduras. Todos los derechos reservados.</span>
+                    <a href="https://www.diger.gob.hn" target="_blank" rel="noopener">Portal DIGER</a>
+                </div>
+            </footer>
         </div>
     }
     else
@@ -238,5 +358,547 @@
     }
     <script src="~/js/diger.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+<style>
+/* ── Notificaciones: campana + panel ───────────────────────────────── */
+.notif-wrap { position: relative; }
+.notif-btn  { position: relative; }
+.notif-badge {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 17px; height: 17px; border-radius: 10px;
+    background: var(--diger-danger); color: #fff;
+    font-size: 9px; font-weight: 800; line-height: 17px;
+    text-align: center; padding: 0 4px; pointer-events: none;
+    border: 2px solid var(--diger-blue, #02395e);
+}
+.notif-panel {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    width: 340px; max-height: 480px;
+    background: #fff; border: 1.5px solid var(--diger-border);
+    border-radius: 12px; box-shadow: var(--diger-shadow-md);
+    display: flex; flex-direction: column;
+    z-index: 900; overflow: hidden;
+}
+.notif-panel[hidden] { display: none; }
+.notif-panel-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px 10px; border-bottom: 1px solid var(--diger-border);
+    flex: none;
+}
+.notif-panel-title { font-size: 13px; font-weight: 800; color: var(--diger-text); }
+.notif-mark-all-btn {
+    font-size: 11px; color: var(--diger-blue-mid); font-weight: 600;
+    background: none; border: none; cursor: pointer; padding: 0;
+}
+.notif-mark-all-btn:hover { text-decoration: underline; }
+.notif-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px; border-bottom: 1px solid var(--diger-bg);
+    transition: background .1s;
+}
+.notif-item:hover { background: var(--diger-bg-soft); }
+.ni-ico { font-size: 18px; flex: none; padding-top: 1px; }
+.ni-body { flex: 1; min-width: 0; }
+.ni-titulo { font-size: 12.5px; font-weight: 600; color: var(--diger-text); line-height: 1.4; }
+.ni-fecha  { font-size: 11px; color: var(--diger-text-muted); margin-top: 2px; }
+.ni-actions { display: flex; gap: 4px; flex: none; align-items: center; }
+.ni-check, .ni-go {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; border: 1.5px solid var(--diger-border);
+    background: var(--diger-bg-soft); color: var(--diger-text-muted);
+    cursor: pointer; text-decoration: none; transition: all .13s;
+}
+.ni-check:hover { background: var(--diger-success-bg); border-color: var(--diger-success); color: var(--diger-success); }
+.ni-go:hover    { background: var(--diger-blue-light); border-color: var(--diger-blue-mid); color: var(--diger-blue-mid); }
+.notif-empty    { padding: 24px 14px; text-align: center; color: var(--diger-text-muted); font-size: 13px; }
+.notif-ver-todas {
+    display: block; text-align: center; padding: 10px;
+    font-size: 12px; font-weight: 600; color: var(--diger-blue-mid);
+    border-top: 1px solid var(--diger-border); text-decoration: none;
+    background: var(--diger-bg-soft); flex: none;
+}
+.notif-ver-todas:hover { background: var(--diger-blue-light); }
+@@media (prefers-color-scheme: dark) {
+    .notif-panel { background: #1e293b; border-color: #334155; }
+    .notif-item:hover { background: #0f172a; }
+    .ni-titulo { color: #e2e8f0; }
+    .notif-panel-title { color: #f1f5f9; }
+    .ni-check, .ni-go { background: #0f172a; border-color: #334155; }
+    .notif-ver-todas { background: #1e293b; }
+}
+</style>
+<script>
+(function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    window.toggleNotifPanel = function(e) {
+        e?.stopPropagation();
+        const panel = document.getElementById('notifPanel');
+        if (!panel) return;
+        const open = !panel.hidden;
+        panel.hidden = open;
+        if (!open) {
+            document.addEventListener('click', closeOnClickOutside, { once: true });
+        }
+    };
+
+    function closeOnClickOutside(e) {
+        const wrap = document.getElementById('notifWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            const panel = document.getElementById('notifPanel');
+            if (panel) panel.hidden = true;
+        } else {
+            document.addEventListener('click', closeOnClickOutside, { once: true });
+        }
+    }
+
+    window.notifMarcar = async function(id) {
+        await fetch(`/Notificaciones?handler=MarcarLeida&id=${id}`, {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': csrf }
+        });
+        const el = document.getElementById(`ni-${id}`);
+        if (el) el.remove();
+        actualizarBadge(-1);
+    };
+
+    window.notifMarcarTodas = async function() {
+        await fetch('/Notificaciones?handler=MarcarTodas', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': csrf }
+        });
+        document.querySelectorAll('.notif-item').forEach(el => el.remove());
+        actualizarBadge(0, true);
+    };
+
+    function actualizarBadge(delta, clear = false) {
+        const badge = document.querySelector('.notif-badge');
+        if (!badge) return;
+        if (clear) { badge.remove(); return; }
+        const n = Math.max(0, (parseInt(badge.textContent) || 0) + delta);
+        if (n === 0) badge.remove();
+        else badge.textContent = n > 9 ? '9+' : n;
+    }
+})();
+</script>
+
+@* ── Widget flotante de chat de soporte (usuario final) ───────────────── *@
+@{
+    var _chatUidRaw = User.FindFirstValue("diger:uid");
+    var _chatUid    = Guid.TryParse(_chatUidRaw, out var _cu) ? _cu : (Guid?)null;
+    var _esRutaChat = Context.Request.Path.StartsWithSegments("/Chat", StringComparison.OrdinalIgnoreCase);
+}
+@if (_chatUid.HasValue && !_esRutaChat)
+{
+    var _chatTemas = await ctx.TemasTicket
+        .Where(t => t.Activo)
+        .OrderBy(t => t.Nombre)
+        .Select(t => new { t.Id, t.Nombre })
+        .ToListAsync();
+    var _sesionActiva = await chatSvc.GetSesionActivaUsuarioAsync(_chatUid.Value);
+
+    <!-- Widget flotante -->
+    <div id="chatWidget" class="chat-widget">
+        <button type="button" class="chat-fab" onclick="toggleChatWidget()" title="Soporte">
+            💬
+            <span id="chatFabBadge" class="chat-fab-badge" style="display:none"></span>
+        </button>
+        <div class="chat-widget-panel" id="chatWidgetPanel" style="display:none">
+            <div class="cwp-head">
+                <span>💬 Soporte DIGER</span>
+                <div class="cwp-head-actions">
+                    @if (_sesionActiva is not null)
+                    {
+                        <div id="cwpTicketZone" class="cwp-head-ticket">
+                            @if (_sesionActiva.TicketId.HasValue)
+                            {
+                                <a href="/Tickets/Detalle/@_sesionActiva.TicketId" target="_blank" class="cwp-head-ticket-link" title="Ver ticket asociado">📋</a>
+                            }
+                            else
+                            {
+                                <button type="button" class="cwp-head-ticket-btn" onclick="cwpMostrarFormTicket()" title="Crear ticket de soporte">📋</button>
+                            }
+                        </div>
+                    }
+                    <button type="button" onclick="toggleChatWidget()" class="cwp-close">✕</button>
+                </div>
+            </div>
+            <div class="cwp-body" id="cwpBody">
+                @if (_sesionActiva is null)
+                {
+                    <!-- Formulario de inicio -->
+                    <div id="cwpInicio">
+                        <p class="cwp-intro">¿En qué podemos ayudarte?</p>
+                        <div class="cwp-form">
+                            <label class="cwp-label">Tema de tu consulta</label>
+                            <select id="cwpTema" class="cwp-select">
+                                <option value="">-- Selecciona un tema --</option>
+                                @foreach (var t in _chatTemas)
+                                {
+                                    <option value="@t.Id">@t.Nombre</option>
+                                }
+                            </select>
+                            <label class="cwp-label" style="margin-top:10px">Mensaje inicial</label>
+                            <textarea id="cwpMensaje" class="cwp-textarea" rows="3" placeholder="Describe tu consulta..."></textarea>
+                            <button type="button" class="btn-prim" style="width:100%;margin-top:10px" onclick="iniciarChat()">
+                                Iniciar chat
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Chat activo — los mensajes se cargan vía SignalR/AJAX al abrir el widget -->
+                    <div id="cwpChat" data-sesion="@_sesionActiva.Id">
+                        <div class="cwp-status">
+                            @if (_sesionActiva.TecnicoNombre != null)
+                            {
+                                <span class="cwp-status-dot activo"></span>
+                                <span>@_sesionActiva.TecnicoNombre te está atendiendo</span>
+                            }
+                            else
+                            {
+                                <span class="cwp-status-dot espera"></span>
+                                <span>Esperando a un técnico...</span>
+                            }
+                        </div>
+                        <div class="cwp-mensajes" id="cwpMensajes"></div>
+                        @if (_sesionActiva.Estado == ChatEstado.Activo || _sesionActiva.Estado == ChatEstado.EnCola)
+                        {
+                            <div class="cwp-input-bar">
+                                <input type="text" id="cwpInput" class="cwp-input" placeholder="Escribe aquí..." />
+                                <button type="button" class="cwp-send" onclick="cwpEnviar()">→</button>
+                            </div>
+                        }
+                        <div id="cwpFormTicket" class="cwp-ticket-form" style="display:none">
+                            <label class="cwp-label">Título del ticket</label>
+                            <input type="text" id="cwpTicketTitulo" class="cwp-input"
+                                   placeholder="Describe el problema..."
+                                   value="@(string.IsNullOrEmpty(_sesionActiva.TemaNombre) ? "Consulta de soporte" : $"Consulta: {_sesionActiva.TemaNombre}")"
+                                   maxlength="200" />
+                            <div class="cwp-ticket-actions">
+                                <button type="button" class="cwp-ticket-cancel" onclick="cwpOcultarFormTicket()">Cancelar</button>
+                                <button type="button" id="cwpTicketConfirm" class="cwp-ticket-confirm" onclick="cwpCrearTicket()">Crear ticket</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+    <script>
+    (function() {
+        const antiForgery = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        let sesionId = @(_sesionActiva?.Id.ToString() ?? "null");
+        let hubConn  = null;
+        const _temas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            _chatTemas.Select(t => new { id = t.Id, nombre = t.Nombre })));
+
+        // ── Widget toggle ────────────────────────────────────────────────
+        let mensajesCargados = false;
+        window.toggleChatWidget = function() {
+            const panel = document.getElementById('chatWidgetPanel');
+            const estaAbierto = panel.style.display !== 'none';
+            panel.style.display = estaAbierto ? 'none' : 'flex';
+            if (estaAbierto) return;
+            if (!hubConn) iniciarHub();
+            if (sesionId && !mensajesCargados) cargarMensajes();
+            else scrollMensajes();
+        };
+
+        async function cargarMensajes() {
+            if (!sesionId) return;
+            const res  = await fetch(`/Chat?handler=Sesion&sesionId=${sesionId}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const cont = document.getElementById('cwpMensajes');
+            if (!cont || !data?.mensajes) return;
+            for (const m of data.mensajes) agregarMensajeCwp(m.texto, m.esDelTecnico, m.esSistema);
+            mensajesCargados = true;
+        }
+
+        // ── Iniciar una nueva sesión ─────────────────────────────────────
+        window.iniciarChat = async function() {
+            const temaId  = document.getElementById('cwpTema')?.value || null;
+            const texto   = document.getElementById('cwpMensaje')?.value?.trim() || '';
+            if (!texto) { alert('Escribe un mensaje para iniciar el chat.'); return; }
+
+            const res = await fetch('/Chat?handler=IniciarSesion', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': antiForgery,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ temaId: temaId ? parseInt(temaId) : null, mensaje: texto })
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            sesionId = data.sesionId;
+            // Recargar el widget con la sesión activa
+            location.reload();
+        };
+
+        // ── Enviar mensaje ────────────────────────────────────────────────
+        window.cwpEnviar = function() {
+            const inp = document.getElementById('cwpInput');
+            const txt = inp?.value?.trim() ?? '';
+            if (!txt || !sesionId || !hubConn) return;
+            hubConn.invoke('EnviarMensaje', sesionId, txt);
+            agregarMensajeCwp(txt, false);
+            inp.value = '';
+        };
+
+        document.getElementById('cwpInput')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); cwpEnviar(); }
+        });
+
+        // ── Hub ───────────────────────────────────────────────────────────
+        function iniciarHub() {
+            hubConn = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/soporte')
+                .withAutomaticReconnect()
+                .build();
+
+            hubConn.on('MensajeRecibido', (msg) => {
+                if (msg.sesionId == sesionId && msg.esDelTecnico) {
+                    agregarMensajeCwp(msg.texto, true);
+                    actualizarChatBadge(1);
+                    if (msg.autorNombre === 'Asistente DIGER') actualizarEstadoAgente();
+                }
+            });
+
+            hubConn.on('TecnicoAsignado', (nombre) => {
+                const dot = document.querySelector('.cwp-status-dot');
+                if (dot) { dot.className = 'cwp-status-dot activo'; dot.nextElementSibling.textContent = `${nombre} te está atendiendo`; }
+            });
+
+            hubConn.on('SesionCerrada', (estado) => {
+                sesionId = null;
+                mensajesCargados = false;
+                document.querySelector('.cwp-input-bar')?.remove();
+                document.getElementById('cwpFormTicket')?.remove();
+                // Ocultar el botón de ticket en el encabezado
+                const tz = document.getElementById('cwpTicketZone');
+                if (tz) tz.innerHTML = '';
+                // Mostrar mensaje de cierre y opción de nueva consulta
+                const cont = document.getElementById('cwpMensajes');
+                if (cont) {
+                    cont.insertAdjacentHTML('beforeend',
+                        `<div class="cwp-msg sis"><div class="cwp-burbuja">El chat ha sido cerrado. ¡Hasta pronto!</div></div>`);
+                    cont.scrollTop = cont.scrollHeight;
+                }
+                setTimeout(() => mostrarFormNuevoChat(), 1500);
+            });
+
+            hubConn.on('TicketCreado', (tId, numero) => {
+                const zone = document.getElementById('cwpTicketZone');
+                if (zone) zone.innerHTML = `<a href="/Tickets/Detalle/${tId}" target="_blank" class="cwp-head-ticket-link" title="${numero ?? 'Ver ticket'}">📋</a>`;
+                document.getElementById('cwpFormTicket')?.style.setProperty('display', 'none');
+            });
+
+            hubConn.start().then(() => {
+                if (sesionId) {
+                    hubConn.invoke('UnirseASesion', sesionId);
+                    hubConn.invoke('MarcarLeidos', sesionId, false);
+                }
+            }).catch(err => console.error('Hub error:', err));
+        }
+
+        function agregarMensajeCwp(texto, esDeTecnico, esSistema = false) {
+            const cont = document.getElementById('cwpMensajes');
+            if (!cont) return;
+            const cls = esSistema ? 'sis' : esDeTecnico ? 'tec' : 'usr';
+            cont.insertAdjacentHTML('beforeend',
+                `<div class="cwp-msg ${cls}"><div class="cwp-burbuja">${escHtml(texto)}</div></div>`);
+            scrollMensajes();
+        }
+
+        function scrollMensajes() {
+            const c = document.getElementById('cwpMensajes');
+            if (c) c.scrollTop = c.scrollHeight;
+        }
+
+        function actualizarChatBadge(delta) {
+            const badge = document.getElementById('chatFabBadge');
+            if (!badge) return;
+            const n = Math.max(0, (parseInt(badge.textContent) || 0) + delta);
+            badge.style.display = n > 0 ? 'flex' : 'none';
+            badge.textContent = n > 9 ? '9+' : n;
+        }
+
+        function escHtml(s) {
+            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // Auto-conectar si hay sesión activa
+        if (sesionId) iniciarHub();
+
+        // ── Indicador de asistente IA ────────────────────────────────────
+        function actualizarEstadoAgente() {
+            const dot = document.querySelector('.cwp-status-dot.espera');
+            if (!dot) return;
+            dot.className = 'cwp-status-dot agente';
+            const lbl = dot.nextElementSibling;
+            if (lbl) lbl.textContent = '🤖 Asistente virtual activo · esperando técnico';
+        }
+
+        // ── Restablecer widget tras cierre de sesión ─────────────────────
+        function mostrarFormNuevoChat() {
+            const body = document.getElementById('cwpBody');
+            if (!body) return;
+            const opts = _temas.map(t =>
+                `<option value="${t.id}">${escHtml(t.nombre)}</option>`).join('');
+            body.innerHTML =
+                `<div id="cwpInicio">
+                    <p class="cwp-intro">¿En qué más podemos ayudarte?</p>
+                    <div class="cwp-form">
+                        <label class="cwp-label">Tema de tu consulta</label>
+                        <select id="cwpTema" class="cwp-select">
+                            <option value="">-- Selecciona un tema --</option>
+                            ${opts}
+                        </select>
+                        <label class="cwp-label" style="margin-top:10px">Mensaje inicial</label>
+                        <textarea id="cwpMensaje" class="cwp-textarea" rows="3"
+                            placeholder="Describe tu consulta..."></textarea>
+                        <button type="button" class="btn-prim"
+                            style="width:100%;margin-top:10px" onclick="iniciarChat()">
+                            Iniciar chat
+                        </button>
+                    </div>
+                </div>`;
+        }
+
+        // ── Crear ticket desde el chat ────────────────────────────────────
+        window.cwpMostrarFormTicket = function() {
+            document.querySelector('.cwp-head-ticket-btn')?.style.setProperty('display', 'none');
+            document.getElementById('cwpFormTicket')?.style.setProperty('display', 'flex');
+        };
+
+        window.cwpOcultarFormTicket = function() {
+            document.getElementById('cwpFormTicket')?.style.setProperty('display', 'none');
+            document.querySelector('.cwp-head-ticket-btn')?.style.setProperty('display', '');
+        };
+
+        window.cwpCrearTicket = async function() {
+            const titulo = document.getElementById('cwpTicketTitulo')?.value?.trim() ?? '';
+            if (!titulo) { alert('Escribe un título para el ticket.'); return; }
+
+            const btn = document.getElementById('cwpTicketConfirm');
+            if (btn) { btn.disabled = true; btn.textContent = 'Creando...'; }
+
+            try {
+                const res = await fetch('/Chat?handler=CrearTicketDesdeChat', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': antiForgery, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sesionId: sesionId, titulo: titulo })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert('No se pudo crear el ticket: ' + (err.error ?? res.statusText));
+                    if (btn) { btn.disabled = false; btn.textContent = 'Crear ticket'; }
+                    return;
+                }
+
+                const data = await res.json();
+                document.getElementById('cwpFormTicket')?.style.setProperty('display', 'none');
+                const zone = document.getElementById('cwpTicketZone');
+                if (zone) zone.innerHTML =
+                    `<a href="/Tickets/Detalle/${data.ticketId}" target="_blank" class="cwp-head-ticket-link" title="${data.numero ?? 'Ver ticket'}">📋</a>`;
+            } catch {
+                alert('Error de conexión al crear el ticket.');
+                if (btn) { btn.disabled = false; btn.textContent = 'Crear ticket'; }
+            }
+        };
+    })();
+    </script>
+
+    <style>
+    .chat-widget { position:fixed;bottom:20px;right:20px;z-index:8000;display:flex;flex-direction:column;align-items:flex-end;gap:10px; }
+    .chat-fab {
+        width:52px;height:52px;border-radius:50%;background:var(--diger-blue);color:#fff;
+        border:none;cursor:pointer;font-size:22px;display:flex;align-items:center;
+        justify-content:center;box-shadow:0 4px 16px rgba(26,86,219,.4);
+        position:relative;transition:transform .15s;
+    }
+    .chat-fab:hover { transform:scale(1.08); }
+    .chat-fab-badge {
+        position:absolute;top:-4px;right:-4px;width:20px;height:20px;
+        border-radius:50%;background:#e11d48;color:#fff;
+        font-size:10px;font-weight:700;align-items:center;justify-content:center;
+        border:2px solid #fff;
+    }
+    .chat-widget-panel {
+        width:320px;border-radius:14px;overflow:hidden;
+        box-shadow:0 8px 32px rgba(0,0,0,.18);background:#fff;
+        border:1.5px solid var(--diger-border);
+        display:flex;flex-direction:column;max-height:480px;
+    }
+    .cwp-head {
+        background:var(--diger-blue);color:#fff;padding:12px 16px;
+        display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:14px;
+    }
+    .cwp-close { background:none;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:.75; }
+    .cwp-close:hover { opacity:1; }
+    .cwp-body { flex:1;overflow-y:auto;display:flex;flex-direction:column; }
+    .cwp-intro { font-size:13px;color:var(--diger-text-muted);margin:0 0 12px; }
+    .cwp-form { display:flex;flex-direction:column;padding:16px; }
+    .cwp-label { font-size:11.5px;font-weight:700;color:var(--diger-text-muted);margin-bottom:4px; }
+    .cwp-select,.cwp-textarea,.cwp-input {
+        border:1.5px solid var(--diger-border);border-radius:8px;
+        padding:8px 10px;font-size:13px;font-family:inherit;background:#fff;
+    }
+    .cwp-textarea { resize:none; }
+    .cwp-select:focus,.cwp-textarea:focus,.cwp-input:focus { outline:none;border-color:var(--diger-blue-mid); }
+    .cwp-status {
+        display:flex;align-items:center;gap:8px;padding:10px 14px;
+        font-size:12px;color:var(--diger-text-muted);border-bottom:1px solid var(--diger-border);
+    }
+    .cwp-status-dot { width:8px;height:8px;border-radius:50%;flex:none; }
+    .cwp-status-dot.activo { background:#059669; }
+    .cwp-status-dot.espera { background:#d97706; }
+    .cwp-status-dot.agente { background:#7c3aed; }
+    .cwp-mensajes { flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;min-height:120px; }
+    .cwp-msg { display:flex; }
+    .cwp-msg.tec { justify-content:flex-start; }
+    .cwp-msg.usr { justify-content:flex-end; }
+    .cwp-msg.sis { justify-content:center; }
+    .cwp-burbuja { max-width:80%;padding:8px 11px;border-radius:10px;font-size:12.5px;line-height:1.4; }
+    .tec .cwp-burbuja { background:var(--diger-bg-soft);border:1px solid var(--diger-border);border-bottom-left-radius:3px; }
+    .usr .cwp-burbuja { background:var(--diger-blue);color:#fff;border-bottom-right-radius:3px; }
+    .sis .cwp-burbuja { background:var(--diger-blue-pale,#eff6ff);font-style:italic;font-size:11px;color:var(--diger-text-muted);border-radius:8px;border:1px dashed var(--diger-border); }
+    .cwp-input-bar { display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--diger-border); }
+    .cwp-input { flex:1; }
+    .cwp-send { padding:6px 12px;background:var(--diger-blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px; }
+    .cwp-head-actions { display:flex;align-items:center;gap:6px; }
+    .cwp-head-ticket { display:flex;align-items:center; }
+    .cwp-head-ticket-btn,.cwp-head-ticket-link {
+        background:rgba(255,255,255,.15);border:none;color:#fff;
+        width:28px;height:28px;border-radius:6px;cursor:pointer;
+        font-size:14px;display:flex;align-items:center;justify-content:center;
+        text-decoration:none;transition:background .12s;
+    }
+    .cwp-head-ticket-btn:hover,.cwp-head-ticket-link:hover { background:rgba(255,255,255,.28); }
+    .cwp-ticket-form {
+        padding:10px 12px;border-top:1px solid var(--diger-border);
+        background:var(--diger-bg-soft);flex-direction:column;gap:8px;flex:none;
+    }
+    .cwp-ticket-actions { display:flex;gap:6px;justify-content:flex-end;margin-top:2px; }
+    .cwp-ticket-cancel {
+        background:none;border:1px solid var(--diger-border);color:var(--diger-text-muted);
+        border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;
+    }
+    .cwp-ticket-cancel:hover { background:var(--diger-border); }
+    .cwp-ticket-confirm {
+        background:var(--diger-blue);color:#fff;border:none;
+        border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;
+    }
+    .cwp-ticket-confirm:hover { opacity:.9; }
+    .cwp-ticket-confirm:disabled { opacity:.55;cursor:not-allowed; }
+    </style>
+}
 </body>
 </html>
+

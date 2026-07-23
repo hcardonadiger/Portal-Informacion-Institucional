@@ -102,4 +102,5 @@ public sealed record ExpedienteInputDto(
     List<PerfilInput>         Perfiles,
     List<string>              Condiciones,
     List<ChecklistInput>      ChecklistInfra,
-    List<SeccionInput>        Secciones);
+    List<SeccionInput>        Secciones,
+    Guid?    AnalistaId = null);

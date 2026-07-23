@@ -8,7 +8,8 @@ public sealed class SeguimientoModel(ISender sender) : PageModel
 {
     public SeguimientoExpedienteDto Data { get; private set; } = default!;
 
-    public bool PuedeGestionar => User.CanMutate();
+    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    public bool PuedeGestionar => EsAdmin;
 
     public async Task<IActionResult> OnGetAsync(int id, int? t, CancellationToken ct)
     {

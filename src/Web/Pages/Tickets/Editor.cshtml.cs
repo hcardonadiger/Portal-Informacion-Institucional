@@ -44,6 +44,9 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        if (id is not null && !User.IsInRole(nameof(RolUsuario.Administrador)))
+            return Forbid();
+
         await CargarCatalogosAsync(ct);
         if (id is null) return Page();
 
@@ -65,6 +68,9 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     public async Task<IActionResult> OnPostAsync(int? id, CancellationToken ct)
     {
+        if (id is not null && !User.IsInRole(nameof(RolUsuario.Administrador)))
+            return Forbid();
+
         TicketId = id;
         await CargarCatalogosAsync(ct);
 

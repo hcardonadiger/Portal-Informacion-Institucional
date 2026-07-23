@@ -1,0 +1,40 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Cuenta.ContrasenaModel
+@{
+    ViewData["Title"] = "Contraseña";
+    Layout = "_CuentaLayout";
+}
+
+<div class="card">
+    <h3 class="cuenta-card-title">Cambiar contraseña</h3>
+
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="text-error"></div>
+
+        <div class="field">
+            <label>Contraseña actual</label>
+            <input asp-for="PasswordActual" type="password" autocomplete="current-password" />
+            <span asp-validation-for="PasswordActual" class="text-error"></span>
+        </div>
+
+        <div class="field">
+            <label>Nueva contraseña</label>
+            <input asp-for="PasswordNuevo" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres" />
+            <span asp-validation-for="PasswordNuevo" class="text-error"></span>
+        </div>
+
+        <div class="field">
+            <label>Confirmar nueva contraseña</label>
+            <input asp-for="PasswordConfirmar" type="password" autocomplete="new-password" />
+            <span asp-validation-for="PasswordConfirmar" class="text-error"></span>
+        </div>
+
+        <div style="margin-top:1.5rem">
+            <button type="submit" class="btnp">Cambiar contraseña</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

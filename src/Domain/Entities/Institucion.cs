@@ -9,6 +9,7 @@ public sealed class Institucion : BaseAuditableEntity<string>
     public string? Descripcion { get; private set; }
     public string? NombreCorto { get; private set; }
     public string? LogoUrl     { get; private set; }
+    public string? Color       { get; private set; }
     public string? InfoExtra   { get; private set; }
     public bool   Activo      { get; private set; } = true;
 
@@ -37,9 +38,9 @@ public sealed class Institucion : BaseAuditableEntity<string>
     private static void ValidarId(string id)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        if (!Regex.IsMatch(id.Trim(), @"^[A-Z0-9]+$"))
+        if (!Regex.IsMatch(id.Trim(), @"^[A-Z0-9\-_]+$"))
         {
-            throw new DomainException("El Id de la Institución solo puede contener letras mayúsculas y números, sin espacios ni símbolos.");
+            throw new DomainException("El Id de la Institución solo puede contener letras mayúsculas, números, guiones (-) y guiones bajos (_), sin espacios.");
         }
     }
 
@@ -49,12 +50,13 @@ public sealed class Institucion : BaseAuditableEntity<string>
         Nombre = nombre.Trim().ToUpper();
     }
     
-    public void ActualizarDetalles(string? descripcion, string? nombreCorto, string? logoUrl, string? infoExtra)
+    public void ActualizarDetalles(string? descripcion, string? nombreCorto, string? logoUrl, string? infoExtra, string? color = null)
     {
         Descripcion = descripcion?.Trim();
         NombreCorto = nombreCorto?.Trim().ToUpper();
         LogoUrl = logoUrl?.Trim();
         InfoExtra = infoExtra?.Trim();
+        Color = string.IsNullOrWhiteSpace(color) ? null : color.Trim();
     }
 
     public void Activar()    => Activo = true;

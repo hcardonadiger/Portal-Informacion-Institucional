@@ -23,27 +23,51 @@ public sealed class RegistrarAsistenciaCommandHandler(
 
         var d = cmd.Datos;
         var correo = d.Correo?.Trim().ToLowerInvariant();
-
-        // Evita el doble registro por correo.
-        if (!string.IsNullOrWhiteSpace(correo) &&
-            r.Asistentes.Any(a => a.Correo != null && a.Correo == correo))
-            throw new DomainException("Ya existe un registro con ese correo para esta reunión.");
-
         var tel = string.IsNullOrWhiteSpace(d.Telefono)
             ? null
             : $"{d.CodigoPais} {d.Telefono.Trim()}".Trim();
 
-        r.RegistrarAsistente(d.Nombre, d.Cargo, d.Institucion, d.Departamento, correo, tel);
+        // Vincular la institución con el catálogo (null cuando es texto libre / "Otra")
+        Institucion? inst = null;
+        if (!string.IsNullOrWhiteSpace(d.Institucion))
+            inst = await institucionRepo.GetByNombreAsync(d.Institucion, ct);
+
+        // Si hay un pre-registro pendiente para este correo, confirmarlo en lugar de crear un duplicado.
+        var preregistrado = !string.IsNullOrWhiteSpace(correo)
+            ? r.Asistentes.FirstOrDefault(a => a.EsPreregistro && a.Correo == correo)
+            : null;
+
+        if (preregistrado is not null)
+        {
+            preregistrado.Confirmado   = true;
+            preregistrado.AutoRegistro = true;
+            preregistrado.RegistradoEl = DateTime.UtcNow;
+            if (!string.IsNullOrWhiteSpace(d.Nombre))       preregistrado.Nombre      = d.Nombre.Trim();
+            if (!string.IsNullOrWhiteSpace(d.Cargo))        preregistrado.Cargo       = d.Cargo.Trim();
+            if (!string.IsNullOrWhiteSpace(d.Institucion))
+            {
+                preregistrado.InstitucionId = inst?.Id;
+                preregistrado.Institucion   = inst?.Nombre ?? d.Institucion.Trim();
+            }
+            if (!string.IsNullOrWhiteSpace(d.Departamento)) preregistrado.Departamento = d.Departamento.Trim();
+            if (!string.IsNullOrWhiteSpace(tel))            preregistrado.Telefono    = tel;
+        }
+        else
+        {
+            // Evita el doble registro por correo.
+            if (!string.IsNullOrWhiteSpace(correo) &&
+                r.Asistentes.Any(a => a.Correo != null && a.Correo == correo))
+                throw new DomainException("Ya existe un registro con ese correo para esta reunión.");
+
+            r.RegistrarAsistente(d.Nombre, d.Cargo, inst?.Nombre ?? d.Institucion, d.Departamento, correo, tel,
+                institucionId: inst?.Id);
+        }
+
         repo.Update(r);
 
         if (!string.IsNullOrWhiteSpace(correo))
         {
             var contacto = await contactoRepo.GetByCorreoAsync(correo, ct);
-            Institucion? inst = null;
-            if (!string.IsNullOrWhiteSpace(d.Institucion))
-            {
-                inst = await institucionRepo.GetByNombreAsync(d.Institucion, ct);
-            }
 
             if (contacto is not null)
             {
@@ -61,7 +85,7 @@ public sealed class RegistrarAsistenciaCommandHandler(
             {
                 // Crear nuevo contacto
                 var nuevoContacto = Contacto.Crear(
-                    d.Nombre, inst.Id, inst.Nombre, null, null, d.Cargo, correo, tel, null, OrigenContacto.Reunion
+                    d.Nombre, inst.Id, inst.Nombre, r.AreaId, r.UnidadId, d.Cargo, correo, tel, null, OrigenContacto.Reunion
                 );
                 await contactoRepo.AddAsync(nuevoContacto, ct);
             }

@@ -1,5 +1,15 @@
 @page "{id:int?}"
 @model Diger.TramitesEstado.Web.Pages.Reuniones.EditorModel
+@functions {
+    static string AsistIni(string? nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "?";
+        var p = nombre.Trim().Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+        return p.Length >= 2
+            ? $"{p[0][0]}{p[^1][0]}".ToUpper()
+            : nombre.Trim()[..Math.Min(2, nombre.Trim().Length)].ToUpper();
+    }
+}
 @{
     ViewData["Title"] = Model.ReunionId is null ? "Nueva reunión" : "Editar reunión";
     var d = Model.Datos;
@@ -23,20 +33,48 @@
 <input type="hidden" name="paso" id="paso-hidden" value="0" />
 <div class="wrap">
   <aside class="sidebar">
-    <div class="sb-hdr">Pasos</div>
-    <div class="sbi active" id="sb0" onclick="irPaso(0)"><div class="sbi-dot"></div>Generales</div>
-    <div class="sbi" id="sb1" onclick="irPaso(1)"><div class="sbi-dot"></div>Asistencia</div>
-    <div class="sbi" id="sb3" onclick="irPaso(3)"><div class="sbi-dot"></div>Memoria</div>
-    <div class="sbi" id="sb2" onclick="irPaso(2)" style="display:none"><div class="sbi-dot"></div>Capacitación</div>
-    <div class="sbi" id="sb4" onclick="irPaso(4)"><div class="sbi-dot"></div>Cierre</div>
+    <div class="sb-hdr">Completar ficha</div>
+    <div class="sb-steps">
+      <div class="sbi active" id="sb0" onclick="irPaso(0)">
+        <div class="sbi-num">1</div>
+        <div class="sbi-info"><span class="sbi-label">Generales</span><span class="sbi-sub">Datos y clasificación</span></div>
+      </div>
+      <div class="sbi" id="sb1" onclick="irPaso(1)">
+        <div class="sbi-num">2</div>
+        <div class="sbi-info"><span class="sbi-label">Asistencia</span><span class="sbi-sub">Lista de participantes</span></div>
+      </div>
+      <div class="sbi" id="sb3" onclick="irPaso(3)">
+        <div class="sbi-num">3</div>
+        <div class="sbi-info"><span class="sbi-label">Memoria</span><span class="sbi-sub">Desarrollo y acuerdos</span></div>
+      </div>
+      <div class="sbi" id="sb2" onclick="irPaso(2)" style="display:none">
+        <div class="sbi-num">+</div>
+        <div class="sbi-info"><span class="sbi-label">Capacitación</span><span class="sbi-sub">Detalle adicional</span></div>
+      </div>
+      <div class="sbi" id="sb4" onclick="irPaso(4)">
+        <div class="sbi-num">4</div>
+        <div class="sbi-info"><span class="sbi-label">Cierre</span><span class="sbi-sub">Validación y evidencia</span></div>
+      </div>
+    </div>
   </aside>
 
-  <main class="main">
+  <main class="main @(Model.EsAdmin ? "" : "mode-read-only")" id="reu-main">
+    @if (!Model.EsAdmin)
+    {
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 18px;border-radius:12px;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13.5px;box-shadow:0 2px 8px rgba(30,64,175,.06)">
+            <span style="font-size:18px">👁️</span>
+            <div>
+                <strong>Modo de Solo Lectura</strong>
+                <div style="font-size:12px;font-weight:400;color:#3b82f6;margin-top:2px">Estás en modo visualización. Las reuniones solo pueden ser editadas por un Administrador de la DIGER.</div>
+            </div>
+        </div>
+    }
 
     @* ══ PASO 0: GENERALES ══ *@
     <div class="sec active" id="sec0">
-      <div class="sec-title">Generales</div>
-      <div class="card">
+      <div class="sec-title"><span class="sec-step-badge">1</span>Generales</div>
+      <div class="card accent">
+        <div class="fg-hdr">Información básica</div>
         <div class="field"><label>Título <span style="color:#dc2626">*</span></label>
           <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" required /></div>
         <div class="row3">
@@ -44,7 +82,8 @@
           <div class="field"><label>Hora</label><input asp-for="Datos.Hora" type="time" /></div>
           <div class="field"><label>Duración</label><input asp-for="Datos.Duracion" placeholder="2 horas" /></div>
         </div>
-        <div class="row3">
+        <div class="fg-hdr">Tipo y modalidad</div>
+        <div class="row2">
           <div class="field"><label>Modalidad</label>
             <select id="md-sel" onchange="otroSync('md')">
               <option value="">— Seleccione —</option>
@@ -62,8 +101,9 @@
             <input type="hidden" asp-for="Datos.Tipo" id="tp-val" />
           </div>
         </div>
+        <div class="fg-hdr">Instituciones convocadas</div>
         <div class="field">
-          <label>Instituciones que van a atender la reunión</label>
+          <label>Agregar institución</label>
           <div style="display:flex;gap:8px">
             <select id="inst-add-sel" style="flex:1">
               <option value="">— Seleccione una institución —</option>
@@ -74,6 +114,7 @@
           <div id="inst-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
           <span class="hint">Solo estas instituciones podrán elegirse al pasar asistencia. La primera agregada queda como principal.</span>
         </div>
+        <div class="fg-hdr">Logística</div>
         <div class="row2" style="gap:14px">
           <div class="field"><label>Lugar</label><input asp-for="Datos.Lugar" placeholder="Sede, sala o enlace de videollamada" /></div>
           <div class="field">
@@ -126,27 +167,48 @@
 
     @* ══ PASO 1: ASISTENCIA ══ *@
     <div class="sec" id="sec1">
-      <div class="sec-title">Asistencia</div>
+      <div class="sec-title"><span class="sec-step-badge">2</span>Asistencia</div>
 
       @* ── Asistentes ──────────────────────────────────────────── *@
-      <div class="card">
-          <h3 class="sec-h">Asistentes</h3>
+      <div class="card accent">
+          <div class="ct">Asistentes</div>
           <div id="asistentes-list">
               @for (var i = 0; i < Model.Asistentes.Count; i++)
               {
                   <div class="asistente-item">
                       <input type="hidden" name="Asistentes.Index" value="@i" />
-                      <div class="asistente-row">
-                          <div class="field"><label>Nombre</label><input name="Asistentes[@i].Nombre" value="@Model.Asistentes[i].Nombre" /></div>
+                      <div class="asi-hdr">
+                          <span class="asist-av ic@(i % 8) asi-av-live" aria-hidden="true">@AsistIni(Model.Asistentes[i].Nombre)</span>
+                          <input name="Asistentes[@i].Nombre" class="asi-nombre" value="@Model.Asistentes[i].Nombre" placeholder="Nombre completo…" autocomplete="name" />
+                          <button type="button" class="asi-del" onclick="eliminarAsistente(this)" title="Eliminar asistente">✕</button>
+                      </div>
+                      <div class="asi-fields">
                           <div class="field"><label>Cargo</label><input name="Asistentes[@i].Cargo" value="@Model.Asistentes[i].Cargo" /></div>
+                          <div class="field"><label>Institución</label>
+                              @{
+                                  var asis = Model.Asistentes[i];
+                                  var instMatch = Model.Instituciones.FirstOrDefault(x =>
+                                      x.Id == asis.InstitucionId
+                                      || (asis.InstitucionId is null && x.Nombre == asis.Institucion));
+                              }
+                              <select name="Asistentes[@i].InstitucionId" class="asi-inst" onchange="syncAsisInst(this)">
+                                  <option value="" data-nombre="">— Sin institución</option>
+                                  @foreach (var inst in Model.Instituciones)
+                                  {
+                                      if (instMatch?.Id == inst.Id) { <option value="@inst.Id" data-nombre="@inst.Nombre" selected>@inst.Nombre</option> }
+                                      else { <option value="@inst.Id" data-nombre="@inst.Nombre">@inst.Nombre</option> }
+                                  }
+                                  @if (instMatch is null && !string.IsNullOrWhiteSpace(asis.Institucion))
+                                  {
+                                      <option value="" data-nombre="@asis.Institucion" selected>@asis.Institucion (texto)</option>
+                                  }
+                              </select>
+                              <input type="hidden" name="Asistentes[@i].Institucion" value="@asis.Institucion" />
+                          </div>
                           <div class="field"><label>Departamento / Área</label><input name="Asistentes[@i].Departamento" value="@Model.Asistentes[i].Departamento" /></div>
+                          <div class="field"><label>Correo</label><input name="Asistentes[@i].Correo" value="@Model.Asistentes[i].Correo" type="email" /></div>
+                          <div class="field"><label>Teléfono</label><input name="Asistentes[@i].Telefono" value="@Model.Asistentes[i].Telefono" type="tel" /></div>
                       </div>
-                      <div class="asistente-row">
-                          <div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[@i].Institucion" value="@Model.Asistentes[i].Institucion" /></div>
-                          <div class="field"><label>Correo</label><input name="Asistentes[@i].Correo" value="@Model.Asistentes[i].Correo" /></div>
-                          <div class="field"><label>Tel&eacute;fono</label><input name="Asistentes[@i].Telefono" value="@Model.Asistentes[i].Telefono" /></div>
-                      </div>
-                      <div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar asistente</button></div>
                   </div>
               }
           </div>
@@ -167,7 +229,7 @@
 
     @* ══ PASO 3: MEMORIA ══ *@
     <div class="sec" id="sec3">
-      <div class="sec-title">Memoria</div>
+      <div class="sec-title"><span class="sec-step-badge">3</span>Memoria</div>
 
       @* ── Autocompletar desde transcripción (Cowork) — opcional ── *@
       <details class="card" id="cowork-details" style="padding:0">
@@ -185,7 +247,8 @@
         </div>
       </details>
 
-      <div class="card">
+      <div class="card accent">
+          <div class="ct">Objetivo y desarrollo</div>
           <div class="field">
               <label>Objetivo de la reunión</label>
               <textarea asp-for="Datos.ObjetivoAgenda" rows="3" placeholder="Describa el objetivo principal de esta reunión…"></textarea>
@@ -206,27 +269,38 @@
       </div>
 
       @* ── Acuerdos ────────────────────────────────────────────── *@
-      <div class="card">
-          <h3 class="sec-h">Acuerdos y compromisos</h3>
-          <table class="seg-table edit-grid" id="acuerdos-tbl">
-              <thead>
-                  <tr><th style="width:42%">Compromiso</th><th style="width:28%">Responsable</th><th style="width:170px">Plazo</th><th style="width:40px"></th></tr>
-              </thead>
-              <tbody>
-                  @for (var i = 0; i < Model.Acuerdos.Count; i++)
-                  {
-                      <tr>
-                          <td><input type="hidden" name="Acuerdos.Index" value="@i" />
-                              <input name="Acuerdos[@i].Compromiso" value="@Model.Acuerdos[i].Compromiso" /></td>
-                          <td><select name="Acuerdos[@i].Responsable" class="resp-select" data-selected="@Model.Acuerdos[i].Responsable"></select></td>
-                          <td><input name="Acuerdos[@i].Plazo" type="date" value="@(Model.Acuerdos[i].Plazo?.ToString("yyyy-MM-dd"))" /></td>
-                          <td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>
-                      </tr>
-                  }
-              </tbody>
-          </table>
+      <div class="card accent">
+          <div class="ct">Acuerdos y compromisos</div>
+          <div id="acuerdos-list">
+              @for (var i = 0; i < Model.Acuerdos.Count; i++)
+              {
+                  <div class="acuerdo-item">
+                      <input type="hidden" name="Acuerdos.Index" value="@i" />
+                      <div class="ac-hdr">
+                          <span class="ac-num">@(i + 1)</span>
+                          <label class="ac-lbl">Compromiso</label>
+                          <button type="button" class="asi-del" onclick="this.closest('.acuerdo-item').remove(); renumerarAcuerdos()" title="Eliminar acuerdo">✕</button>
+                      </div>
+                      <textarea name="Acuerdos[@i].Compromiso" class="ac-compromiso" rows="2" placeholder="Describa el compromiso…">@Model.Acuerdos[i].Compromiso</textarea>
+                      <div class="ac-meta">
+                          <div class="field" style="flex:1;min-width:0">
+                              <label>Responsable</label>
+                              <select name="Acuerdos[@i].Responsable" class="resp-select"
+                                      data-selected="@Model.Acuerdos[i].Responsable"
+                                      data-selected-cid="@(Model.Acuerdos[i].ResponsableContactoId?.ToString() ?? "")"></select>
+                              <input type="hidden" name="Acuerdos[@i].ResponsableContactoId" class="resp-cid"
+                                     value="@(Model.Acuerdos[i].ResponsableContactoId?.ToString() ?? "")" />
+                          </div>
+                          <div class="field" style="width:160px;flex:none">
+                              <label>Plazo</label>
+                              <input name="Acuerdos[@i].Plazo" type="date" value="@(Model.Acuerdos[i].Plazo?.ToString("yyyy-MM-dd"))" />
+                          </div>
+                      </div>
+                  </div>
+              }
+          </div>
           <button type="button" class="btns" style="margin-top:.6rem" onclick="addAcuerdo()">+ Agregar acuerdo</button>
-          <span class="hint" style="display:block;margin-top:6px">El responsable puede ser un participante registrado en Asistencia o una de las instituciones convocadas.</span>
+          <span class="hint" style="display:block;margin-top:6px">El responsable puede ser un participante de la reunión, una institución convocada o un contacto del directorio.</span>
       </div>
 
       <div class="nav">
@@ -243,9 +317,9 @@
 
     @* ══ PASO 2: CAPACITACIÓN (solo si Tipo = Capacitación) ══ *@
     <div class="sec" id="sec2">
-      <div class="sec-title">Capacitación</div>
-      <div class="card">
-          <h3 class="sec-h">Detalle de capacitación</h3>
+      <div class="sec-title"><span class="sec-step-badge">+</span>Capacitación</div>
+      <div class="card accent">
+          <div class="ct">Detalle de capacitación</div>
           <div class="field">
               <label>Objetivo de la capacitación</label>
               <textarea asp-for="Datos.ObjetivoCap" rows="2"></textarea>
@@ -257,8 +331,8 @@
       </div>
 
       @* ── Resultados de la capacitación ────────────────────────── *@
-      <div class="card">
-          <h3 class="sec-h">Resultados de la capacitación</h3>
+      <div class="card accent">
+          <div class="ct">Resultados de la capacitación</div>
           <div class="row3">
               <div class="field"><label>Convocados</label><input asp-for="Datos.Convocados" type="number" min="0" /></div>
               <div class="field"><label>Nº asistentes</label><input asp-for="Datos.NumAsistentes" type="number" min="0" />
@@ -284,8 +358,8 @@
 
     @* ══ PASO 4: CIERRE ══ *@
     <div class="sec" id="sec4">
-      <div class="sec-title">Cierre</div>
-      <div class="card">
+      <div class="sec-title"><span class="sec-step-badge">4</span>Cierre</div>
+      <div class="card accent">
         <div class="field">
           <label>Calificación de satisfacción</label>
           <div class="tg">
@@ -302,8 +376,8 @@
         </div>
         <div class="field"><label>Documentos / recursos <span class="hint">(uno por línea)</span></label><textarea asp-for="Datos.DocsRecursos" rows="2"></textarea></div>
       </div>
-      <div class="card" id="foto-card">
-        <h3 class="sec-h">Evidencia fotográfica</h3>
+      <div class="card accent" id="foto-card">
+        <div class="ct">Evidencia fotográfica</div>
         <div class="row2">
           <div class="field"><label>Foto 1</label>
             <div class="foto-up">
@@ -325,7 +399,10 @@
       </div>
       <div class="nav">
         <button class="btn btn-s" type="button" onclick="anterior()">← Anterior</button>
-        <button class="btn btn-p" type="submit" onclick="syncTodo()">@(Model.ReunionId is null ? "Crear reunión" : "Guardar cambios")</button>
+        @if (Model.EsAdmin)
+        {
+            <button class="btn btn-p" type="submit" onclick="syncTodo()">@(Model.ReunionId is null ? "Crear reunión" : "Guardar cambios")</button>
+        }
       </div>
     </div>
 
@@ -333,6 +410,141 @@
 </div>
 </form>
 
+<style>
+/* ══ Sidebar: numbered steps with connecting line ══════════════════ */
+.sb-steps { padding: 2px 0; }
+.sb-steps .sbi { position: relative; align-items: flex-start; padding: 7px 10px 7px 8px; }
+.sbi-num {
+    width: 27px; height: 27px; border-radius: 50%;
+    background: var(--diger-border); color: var(--diger-text-muted);
+    font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex: none; position: relative; z-index: 1;
+    transition: background .2s, color .2s, box-shadow .2s;
+}
+.sbi.active .sbi-num { background: var(--diger-blue-mid); color: #fff; box-shadow: 0 2px 8px rgba(20,85,164,.3); }
+.sbi.done .sbi-num { background: var(--diger-success); color: #fff; }
+.sbi-info { display: flex; flex-direction: column; gap: 1px; padding-top: 4px; min-width: 0; }
+.sbi-label { font-size: 12.5px; font-weight: 600; }
+.sbi-sub { font-size: 10.5px; color: var(--diger-text-muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbi.active .sbi-sub { color: var(--diger-blue); opacity: .65; }
+.sb-steps .sbi:not(:last-child)::after {
+    content: ''; position: absolute;
+    left: 21px; top: 34px; width: 2px;
+    height: calc(100% - 6px);
+    background: var(--diger-border); z-index: 0;
+}
+.sb-steps .sbi.done:not(:last-child)::after { background: var(--diger-success); opacity: .4; }
+
+/* ══ Section title: step number badge ═════════════════════════════ */
+.sec-step-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--diger-blue-mid); color: #fff;
+    font-size: 10px; font-weight: 800; flex: none;
+}
+
+/* ══ Field group sub-header ════════════════════════════════════════ */
+.fg-hdr {
+    font-size: 10.5px; font-weight: 800;
+    color: var(--diger-blue-mid); text-transform: uppercase; letter-spacing: .07em;
+    display: flex; align-items: center; gap: 6px;
+    margin: 20px 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--diger-blue-light);
+}
+.fg-hdr:first-child { margin-top: 0; }
+
+/* ══ Card accent: stronger left-border ════════════════════════════ */
+.card.accent { border-left-width: 3px; border-left-color: var(--diger-blue-mid); }
+
+/* ══ Card sub-header (.ct override for this page) ═════════════════ */
+.card > .ct { margin-top: 0; margin-bottom: 1.1rem; color: var(--diger-text-muted); border-bottom-color: var(--diger-bg); }
+
+/* ══ Institution chips ═════════════════════════════════════════════ */
+.inst-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--diger-blue-light); border: 1.5px solid var(--diger-blue-pale);
+    color: var(--diger-blue); font-size: 12px; font-weight: 600;
+    border-radius: var(--diger-radius-pill); padding: 5px 10px;
+    transition: border-color .15s;
+}
+.inst-chip.principal { background: linear-gradient(135deg, var(--diger-blue-light), var(--diger-blue-pale)); font-weight: 700; border-color: rgba(20,85,164,.4); }
+.inst-chip button {
+    background: none; border: none; cursor: pointer;
+    color: var(--diger-text-muted); font-size: 13px; line-height: 1;
+    padding: 0; margin-left: 2px; opacity: .55;
+    transition: opacity .15s, color .15s;
+}
+.inst-chip button:hover { opacity: 1; color: var(--diger-danger); }
+
+/* ══ Enhanced form fields ══════════════════════════════════════════ */
+.main .field { margin-bottom: .9rem; }
+.main .field:last-child { margin-bottom: 0; }
+.main .field label { font-size: 12px; font-weight: 700; color: var(--diger-blue); }
+.main .field input, .main .field select, .main .field textarea {
+    border-color: var(--diger-border); border-radius: 8px; background: var(--diger-bg-soft);
+    transition: border-color .2s, box-shadow .2s;
+}
+.main .field input:focus, .main .field select:focus, .main .field textarea:focus {
+    outline: none; border-color: var(--diger-blue-mid); background: #fff;
+    box-shadow: 0 0 0 3px rgba(20,85,164,.08);
+}
+
+/* ══ RTE toolbar (override diger.css for this page) ═══════════════ */
+.main .rte-toolbar {
+    display: flex; gap: 3px;
+    background: var(--diger-bg-soft); border: 1.5px solid var(--diger-border);
+    border-bottom: none; border-radius: 8px 8px 0 0; padding: 5px 8px;
+}
+.main .rte-toolbar button {
+    padding: 4px 9px; border: 1.5px solid transparent;
+    border-radius: 5px; font-size: 12.5px; cursor: pointer;
+    background: transparent; color: var(--diger-text); transition: all .15s;
+}
+.main .rte-toolbar button:hover { background: #fff; border-color: var(--diger-border); color: var(--diger-blue-mid); }
+.main .rte-body {
+    min-height: 120px; resize: vertical; overflow: auto;
+    border: 1.5px solid var(--diger-border); border-radius: 0 0 8px 8px;
+    padding: 10px 12px; font-size: 13.5px; line-height: 1.65;
+    background: #fff; color: var(--diger-text);
+    transition: border-color .2s, box-shadow .2s;
+}
+.main .rte-body:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(20,85,164,.08); }
+
+/* ══ Acuerdo card items ════════════════════════════════════════════ */
+.acuerdo-item {
+    border: 1.5px solid var(--diger-border);
+    border-radius: 9px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    background: var(--diger-bg-soft);
+    transition: border-color .15s, box-shadow .15s;
+}
+.acuerdo-item:focus-within { border-color: var(--diger-blue-mid); background: #fff; box-shadow: 0 2px 8px rgba(20,85,164,.07); }
+.ac-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ac-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--diger-blue-mid); color: #fff;
+    font-size: 11px; font-weight: 800; flex: none;
+}
+.ac-lbl { flex: 1; font-size: 11px; font-weight: 800; color: var(--diger-text-muted); text-transform: uppercase; letter-spacing: .06em; margin: 0; }
+.ac-compromiso {
+    width: 100%; box-sizing: border-box; resize: vertical; font-size: 13.5px;
+    margin-bottom: 10px; border: 1.5px solid var(--diger-border); border-radius: 7px;
+    padding: 8px 10px; background: #fff; font-family: inherit; line-height: 1.55;
+    transition: border-color .2s;
+}
+.ac-compromiso:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(20,85,164,.08); }
+.ac-meta { display: flex; gap: 10px; align-items: flex-start; }
+.ac-meta .field { margin-bottom: 0; }
+.ac-meta select, .ac-meta input[type=date] { width: 100%; }
+@@media (max-width: 600px) {
+    .ac-meta { flex-direction: column; }
+    .ac-meta .field[style*="width:160px"] { width: 100% !important; }
+}
+</style>
 @section Scripts {
 <script>
   var MODALIDADES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Modalidades));
@@ -342,6 +554,15 @@
   // ── Instituciones convocadas (lista acumulable) ─────────────────
   var INSTITUCIONES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Instituciones.Select(i => new { i.Id, i.Nombre })));
   var institucionesSeleccionadas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.InstitucionesIds));
+  var CONTACTOS_DIR = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+      Model.ContactosDirectorio.Select(c => new { id = c.Id, nombre = c.Nombre, cargo = c.Cargo, inst = c.Institucion })));
+
+  // Mantiene el snapshot del nombre (hidden) alineado con la opción elegida del catálogo
+  function syncAsisInst(sel) {
+      var hidden = sel.parentElement.querySelector('input[type="hidden"]');
+      var opt = sel.selectedOptions[0];
+      if (hidden) hidden.value = (opt && opt.dataset.nombre) || '';
+  }
 
   function nombreInstitucion(id) {
     var m = INSTITUCIONES.find(function(i){ return i.Id === id; });
@@ -352,7 +573,7 @@
     wrap.innerHTML = '';
     institucionesSeleccionadas.forEach(function(id, idx){
       var chip = document.createElement('span');
-      chip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:#eef3fc;border:1px solid #cfe0fb;border-radius:20px;padding:4px 6px 4px 12px;font-size:13px;color:#0a2d6e';
+      chip.className = 'inst-chip' + (idx === 0 ? ' principal' : '');
       chip.textContent = (idx === 0 ? '★ ' : '') + nombreInstitucion(id);
       var del = document.createElement('button');
       del.type = 'button'; del.textContent = '✕';
@@ -436,22 +657,30 @@
 
         function addAsistente() {
             const i = aIdx++;
+            const color = 'ic' + (i % 8);
             const div = document.createElement('div');
             div.className = 'asistente-item';
             div.innerHTML =
                 `<input type="hidden" name="Asistentes.Index" value="${i}" />` +
-                `<div class="asistente-row">` +
-                  `<div class="field"><label>Nombre</label><input name="Asistentes[${i}].Nombre" /></div>` +
+                `<div class="asi-hdr">` +
+                  `<span class="asist-av ${color} asi-av-live" aria-hidden="true">?</span>` +
+                  `<input name="Asistentes[${i}].Nombre" class="asi-nombre" placeholder="Nombre completo…" autocomplete="name" />` +
+                  `<button type="button" class="asi-del" onclick="eliminarAsistente(this)" title="Eliminar asistente">✕</button>` +
+                `</div>` +
+                `<div class="asi-fields">` +
                   `<div class="field"><label>Cargo</label><input name="Asistentes[${i}].Cargo" /></div>` +
+                  `<div class="field"><label>Institución</label>` +
+                  `<select name="Asistentes[${i}].InstitucionId" class="asi-inst" onchange="syncAsisInst(this)">` +
+                  `<option value="" data-nombre="">— Sin institución</option>` +
+                  INSTITUCIONES.map(function(x){ return '<option value="' + x.Id + '" data-nombre="' + x.Nombre + '">' + x.Nombre + '</option>'; }).join('') +
+                  `</select>` +
+                  `<input type="hidden" name="Asistentes[${i}].Institucion" value="" /></div>` +
                   `<div class="field"><label>Departamento / Área</label><input name="Asistentes[${i}].Departamento" /></div>` +
-                `</div>` +
-                `<div class="asistente-row">` +
-                  `<div class="field"><label>Instituci&oacute;n</label><input name="Asistentes[${i}].Institucion" /></div>` +
-                  `<div class="field"><label>Correo</label><input name="Asistentes[${i}].Correo" /></div>` +
-                  `<div class="field"><label>Tel&eacute;fono</label><input name="Asistentes[${i}].Telefono" /></div>` +
-                `</div>` +
-                `<div class="asistente-del-wrap"><button type="button" class="hist-del" onclick="eliminarAsistente(this)">&#x2715; Eliminar asistente</button></div>`;
+                  `<div class="field"><label>Correo</label><input name="Asistentes[${i}].Correo" type="email" /></div>` +
+                  `<div class="field"><label>Teléfono</label><input name="Asistentes[${i}].Telefono" type="tel" /></div>` +
+                `</div>`;
             document.getElementById('asistentes-list').appendChild(div);
+            div.querySelector('.asi-nombre').focus();
             actualizarResponsables();
         }
 
@@ -460,17 +689,42 @@
             actualizarResponsables();
         }
 
+        function actualizarAv(input) {
+            var av = input.closest('.asistente-item').querySelector('.asi-av-live');
+            if (!av) return;
+            var nombre = input.value.trim();
+            if (!nombre) { av.textContent = '?'; return; }
+            var p = nombre.split(/\s+/).filter(Boolean);
+            av.textContent = p.length >= 2
+                ? (p[0][0] + p[p.length - 1][0]).toUpperCase()
+                : nombre.substring(0, 2).toUpperCase();
+        }
+
         function nombresAsistentes() {
             return Array.from(document.querySelectorAll('#asistentes-list input[name$=".Nombre"]'))
                 .map(function (i) { return i.value.trim(); })
                 .filter(function (v) { return v.length > 0; });
         }
 
+        // Contacto del directorio cuyo nombre coincide (para vincular participantes al directorio)
+        function contactoPorNombre(nombre) {
+            return CONTACTOS_DIR.filter(function (c) { return c.nombre === nombre; })[0] || null;
+        }
+
+        // Mantiene el hidden ResponsableContactoId alineado con la opción elegida
+        function syncRespCid(sel) {
+            var hid = sel.parentElement.querySelector('.resp-cid');
+            if (!hid) return;
+            var op = sel.selectedOptions[0];
+            hid.value = (op && op.dataset.cid) || '';
+        }
+
         function actualizarResponsables() {
             var nombres = nombresAsistentes();
             var instituciones = institucionesSeleccionadas.map(function (id) { return nombreInstitucion(id); });
-            document.querySelectorAll('#acuerdos-tbl .resp-select').forEach(function (sel) {
+            document.querySelectorAll('#acuerdos-list .resp-select').forEach(function (sel) {
                 var actual = sel.dataset.selected !== undefined ? sel.dataset.selected : sel.value;
+                var actualCid = sel.dataset.selectedCid || '';
                 sel.innerHTML = '';
                 var blank = document.createElement('option');
                 blank.value = ''; blank.textContent = '— Seleccione —';
@@ -483,6 +737,9 @@
                     valores.forEach(function (n) {
                         var op = document.createElement('option');
                         op.value = n; op.textContent = n;
+                        // Un participante que existe en el directorio hereda su id de contacto
+                        var c = contactoPorNombre(n);
+                        if (c) op.dataset.cid = c.id;
                         if (n === actual) op.selected = true;
                         gp.appendChild(op);
                     });
@@ -491,26 +748,64 @@
                 agregarGrupo('Participantes', nombres);
                 agregarGrupo('Instituciones', instituciones);
 
-                if (actual && nombres.indexOf(actual) < 0 && instituciones.indexOf(actual) < 0) {
+                if (CONTACTOS_DIR.length) {
+                    var gp = document.createElement('optgroup');
+                    gp.label = 'Directorio';
+                    CONTACTOS_DIR.forEach(function (c) {
+                        var op = document.createElement('option');
+                        op.value = c.nombre;
+                        op.dataset.cid = c.id;
+                        op.textContent = c.cargo ? c.nombre + ' — ' + c.cargo : c.nombre;
+                        if (actualCid ? String(c.id) === actualCid : c.nombre === actual) op.selected = true;
+                        gp.appendChild(op);
+                    });
+                    sel.appendChild(gp);
+                }
+
+                var todosNombres = nombres.concat(instituciones)
+                    .concat(CONTACTOS_DIR.map(function (c) { return c.nombre; }));
+                if (actual && todosNombres.indexOf(actual) < 0) {
                     var op = document.createElement('option');
                     op.value = actual; op.textContent = actual; op.selected = true;
                     sel.appendChild(op);
                 }
                 delete sel.dataset.selected;
+                delete sel.dataset.selectedCid;
+
+                sel.onchange = function () { syncRespCid(sel); };
+                syncRespCid(sel);
             });
         }
 
         function addAcuerdo() {
             const i = kIdx++;
-            const tr = document.createElement('tr');
-            tr.innerHTML =
-                `<td><input type="hidden" name="Acuerdos.Index" value="${i}" />` +
-                `<input name="Acuerdos[${i}].Compromiso" /></td>` +
-                `<td><select name="Acuerdos[${i}].Responsable" class="resp-select"></select></td>` +
-                `<td><input name="Acuerdos[${i}].Plazo" type="date" /></td>` +
-                `<td><button type="button" class="hist-del" onclick="this.closest('tr').remove()">✕</button></td>`;
-            document.querySelector('#acuerdos-tbl tbody').appendChild(tr);
+            const n = document.querySelectorAll('#acuerdos-list .acuerdo-item').length + 1;
+            const div = document.createElement('div');
+            div.className = 'acuerdo-item';
+            div.innerHTML =
+                `<input type="hidden" name="Acuerdos.Index" value="${i}" />` +
+                `<div class="ac-hdr">` +
+                  `<span class="ac-num">${n}</span>` +
+                  `<label class="ac-lbl">Compromiso</label>` +
+                  `<button type="button" class="asi-del" onclick="this.closest('.acuerdo-item').remove(); renumerarAcuerdos()" title="Eliminar acuerdo">✕</button>` +
+                `</div>` +
+                `<textarea name="Acuerdos[${i}].Compromiso" class="ac-compromiso" rows="2" placeholder="Describa el compromiso…"></textarea>` +
+                `<div class="ac-meta">` +
+                  `<div class="field" style="flex:1;min-width:0"><label>Responsable</label>` +
+                  `<select name="Acuerdos[${i}].Responsable" class="resp-select"></select>` +
+                  `<input type="hidden" name="Acuerdos[${i}].ResponsableContactoId" class="resp-cid" value="" /></div>` +
+                  `<div class="field" style="width:160px;flex:none"><label>Plazo</label>` +
+                  `<input name="Acuerdos[${i}].Plazo" type="date" /></div>` +
+                `</div>`;
+            document.getElementById('acuerdos-list').appendChild(div);
+            div.querySelector('textarea').focus();
             actualizarResponsables();
+        }
+
+        function renumerarAcuerdos() {
+            document.querySelectorAll('#acuerdos-list .ac-num').forEach(function (el, idx) {
+                el.textContent = idx + 1;
+            });
         }
 
   // Llena el formulario completo a partir del JSON resumido de una transcripción (Cowork).
@@ -552,13 +847,13 @@
     if (d.validador_diger != null) setVal('Datos.ValDiger', d.validador_diger);
 
     if (Array.isArray(d.acuerdos) && d.acuerdos.length) {
-      document.querySelector('#acuerdos-tbl tbody').innerHTML = '';
+      document.getElementById('acuerdos-list').innerHTML = '';
       d.acuerdos.forEach(function (a) {
         addAcuerdo();
-        var tr = document.querySelector('#acuerdos-tbl tbody tr:last-child');
-        if (a.compromiso) tr.querySelector('[name$=".Compromiso"]').value = a.compromiso;
-        if (a.plazo) tr.querySelector('[name$=".Plazo"]').value = a.plazo;
-        if (a.responsable) tr.querySelector('.resp-select').dataset.selected = a.responsable;
+        var item = document.querySelector('#acuerdos-list .acuerdo-item:last-child');
+        if (a.compromiso) item.querySelector('[name$=".Compromiso"]').value = a.compromiso;
+        if (a.plazo) item.querySelector('[name$=".Plazo"]').value = a.plazo;
+        if (a.responsable) item.querySelector('.resp-select').dataset.selected = a.responsable;
       });
       actualizarResponsables();
     }
@@ -578,9 +873,27 @@
     irPaso(pasosVisibles().indexOf(pasoInicial) >= 0 ? pasoInicial : 0);
   });
 
-  // Mantiene los selects de "Responsable" sincronizados con los nombres de la lista de asistentes.
+  // Mantiene los selects de "Responsable" sincronizados y actualiza el avatar al escribir el nombre.
   document.getElementById('asistentes-list').addEventListener('input', function(e){
-    if (e.target.matches('input[name$=".Nombre"]')) actualizarResponsables();
+    if (e.target.matches('input[name$=".Nombre"]')) {
+      actualizarAv(e.target);
+      actualizarResponsables();
+    }
   });
     </script>
+    @if (!Model.EsAdmin)
+    {
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                function disableReadOnlyInputs() {
+                    document.querySelectorAll("#reu-main input, #reu-main select, #reu-main textarea").forEach(function(el) {
+                        el.disabled = true;
+                    });
+                }
+                disableReadOnlyInputs();
+                setTimeout(disableReadOnlyInputs, 300);
+                setTimeout(disableReadOnlyInputs, 1000);
+            });
+        </script>
+    }
 }

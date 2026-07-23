@@ -34,40 +34,94 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
-/* ── Mobile Navbar Toggle & Dropdowns ── */
-document.addEventListener('click', function(e) {
-    // Hamburger toggle
-    var toggler = e.target.closest('#navbarToggler');
-    if (toggler) {
-        var menu = document.getElementById('navbarMenu');
-        if (menu) menu.classList.toggle('open');
-        return;
-    }
+/* ── Navegación de cabecera: grupos desplegables + menú de usuario ────── */
+function closeAllNavGroups(except) {
+    document.querySelectorAll('.nav-group.open').forEach(function (g) {
+        if (g !== except) g.classList.remove('open');
+    });
+}
 
-    // Dropdown toggle on mobile
-    var navLink = e.target.closest('.nav-item.has-dropdown > .nav-link');
-    if (navLink) {
-        if (window.innerWidth <= 900) {
-            e.preventDefault();
-            var parent = navLink.closest('.nav-item');
-            parent.classList.toggle('open');
-        }
-        return;
-    }
+function closeUserPanel() {
+    var p = document.getElementById('sideUserPanel');
+    if (p) p.classList.remove('open');
+}
 
-    // Close menu if clicking outside on mobile
-    var menu = document.getElementById('navbarMenu');
-    if (menu && menu.classList.contains('open') && !e.target.closest('.main-navbar')) {
-        menu.classList.remove('open');
+function toggleNavGroup(btn) {
+    var g = btn.closest('.nav-group');
+    if (!g) return;
+    var willOpen = !g.classList.contains('open');
+    closeAllNavGroups(g);
+    closeUserPanel();
+    g.classList.toggle('open', willOpen);
+}
+
+function toggleUserPanel() {
+    var p = document.getElementById('sideUserPanel');
+    if (!p) return;
+    closeAllNavGroups();
+    p.classList.toggle('open');
+}
+
+/* Menú principal en pantallas pequeñas (hamburguesa) */
+function toggleMainNav(open) {
+    var nav = document.getElementById('mainNav');
+    var bd = document.getElementById('navBackdrop');
+    if (!nav) return;
+    if (typeof open === 'undefined') open = !nav.classList.contains('open');
+    nav.classList.toggle('open', open);
+    if (bd) bd.classList.toggle('open', open);
+    if (!open) closeAllNavGroups();
+}
+
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('.nav-group')) closeAllNavGroups();
+    var panel = document.getElementById('sideUserPanel');
+    if (panel && panel.classList.contains('open') && !e.target.closest('.user-menu')) {
+        panel.classList.remove('open');
     }
 });
 
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-        var menu = document.getElementById('navbarMenu');
-        if (menu) menu.classList.remove('open');
+        closeAllNavGroups();
+        closeUserPanel();
+        toggleMainNav(false);
     }
 });
+
+/* ── seg-upd: dropdown Actualizar (position:fixed para escapar overflow:hidden) ─ */
+(function () {
+    function posicionar(det) {
+        var form    = det.querySelector('.seg-upd-form');
+        var summary = det.querySelector('summary');
+        if (!form || !summary) return;
+        var r = summary.getBoundingClientRect();
+        form.style.position = 'fixed';
+        form.style.zIndex   = '9999';
+        form.style.top      = (r.bottom + 6) + 'px';
+        form.style.left     = 'auto';
+        var right = Math.max(8, window.innerWidth - r.right);
+        form.style.right = right + 'px';
+    }
+
+    document.addEventListener('toggle', function (e) {
+        var det = e.target;
+        if (!(det instanceof HTMLDetailsElement) || !det.classList.contains('seg-upd')) return;
+        if (!det.open) return;
+        document.querySelectorAll('details.seg-upd[open]').forEach(function (other) {
+            if (other !== det) other.removeAttribute('open');
+        });
+        posicionar(det);
+    }, true);
+
+    window.addEventListener('scroll', function () {
+        document.querySelectorAll('details.seg-upd[open]').forEach(posicionar);
+    }, { passive: true, capture: true });
+
+    window.addEventListener('resize', function () {
+        document.querySelectorAll('details.seg-upd[open]').forEach(posicionar);
+    });
+})();
 
 /* ── Confirmar antes de enviar (data-confirm="mensaje" en el botón) ──── */
 document.addEventListener('submit', function (e) {
@@ -84,3 +138,4 @@ document.addEventListener('submit', function (e) {
         }
     }
 });
+

@@ -50,7 +50,17 @@
     </div>
   </aside>
 
-  <main class="main" id="form-main">
+  <main class="main @(Model.EsAdmin ? "" : "mode-read-only")" id="form-main">
+    @if (!Model.EsAdmin)
+    {
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 18px;border-radius:12px;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13.5px;box-shadow:0 2px 8px rgba(30,64,175,.06)">
+            <span style="font-size:18px">👁️</span>
+            <div>
+                <strong>Modo de Solo Lectura</strong>
+                <div style="font-size:12px;font-weight:400;color:#3b82f6;margin-top:2px">Estás en modo visualización. Los expedientes solo pueden ser editados por un Administrador de la DIGER.</div>
+            </div>
+        </div>
+    }
 
     <!-- ══ SECCIÓN 0: APERTURA ══ -->
     <div class="sec active" id="sec0">
@@ -84,7 +94,13 @@
         <div class="g2">
           <div class="f">
             <label>Analista DIGER responsable <span class="star">*</span></label>
-            <input type="text" id="analista" placeholder="Nombre completo" oninput="actualizarMeta()">
+            <select id="analista" oninput="actualizarMeta()">
+              <option value="">— Seleccione —</option>
+              @foreach (var u in Model.Usuarios)
+              {
+                <option>@u.Nombre</option>
+              }
+            </select>
           </div>
           <div class="f">
             <label>Código de expediente</label>
@@ -445,7 +461,7 @@
 
       <div class="nav">
         <button class="btn btn-s" onclick="ir(5)">← Anterior</button>
-        @if (User.CanMutate())
+        @if (Model.EsAdmin)
         {
             <button class="btn btn-p" onclick="guardar()">💾 Guardar expediente</button>
         }
@@ -455,7 +471,7 @@
   </main>
 </div>
 
-@if (User.CanMutate())
+@if (Model.EsAdmin)
 {
     <button class="btn-save-float" type="button" onclick="guardar()">💾 Guardar</button>
 }
@@ -504,7 +520,10 @@
             indexUrl: '@Url.Page("/Index")',
             contactosUrl: '@contactosUrl',
             plantillaUrl: '@plantillaUrl',
-            plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas))
+            plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
+            esAdmin: @(Model.EsAdmin ? "true" : "false"),
+            usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre })))
         };
         @if (Model.ExpJson is not null)
         {
@@ -512,4 +531,19 @@
         }
     </script>
     <script src="~/js/expediente.js" asp-append-version="true"></script>
+    @if (!Model.EsAdmin)
+    {
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                function disableReadOnlyInputs() {
+                    document.querySelectorAll("#form-main input, #form-main select, #form-main textarea").forEach(function(el) {
+                        el.disabled = true;
+                    });
+                }
+                disableReadOnlyInputs();
+                setTimeout(disableReadOnlyInputs, 300);
+                setTimeout(disableReadOnlyInputs, 1000);
+            });
+        </script>
+    }
 }

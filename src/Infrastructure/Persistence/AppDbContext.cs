@@ -20,6 +20,7 @@ public sealed class AppDbContext(
     public DbSet<Reunion>                  Reuniones          { get; init; } = default!;
     public DbSet<Asistente>                Asistentes         { get; init; } = default!;
     public DbSet<AcuerdoReunion>           Acuerdos           { get; init; } = default!;
+    public DbSet<ComentarioCompromiso>     ComentariosCompromisos { get; init; } = default!;
     public DbSet<ReunionInstitucion>       ReunionInstituciones { get; init; } = default!;
     public DbSet<Expediente>               Expedientes        { get; init; } = default!;
     public DbSet<ExpedienteTramite>        Tramites           { get; init; } = default!;
@@ -40,6 +41,16 @@ public sealed class AppDbContext(
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
     public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
+    public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
+    public DbSet<ChatSesion>                ChatSesiones          { get; init; } = default!;
+    public DbSet<ChatMensaje>               ChatMensajes          { get; init; } = default!;
+    public DbSet<ExpedienteEtapaCronograma> EtapaCronogramas      { get; init; } = default!;
+    public DbSet<Levantamiento>             Levantamientos        { get; init; } = default!;
+    public DbSet<TramiteChecklist>          TramitesChecklist     { get; init; } = default!;
+    public DbSet<MiembroEquipo>             MiembrosEquipo        { get; init; } = default!;
+    public DbSet<DocumentoAdjunto>          DocumentosAdjuntos    { get; init; } = default!;
+    public DbSet<PlanTrabajo>               PlanTrabajos          { get; init; } = default!;
+    public DbSet<MetaTramite>               MetasTrabajo          { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -67,21 +78,21 @@ public sealed class AppDbContext(
         mb.Entity<Expediente>().HasQueryFilter(e => !e.IsDeleted && (
             _alcanceGlobal ||
             (_activeRol == "JefeInstitucion" && e.InstitucionId == _activeInst && 
-                (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea) &&
-                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad)) ||
-            (_activeRol == "JefeArea"        && e.AreaId == _activeArea &&
-                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad)) ||
-            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && e.UnidadId == _activeUnidad)
+                (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea || e.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
+            (_activeRol == "JefeArea"        && (e.AreaId == _activeArea || e.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
+            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (e.UnidadId == _activeUnidad || e.UnidadId == null))
         ));
 
         mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
             _alcanceGlobal ||
             (_activeRol == "JefeInstitucion" && c.InstitucionId == _activeInst && 
-                (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea) &&
-                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad)) ||
-            (_activeRol == "JefeArea"        && c.AreaId == _activeArea &&
-                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad)) ||
-            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && c.UnidadId == _activeUnidad)
+                (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea || c.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
+            (_activeRol == "JefeArea"        && (c.AreaId == _activeArea || c.AreaId == null) &&
+                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
+            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (c.UnidadId == _activeUnidad || c.UnidadId == null))
         ));
 
         mb.Entity<Ticket>().HasQueryFilter(t => !t.IsDeleted && (
@@ -100,13 +111,33 @@ public sealed class AppDbContext(
             (r.Visibilidad != VisibilidadReunion.Privada && (
                 _alcanceGlobal ||
                 (_activeRol == "JefeInstitucion" && r.InstitucionId == _activeInst && 
-                    (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea) &&
-                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad)) ||
-                (_activeRol == "JefeArea"        && r.AreaId == _activeArea &&
-                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad)) ||
-                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && r.UnidadId == _activeUnidad)
+                    (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea || r.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
+                (_activeRol == "JefeArea"        && (r.AreaId == _activeArea || r.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
+                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (r.UnidadId == _activeUnidad || r.UnidadId == null))
             )) ||
             (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
+        ));
+
+        mb.Entity<Area>().HasQueryFilter(a =>
+            _alcanceGlobal || a.InstitucionId == _activeInst
+        );
+
+        mb.Entity<Unidad>().HasQueryFilter(u =>
+            _alcanceGlobal || Areas.Any(a => a.Id == u.AreaId && a.InstitucionId == _activeInst)
+        );
+
+        mb.Entity<Institucion>().HasQueryFilter(i =>
+            _alcanceGlobal || i.Id == _activeInst
+        );
+
+        mb.Entity<TramiteDefinicion>().HasQueryFilter(t =>
+            _alcanceGlobal || t.InstitucionId == _activeInst
+        );
+        // Plan de Trabajo: institución-nivel (sin subdivisión área/unidad)
+        mb.Entity<PlanTrabajo>().HasQueryFilter(p => !p.IsDeleted && (
+            _alcanceGlobal || p.InstitucionId == _activeInst
         ));
 
         base.OnModelCreating(mb);
@@ -121,6 +152,30 @@ public sealed class AppDbContext(
         if (hasMutations && _activeRol == "Consultor")
         {
             throw new UnauthorizedAccessException("El rol Consultor es de solo lectura y no puede mutar datos.");
+        }
+
+        // ── Validación de seguridad dura para mutaciones de Áreas y Unidades por Institución ──
+        if (!_alcanceGlobal)
+        {
+            foreach (var entry in ChangeTracker.Entries<Area>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
+            {
+                if (entry.Entity.InstitucionId != _activeInst)
+                {
+                    throw new UnauthorizedAccessException($"No tiene permisos para gestionar áreas en la institución {entry.Entity.InstitucionId}.");
+                }
+            }
+
+            foreach (var entry in ChangeTracker.Entries<Unidad>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
+            {
+                var areaId = entry.Entity.AreaId;
+                var area = Areas.IgnoreQueryFilters().FirstOrDefault(a => a.Id == areaId);
+                if (area == null || area.InstitucionId != _activeInst)
+                {
+                    throw new UnauthorizedAccessException($"No tiene permisos para gestionar unidades en el área {areaId}.");
+                }
+            }
         }
 
         // ── Inyección automática de jerarquía institucional en inserciones ──────
@@ -286,6 +341,7 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
         b.Property(x => x.Visibilidad).HasConversion<string>().HasMaxLength(20).HasDefaultValue(VisibilidadReunion.Publica);
 
         b.HasIndex(x => x.Fecha);
+        b.HasIndex(x => x.HiloId);
         b.HasIndex(x => new { x.Visibilidad, x.CreadoPorId });
         b.HasIndex(x => x.RegistroToken).IsUnique();
         b.HasIndex(x => x.OrigenExternoId)
@@ -332,11 +388,15 @@ public sealed class AsistenteConfiguration : IEntityTypeConfiguration<Asistente>
         b.Property(x => x.Id).ValueGeneratedOnAdd();
         b.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
         b.Property(x => x.Cargo).HasMaxLength(150);
+        b.Property(x => x.InstitucionId).HasMaxLength(120);
         b.Property(x => x.Institucion).HasMaxLength(120);
         b.Property(x => x.Departamento).HasMaxLength(150);
         b.Property(x => x.Correo).HasMaxLength(200);
         b.Property(x => x.Telefono).HasMaxLength(40);
+        b.Property(x => x.EsPreregistro).HasDefaultValue(false);
+        b.Property(x => x.Confirmado);
         b.HasIndex(x => x.ReunionId);
+        b.HasIndex(x => x.EsPreregistro);
     }
 }
 
@@ -349,12 +409,34 @@ public sealed class AcuerdoReunionConfiguration : IEntityTypeConfiguration<Acuer
         b.Property(x => x.Id).ValueGeneratedOnAdd();
         b.Property(x => x.Compromiso).HasMaxLength(500).IsRequired();
         b.Property(x => x.Responsable).HasMaxLength(200);
+        // FK al directorio de contactos; NoAction porque Contacto usa soft-delete
+        b.HasOne<Contacto>().WithMany()
+            .HasForeignKey(x => x.ResponsableContactoId)
+            .OnDelete(DeleteBehavior.NoAction);
+        b.HasIndex(x => x.ResponsableContactoId);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20).HasDefaultValue(EstadoCompromiso.Pendiente);
         b.Property(x => x.NotaSeguimiento).HasMaxLength(1000);
         b.Property(x => x.SeguimientoActualizadoPor).HasMaxLength(150);
         b.HasIndex(x => x.ReunionId);
         b.HasIndex(x => x.Estado);
         b.HasIndex(x => x.Plazo);
+    }
+}
+
+public sealed class ComentarioCompromisoConfiguration : IEntityTypeConfiguration<ComentarioCompromiso>
+{
+    public void Configure(EntityTypeBuilder<ComentarioCompromiso> b)
+    {
+        b.ToTable("ComentariosCompromisos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Comentario).HasMaxLength(4000);
+        b.Property(x => x.ArchivoNombre).HasMaxLength(255);
+        b.Property(x => x.ArchivoUrl).HasMaxLength(1000);
+        b.Property(x => x.CreadoPor).HasMaxLength(200).IsRequired();
+        b.Property(x => x.CreadoPorRol).HasMaxLength(100);
+        b.HasOne(x => x.Acuerdo).WithMany(a => a.Comentarios).HasForeignKey(x => x.AcuerdoReunionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => x.AcuerdoReunionId);
     }
 }
 
@@ -773,6 +855,7 @@ public sealed class AreaConfiguration : IEntityTypeConfiguration<Area>
         b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
         b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
         b.Property(x => x.InstitucionId).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Activo).HasDefaultValue(true);
         b.HasOne<Institucion>().WithMany().HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -786,6 +869,7 @@ public sealed class UnidadConfiguration : IEntityTypeConfiguration<Unidad>
         b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
         b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
         b.Property(x => x.AreaId).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Activo).HasDefaultValue(true);
         b.HasOne<Area>().WithMany().HasForeignKey(x => x.AreaId).OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -870,6 +954,141 @@ public sealed class UsuarioTemaConfiguration : IEntityTypeConfiguration<UsuarioT
     }
 }
 
+public sealed class NotificacionConfiguration : IEntityTypeConfiguration<Notificacion>
+{
+    public void Configure(EntityTypeBuilder<Notificacion> b)
+    {
+        b.ToTable("Notificaciones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Url).HasMaxLength(500);
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30);
+        b.HasIndex(x => new { x.DestinatarioId, x.Leida });
+        b.HasIndex(x => x.FechaCreacion);
+    }
+}
+
+// ── Chat de soporte ───────────────────────────────────────────────────────
+public sealed class ChatSesionConfiguration : IEntityTypeConfiguration<ChatSesion>
+{
+    public void Configure(EntityTypeBuilder<ChatSesion> b)
+    {
+        b.ToTable("ChatSesiones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.UsuarioNombre).HasMaxLength(120).IsRequired();
+        b.Property(x => x.TecnicoNombre).HasMaxLength(120);
+        b.Property(x => x.TemaNombre).HasMaxLength(80);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
+        b.HasMany(x => x.Mensajes).WithOne()
+            .HasForeignKey(m => m.SesionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => x.UsuarioId);
+        b.HasIndex(x => new { x.TecnicoId, x.Estado });
+        b.HasIndex(x => x.Inicio);
+    }
+}
+
+public sealed class ChatMensajeConfiguration : IEntityTypeConfiguration<ChatMensaje>
+{
+    public void Configure(EntityTypeBuilder<ChatMensaje> b)
+    {
+        b.ToTable("ChatMensajes");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Texto).HasMaxLength(2000).IsRequired();
+        b.Property(x => x.AutorNombre).HasMaxLength(120).IsRequired();
+        b.HasIndex(x => new { x.SesionId, x.Leido });
+    }
+}
+
+// ── Levantamientos de campo ───────────────────────────────────────────────
+public sealed class LevantamientoConfiguration : IEntityTypeConfiguration<Levantamiento>
+{
+    public void Configure(EntityTypeBuilder<Levantamiento> b)
+    {
+        b.ToTable("Levantamientos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Institucion).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Encargado).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Correo).HasMaxLength(200);
+        b.Property(x => x.Celular).HasMaxLength(40);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.ObsEstado).HasMaxLength(1000);
+        b.Property(x => x.LimitanteObs).HasMaxLength(1000);
+        b.Property(x => x.PersonalObs).HasMaxLength(1000);
+        b.Property(x => x.HabilidadObs).HasMaxLength(1000);
+        b.Property(x => x.ObsGenerales).HasMaxLength(2000);
+        b.HasIndex(x => x.Institucion);
+        b.HasIndex(x => x.Estado);
+        b.HasIndex(x => x.CreatedAt);
+        b.HasMany(x => x.Tramites).WithOne()
+            .HasForeignKey(t => t.LevantamientoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Equipo).WithOne()
+            .HasForeignKey(m => m.LevantamientoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Documentos).WithOne()
+            .HasForeignKey(d => d.LevantamientoId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class TramiteChecklistConfiguration : IEntityTypeConfiguration<TramiteChecklist>
+{
+    public void Configure(EntityTypeBuilder<TramiteChecklist> b)
+    {
+        b.ToTable("LevantamientoTramites");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.NombreTramite).HasMaxLength(400).IsRequired();
+        b.Property(x => x.Observaciones).HasMaxLength(2000);
+        b.HasIndex(x => new { x.LevantamientoId, x.Orden });
+    }
+}
+
+public sealed class MiembroEquipoConfiguration : IEntityTypeConfiguration<MiembroEquipo>
+{
+    public void Configure(EntityTypeBuilder<MiembroEquipo> b)
+    {
+        b.ToTable("LevantamientoEquipo");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Funcion).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Contacto).HasMaxLength(200);
+        b.HasIndex(x => x.LevantamientoId);
+    }
+}
+
+public sealed class DocumentoAdjuntoConfiguration : IEntityTypeConfiguration<DocumentoAdjunto>
+{
+    public void Configure(EntityTypeBuilder<DocumentoAdjunto> b)
+    {
+        b.ToTable("LevantamientoDocumentos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Tipo).HasMaxLength(80);
+        b.Property(x => x.Url).HasMaxLength(600).IsRequired();
+        b.HasIndex(x => x.LevantamientoId);
+    }
+}
+
+public sealed class ExpedienteEtapaCronogramaConfiguration : IEntityTypeConfiguration<ExpedienteEtapaCronograma>
+{
+    public void Configure(EntityTypeBuilder<ExpedienteEtapaCronograma> b)
+    {
+        b.ToTable("ExpedienteEtapaCronogramas");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.EtapaNum).HasMaxLength(5).IsRequired();
+        b.Property(x => x.Responsable).HasMaxLength(150);
+        b.Property(x => x.Observacion).HasMaxLength(1000);
+        b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex, x.EtapaNum }).IsUnique();
+        b.HasOne<Expediente>().WithMany()
+            .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 // ── Datos semilla (catálogo de instituciones) ─────────────────────────────
 internal static class Seed
 {
@@ -904,4 +1123,35 @@ internal static class Seed
     ];
 
     internal static readonly object[] TramitesDefinicion = [];
+}
+
+// ── Plan de Trabajo ───────────────────────────────────────────────────────
+public sealed class PlanTrabajoConfiguration : IEntityTypeConfiguration<PlanTrabajo>
+{
+    public void Configure(EntityTypeBuilder<PlanTrabajo> b)
+    {
+        b.ToTable("PlanTrabajo");
+        b.Property(x => x.InstitucionId).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Institucion).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.Observaciones).HasMaxLength(2000);
+        b.HasIndex(x => new { x.InstitucionId, x.Anio }).IsUnique();
+        b.HasMany(x => x.Metas)
+            .WithOne()
+            .HasForeignKey(m => m.PlanTrabajoId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class MetaTramiteConfiguration : IEntityTypeConfiguration<MetaTramite>
+{
+    public void Configure(EntityTypeBuilder<MetaTramite> b)
+    {
+        b.ToTable("PlanTrabajoMetas");
+        b.Property(x => x.NombreTramite).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        b.Property(x => x.Observaciones).HasMaxLength(2000);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+        b.HasIndex(x => new { x.PlanTrabajoId, x.Orden });
+    }
 }

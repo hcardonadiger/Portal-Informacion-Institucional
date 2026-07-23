@@ -1,12 +1,14 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
-[Authorize(Policy = "PuedeGestionarReuniones")]
+[Authorize]
 public sealed class EditorModel(
     ISender sender, IInstitucionRepository institucionRepo,
     ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
 {
+    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
     public int? ReunionId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
+    public IReadOnlyList<ContactoDto> ContactosDirectorio { get; private set; } = [];
 
     private async Task<IReadOnlyList<Institucion>> InstitucionesEnAlcanceAsync(CancellationToken ct)
     {
@@ -31,7 +33,7 @@ public sealed class EditorModel(
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!ExtPermitidas.Contains(ext)) throw new DomainException("Formato de imagen no permitido (use JPG, PNG, WEBP o GIF).");
 
-        var dir = Path.Combine(env.WebRootPath, "uploads", "reuniones");
+        var dir = Path.Combine(env.ContentRootPath, "App_Data", "uploads", "reuniones");
         Directory.CreateDirectory(dir);
         var nombre = $"{Guid.NewGuid():N}{ext}";
         await using (var fs = System.IO.File.Create(Path.Combine(dir, nombre)))
@@ -47,6 +49,9 @@ public sealed class EditorModel(
 
     public async Task<IActionResult> OnGetAsync(int? id, DateOnly? fecha, CancellationToken ct)
     {
+        if (!EsAdmin)
+            return Forbid();
+
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
         if (id is null)
         {
@@ -61,6 +66,14 @@ public sealed class EditorModel(
             Datos      = d.Datos;
             Asistentes = d.Asistentes;
             Acuerdos   = d.Acuerdos;
+
+            var instNombres = Datos.InstitucionesIds
+                .Select(iid => Instituciones.FirstOrDefault(i => i.Id == iid)?.Nombre)
+                .OfType<string>()
+                .ToList();
+            if (instNombres.Count > 0)
+                ContactosDirectorio = await sender.Send(new GetContactosQuery(Instituciones: instNombres), ct);
+
             return Page();
         }
         catch (NotFoundException)
@@ -71,6 +84,8 @@ public sealed class EditorModel(
 
     public async Task<IActionResult> OnPostAsync(int? id, CancellationToken ct)
     {
+        if (!EsAdmin)
+            return Forbid();
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
 

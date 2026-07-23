@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Diger.TramitesEstado.Application.Tickets.Common;
+using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
 using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
@@ -10,12 +12,19 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     public string  Codigo  { get; private set; } = "";
     public string? ExpJson { get; private set; }   // OriginalExpedienteDto serializado (edición)
     public List<string> Plantillas { get; private set; } = [];
+    public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
+    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        if (id is null && !EsAdmin)
+            return Forbid();
+
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
+        Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         if (id is null) return Page();
 
         try
@@ -48,7 +57,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     /// <summary>Sube un documento de "Documentación solicitada" y devuelve su URL (consumido por expediente.js).</summary>
     public async Task<IActionResult> OnPostSubirDocumentoAsync(IFormFile archivo, CancellationToken ct)
     {
-        if (!User.CanMutate())
+        if (!EsAdmin)
             return Forbid();
 
         var guardados = await AdjuntoStorage.GuardarAsync([archivo], env, ct, carpeta: "expedientes");
@@ -57,10 +66,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     public async Task<IActionResult> OnPostAsync(int? id, [FromBody] OriginalExpedienteDto datos, CancellationToken ct)
     {
-        // Autorización por rol (Razor Pages no aplica [Authorize] a nivel de handler).
-        // Admin, Jefes y Empleado pueden mutar; el alcance institucional (filtro + validación
-        // en CrearExpediente) limita sobre qué instituciones pueden actuar. Consultor es solo lectura.
-        if (!User.CanMutate())
+        if (!EsAdmin)
             return Forbid();
 
         // Resolver la institución (el editor envía el nombre)

@@ -61,7 +61,7 @@ public class ExpedienteHandlerTests : IDisposable
     [Fact]
     public async Task Crear_GeneraCodigoYPersisteAgregado()
     {
-        var handler = new CrearExpedienteCommandHandler(_repo, new FakeCurrentUser(), _ctx);
+        var handler = new CrearExpedienteCommandHandler(_repo, _ctx, new FakeCurrentUser(), _ctx);
 
         var id = await handler.Handle(new CrearExpedienteCommand(BuildInput()), CancellationToken.None);
 
@@ -79,7 +79,7 @@ public class ExpedienteHandlerTests : IDisposable
     [Fact]
     public async Task Crear_DosExpedientes_GeneraCodigosSecuenciales()
     {
-        var handler = new CrearExpedienteCommandHandler(_repo, new FakeCurrentUser(), _ctx);
+        var handler = new CrearExpedienteCommandHandler(_repo, _ctx, new FakeCurrentUser(), _ctx);
         await handler.Handle(new CrearExpedienteCommand(BuildInput()), CancellationToken.None);
         await handler.Handle(new CrearExpedienteCommand(BuildInput()), CancellationToken.None);
 
@@ -91,7 +91,7 @@ public class ExpedienteHandlerTests : IDisposable
     [Fact]
     public async Task GetExpedientes_RetornaListaConTramites()
     {
-        var handler = new CrearExpedienteCommandHandler(_repo, new FakeCurrentUser(), _ctx);
+        var handler = new CrearExpedienteCommandHandler(_repo, _ctx, new FakeCurrentUser(), _ctx);
         await handler.Handle(new CrearExpedienteCommand(BuildInput("SAG", "14")), CancellationToken.None);
 
         var listHandler = new GetExpedientesQueryHandler(_ctx);

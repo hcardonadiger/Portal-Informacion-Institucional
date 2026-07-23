@@ -2,6 +2,7 @@ using Diger.TramitesEstado.Application;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Infrastructure;
 using Diger.TramitesEstado.Infrastructure.Persistence;
+using Diger.TramitesEstado.Web.Hubs;
 using Diger.TramitesEstado.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -9,8 +10,25 @@ using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Diagnóstico: capturar cualquier excepción que mate el proceso ──────────
+var crashLogPath = Path.Combine(AppContext.BaseDirectory, "crash_log.txt");
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    var ex = e.ExceptionObject as Exception;
+    var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UNHANDLED (IsTerminating={e.IsTerminating}): {ex}\n";
+    File.AppendAllText(crashLogPath, msg);
+};
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    var msg = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UNOBSERVED TASK: {e.Exception}\n";
+    File.AppendAllText(crashLogPath, msg);
+    e.SetObserved();
+};
+
 builder.WebHost.ConfigureKestrel((context, options) =>
 {
+    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+
     if (context.HostingEnvironment.IsDevelopment())
     {
         // Puerto HTTPS principal (para navegación sin alertas)
@@ -52,6 +70,12 @@ builder.WebHost.ConfigureKestrel((context, options) =>
             httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.NoCertificate;
         });
     }
+});
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 50 * 1024 * 1024;
+    options.ValueLengthLimit = 10 * 1024 * 1024;
 });
 
 builder.Services
@@ -131,8 +155,12 @@ builder.Services.AddRazorPages(opts =>
     options.Filters.Add<Diger.TramitesEstado.Web.Common.ConsultorReadOnlyPageFilter>();
 });
 
+builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.AccesoModulosService>();
 builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.JerarquiaUiService>();
+builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.IInstitucionBrandingService,
+                            Diger.TramitesEstado.Web.Common.InstitucionBrandingService>();
 builder.Services.AddExceptionHandler<WebExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -168,11 +196,20 @@ app.Use(async (ctx, next) =>
         "style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; " +
         "font-src 'self'; " +
-        "connect-src 'self';";
+        "connect-src 'self' wss: ws:;";
     await next();
 });
 
 app.UseStaticFiles();
+
+var uploadsDir = Path.Combine(app.Environment.ContentRootPath, "App_Data", "uploads");
+Directory.CreateDirectory(uploadsDir);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
+    RequestPath = "/uploads"
+});
+
 app.UseRouting();
 
 // Debe estar antes de UseAuthentication para que el certificado esté disponible
@@ -186,5 +223,6 @@ app.UseMiddleware<Diger.TramitesEstado.Web.Common.ModuloAccesoMiddleware>();
 
 app.UseExceptionHandler();
 app.MapRazorPages();
+app.MapHub<SoporteHub>("/hubs/soporte");
 
 await app.RunAsync();

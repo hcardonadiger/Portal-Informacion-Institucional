@@ -150,6 +150,7 @@ public interface IApplicationDbContext
     DbSet<Reunion>                  Reuniones     { get; }
     DbSet<Asistente>                Asistentes    { get; }
     DbSet<AcuerdoReunion>           Acuerdos      { get; }
+    DbSet<ComentarioCompromiso>     ComentariosCompromisos { get; }
     DbSet<Expediente>               Expedientes   { get; }
     DbSet<ExpedienteTramite>        Tramites      { get; }
     DbSet<TramiteRequisito>         Requisitos    { get; }
@@ -174,5 +175,15 @@ public interface IApplicationDbContext
     DbSet<Movimiento>               Movimientos         { get; }
     DbSet<Prefijo>                  Prefijos            { get; }
     DbSet<PlantillaTramite>         PlantillasTramite   { get; }
+    DbSet<Notificacion>             Notificaciones      { get; }
+    DbSet<ChatSesion>               ChatSesiones           { get; }
+    DbSet<ChatMensaje>              ChatMensajes           { get; }
+    DbSet<ExpedienteEtapaCronograma> EtapaCronogramas      { get; }
+    DbSet<Levantamiento>            Levantamientos         { get; }
+    DbSet<TramiteChecklist>         TramitesChecklist      { get; }
+    DbSet<MiembroEquipo>            MiembrosEquipo         { get; }
+    DbSet<DocumentoAdjunto>         DocumentosAdjuntos     { get; }
+    DbSet<Diger.TramitesEstado.Domain.Entities.PlanTrabajo> PlanTrabajos { get; }
+    DbSet<MetaTramite>              MetasTrabajo           { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

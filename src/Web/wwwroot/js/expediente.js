@@ -314,6 +314,7 @@ function renderPerfilesInfra(){
   }).join('');
 }
 function togglePerfil(k, forceState){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin && forceState === undefined) return;
   var chk = document.getElementById('perfil_chk_'+k);
   if(!chk) return;
   if(forceState===undefined) chk.checked = !chk.checked; else chk.checked = forceState;
@@ -339,6 +340,7 @@ function renderDatacenterCond(){
   }).join('');
 }
 function toggleDcCond(k, forceState){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin && forceState === undefined) return;
   var chk = document.getElementById('dc_cond_'+k);
   if(!chk) return;
   if(forceState===undefined) chk.checked = !chk.checked; else chk.checked = forceState;
@@ -409,6 +411,14 @@ function poblarInfra(inf){
   }); });
 }
 
+function aplicarModoReadOnly(){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin){
+    document.querySelectorAll('#form-main input, #form-main select, #form-main textarea').forEach(function(el){
+      el.disabled = true;
+    });
+  }
+}
+
 // ── NAVEGACIÓN ──────────────────────────────────────────────
 function ir(n){
   if(n === 4) renderModeloReqs(activeTram);
@@ -416,6 +426,7 @@ function ir(n){
   document.querySelectorAll('.sbi').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('sec'+n).classList.add('active');
   document.getElementById('sb'+n).classList.add('active');
+  aplicarModoReadOnly();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -523,8 +534,11 @@ var FICHA_FIELDS = ['nombre_corto','modalidad','plazo_legal','tercero','tiempo_r
   'pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto','doc_entregado','objetivo',
   'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web'];
 
+// Construye el HTML de una fila de trámite en la Apertura. Muestra ✕ solo si hay más de un trámite.
 function tramRowHTML(i){
-  var rm = i > 0 ? '<button type="button" class="btn-rm-tramite" onclick="removerTramiteApertura('+i+')" title="Quitar trámite">✕</button>' : '';
+  var rm = tramiteCount > 1
+    ? '<div class="f" style="flex:none;align-self:flex-end"><button type="button" class="btn-rm" onclick="quitarTramiteApertura('+i+')" title="Quitar trámite">✕</button></div>'
+    : '';
   var opts = '<option value="">— Ninguna (Personalizado) —</option>';
   if(window.__EXPMETA__ && window.__EXPMETA__.plantillas){
     window.__EXPMETA__.plantillas.forEach(function(p){ opts += '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; });
@@ -640,6 +654,7 @@ function actualizarCodsTramite(){
 }
 
 function migrarDatosTramite(i){
+  if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin) return;
   var sel = document.getElementById('migrar-src-'+i);
   var j = parseInt(sel && sel.value);
   if(isNaN(j) || j < 0 || j >= i) return;
@@ -714,6 +729,7 @@ function selTram(i){
   renderFlujosPropuesto();
   renderModeloReqs(i);
   actualizarBVA();
+  aplicarModoReadOnly();
 }
 
 // ── FICHAS POR TRÁMITE ──────────────────────────────────────
@@ -736,7 +752,7 @@ function fichaHTML(i, nombre, show){
   var codBadge = codes[i] ? ' <span class="tram-cod">'+escHtml(codes[i])+'</span>' : '';
 
   var migrarHTML = '';
-  if(i > 0){
+  if(i > 0 && window.__EXPMETA__ && window.__EXPMETA__.esAdmin){
     var opts = '';
     for(var j=0;j<i;j++){
       var lbl = (codes[j]||('Trámite '+(j+1))) + (names[j]?' — '+escHtml(names[j].length>35?names[j].slice(0,33)+'…':names[j]):'');
@@ -1171,6 +1187,7 @@ function actualizarEstados(){
 // ── PILLS ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function(){
   document.addEventListener('click', function(e){
+    if(window.__EXPMETA__ && !window.__EXPMETA__.esAdmin) return;
     var pill = e.target.closest('.tp');
     if(!pill) return;
     var tg = pill.closest('.tg');
@@ -1206,6 +1223,10 @@ function recolectar(){
   // Apertura
   ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
    'contacto_correo','contacto_tel'].forEach(function(id){ d[id]=gv(id); });
+  // Vincular al usuario del sistema por nombre (null si es texto legado)
+  var uAna = ((window.__EXPMETA__ && __EXPMETA__.usuarios) || [])
+    .filter(function(u){ return u.nombre === d.analista; })[0];
+  d.analista_id = uAna ? uAna.id : null;
   d.num_tramites = tramiteCount;
   d.num_tramites_prod = parseInt(gv('num_tramites_prod'))||0;
   d.tramite_nombres = [];
@@ -1344,6 +1365,15 @@ function poblarFormulario(d){
   // Apertura
   ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
    'contacto_correo','contacto_tel'].forEach(function(id){ sv(id, d[id]||''); });
+  // Analista legado (texto sin usuario del sistema): agregar opción ad-hoc para no perderlo
+  var selAna = document.getElementById('analista');
+  if(selAna && d.analista && selAna.value !== d.analista){
+    var optAna = document.createElement('option');
+    optAna.value = d.analista;
+    optAna.textContent = d.analista + ' (texto)';
+    selAna.appendChild(optAna);
+    selAna.value = d.analista;
+  }
   filtrarContactosPorInstitucion();
 
   // Requisitos/acciones por trámite (antes de render para que aparezcan)

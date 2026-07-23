@@ -3,6 +3,7 @@ namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 [Authorize]
 public sealed class ActaModel(ISender sender) : PageModel
 {
+    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
     public int ReunionId { get; private set; }
     public ReunionFormDto      Datos      { get; private set; } = new();
     public List<AsistenteInput> Asistentes { get; private set; } = [];
@@ -15,6 +16,10 @@ public sealed class ActaModel(ISender sender) : PageModel
     /// asistencia que no coincide con ninguna convocada se agrupa aparte.</summary>
     public IReadOnlyList<(string Institucion, int Cantidad)> DesgloseAsistenciaPorInstitucion { get; private set; } = [];
 
+    // ── Hilo de reuniones enlazadas ───────────────────────────────
+    public HiloDeReunionDto Hilo { get; private set; } = new(null, []);
+    public IReadOnlyList<HiloMiembroRefDto> Enlazables { get; private set; } = [];
+
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
     {
         try
@@ -26,6 +31,9 @@ public sealed class ActaModel(ISender sender) : PageModel
             Acuerdos   = d.Acuerdos;
             InstitucionNombre = d.InstitucionNombre;  // snapshot (sirve aunque la institución no esté catalogada)
             InstitucionesParticipantes = d.InstitucionesParticipantes;
+
+            Hilo       = await sender.Send(new GetHiloDeReunionQuery(id), ct);
+            Enlazables = await sender.Send(new GetReunionesEnlazablesQuery(id), ct);
 
             var porNombre = Asistentes
                 .GroupBy(a => string.IsNullOrWhiteSpace(a.Institucion) ? "(sin institución)" : a.Institucion!.Trim())
@@ -46,5 +54,40 @@ public sealed class ActaModel(ISender sender) : PageModel
         {
             return NotFound();
         }
+    }
+
+    public async Task<IActionResult> OnPostEnlazarAsync(int id, int otraReunionId, CancellationToken ct)
+    {
+        if (!EsAdmin) return Forbid();
+        if (otraReunionId <= 0)
+        {
+            TempData["ErrorMessage"] = "Seleccione una reunión para enlazar.";
+            return RedirectToPage(new { id });
+        }
+        try
+        {
+            await sender.Send(new EnlazarReunionesCommand(id, otraReunionId), ct);
+            TempData["SuccessMessage"] = "Reunión enlazada al hilo.";
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostDesenlazarAsync(int id, CancellationToken ct)
+    {
+        if (!EsAdmin) return Forbid();
+        try
+        {
+            await sender.Send(new DesenlazarReunionCommand(id), ct);
+            TempData["SuccessMessage"] = "Reunión retirada del hilo.";
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+        return RedirectToPage(new { id });
     }
 }

@@ -74,7 +74,7 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (User.IsInRole(nameof(RolUsuario.Empleado)) || User.IsInRole(nameof(RolUsuario.Consultor)))
+        if (!User.IsInRole(nameof(RolUsuario.Administrador)))
             return Forbid();
         await sender.Send(new EliminarTicketCommand(id), ct);
         TempData["SuccessMsg"] = "Ticket eliminado.";

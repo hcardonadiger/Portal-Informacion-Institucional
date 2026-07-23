@@ -1,0 +1,204 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Informes.IndexModel
+@{
+    ViewData["Title"] = "Informes";
+    string EstadoLabel(EstadoExpediente e) => e switch
+    {
+        EstadoExpediente.EnExploracion   => "En Exploración",
+        EstadoExpediente.EnLevantamiento => "En Levantamiento",
+        EstadoExpediente.EnModelado      => "En Modelado",
+        EstadoExpediente.EnValidacion    => "En Validación",
+        EstadoExpediente.Cerrado         => "Cerrado",
+        _                                => e.ToString()
+    };
+    string EstadoBadge(EstadoExpediente e) => e switch
+    {
+        EstadoExpediente.Cerrado         => "badge-success",
+        EstadoExpediente.EnValidacion    => "badge-info",
+        EstadoExpediente.EnModelado      => "badge-primary",
+        EstadoExpediente.EnLevantamiento => "badge-warning",
+        _                                => "badge-secondary"
+    };
+}
+
+<div class="page-header">
+    <h1 class="page-title">Informes</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Institución</label>
+                <select name="InstitucionId" class="form-select">
+                    <option value="">— Todas las instituciones —</option>
+                    @foreach (var (id, nombre) in Model.Instituciones)
+                    {
+                        if (Model.InstitucionId == id)
+                        {
+                            <option value="@id" selected>@nombre</option>
+                        }
+                        else
+                        {
+                            <option value="@id">@nombre</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Desde</label>
+                <input type="date" name="Desde" class="form-control"
+                       value="@Model.Desde?.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Hasta</label>
+                <input type="date" name="Hasta" class="form-control"
+                       value="@Model.Hasta?.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btns btns-primary">Consultar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Informe is { } inf)
+{
+    <div class="card mb-3">
+        <div class="card-body d-flex justify-content-between align-items-start">
+            <div>
+                <h2 class="h5 mb-1">@inf.InstitucionNombre</h2>
+                @if (inf.Desde != null || inf.Hasta != null)
+                {
+                    <small class="text-muted">
+                        @(inf.Desde?.ToString("dd/MM/yyyy") ?? "–") — @(inf.Hasta?.ToString("dd/MM/yyyy") ?? "–")
+                    </small>
+                }
+            </div>
+            <form method="post" class="btns-group">
+                <input type="hidden" name="InstitucionId" value="@Model.InstitucionId" />
+                <input type="hidden" name="Desde" value="@Model.Desde?.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="Hasta" value="@Model.Hasta?.ToString("yyyy-MM-dd")" />
+                <button type="submit" asp-page-handler="Pdf" class="btns">
+                    Descargar PDF
+                </button>
+                <button type="submit" asp-page-handler="Excel" class="btns">
+                    Descargar Excel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Métricas resumen -->
+    <div class="stats-row mb-4">
+        <div class="stat-card">
+            <div class="stat-value">@inf.Expedientes.Count</div>
+            <div class="stat-label">Expedientes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@inf.TotalTramites</div>
+            <div class="stat-label">Trámites</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@inf.AvancePromedio%</div>
+            <div class="stat-label">Avance promedio</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@inf.Cerrados</div>
+            <div class="stat-label">Cerrados</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@inf.EnValidacion</div>
+            <div class="stat-label">En Validación</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@inf.EnModelado</div>
+            <div class="stat-label">En Modelado</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@inf.EnLevantamiento</div>
+            <div class="stat-label">En Levantamiento</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">@inf.EnExploracion</div>
+            <div class="stat-label">En Exploración</div>
+        </div>
+    </div>
+
+    @if (inf.Expedientes.Count == 0)
+    {
+        <div class="empty-state">
+            <p>No hay expedientes para los filtros seleccionados.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Estado</th>
+                            <th>Analista</th>
+                            <th>F. Apertura</th>
+                            <th class="text-center">Trámites</th>
+                            <th class="text-center" style="width:120px">Avance</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var exp in inf.Expedientes)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@exp.Codigo</td>
+                                <td><span class="badge @EstadoBadge(exp.Estado)">@EstadoLabel(exp.Estado)</span></td>
+                                <td>@exp.Analista</td>
+                                <td>@(exp.FechaApertura?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td class="text-center">@exp.Tramites.Count</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height:6px">
+                                            <div class="progress-bar @(exp.AvancePct >= 80 ? "bg-success" : exp.AvancePct >= 40 ? "bg-primary" : "bg-warning")"
+                                                 style="width:@exp.AvancePct%"></div>
+                                        </div>
+                                        <span class="text-muted" style="width:32px;text-align:right;font-size:.8em">@exp.AvancePct%</span>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-page="/Expedientes/Seguimiento" asp-route-id="@exp.Id" class="btn btn-xs">Ver</a>
+                                </td>
+                            </tr>
+                            @if (exp.Tramites.Count > 1)
+                            {
+                                foreach (var t in exp.Tramites)
+                                {
+                                    <tr class="table-secondary" style="font-size:.85em">
+                                        <td class="ps-4 text-muted">↳</td>
+                                        <td colspan="4" class="text-muted">@t.NombreTramite</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height:4px">
+                                                    <div class="progress-bar @(t.AvancePct >= 80 ? "bg-success" : t.AvancePct >= 40 ? "bg-primary" : "bg-warning")"
+                                                         style="width:@t.AvancePct%"></div>
+                                                </div>
+                                                <span class="text-muted" style="width:32px;text-align:right;font-size:.8em">@t.AvancePct%</span>
+                                            </div>
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="empty-state">
+        <p>Selecciona una institución y/o un período para generar el informe.</p>
+    </div>
+}

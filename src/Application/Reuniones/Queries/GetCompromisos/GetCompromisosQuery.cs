@@ -15,11 +15,13 @@ public sealed record CompromisoListItemDto(
     string?          NotaSeguimiento,
     bool             Vencido,
     DateTime?        ActualizadoEl,
-    string?          ActualizadoPor);
+    string?          ActualizadoPor,
+    int              NumComentarios = 0,
+    int              NumArchivos = 0);
 
 public sealed record CompromisosResumen(
     int Total, int Pendientes, int EnProgreso, int Cumplidos,
-    int Reprogramados, int Cancelados, int Vencidos);
+    int Reprogramados, int Cancelados, int Vencidos, int EnRevision = 0);
 
 public sealed record CompromisosResult(
     PagedResult<CompromisoListItemDto> Pagina,
@@ -60,7 +62,8 @@ public sealed class GetCompromisosQueryHandler(IApplicationDbContext ctx)
             Cancelados:    await soloAcuerdos.CountAsync(a => a.Estado == EstadoCompromiso.Cancelado, ct),
             Vencidos:      await soloAcuerdos.CountAsync(a =>
                 a.Plazo != null && a.Plazo < hoy &&
-                (a.Estado == EstadoCompromiso.Pendiente || a.Estado == EstadoCompromiso.EnProgreso || a.Estado == EstadoCompromiso.Reprogramado), ct));
+                (a.Estado == EstadoCompromiso.Pendiente || a.Estado == EstadoCompromiso.EnProgreso || a.Estado == EstadoCompromiso.Reprogramado), ct),
+            EnRevision:    await soloAcuerdos.CountAsync(a => a.Estado == EstadoCompromiso.EnRevision, ct));
 
         var responsables = await soloAcuerdos
             .Where(a => a.Responsable != null && a.Responsable != "")
@@ -102,7 +105,9 @@ public sealed class GetCompromisosQueryHandler(IApplicationDbContext ctx)
                 x.a.FechaCumplimiento, x.a.NotaSeguimiento,
                 x.a.Plazo != null && x.a.Plazo < hoy &&
                     (x.a.Estado == EstadoCompromiso.Pendiente || x.a.Estado == EstadoCompromiso.EnProgreso || x.a.Estado == EstadoCompromiso.Reprogramado),
-                x.a.SeguimientoActualizadoEl, x.a.SeguimientoActualizadoPor))
+                x.a.SeguimientoActualizadoEl, x.a.SeguimientoActualizadoPor,
+                x.a.Comentarios.Count(),
+                x.a.Comentarios.Count(c => c.ArchivoUrl != null && c.ArchivoUrl != "")))
             .ToListAsync(ct);
 
         var pagina = new PagedResult<CompromisoListItemDto>(items, total, page, size);

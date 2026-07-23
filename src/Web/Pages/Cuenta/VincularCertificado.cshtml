@@ -13,7 +13,7 @@
         {
             <div class="alert-error" style="text-align:left;margin-bottom:1rem">@Model.Error</div>
             var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
-            var backUrl = isDev ? "https://localhost:49175/Cuenta/Manage/Certificate" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Manage/Certificate";
+            var backUrl = isDev ? "https://localhost:49175/Cuenta/Certificado" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Certificado";
             <a href="@backUrl" class="btnp">Volver a Mi Perfil</a>
         }
         else if (!string.IsNullOrEmpty(Model.Thumbprint))
@@ -44,7 +44,7 @@
                 <div style="display:flex;gap:1rem;justify-content:center">
                     @{
                         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
-                        var backUrl = isDev ? "https://localhost:49175/Cuenta/Manage/Certificate" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Manage/Certificate";
+                        var backUrl = isDev ? "https://localhost:49175/Cuenta/Certificado" : $"https://{Request.Host.Host.Replace("cert.", "")}/Cuenta/Certificado";
                     }
                     <a href="@backUrl" class="btns">Cancelar</a>
                     <button type="submit" class="btnp">Confirmar Vinculación</button>
