@@ -146,7 +146,7 @@
                         }
                         @if (puedeTickets || puedeContactos)
                         {
-                            var grpTram = EsRuta("/Tickets") || EsRuta("/Contactos");
+                            var grpTram = EsRuta("/Tickets") || EsRuta("/Contactos") || EsRuta("/Tramites");
                             <div class="nav-group @(grpTram ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Trámites<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
@@ -158,6 +158,7 @@
                                     {
                                         <a class="nav-item @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index">Contactos</a>
                                     }
+                                    <a class="nav-item @(EsRuta("/Tramites") ? "on" : "")" asp-page="/Tramites/Indicadores">Indicadores de trámites</a>
                                 </div>
                             </div>
                         }

@@ -1,4 +1,4 @@
-"""Genera el JSON optimizado que consume el módulo de indicadores de trámites.
+r"""Genera el JSON optimizado que consume el módulo de indicadores de trámites.
 
 Uso:
   python scripts/procesar_tramites.py --input "C:\ruta\datos_recopilados_limpio.xlsx"
