@@ -130,6 +130,7 @@
                                         <a class="nav-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index">Expedientes</a>
                                         <a class="nav-item @(EsRuta("/Informes") ? "on" : "")" asp-page="/Informes/Index">Informes</a>
                                         <a class="nav-item @(EsRuta("/PlanTrabajo") ? "on" : "")" asp-page="/PlanTrabajo/Index">Plan de Trabajo</a>
+                                        <a class="nav-item @(EsRuta("/Recursos") ? "on" : "")" asp-page="/Recursos/Index">Recursos y Plantillas</a>
                                     }
                                 </div>
                             </div>
@@ -340,6 +341,7 @@
                         }
 
                         <a class="user-panel-link" asp-page="/Tableros/MiTablero">📊 Mi Tablero</a>
+                        <a class="user-panel-link" asp-page="/Recursos/Index">📁 Recursos y Plantillas</a>
                         <a class="user-panel-link" asp-page="/Cuenta/Perfil">Mi perfil</a>
                         <a class="user-panel-link" asp-page="/Ayuda/Index">❓ Centro de Ayuda</a>
                         <button type="submit" form="logoutForm" class="side-panel-logout">Cerrar sesión</button>

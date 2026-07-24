@@ -51,6 +51,7 @@ public sealed class AppDbContext(
     public DbSet<DocumentoAdjunto>          DocumentosAdjuntos    { get; init; } = default!;
     public DbSet<PlanTrabajo>               PlanTrabajos          { get; init; } = default!;
     public DbSet<MetaTramite>               MetasTrabajo          { get; init; } = default!;
+    public DbSet<Recurso>                   Recursos              { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -139,6 +140,7 @@ public sealed class AppDbContext(
         mb.Entity<PlanTrabajo>().HasQueryFilter(p => !p.IsDeleted && (
             _alcanceGlobal || p.InstitucionId == _activeInst
         ));
+        mb.Entity<Recurso>().HasQueryFilter(r => !r.IsDeleted);
 
         base.OnModelCreating(mb);
     }
