@@ -1,0 +1,370 @@
+@page
+@using Diger.TramitesEstado.Domain.Enums
+@model Diger.TramitesEstado.Web.Pages.Tableros.MiTableroModel
+@{
+    ViewData["Title"] = "Mi Tablero Personal";
+    var d = Model.Data;
+
+    (string bg, string fg, string text) EstadoCompromisoColor(EstadoCompromiso e, bool vencido)
+    {
+        if (vencido && e != EstadoCompromiso.Cumplido && e != EstadoCompromiso.Cancelado)
+            return ("#fef2f2", "#991b1b", "Vencido");
+
+        return e switch
+        {
+            EstadoCompromiso.Pendiente    => ("#fefce8", "#854f0b", "Pendiente"),
+            EstadoCompromiso.EnProgreso   => ("#eff6ff", "#1e40af", "En progreso"),
+            EstadoCompromiso.EnRevision   => ("#faf5ff", "#6b21a8", "En revisión"),
+            EstadoCompromiso.Reprogramado => ("#fff7ed", "#c2410c", "Reprogramado"),
+            EstadoCompromiso.Cumplido     => ("#f0fdf4", "#166534", "Cumplido"),
+            EstadoCompromiso.Cancelado    => ("#f1f5f9", "#475569", "Cancelado"),
+            _                             => ("#f1f5f9", "#475569", e.ToString())
+        };
+    }
+
+    (string bg, string fg) EstadoTicketColor(EstadoTicket e) => e switch
+    {
+        EstadoTicket.Abierto    => ("#eff6ff", "#1d4ed8"),
+        EstadoTicket.EnProgreso => ("#fefce8", "#a16207"),
+        EstadoTicket.Resuelto   => ("#f0fdf4", "#15803d"),
+        EstadoTicket.Cerrado    => ("#f1f5f9", "#475569"),
+        _                       => ("#f1f5f9", "#475569")
+    };
+}
+
+<div class="container" style="max-width:1180px">
+    <div class="hist-header" style="margin-bottom:1.5rem">
+        <div>
+            <h2 style="margin:0;font-size:22px;color:#0a2d6e">Mi Tablero Personal</h2>
+            <p style="margin:4px 0 0 0;font-size:13.5px;color:#64748b">
+                Consolidado de sus compromisos, reuniones, tickets de soporte y expedientes asignados.
+            </p>
+        </div>
+        <div>
+            <a class="btns" asp-page="/Tableros/Index">← Tableros Generales</a>
+        </div>
+    </div>
+
+    @* ── KPI CARDS ─────────────────────────────────────────────── *@
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.5rem">
+        <a class="kpi-card @(d.CompromisosPendientes > 0 ? "warn" : "")" href="#sec-compromisos" onclick="activarTab('tab-comp')">
+            <div class="kpi-num">@d.CompromisosPendientes</div>
+            <div class="kpi-lbl">Compromisos pendientes</div>
+        </a>
+
+        <a class="kpi-card @(d.CompromisosVencidos > 0 ? "alert" : "")" href="#sec-compromisos" onclick="activarTab('tab-comp')">
+            <div class="kpi-num">@d.CompromisosVencidos</div>
+            <div class="kpi-lbl">Compromisos vencidos</div>
+        </a>
+
+        <a class="kpi-card" href="#sec-reuniones" onclick="activarTab('tab-reun')">
+            <div class="kpi-num">@d.ReunionesProximas</div>
+            <div class="kpi-lbl">Próximas reuniones</div>
+        </a>
+
+        <a class="kpi-card @(d.TicketsAbiertos > 0 ? "warn" : "")" href="#sec-tickets" onclick="activarTab('tab-tick')">
+            <div class="kpi-num">@d.TicketsAbiertos</div>
+            <div class="kpi-lbl">Tickets abiertos</div>
+        </a>
+
+        <a class="kpi-card ok" href="#sec-expedientes" onclick="activarTab('tab-exp')">
+            <div class="kpi-num">@d.ExpedientesAsignados</div>
+            <div class="kpi-lbl">Expedientes asignados</div>
+        </a>
+    </div>
+
+    @* ── PESTAÑAS NAVEGABLES ──────────────────────────────────── *@
+    <div style="display:flex;gap:8px;border-bottom:2px solid #e2e8f0;margin-bottom:1.25rem">
+        <button type="button" class="tab-btn active" id="btn-tab-comp" onclick="mostrarSeccion('tab-comp')">
+            📋 Mis Compromisos (@d.Compromisos.Count)
+        </button>
+        <button type="button" class="tab-btn" id="btn-tab-reun" onclick="mostrarSeccion('tab-reun')">
+            📅 Mis Reuniones (@d.Reuniones.Count)
+        </button>
+        <button type="button" class="tab-btn" id="btn-tab-tick" onclick="mostrarSeccion('tab-tick')">
+            🎫 Mis Tickets (@d.Tickets.Count)
+        </button>
+        <button type="button" class="tab-btn" id="btn-tab-exp" onclick="mostrarSeccion('tab-exp')">
+            📂 Mis Expedientes (@d.Expedientes.Count)
+        </button>
+    </div>
+
+    @* ── SECCIÓN: MIS COMPROMISOS ────────────────────────────── *@
+    <div id="tab-comp" class="tab-content active">
+        <div class="card" style="padding:1.2rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Compromisos y Acuerdos</h3>
+                <a class="btns" asp-page="/Reuniones/Compromisos" style="font-size:12px">Ver todos los compromisos del portal →</a>
+            </div>
+
+            @if (!d.Compromisos.Any())
+            {
+                <div style="text-align:center;padding:2.5rem 1rem;color:#64748b">
+                    <div style="font-size:32px;margin-bottom:6px">🎉</div>
+                    <p style="margin:0;font-weight:600">¡No tiene compromisos pendientes asignados a su correo!</p>
+                </div>
+            }
+            else
+            {
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:40%">Compromiso / Reunión</th>
+                            <th style="width:18%">Institución</th>
+                            <th style="width:16%">Plazo límite</th>
+                            <th style="width:14%">Estado</th>
+                            <th style="width:12%">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in d.Compromisos)
+                        {
+                            var ec = EstadoCompromisoColor(c.Estado, c.Vencido);
+                            <tr>
+                                <td>
+                                    <div style="font-weight:600;color:#0f172a;margin-bottom:2px">@c.Compromiso</div>
+                                    <div style="font-size:12px;color:#64748b">📌 @c.ReunionTitulo</div>
+                                </td>
+                                <td style="font-size:13px;color:#475569">@(c.Institucion ?? "—")</td>
+                                <td style="font-size:13px;color:#334155">
+                                    @(c.Plazo?.ToString("dd/MM/yyyy") ?? "Sin fecha")
+                                </td>
+                                <td>
+                                    <span style="background:@ec.bg;color:@ec.fg;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700">
+                                        @ec.text
+                                    </span>
+                                </td>
+                                <td>
+                                    <a class="btns" asp-page="/Reuniones/Detalle" asp-route-id="@c.ReunionId" style="font-size:11px;padding:4px 8px">Ver reunión</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @* ── SECCIÓN: MIS REUNIONES ──────────────────────────────── *@
+    <div id="tab-reun" class="tab-content" style="display:none">
+        <div class="card" style="padding:1.2rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Reuniones y Convocatorias</h3>
+                <a class="btns" asp-page="/Reuniones/Index" style="font-size:12px">Ir a Reuniones →</a>
+            </div>
+
+            @if (!d.Reuniones.Any())
+            {
+                <div style="text-align:center;padding:2.5rem 1rem;color:#64748b">
+                    <div style="font-size:32px;margin-bottom:6px">📅</div>
+                    <p style="margin:0;font-weight:600">No tiene reuniones agendadas ni participaciones recientes.</p>
+                </div>
+            }
+            else
+            {
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:14%">Fecha / Hora</th>
+                            <th style="width:36%">Título de la reunión</th>
+                            <th style="width:20%">Lugar / Medio</th>
+                            <th style="width:15%">Rol / Estado</th>
+                            <th style="width:15%">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in d.Reuniones)
+                        {
+                            <tr>
+                                <td>
+                                    <div style="font-weight:700;color:#0a2d6e">@(r.Fecha?.ToString("dd/MM/yyyy") ?? "Sin fecha")</div>
+                                    <div style="font-size:11.5px;color:#64748b">@(r.Hora ?? "—")</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight:600;color:#0f172a">@r.Titulo</div>
+                                    <div style="font-size:12px;color:#64748b">👥 @r.NumAsistentes asistentes</div>
+                                </td>
+                                <td style="font-size:13px;color:#475569">@(r.Lugar ?? "Por definir")</td>
+                                <td>
+                                    @if (r.EsOrganizador)
+                                    {
+                                        <span class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:700">Organizador</span>
+                                    }
+                                    else if (r.Confirmada)
+                                    {
+                                        <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700">Asistencia confirmada</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge" style="background:#fef3c7;color:#b45309">Convocado</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a class="btns" asp-page="/Reuniones/Detalle" asp-route-id="@r.Id" style="font-size:11px;padding:4px 8px">Abrir reunión</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @* ── SECCIÓN: MIS TICKETS ────────────────────────────────── *@
+    <div id="tab-tick" class="tab-content" style="display:none">
+        <div class="card" style="padding:1.2rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Tickets de Soporte</h3>
+                <a class="btns" asp-page="/Tickets/Index" style="font-size:12px">Ir a Soporte →</a>
+            </div>
+
+            @if (!d.Tickets.Any())
+            {
+                <div style="text-align:center;padding:2.5rem 1rem;color:#64748b">
+                    <div style="font-size:32px;margin-bottom:6px">🎫</div>
+                    <p style="margin:0;font-weight:600">No tiene tickets de soporte creados ni asignados.</p>
+                </div>
+            }
+            else
+            {
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:14%">Ticket #</th>
+                            <th style="width:36%">Título</th>
+                            <th style="width:18%">Categoría</th>
+                            <th style="width:14%">Estado</th>
+                            <th style="width:18%">Relación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in d.Tickets)
+                        {
+                            var tc = EstadoTicketColor(t.Estado);
+                            <tr>
+                                <td>
+                                    <a asp-page="/Tickets/Detalle" asp-route-id="@t.Id" style="font-weight:700;color:#1455a4;text-decoration:none">
+                                        @t.Numero
+                                    </a>
+                                </td>
+                                <td>
+                                    <a asp-page="/Tickets/Detalle" asp-route-id="@t.Id" style="font-weight:600;color:#0f172a;text-decoration:none">
+                                        @t.Titulo
+                                    </a>
+                                    <div style="font-size:11.5px;color:#64748b">Actualizado: @((t.FechaActualizacion ?? t.FechaCreacion).ToString("dd/MM/yyyy HH:mm"))</div>
+                                </td>
+                                <td style="font-size:13px;color:#475569">@t.TemaNombre</td>
+                                <td>
+                                    <span style="background:@tc.bg;color:@tc.fg;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700">
+                                        @t.Estado
+                                    </span>
+                                </td>
+                                <td style="font-size:12px;color:#64748b">
+                                    @(t.EsMioAsignado ? "⚙️ Atendido por mí" : "📩 Reportado por mí")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @* ── SECCIÓN: MIS EXPEDIENTES ────────────────────────────── *@
+    <div id="tab-exp" class="tab-content" style="display:none">
+        <div class="card" style="padding:1.2rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Expedientes Asignados</h3>
+                <a class="btns" asp-page="/Index" style="font-size:12px">Ver todos los expedientes →</a>
+            </div>
+
+            @if (!d.Expedientes.Any())
+            {
+                <div style="text-align:center;padding:2.5rem 1rem;color:#64748b">
+                    <div style="font-size:32px;margin-bottom:6px">📂</div>
+                    <p style="margin:0;font-weight:600">No tiene expedientes de trámites asignados directamente.</p>
+                </div>
+            }
+            else
+            {
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:16%">Código</th>
+                            <th style="width:34%">Trámite</th>
+                            <th style="width:20%">Institución</th>
+                            <th style="width:18%">Avance</th>
+                            <th style="width:12%">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in d.Expedientes)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-page="/Expedientes/Editor" asp-route-id="@e.Id" style="font-weight:700;color:#1455a4;text-decoration:none">
+                                        @e.Codigo
+                                    </a>
+                                </td>
+                                <td>
+                                    <div style="font-weight:600;color:#0f172a">@e.TramiteNombre</div>
+                                    <div style="font-size:11.5px;color:#64748b">Creado: @e.FechaCreacion.ToString("dd/MM/yyyy")</div>
+                                </td>
+                                <td style="font-size:13px;color:#475569">@e.Institucion</td>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:8px">
+                                        <div style="flex:1;background:#e2e8f0;border-radius:6px;height:8px;overflow:hidden">
+                                            <div style="background:#1455a4;height:100%;width:@e.PorcentajeAvance%"></div>
+                                        </div>
+                                        <span style="font-size:12px;font-weight:700;color:#0f172a">@e.PorcentajeAvance%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id" style="font-size:11px;padding:4px 8px">Abrir</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+  .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all .15s ease;
+  }
+  .tab-btn:hover { color: #0a2d6e; }
+  .tab-btn.active {
+      color: #0a2d6e;
+      border-bottom-color: #1455a4;
+  }
+</style>
+
+@section Scripts {
+<script>
+  function mostrarSeccion(tabId) {
+    document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+    document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+
+    var target = document.getElementById(tabId);
+    if(target) target.style.display = 'block';
+
+    var btn = document.getElementById('btn-' + tabId);
+    if(btn) btn.classList.add('active');
+  }
+
+  function activarTab(tabId) {
+    mostrarSeccion(tabId);
+  }
+</script>
+}

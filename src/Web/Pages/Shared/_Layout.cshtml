@@ -118,7 +118,8 @@
                                 <div class="nav-group-menu">
                                     @if (puedeTableros)
                                     {
-                                        <a class="nav-item @(EsRuta("/Tableros") ? "on" : "")" asp-page="/Tableros/Index">Tableros</a>
+                                        <a class="nav-item @(EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/MiTablero">Mi Tablero</a>
+                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/Index">Tableros General</a>
                                     }
                                     @if (puedeCalendario)
                                     {
@@ -129,6 +130,7 @@
                                         <a class="nav-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index">Expedientes</a>
                                         <a class="nav-item @(EsRuta("/Informes") ? "on" : "")" asp-page="/Informes/Index">Informes</a>
                                         <a class="nav-item @(EsRuta("/PlanTrabajo") ? "on" : "")" asp-page="/PlanTrabajo/Index">Plan de Trabajo</a>
+                                        <a class="nav-item @(EsRuta("/Recursos") ? "on" : "")" asp-page="/Recursos/Index">Recursos y Plantillas</a>
                                     }
                                 </div>
                             </div>
@@ -141,6 +143,10 @@
                                 <div class="nav-group-menu">
                                     <a class="nav-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index">Reuniones</a>
                                     <a class="nav-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos">Compromisos</a>
+                                    @if (Acceso.EsAdministrador)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase">Migrar desde Supabase</a>
+                                    }
                                 </div>
                             </div>
                         }
@@ -203,6 +209,10 @@
                             TipoNotificacion.ChatRecibido             => "💬",
                             TipoNotificacion.EtapaCronogramaVencida   => "🚨",
                             TipoNotificacion.EtapaCronogramaProxima   => "📆",
+                            TipoNotificacion.RecordatorioManualTicket     => "🎫",
+                            TipoNotificacion.RecordatorioManualExpediente => "📂",
+                            TipoNotificacion.RecordatorioManualReunion    => "📅",
+                            TipoNotificacion.RecordatorioManualCompromiso => "📋",
                             _                                         => "🔔",
                         };
                     }
@@ -330,7 +340,10 @@
                             </div>
                         }
 
+                        <a class="user-panel-link" asp-page="/Tableros/MiTablero">📊 Mi Tablero</a>
+                        <a class="user-panel-link" asp-page="/Recursos/Index">📁 Recursos y Plantillas</a>
                         <a class="user-panel-link" asp-page="/Cuenta/Perfil">Mi perfil</a>
+                        <a class="user-panel-link" asp-page="/Ayuda/Index">❓ Centro de Ayuda</a>
                         <button type="submit" form="logoutForm" class="side-panel-logout">Cerrar sesión</button>
                     </div>
                             <form id="logoutForm" method="post" asp-page="/Cuenta/Logout" style="display:none"></form>

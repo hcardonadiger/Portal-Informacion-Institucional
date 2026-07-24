@@ -427,7 +427,23 @@ function ir(n){
   document.getElementById('sec'+n).classList.add('active');
   document.getElementById('sb'+n).classList.add('active');
   aplicarModoReadOnly();
+  actualizarEncTramite();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Muestra en el encabezado fijo el trámite actual cuando se está en las secciones "Por trámite" (1-4).
+function actualizarEncTramite(){
+  var el = document.getElementById('efh-tram');
+  if(!el) return;
+  var activeSec = document.querySelector('.sec.active');
+  var n = activeSec ? parseInt(activeSec.id.replace('sec',''), 10) : -1;
+  if(n >= 1 && n <= 4){
+    var names = getTramNombres();
+    document.getElementById('efh-tram-nombre').textContent = names[activeTram] || ('Trámite ' + (activeTram + 1));
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 // ── META SIDEBAR ────────────────────────────────────────────
@@ -440,6 +456,15 @@ function actualizarMeta(){
   document.getElementById('sb-codigo').textContent = cod;
   document.getElementById('sb-analista').textContent = analista;
   document.getElementById('sb-fecha').textContent = fecha;
+  // Encabezado fijo con la información única del expediente (solo existe al editar uno ya generado)
+  var efhCod = document.getElementById('efh-codigo');
+  if (efhCod){
+    efhCod.textContent = cod;
+    efhCod.style.display = (cod && cod !== '—') ? '' : 'none';
+    document.getElementById('efh-inst').textContent = inst;
+    document.getElementById('efh-analista').textContent = analista;
+    document.getElementById('efh-fecha').textContent = fecha;
+  }
   // El topbar del HTML original no existe en el port Razor (se usa el topnav del _Layout).
   var tb = document.getElementById('topbar-title');
   if (tb) tb.textContent = inst !== '—' ? 'Expediente — ' + inst : 'Expediente de Digitalización — DIGER';
@@ -730,6 +755,7 @@ function selTram(i){
   renderModeloReqs(i);
   actualizarBVA();
   aplicarModoReadOnly();
+  actualizarEncTramite();
 }
 
 // ── FICHAS POR TRÁMITE ──────────────────────────────────────
@@ -1254,6 +1280,7 @@ document.addEventListener('DOMContentLoaded', async function(){
     nuevoExp();
   }
   ir(0);
+  initAutosave();
 });
 
 // ── GUARDAR / CARGAR ─────────────────────────────────────────
@@ -1391,12 +1418,123 @@ async function guardar(){
     if(!resp.ok){
       throw new Error(result.detail || result.title || ('HTTP '+resp.status));
     }
+    limpiarBorrador();
     mostrarToast('✓ Expediente guardado');
     setTimeout(function(){ window.location.href = (meta.indexUrl || '/'); }, 600);
   }catch(err){
     if(btn){ btn.disabled=false; btn.innerHTML='Guardar'; }
     mostrarToast('✗ Error al guardar: ' + err.message);
   }
+}
+
+// ── AUTOGUARDADO (borrador local anti-pérdida) ───────────────
+// Guarda una copia del formulario en localStorage mientras se edita, para no
+// perder el avance si el usuario refresca o sale por accidente antes de guardar.
+var _autosaveTimer = null, _formDirty = false;
+
+function borradorKey(){
+  var meta = window.__EXPMETA__ || {};
+  return 'exp-borrador-v1-' + (meta.id != null ? meta.id : 'nuevo');
+}
+
+function borradorTieneContenido(d){
+  if(!d) return false;
+  if(d.inst || d.codigo_exp || d.dir_sede || d.contacto_nombre || d.obs_expediente) return true;
+  if((d.tramite_nombres||[]).some(function(n){ return n && String(n).trim(); })) return true;
+  if((d.tramites||[]).some(function(t){ return t && Object.keys(t).some(function(k){ return t[k] && String(t[k]).trim(); }); })) return true;
+  if((d.legal||[]).length || (d.docs||[]).length) return true;
+  return false;
+}
+
+function programarAutoguardado(){
+  _formDirty = true;
+  actualizarIndBorrador('saving');
+  if(_autosaveTimer) clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(guardarBorrador, 1000);
+}
+
+function guardarBorrador(){
+  if(!_formDirty) return;
+  try{
+    var d = recolectar();
+    localStorage.setItem(borradorKey(), JSON.stringify(d));
+    actualizarIndBorrador('saved', d._ts);
+  }catch(e){ /* almacenamiento lleno o no disponible */ }
+}
+
+function limpiarBorrador(){
+  _formDirty = false;
+  if(_autosaveTimer){ clearTimeout(_autosaveTimer); _autosaveTimer = null; }
+  try{ localStorage.removeItem(borradorKey()); }catch(e){}
+  actualizarIndBorrador('hide');
+}
+
+function actualizarIndBorrador(estado, ts){
+  var el = document.getElementById('autosave-ind');
+  if(!el) return;
+  if(estado === 'hide'){ el.classList.remove('show'); return; }
+  el.classList.add('show');
+  var txt = el.querySelector('.as-txt');
+  if(estado === 'saving'){
+    el.classList.add('saving');
+    if(txt) txt.textContent = 'Guardando borrador…';
+  } else {
+    el.classList.remove('saving');
+    var hora = ts ? new Date(ts).toLocaleTimeString('es-HN', {hour:'2-digit', minute:'2-digit'}) : '';
+    if(txt) txt.textContent = 'Borrador guardado' + (hora ? (' · ' + hora) : '');
+  }
+}
+
+function ofrecerRecuperarBorrador(draft){
+  var main = document.getElementById('form-main');
+  if(!main) return;
+  var bar = document.createElement('div');
+  bar.className = 'draft-recover';
+  var ts = draft._ts ? new Date(draft._ts).toLocaleString('es-HN') : '';
+  bar.innerHTML = '<div class="dr-txt"><strong>Tienes cambios sin guardar</strong>'
+    + '<span>Se recuperó un borrador' + (ts ? (' del ' + ts) : '') + ' de este expediente. ¿Deseas restaurarlo?</span></div>'
+    + '<div class="dr-acts"><button type="button" class="btn btn-s" id="dr-descartar">Descartar</button>'
+    + '<button type="button" class="btn btn-p" id="dr-recuperar">Restaurar borrador</button></div>';
+  main.insertBefore(bar, main.firstChild);
+  document.getElementById('dr-recuperar').addEventListener('click', function(){
+    poblarFormulario(draft);
+    bar.remove();
+    ir(0);
+    _formDirty = true; // conservar el borrador tras restaurar hasta que se guarde en el servidor
+    mostrarToast('✓ Borrador restaurado');
+  });
+  document.getElementById('dr-descartar').addEventListener('click', function(){
+    limpiarBorrador();
+    bar.remove();
+  });
+}
+
+function initAutosave(){
+  var meta = window.__EXPMETA__ || {};
+  if(!meta.esAdmin) return; // sólo en modo edición
+  var form = document.getElementById('form-main');
+  if(!form) return;
+
+  // ¿Quedó un borrador de una sesión anterior? Ofrecer recuperarlo.
+  try{
+    var raw = localStorage.getItem(borradorKey());
+    if(raw){
+      var draft = JSON.parse(raw);
+      if(borradorTieneContenido(draft)) ofrecerRecuperarBorrador(draft);
+      else localStorage.removeItem(borradorKey());
+    }
+  }catch(e){}
+
+  form.addEventListener('input', programarAutoguardado);
+  form.addEventListener('change', programarAutoguardado);
+  // Cambios estructurales (agregar/quitar filas, nodos de flujo, requisitos…) no
+  // disparan input/change; se detectan por el clic en sus controles.
+  form.addEventListener('click', function(e){
+    if(e.target.closest('.btn-add,.btn-rm,[onclick*="addFlowNode"],[onclick*="agregar"],[onclick*="quitar"],[onclick*="eliminar"],[onclick*="remove"],[onclick*="addReq"]')) programarAutoguardado();
+  });
+  // Volcado inmediato ante salida o refresco accidental.
+  window.addEventListener('beforeunload', guardarBorrador);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') guardarBorrador(); });
 }
 
 function cargarTodos(){ return expCache; }
