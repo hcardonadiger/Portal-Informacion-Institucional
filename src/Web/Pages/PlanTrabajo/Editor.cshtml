@@ -323,7 +323,7 @@
         </div>
         <div style="padding:14px 20px 10px" id="exp-picker-search-box">
             <input type="text" id="exp-picker-search" class="form-control"
-                   placeholder="Buscar por código o analista…"
+                   placeholder="Buscar por código o responsable del acta…"
                    oninput="buscarExpedientesModal(this)" autocomplete="off" />
         </div>
         <div id="exp-picker-results" style="padding:0 20px 16px;max-height:340px;overflow-y:auto">
@@ -516,7 +516,7 @@ async function consultarExpedientes(q) {
                 </span>
                 <span class="badge ${cls}">${lbl}</span>`;
             b.querySelector('.exp-cod').textContent  = x.codigo;
-            b.querySelector('.exp-meta').textContent = x.analista ? `Analista: ${x.analista}` : '';
+            b.querySelector('.exp-meta').textContent = x.analista ? `Responsable del Acta: ${x.analista}` : '';
             b.onclick = () => elegirExp(x.id, x.codigo);
             cont.appendChild(b);
         });

@@ -29,6 +29,19 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--dige
 .pb-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--diger-text-muted);margin-bottom:4px}
 .pb{height:5px;background:var(--diger-border);border-radius:99px;overflow:hidden}
 .pb-fill{height:100%;background:linear-gradient(90deg,var(--diger-blue-mid),var(--diger-success));border-radius:99px;transition:width .4s}
+/* ENCABEZADO FIJO — información única del expediente (fijo en todas las secciones) */
+.exp-fixed-header{position:sticky;top:0;z-index:30;background:linear-gradient(120deg,var(--diger-blue),var(--diger-blue-mid));color:#fff;border-radius:14px;padding:.9rem 1.2rem;margin-bottom:1.4rem;box-shadow:0 6px 20px rgba(10,45,110,.22)}
+.efh-top{display:flex;align-items:center;justify-content:space-between;gap:1rem 1.5rem;flex-wrap:wrap}
+.efh-ident{display:flex;align-items:center;gap:11px;min-width:0}
+.efh-cod{font-weight:800;font-size:12.5px;letter-spacing:.05em;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);padding:3px 11px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.efh-inst{font-size:15px;font-weight:700;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.efh-meta{display:flex;gap:28px;flex-wrap:wrap}
+.efh-meta-item{display:flex;flex-direction:column;line-height:1.25}
+.efh-meta-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.6)}
+.efh-meta-item>span:last-child{font-size:12.5px;font-weight:600;color:#fff}
+.efh-tram{display:flex;align-items:baseline;gap:9px;margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.18)}
+.efh-tram-lbl{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.65);flex-shrink:0;padding-top:2px}
+.efh-tram-nombre{font-size:13.5px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
 .sec{display:none}.sec.active{display:block;animation:fadeUp .3s ease}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .sec-title{font-size:11px;font-weight:800;color:var(--diger-blue-mid);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1.4rem;padding-bottom:.65rem;border-bottom:2px solid var(--diger-blue-light);display:flex;align-items:center;gap:8px}
@@ -169,7 +182,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--dige
 .btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(10,45,110,.32)}
 .btn-s{background:#fff;border:1.5px solid var(--diger-border);color:var(--diger-text-muted)}
 .btn-s:hover{border-color:var(--diger-blue-mid);color:var(--diger-blue-mid);background:var(--diger-blue-light)}
-.btn-save-float{position:fixed;bottom:1.75rem;right:1.75rem;padding:12px 22px;background:linear-gradient(135deg,var(--diger-blue-mid),var(--diger-blue));color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(10,45,110,.35);transition:all .2s;z-index:50;display:flex;align-items:center;gap:7px}
+.btn-save-float{position:fixed;bottom:88px;right:20px;padding:12px 22px;background:linear-gradient(135deg,var(--diger-blue-mid),var(--diger-blue));color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(10,45,110,.35);transition:all .2s;z-index:50;display:flex;align-items:center;gap:7px}
 .btn-save-float:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(10,45,110,.45)}
 /* HIST VIEW */
 .hist-header{display:flex;align-items:center;justify-content:space-between;padding:1.75rem 2rem 1.25rem;flex-wrap:wrap;gap:1rem}
@@ -186,8 +199,20 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--dige
 .hist-card-meta{font-size:11.5px;color:var(--diger-text-muted);margin-top:2px}
 .hist-card-del{padding:5px 10px;background:#fff;border:1.5px solid var(--diger-border);color:var(--diger-danger);border-radius:7px;font-size:12px;cursor:pointer;flex-shrink:0}
 .hist-card-del:hover{background:#fff5f5}
-.toast{position:fixed;bottom:5rem;right:1.75rem;background:#1c2333;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all .3s;z-index:60;pointer-events:none}
+.toast{position:fixed;bottom:148px;right:1.75rem;background:#1c2333;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all .3s;z-index:60;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
+/* AUTOGUARDADO — indicador de borrador local */
+.autosave-ind{position:fixed;bottom:1.75rem;left:1.75rem;display:none;align-items:center;gap:8px;background:#fff;border:1px solid var(--diger-border);color:var(--diger-text-muted);padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;box-shadow:0 4px 14px rgba(10,45,110,.12);z-index:55}
+.autosave-ind.show{display:inline-flex}
+.autosave-ind .dot{width:8px;height:8px;border-radius:50%;background:var(--diger-success);flex-shrink:0}
+.autosave-ind.saving .dot{background:var(--diger-warning);animation:asPulse 1s infinite}
+@keyframes asPulse{0%,100%{opacity:1}50%{opacity:.25}}
+/* AUTOGUARDADO — banner para recuperar un borrador sin guardar */
+.draft-recover{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:.85rem 1.1rem;margin-bottom:1.4rem}
+.draft-recover .dr-txt{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:#92400e;min-width:0}
+.draft-recover .dr-txt strong{font-size:13px;font-weight:800}
+.draft-recover .dr-acts{display:flex;gap:8px;flex-shrink:0}
+.draft-recover .dr-acts .btn{padding:8px 16px}
 @media print{
   .topbar,.sidebar,.nav,.btn-save-float,.toast,.btn-add,.btn-rm,.fn-acts,.fn-ret{display:none!important}
   .wrap{display:block}.main{padding:0}.sec{display:block!important}

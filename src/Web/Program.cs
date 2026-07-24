@@ -88,6 +88,8 @@ builder.Services.AddDataProtection()
 
 // Importador de expedientes desde el portal demo (Supabase) — usado por Admin/ImportarExpedientes
 builder.Services.AddHttpClient<Diger.TramitesEstado.Web.Import.SupabaseExpedienteImporter>();
+builder.Services.AddHttpClient<Diger.TramitesEstado.Web.Import.SupabaseMigracionScanner>();
+builder.Services.AddHttpClient<Diger.TramitesEstado.Web.Import.SupabaseCatalogosImporter>();
 
 // Configuración para permitir el reenvío de certificados si IIS actúa como Reverse Proxy
 builder.Services.AddCertificateForwarding(options =>

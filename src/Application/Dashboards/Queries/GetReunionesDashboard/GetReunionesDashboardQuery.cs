@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using Diger.TramitesEstado.Application.Dashboards.Common;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetReunionesDashboard;
@@ -71,8 +74,58 @@ public sealed class GetReunionesDashboardQueryHandler(IApplicationDbContext ctx)
             .Select(g => new { g.Key.Year, g.Key.Month, C = g.Count() }).ToListAsync(ct))
             .Select(x => (x.Year, x.Month, x.C));
 
+        // ── Personas capacitadas ───────────────────────────────────────────────
+        // Sólo reuniones de capacitación; se traen planas y la deduplicación se hace en
+        // memoria (normalizar nombres no es traducible a SQL). El volumen es acotado.
+        var asistenciasCap = await r
+            .Where(x => x.EsCapacitacionPlataforma || (x.Tipo != null && x.Tipo.Contains("Capacitaci")))
+            .SelectMany(x => x.Asistentes.Select(a => new
+            {
+                Capacitacion = x.Titulo,
+                a.Nombre,
+                a.Correo,
+                a.Institucion
+            }))
+            .ToListAsync(ct);
+
+        var personasCapacitadas = asistenciasCap
+            .Where(a => !string.IsNullOrWhiteSpace(a.Nombre) && !EsDiger(a.Institucion))
+            .GroupBy(a => ClavePersona(a.Correo, a.Nombre))
+            .Select(g => new PersonaCapacitadaDto(
+                g.Select(x => x.Nombre.Trim()).First(),
+                g.Select(x => x.Institucion?.Trim()).FirstOrDefault(i => !string.IsNullOrWhiteSpace(i)),
+                g.Select(x => x.Capacitacion?.Trim())
+                 .Where(t => !string.IsNullOrWhiteSpace(t))
+                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                 .OrderBy(t => t, StringComparer.CurrentCultureIgnoreCase)
+                 .ToList()!))
+            .OrderBy(p => p.Nombre, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
         return new ReunionesDashboardDto(total, mes, asistentes, vencidos, proximos, sinPlazo,
             porTipo, porInstitucion, SerieMensual.Ultimos12(porMesRaw), lista,
-            acuerdosTotal, cumplidos, tasa, porEstado);
+            acuerdosTotal, cumplidos, tasa, porEstado, personasCapacitadas);
+    }
+
+    // ── Helpers de deduplicación ───────────────────────────────────────────────
+    /// <summary>DIGER facilita las capacitaciones; su personal no cuenta como capacitado.</summary>
+    private static bool EsDiger(string? institucion) =>
+        !string.IsNullOrWhiteSpace(institucion) && Normalizar(institucion).Contains("DIGER");
+
+    /// <summary>Clave de identidad: el correo manda; si no hay, el nombre normalizado.</summary>
+    private static string ClavePersona(string? correo, string nombre) =>
+        !string.IsNullOrWhiteSpace(correo)
+            ? "@" + correo.Trim().ToLowerInvariant()
+            : "#" + Normalizar(nombre);
+
+    /// <summary>Mayúsculas, sin acentos y con espacios colapsados, para comparar nombres.</summary>
+    private static string Normalizar(string s)
+    {
+        var desc = s.Trim().Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(desc.Length);
+        foreach (var ch in desc)
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                sb.Append(ch);
+        return Regex.Replace(sb.ToString(), @"\s+", " ").ToUpperInvariant();
     }
 }

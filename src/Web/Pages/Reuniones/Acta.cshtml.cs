@@ -1,7 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
-public sealed class ActaModel(ISender sender) : PageModel
+public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageModel
 {
     public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
     public int ReunionId { get; private set; }
@@ -56,6 +56,29 @@ public sealed class ActaModel(ISender sender) : PageModel
         }
     }
 
+    public async Task<IActionResult> OnGetPdfAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            var d = await sender.Send(new GetReunionByIdQuery(id), ct);
+            var dto = new ActaPdfDto(d.Datos, d.Asistentes, d.Acuerdos, d.InstitucionNombre);
+            var bytes = actaPdf.Generar(dto);
+
+            var slug = string.Concat((d.Datos.Titulo ?? "reunion")
+                .Where(ch => char.IsLetterOrDigit(ch) || ch is ' ' or '-' or '_'))
+                .Trim().Replace(' ', '_');
+            if (string.IsNullOrWhiteSpace(slug)) slug = "reunion";
+            var fecha = d.Datos.Fecha?.ToString("yyyy-MM-dd") ?? DateTime.Now.ToString("yyyy-MM-dd");
+            var nombre = $"Registro_{slug}_{fecha}.pdf";
+
+            return File(bytes, "application/pdf", nombre);
+        }
+        catch (NotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     public async Task<IActionResult> OnPostEnlazarAsync(int id, int otraReunionId, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -83,6 +106,20 @@ public sealed class ActaModel(ISender sender) : PageModel
         {
             await sender.Send(new DesenlazarReunionCommand(id), ct);
             TempData["SuccessMessage"] = "Reunión retirada del hilo.";
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioReunionCommand(id, mensaje), ct);
+            TempData["SuccessMessage"] = "Notificaciones de recordatorio enviadas a los asistentes con correo.";
         }
         catch (Exception ex)
         {

@@ -30,11 +30,14 @@
 <div class="acta-toolbar">
     <a class="btns" asp-page="/Reuniones/Index">← Volver</a>
     <div style="display:flex;gap:8px">
+        <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@Model.ReunionId" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio a todos los asistentes convocados a esta reunión?');">
+            <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Notificar Participantes</button>
+        </form>
         @if (Model.EsAdmin)
         {
             <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
         }
-        <button class="btnp" type="button" onclick="window.print()">Imprimir / PDF</button>
+        <a class="btnp" asp-page-handler="Pdf" asp-route-id="@Model.ReunionId">⬇ Descargar PDF</a>
     </div>
 </div>
 
