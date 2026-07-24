@@ -870,6 +870,7 @@ function mostrarFichaPanel(i){
 // ── FLOW BUILDER ────────────────────────────────────────────
 var TIPO_ICONS = {inicio:'▶', paso:'◉', decision:'⬦', fin:'■'};
 var TIPO_LABELS = {inicio:'INICIO', paso:'PASO', decision:'DECISIÓN', fin:'FIN'};
+var FLOW_STANDARD_AREAS = ['Ciudadano','SAC','Técnico','Legal','Resolución y archivo'];
 
 function renderFlujosActual(){
   renderFlujoList('flujo-actual-list', flujosActual[activeTram] || []);
@@ -888,6 +889,19 @@ function renderFlujoList(listId, data){
   list.innerHTML = data.map(function(step, idx){
     return buildNodeHTML(listId, step, idx, data);
   }).join('');
+}
+
+function buildFlowAreaOptions(key, current){
+  var flows=(key==='actual'?flujosActual:flujosPropuesto)[activeTram] || [];
+  var areas=FLOW_STANDARD_AREAS.slice();
+  flows.forEach(function(step){
+    var area=(step.area||'').trim();
+    if(area && areas.indexOf(area)<0) areas.push(area);
+  });
+  if(current && areas.indexOf(current)<0) areas.push(current);
+  return '<option value="">Área o fase responsable</option>'
+    + areas.map(function(area){ return '<option value="'+escHtml(area)+'"'+(area===current?' selected':'')+'>'+escHtml(area)+'</option>'; }).join('')
+    + '<option value="__other__">+ Otra área…</option>';
 }
 
 function buildNodeHTML(listId, step, idx, allSteps){
@@ -916,7 +930,8 @@ function buildNodeHTML(listId, step, idx, allSteps){
         + '</div>'
       + '</div>'
       + '<div class="fn-fields">'
-        + '<input placeholder="Área responsable" value="'+escHtml(step.area||'')+'" onchange="updateFlowField(\''+fnKey+'\','+idx+',\'area\',this.value)">'
+        + '<select id="flow-area-select-'+fnKey+'-'+idx+'" onchange="onFlowAreaSelect(\''+fnKey+'\','+idx+',this)">'+buildFlowAreaOptions(fnKey,step.area||'')+'</select>'
+        + '<input id="flow-area-other-'+fnKey+'-'+idx+'" style="display:none" placeholder="Nombre de la otra área" onblur="saveOtherFlowArea(\''+fnKey+'\','+idx+',this.value)" onkeydown="if(event.key===\'Enter\'){this.blur();event.preventDefault()}">'
         + '<input placeholder="Tiempo observado" value="'+escHtml(step.tiempo||'')+'" onchange="updateFlowField(\''+fnKey+'\','+idx+',\'tiempo\',this.value)">'
         + '<input placeholder="Documento emitido (si aplica)" value="'+escHtml(step.doc_emitido||'')+'" onchange="updateFlowField(\''+fnKey+'\','+idx+',\'doc_emitido\',this.value)">'
       + '</div>'
@@ -925,6 +940,31 @@ function buildNodeHTML(listId, step, idx, allSteps){
       + (idx>0 ? '<div class="fn-ret"><span>↩ Retorno:</span><select onchange="updateFlowField(\''+fnKey+'\','+idx+',\'retorno_a\',this.value===\'\'?null:parseInt(this.value))">'+retOpts+'</select></div>' : '')
     + '</div>'
   + '</div>';
+}
+
+function onFlowAreaSelect(key, idx, select){
+  if(select.value !== '__other__'){
+    updateFlowField(key,idx,'area',select.value);
+    return;
+  }
+  var other=document.getElementById('flow-area-other-'+key+'-'+idx);
+  select.style.display='none';
+  other.style.display='';
+  other.focus();
+}
+
+function saveOtherFlowArea(key, idx, value){
+  var area=(value||'').trim();
+  var select=document.getElementById('flow-area-select-'+key+'-'+idx);
+  var other=document.getElementById('flow-area-other-'+key+'-'+idx);
+  if(!area){
+    other.style.display='none';
+    select.style.display='';
+    select.value='';
+    return;
+  }
+  updateFlowField(key,idx,'area',area);
+  if(key==='actual') renderFlujosActual(); else renderFlujosPropuesto();
 }
 
 function addFlowNode(key, tipo){
@@ -1731,12 +1771,9 @@ function adjustDiagGAP(key,delta){
 }
 
 function buildDiagHTML(key){
-  var gap=diagGAP[key]||30;
   var ctrl='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;justify-content:flex-end">'
-    +'<span style="font-size:11px;color:var(--muted);font-weight:600">Espaciado</span>'
-    +'<button onclick="adjustDiagGAP(\''+key+'\',-10)" style="width:22px;height:22px;border:1.5px solid var(--borde);border-radius:5px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);line-height:1;padding:0;display:flex;align-items:center;justify-content:center">−</button>'
-    +'<span style="font-size:11px;font-weight:700;color:var(--azul-m);min-width:26px;text-align:center">'+gap+'</span>'
-    +'<button onclick="adjustDiagGAP(\''+key+'\',10)" style="width:22px;height:22px;border:1.5px solid var(--borde);border-radius:5px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;color:var(--muted);line-height:1;padding:0;display:flex;align-items:center;justify-content:center">+</button>'
+    +'<span style="font-size:11px;color:var(--muted);font-weight:600">Carriles por área o fase</span>'
+    +'<span style="font-size:10px;color:var(--azul-m);font-weight:700">Ciudadano · SAC · Técnico · Legal</span>'
     +'</div>';
   return '<div class="flow-diag-wrap'+(key==='propuesto'?' propuesto':'')+'">'+ctrl+renderFlowSVG(key)+'</div>';
 }
@@ -1766,57 +1803,41 @@ function renderFlowSVG(key){
   var data = key==='actual' ? (flujosActual[activeTram]||[]) : (flujosPropuesto[activeTram]||[]);
   if(!data.length) return '<p style="color:var(--muted);font-size:13px;padding:2rem;text-align:center">Sin pasos definidos. Vuelva a Editar para agregar actividades.</p>';
 
-  /* ── LAYOUT: flujo principal horizontal, decisiones EXTERNAS flotando arriba ── */
+  /* ── LAYOUT CON CARRILES: referencia Visio/Bizagi y el diagrama institucional ── */
   var fills={inicio:'#dcfce7',fin:'#dbeafe',decision:'#fef9ec',paso:'#eef3ff'};
   var strks={inicio:'#16a34a',fin:'#2563eb',decision:'#d97706',paso:'#1455a4'};
-  var NW={inicio:82,fin:82,decision:72,paso:100};
+  var NW={inicio:112,fin:112,decision:86,paso:140};
   var NH={inicio:30,fin:30,decision:72,paso:42};
-  var GAP=diagGAP[key]||30, MLEFT=22, LT=9;
+  var LT=9, LANE_W=210, MLEFT=20, HEADER_H=38, ROW_H=110;
   function nw(t){return NW[t]||NW.paso;}
   function nh(t){return NH[t]||NH.paso;}
   function nhh(t){return nh(t)/2;}
 
-  var mainIdx=[], decIdx=[];
-  data.forEach(function(s,i){ (s.tipo||'paso')==='decision'?decIdx.push(i):mainIdx.push(i); });
-
-  /* X del flujo principal */
-  var cx=new Array(data.length).fill(0);
-  var xp=MLEFT;
-  mainIdx.forEach(function(i){ cx[i]=xp+nw(data[i].tipo||'paso')/2; xp+=nw(data[i].tipo||'paso')+GAP; });
-
-  /* X de cada decisión:
-     - Si la decisión ANTERIOR en el array también es decisión → encadenada a su IZQUIERDA
-     - Si no → encima del predecesor (slot hacia la derecha para múltiples del mismo paso) */
-  function findPred(di){ for(var k=di-1;k>=0;k--) if((data[k].tipo||'paso')!=='decision') return k; return -1; }
-  var predSlot={};
-  decIdx.forEach(function(di){
-    var isChain=(di>0&&(data[di-1].tipo||'paso')==='decision');
-    if(isChain){
-      cx[di]=cx[di-1]-(nw('decision')+16);
-    } else {
-      var pred=findPred(di);
-      var slot=predSlot[pred]||0; predSlot[pred]=slot+1;
-      var baseX=pred>=0?cx[pred]:MLEFT+nw('decision')/2;
-      cx[di]=baseX+slot*(nw('decision')+16);
-    }
+  /* Mantiene el orden del documento y permite añadir áreas propias además de las
+     cuatro secciones de referencia. Todo paso sin área queda visible para completar. */
+  var areaOrder=['Ciudadano','SAC','Técnico','Legal'], areaMap={
+    'ciudadano':'Ciudadano','sac':'SAC','tecnico':'Técnico','técnico':'Técnico','legal':'Legal'
+  };
+  function areaOf(step){
+    var raw=(step.area||'').trim();
+    var normalized=raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return areaMap[normalized] || raw || 'Sin área asignada';
+  }
+  data.forEach(function(step){
+    var area=areaOf(step);
+    if(areaOrder.indexOf(area)<0) areaOrder.push(area);
   });
+  var laneByArea={};
+  areaOrder.forEach(function(area,i){ laneByArea[area]=i; });
 
-  /* Si alguna decisión encadenada sale del margen izquierdo, desplazar todo a la derecha */
-  var minDecLeft=decIdx.reduce(function(m,di){ return Math.min(m,cx[di]-nw('decision')/2); }, MLEFT);
-  var shiftR=Math.max(0,MLEFT+10-minDecLeft);
-  if(shiftR>0){ for(var si=0;si<data.length;si++) cx[si]+=shiftR; xp+=shiftR; }
-
-  /* Ancho total */
-  var maxDecX=decIdx.reduce(function(m,di){ return Math.max(m,cx[di]+nw('decision')/2); }, xp-GAP);
-  var W=Math.max(xp-GAP,maxDecX)+70;
-
-  /* Alturas — decisiones flotan bien SEPARADAS encima */
-  var DH=nh('decision'), DW=nw('decision');
-  var DEC_GAP=44;                  /* separación entre fondo del diamante y tope del paso */
-  var TOP=DH+DEC_GAP+14;
-  var BOT=54;
-  var MY=TOP, H=MY+BOT;
-  var DY=MY-DEC_GAP-DH/2;         /* centro Y de todas las decisiones */
+  var cx=[], cy=[];
+  data.forEach(function(step,i){
+    cx[i]=MLEFT+laneByArea[areaOf(step)]*LANE_W+LANE_W/2;
+    cy[i]=HEADER_H+48+i*ROW_H;
+  });
+  var returnCount=data.filter(function(step){ return step.retorno_a!==null && step.retorno_a!==undefined && step.retorno_a!==''; }).length;
+  var W=MLEFT+areaOrder.length*LANE_W+72;
+  var H=HEADER_H+data.length*ROW_H+52+returnCount*16;
 
   var els=[];
   els.push('<defs>'
@@ -1825,70 +1846,44 @@ function renderFlowSVG(key){
     +'<filter id="fs"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.09"/></filter>'
     +'</defs>');
 
-  /* Conectores horizontales del flujo principal (sin pasar por decisiones) */
-  for(var k=1;k<mainIdx.length;k++){
-    var pi=mainIdx[k-1], ci=mainIdx[k];
-    var prevR=cx[pi]+nw(data[pi].tipo||'paso')/2;
-    var curL =cx[ci]-nw(data[ci].tipo||'paso')/2;
-    if(curL>prevR+2)
-      els.push('<line x1="'+prevR+'" y1="'+MY+'" x2="'+(curL-1)+'" y2="'+MY+'" stroke="#1455a4" stroke-width="1.4" marker-end="url(#aB)"/>');
-  }
-
-  /* Flechas de DERIVACIÓN (vertical del paso) y CADENA (horizontal entre decisiones) */
-  decIdx.forEach(function(di){
-    var isChain=(di>0&&(data[di-1].tipo||'paso')==='decision');
-    if(isChain){
-      /* Cadena: punta izquierda del anterior → punta derecha de este */
-      var x1=cx[di-1]-nw('decision')/2;
-      var x2=cx[di]+nw('decision')/2;
-      els.push('<line x1="'+x1+'" y1="'+DY+'" x2="'+(x2+1)+'" y2="'+DY
-        +'" stroke="#1455a4" stroke-width="1.3" marker-end="url(#aB)"/>');
-    } else {
-      /* Derivación vertical del predecesor PASO/INICIO */
-      var pred=findPred(di);
-      if(pred<0) return;
-      var bx=cx[di]-6;
-      var srcTop=MY-nhh(data[pred].tipo||'paso');
-      var decBot=DY+DH/2;
-      els.push('<line x1="'+bx+'" y1="'+srcTop+'" x2="'+bx+'" y2="'+(decBot+1)
-        +'" stroke="#1455a4" stroke-width="1.3" marker-end="url(#aB)"/>');
-    }
+  /* Fondos y encabezados de carril, equivalentes a los responsables del diagrama guía. */
+  areaOrder.forEach(function(area,i){
+    var x=MLEFT+i*LANE_W, bg=i%2?'#f8fbff':'#ffffff';
+    els.push('<rect x="'+x+'" y="0" width="'+LANE_W+'" height="'+H+'" fill="'+bg+'" stroke="#cbd5e1" stroke-width="1"/>');
+    els.push('<rect x="'+x+'" y="0" width="'+LANE_W+'" height="'+HEADER_H+'" fill="#0b4f87"/>');
+    els.push('<text x="'+(x+LANE_W/2)+'" y="24" text-anchor="middle" font-size="12" font-weight="800" fill="#fff" font-family="Segoe UI,sans-serif">'+escHtml(area.toUpperCase())+'</text>');
   });
 
-  /* Flechas de RETORNO: cada una en su propio carril (escalonadas) en el corredor entre decisiones y pasos */
+  /* Conectores ortogonales: descienden en el tiempo y cruzan de carril cuando cambia el área. */
+  for(var k=1;k<data.length;k++){
+    var pi=k-1, ci=k;
+    var fromY=cy[pi]+nhh(data[pi].tipo||'paso'), toY=cy[ci]-nhh(data[ci].tipo||'paso');
+    var midY=Math.round((fromY+toY)/2);
+    var d='M'+cx[pi]+' '+fromY+' V'+midY+' H'+cx[ci]+' V'+toY;
+    els.push('<path d="'+d+'" fill="none" stroke="#1455a4" stroke-width="1.5" marker-end="url(#aB)"/>');
+  }
+
+  /* Retornos en el margen derecho, fuera de los carriles para no cruzar actividades. */
   var retN=0;
-  decIdx.forEach(function(di){
+  data.forEach(function(step,di){
     var j=(data[di].retorno_a!==null&&data[di].retorno_a!==undefined&&data[di].retorno_a!=='')?parseInt(data[di].retorno_a):-1;
-    if(j<0) return;
-    var startX=cx[di]+6;
-    var startY=DY+DH/2;               /* fondo del diamante */
+    if(j<0 || j>=data.length) return;
+    var startX=cx[di]+nw(data[di].tipo||'paso')/2, startY=cy[di];
     var targetType=data[j].tipo||'paso';
-    var endX=cx[j]-nw(targetType)/2;  /* borde izquierdo del nodo destino */
-    var endY=MY;                       /* nivel del flujo principal */
-    var routeY=Math.min(DY+DH/2+8+retN*7, endY-14); /* carril escalonado por índice de retorno */
+    var endX=cx[j]+nw(targetType)/2, endY=cy[j];
+    var routeX=W-20-retN*16;
     retN++;
-    var approachX=endX-14;
-    var rH=Math.min(6,Math.abs(startX-approachX)/2);
-    var rV=Math.min(rH,(endY-routeY)/2-1);
-    var r=Math.max(2,rV);
-    var goLeft=startX>approachX+r;
-    var hTurn=goLeft?startX-r:startX+r;
-    var hArrive=goLeft?approachX+r:approachX-r;
     var d='M'+startX+' '+startY
-         +' L'+startX+' '+(routeY-r)
-         +' Q'+startX+' '+routeY+' '+hTurn+' '+routeY
-         +' L'+hArrive+' '+routeY
-         +' Q'+approachX+' '+routeY+' '+approachX+' '+(routeY+r)
-         +' L'+approachX+' '+(endY-r)
-         +' Q'+approachX+' '+endY+' '+(approachX+r)+' '+endY
-         +' L'+endX+' '+endY;
+         +' H'+routeX
+         +' V'+endY
+         +' H'+endX;
     els.push('<path d="'+d+'" fill="none" stroke="#d97706" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#aA)"/>');
   });
 
   /* Nodos */
   data.forEach(function(step,i){
     var tipo=step.tipo||'paso';
-    var ncx=cx[i], ncy=(tipo==='decision'?DY:MY);
+    var ncx=cx[i], ncy=cy[i];
     var f=fills[tipo]||fills.paso, s=strks[tipo]||strks.paso;
     var nwi=nw(tipo), nhhi=nhh(tipo);
     var oc=' onclick="showNodeModal(\''+key+'\','+i+')" style="cursor:pointer"';
@@ -1915,7 +1910,7 @@ function renderFlowSVG(key){
 
     /* Botón "+" para agregar nodos — no aparece en FIN */
     if(tipo !== 'fin'){
-      var addBX=ncx+nwi/2+12, addBY=(tipo==='decision'?DY:MY);
+      var addBX=ncx+nwi/2+12, addBY=ncy;
       var addC=strks[tipo]||strks.paso;
       var addOC='showFlowMenu(event,\''+key+'\','+i+',\''+tipo+'\')';
       els.push('<g onclick="'+addOC+';event.stopPropagation()" style="cursor:pointer">'
@@ -1925,7 +1920,7 @@ function renderFlowSVG(key){
     }
   });
 
-  els.push('<text x="'+(W/2)+'" y="'+(H-5)+'" text-anchor="middle" font-size="7" fill="#b0bec5" font-style="italic" font-family="Segoe UI,sans-serif">Clic en nodo para ver · (+) para agregar</text>');
+  els.push('<text x="'+(W/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="8" fill="#64748b" font-style="italic" font-family="Segoe UI,sans-serif">Carriles por área o fase · Clic en nodo para ver · (+) para agregar</text>');
 
   return '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:'+W+'px;height:'+H+'px;max-width:none;display:block">'
     +els.join('')+'</svg>';

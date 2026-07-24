@@ -1,0 +1,68 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Tramites.IndicadoresModel
+@{
+    ViewData["Title"] = "Indicadores de trámites";
+}
+
+<link rel="stylesheet" href="~/css/tramites-indicadores.css" asp-append-version="true" />
+
+<div class="container ti-page">
+    <header class="ti-header">
+        <div>
+            <span class="ti-eyebrow">PLATAFORMA SOL</span>
+            <h1>Indicadores de trámites y tiempos de respuesta</h1>
+            <p>Información consolidada de las solicitudes gestionadas mediante la Plataforma SOL, organizada por institución, trámite, período y tiempos de atención.</p>
+        </div>
+        <div class="ti-updated" id="ti-updated">Cargando actualización…</div>
+    </header>
+
+    <div id="ti-loading" class="ti-loading"><span></span> Cargando indicadores institucionales…</div>
+    <div id="ti-error" class="ti-error" hidden role="alert"></div>
+
+    <section id="ti-content" hidden>
+        <section class="ti-filters" aria-label="Filtros de indicadores">
+            <div class="ti-filter-top"><strong>Filtros</strong><span id="ti-active-filters" class="ti-filter-count" hidden></span><button id="ti-clear" type="button" class="btns">Limpiar filtros</button></div>
+            <div class="ti-filter-grid">
+                <label>Buscar<input id="ti-search" type="search" placeholder="Institución o trámite"></label>
+                <label>Institución<select id="ti-institution"><option value="">Todas las instituciones</option></select></label>
+                <label>Trámite<select id="ti-procedure"><option value="">Todos los trámites</option></select></label>
+                <label>Año<select id="ti-year"><option value="">Todos los años</option></select></label>
+                <label>Mes<select id="ti-month"><option value="">Todos los meses</option></select></label>
+                <label>Estado<select id="ti-status"><option value="">Todos los estados</option><option value="finalizada">Finalizada</option><option value="en_proceso">En proceso</option><option value="sin_iniciar">Sin iniciar</option><option value="vencida">Vencida</option><option value="pendiente">Pendiente sin fecha esperada</option></select></label>
+                <label>Cumplimiento<select id="ti-compliance"><option value="">Todos</option><option value="dentro_plazo">Dentro del plazo</option><option value="fuera_plazo">Fuera del plazo</option><option value="sin_informacion">Sin información suficiente</option></select></label>
+            </div>
+        </section>
+
+        <section id="ti-kpis" class="ti-kpi-grid" aria-live="polite"></section>
+
+        <section class="ti-chart-grid">
+            <article class="dash-card ti-chart-wide"><h3>Solicitudes por institución</h3><div class="ti-chart"><canvas id="ti-requests-chart"></canvas></div></article>
+            <article class="dash-card"><h3>Trámites únicos por institución</h3><div class="ti-chart"><canvas id="ti-procedures-chart"></canvas></div></article>
+            <article class="dash-card"><h3>Días estimados frente a días reales</h3><div class="ti-chart"><canvas id="ti-days-chart"></canvas></div></article>
+            <article class="dash-card ti-chart-wide"><div class="ti-chart-title"><h3>Evolución de solicitudes</h3><select id="ti-trend-view" aria-label="Agrupar evolución"><option value="monthly">Mensual</option><option value="yearly">Anual</option></select></div><div class="ti-chart"><canvas id="ti-trend-chart"></canvas></div></article>
+            <article class="dash-card"><h3>Estado de las solicitudes</h3><div class="ti-chart"><canvas id="ti-status-chart"></canvas></div></article>
+            <article class="dash-card"><h3>Cumplimiento de plazos</h3><div class="ti-chart"><canvas id="ti-compliance-chart"></canvas></div></article>
+        </section>
+
+        <section class="dash-card ti-table-card">
+            <div class="ti-table-title"><div><h3>Resumen por institución</h3><p>Los valores sin datos se muestran como N/D y no se calculan como cero.</p></div><button id="ti-export" type="button" class="btns">Exportar CSV</button></div>
+            <div class="ti-table-wrap"><table id="ti-table"><thead><tr>
+                <th data-sort="name">Institución</th><th data-sort="sigla">Sigla</th><th data-sort="procedures">Trámites</th><th data-sort="total">Solicitudes</th><th data-sort="finished">Finalizadas</th><th data-sort="completion">% finalización</th><th data-sort="expectedAvg">Prom. estimado</th><th data-sort="expectedMedian">Mediana estimada</th><th data-sort="realAvg">Prom. real</th><th data-sort="realMedian">Mediana real</th><th data-sort="offsetAvg">Desfase prom.</th><th data-sort="onTime">% en plazo</th><th>Acción</th>
+            </tr></thead><tbody></tbody></table></div>
+            <div class="ti-pagination"><span id="ti-table-summary"></span><div><button id="ti-prev" type="button" class="btns">←</button><span id="ti-page-number"></span><button id="ti-next" type="button" class="btns">→</button></div></div>
+        </section>
+
+        <details class="ti-methodology"><summary>¿Cómo se calculan estos indicadores?</summary><div>
+            <p><strong>Trámite</strong> es la combinación única de institución y código de trámite; <strong>solicitud</strong> es cada registro recibido.</p>
+            <p>El <strong>tiempo estimado</strong> es el promedio de días esperados y el <strong>tiempo real</strong> solo se calcula en solicitudes finalizadas. El <strong>desfase</strong> compara ambos: positivo indica retraso y negativo finalización anticipada.</p>
+            <p>El porcentaje de finalización es solicitudes finalizadas entre solicitudes recibidas. El cumplimiento del plazo cuenta finalizadas con desfase menor o igual a cero. Los valores vacíos no se convierten en cero.</p>
+        </div></details>
+    </section>
+</div>
+
+<dialog id="ti-detail" class="ti-detail"><div class="ti-detail-head"><div><span class="ti-eyebrow">DETALLE DE INSTITUCIÓN</span><h2 id="ti-detail-title"></h2></div><button id="ti-detail-close" type="button" aria-label="Cerrar">×</button></div><div id="ti-detail-kpis" class="ti-detail-kpis"></div><div class="ti-chart"><canvas id="ti-detail-chart"></canvas></div><h3>Trámites de la institución</h3><div class="ti-table-wrap"><table id="ti-detail-table"><thead><tr><th>Código</th><th>Trámite</th><th>Solicitudes</th><th>Prom. estimado</th><th>Prom. real</th><th>Desfase prom.</th><th>Finalizadas</th><th>Pendientes</th><th>% cumplimiento</th></tr></thead><tbody></tbody></table></div></dialog>
+
+@section Scripts {
+    <script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>
+    <script src="~/js/tramites-indicadores.js" asp-append-version="true"></script>
+}
