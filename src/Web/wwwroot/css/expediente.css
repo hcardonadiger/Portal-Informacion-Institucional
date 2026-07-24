@@ -109,8 +109,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--dige
 .fn-acts button:hover{background:var(--diger-blue-light);color:var(--diger-blue-mid);border-color:var(--diger-blue-mid)}
 .fn-acts button.fn-del:hover{background:var(--diger-danger-bg);color:var(--diger-danger);border-color:var(--diger-danger)}
 .fn-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:7px}
-.fn-fields input{padding:6px 9px;border:1.5px solid var(--diger-border);border-radius:6px;font-size:12.5px;font-family:inherit;background:#fafbfd;color:var(--diger-text);width:100%}
-.fn-fields input:focus{outline:none;border-color:var(--diger-blue-mid)}
+.fn-fields input,.fn-fields select{padding:6px 9px;border:1.5px solid var(--diger-border);border-radius:6px;font-size:12.5px;font-family:inherit;background:#fafbfd;color:var(--diger-text);width:100%}
+.fn-fields input:focus,.fn-fields select:focus{outline:none;border-color:var(--diger-blue-mid)}
 .fn-obs{width:100%;padding:6px 9px;border:1.5px solid var(--diger-border);border-radius:6px;font-size:12px;font-family:inherit;background:#fafbfd;min-height:36px;resize:vertical}
 .fn-obs:focus{outline:none;border-color:var(--diger-blue-mid)}
 .fn-ret{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12px;color:var(--diger-text-muted)}
