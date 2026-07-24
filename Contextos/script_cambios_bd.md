@@ -112,3 +112,39 @@ BEGIN
 END;
 GO
 ```
+
+---
+
+## [2026-07-24] Creación de Tabla `Recursos` para Repositorio de Archivos y Plantillas
+
+### Descripción
+Se creó la tabla `Recursos` para gestionar el repositorio centralizado de recursos, plantillas y archivos descargables del portal. Almacena título, descripción, categoría, metadatos del archivo adjunto (nombre original, ruta local, tamaño en bytes), contador de descargas y auditoría estándar con soft-delete (`IsDeleted`).
+
+### Migración EF Core Asociada
+- **Nombre de Migración:** `20260724153537_AddRecursosTable`
+- **Comando EF:** `dotnet ef database update`
+
+### Script SQL Directo para Ejecutar en SQL Server:
+
+```sql
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'Recursos')
+BEGIN
+    CREATE TABLE [Recursos] (
+        [Id] int NOT NULL IDENTITY(1,1),
+        [IsDeleted] bit NOT NULL DEFAULT 0,
+        [Titulo] nvarchar(max) NOT NULL,
+        [Descripcion] nvarchar(max) NULL,
+        [Categoria] nvarchar(max) NOT NULL,
+        [ArchivoNombre] nvarchar(max) NOT NULL,
+        [ArchivoUrl] nvarchar(max) NOT NULL,
+        [ArchivoTamano] bigint NOT NULL,
+        [DescargasCount] int NOT NULL DEFAULT 0,
+        [CreatedAt] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(max) NULL,
+        [UpdatedAt] datetime2 NULL,
+        [UpdatedBy] nvarchar(max) NULL,
+        CONSTRAINT [PK_Recursos] PRIMARY KEY ([Id])
+    );
+END;
+GO
+```
