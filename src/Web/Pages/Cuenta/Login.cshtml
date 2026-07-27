@@ -25,7 +25,10 @@
                 <input asp-for="Correo" type="email" autocomplete="username" placeholder="usuario@diger.gob.hn" />
             </div>
             <div class="field">
-                <label>Contraseña</label>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+                    <label style="margin:0">Contraseña</label>
+                    <a asp-page="/Cuenta/OlvidarPassword" style="font-size:12px;color:#0a2d6e;text-decoration:none">¿Olvidó su contraseña?</a>
+                </div>
                 <input asp-for="Password" type="password" autocomplete="current-password" placeholder="••••••••" />
             </div>
             <button class="btnp" type="submit" style="width:100%;justify-content:center;margin-top:.5rem">

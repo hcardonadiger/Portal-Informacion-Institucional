@@ -1,8 +1,11 @@
+using Diger.TramitesEstado.Application.Areas.Queries;
+
 namespace Diger.TramitesEstado.Web.Pages.Asistencia;
 
 public sealed class RegistroModel(ISender sender) : PageModel
 {
     public ReunionPublicaDto? Reunion { get; private set; }
+    public IReadOnlyList<AreaListItemDto> Areas { get; private set; } = [];
     public bool Registrado { get; private set; }
     public string? Error { get; set; }
 
@@ -21,10 +24,16 @@ public sealed class RegistroModel(ISender sender) : PageModel
         ("+52", "🇲🇽 México +52"), ("+1", "🇺🇸 EE. UU. +1"), ("+34", "🇪🇸 España +34"),
     ];
 
+    private async Task CargarDatosCatalogosAsync(CancellationToken ct)
+    {
+        Areas = await sender.Send(new GetAreasQuery(), ct);
+    }
+
     public async Task<IActionResult> OnGetAsync(Guid token, CancellationToken ct)
     {
         try { Reunion = await sender.Send(new GetReunionPublicaQuery(token), ct); }
         catch (NotFoundException) { return NotFound(); }
+        await CargarDatosCatalogosAsync(ct);
         Datos.CodigoPais ??= "+504";
         return Page();
     }
@@ -36,6 +45,7 @@ public sealed class RegistroModel(ISender sender) : PageModel
     {
         try { Reunion = await sender.Send(new GetReunionPublicaQuery(token), ct); }
         catch (NotFoundException) { return NotFound(); }
+        await CargarDatosCatalogosAsync(ct);
 
         var correo = CorreoBusqueda?.Trim();
         if (string.IsNullOrWhiteSpace(correo) || !correo.Contains('@'))
@@ -55,7 +65,10 @@ public sealed class RegistroModel(ISender sender) : PageModel
             Datos.Nombre       = contacto.Nombre;
             Datos.Cargo        = contacto.Cargo;
             Datos.Institucion  = contacto.Institucion;
-            Datos.Telefono     = contacto.Telefono;
+            Datos.Departamento = contacto.Area;
+            ExtraerCodigoYNumeroLocal(contacto.Telefono, out var codPais, out var numLocal);
+            if (!string.IsNullOrEmpty(codPais)) Datos.CodigoPais = codPais;
+            Datos.Telefono = numLocal;
         }
         else
         {
@@ -65,10 +78,50 @@ public sealed class RegistroModel(ISender sender) : PageModel
         return Page();
     }
 
+    public static void ExtraerCodigoYNumeroLocal(string? telefonoCompleto, out string? codigoPais, out string? numeroLocal)
+    {
+        codigoPais = null;
+        numeroLocal = null;
+
+        if (string.IsNullOrWhiteSpace(telefonoCompleto))
+            return;
+
+        var clean = telefonoCompleto.Trim();
+
+        foreach (var (code, _) in Paises)
+        {
+            if (clean.StartsWith(code, StringComparison.OrdinalIgnoreCase))
+            {
+                codigoPais = code;
+                var local = clean[code.Length..].Trim();
+                while (local.StartsWith(code, StringComparison.OrdinalIgnoreCase))
+                {
+                    local = local[code.Length..].Trim();
+                }
+                numeroLocal = local;
+                return;
+            }
+        }
+
+        if (clean.StartsWith("+"))
+        {
+            var parts = clean.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2)
+            {
+                codigoPais = parts[0];
+                numeroLocal = parts[1].Trim();
+                return;
+            }
+        }
+
+        numeroLocal = clean;
+    }
+
     public async Task<IActionResult> OnPostAsync(Guid token, CancellationToken ct)
     {
         try { Reunion = await sender.Send(new GetReunionPublicaQuery(token), ct); }
         catch (NotFoundException) { return NotFound(); }
+        await CargarDatosCatalogosAsync(ct);
 
         if (string.IsNullOrWhiteSpace(Datos.Nombre))
         {

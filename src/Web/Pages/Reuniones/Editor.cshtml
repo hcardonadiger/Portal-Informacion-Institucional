@@ -240,7 +240,8 @@
           <p class="hint" style="margin:0 0 8px">Pega aquí el JSON resumido de la transcripción y presiona «Aplicar» para llenar los campos del formulario.</p>
           <textarea id="cowork-json" rows="6" style="width:100%;font-family:monospace;font-size:12.5px" placeholder='{"titulo":"...","fecha":"YYYY-MM-DD","hora":"HH:MM","duracion":"...","modalidad":"Presencial","lugar":"...","institucion":"...","tipo":"Reunión técnica","objetivo":"...","desarrollo":"...","acuerdos":[{"compromiso":"...","responsable":"...","plazo":"YYYY-MM-DD"}],"documentos":"...","validador_diger":"..."}'></textarea>
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button type="button" class="btnp" onclick="aplicarJsonCowork()">Aplicar al formulario</button>
+            <button type="button" class="btnp" onclick="aplicarJsonCowork(false)">Aplicar al formulario</button>
+            <button type="button" class="btns" onclick="aplicarJsonCowork(true)">Sobreescribir</button>
             <button type="button" class="btns" onclick="document.getElementById('cowork-json').value=''">Limpiar</button>
           </div>
           <div id="cowork-error" class="alert-error" style="display:none;margin-top:8px;font-size:12.5px"></div>
@@ -809,7 +810,7 @@
         }
 
   // Llena el formulario completo a partir del JSON resumido de una transcripción (Cowork).
-  function aplicarJsonCowork(){
+  function aplicarJsonCowork(sobreescribir){
     var errBox = document.getElementById('cowork-error');
     errBox.style.display = 'none';
     var raw = document.getElementById('cowork-json').value.trim();
@@ -818,6 +819,35 @@
     var d;
     try { d = JSON.parse(raw); }
     catch (e) { errBox.textContent = 'El texto pegado no es un JSON válido.'; errBox.style.display = ''; return; }
+
+    // Sin sobreescribir: si algún campo ya tiene información distinta a la del JSON,
+    // se bloquea la acción y se pide usar «Sobreescribir».
+    if (!sobreescribir) {
+      var camposSimples = [
+        ['Datos.Titulo', d.titulo], ['Datos.Fecha', d.fecha], ['Datos.Hora', d.hora],
+        ['Datos.Duracion', d.duracion], ['Datos.Lugar', d.lugar], ['Datos.ObjetivoAgenda', d.objetivo],
+        ['Datos.DocsRecursos', d.documentos], ['Datos.ValDiger', d.validador_diger]
+      ];
+      var hayConflicto = false;
+      camposSimples.forEach(function(c){
+        if (c[1] == null) return;
+        var el = document.querySelector('[name="' + c[0] + '"]');
+        if (el && el.value.trim() !== '' && el.value.trim() !== String(c[1]).trim()) hayConflicto = true;
+      });
+      if (d.desarrollo != null) {
+        var devActual = (document.getElementById('dev-val').value || '').trim();
+        if (devActual !== '' && devActual !== String(d.desarrollo).trim()) hayConflicto = true;
+      }
+      if (Array.isArray(d.acuerdos) && d.acuerdos.length &&
+          document.querySelectorAll('#acuerdos-list .acuerdo-item').length > 0) {
+        hayConflicto = true;
+      }
+      if (hayConflicto) {
+        errBox.textContent = 'Ya hay campos con información. Use «Sobreescribir» para borrar los campos existentes.';
+        errBox.style.display = '';
+        return;
+      }
+    }
 
     function setVal(name, value){
       var el = document.querySelector('[name="' + name + '"]');

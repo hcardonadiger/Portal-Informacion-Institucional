@@ -62,11 +62,23 @@ public sealed record ReunionesDashboardDto(
     IReadOnlyList<SerieMensualDto> PorMes,
     IReadOnlyList<AcuerdoPendienteDto> Acuerdos,
     int AcuerdosTotal, int AcuerdosCumplidos, int TasaCumplimiento,
-    IReadOnlyList<ConteoDto> PorEstadoAcuerdo);
+    IReadOnlyList<ConteoDto> PorEstadoAcuerdo,
+    IReadOnlyList<PersonaCapacitadaDto> PersonasCapacitadas);
 
 public sealed record AcuerdoPendienteDto(
     string Compromiso, string? Responsable, DateOnly? Plazo, string ReunionTitulo, int ReunionId,
     bool Vencido, EstadoCompromiso Estado);
+
+/// <summary>Persona única que asistió a una o más capacitaciones. Se deduplica por correo
+/// (clave principal) o, a falta de éste, por nombre normalizado. Excluye al personal de DIGER
+/// (facilitadores, no capacitados).</summary>
+public sealed record PersonaCapacitadaDto(
+    string Nombre, string? Institucion, IReadOnlyList<string> Capacitaciones)
+{
+    /// <summary>Cantidad de capacitaciones distintas a las que asistió.</summary>
+    public int Veces => Capacitaciones.Count;
+    public bool EsMultiple => Capacitaciones.Count > 1;
+}
 
 // ── Helper de series mensuales ─────────────────────────────────────────────
 public static class SerieMensual

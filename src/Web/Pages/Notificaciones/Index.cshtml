@@ -6,22 +6,30 @@
 
     string TipoIcono(TipoNotificacion tipo) => tipo switch
     {
-        TipoNotificacion.TicketAsignado    => "🎫",
-        TipoNotificacion.TicketResuelto    => "✅",
-        TipoNotificacion.CompromisoVencido => "⏰",
-        TipoNotificacion.CompromisoProximo => "📌",
-        TipoNotificacion.ReuniónMañana     => "📅",
-        _                                  => "🔔",
+        TipoNotificacion.TicketAsignado           => "🎫",
+        TipoNotificacion.TicketResuelto           => "✅",
+        TipoNotificacion.CompromisoVencido        => "⏰",
+        TipoNotificacion.CompromisoProximo        => "📌",
+        TipoNotificacion.ReuniónMañana            => "📅",
+        TipoNotificacion.RecordatorioManualTicket     => "🎫",
+        TipoNotificacion.RecordatorioManualExpediente => "📂",
+        TipoNotificacion.RecordatorioManualReunion    => "📅",
+        TipoNotificacion.RecordatorioManualCompromiso => "📋",
+        _                                         => "🔔",
     };
 
     string TipoLabel(TipoNotificacion tipo) => tipo switch
     {
-        TipoNotificacion.TicketAsignado    => "Ticket",
-        TipoNotificacion.TicketResuelto    => "Ticket",
-        TipoNotificacion.CompromisoVencido => "Compromiso",
-        TipoNotificacion.CompromisoProximo => "Compromiso",
-        TipoNotificacion.ReuniónMañana     => "Reunión",
-        _                                  => "Sistema",
+        TipoNotificacion.TicketAsignado           => "Ticket",
+        TipoNotificacion.TicketResuelto           => "Ticket",
+        TipoNotificacion.CompromisoVencido        => "Compromiso",
+        TipoNotificacion.CompromisoProximo        => "Compromiso",
+        TipoNotificacion.ReuniónMañana            => "Reunión",
+        TipoNotificacion.RecordatorioManualTicket     => "Ticket (Recordatorio)",
+        TipoNotificacion.RecordatorioManualExpediente => "Expediente (Recordatorio)",
+        TipoNotificacion.RecordatorioManualReunion    => "Reunión (Recordatorio)",
+        TipoNotificacion.RecordatorioManualCompromiso => "Compromiso (Recordatorio)",
+        _                                         => "Sistema",
     };
 }
 

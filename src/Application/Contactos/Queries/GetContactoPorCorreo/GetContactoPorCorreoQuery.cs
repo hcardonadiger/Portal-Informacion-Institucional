@@ -13,6 +13,6 @@ public sealed class GetContactoPorCorreoQueryHandler(IContactoRepository repo)
     public async Task<ContactoDto?> Handle(GetContactoPorCorreoQuery q, CancellationToken ct)
     {
         var c = await repo.GetByCorreoAsync(q.Correo, ct);
-        return c is null ? null : new ContactoDto(c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen, c.Activo);
+        return c is null ? null : new ContactoDto(c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.AreaId, c.Area, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen, c.Activo);
     }
 }

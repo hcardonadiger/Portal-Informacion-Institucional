@@ -78,5 +78,17 @@ public class AsistenciaTests : IDisposable
         await act.Should().ThrowAsync<DomainException>();
     }
 
+    [Theory]
+    [InlineData("+504", "99998888", "+504 99998888")]
+    [InlineData("+504", "+504 99998888", "+504 99998888")]
+    [InlineData("+504", "+504 +504 +504 99998888", "+504 99998888")]
+    [InlineData("+504", "+502 99998888", "+504 99998888")]
+    [InlineData("+504", null, null)]
+    public void FormatearTelefono_EvitaDuplicarPrefijos(string? codigoPais, string? telefono, string? esperado)
+    {
+        var resultado = RegistrarAsistenciaCommandHandler.FormatearTelefono(codigoPais, telefono);
+        resultado.Should().Be(esperado);
+    }
+
     public void Dispose() => _ctx.Dispose();
 }

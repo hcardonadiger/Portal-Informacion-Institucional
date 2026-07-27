@@ -92,4 +92,19 @@ public sealed class CompromisoDetalleModel(
             return Page();
         }
     }
+
+    public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioCompromisoCommand(id, mensaje), ct);
+            TempData["SuccessMsg"] = "Notificación de recordatorio enviada al responsable del compromiso.";
+            return RedirectToPage("/Reuniones/CompromisoDetalle", new { id });
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+            return Page();
+        }
+    }
 }

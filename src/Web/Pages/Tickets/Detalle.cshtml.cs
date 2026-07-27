@@ -83,4 +83,20 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         }
         catch (DomainException ex) { Error = ex.Message; return Page(); }
     }
+
+    public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
+    {
+        if (!await CargarAsync(id, ct)) return NotFound();
+        try
+        {
+            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioTicketCommand(id, mensaje), ct);
+            TempData["SuccessMsg"] = "Notificación de recordatorio enviada exitosamente.";
+            return RedirectToPage(new { id });
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+            return Page();
+        }
+    }
 }

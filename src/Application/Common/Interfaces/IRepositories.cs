@@ -185,5 +185,6 @@ public interface IApplicationDbContext
     DbSet<DocumentoAdjunto>         DocumentosAdjuntos     { get; }
     DbSet<Diger.TramitesEstado.Domain.Entities.PlanTrabajo> PlanTrabajos { get; }
     DbSet<MetaTramite>              MetasTrabajo           { get; }
+    DbSet<Recurso>                 Recursos               { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

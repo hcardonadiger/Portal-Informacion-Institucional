@@ -66,3 +66,85 @@ GO
 ```
 
 ---
+
+## [2026-07-23] Recuperación de Contraseña (Campos `PasswordResetToken` y `PasswordResetTokenExpiration` en `Usuarios`)
+
+### Descripción
+Se agregaron los campos `PasswordResetToken` (`nvarchar(256) NULL`) y `PasswordResetTokenExpiration` (`datetime2 NULL`) a la tabla `Usuarios` para permitir el proceso de recuperación de contraseña olvidada mediante tokens temporales por correo electrónico.
+
+### Migración EF Core Asociada
+- **Nombre de Migración:** `20260723100000_AddPasswordResetTokenToUsuario` (o `dotnet ef migrations add AddPasswordResetTokenToUsuario`)
+- **Comando EF:** `dotnet ef database update`
+
+### Script SQL Directo para Ejecutar en SQL Server:
+
+```sql
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Usuarios]') AND name = 'PasswordResetToken')
+BEGIN
+    ALTER TABLE [Usuarios] ADD [PasswordResetToken] nvarchar(256) NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Usuarios]') AND name = 'PasswordResetTokenExpiration')
+BEGIN
+    ALTER TABLE [Usuarios] ADD [PasswordResetTokenExpiration] datetime2 NULL;
+END;
+GO
+```
+
+---
+
+## [2026-07-23] Agregar Campo `Area` a la Tabla `Contactos`
+
+### Descripción
+Se agregó la columna `Area` (`nvarchar(150) NULL`) a la tabla `Contactos` para almacenar el nombre del área o departamento de la institución (seleccionada del catálogo o ingresada manualmente como "Otros") tanto desde la gestión de contactos como en la captura de asistencia de reuniones.
+
+### Migración EF Core Asociada
+- **Nombre de Migración:** `AddAreaToContacto`
+- **Comando EF:** `dotnet ef database update`
+
+### Script SQL Directo para Ejecutar en SQL Server:
+
+```sql
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Contactos]') AND name = 'Area')
+BEGIN
+    ALTER TABLE [Contactos] ADD [Area] nvarchar(150) NULL;
+END;
+GO
+```
+
+---
+
+## [2026-07-24] Creación de Tabla `Recursos` para Repositorio de Archivos y Plantillas
+
+### Descripción
+Se creó la tabla `Recursos` para gestionar el repositorio centralizado de recursos, plantillas y archivos descargables del portal. Almacena título, descripción, categoría, metadatos del archivo adjunto (nombre original, ruta local, tamaño en bytes), contador de descargas y auditoría estándar con soft-delete (`IsDeleted`).
+
+### Migración EF Core Asociada
+- **Nombre de Migración:** `20260724153537_AddRecursosTable`
+- **Comando EF:** `dotnet ef database update`
+
+### Script SQL Directo para Ejecutar en SQL Server:
+
+```sql
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'Recursos')
+BEGIN
+    CREATE TABLE [Recursos] (
+        [Id] int NOT NULL IDENTITY(1,1),
+        [IsDeleted] bit NOT NULL DEFAULT 0,
+        [Titulo] nvarchar(max) NOT NULL,
+        [Descripcion] nvarchar(max) NULL,
+        [Categoria] nvarchar(max) NOT NULL,
+        [ArchivoNombre] nvarchar(max) NOT NULL,
+        [ArchivoUrl] nvarchar(max) NOT NULL,
+        [ArchivoTamano] bigint NOT NULL,
+        [DescargasCount] int NOT NULL DEFAULT 0,
+        [CreatedAt] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(max) NULL,
+        [UpdatedAt] datetime2 NULL,
+        [UpdatedBy] nvarchar(max) NULL,
+        CONSTRAINT [PK_Recursos] PRIMARY KEY ([Id])
+    );
+END;
+GO
+```

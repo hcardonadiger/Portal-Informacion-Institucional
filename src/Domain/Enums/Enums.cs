@@ -133,6 +133,10 @@ public enum TipoNotificacion
     ChatRecibido            = 6,
     EtapaCronogramaVencida  = 7,
     EtapaCronogramaProxima  = 8,
+    RecordatorioManualTicket      = 9,
+    RecordatorioManualExpediente  = 10,
+    RecordatorioManualReunion     = 11,
+    RecordatorioManualCompromiso  = 12,
 }
 
 // ── Estado de una sesión de chat de soporte ───────────────────────────────

@@ -90,7 +90,92 @@
             </table>
         }
     </div>
+
+    @* ── Personas capacitadas (panel desplegable) ───────────────────────────── *@
+    <details class="cap-panel">
+        <summary>
+            <span class="cap-sum-txt">Ver listado de personas capacitadas (@d.PersonasCapacitadas.Count)</span>
+            <span class="cap-chev" aria-hidden="true">⌃</span>
+        </summary>
+        @if (!d.PersonasCapacitadas.Any())
+        {
+            <p style="font-size:13px;color:#6b7fa3;padding:14px 16px;margin:0">
+                No hay personas capacitadas registradas para este alcance.
+            </p>
+        }
+        else
+        {
+            <table class="cap-table">
+                <thead>
+                    <tr><th>Nombre</th><th>Capacitación</th><th style="width:130px">Participación</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in d.PersonasCapacitadas)
+                    {
+                        <tr>
+                            <td>
+                                <div class="cap-nombre">@p.Nombre</div>
+                                @if (!string.IsNullOrWhiteSpace(p.Institucion))
+                                {
+                                    <div class="cap-inst">@p.Institucion</div>
+                                }
+                            </td>
+                            <td>
+                                @if (p.Capacitaciones.Count == 0) { <span class="cap-dash">—</span> }
+                                else if (p.Capacitaciones.Count == 1) { <span>@p.Capacitaciones[0]</span> }
+                                else
+                                {
+                                    <ul class="cap-list">
+                                        @foreach (var c in p.Capacitaciones) { <li>@c</li> }
+                                    </ul>
+                                }
+                            </td>
+                            <td>
+                                @if (p.EsMultiple)
+                                {
+                                    <span class="cap-badge multi">Múltiples (@p.Veces)</span>
+                                }
+                                else
+                                {
+                                    <span class="cap-badge unica">Única vez</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </details>
 </div>
+
+<style>
+    .cap-panel { margin-top: 16px; background: #f7faff; border: 1px solid #d8e4f5; border-radius: 12px; overflow: hidden; }
+    .cap-panel > summary {
+        cursor: pointer; list-style: none; padding: 12px 16px;
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        font-size: 13.5px; font-weight: 600; color: #0a2d6e; user-select: none;
+    }
+    .cap-panel > summary::-webkit-details-marker { display: none; }
+    .cap-panel > summary:hover { background: #eef4fd; }
+    .cap-sum-txt::before { content: "\1F464"; margin-right: 8px; opacity: .65; }
+    .cap-chev { transition: transform .2s; font-size: 15px; color: #6b7fa3; }
+    .cap-panel[open] .cap-chev { transform: rotate(180deg); }
+    .cap-table { width: 100%; border-collapse: collapse; background: #fff; }
+    .cap-table th {
+        text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+        color: #6b7fa3; background: #fff; border-bottom: 1.5px solid #e2e8f0; padding: 9px 14px;
+    }
+    .cap-table td { padding: 10px 14px; border-bottom: 1px solid #eef1f7; font-size: 13px; vertical-align: top; }
+    .cap-table tr:nth-child(even) td { background: #fbfcfe; }
+    .cap-nombre { font-weight: 600; color: #0a2d6e; }
+    .cap-inst { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: #8a96ad; margin-top: 2px; }
+    .cap-dash { color: #8a96ad; }
+    .cap-list { margin: 0; padding-left: 14px; }
+    .cap-list li { margin-bottom: 2px; }
+    .cap-badge { display: inline-block; border-radius: 20px; padding: 3px 11px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .cap-badge.unica { background: #eafaf0; color: #1d7a4c; border: 1px solid #b7e6cb; }
+    .cap-badge.multi { background: #fdf6e3; color: #9a6b08; border: 1px solid #f5d98a; }
+</style>
 
 @section Scripts {
 <script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>

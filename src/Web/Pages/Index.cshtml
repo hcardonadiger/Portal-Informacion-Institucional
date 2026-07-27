@@ -35,7 +35,7 @@
     </div>
 
     <form method="get" class="lista-buscar">
-        <input type="search" name="q" value="@Model.Q" placeholder="Buscar por código, institución, analista o trámite…" />
+        <input type="search" name="q" value="@Model.Q" placeholder="Buscar por código, institución, responsable del acta o trámite…" />
         <button class="btns" type="submit">Buscar</button>
         @if (!string.IsNullOrEmpty(Model.Q)) { <a class="btns" asp-page="/Index">Limpiar</a> }
     </form>
@@ -63,7 +63,7 @@
                     <th>Institución</th>
                     <th>Código</th>
                     <th>Estado</th>
-                    <th>Analista</th>
+                    <th>Responsable del Acta</th>
                     <th style="text-align:center">Trámites</th>
                     <th>Apertura</th>
                     <th style="width:1%"></th>
@@ -121,7 +121,7 @@
                                 <tr>
                                     <th>Código</th>
                                     <th>Estado</th>
-                                    <th>Analista</th>
+                                    <th>Responsable del Acta</th>
                                     <th style="text-align:center">Trámites</th>
                                     <th>Apertura</th>
                                     <th style="width:1%"></th>
