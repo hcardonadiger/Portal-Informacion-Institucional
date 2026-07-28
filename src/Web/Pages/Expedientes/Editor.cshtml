@@ -51,7 +51,22 @@
     </div>
   </aside>
 
-  <main class="main @(Model.EsAdmin ? "" : "mode-read-only")" id="form-main">
+  <main class="main @(Model.EsAdmin || (Model.EsContraparte && !Model.EstaBloqueadoContraparte) ? "" : "mode-read-only")" id="form-main">
+    @if (Model.EsContraparte)
+    {
+        if (Model.EstaBloqueadoContraparte)
+        {
+            <div class="alert-error" style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:8px">
+                ⚠️ <strong>Modo solo lectura:</strong> El plazo de entrega para este expediente ha vencido o la ficha ya se encuentra en estado de validación. La edición está inhabilitada.
+            </div>
+        }
+        else
+        {
+            <div style="margin-bottom:1rem;background:#eff6ff;border:1px solid #bfdbfe;padding:.75rem 1rem;border-radius:8px;color:#1e40af;font-size:13.5px">
+                📌 <strong>Llenado de Ficha Institucional:</strong> Ha sido asignado como contraparte responsable para el llenado de esta ficha. Por favor complete la información requerida.
+            </div>
+        }
+    }
     @if (Model.ExpId is not null)
     {
         <div class="exp-fixed-header" id="exp-fixed-header">

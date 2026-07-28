@@ -12,6 +12,9 @@ public sealed class OriginalExpedienteDto
     [JsonPropertyName("fecha_apertura")]     public string? FechaApertura { get; set; }
     [JsonPropertyName("analista")]           public string? Analista { get; set; }
     [JsonPropertyName("analista_id")]        public Guid? AnalistaId { get; set; }
+    [JsonPropertyName("contraparte_usuario_id")]     public Guid? ContraparteUsuarioId { get; set; }
+    [JsonPropertyName("contraparte_usuario_nombre")] public string? ContraparteUsuarioNombre { get; set; }
+    [JsonPropertyName("fecha_limite_entrega")]       public string? FechaLimiteEntrega { get; set; }
     [JsonPropertyName("dir_sede")]           public string? DirSede { get; set; }
     [JsonPropertyName("contacto_nombre")]    public string? ContactoNombre { get; set; }
     [JsonPropertyName("contacto_cargo")]     public string? ContactoCargo { get; set; }

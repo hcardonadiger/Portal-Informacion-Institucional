@@ -9,6 +9,7 @@ public sealed record ActualizarExpedienteCommand(int Id, ExpedienteInputDto Dato
 public sealed class ActualizarExpedienteCommandHandler(
     IExpedienteRepository  repo,
     IApplicationDbContext  ctx,
+    ICurrentUserService    currentUser,
     IUnitOfWork            uow)
     : IRequestHandler<ActualizarExpedienteCommand, Unit>
 {
@@ -27,6 +28,25 @@ public sealed class ActualizarExpedienteCommandHandler(
                 .FirstOrDefaultAsync(ct)
                 ?? throw new NotFoundException(nameof(Usuario), datos.AnalistaId.Value);
             datos = datos with { Analista = nombre };
+        }
+
+        if (datos.ContraparteUsuarioId.HasValue)
+        {
+            var nombreC = await ctx.Usuarios
+                .Where(u => u.Id == datos.ContraparteUsuarioId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct);
+            datos = datos with { ContraparteUsuarioNombre = nombreC };
+        }
+
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        if (exp.ContraparteUsuarioId.HasValue && exp.ContraparteUsuarioId == currentUser.UserId && !currentUser.EsGlobal)
+        {
+            if (exp.FechaLimiteEntrega.HasValue && exp.FechaLimiteEntrega.Value < hoy)
+                throw new DomainException("El plazo de entrega para el llenado de la ficha ha vencido. El expediente se encuentra bloqueado.");
+
+            if (exp.EstadoExpediente != EstadoExpediente.EnExploracion && exp.EstadoExpediente != EstadoExpediente.EnLevantamiento)
+                throw new DomainException("El expediente se encuentra en una etapa avanzada. La edición está inhabilitada.");
         }
 
         var estadoAnterior = exp.EstadoExpediente;

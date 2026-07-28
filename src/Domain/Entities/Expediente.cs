@@ -35,6 +35,12 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     public string? ContactoCorreo { get; set; }
     public string? ContactoTel    { get; set; }
 
+    /// <summary>Usuario del sistema registrado como contraparte de la institución para el llenado de la ficha.</summary>
+    public Guid?     ContraparteUsuarioId     { get; set; }
+    public string?   ContraparteUsuarioNombre { get; set; }
+    /// <summary>Plazo límite para que la contraparte llene la ficha del expediente.</summary>
+    public DateOnly? FechaLimiteEntrega       { get; set; }
+
     // ── Marco legal / documental ──────────────────────────────────
     public string? ObsLegal { get; set; }
 
