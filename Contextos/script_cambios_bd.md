@@ -147,6 +147,7 @@ BEGIN
     );
 END;
 GO
+```
 
 ---
 
@@ -154,11 +155,11 @@ GO
 
 ### Descripción
 1. Se agregaron los campos `ExpedienteId` e `ExpedienteCodigo` a la tabla `Reuniones` para vincular una reunión a un expediente.
-2. Se agregaron los campos `ExpedienteId`, `TramiteIndex` y `TramiteNombre` a la tabla `Acuerdos` (`AcuerdosReunion`) para relacionar un compromiso con un trámite específico.
+2. Se agregaron los campos `ExpedienteId`, `TramiteIndex` y `TramiteNombre` a la tabla `AcuerdosReunion` (compromisos) para relacionar un compromiso con un trámite específico.
 3. Se agregaron los campos `ContraparteUsuarioId`, `ContraparteUsuarioNombre` y `FechaLimiteEntrega` a la tabla `Expedientes` para asignar la contraparte institucional y su fecha límite de llenado de ficha.
 
 ### Migración EF Core Asociada
-- **Nombre de Migración:** `AddReunionExpedienteYContraparte`
+- **Nombre de Migración:** `20260727195213_AddReunionExpedienteYContraparte`
 - **Comando EF:** `dotnet ef database update`
 
 ### Script SQL Directo para Ejecutar en SQL Server:
@@ -168,16 +169,16 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Reuniones]') AND name = 'ExpedienteId')
 BEGIN
     ALTER TABLE [Reuniones] ADD [ExpedienteId] int NULL;
-    ALTER TABLE [Reuniones] ADD [ExpedienteCodigo] nvarchar(50) NULL;
+    ALTER TABLE [Reuniones] ADD [ExpedienteCodigo] nvarchar(max) NULL;
 END;
 GO
 
--- Campos en Acuerdos (Compromisos)
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Acuerdos]') AND name = 'ExpedienteId')
+-- Campos en AcuerdosReunion (Compromisos)
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[AcuerdosReunion]') AND name = 'ExpedienteId')
 BEGIN
-    ALTER TABLE [Acuerdos] ADD [ExpedienteId] int NULL;
-    ALTER TABLE [Acuerdos] ADD [TramiteIndex] int NULL;
-    ALTER TABLE [Acuerdos] ADD [TramiteNombre] nvarchar(300) NULL;
+    ALTER TABLE [AcuerdosReunion] ADD [ExpedienteId] int NULL;
+    ALTER TABLE [AcuerdosReunion] ADD [TramiteIndex] int NULL;
+    ALTER TABLE [AcuerdosReunion] ADD [TramiteNombre] nvarchar(max) NULL;
 END;
 GO
 
@@ -185,9 +186,8 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[Expedientes]') AND name = 'ContraparteUsuarioId')
 BEGIN
     ALTER TABLE [Expedientes] ADD [ContraparteUsuarioId] uniqueidentifier NULL;
-    ALTER TABLE [Expedientes] ADD [ContraparteUsuarioNombre] nvarchar(200) NULL;
+    ALTER TABLE [Expedientes] ADD [ContraparteUsuarioNombre] nvarchar(max) NULL;
     ALTER TABLE [Expedientes] ADD [FechaLimiteEntrega] date NULL;
 END;
 GO
-```
 ```
