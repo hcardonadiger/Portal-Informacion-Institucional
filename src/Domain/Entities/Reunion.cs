@@ -53,6 +53,10 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public string?   Tipo      { get; set; }     // Taller / Seminario / Reunión técnica / …
     public bool      EsCapacitacionPlataforma { get; set; }
 
+    // ── Expediente vinculado ──────────────────────────────────────
+    public int?    ExpedienteId     { get; set; }
+    public string? ExpedienteCodigo { get; set; }
+
     // ── Memoria ───────────────────────────────────────────────────
     public string? ObjetivoAgenda { get; set; }
     public string? Desarrollo     { get; set; }
@@ -231,6 +235,11 @@ public sealed class AcuerdoReunion : BaseEntity
     public string?   Responsable { get; set; }
     public DateOnly? Plazo       { get; set; }
 
+    // ── Expediente / Trámites vinculados ─────────────────────────
+    public int?      ExpedienteId  { get; set; }
+    public int?      TramiteIndex  { get; set; }
+    public string?   TramiteNombre { get; set; }
+
     // ── Seguimiento ───────────────────────────────────────────────
     public EstadoCompromiso Estado            { get; set; } = EstadoCompromiso.Pendiente;
     public DateOnly?        FechaCumplimiento { get; set; }
@@ -243,6 +252,11 @@ public sealed class AcuerdoReunion : BaseEntity
     /// <summary>True si el plazo ya venció y el compromiso sigue abierto.</summary>
     public bool EstaVencido(DateOnly hoy) =>
         Plazo is { } p && p < hoy &&
+        Estado is EstadoCompromiso.Pendiente or EstadoCompromiso.EnProgreso or EstadoCompromiso.Reprogramado;
+
+    /// <summary>True si el plazo está a 3 días o menos de vencer y el compromiso sigue abierto.</summary>
+    public bool EstaProximoAVencer(DateOnly hoy) =>
+        Plazo is { } p && p >= hoy && p <= hoy.AddDays(3) &&
         Estado is EstadoCompromiso.Pendiente or EstadoCompromiso.EnProgreso or EstadoCompromiso.Reprogramado;
 
     /// <summary>Aplica un cambio de seguimiento. Al marcar Cumplido sin fecha, registra hoy.</summary>

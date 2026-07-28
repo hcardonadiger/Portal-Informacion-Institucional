@@ -25,6 +25,11 @@ public sealed class AcuerdoInput
     public string?   Responsable { get; set; }
     public DateOnly? Plazo       { get; set; }
 
+    // ── Expediente y Trámite vinculado ────────────────────────────
+    public int?      ExpedienteId  { get; set; }
+    public int?      TramiteIndex  { get; set; }
+    public string?   TramiteNombre { get; set; }
+
     // ── Seguimiento (se transporta de ida y vuelta para conservarlo al reemplazar los hijos en bloque) ──
     public EstadoCompromiso Estado            { get; set; } = EstadoCompromiso.Pendiente;
     public DateOnly?        FechaCumplimiento { get; set; }
@@ -39,6 +44,10 @@ public sealed class ReunionFormDto
     public string?   Duracion  { get; set; }
     public string?   Modalidad { get; set; }
     public string?   Lugar     { get; set; }
+
+    // ── Expediente vinculado ──────────────────────────────────────
+    public int?      ExpedienteId     { get; set; }
+    public string?   ExpedienteCodigo { get; set; }
 
     public string?   InstitucionId { get; set; }
     /// <summary>Instituciones convocadas a la reunión (acumulable). La primera queda como

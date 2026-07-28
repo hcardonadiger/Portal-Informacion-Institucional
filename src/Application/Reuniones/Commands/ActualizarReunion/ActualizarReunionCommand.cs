@@ -40,6 +40,18 @@ public sealed class ActualizarReunionCommandHandler(
         }
         else { r.InstitucionId = null; r.Institucion = null; }
 
+        if (cmd.Datos.ExpedienteId.HasValue)
+        {
+            var exp = await ctx.Expedientes.IgnoreQueryFilters().FirstOrDefaultAsync(e => e.Id == cmd.Datos.ExpedienteId.Value, ct);
+            r.ExpedienteId = exp?.Id;
+            r.ExpedienteCodigo = exp?.Codigo;
+        }
+        else
+        {
+            r.ExpedienteId = null;
+            r.ExpedienteCodigo = null;
+        }
+
         r.MarcarActualizada();
         repo.Update(r);
         await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ctx, uow, ct);

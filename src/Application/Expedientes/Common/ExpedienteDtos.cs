@@ -103,4 +103,7 @@ public sealed record ExpedienteInputDto(
     List<string>              Condiciones,
     List<ChecklistInput>      ChecklistInfra,
     List<SeccionInput>        Secciones,
-    Guid?    AnalistaId = null);
+    Guid?    AnalistaId = null,
+    Guid?    ContraparteUsuarioId = null,
+    string?  ContraparteUsuarioNombre = null,
+    DateOnly? FechaLimiteEntrega = null);
