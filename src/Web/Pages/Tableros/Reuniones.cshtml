@@ -97,6 +97,20 @@
             <span class="cap-sum-txt">Ver listado de personas capacitadas (@d.PersonasCapacitadas.Count)</span>
             <span class="cap-chev" aria-hidden="true">⌃</span>
         </summary>
+        <div class="cap-metrics">
+            <div class="cap-metric">
+                <b>@d.PersonasCapacitadas.Count</b>
+                <span>Personas únicas</span>
+            </div>
+            <div class="cap-metric">
+                <b>@d.AsistenciasEnCapacitaciones</b>
+                <span>Asistencias en capacitaciones</span>
+            </div>
+            <div class="cap-metric">
+                <b>@d.AsistenciasTotales</b>
+                <span>Asistencias en todas las reuniones</span>
+            </div>
+        </div>
         @if (!d.PersonasCapacitadas.Any())
         {
             <p style="font-size:13px;color:#6b7fa3;padding:14px 16px;margin:0">
@@ -160,6 +174,10 @@
     .cap-sum-txt::before { content: "\1F464"; margin-right: 8px; opacity: .65; }
     .cap-chev { transition: transform .2s; font-size: 15px; color: #6b7fa3; }
     .cap-panel[open] .cap-chev { transform: rotate(180deg); }
+    .cap-metrics { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 16px 12px; }
+    .cap-metric { flex: 1 1 150px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; }
+    .cap-metric b { display: block; font-size: 20px; font-weight: 800; color: #0a2d6e; line-height: 1.1; }
+    .cap-metric span { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #8a96ad; }
     .cap-table { width: 100%; border-collapse: collapse; background: #fff; }
     .cap-table th {
         text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;

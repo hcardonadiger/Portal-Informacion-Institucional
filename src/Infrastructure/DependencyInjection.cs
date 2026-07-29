@@ -26,7 +26,17 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(opts =>
             opts.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"),
-                sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
+                sql =>
+                {
+                    sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+                    // LocalDB se apaga por inactividad y tarda en volver a arrancar: el primer
+                    // intento de conexión al iniciar la app fallaba ("SQL Server process failed
+                    // to start"). Con reintentos, espera a que la instancia levante.
+                    sql.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorNumbersToAdd: null);
+                }));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IUnitOfWork>(sp          => sp.GetRequiredService<AppDbContext>());
