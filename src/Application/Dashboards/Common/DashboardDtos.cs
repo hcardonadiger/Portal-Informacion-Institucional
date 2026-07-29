@@ -63,7 +63,11 @@ public sealed record ReunionesDashboardDto(
     IReadOnlyList<AcuerdoPendienteDto> Acuerdos,
     int AcuerdosTotal, int AcuerdosCumplidos, int TasaCumplimiento,
     IReadOnlyList<ConteoDto> PorEstadoAcuerdo,
-    IReadOnlyList<PersonaCapacitadaDto> PersonasCapacitadas);
+    IReadOnlyList<PersonaCapacitadaDto> PersonasCapacitadas,
+    /// <summary>Filas de asistencia registradas en reuniones de capacitación (sin DIGER).</summary>
+    int AsistenciasEnCapacitaciones,
+    /// <summary>Filas de asistencia registradas en todas las reuniones.</summary>
+    int AsistenciasTotales);
 
 public sealed record AcuerdoPendienteDto(
     string Compromiso, string? Responsable, DateOnly? Plazo, string ReunionTitulo, int ReunionId,
