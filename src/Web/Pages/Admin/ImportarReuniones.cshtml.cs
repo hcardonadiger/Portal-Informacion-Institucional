@@ -1,6 +1,9 @@
+using Diger.TramitesEstado.Web.Common;
+
 namespace Diger.TramitesEstado.Web.Pages.Admin;
 
 [Authorize(Policy = "PuedeAdministrarCatalogo")]
+[SoloEnDesarrollo]   // misma importación desde Supabase: tampoco debe existir en producción
 public sealed class ImportarReunionesModel(ISender sender, IWebHostEnvironment env) : PageModel
 {
     public bool EsDesarrollo => env.IsDevelopment();
