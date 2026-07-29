@@ -19,6 +19,11 @@ public static class ExpedienteMapper
         e.ContactoCorreo = d.ContactoCorreo?.Trim();
         e.ContactoTel    = d.ContactoTel?.Trim();
 
+        // Contraparte e Histórico
+        e.ContraparteUsuarioId     = d.ContraparteUsuarioId;
+        e.ContraparteUsuarioNombre = d.ContraparteUsuarioNombre?.Trim();
+        e.FechaLimiteEntrega       = d.FechaLimiteEntrega;
+
         // Legal / proceso / modelo
         e.ObsLegal        = d.ObsLegal;
         e.NumFuncionarios = d.NumFuncionarios;
@@ -151,5 +156,8 @@ public static class ExpedienteMapper
         e.Condiciones.Select(c => c.Condicion).ToList(),
         e.ChecklistInfra.OrderBy(c => c.Orden).Select(c => new ChecklistInput(c.Orden, c.Grupo, c.Requisito, c.Status, c.Obs)).ToList(),
         e.Secciones.OrderBy(s => s.Seccion).Select(s => new SeccionInput(s.Seccion, s.Estado, s.Nota)).ToList(),
-        e.AnalistaId);
+        e.AnalistaId,
+        e.ContraparteUsuarioId,
+        e.ContraparteUsuarioNombre,
+        e.FechaLimiteEntrega);
 }

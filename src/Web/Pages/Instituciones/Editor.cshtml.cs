@@ -12,7 +12,6 @@ public sealed class EditorModel(ISender sender, IInstitucionBrandingService bran
     [BindProperty] public string  Id           { get => _id; set => _id = value?.ToUpperInvariant() ?? string.Empty; }
     [BindProperty] public string  Nombre       { get; set; } = string.Empty;
     [BindProperty] public bool    Activo       { get; set; } = true;
-    [BindProperty] public string? TramitesText { get; set; }
     [BindProperty] public string? NombreCorto  { get; set; }
     [BindProperty] public string? Descripcion  { get; set; }
     [BindProperty] public string? LogoUrl      { get; set; }
@@ -32,7 +31,6 @@ public sealed class EditorModel(ISender sender, IInstitucionBrandingService bran
             Id           = d.Id;
             Nombre       = d.Nombre;
             Activo       = d.Activo;
-            TramitesText = string.Join("\n", d.Tramites);
             NombreCorto  = d.NombreCorto;
             Descripcion  = d.Descripcion;
             LogoUrl      = d.LogoUrl;
@@ -50,18 +48,14 @@ public sealed class EditorModel(ISender sender, IInstitucionBrandingService bran
         InstId = id;
         if (!ModelState.IsValid) return Page();
 
-        var tramites = (TramitesText ?? "")
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
-
         try
         {
             if (id is null)
-                await sender.Send(new CrearInstitucionCommand(Id, Nombre, tramites), ct);
+                await sender.Send(new CrearInstitucionCommand(Id, Nombre), ct);
             else
             {
                 await sender.Send(new ActualizarInstitucionCommand(
-                    id, Nombre, Activo, tramites, LogoUrl, NombreCorto, Color, Descripcion), ct);
+                    id, Nombre, Activo, LogoUrl, NombreCorto, Color, Descripcion), ct);
                 branding.InvalidarCache(id);
             }
 
