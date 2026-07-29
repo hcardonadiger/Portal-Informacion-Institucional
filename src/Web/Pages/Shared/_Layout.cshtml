@@ -8,6 +8,7 @@
 @using Diger.TramitesEstado.Infrastructure.Security
 @using Diger.TramitesEstado.Web.Common
 @inject AccesoModulosService Acceso
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnv
 @inject JerarquiaUiService JerarquiaUi
 @inject IInstitucionBrandingService BrandingSvc
 @inject INotificacionService _notifSvc
@@ -143,7 +144,9 @@
                                 <div class="nav-group-menu">
                                     <a class="nav-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index">Reuniones</a>
                                     <a class="nav-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos">Compromisos</a>
-                                    @if (Acceso.EsAdministrador)
+                                    @* Herramienta interna de migración: solo visible en Desarrollo. En los
+                                       demás entornos la página además responde 404 (ver [SoloEnDesarrollo]). *@
+                                    @if (Acceso.EsAdministrador && HostEnv.IsDevelopment())
                                     {
                                         <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase">Migrar desde Supabase</a>
                                     }
@@ -152,7 +155,7 @@
                         }
                         @if (puedeTickets || puedeContactos)
                         {
-                            var grpTram = EsRuta("/Tickets") || EsRuta("/Contactos") || EsRuta("/Tramites");
+                            var grpTram = EsRuta("/Tickets") || EsRuta("/Contactos");
                             <div class="nav-group @(grpTram ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Trámites<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
@@ -164,7 +167,8 @@
                                     {
                                         <a class="nav-item @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index">Contactos</a>
                                     }
-                                    <a class="nav-item @(EsRuta("/Tramites") ? "on" : "")" asp-page="/Tramites/Indicadores">Indicadores de trámites</a>
+                                    @* "Indicadores de trámites" se traslada a otro aplicativo: enlace retirado y
+                                       página deshabilitada (ver [SeccionDeshabilitada] en Indicadores.cshtml.cs). *@
                                 </div>
                             </div>
                         }

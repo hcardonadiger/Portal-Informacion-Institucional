@@ -1,8 +1,10 @@
+using Diger.TramitesEstado.Web.Common;
 using Diger.TramitesEstado.Web.Import;
 
 namespace Diger.TramitesEstado.Web.Pages.Admin;
 
 [Authorize(Policy = "PuedeAdministrarCatalogo")]
+[SoloEnDesarrollo]   // en producción la página no existe (404), aunque se escriba la URL
 public sealed class MigrarSupabaseModel(
     SupabaseMigracionScanner scanner,
     SupabaseExpedienteImporter expedienteImporter,
