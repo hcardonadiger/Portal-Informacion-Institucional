@@ -79,6 +79,33 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageMod
         }
     }
 
+    public async Task<IActionResult> OnGetJsonAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            var d = await sender.Send(new GetReunionByIdQuery(id), ct);
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+            var bytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(d, options);
+
+            var slug = string.Concat((d.Datos.Titulo ?? "reunion")
+                .Where(ch => char.IsLetterOrDigit(ch) || ch is ' ' or '-' or '_'))
+                .Trim().Replace(' ', '_');
+            if (string.IsNullOrWhiteSpace(slug)) slug = "reunion";
+            var fecha = d.Datos.Fecha?.ToString("yyyy-MM-dd") ?? DateTime.Now.ToString("yyyy-MM-dd");
+            var nombre = $"Reunion_{slug}_{fecha}.json";
+
+            return File(bytes, "application/json", nombre);
+        }
+        catch (NotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     public async Task<IActionResult> OnPostEnlazarAsync(int id, int otraReunionId, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();

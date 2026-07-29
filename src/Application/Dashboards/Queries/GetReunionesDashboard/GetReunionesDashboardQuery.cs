@@ -88,35 +88,103 @@ public sealed class GetReunionesDashboardQueryHandler(IApplicationDbContext ctx)
             }))
             .ToListAsync(ct);
 
-        var personasCapacitadas = asistenciasCap
+        var registros = asistenciasCap
             .Where(a => !string.IsNullOrWhiteSpace(a.Nombre) && !EsDiger(a.Institucion))
-            .GroupBy(a => ClavePersona(a.Correo, a.Nombre))
-            .Select(g => new PersonaCapacitadaDto(
-                g.Select(x => x.Nombre.Trim()).First(),
-                g.Select(x => x.Institucion?.Trim()).FirstOrDefault(i => !string.IsNullOrWhiteSpace(i)),
-                g.Select(x => x.Capacitacion?.Trim())
-                 .Where(t => !string.IsNullOrWhiteSpace(t))
-                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                 .OrderBy(t => t, StringComparer.CurrentCultureIgnoreCase)
-                 .ToList()!))
-            .OrderBy(p => p.Nombre, StringComparer.CurrentCultureIgnoreCase)
+            .Select(a => new RegistroAsistencia(
+                a.Nombre.Trim(), a.Correo?.Trim(), a.Institucion?.Trim(), a.Capacitacion?.Trim()))
             .ToList();
+
+        var personasCapacitadas = ResolverPersonas(registros);
+
+        // Asistencias registradas (filas, no personas): en capacitaciones y en todas las reuniones.
+        var asistenciasEnCapacitaciones = registros.Count;
+        var asistenciasTotales = await r.SumAsync(x => x.Asistentes.Count, ct);
 
         return new ReunionesDashboardDto(total, mes, asistentes, vencidos, proximos, sinPlazo,
             porTipo, porInstitucion, SerieMensual.Ultimos12(porMesRaw), lista,
-            acuerdosTotal, cumplidos, tasa, porEstado, personasCapacitadas);
+            acuerdosTotal, cumplidos, tasa, porEstado, personasCapacitadas,
+            asistenciasEnCapacitaciones, asistenciasTotales);
+    }
+
+    private sealed record RegistroAsistencia(string Nombre, string? Correo, string? Institucion, string? Capacitacion);
+
+    /// <summary>
+    /// Resuelve la identidad de las personas y agrupa sus capacitaciones.
+    /// Dos registros son la misma persona si (a) comparten correo, o (b) sus nombres coinciden
+    /// por tokens: uno contenido en el otro, mismo primer nombre y al menos 2 tokens en común.
+    /// Se usa union-find para que las coincidencias encadenen (A=B y B=C ⇒ A=C).
+    /// </summary>
+    private static IReadOnlyList<PersonaCapacitadaDto> ResolverPersonas(List<RegistroAsistencia> registros)
+    {
+        var n = registros.Count;
+        var padre = Enumerable.Range(0, n).ToArray();
+
+        int Raiz(int x) { while (padre[x] != x) { padre[x] = padre[padre[x]]; x = padre[x]; } return x; }
+        void Unir(int a, int b) { int ra = Raiz(a), rb = Raiz(b); if (ra != rb) padre[rb] = ra; }
+
+        // (a) mismo correo
+        var porCorreo = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < n; i++)
+        {
+            var c = registros[i].Correo;
+            if (string.IsNullOrWhiteSpace(c)) continue;
+            var clave = c.Trim().ToLowerInvariant();
+            if (porCorreo.TryGetValue(clave, out var j)) Unir(i, j); else porCorreo[clave] = i;
+        }
+
+        // (b) nombres compatibles
+        var tokens = registros.Select(x => Tokens(x.Nombre)).ToArray();
+        for (var i = 0; i < n; i++)
+            for (var j = i + 1; j < n; j++)
+                if (Raiz(i) != Raiz(j) && MismoNombre(tokens[i], tokens[j])) Unir(i, j);
+
+        return registros
+            .Select((reg, idx) => (reg, raiz: Raiz(idx)))
+            .GroupBy(x => x.raiz)
+            .Select(g =>
+            {
+                // Se conserva el nombre más completo y la institución más específica.
+                var nombre = g.Select(x => x.reg.Nombre)
+                              .OrderByDescending(x => Tokens(x).Count).ThenByDescending(x => x.Length)
+                              .First();
+                var institucion = g.Select(x => x.reg.Institucion)
+                                   .FirstOrDefault(i => !string.IsNullOrWhiteSpace(i) && i!.Trim() != "—");
+                var caps = g.Select(x => x.reg.Capacitacion)
+                            .Where(t => !string.IsNullOrWhiteSpace(t))
+                            .Select(t => t!)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(t => t, StringComparer.CurrentCultureIgnoreCase)
+                            .ToList();
+                return new PersonaCapacitadaDto(nombre, institucion, caps);
+            })
+            .OrderBy(p => p.Nombre, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Tokens del nombre en orden, normalizados (sin acentos, mayúsculas).</summary>
+    private static List<string> Tokens(string nombre) =>
+        Normalizar(nombre).Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                          .Where(t => t.Length > 1)   // descarta iniciales sueltas ("J.")
+                          .ToList();
+
+    /// <summary>¿Son el mismo nombre? Mismo primer nombre, uno contenido en el otro y ≥2 en común.</summary>
+    private static bool MismoNombre(List<string> a, List<string> b)
+    {
+        if (a.Count < 2 || b.Count < 2) return false;
+
+        // El primer nombre debe coincidir: evita unir "Ana Perez" con "Luis Ana Perez".
+        if (!string.Equals(a[0], b[0], StringComparison.Ordinal)) return false;
+
+        var sa = a.ToHashSet(StringComparer.Ordinal);
+        var sb = b.ToHashSet(StringComparer.Ordinal);
+        if (sa.Count(sb.Contains) < 2) return false;      // al menos nombre + un apellido
+        return sa.IsSubsetOf(sb) || sb.IsSubsetOf(sa);    // uno es forma corta del otro
     }
 
     // ── Helpers de deduplicación ───────────────────────────────────────────────
     /// <summary>DIGER facilita las capacitaciones; su personal no cuenta como capacitado.</summary>
     private static bool EsDiger(string? institucion) =>
         !string.IsNullOrWhiteSpace(institucion) && Normalizar(institucion).Contains("DIGER");
-
-    /// <summary>Clave de identidad: el correo manda; si no hay, el nombre normalizado.</summary>
-    private static string ClavePersona(string? correo, string nombre) =>
-        !string.IsNullOrWhiteSpace(correo)
-            ? "@" + correo.Trim().ToLowerInvariant()
-            : "#" + Normalizar(nombre);
 
     /// <summary>Mayúsculas, sin acentos y con espacios colapsados, para comparar nombres.</summary>
     private static string Normalizar(string s)

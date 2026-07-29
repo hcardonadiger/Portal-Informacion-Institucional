@@ -26,7 +26,8 @@ public sealed class GetInstitucionesQueryHandler(IApplicationDbContext ctx)
             .OrderBy(i => i.Nombre)
             .Skip((page - 1) * size).Take(size)
             .Select(i => new InstitucionListItemDto(
-                i.Id, i.Nombre, i.Activo, i.Tramites.Count,
+                i.Id, i.Nombre, i.Activo,
+                ctx.Expedientes.Where(e => e.InstitucionId == i.Id).SelectMany(e => e.Tramites).Count(),
                 ctx.Expedientes.Count(e => e.InstitucionId == i.Id),
                 ctx.Tickets.Count(t => t.InstitucionId == i.Id),
                 ctx.Reuniones.Count(r => r.InstitucionId == i.Id),

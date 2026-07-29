@@ -87,7 +87,10 @@ public static class OriginalShapeMapper
             o.ObsExpediente, o.ObsLevantamiento, o.ValidadoDiger, o.ValidadoInst,
             ParseDate(o.FechaValidacion), o.NumActa,
             tramites, requisitos, flujos, legal, docs, docsInt, perfiles, condiciones, checklist, secciones,
-            o.AnalistaId);
+            o.AnalistaId,
+            o.ContraparteUsuarioId,
+            o.ContraparteUsuarioNombre,
+            ParseDate(o.FechaLimiteEntrega));
     }
 
     // ── DTO de aplicación → forma editor (al abrir para editar) ───────────
@@ -97,6 +100,9 @@ public static class OriginalShapeMapper
         {
             Inst = d.Institucion, FechaApertura = Fmt(d.FechaApertura),
             Analista = d.Analista, AnalistaId = d.AnalistaId, DirSede = d.DirSede,
+            ContraparteUsuarioId = d.ContraparteUsuarioId,
+            ContraparteUsuarioNombre = d.ContraparteUsuarioNombre,
+            FechaLimiteEntrega = Fmt(d.FechaLimiteEntrega),
             ContactoNombre = d.ContactoNombre, ContactoCargo = d.ContactoCargo,
             ContactoCorreo = d.ContactoCorreo, ContactoTel = d.ContactoTel,
             NumTramites = Math.Max(1, d.Tramites.Count), NumTramitesProd = d.NumTramitesProd,
