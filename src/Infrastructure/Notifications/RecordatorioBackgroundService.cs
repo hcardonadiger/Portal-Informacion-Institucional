@@ -40,6 +40,7 @@ public sealed class RecordatorioBackgroundService(
             .Where(n => n.FechaCreacion >= hoyUtc
                      && (n.Tipo == TipoNotificacion.ReuniónMañana
                       || n.Tipo == TipoNotificacion.CompromisoVencido
+                      || n.Tipo == TipoNotificacion.CompromisoProximo
                       || n.Tipo == TipoNotificacion.EtapaCronogramaVencida
                       || n.Tipo == TipoNotificacion.EtapaCronogramaProxima))
             .Select(n => new { n.DestinatarioId, n.Tipo, n.Url })
@@ -90,6 +91,36 @@ public sealed class RecordatorioBackgroundService(
                 var tit  = $"Compromiso vencido: {a.Compromiso[..Math.Min(80, a.Compromiso.Length)]}";
                 if (!YaEnviada(uid, TipoNotificacion.CompromisoVencido, url))
                     await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoVencido, tit, url, ct);
+            }
+        }
+
+        // ── Compromisos próximos a vencer (≤ 3 días) ──────────────────────────
+        var tresDiasCompromiso = hoy.AddDays(3);
+        var acuerdosProximos = await ctx.Acuerdos
+            .Where(a => (a.Estado == EstadoCompromiso.Pendiente || a.Estado == EstadoCompromiso.EnProgreso)
+                     && a.Plazo.HasValue && a.Plazo >= hoy && a.Plazo <= tresDiasCompromiso
+                     && a.Responsable != null && a.Responsable != "")
+            .Select(a => new { a.Id, a.ReunionId, a.Responsable, a.Compromiso, a.Plazo })
+            .Take(60)
+            .ToListAsync(ct);
+
+        if (acuerdosProximos.Count > 0)
+        {
+            var nombresP = acuerdosProximos.Select(a => a.Responsable!).Distinct().ToList();
+            var usuariosP = await ctx.Usuarios
+                .Where(u => nombresP.Contains(u.Nombre) && u.Activo)
+                .Select(u => new { u.Id, u.Nombre })
+                .ToListAsync(ct);
+
+            var mapaUsuarioP = usuariosP.ToDictionary(u => u.Nombre, u => u.Id);
+
+            foreach (var a in acuerdosProximos)
+            {
+                if (!mapaUsuarioP.TryGetValue(a.Responsable!, out var uid)) continue;
+                var url  = $"/Reuniones/Compromisos?reunion={a.ReunionId}";
+                var tit  = $"Compromiso próximo a vencer ({a.Plazo:dd/MM}): {a.Compromiso[..Math.Min(80, a.Compromiso.Length)]}";
+                if (!YaEnviada(uid, TipoNotificacion.CompromisoProximo, url))
+                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoProximo, tit, url, ct);
             }
         }
 

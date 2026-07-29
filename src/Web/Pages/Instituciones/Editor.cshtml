@@ -84,13 +84,6 @@
             </div>
         </div>
 
-        <div class="field">
-            <label>Trámites de la institución <span style="font-weight:400;color:#6b7fa3">— uno por línea</span></label>
-            <textarea asp-for="TramitesText" style="min-height:200px;font-family:inherit"
-                      placeholder="REGISTRO DE ACTORES&#10;CERTIFICADO DE EVALUACIÓN DE RIESGO&#10;..."></textarea>
-            <span class="hint">Cada línea será un trámite del catálogo de esta institución.</span>
-        </div>
-
         <div class="nav">
             <a class="btns" asp-page="/Instituciones/Index">Cancelar</a>
             <button class="btnp" type="submit">@(Model.InstId is null ? "Crear" : "Guardar cambios")</button>
@@ -110,7 +103,7 @@
                     <div class="kpi-num">@det.Reuniones</div><div class="kpi-lbl">Reuniones</div></a>
                 <div class="kpi-card"><div class="kpi-num">@det.Contactos</div><div class="kpi-lbl">Contactos</div></div>
                 <div class="kpi-card"><div class="kpi-num">@det.UsuariosAsignados</div><div class="kpi-lbl">Usuarios asignados</div></div>
-                <div class="kpi-card"><div class="kpi-num">@det.Tramites.Count</div><div class="kpi-lbl">Trámites definidos</div></div>
+                <div class="kpi-card"><div class="kpi-num">@det.NumTramites</div><div class="kpi-lbl">Trámites (en expedientes)</div></div>
             </div>
             <p class="hint">No se puede eliminar una institución con registros asociados; en ese caso, desactívela.</p>
         </div>

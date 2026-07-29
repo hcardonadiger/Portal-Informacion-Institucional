@@ -5,7 +5,7 @@ using Diger.TramitesEstado.Application.Instituciones.Commands.CrearInstitucion;
 namespace Diger.TramitesEstado.Application.Instituciones.Commands.ActualizarInstitucion;
 
 public sealed record ActualizarInstitucionCommand(
-    string Id, string Nombre, bool Activo, List<string> Tramites,
+    string Id, string Nombre, bool Activo,
     string? LogoUrl = null, string? NombreCorto = null,
     string? Color = null, string? Descripcion = null)
     : IRequest<Unit>;
@@ -17,7 +17,7 @@ public sealed class ActualizarInstitucionCommandHandler(
 {
     public async Task<Unit> Handle(ActualizarInstitucionCommand cmd, CancellationToken ct)
     {
-        var inst = await repo.GetByIdWithTramitesAsync(cmd.Id, ct)
+        var inst = await repo.GetByIdAsync(cmd.Id, ct)
             ?? throw new NotFoundException(nameof(Institucion), cmd.Id);
 
         if (await repo.ExisteNombreAsync(cmd.Nombre, cmd.Id, ct))
@@ -26,7 +26,6 @@ public sealed class ActualizarInstitucionCommandHandler(
         inst.Renombrar(cmd.Nombre);
         if (cmd.Activo) inst.Activar(); else inst.Desactivar();
         inst.ActualizarDetalles(cmd.Descripcion, cmd.NombreCorto, cmd.LogoUrl, null, cmd.Color);
-        CrearInstitucionCommandHandler.AsignarTramites(inst, cmd.Tramites);
 
         repo.Update(inst);
         await uow.SaveChangesAsync(ct);
@@ -40,6 +39,5 @@ public sealed class ActualizarInstitucionCommandValidator : AbstractValidator<Ac
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Nombre).NotEmpty().MaximumLength(120);
-        RuleForEach(x => x.Tramites).MaximumLength(400);
     }
 }

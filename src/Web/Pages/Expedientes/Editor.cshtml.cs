@@ -6,7 +6,9 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
 [Authorize]
-public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo, IWebHostEnvironment env) : PageModel
+public sealed class EditorModel(
+    ISender sender, IInstitucionRepository institucionRepo,
+    ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
 {
     public int?    ExpId   { get; private set; }
     public string  Codigo  { get; private set; } = "";
@@ -14,17 +16,21 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     public List<string> Plantillas { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
+    public bool EsContraparte { get; private set; }
+    public bool EstaEntregaVencida { get; private set; }
+    public bool EstaBloqueadoContraparte { get; private set; }
+
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
     public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
+        Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         if (id is null && !EsAdmin)
             return Forbid();
 
-        Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
-        Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         if (id is null) return Page();
 
         try
@@ -32,6 +38,19 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
             var detalle = await sender.Send(new GetExpedienteByIdQuery(id.Value), ct);
             ExpId   = detalle.Id;
             Codigo  = detalle.Codigo;
+
+            if (detalle.Datos.ContraparteUsuarioId.HasValue && detalle.Datos.ContraparteUsuarioId == currentUser.UserId)
+            {
+                EsContraparte = true;
+                var hoy = DateOnly.FromDateTime(DateTime.Today);
+                EstaEntregaVencida = detalle.Datos.FechaLimiteEntrega.HasValue && detalle.Datos.FechaLimiteEntrega.Value < hoy;
+                EstaBloqueadoContraparte = EstaEntregaVencida ||
+                    (detalle.Datos.EstadoExpediente != EstadoExpediente.EnExploracion && detalle.Datos.EstadoExpediente != EstadoExpediente.EnLevantamiento);
+            }
+
+            if (!EsAdmin && !EsContraparte)
+                return Forbid();
+
             var original = OriginalShapeMapper.FromInput(detalle.Datos);
             ExpJson = JsonSerializer.Serialize(original, JsonOpts);
             return Page();
@@ -66,7 +85,20 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     public async Task<IActionResult> OnPostAsync(int? id, [FromBody] OriginalExpedienteDto datos, CancellationToken ct)
     {
-        if (!EsAdmin)
+        var esContraparte = false;
+        if (id.HasValue)
+        {
+            var exp = await sender.Send(new GetExpedienteByIdQuery(id.Value), ct);
+            if (exp.Datos.ContraparteUsuarioId.HasValue && exp.Datos.ContraparteUsuarioId == currentUser.UserId)
+            {
+                esContraparte = true;
+                var hoy = DateOnly.FromDateTime(DateTime.Today);
+                if (exp.Datos.FechaLimiteEntrega.HasValue && exp.Datos.FechaLimiteEntrega.Value < hoy)
+                    return new JsonResult(new { error = "El plazo de entrega ha vencido. El expediente se encuentra bloqueado." }) { StatusCode = 400 };
+            }
+        }
+
+        if (!EsAdmin && !esContraparte)
             return Forbid();
 
         // Resolver la institución (el editor envía el nombre)

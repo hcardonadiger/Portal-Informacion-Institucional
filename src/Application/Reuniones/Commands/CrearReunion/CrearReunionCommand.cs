@@ -47,6 +47,18 @@ public sealed class CrearReunionCommandHandler(
             r.Institucion   = null;
         }
 
+        if (cmd.Datos.ExpedienteId.HasValue)
+        {
+            var exp = await ctx.Expedientes.IgnoreQueryFilters().FirstOrDefaultAsync(e => e.Id == cmd.Datos.ExpedienteId.Value, ct);
+            r.ExpedienteId = exp?.Id;
+            r.ExpedienteCodigo = exp?.Codigo;
+        }
+        else
+        {
+            r.ExpedienteId = null;
+            r.ExpedienteCodigo = null;
+        }
+
         await repo.AddAsync(r, ct);
         await ContactoFeeder.FeedAsync(r, contactoRepo, institucionRepo, ctx, uow, ct);
         await uow.SaveChangesAsync(ct);
