@@ -212,7 +212,12 @@
                   </div>
               }
           </div>
-          <button type="button" class="btns" style="margin-top:.6rem" onclick="addAsistente()">+ Agregar asistente</button>
+          <div class="dir-search-wrap" style="margin-top:.6rem">
+              <label style="font-size:12px;font-weight:700;color:var(--diger-blue)">Agregar del directorio</label>
+              <input type="text" id="dir-buscar" placeholder="Buscar por nombre, cargo, institución o correo…" autocomplete="off" oninput="buscarDirectorio()" />
+              <div id="dir-resultados" class="dir-results"></div>
+          </div>
+          <button type="button" class="btns" style="margin-top:.5rem" onclick="addAsistente()">+ Agregar manualmente</button>
       </div>
 
       <div class="nav">
@@ -545,6 +550,23 @@
     .ac-meta { flex-direction: column; }
     .ac-meta .field[style*="width:160px"] { width: 100% !important; }
 }
+
+/* ══ Directory search dropdown ═══════════════════════════════════ */
+.dir-search-wrap { position: relative; }
+.dir-results {
+    display: none; position: absolute; z-index: 10; top: 100%; left: 0; right: 0;
+    max-height: 260px; overflow-y: auto;
+    background: #fff; border: 1.5px solid var(--diger-blue-mid); border-top: none;
+    border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.dir-result {
+    padding: 9px 12px; cursor: pointer; font-size: 13px;
+    border-bottom: 1px solid var(--diger-border); transition: background .1s;
+}
+.dir-result:hover { background: var(--diger-blue-light); }
+.dir-result:last-child { border-bottom: none; }
+.dir-result.no-match { color: var(--diger-text-muted); cursor: default; }
+.dir-result.no-match:hover { background: transparent; }
 </style>
 @section Scripts {
 <script>
@@ -556,7 +578,8 @@
   var INSTITUCIONES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Instituciones.Select(i => new { i.Id, i.Nombre })));
   var institucionesSeleccionadas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.InstitucionesIds));
   var CONTACTOS_DIR = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-      Model.ContactosDirectorio.Select(c => new { id = c.Id, nombre = c.Nombre, cargo = c.Cargo, inst = c.Institucion })));
+      Model.ContactosDirectorio.Select(c => new { id = c.Id, nombre = c.Nombre, cargo = c.Cargo, inst = c.Institucion, instId = c.InstitucionId, correo = c.Correo, telefono = c.Telefono, area = c.Area })));
+  var MI_INSTITUCION_ID = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.InstitucionActivaId ?? ""));
 
   // Mantiene el snapshot del nombre (hidden) alineado con la opción elegida del catálogo
   function syncAsisInst(sel) {
@@ -690,6 +713,91 @@
             actualizarResponsables();
         }
 
+        function escHtml(s) {
+            if (!s) return '';
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+        function escAttr(s) {
+            if (!s) return '';
+            return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function buscarDirectorio() {
+            var q = document.getElementById('dir-buscar').value.trim().toLowerCase();
+            var res = document.getElementById('dir-resultados');
+            if (!q || q.length < 2) { res.style.display = 'none'; return; }
+            var existentes = nombresAsistentes().map(function(n) { return n.toLowerCase(); });
+            var matches = CONTACTOS_DIR.filter(function(c) {
+                if (existentes.indexOf(c.nombre.toLowerCase()) >= 0) return false;
+                return c.nombre.toLowerCase().indexOf(q) >= 0 ||
+                       (c.cargo && c.cargo.toLowerCase().indexOf(q) >= 0) ||
+                       c.inst.toLowerCase().indexOf(q) >= 0 ||
+                       (c.correo && c.correo.toLowerCase().indexOf(q) >= 0);
+            }).slice(0, 10);
+            res.innerHTML = '';
+            if (!matches.length) {
+                res.innerHTML = '<div class="dir-result no-match">Sin resultados</div>';
+                res.style.display = ''; return;
+            }
+            matches.forEach(function(c) {
+                var div = document.createElement('div');
+                div.className = 'dir-result';
+                div.innerHTML = '<strong>' + escHtml(c.nombre) + '</strong>' +
+                    (c.cargo ? ' — ' + escHtml(c.cargo) : '') +
+                    '<br><small style="color:var(--diger-text-muted)">' + escHtml(c.inst) +
+                    (c.correo ? ' · ' + escHtml(c.correo) : '') + '</small>';
+                div.onclick = function() { addAsistenteDesdeDirectorio(c); };
+                res.appendChild(div);
+            });
+            res.style.display = '';
+        }
+
+        function addAsistenteDesdeDirectorio(c) {
+            const i = aIdx++;
+            const color = 'ic' + (i % 8);
+            var nombre = c.nombre || '';
+            var p = nombre.trim().split(/\s+/).filter(Boolean);
+            var ini = p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : nombre.substring(0,2).toUpperCase();
+            var instOpts = '<option value="" data-nombre="">— Sin institución</option>';
+            INSTITUCIONES.forEach(function(x) {
+                var sel = x.Id === c.instId ? ' selected' : '';
+                instOpts += '<option value="' + x.Id + '" data-nombre="' + escAttr(x.Nombre) + '"' + sel + '>' + escHtml(x.Nombre) + '</option>';
+            });
+            const div = document.createElement('div');
+            div.className = 'asistente-item';
+            div.innerHTML =
+                `<input type="hidden" name="Asistentes.Index" value="${i}" />` +
+                `<div class="asi-hdr">` +
+                  `<span class="asist-av ${color} asi-av-live" aria-hidden="true">${ini}</span>` +
+                  `<input name="Asistentes[${i}].Nombre" class="asi-nombre" value="${escAttr(c.nombre)}" placeholder="Nombre completo…" autocomplete="name" />` +
+                  `<button type="button" class="asi-del" onclick="eliminarAsistente(this)" title="Eliminar asistente">✕</button>` +
+                `</div>` +
+                `<div class="asi-fields">` +
+                  `<div class="field"><label>Cargo</label><input name="Asistentes[${i}].Cargo" value="${escAttr(c.cargo)}" /></div>` +
+                  `<div class="field"><label>Institución</label>` +
+                  `<select name="Asistentes[${i}].InstitucionId" class="asi-inst" onchange="syncAsisInst(this)">` +
+                  instOpts +
+                  `</select>` +
+                  `<input type="hidden" name="Asistentes[${i}].Institucion" value="${escAttr(c.inst)}" /></div>` +
+                  `<div class="field"><label>Departamento / Área</label><input name="Asistentes[${i}].Departamento" value="${escAttr(c.area)}" /></div>` +
+                  `<div class="field"><label>Correo</label><input name="Asistentes[${i}].Correo" value="${escAttr(c.correo)}" type="email" /></div>` +
+                  `<div class="field"><label>Teléfono</label><input name="Asistentes[${i}].Telefono" value="${escAttr(c.telefono)}" type="tel" /></div>` +
+                `</div>`;
+            document.getElementById('asistentes-list').appendChild(div);
+            document.getElementById('dir-buscar').value = '';
+            document.getElementById('dir-resultados').style.display = 'none';
+            actualizarResponsables();
+        }
+
+        document.addEventListener('click', function(e) {
+            var wrap = document.querySelector('.dir-search-wrap');
+            if (wrap && !wrap.contains(e.target)) {
+                document.getElementById('dir-resultados').style.display = 'none';
+            }
+        });
+
         function actualizarAv(input) {
             var av = input.closest('.asistente-item').querySelector('.asi-av-live');
             if (!av) return;
@@ -723,6 +831,12 @@
         function actualizarResponsables() {
             var nombres = nombresAsistentes();
             var instituciones = institucionesSeleccionadas.map(function (id) { return nombreInstitucion(id); });
+            // La institución que redacta la reunión siempre debe poder elegirse como responsable,
+            // aunque no esté entre las instituciones convocadas.
+            var mia = MI_INSTITUCION_ID
+                ? INSTITUCIONES.filter(function (i) { return i.Id === MI_INSTITUCION_ID; })[0]
+                : null;
+            if (mia && instituciones.indexOf(mia.Nombre) < 0) instituciones.unshift(mia.Nombre);
             document.querySelectorAll('#acuerdos-list .resp-select').forEach(function (sel) {
                 var actual = sel.dataset.selected !== undefined ? sel.dataset.selected : sel.value;
                 var actualCid = sel.dataset.selectedCid || '';

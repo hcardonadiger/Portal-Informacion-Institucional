@@ -9,6 +9,7 @@ public sealed class EditorModel(
     public int? ReunionId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
     public IReadOnlyList<ContactoDto> ContactosDirectorio { get; private set; } = [];
+    public string? InstitucionActivaId { get; private set; }
 
     private async Task<IReadOnlyList<Institucion>> InstitucionesEnAlcanceAsync(CancellationToken ct)
     {
@@ -53,6 +54,9 @@ public sealed class EditorModel(
             return Forbid();
 
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
+        InstitucionActivaId = currentUser.ActiveInstitucionId;
+        ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
+
         if (id is null)
         {
             if (fecha is { } f) Datos.Fecha = f;   // pre-llenado desde el calendario
@@ -66,14 +70,6 @@ public sealed class EditorModel(
             Datos      = d.Datos;
             Asistentes = d.Asistentes;
             Acuerdos   = d.Acuerdos;
-
-            var instNombres = Datos.InstitucionesIds
-                .Select(iid => Instituciones.FirstOrDefault(i => i.Id == iid)?.Nombre)
-                .OfType<string>()
-                .ToList();
-            if (instNombres.Count > 0)
-                ContactosDirectorio = await sender.Send(new GetContactosQuery(Instituciones: instNombres), ct);
-
             return Page();
         }
         catch (NotFoundException)
@@ -88,6 +84,8 @@ public sealed class EditorModel(
             return Forbid();
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
+        InstitucionActivaId = currentUser.ActiveInstitucionId;
+        ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
 
         if (string.IsNullOrWhiteSpace(Datos.Titulo))
         {
@@ -115,6 +113,8 @@ public sealed class EditorModel(
     {
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
+        InstitucionActivaId = currentUser.ActiveInstitucionId;
+        ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
 
         if (string.IsNullOrWhiteSpace(Datos.Titulo))
         {
