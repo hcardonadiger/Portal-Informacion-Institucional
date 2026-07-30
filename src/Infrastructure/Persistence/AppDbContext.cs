@@ -76,34 +76,43 @@ public sealed class AppDbContext(
         // COMPATIBILIDAD ESCALABILIDAD: al añadir jerarquía futura (Área/Unidad),
         // solo hay que extender la condición RLS; el !IsDeleted permanece invariante.
 
+        // El ancla `InstitucionId == _activeInst` envuelve TODAS las ramas de rol no-global:
+        // sin él, JefeUnidad/JefeArea filtraban solo por Unidad/Área y el `|| == null` dejaba
+        // ver registros de otras instituciones (fuga cross-institución). Ver auditoría A-1.
         mb.Entity<Expediente>().HasQueryFilter(e => !e.IsDeleted && (
             _alcanceGlobal ||
-            (_activeRol == "JefeInstitucion" && e.InstitucionId == _activeInst && 
-                (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea || e.AreaId == null) &&
-                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
-            (_activeRol == "JefeArea"        && (e.AreaId == _activeArea || e.AreaId == null) &&
-                (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
-            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (e.UnidadId == _activeUnidad || e.UnidadId == null))
+            (e.InstitucionId == _activeInst && (
+                (_activeRol == "JefeInstitucion" &&
+                    (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea || e.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
+                (_activeRol == "JefeArea"        && (e.AreaId == _activeArea || e.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
+                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (e.UnidadId == _activeUnidad || e.UnidadId == null))
+            ))
         ));
 
         mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
             _alcanceGlobal ||
-            (_activeRol == "JefeInstitucion" && c.InstitucionId == _activeInst && 
-                (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea || c.AreaId == null) &&
-                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
-            (_activeRol == "JefeArea"        && (c.AreaId == _activeArea || c.AreaId == null) &&
-                (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
-            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (c.UnidadId == _activeUnidad || c.UnidadId == null))
+            (c.InstitucionId == _activeInst && (
+                (_activeRol == "JefeInstitucion" &&
+                    (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea || c.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
+                (_activeRol == "JefeArea"        && (c.AreaId == _activeArea || c.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
+                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (c.UnidadId == _activeUnidad || c.UnidadId == null))
+            ))
         ));
 
         mb.Entity<Ticket>().HasQueryFilter(t => !t.IsDeleted && (
             _alcanceGlobal ||
-            (_activeRol == "JefeInstitucion" && t.InstitucionId == _activeInst && 
-                (string.IsNullOrEmpty(_activeArea) || t.AreaId == _activeArea) &&
-                (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
-            (_activeRol == "JefeArea"        && t.AreaId == _activeArea &&
-                (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
-            ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && t.UnidadId == _activeUnidad)
+            (t.InstitucionId == _activeInst && (
+                (_activeRol == "JefeInstitucion" &&
+                    (string.IsNullOrEmpty(_activeArea) || t.AreaId == _activeArea) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
+                (_activeRol == "JefeArea"        && t.AreaId == _activeArea &&
+                    (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
+                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && t.UnidadId == _activeUnidad)
+            ))
         ));
 
         // Reuniones: las públicas respetan la jerarquía, las privadas solo las ve el creador.
@@ -111,12 +120,14 @@ public sealed class AppDbContext(
         mb.Entity<Reunion>().HasQueryFilter(r => !r.IsDeleted && (
             (r.Visibilidad != VisibilidadReunion.Privada && (
                 _alcanceGlobal ||
-                (_activeRol == "JefeInstitucion" && r.InstitucionId == _activeInst && 
-                    (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea || r.AreaId == null) &&
-                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
-                (_activeRol == "JefeArea"        && (r.AreaId == _activeArea || r.AreaId == null) &&
-                    (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
-                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (r.UnidadId == _activeUnidad || r.UnidadId == null))
+                (r.InstitucionId == _activeInst && (
+                    (_activeRol == "JefeInstitucion" &&
+                        (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea || r.AreaId == null) &&
+                        (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
+                    (_activeRol == "JefeArea"        && (r.AreaId == _activeArea || r.AreaId == null) &&
+                        (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
+                    ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (r.UnidadId == _activeUnidad || r.UnidadId == null))
+                ))
             )) ||
             (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
         ));
