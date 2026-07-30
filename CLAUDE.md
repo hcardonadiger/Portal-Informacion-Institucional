@@ -20,27 +20,37 @@ The solution (`Diger.TramitesEstado.sln`) contains two runnable hosts and four s
 
 ## Common commands
 
+All paths are relative to the repo root (which contains `Diger.TramitesEstado.sln`, `src/`, `tests/`).
+
 ```powershell
 # Build the entire solution
-dotnet build Portal-Informacion-Institucional\Diger.TramitesEstado.sln
+dotnet build Diger.TramitesEstado.sln
 
 # Run the web app (primary UI)
-dotnet run --project Portal-Informacion-Institucional\src\Web
+dotnet run --project src\Web
 
 # Run the API host
-dotnet run --project Portal-Informacion-Institucional\src\Presentation
+dotnet run --project src\Presentation
 
 # Run all tests
-dotnet test Portal-Informacion-Institucional\Diger.TramitesEstado.sln
+dotnet test Diger.TramitesEstado.sln
 
-# Run a single test project
-dotnet test Portal-Informacion-Institucional\tests\Application.Tests
+# Run one test project / a single test by name
+dotnet test tests\Application.Tests
+dotnet test tests\Application.Tests --filter "FullyQualifiedName~PersonasCapacitadas"
 
-# Add a new EF migration (run from the Web project which owns the DbContext design-time reference)
-dotnet ef migrations add <NombreMigracion> --project Portal-Informacion-Institucional\src\Infrastructure --startup-project Portal-Informacion-Institucional\src\Web
+# Add a new EF migration (startup-project is Web, which owns the design-time DbContext)
+dotnet ef migrations add <NombreMigracion> --project src\Infrastructure --startup-project src\Web
 ```
 
-In development the web app auto-migrates and seeds seed usuarios on startup (`Program.cs`). Supabase import credentials go in User Secrets (UserSecretsId: `diger-tramites-estado-web`) under keys `Supabase:Url` and `Supabase:AnonKey`.
+## Local development
+
+- **Database**: SQL Server LocalDB. The dev connection string (`src/Web/appsettings.Development.json`) targets `(localdb)\MSSQLLocalDB`, database `DigerTramitesEstado_Nueva`. On startup the app **auto-migrates** and calls `DbSeeder.SeedUsuariosAsync` (`Program.cs`). Tests never touch this — they use EF In-Memory.
+- **Seeded logins** (from `DbSeeder`, all password-hashed): `admin@diger.gob.hn` / `Admin#2026` (Administrador), plus `jefe.inst@`, `jefe.area@`, `jefe.uni@`, `empleado@`, `consultor@` with passwords `JefeInst#2026`, `JefeArea#2026`, `JefeUni#2026`, `Empleado#2026`, `Consultor#2026`.
+- **Ports**: `launchSettings.json` binds https `49175`/`49176` + http `49177`; `.claude/launch.json` ("web") runs http `5011`. The certificate-login flow hard-codes `https://localhost:49176/Cuenta/LoginCertificado` in Development, so keep 49176 free when testing cert login.
+- **Secrets**: Supabase import credentials live in User Secrets (UserSecretsId `diger-tramites-estado-web`) under `Supabase:Url` / `Supabase:AnonKey` — not in appsettings.
+- **LocalDB gotcha**: the instance sleeps on inactivity and occasionally leaves a stuck `sqlservr` process, so app startup can fail on `MigrateAsync()` with "SQL Server process failed to start". Fix: `sqllocaldb start MSSQLLocalDB` (or kill the zombie `sqlservr` and restart). The DbContext registration uses `EnableRetryOnFailure`, so avoid explicit EF transactions (they are incompatible with the retry strategy).
+- **Build lock**: if `dotnet build` fails only with `MSB3027`/`MSB3021` copy errors, a running app (or Visual Studio debug session) is holding the DLLs — stop it before building. `.cshtml` edits require a rebuild/restart; they are not hot-reloaded by a running instance.
 
 ## Architecture
 
@@ -62,19 +72,22 @@ Every request flows through `LoggingBehavior` → `ValidationBehavior` → handl
 
 ### Institutional scope (data isolation)
 
-`AppDbContext` applies global EF query filters on `Expediente`, `Contacto`, `Ticket`, and `Reunion` so non-admin users only see records belonging to their assigned institutions. Filters are built from `ICurrentUserService.EsGlobal` / `InstitucionesAsignadas` at DbContext creation time. Queries that need to bypass scope (e.g., unique-code generation) call `.IgnoreQueryFilters()` explicitly.
+`AppDbContext` applies global EF query filters on `Expediente`, `Contacto`, `Ticket`, and `Reunion` so non-admin users only see records belonging to their assigned institutions. Each filter is `!IsDeleted && (<institutional scope>)` — soft-delete (`ISoftDeletable`) is AND-ed into the same filter, so ordinary queries never see soft-deleted rows. Filters are built from `ICurrentUserService.EsGlobal` / `InstitucionesAsignadas` at DbContext creation time. Queries that need to bypass scope (e.g., unique-code generation, or importers checking existing `OrigenExternoId`s) call `.IgnoreQueryFilters()` explicitly.
 
 ### Authentication
 
-Cookie-based auth (`CookieAuthenticationDefaults`). Roles: `Administrador`, `Coordinador`, `Tecnico`. Authorization policies (e.g., `PuedeGestionarExpedientes`) are defined in `Web/Program.cs`. All Razor Pages require authentication; `/Cuenta/*` is the anonymous exception.
+Cookie-based auth (`CookieAuthenticationDefaults`). Roles (`RolUsuario` enum): `Administrador`, `JefeInstitucion`, `JefeArea`, `JefeUnidad`, `Empleado`, `Consultor`. A user can hold multiple assignments (`AsignacionUsuario`); the login sets the first as the active context and stores the rest in the `AsignacionesJson` claim, letting the user switch context in the UI. Authorization policies (e.g., `PuedeGestionarExpedientes`, `PuedeAdministrarCatalogo`) are defined in `Web/Program.cs`. All Razor Pages require authentication; `/Cuenta/*` is the anonymous exception.
 
-### Data import
+### Data import (from the legacy demo portal on Supabase)
 
-Two one-shot idempotent import paths exist:
-- **Reuniones**: `SupabaseReunionImportSource` → `ImportarReunionesCommand` (Application) → `/Admin/ImportarReuniones` page.
-- **Expedientes**: `SupabaseExpedienteImporter` (Web-only `HttpClient` wrapper) → `/Admin/ImportarExpedientes` page.
+Idempotent import paths pull data from the demo's Supabase project (`diger_tram` is a key/value table of JSON blobs, plus relational `reuniones`/`asistencias`). All import/migration is **Administrator-only and Development-only**:
 
-Both are idempotent via `OrigenExternoId` (unique index with `IS NOT NULL` filter).
+- **Reuniones**: `SupabaseReunionImportSource` → `ImportarReunionesCommand` (Application) → `/Admin/ImportarReuniones`.
+- **Expedientes**: `SupabaseExpedienteImporter` (Web-only `HttpClient` wrapper) → `/Admin/ImportarExpedientes`.
+- **Catálogos** (`instituciones`, `levantamientos_estado`, calendar events → `Reunion`): `SupabaseCatalogosImporter`.
+- **`/Admin/MigrarSupabase`** is the unified page: `SupabaseMigracionScanner` compares every source table against what's already imported and reports pending counts; the "migrar" action runs the three importers in order (catalogs first, so reuniones/expedientes can resolve their institution).
+
+Idempotency: reuniones/expedientes dedupe on `OrigenExternoId` (unique filtered index; calendar events use a `cal:<id>` prefix); levantamientos dedupe on institution+encargado; instituciones on name (with an alias map for long-name↔sigla duplicates). Institution Ids are derived from the name and must be `A-Z0-9` only — strip accents before filtering (`char.IsLetterOrDigit` wrongly accepts `Í`/`Ó`).
 
 ### Expediente aggregate
 
