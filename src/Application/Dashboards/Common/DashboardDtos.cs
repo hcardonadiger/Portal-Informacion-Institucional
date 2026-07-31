@@ -84,6 +84,29 @@ public sealed record PersonaCapacitadaDto(
     public bool EsMultiple => Capacitaciones.Count > 1;
 }
 
+// ── Digitalización ───────────────────────────────────────────────────────
+public sealed record DigitalizacionDashboardDto(
+    int TotalTramites,
+    int TramitesEnOperacion, int TramitesEnProceso, int TramitesNoIniciados,
+    int InstitucionesActivas, double AvanceGlobalPromedio,
+    IReadOnlyList<AvanceInstitucionDto> PorInstitucion,
+    IReadOnlyList<AvanceEtapaDto> PorEtapaMetodologia,
+    IReadOnlyList<ConteoDto> DistribucionAvance,
+    IReadOnlyList<AnalistaAvanceDto> PorAnalista,
+    IReadOnlyList<TramiteAvanceDto> TramitesRezagados);
+
+public sealed record AvanceInstitucionDto(
+    string Institucion, int TotalTramites, int Completados, double AvancePromedio);
+
+public sealed record AvanceEtapaDto(
+    string EtapaNum, string Etiqueta, double AvancePromedio, int Completados, int Total);
+
+public sealed record AnalistaAvanceDto(
+    string Analista, int TotalTramites, int Completados, double AvancePromedio);
+
+public sealed record TramiteAvanceDto(
+    string Institucion, string Tramite, string? Analista, double Avance);
+
 // ── Helper de series mensuales ─────────────────────────────────────────────
 public static class SerieMensual
 {

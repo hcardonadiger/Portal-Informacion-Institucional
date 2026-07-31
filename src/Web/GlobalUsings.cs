@@ -69,6 +69,7 @@ global using Diger.TramitesEstado.Application.Dashboards.Queries.GetResumen;
 global using Diger.TramitesEstado.Application.Dashboards.Queries.GetTicketsDashboard;
 global using Diger.TramitesEstado.Application.Dashboards.Queries.GetExpedientesDashboard;
 global using Diger.TramitesEstado.Application.Dashboards.Queries.GetReunionesDashboard;
+global using Diger.TramitesEstado.Application.Dashboards.Queries.GetDigitalizacionDashboard;
 global using Diger.TramitesEstado.Application.Usuarios.Common;
 global using Diger.TramitesEstado.Application.Usuarios.Commands.CrearUsuario;
 global using Diger.TramitesEstado.Application.Usuarios.Commands.ActualizarUsuario;
