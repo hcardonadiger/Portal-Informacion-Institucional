@@ -1,0 +1,248 @@
+@page
+@using System.Text.Json
+@model Diger.TramitesEstado.Web.Pages.Tableros.DigitalizacionModel
+@{
+    ViewData["Title"] = "Tablero de Digitalización";
+    var d = Model.Data;
+    var pctGlobal = (int)Math.Round(d.AvanceGlobalPromedio * 100);
+    var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
+}
+
+<div class="container" style="max-width:1200px">
+    <div class="hist-header">
+        <div><h2>Tablero de Digitalización</h2><p>Seguimiento gerencial del avance de digitalización de trámites</p></div>
+        <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
+    </div>
+
+    <form method="get" class="seg-filters">
+        <div class="field" style="min-width:200px"><label>Institución</label>
+            <select name="institucionId" onchange="this.form.submit()">
+                <option value="">Todas</option>
+                @foreach (var i in Model.Instituciones) { <option value="@i.Id" selected="@(Model.InstitucionId == i.Id)">@i.Nombre</option> }
+            </select>
+        </div>
+        <a class="btns" asp-page="/Tableros/Digitalizacion" style="margin-bottom:.1rem">Limpiar</a>
+    </form>
+
+    @* ── KPI Strip ────────────────────────────────────────────────── *@
+    <div class="kpi-grid" style="grid-template-columns:repeat(4, 1fr)">
+        <div class="kpi-card"><div class="kpi-num">@d.TotalTramites</div><div class="kpi-lbl">Trámites en digitalización</div></div>
+        <div class="kpi-card ok"><div class="kpi-num">@d.TramitesEnOperacion</div><div class="kpi-lbl">En operación</div></div>
+        <div class="kpi-card"><div class="kpi-num digi-pct-hero">@pctGlobal<span style="font-size:18px">%</span></div><div class="kpi-lbl">Avance global promedio</div></div>
+        <div class="kpi-card"><div class="kpi-num">@d.InstitucionesActivas</div><div class="kpi-lbl">Instituciones activas</div></div>
+    </div>
+
+    @* ── Distribución de trámites ─────────────────────────────────── *@
+    <div class="dash-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0">
+        <div class="dash-card digi-dist-card">
+            <div class="digi-dist-num ok">@d.TramitesEnOperacion</div>
+            <div class="digi-dist-lbl">En operación</div>
+            <div class="digi-dist-bar" style="background:#2f7d32"></div>
+        </div>
+        <div class="dash-card digi-dist-card">
+            <div class="digi-dist-num warn">@d.TramitesEnProceso</div>
+            <div class="digi-dist-lbl">En proceso</div>
+            <div class="digi-dist-bar" style="background:#ef9f27"></div>
+        </div>
+        <div class="dash-card digi-dist-card">
+            <div class="digi-dist-num muted">@d.TramitesNoIniciados</div>
+            <div class="digi-dist-lbl">No iniciados</div>
+            <div class="digi-dist-bar" style="background:#888780"></div>
+        </div>
+    </div>
+
+    @* ── Avance por Institución ───────────────────────────────────── *@
+    <div class="dash-grid" style="grid-template-columns:1fr">
+        <div class="dash-card">
+            <h3>Avance por institución</h3>
+            @if (!d.PorInstitucion.Any())
+            {
+                <p style="font-size:13px;color:var(--diger-text-muted)">Sin trámites registrados.</p>
+            }
+            else
+            {
+                <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+                @foreach (var inst in d.PorInstitucion)
+                {
+                    var pct = (int)Math.Round(inst.AvancePromedio * 100);
+                    var barColor = pct >= 100 ? "#2f7d32" : pct >= 50 ? "#1455a4" : pct >= 25 ? "#ef9f27" : "#888780";
+                    <div class="digi-inst-row">
+                        <span class="digi-inst-name">@inst.Institucion</span>
+                        <div class="digi-inst-bar-wrap">
+                            <div class="bar-track">
+                                <div class="bar-fill" style="width:@(Math.Max(pct, 1))%;background:@barColor"></div>
+                            </div>
+                        </div>
+                        <span class="digi-inst-pct" style="color:@barColor">@pct%</span>
+                        <span class="digi-inst-meta">@inst.Completados/@inst.TotalTramites</span>
+                    </div>
+                }
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ── Distribución de avance + Etapas de la metodología ─────── *@
+    <div class="dash-grid">
+        <div class="dash-card">
+            <h3>Distribución de avance</h3>
+            <div style="position:relative;height:220px"><canvas id="chDist"></canvas></div>
+            <p style="font-size:11.5px;color:var(--diger-text-muted);margin:8px 0 0">Cantidad de trámites por rango de avance global</p>
+        </div>
+        <div class="dash-card" style="min-width:0">
+            <h3>Avance por etapa de la metodología</h3>
+            <div style="position:relative;height:360px"><canvas id="chEtapas"></canvas></div>
+        </div>
+    </div>
+
+    @* ── Carga por analista ────────────────────────────────────── *@
+    @if (d.PorAnalista.Any())
+    {
+        <div class="dash-grid" style="grid-template-columns:1fr">
+            <div class="dash-card">
+                <h3>Carga y avance por analista</h3>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+                @foreach (var a in d.PorAnalista)
+                {
+                    var pct = (int)Math.Round(a.AvancePromedio * 100);
+                    var barColor = pct >= 100 ? "#2f7d32" : pct >= 50 ? "#1455a4" : pct >= 25 ? "#ef9f27" : "#888780";
+                    <div class="digi-inst-row">
+                        <span class="digi-inst-name">@a.Analista</span>
+                        <div class="digi-inst-bar-wrap">
+                            <div class="bar-track">
+                                <div class="bar-fill" style="width:@(Math.Max(pct, 1))%;background:@barColor"></div>
+                            </div>
+                        </div>
+                        <span class="digi-inst-pct" style="color:@barColor">@pct%</span>
+                        <span class="digi-inst-meta">@a.Completados/@a.TotalTramites</span>
+                    </div>
+                }
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ── Tabla de trámites rezagados ──────────────────────────── *@
+    <div class="dash-grid" style="grid-template-columns:1fr">
+        <div class="dash-card">
+            <h3>Trámites con menor avance</h3>
+            @if (!d.TramitesRezagados.Any())
+            {
+                <p style="font-size:13px;color:var(--diger-text-muted)">Sin trámites registrados.</p>
+            }
+            else
+            {
+                <div style="overflow-x:auto">
+                <table class="tbl" style="width:100%">
+                    <thead><tr>
+                        <th>Institución</th>
+                        <th>Trámite</th>
+                        <th>Analista</th>
+                        <th style="width:180px">Avance</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var t in d.TramitesRezagados)
+                    {
+                        var pct = (int)Math.Round(t.Avance * 100);
+                        var barColor = pct >= 100 ? "#2f7d32" : pct >= 50 ? "#1455a4" : pct > 0 ? "#ef9f27" : "#888780";
+                        <tr>
+                            <td>@t.Institucion</td>
+                            <td>@t.Tramite</td>
+                            <td style="font-size:12px;color:var(--diger-text-muted)">@(t.Analista ?? "—")</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <div class="bar-track" style="flex:1"><div class="bar-fill" style="width:@(Math.Max(pct, 1))%;background:@barColor"></div></div>
+                                    <span style="font-size:12px;font-weight:700;min-width:36px;text-align:right;color:@barColor">@pct%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<style>
+    .digi-pct-hero { letter-spacing: -1px; }
+    .digi-dist-card { text-align:center; padding:16px 12px 8px; }
+    .digi-dist-num { font-size:32px; font-weight:800; line-height:1; }
+    .digi-dist-num.ok { color:#2f7d32; }
+    .digi-dist-num.warn { color:#ef9f27; }
+    .digi-dist-num.muted { color:#888780; }
+    .digi-dist-lbl { font-size:12px; color:var(--diger-text-muted); margin-top:4px; text-transform:uppercase; letter-spacing:.5px; }
+    .digi-dist-bar { height:4px; border-radius:2px; margin-top:12px; }
+
+    .digi-inst-row { display:grid; grid-template-columns:160px 1fr 48px 70px; align-items:center; gap:10px; }
+    .digi-inst-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .digi-inst-bar-wrap { min-width:0; }
+    .digi-inst-pct { font-size:14px; font-weight:800; text-align:right; }
+    .digi-inst-meta { font-size:11.5px; color:var(--diger-text-muted); text-align:right; white-space:nowrap; }
+
+    @@media (max-width: 900px) {
+        .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important; }
+        .digi-inst-row { grid-template-columns: 100px 1fr 40px 56px; }
+    }
+    @@media (max-width: 600px) {
+        .digi-inst-row { grid-template-columns: 1fr 48px; }
+        .digi-inst-bar-wrap, .digi-inst-meta { display:none; }
+    }
+</style>
+<script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>
+<script>
+  Chart.defaults.font.family = 'system-ui, sans-serif';
+  Chart.defaults.plugins.legend.position = 'bottom';
+
+  // Distribución de avance (barras verticales por rango)
+  new Chart(document.getElementById('chDist'), {
+    type: 'bar',
+    data: {
+      labels: @J(d.DistribucionAvance.Select(x => x.Etiqueta)),
+      datasets: [{
+        data: @J(d.DistribucionAvance.Select(x => x.Cantidad)),
+        backgroundColor: ['#c4c3bc', '#ef9f27', '#1455a4', '#2f7d32'],
+        borderRadius: 4,
+        barThickness: 40
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' trámites' } } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+
+  // Etapas de la metodología (barras horizontales)
+  new Chart(document.getElementById('chEtapas'), {
+    type: 'bar',
+    data: {
+      labels: @J(d.PorEtapaMetodologia.Select(e => e.EtapaNum + ". " + (e.Etiqueta.Length > 28 ? e.Etiqueta[..28] + "…" : e.Etiqueta))),
+      datasets: [{
+        label: 'Avance promedio %',
+        data: @J(d.PorEtapaMetodologia.Select(e => Math.Round(e.AvancePromedio * 100, 1))),
+        backgroundColor: @J(d.PorEtapaMetodologia.Select(e =>
+            e.AvancePromedio >= 0.9999 ? "#2f7d32" :
+            e.AvancePromedio >= 0.5 ? "#1455a4" :
+            e.AvancePromedio > 0 ? "#ef9f27" : "#c4c3bc")),
+        borderRadius: 4,
+        barThickness: 20
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.x.toFixed(1) + '%' } } },
+      scales: {
+        x: { min: 0, max: 100, ticks: { callback: v => v + '%' } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+</script>
+}
