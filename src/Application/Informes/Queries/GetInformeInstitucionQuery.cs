@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 using Diger.TramitesEstado.Application.Informes.Common;
 
 namespace Diger.TramitesEstado.Application.Informes.Queries;
@@ -43,23 +44,40 @@ public sealed class GetInformeInstitucionQueryHandler(IApplicationDbContext ctx)
 
         var expIds = expedientes.Select(e => e.Id).ToList();
 
-        // Avance por (ExpedienteId, TramiteIndex) — excluye marcadores APLICA:*
-        var avances = await ctx.ExpedienteEtapaAvances
+        // Todas las filas de avance (incluidos los marcadores APLICA:*) para reproducir
+        // EXACTAMENTE el cálculo ponderado del detalle del expediente
+        // (MetodologiaDigitalizacion.Global), y no un conteo simple de pasos.
+        var filasAvance = await ctx.ExpedienteEtapaAvances
             .AsNoTracking()
-            .Where(a => expIds.Contains(a.ExpedienteId) && !a.SubId.StartsWith("APLICA:"))
-            .GroupBy(a => new { a.ExpedienteId, a.TramiteIndex })
-            .Select(g => new
-            {
-                g.Key.ExpedienteId,
-                g.Key.TramiteIndex,
-                Total       = g.Count(),
-                Completados = g.Count(a => a.Estado == 2)
-            })
+            .Where(a => expIds.Contains(a.ExpedienteId))
+            .Select(a => new { a.ExpedienteId, a.TramiteIndex, a.SubId, a.Estado })
             .ToListAsync(ct);
 
-        var avanceMap = avances.ToDictionary(
-            a => (a.ExpedienteId, a.TramiteIndex),
-            a => (a.Total, a.Completados));
+        // Por (ExpedienteId, TramiteIndex): estados + aplica (igual que el seguimiento)
+        // → avance ponderado idéntico, más los conteos de pasos para el Excel.
+        var avanceMap = filasAvance
+            .GroupBy(a => (a.ExpedienteId, a.TramiteIndex))
+            .ToDictionary(g => g.Key, g =>
+            {
+                var estados = new Dictionary<string, int>();
+                var aplica  = new Dictionary<string, bool>();
+                int total = 0, completados = 0;
+                foreach (var f in g)
+                {
+                    if (f.SubId.StartsWith("APLICA:"))
+                    {
+                        aplica[f.SubId["APLICA:".Length..]] = f.Estado == 1;
+                    }
+                    else
+                    {
+                        estados[f.SubId] = f.Estado;
+                        total++;
+                        if (f.Estado == 2) completados++;
+                    }
+                }
+                var pct = (int)Math.Round(MetodologiaDigitalizacion.Global(estados, aplica) * 100);
+                return (Total: total, Completados: completados, Pct: pct);
+            });
 
         // Nombre de institución (snapshot del primer expediente o consulta)
         var institucionNombre = q.InstitucionId != null
@@ -76,7 +94,7 @@ public sealed class GetInformeInstitucionQueryHandler(IApplicationDbContext ctx)
                 .Select(t =>
                 {
                     avanceMap.TryGetValue((e.Id, t.TramiteIndex), out var av);
-                    return new InformeTramiteDto(t.TramiteIndex, t.NombreTramite, av.Total, av.Completados);
+                    return new InformeTramiteDto(t.TramiteIndex, t.NombreTramite, av.Total, av.Completados, av.Pct);
                 })
                 .ToList();
 

@@ -4,10 +4,10 @@ public sealed record InformeTramiteDto(
     int    TramiteIndex,
     string NombreTramite,
     int    TotalPasos,
-    int    PasosCompletados)
-{
-    public int AvancePct => TotalPasos > 0 ? PasosCompletados * 100 / TotalPasos : 0;
-}
+    int    PasosCompletados,
+    // Avance ponderado (MetodologiaDigitalizacion.Global): idéntico al que muestra
+    // el detalle del expediente. NO es PasosCompletados/TotalPasos (conteo simple).
+    int    AvancePct);
 
 public sealed record InformeExpedienteDto(
     int              Id,
