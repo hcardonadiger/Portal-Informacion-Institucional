@@ -7,6 +7,9 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [AllowAnonymous]
+// NoStore evita que el navegador reviva esta página desde su caché: al volver
+// con el botón «Atrás» servía el HTML renderizado durante la sesión anterior.
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class LoginModel(ISender sender, IConfiguration config) : PageModel
 {
     [BindProperty] public string Correo   { get; set; } = string.Empty;
@@ -15,7 +18,22 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
     public string? ReturnUrl { get; set; }
     public string? Error     { get; set; }
 
-    public void OnGet(string? returnUrl = null) => ReturnUrl = returnUrl;
+    /// <summary>Un usuario con sesión activa no debe ver el formulario de acceso:
+    /// _Layout dibuja el header de la aplicación en cuanto hay autenticación, y
+    /// quedaba el nombre del usuario sobre la pantalla de login.</summary>
+    public IActionResult OnGet(string? returnUrl = null)
+    {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/")
+                return LocalRedirect(returnUrl);
+
+            return RedirectToPage("/Tableros/Index");
+        }
+
+        ReturnUrl = returnUrl;
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl, CancellationToken ct)
     {
