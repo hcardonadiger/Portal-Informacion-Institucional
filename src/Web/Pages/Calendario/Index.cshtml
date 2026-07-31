@@ -12,12 +12,10 @@
     var totalReuniones = Model.Data.Reuniones.Count;
     var porTipo = Model.Data.Actividad.GroupBy(e => e.Tipo).ToDictionary(g => g.Key, g => g.Count());
 
-    // En mes la grilla muestra una sola semana, así que lo "visible" es esa semana
-    // y no el mes entero. Al cambiar de granularidad se conserva el día si la parte
-    // visible lo contiene; si no, se ancla a su inicio.
-    var visibleDesde = vista == VistaCalendario.Mes ? Model.SemanaVisible : desde;
-    var visibleHasta = vista == VistaCalendario.Mes ? Model.SemanaVisible.AddDays(7) : Model.Hasta;
-    var ancla = Model.Hoy >= visibleDesde && Model.Hoy < visibleHasta ? Model.Hoy : visibleDesde;
+    // Al cambiar de granularidad se conserva el día si el rango actual lo contiene;
+    // si no, se ancla al inicio del rango. Pasar de "mes" a "día" estando en el mes
+    // corriente debe llevar a hoy, no al día 1.
+    var ancla = Model.Hoy >= Model.Desde && Model.Hoy < Model.Hasta ? Model.Hoy : desde;
     var anclaIso = ancla.ToString("yyyy-MM-dd");
 
     // Solo la inicial. Con text-transform:capitalize el CSS también subía la
@@ -41,28 +39,16 @@
             @{
                 var pasoLbl = vista switch
                 {
-                    VistaCalendario.Dia    => "día",
-                    VistaCalendario.Semana => "semana",
-                    _                      => "semana",   // en mes las flechas paginan semanas
+                    VistaCalendario.Dia    => "Día",
+                    VistaCalendario.Semana => "Semana",
+                    _                      => "Mes",
                 };
             }
             <div class="cal-seg">
-                @if (vista == VistaCalendario.Mes)
-                {
-                    @* Las flechas simples paginan semanas: sin estas, la vista de mes
-                       se quedaría sin forma de saltar de un mes a otro. *@
-                    <a asp-page="/Calendario/Index" asp-route-vista="@vista" asp-route-fecha="@Model.MesAnterior.ToString("yyyy-MM-dd")"
-                       title="Mes anterior" aria-label="Mes anterior"><svg class="ico"><use href="#i-chevrons-izq"></use></svg></a>
-                }
                 <a asp-page="/Calendario/Index" asp-route-vista="@vista" asp-route-fecha="@Model.Anterior.ToString("yyyy-MM-dd")"
                    title="@pasoLbl anterior" aria-label="@pasoLbl anterior"><svg class="ico"><use href="#i-chevron-izq"></use></svg></a>
                 <a asp-page="/Calendario/Index" asp-route-vista="@vista" asp-route-fecha="@Model.Siguiente.ToString("yyyy-MM-dd")"
                    title="@pasoLbl siguiente" aria-label="@pasoLbl siguiente"><svg class="ico"><use href="#i-chevron"></use></svg></a>
-                @if (vista == VistaCalendario.Mes)
-                {
-                    <a asp-page="/Calendario/Index" asp-route-vista="@vista" asp-route-fecha="@Model.MesSiguiente.ToString("yyyy-MM-dd")"
-                       title="Mes siguiente" aria-label="Mes siguiente"><svg class="ico"><use href="#i-chevrons-der"></use></svg></a>
-                }
             </div>
             <a class="cal-hoy" asp-page="/Calendario/Index" asp-route-vista="@vista">Hoy</a>
             <h2 class="cal-title">
@@ -79,7 +65,6 @@
                         break;
                     default:
                         @meses[desde.Month] <text> </text><span>@desde.Year</span>
-                        <span class="cal-title-sem">· semana @Model.SemanaNumero de @Model.TotalSemanas</span>
                         break;
                 }
             </h2>
@@ -161,14 +146,25 @@
             }
             else
             {
-                @* ── Grilla de una semana ────────────────────────────────
-                   Mes y semana comparten el render: cambia dónde arranca la fila y
-                   qué se considera "en rango" (el mes o la propia semana). Como la
-                   fila ocupa todo el alto de la columna, caben 8 reuniones antes
-                   del "+N más". *@
-                var inicioGrid = vista == VistaCalendario.Semana ? desde : Model.SemanaVisible;
-                const int celdas = 7;
-                const int tope = 8;
+                @* ── Grilla de 7 columnas: una fila en semana, las que haga falta en mes ── *@
+                DateOnly inicioGrid;
+                int celdas;
+                int tope;      // cuántas reuniones se listan antes del "+N más"
+                if (vista == VistaCalendario.Semana)
+                {
+                    inicioGrid = desde;
+                    celdas = 7;
+                    tope = 8;  // la fila ocupa todo el alto: caben muchas más
+                }
+                else
+                {
+                    inicioGrid = desde.AddDays(-(int)desde.DayOfWeek);
+                    // Solo las semanas que el mes necesita: con 42 celdas fijas,
+                    // meses como julio 2026 (34 celdas) arrastraban una fila vacía.
+                    var diasDelMes = DateTime.DaysInMonth(desde.Year, desde.Month);
+                    celdas = (int)Math.Ceiling(((int)desde.DayOfWeek + diasDelMes) / 7.0) * 7;
+                    tope = 3;
+                }
 
                 <div class="cal-grid cal-head">
                     @foreach (var d in dias) { <div class="cal-dow">@d</div> }
