@@ -61,6 +61,7 @@
     }
 </head>
 <body>
+    <partial name="_IconSprite" />
     @if (User.Identity?.IsAuthenticated == true)
     {
         var puedeTableros    = await Acceso.PuedeAsync(ModulosPortal.Tableros);

@@ -10,6 +10,12 @@
         EstadoTicket.Resuelto => ("#eaf3de", "#27500a"), _ => ("#f1efe8", "#444441"),
     };
     string EstadoLbl(EstadoTicket e) => e == EstadoTicket.EnProgreso ? "En progreso" : e.ToString();
+
+    // La tira apaga los ceros: un cero es una confirmación, no un dato que compita
+    // por atención con los valores que sí exigen acción.
+    string Tono(int valor, string tonoActivo) => valor == 0 ? "is-zero" : tonoActivo;
+
+    var hayTicketsEnGrafica = d.TicketsPorMes.Any(x => x.Cantidad > 0);
 }
 
 <div class="container" style="max-width:1100px">
@@ -20,43 +26,179 @@
         </div>
     </div>
 
-    <div class="kpi-grid">
-        <a class="kpi-card @(d.TicketsCriticos > 0 ? "alert" : "")">
-            <div class="kpi-num">@d.TicketsCriticos</div><div class="kpi-lbl">Tickets críticos</div>
+    <div class="kpi-strip">
+        <div class="kpi-cell @Tono(d.TicketsCriticos, "is-crit")">
+            <div class="kpi-cell-top">
+                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-alerta"></use></svg></span>
+                <span class="kpi-cell-lbl">Tickets críticos</span>
+            </div>
+            <div class="kpi-cell-num">@d.TicketsCriticos</div>
+            <div class="kpi-cell-sub">
+                @if (d.TicketsCriticos == 0)
+                {
+                    <svg class="ico"><use href="#i-check"></use></svg><text>Sin pendientes</text>
+                }
+                else
+                {
+                    <text>Requiere atención</text>
+                }
+            </div>
+        </div>
+
+        <div class="kpi-cell @Tono(d.TicketsAbiertos, "is-warn")">
+            <div class="kpi-cell-top">
+                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-ticket"></use></svg></span>
+                <span class="kpi-cell-lbl">Tickets abiertos</span>
+            </div>
+            <div class="kpi-cell-num">@d.TicketsAbiertos</div>
+            <div class="kpi-cell-sub">
+                @if (d.TicketsAbiertos == 0)
+                {
+                    <svg class="ico"><use href="#i-check"></use></svg><text>Sin pendientes</text>
+                }
+                else
+                {
+                    <text>de @d.TicketsTotal en total</text>
+                }
+            </div>
+        </div>
+
+        <div class="kpi-cell @Tono(d.TicketsEnProgreso, "")">
+            <div class="kpi-cell-top">
+                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-reloj"></use></svg></span>
+                <span class="kpi-cell-lbl">En progreso</span>
+            </div>
+            <div class="kpi-cell-num">@d.TicketsEnProgreso</div>
+            <div class="kpi-cell-sub">
+                @if (d.TicketsEnProgreso == 0)
+                {
+                    <svg class="ico"><use href="#i-check"></use></svg><text>Sin pendientes</text>
+                }
+                else
+                {
+                    <text>en atención</text>
+                }
+            </div>
+        </div>
+
+        <a class="kpi-cell @Tono(d.AcuerdosVencidos, "is-crit")" asp-page="/Reuniones/Compromisos" asp-route-soloVencidos="true">
+            <div class="kpi-cell-top">
+                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-vencido"></use></svg></span>
+                <span class="kpi-cell-lbl">Acuerdos vencidos</span>
+                <span class="kpi-cell-arw"><svg class="ico"><use href="#i-chevron"></use></svg></span>
+            </div>
+            <div class="kpi-cell-num">@d.AcuerdosVencidos</div>
+            <div class="kpi-cell-sub">
+                @if (d.AcuerdosVencidos == 0)
+                {
+                    <svg class="ico"><use href="#i-check"></use></svg><text>Sin pendientes</text>
+                }
+                else
+                {
+                    <text>Requiere atención</text>
+                }
+            </div>
         </a>
-        <div class="kpi-card warn"><div class="kpi-num">@d.TicketsAbiertos</div><div class="kpi-lbl">Tickets abiertos</div></div>
-        <div class="kpi-card"><div class="kpi-num">@d.TicketsEnProgreso</div><div class="kpi-lbl">En progreso</div></div>
-        <a class="kpi-card @(d.AcuerdosVencidos > 0 ? "alert" : "")" asp-page="/Reuniones/Compromisos" asp-route-soloVencidos="true"><div class="kpi-num">@d.AcuerdosVencidos</div><div class="kpi-lbl">Acuerdos vencidos</div></a>
-        <a class="kpi-card" asp-page="/Reuniones/Compromisos"><div class="kpi-num">@d.AcuerdosProximos</div><div class="kpi-lbl">Acuerdos próximos</div></a>
-        <div class="kpi-card ok"><div class="kpi-num">@d.ExpedientesCerrados</div><div class="kpi-lbl">Expedientes cerrados</div></div>
+
+        <a class="kpi-cell @Tono(d.AcuerdosProximos, "is-warn")" asp-page="/Reuniones/Compromisos">
+            <div class="kpi-cell-top">
+                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-calendario"></use></svg></span>
+                <span class="kpi-cell-lbl">Acuerdos próximos</span>
+                <span class="kpi-cell-arw"><svg class="ico"><use href="#i-chevron"></use></svg></span>
+            </div>
+            <div class="kpi-cell-num">@d.AcuerdosProximos</div>
+            <div class="kpi-cell-sub">
+                @if (d.AcuerdosProximos == 0)
+                {
+                    <svg class="ico"><use href="#i-check"></use></svg><text>Sin vencimientos</text>
+                }
+                else
+                {
+                    <text>por vencer</text>
+                }
+            </div>
+        </a>
+
+        <div class="kpi-cell @Tono(d.ExpedientesCerrados, "is-ok")">
+            <div class="kpi-cell-top">
+                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-expediente-ok"></use></svg></span>
+                <span class="kpi-cell-lbl">Exp. cerrados</span>
+            </div>
+            <div class="kpi-cell-num">@d.ExpedientesCerrados</div>
+            <div class="kpi-cell-sub">de @d.ExpedientesTotal en total</div>
+        </div>
     </div>
 
     <div class="dash-card" style="margin-bottom:16px">
-        <h3>Tickets creados por mes (12 meses)
-            @{ var tt = d.TicketsCreados; var fl = tt.Delta > 0 ? "▲" : tt.Delta < 0 ? "▼" : "▬"; var tc = tt.Delta > 0 ? "#a32d2d" : tt.Delta < 0 ? "#0f6e56" : "#6b7fa3"; }
-            <span style="font-size:13px;color:@tc;font-weight:700;margin-left:6px">@fl @Math.Abs(tt.PorcentajeCambio)% vs mes anterior</span>
+        <h3>
+            Tickets creados por mes (12 meses)
+            @if (hayTicketsEnGrafica)
+            {
+                var tt = d.TicketsCreados;
+                var fl = tt.Delta > 0 ? "▲" : tt.Delta < 0 ? "▼" : "▬";
+                var tc = tt.Delta > 0 ? "#a32d2d" : tt.Delta < 0 ? "#0f6e56" : "#6b7fa3";
+                <span style="font-size:13px;color:@tc;font-weight:700;margin-left:6px">@fl @Math.Abs(tt.PorcentajeCambio)% vs mes anterior</span>
+            }
         </h3>
-        <div style="position:relative;height:200px"><canvas id="chResumen"></canvas></div>
+        @if (hayTicketsEnGrafica)
+        {
+            <div style="position:relative;height:200px"><canvas id="chResumen"></canvas></div>
+        }
+        else
+        {
+            @* Una línea plana en cero con "0% vs mes anterior" se lee como
+               componente roto; mejor decir explícitamente que no hay datos. *@
+            <div class="empty-state">
+                <div class="empty-state-ico"><svg class="ico"><use href="#i-grafica"></use></svg></div>
+                <div class="empty-state-t1">Sin tickets creados en los últimos 12 meses</div>
+                <div class="empty-state-t2">La tendencia aparecerá cuando se registre el primer ticket</div>
+            </div>
+        }
     </div>
 
     <div class="dash-grid">
         <div class="dash-card">
             <h3>Atajos a tableros</h3>
-            <div style="display:flex;flex-direction:column;gap:8px">
-                <a class="btns" asp-page="/Tableros/Tickets" style="justify-content:space-between">Tickets de soporte <span class="bar-val">@d.TicketsTotal</span></a>
-                <a class="btns" asp-page="/Tableros/Expedientes" style="justify-content:space-between">Expedientes de Digitalización - Trámites Nuevos <span class="bar-val">@d.ExpedientesTotal</span></a>
-                <a class="btns" asp-page="/Tableros/Reuniones" style="justify-content:space-between">Reuniones y acuerdos <span class="bar-val">@d.ReunionesTotal</span></a>
-            </div>
-            <p style="font-size:12.5px;color:#6b7fa3;margin-top:1rem">
-                Reuniones este mes: <strong>@d.ReunionesMes</strong> · Expedientes en proceso: <strong>@d.ExpedientesEnProceso</strong>
-            </p>
+            <a class="nav-item" asp-page="/Tableros/Tickets">
+                <span class="nav-item-ico"><svg class="ico"><use href="#i-ticket"></use></svg></span>
+                <span class="nav-item-tx">
+                    <span class="nav-item-t1">Tickets de soporte</span>
+                    <span class="nav-item-t2">@(d.TicketsAbiertos > 0 ? $"{d.TicketsAbiertos} abiertos" : "Sin actividad pendiente")</span>
+                </span>
+                <span class="nav-item-ct">@d.TicketsTotal</span>
+                <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
+            </a>
+            <div class="nav-sep"></div>
+            <a class="nav-item" asp-page="/Tableros/Expedientes">
+                <span class="nav-item-ico"><svg class="ico"><use href="#i-expediente"></use></svg></span>
+                <span class="nav-item-tx">
+                    <span class="nav-item-t1">Expedientes</span>
+                    <span class="nav-item-t2">Digitalización · @d.ExpedientesEnProceso en proceso</span>
+                </span>
+                <span class="nav-item-ct">@d.ExpedientesTotal</span>
+                <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
+            </a>
+            <div class="nav-sep"></div>
+            <a class="nav-item" asp-page="/Tableros/Reuniones">
+                <span class="nav-item-ico"><svg class="ico"><use href="#i-calendario"></use></svg></span>
+                <span class="nav-item-tx">
+                    <span class="nav-item-t1">Reuniones y acuerdos</span>
+                    <span class="nav-item-t2">@d.ReunionesMes este mes</span>
+                </span>
+                <span class="nav-item-ct">@d.ReunionesTotal</span>
+                <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
+            </a>
         </div>
 
         <div class="dash-card">
             <h3>Últimos tickets</h3>
             @if (!d.UltimosTickets.Any())
             {
-                <p style="font-size:13px;color:#6b7fa3">Sin tickets en su alcance.</p>
+                <div class="empty-state">
+                    <div class="empty-state-ico"><svg class="ico"><use href="#i-ticket"></use></svg></div>
+                    <div class="empty-state-t1">No hay tickets en su alcance</div>
+                    <div class="empty-state-t2">Los tickets de sus instituciones aparecerán aquí</div>
+                </div>
             }
             else
             {
@@ -77,6 +219,8 @@
 </div>
 
 @section Scripts {
+@if (hayTicketsEnGrafica)
+{
 <script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>
 <script>
   Chart.defaults.font.family = 'system-ui, sans-serif';
@@ -88,4 +232,5 @@
     options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
   });
 </script>
+}
 }
