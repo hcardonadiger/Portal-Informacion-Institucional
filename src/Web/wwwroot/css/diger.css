@@ -2718,6 +2718,347 @@ a.kpi-cell:hover .kpi-cell-arw {
     margin-top: 3px;
 }
 
+/* ── TABLERO DE TRÁMITES ────────────────────────────────────────── */
+/* Bandas del semáforo. Los hex son los mismos de SemaforoAvance (Application),
+   que es lo que consumen el Excel y la página de Informes. */
+.sem-rojo    { --sem-fondo:#FCEBEB; --sem-texto:#A32D2D; --sem-solido:#E24B4A; }
+.sem-naranja { --sem-fondo:#FAEEDA; --sem-texto:#854F0B; --sem-solido:#EF9F27; }
+.sem-verde   { --sem-fondo:#EAF3DE; --sem-texto:#27500A; --sem-solido:#639922; }
+
+.trm-filtros {
+    display: flex;
+    gap: 18px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.trm-filtros .f {
+    margin: 0;
+}
+
+.trm-filtros label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+    margin-bottom: 5px;
+}
+
+.trm-filtros select {
+    height: 34px;
+    min-width: 240px;
+    padding: 0 10px;
+    border: 1px solid var(--diger-border);
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 13px;
+    background: #fff;
+    color: var(--diger-text);
+}
+
+.trm-bandas {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.trm-banda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--diger-border);
+    border-radius: 9px;
+    background: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    transition: .14s;
+}
+
+.trm-banda:hover {
+    border-color: var(--diger-blue-pale);
+}
+
+.trm-banda.on {
+    background: var(--sem-fondo, var(--diger-blue-light));
+    border-color: var(--sem-solido, var(--diger-blue-mid));
+    color: var(--sem-texto, var(--diger-blue-dark));
+}
+
+.trm-banda-n {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--diger-text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-banda.on .trm-banda-n {
+    color: inherit;
+}
+
+.trm-tabla td {
+    vertical-align: middle;
+}
+
+.trm-inst {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--diger-blue-mid);
+}
+
+.trm-nom {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--diger-text);
+    line-height: 1.35;
+}
+
+.trm-sub {
+    font-size: 11.5px;
+    color: var(--diger-text-muted);
+    margin-top: 1px;
+}
+
+.trm-cod {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--diger-blue-mid);
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-cod:hover {
+    text-decoration: underline;
+}
+
+.trm-nota-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--diger-text-faint);
+    cursor: pointer;
+}
+
+.trm-nota-btn:hover {
+    color: var(--diger-blue-mid);
+    text-decoration: underline;
+}
+
+/* Barra de avance con el color de su banda */
+.trm-avance {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trm-barra {
+    flex: 1;
+    min-width: 40px;
+    height: 6px;
+    border-radius: 99px;
+    background: #eef1f6;
+    overflow: hidden;
+}
+
+.trm-barra > i {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: var(--sem-solido, var(--diger-blue-mid));
+}
+
+.trm-pct {
+    flex-shrink: 0;
+    min-width: 36px;
+    text-align: right;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--sem-texto, var(--diger-blue-dark));
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Modales del tablero ─────────────────────────────────────────── */
+.trm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+}
+
+.trm-modal[hidden] {
+    display: none;
+}
+
+.trm-modal-fondo {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 42, 69, .45);
+}
+
+.trm-modal-caja {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--diger-shadow-md);
+    overflow: hidden;
+}
+
+.trm-modal-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--diger-border);
+}
+
+.trm-modal-kick {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+}
+
+.trm-modal-titulo {
+    margin: 2px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--diger-blue-dark);
+    line-height: 1.3;
+}
+
+.trm-modal-pct {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--sem-texto, var(--diger-blue-dark));
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-modal-x {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: none;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--diger-text-faint);
+    cursor: pointer;
+}
+
+.trm-modal-x:hover {
+    color: var(--diger-text);
+}
+
+.trm-modal-body {
+    padding: 12px 16px 16px;
+    overflow: auto;
+}
+
+.trm-etapa {
+    padding: 9px 0;
+    border-bottom: 1px solid #f2f5f9;
+}
+
+.trm-etapa:last-child {
+    border-bottom: 0;
+}
+
+.trm-etapa-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.trm-etapa-num {
+    flex-shrink: 0;
+    min-width: 26px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    color: var(--diger-text-faint);
+}
+
+.trm-etapa-lbl {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--diger-text);
+}
+
+.trm-etapa-peso {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--diger-text-faint);
+}
+
+.trm-etapa-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 34px;
+}
+
+.trm-notas {
+    margin-top: 1rem;
+    border-top: 1px solid var(--diger-border);
+    padding-top: .6rem;
+}
+
+.trm-nota {
+    padding: 8px 0;
+    border-bottom: 1px solid #f2f5f9;
+}
+
+.trm-nota:last-child {
+    border-bottom: 0;
+}
+
+.trm-nota-meta {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--diger-text-faint);
+}
+
+.trm-nota-txt {
+    font-size: 13px;
+    color: var(--diger-text);
+    line-height: 1.5;
+    margin-top: 2px;
+    white-space: pre-wrap;
+}
+
+.trm-notas-vacio {
+    font-size: 12.5px;
+    color: var(--diger-text-muted);
+    padding: .5rem 0;
+}
+
 /* ── EDITOR DE TEXTO ENRIQUECIDO (RTE) ──────────────────────────── */
 .rte-toolbar {
     display: flex;
@@ -3713,6 +4054,20 @@ a.kpi-cell:hover .kpi-cell-arw {
 
 .seg-etapa.no-aplica {
     opacity: .45;
+}
+
+/* Realce al llegar desde el tablero de trámites con #et-card-{Num}: sin esto,
+   el scroll deja al usuario en medio de una lista de 11 tarjetas iguales. */
+.seg-etapa-destacada {
+    border-color: var(--diger-blue-mid);
+    box-shadow: 0 0 0 3px rgba(20, 85, 164, .16);
+    animation: seg-etapa-pulso 2.4s ease-out;
+}
+
+@keyframes seg-etapa-pulso {
+    0%   { box-shadow: 0 0 0 0 rgba(20, 85, 164, .40); }
+    35%  { box-shadow: 0 0 0 8px rgba(20, 85, 164, .10); }
+    100% { box-shadow: 0 0 0 3px rgba(20, 85, 164, .16); }
 }
 
 .seg-etapa-head {
