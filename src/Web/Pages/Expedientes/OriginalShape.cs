@@ -9,6 +9,9 @@ public sealed class OriginalExpedienteDto
 {
     [JsonPropertyName("_ts")]                public string? Ts { get; set; } // marca de tiempo origen (importación)
     [JsonPropertyName("inst")]               public string? Inst { get; set; }
+    // Bandera de acción del editor (opción "Otra"), no es dato del expediente:
+    // pide dar de alta la institución en el catálogo al guardar. No se mapea a ExpedienteInputDto.
+    [JsonPropertyName("inst_registrar")]     public bool InstRegistrar { get; set; }
     [JsonPropertyName("fecha_apertura")]     public string? FechaApertura { get; set; }
     [JsonPropertyName("analista")]           public string? Analista { get; set; }
     [JsonPropertyName("analista_id")]        public Guid? AnalistaId { get; set; }

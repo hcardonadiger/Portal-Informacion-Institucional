@@ -106,7 +106,7 @@
         <div class="g2">
           <div class="f">
             <label>Institución <span class="star">*</span></label>
-            <select id="inst" onchange="actualizarMeta();generarCodigo()">
+            <select id="inst" onchange="onInstChange()">
               <option value="">— Seleccione —</option>
               <option>BANHPROVI</option><option>CANATURH / IHT</option><option>CNBS</option>
               <option>CONATEL</option><option>CONSUCOOP</option><option>CONVIVIENDA</option>
@@ -115,7 +115,15 @@
               <option>IP</option><option>SAG</option><option>SECAPPH</option>
               <option>SEN</option><option>SERNA</option><option>SGJD</option>
               <option>SIT</option><option>SRECI</option>
+              <option value="__otra__">Otra — escribir manualmente</option>
             </select>
+            <input type="text" id="inst_otra" placeholder="Nombre o sigla de la institución"
+                   oninput="onInstOtraInput()" style="display:none;margin-top:6px">
+            <label id="inst_otra_reg_wrap" style="display:none;align-items:flex-start;gap:7px;margin-top:7px;font-size:12px;font-weight:500;color:var(--diger-text-secondary, #4a5568);cursor:pointer">
+              <input type="checkbox" id="inst_otra_registrar" style="width:15px;height:15px;margin-top:1px;flex-shrink:0">
+              <span>Registrar esta institución en el catálogo</span>
+            </label>
+            <span class="hint" id="inst_otra_hint" style="display:none">Un expediente nuevo necesita la institución en el catálogo. Sin marcar la casilla, el guardado se rechaza.</span>
           </div>
           <div class="f">
             <label>Fecha de apertura <span class="star">*</span></label>
