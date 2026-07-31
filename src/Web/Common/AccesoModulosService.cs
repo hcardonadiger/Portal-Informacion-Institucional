@@ -14,6 +14,21 @@ public sealed class AccesoModulosService(ICurrentUserService currentUser, IAppli
 
     public bool EsAdministrador => currentUser.Rol == "Administrador";
 
+    private bool? _esSoporte;
+
+    /// <summary>¿El usuario actual atiende el chat de soporte? Lo es el Administrador o
+    /// cualquier usuario con al menos un tema asignado (<c>UsuarioTemas</c>). Solo controla
+    /// la visibilidad del enlace del navbar. Se resuelve una vez por request.</summary>
+    public async Task<bool> EsSoporteAsync(CancellationToken ct = default)
+    {
+        if (_esSoporte is bool cache) return cache;
+        if (EsAdministrador) return (_esSoporte = true).Value;
+        var uid = currentUser.UserId;
+        if (uid is null) return (_esSoporte = false).Value;
+        _esSoporte = await ctx.UsuarioTemas.AnyAsync(ut => ut.UsuarioId == uid.Value, ct);
+        return _esSoporte.Value;
+    }
+
     public async Task<bool> PuedeAsync(string modulo, CancellationToken ct = default)
     {
         if (ModulosPortal.EsSoloAdmin(modulo)) return EsAdministrador;
