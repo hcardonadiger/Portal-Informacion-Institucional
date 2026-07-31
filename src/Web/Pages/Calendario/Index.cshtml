@@ -4,11 +4,31 @@
     ViewData["Title"] = "Calendario";
     var meses = new[] { "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
     var dias = new[] { "Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb" };
-    var primer = Model.PrimerDia;
-    var offset = (int)primer.DayOfWeek;            // Domingo = 0
-    var inicioGrid = primer.AddDays(-offset);
-    var totalReuniones = Model.Data.Reuniones.Count;
     var cultEs = System.Globalization.CultureInfo.GetCultureInfo("es");
+
+    var vista = Model.Vista;
+    var desde = Model.Desde;
+    var ultimo = Model.Hasta.AddDays(-1);          // último día incluido
+    var totalReuniones = Model.Data.Reuniones.Count;
+    var porTipo = Model.Data.Actividad.GroupBy(e => e.Tipo).ToDictionary(g => g.Key, g => g.Count());
+
+    // Al cambiar de granularidad se conserva el día si el rango actual lo contiene;
+    // si no, se ancla al inicio del rango. Pasar de "mes" a "día" estando en el mes
+    // corriente debe llevar a hoy, no al día 1.
+    var ancla = Model.Hoy >= Model.Desde && Model.Hoy < Model.Hasta ? Model.Hoy : desde;
+    var anclaIso = ancla.ToString("yyyy-MM-dd");
+
+    // Solo la inicial. Con text-transform:capitalize el CSS también subía la
+    // preposición: "Jueves 30 De Julio".
+    string Cap(string s) => s.Length == 0 ? s : char.ToUpper(s[0], cultEs) + s[1..];
+    string DiaLargo(DateOnly f) => Cap(f.ToString("dddd dd 'de' MMMM", cultEs));
+
+    var alcance = vista switch
+    {
+        VistaCalendario.Dia    => "del día",
+        VistaCalendario.Semana => "de la semana",
+        _                      => "del mes",
+    };
 }
 
 <div class="container" style="max-width:1280px">
@@ -16,78 +36,202 @@
 
     <div class="cal-toolbar">
         <div class="cal-nav">
-            <a class="btns" asp-page="/Calendario/Index" asp-route-anio="@Model.MesAnterior.Year" asp-route-mes="@Model.MesAnterior.Month">◀</a>
-            <h2 class="cal-title">@meses[primer.Month] @primer.Year</h2>
-            <a class="btns" asp-page="/Calendario/Index" asp-route-anio="@Model.MesSiguiente.Year" asp-route-mes="@Model.MesSiguiente.Month">▶</a>
-            <a class="btns" asp-page="/Calendario/Index">Hoy</a>
+            @{
+                var pasoLbl = vista switch
+                {
+                    VistaCalendario.Dia    => "Día",
+                    VistaCalendario.Semana => "Semana",
+                    _                      => "Mes",
+                };
+            }
+            <div class="cal-seg">
+                <a asp-page="/Calendario/Index" asp-route-vista="@vista" asp-route-fecha="@Model.Anterior.ToString("yyyy-MM-dd")"
+                   title="@pasoLbl anterior" aria-label="@pasoLbl anterior"><svg class="ico"><use href="#i-chevron-izq"></use></svg></a>
+                <a asp-page="/Calendario/Index" asp-route-vista="@vista" asp-route-fecha="@Model.Siguiente.ToString("yyyy-MM-dd")"
+                   title="@pasoLbl siguiente" aria-label="@pasoLbl siguiente"><svg class="ico"><use href="#i-chevron"></use></svg></a>
+            </div>
+            <a class="cal-hoy" asp-page="/Calendario/Index" asp-route-vista="@vista">Hoy</a>
+            <h2 class="cal-title">
+                @switch (vista)
+                {
+                    case VistaCalendario.Dia:
+                        @DiaLargo(desde) <text> </text><span>@desde.Year</span>
+                        break;
+                    case VistaCalendario.Semana when desde.Month == ultimo.Month:
+                        @($"{desde.Day} – {ultimo.Day} de {meses[desde.Month].ToLowerInvariant()}") <text> </text><span>@desde.Year</span>
+                        break;
+                    case VistaCalendario.Semana:
+                        @($"{desde.Day} {meses[desde.Month][..3].ToLowerInvariant()} – {ultimo.Day} {meses[ultimo.Month][..3].ToLowerInvariant()}") <text> </text><span>@ultimo.Year</span>
+                        break;
+                    default:
+                        @meses[desde.Month] <text> </text><span>@desde.Year</span>
+                        break;
+                }
+            </h2>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-            <span class="res-meta">@totalReuniones reunión(es) · @Model.Data.Actividad.Count actividad(es)</span>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="cal-vistas">
+                @foreach (var v in Enum.GetValues<VistaCalendario>())
+                {
+                    <a class="cal-vista @(v == vista ? "on" : "")" asp-page="/Calendario/Index"
+                       asp-route-vista="@v" asp-route-fecha="@anclaIso">@(v == VistaCalendario.Dia ? "Día" : v.ToString())</a>
+                }
+            </div>
+            <div class="cal-counts">
+                <span><b>@totalReuniones</b> @(totalReuniones == 1 ? "reunión" : "reuniones")</span>
+                <span><b>@Model.Data.Actividad.Count</b> @(Model.Data.Actividad.Count == 1 ? "actividad" : "actividades")</span>
+            </div>
             @if (Model.PuedeGestionar)
             {
-                <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
+                <a class="btnp" asp-page="/Reuniones/Editor" asp-route-fecha="@anclaIso"><svg class="ico"><use href="#i-mas"></use></svg> Nueva reunión</a>
             }
         </div>
     </div>
 
     <div class="cal-layout">
-        @* ── Calendario ──────────────────────────────────────────── *@
         <div class="cal-cal">
-            <div class="cal-grid cal-head">
-                @foreach (var d in dias) { <div class="cal-dow">@d</div> }
-            </div>
-            <div class="cal-grid cal-body">
-                @for (var i = 0; i < 42; i++)
-                {
-                    var dia = inicioGrid.AddDays(i);
-                    var esMes = dia.Month == primer.Month && dia.Year == primer.Year;
-                    var esHoy = dia == Model.Hoy;
-                    var reus = Model.ReunionesPorDia[dia].ToList();
-                    var acts = Model.ActividadPorDia[dia].ToList();
-                    <div class="cal-cell@(esMes ? "" : " cal-out")@(esHoy ? " cal-today" : "")" onclick="seleccionarDia('@dia.ToString("yyyy-MM-dd")')" style="cursor:pointer">
-                        <div class="cal-cell-top">
-                            <span class="cal-num">@dia.Day</span>
-                            @if (Model.PuedeGestionar && esMes)
-                            {
-                                <a class="cal-add" title="Nueva reunión este día"
-                                   asp-page="/Reuniones/Editor" asp-route-fecha="@dia.ToString("yyyy-MM-dd")">+</a>
-                            }
-                        </div>
-                        @foreach (var r in reus.Take(3))
+            @if (vista == VistaCalendario.Dia)
+            {
+                @* ── Agenda del día ──────────────────────────────────── *@
+                var reusDia = Model.ReunionesPorDia[desde].ToList();
+                var actsDia = Model.ActividadPorDia[desde].ToList();
+                <div class="cal-dia">
+                    <div class="cal-dia-hdr @(desde == Model.Hoy ? "es-hoy" : "")">
+                        <span class="cal-dia-num">@desde.Day</span>
+                        <span class="cal-dia-tx">
+                            <span class="cal-dia-t1">@DiaLargo(desde)</span>
+                            <span class="cal-dia-t2">
+                                @(reusDia.Count == 1 ? "1 reunión" : $"{reusDia.Count} reuniones")
+                                · @(actsDia.Count == 1 ? "1 acción registrada" : $"{actsDia.Count} acciones registradas")
+                            </span>
+                        </span>
+                        @if (Model.PuedeGestionar)
                         {
-                            var destino = Model.PuedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta";
-                            <a class="cal-chip" data-tipo="Reunion" asp-page="@destino" asp-route-id="@r.Id"
-                               title="@(r.Privada ? "Privada · " : "")@(string.IsNullOrWhiteSpace(r.Hora) ? "" : r.Hora + " · ")@r.Titulo@(string.IsNullOrWhiteSpace(r.Institucion) ? "" : " — " + r.Institucion)">
-                                @if (!string.IsNullOrWhiteSpace(r.Hora)) { <b>@r.Hora</b> }
-                                @r.Titulo
+                            <a class="btns btns-sm" asp-page="/Reuniones/Editor" asp-route-fecha="@desde.ToString("yyyy-MM-dd")">
+                                <svg class="ico"><use href="#i-mas"></use></svg> Agendar
                             </a>
                         }
-                        @if (reus.Count > 3)
+                    </div>
+                    <div class="cal-dia-lista">
+                        @if (!reusDia.Any())
                         {
-                            <div class="cal-mas" data-tipo="Reunion">+@(reus.Count - 3) reunión(es)</div>
-                        }
-                        @if (acts.Any())
-                        {
-                            <div class="cal-dots" title="@acts.Count acción(es) en el portal">
-                                @foreach (var e in acts.Take(6))
-                                {
-                                    var ui = CalendarioUi.Evento(e.Tipo);
-                                    <span class="cal-dot" data-tipo="@e.Tipo" style="background:@ui.Color" title="@ui.Etiqueta"></span>
-                                }
-                                @if (acts.Count > 6) { <span class="cal-dot-mas">+@(acts.Count - 6)</span> }
+                            <div class="empty-state">
+                                <div class="empty-state-ico"><svg class="ico"><use href="#i-calendario"></use></svg></div>
+                                <div class="empty-state-t1">Sin reuniones este día</div>
+                                <div class="empty-state-t2">Las acciones del portal siguen listadas a la derecha</div>
                             </div>
                         }
+                        else
+                        {
+                            foreach (var r in reusDia)
+                            {
+                                var destino = Model.PuedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta";
+                                var meta = string.Join(" · ", new[] { r.Institucion, r.Tipo, r.Privada ? "Privada" : null }
+                                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+                                <a class="cal-dia-item @(r.Privada ? "priv" : "")" data-tipo="Reunion"
+                                   asp-page="@destino" asp-route-id="@r.Id">
+                                    <span class="cal-dia-hora">@(string.IsNullOrWhiteSpace(r.Hora) ? "—" : r.Hora)</span>
+                                    <span class="cal-dia-body">
+                                        <span class="cal-dia-titulo">@r.Titulo</span>
+                                        @if (meta.Length > 0)
+                                        {
+                                            <span class="cal-dia-meta">@meta</span>
+                                        }
+                                    </span>
+                                </a>
+                            }
+                        }
                     </div>
+                </div>
+            }
+            else
+            {
+                @* ── Grilla de 7 columnas: una fila en semana, las que haga falta en mes ── *@
+                DateOnly inicioGrid;
+                int celdas;
+                int tope;      // cuántas reuniones se listan antes del "+N más"
+                if (vista == VistaCalendario.Semana)
+                {
+                    inicioGrid = desde;
+                    celdas = 7;
+                    tope = 8;  // la fila ocupa todo el alto: caben muchas más
                 }
-            </div>
+                else
+                {
+                    inicioGrid = desde.AddDays(-(int)desde.DayOfWeek);
+                    // Solo las semanas que el mes necesita: con 42 celdas fijas,
+                    // meses como julio 2026 (34 celdas) arrastraban una fila vacía.
+                    var diasDelMes = DateTime.DaysInMonth(desde.Year, desde.Month);
+                    celdas = (int)Math.Ceiling(((int)desde.DayOfWeek + diasDelMes) / 7.0) * 7;
+                    tope = 3;
+                }
+
+                <div class="cal-grid cal-head">
+                    @foreach (var d in dias) { <div class="cal-dow">@d</div> }
+                </div>
+                <div class="cal-grid cal-body" id="cal-body">
+                    @for (var i = 0; i < celdas; i++)
+                    {
+                        var dia = inicioGrid.AddDays(i);
+                        var enRango = dia >= Model.Desde && dia < Model.Hasta;
+                        var esHoy = dia == Model.Hoy;
+                        var iso = dia.ToString("yyyy-MM-dd");
+                        var reus = Model.ReunionesPorDia[dia].ToList();
+                        var acts = Model.ActividadPorDia[dia].ToList();
+                        @* Solo los días del rango son seleccionables: la consulta no trae
+                           actividad de los días de relleno, así que nunca tendrían qué mostrar. *@
+                        <div class="cal-cell@(enRango ? "" : " cal-out")@(esHoy ? " cal-today" : "")" data-fecha="@(enRango ? iso : null)">
+                            <div class="cal-cell-top">
+                                <span class="cal-num">@dia.Day</span>
+                                @if (Model.PuedeGestionar && enRango)
+                                {
+                                    <a class="cal-add" title="Nueva reunión este día" aria-label="Nueva reunión este día"
+                                       asp-page="/Reuniones/Editor" asp-route-fecha="@iso"><svg class="ico"><use href="#i-mas"></use></svg></a>
+                                }
+                            </div>
+                            @foreach (var r in reus.Take(tope))
+                            {
+                                var destino = Model.PuedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta";
+                                <a class="cal-chip@(r.Privada ? " priv" : "")" data-tipo="Reunion" asp-page="@destino" asp-route-id="@r.Id"
+                                   title="@(r.Privada ? "Privada · " : "")@(string.IsNullOrWhiteSpace(r.Hora) ? "" : r.Hora + " · ")@r.Titulo@(string.IsNullOrWhiteSpace(r.Institucion) ? "" : " — " + r.Institucion)">
+                                    @if (!string.IsNullOrWhiteSpace(r.Hora)) { <time>@r.Hora</time> }
+                                    @r.Titulo
+                                </a>
+                            }
+                            @if (reus.Count > tope)
+                            {
+                                <button type="button" class="cal-mas" data-tipo="Reunion">+@(reus.Count - tope) más</button>
+                            }
+                            @if (acts.Any())
+                            {
+                                var resumen = string.Join(", ", acts.GroupBy(a => a.Tipo)
+                                    .Select(g => $"{g.Count()} {CalendarioUi.Evento(g.Key).Etiqueta.ToLowerInvariant()}"));
+                                <div class="cal-act" title="@acts.Count acción(es): @resumen">
+                                    <span class="cal-act-bar">
+                                        @* flex-grow entero en vez de width en %: evita el separador decimal
+                                           de la cultura y renormaliza solo al filtrar un tipo. *@
+                                        @foreach (var g in acts.GroupBy(a => a.Tipo).OrderBy(g => g.Key))
+                                        {
+                                            <i data-tipo="@g.Key" data-n="@g.Count()" style="flex:@g.Count();background:@CalendarioUi.Evento(g.Key).Color"></i>
+                                        }
+                                    </span>
+                                    <span class="cal-act-n">@acts.Count</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
 
             <div class="cal-legend">
-                <span class="res-meta" style="font-size:12px;align-self:center">Mostrar:</span>
+                <span class="cal-legend-lbl">Mostrar</span>
                 @foreach (var t in Enum.GetValues<TipoEventoCalendario>())
                 {
                     var ui = CalendarioUi.Evento(t);
                     <button type="button" class="cal-filtro on" data-filtro="@t" onclick="toggleFiltro(this)">
-                        <span class="cal-dot" style="background:@ui.Color"></span> @ui.Etiqueta
+                        <span class="cal-dot" style="background:@ui.Color"></span>
+                        @ui.Etiqueta
+                        <span class="cal-filtro-n">@porTipo.GetValueOrDefault(t)</span>
                     </button>
                 }
             </div>
@@ -95,13 +239,17 @@
 
         @* ── Feed de actividad ───────────────────────────────────── *@
         <div class="cal-feed">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 style="margin:0" id="feed-title">Actividad del mes</h3>
-                <button type="button" class="btns" id="btn-ver-todo" style="display:none;font-size:12px;padding:4px 8px" onclick="verTodoElMes()">Ver todo el mes</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:1rem">
+                <h3 style="margin:0" id="feed-title" data-defecto="Actividad @alcance">Actividad @alcance</h3>
+                <button type="button" class="btns btns-sm" id="btn-ver-todo" style="display:none" onclick="verTodoElRango()">Ver todo</button>
             </div>
             @if (!Model.Data.Actividad.Any())
             {
-                <p class="res-meta" style="padding:.5rem 0">Sin acciones registradas en el portal este mes.</p>
+                <div class="empty-state">
+                    <div class="empty-state-ico"><svg class="ico"><use href="#i-calendario"></use></svg></div>
+                    <div class="empty-state-t1">Sin acciones registradas</div>
+                    <div class="empty-state-t2">Las reuniones, tickets y expedientes del período aparecerán aquí</div>
+                </div>
             }
             else
             {
@@ -111,11 +259,11 @@
                     if (ultimoDia != e.Fecha)
                     {
                         ultimoDia = e.Fecha;
-                        <div class="cal-feed-day" data-fecha="@e.Fecha.ToString("yyyy-MM-dd")">@e.Fecha.ToString("dddd dd 'de' MMMM", cultEs)</div>
+                        <div class="cal-feed-day" data-fecha="@e.Fecha.ToString("yyyy-MM-dd")">@DiaLargo(e.Fecha)</div>
                     }
                     var ui = CalendarioUi.Evento(e.Tipo);
                     <a class="cal-ev" data-tipo="@e.Tipo" data-fecha="@e.Fecha.ToString("yyyy-MM-dd")" asp-page="@e.Pagina" asp-route-id="@e.RefId">
-                        <span class="cal-ev-ico" style="background:@(ui.Color)1a;color:@ui.Color">@ui.Icono</span>
+                        <span class="cal-ev-ico" style="background:@ui.Fondo;color:@ui.Texto"><svg class="ico"><use href="#@ui.IconoId"></use></svg></span>
                         <span class="cal-ev-body">
                             <span class="cal-ev-top">
                                 <b>@ui.Etiqueta</b>
@@ -141,25 +289,43 @@
   function ocultos(){ try { return new Set(JSON.parse(localStorage.getItem(CAL_KEY) || '[]')); } catch (e) { return new Set(); } }
 
   var diaSeleccionado = null;
+  var tituloFeed = document.getElementById('feed-title');
+  var btnVerTodo = document.getElementById('btn-ver-todo');
+
+  // En la vista de día no hay grilla: el feed ya viene acotado a ese día.
+  var grilla = document.getElementById('cal-body');
+  if (grilla) {
+    // Un solo listener delegado. Los <a> (chips y el "+" de nueva reunión)
+    // navegan; cualquier otro punto de la celda selecciona el día.
+    grilla.addEventListener('click', function(ev){
+      if (ev.target.closest('a')) return;
+      var celda = ev.target.closest('.cal-cell');
+      if (celda && celda.dataset.fecha) seleccionarDia(celda.dataset.fecha);
+    });
+  }
 
   function seleccionarDia(fecha) {
-    diaSeleccionado = fecha;
+    diaSeleccionado = (diaSeleccionado === fecha) ? null : fecha;
     document.querySelectorAll('.cal-cell').forEach(function(c) {
-      if (c.getAttribute('onclick').includes(fecha)) c.style.background = '#eef3fc';
-      else c.style.background = '';
+      c.classList.toggle('cal-sel', c.dataset.fecha === diaSeleccionado);
     });
-    var d = new Date(fecha + 'T12:00:00');
-    var opciones = { weekday: 'long', day: 'numeric', month: 'long' };
-    document.getElementById('feed-title').textContent = 'Actividad del ' + d.toLocaleDateString('es-ES', opciones);
-    document.getElementById('btn-ver-todo').style.display = '';
+    if (diaSeleccionado) {
+      var d = new Date(fecha + 'T12:00:00');
+      var opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+      tituloFeed.textContent = 'Actividad del ' + d.toLocaleDateString('es-ES', opciones);
+      btnVerTodo.style.display = '';
+    } else {
+      tituloFeed.textContent = tituloFeed.dataset.defecto;
+      btnVerTodo.style.display = 'none';
+    }
     aplicarFiltros();
   }
 
-  function verTodoElMes() {
+  function verTodoElRango() {
     diaSeleccionado = null;
-    document.querySelectorAll('.cal-cell').forEach(function(c) { c.style.background = ''; });
-    document.getElementById('feed-title').textContent = 'Actividad del mes';
-    document.getElementById('btn-ver-todo').style.display = 'none';
+    document.querySelectorAll('.cal-cell').forEach(function(c) { c.classList.remove('cal-sel'); });
+    tituloFeed.textContent = tituloFeed.dataset.defecto;
+    btnVerTodo.style.display = 'none';
     aplicarFiltros();
   }
 
@@ -167,13 +333,22 @@
     var off = ocultos();
     document.querySelectorAll('[data-tipo]').forEach(function(el){
       var esDelDia = !diaSeleccionado || el.getAttribute('data-fecha') === diaSeleccionado;
-      // Para los chips del calendario (.cal-chip, .cal-mas, .cal-dot) data-fecha no existe, asi que siempre es true
+      // Los chips y segmentos de la grilla no llevan data-fecha: el día ya lo da su celda.
       if (!el.hasAttribute('data-fecha')) esDelDia = true;
       el.style.display = (off.has(el.getAttribute('data-tipo')) || !esDelDia) ? 'none' : '';
     });
     document.querySelectorAll('.cal-filtro').forEach(function(b){
       var on = !off.has(b.getAttribute('data-filtro'));
       b.classList.toggle('on', on); b.classList.toggle('off', !on);
+    });
+    // El conteo de la barra debe reflejar solo los tipos visibles.
+    document.querySelectorAll('.cal-act').forEach(function(barra){
+      var n = 0;
+      barra.querySelectorAll('.cal-act-bar > i').forEach(function(seg){
+        if (seg.style.display !== 'none') n += parseInt(seg.dataset.n, 10) || 0;
+      });
+      barra.querySelector('.cal-act-n').textContent = n;
+      barra.style.display = n ? '' : 'none';
     });
     // Oculta encabezados de día del feed que quedaron sin eventos visibles o si no corresponden al día
     document.querySelectorAll('.cal-feed-day').forEach(function(h){

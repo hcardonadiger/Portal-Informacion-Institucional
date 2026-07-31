@@ -446,9 +446,62 @@ function actualizarEncTramite(){
   }
 }
 
+// ── INSTITUCIÓN ─────────────────────────────────────────────
+// El catálogo del <select> no cubre todos los casos. Con "Otra" se escribe el
+// nombre a mano y ese texto pasa a ser la institución del expediente a todos
+// los efectos: meta, código, códigos de trámite, contactos y guardado.
+// Todo lo que necesite la institución debe usar institucionActual(), no gv('inst').
+var INST_OTRA = '__otra__';
+
+function instEsOtra(){
+  var s = document.getElementById('inst');
+  return !!s && s.value === INST_OTRA;
+}
+
+function institucionActual(){
+  return instEsOtra() ? gv('inst_otra') : gv('inst');
+}
+
+function toggleInstOtra(){
+  var otra = instEsOtra();
+  var inp = document.getElementById('inst_otra');
+  var hint = document.getElementById('inst_otra_hint');
+  var reg = document.getElementById('inst_otra_reg_wrap');
+  if(inp) inp.style.display = otra ? '' : 'none';
+  if(hint) hint.style.display = otra ? '' : 'none';
+  // La casilla de alta en el catálogo sólo aplica a expedientes nuevos: al editar
+  // uno existente el servidor no toca la institución.
+  var esNuevo = !(window.__EXPMETA__ && __EXPMETA__.id);
+  if(reg) reg.style.display = (otra && esNuevo) ? 'flex' : 'none';
+}
+
+function onInstChange(){
+  // Al salir de "Otra" se descarta el texto: si no, quedaría un nombre huérfano
+  // que reaparecería al volver a elegir la opción.
+  if(!instEsOtra()){
+    sv('inst_otra', '');
+    var reg = document.getElementById('inst_otra_registrar');
+    if(reg) reg.checked = false;
+  }
+  toggleInstOtra();
+  if(instEsOtra()){
+    var inp = document.getElementById('inst_otra');
+    if(inp && !inp.disabled) inp.focus();
+    actualizarMeta();   // todavía no hay nombre escrito
+    return;
+  }
+  actualizarMeta();
+  generarCodigo();
+}
+
+function onInstOtraInput(){
+  actualizarMeta();
+  generarCodigo();   // encadena códigos de trámite y contactos
+}
+
 // ── META SIDEBAR ────────────────────────────────────────────
 function actualizarMeta(){
-  var inst = gv('inst') || '—';
+  var inst = institucionActual() || '—';
   var cod = gv('codigo_exp') || '—';
   var analista = gv('analista') || '—';
   var fecha = gv('fecha_apertura') || '—';
@@ -472,7 +525,7 @@ function actualizarMeta(){
 
 // ── CÓDIGO AUTOMÁTICO ───────────────────────────────────────
 function generarCodigo(){
-  var inst = gv('inst');
+  var inst = institucionActual();
   if(!inst) return;
   var cod = document.getElementById('codigo_exp');
   if(cod.value && cod.dataset.manual) return;
@@ -513,7 +566,7 @@ function cargarContactosAsistencias(){
 async function filtrarContactosPorInstitucion(){
   var sel = document.getElementById('contacto-buscar');
   if(!sel) return;
-  var inst = gv('inst');
+  var inst = institucionActual();
   var meta = window.__EXPMETA__ || {};
   sel.innerHTML = '<option value="">— Seleccionar enlace del directorio —</option>';
   _contactosAsis = [];
@@ -662,7 +715,7 @@ function getTramNombres(){
 }
 
 function getTramCodigos(){
-  var inst = gv('inst');
+  var inst = institucionActual();
   var prod = parseInt(gv('num_tramites_prod'))||0;
   var codes = [];
   for(var i=0; i<tramiteCount; i++) codes.push(inst ? (inst + '-' + String(prod+i+1).padStart(2,'0')) : '');
@@ -1290,6 +1343,10 @@ function recolectar(){
   // Apertura
   ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
    'contacto_correo','contacto_tel'].forEach(function(id){ d[id]=gv(id); });
+  // Con "Otra" el <select> vale '__otra__': lo que se guarda es el texto escrito.
+  d.inst = institucionActual();
+  var regChk = document.getElementById('inst_otra_registrar');
+  d.inst_registrar = !!(instEsOtra() && regChk && regChk.checked);
   // Vincular al usuario del sistema por nombre (null si es texto legado)
   var uAna = ((window.__EXPMETA__ && __EXPMETA__.usuarios) || [])
     .filter(function(u){ return u.nombre === d.analista; })[0];
@@ -1394,7 +1451,15 @@ function tblData(tbodyId, cols){
 
 async function guardar(){
   var meta = window.__EXPMETA__ || {};
-  if(!gv('inst')){ mostrarToast('Seleccione la institución'); ir(0); return; }
+  // institucionActual(), no gv('inst'): con "Otra" el <select> vale '__otra__',
+  // que es truthy, y dejaría pasar el guardado con el nombre en blanco.
+  if(!institucionActual()){
+    mostrarToast(instEsOtra() ? 'Escriba el nombre de la institución' : 'Seleccione la institución');
+    ir(0);
+    var inp = document.getElementById('inst_otra');
+    if(instEsOtra() && inp) inp.focus();
+    return;
+  }
   if(!gv('analista')){ mostrarToast('Indique el analista responsable'); ir(0); return; }
   var btn = document.querySelector('.btn-save-float');
   if(btn){ btn.disabled=true; btn.textContent='Guardando…'; }
@@ -1543,6 +1608,15 @@ function poblarFormulario(d){
   // Apertura
   ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
    'contacto_correo','contacto_tel'].forEach(function(id){ sv(id, d[id]||''); });
+  // Si la institución guardada no está en el catálogo, el <select> queda vacío tras
+  // el sv() anterior. Ese es el caso de "Otra" (y el de expedientes importados con
+  // el nombre en texto libre): se reabre en modo manual para no perder el dato.
+  var selInst = document.getElementById('inst');
+  if(selInst && d.inst && selInst.value !== d.inst){
+    selInst.value = INST_OTRA;
+    sv('inst_otra', d.inst);
+  }
+  toggleInstOtra();
   // Analista legado (texto sin usuario del sistema): agregar opción ad-hoc para no perderlo
   var selAna = document.getElementById('analista');
   if(selAna && d.analista && selAna.value !== d.analista){
@@ -1736,6 +1810,7 @@ function nuevoExp(){
   document.querySelectorAll('[id^="est-"]').forEach(function(el){ el.value='Pendiente'; });
   ['legal-tbody','docs-tbody','docint-tbody'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
   sv('num_tramites_prod','0');
+  toggleInstOtra();        // el bucle de arriba vació los valores, no el estado visual
   actualizarNumTramites(); // construye la fila del trámite 1 dinámicamente
   var cbs = document.getElementById('contacto-buscar');
   if(cbs) cbs.value = '';
