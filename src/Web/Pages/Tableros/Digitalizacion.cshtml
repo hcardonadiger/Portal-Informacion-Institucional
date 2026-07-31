@@ -11,7 +11,10 @@
 <div class="container" style="max-width:1200px">
     <div class="hist-header">
         <div><h2>Tablero de Digitalización</h2><p>Seguimiento gerencial del avance de digitalización de trámites</p></div>
-        <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
+        <div class="btns-group">
+            <a class="btns btns-primary" asp-page-handler="Excel" asp-route-institucionId="@Model.InstitucionId">⬇ Descargar Excel</a>
+            <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
+        </div>
     </div>
 
     <form method="get" class="seg-filters">
@@ -94,33 +97,6 @@
             <div style="position:relative;height:360px"><canvas id="chEtapas"></canvas></div>
         </div>
     </div>
-
-    @* ── Carga por analista ────────────────────────────────────── *@
-    @if (d.PorAnalista.Any())
-    {
-        <div class="dash-grid" style="grid-template-columns:1fr">
-            <div class="dash-card">
-                <h3>Carga y avance por analista</h3>
-                <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
-                @foreach (var a in d.PorAnalista)
-                {
-                    var pct = (int)Math.Round(a.AvancePromedio * 100);
-                    var barColor = pct >= 100 ? "#2f7d32" : pct >= 50 ? "#1455a4" : pct >= 25 ? "#ef9f27" : "#888780";
-                    <div class="digi-inst-row">
-                        <span class="digi-inst-name">@a.Analista</span>
-                        <div class="digi-inst-bar-wrap">
-                            <div class="bar-track">
-                                <div class="bar-fill" style="width:@(Math.Max(pct, 1))%;background:@barColor"></div>
-                            </div>
-                        </div>
-                        <span class="digi-inst-pct" style="color:@barColor">@pct%</span>
-                        <span class="digi-inst-meta">@a.Completados/@a.TotalTramites</span>
-                    </div>
-                }
-                </div>
-            </div>
-        </div>
-    }
 
     @* ── Tabla de trámites rezagados ──────────────────────────── *@
     <div class="dash-grid" style="grid-template-columns:1fr">

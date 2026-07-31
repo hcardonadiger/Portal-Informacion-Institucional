@@ -70,6 +70,7 @@
         var puedeReuniones   = await Acceso.PuedeAsync(ModulosPortal.Reuniones);
         var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
         var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
+        var puedeSoporte     = await Acceso.EsSoporteAsync();   // atiende el chat de soporte
 
         var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
         List<AsignacionAuthDto>? asignaciones = null;
@@ -154,15 +155,19 @@
                                 </div>
                             </div>
                         }
-                        @if (puedeTickets || puedeContactos)
+                        @if (puedeTickets || puedeContactos || puedeSoporte)
                         {
-                            var grpTram = EsRuta("/Tickets") || EsRuta("/Contactos");
+                            var grpTram = EsRuta("/Tickets") || EsRuta("/Contactos") || EsRuta("/Chat");
                             <div class="nav-group @(grpTram ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Trámites<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
                                     @if (puedeTickets)
                                     {
                                         <a class="nav-item @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index">Tickets</a>
+                                    }
+                                    @if (puedeSoporte)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Chat") ? "on" : "")" asp-page="/Chat/Index">Chat de Soporte</a>
                                     }
                                     @if (puedeContactos)
                                     {

@@ -270,7 +270,7 @@
             </table>
             @if (!p.Metas.Any())
             {
-                <div class="text-center text-muted py-4">
+                <div class="text-center text-muted py-4" id="empty-metas-msg">
                     @if (Model.PuedeEditar)
                     {
                         <span>Sin trámites planificados — haz clic en <strong>+ Agregar trámite</strong> para comenzar.</span>
@@ -310,6 +310,21 @@
     .exp-result:hover { border-color: var(--diger-blue, #1a56c4); background: #f5f8ff; }
     .exp-result .exp-cod { font-weight: 700; font-size: 13px; }
     .exp-result .exp-meta { font-size: 11.5px; color: var(--diger-text-muted, #6b7fa3); }
+    /* Multi-selección de trámites (checkbox list) */
+    .tram-check-all {
+        display: flex; align-items: center; gap: 8px; cursor: pointer;
+        font-size: 12px; font-weight: 700; color: var(--diger-text-muted, #6b7fa3);
+        margin: 2px 2px 10px;
+    }
+    .tram-check-row {
+        display: flex; align-items: flex-start; gap: 9px; width: 100%; text-align: left;
+        background: #fff; cursor: pointer; border: 1px solid var(--diger-border);
+        border-radius: 10px; padding: 8px 12px; margin-bottom: 7px;
+    }
+    .tram-check-row:hover { border-color: var(--diger-blue, #1a56c4); background: #f5f8ff; }
+    .tram-check-row input { margin-top: 3px; flex: 0 0 auto; }
+    .tram-check-row .tc-nombre { font-weight: 600; font-size: 13px; }
+    .tram-check-row .tc-meta   { font-size: 11.5px; color: var(--diger-text-muted, #6b7fa3); }
 </style>
 
 <!-- Modal picker de expediente -->
@@ -328,6 +343,10 @@
         </div>
         <div id="exp-picker-results" style="padding:0 20px 16px;max-height:340px;overflow-y:auto">
             <p class="text-muted" style="font-size:.85em;margin:8px 0">Escribe para buscar, o espera los más recientes.</p>
+        </div>
+        <div id="exp-picker-footer" style="display:none;justify-content:space-between;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--diger-border)">
+            <span class="text-muted" style="font-size:.82em" id="exp-sel-info">0 seleccionados</span>
+            <button type="button" class="btns btns-primary" id="exp-listo-btn" onclick="agregarSeleccionados()">Listo</button>
         </div>
     </div>
 </div>
@@ -350,13 +369,11 @@ async function postJson(handler, body) {
     return r.json();
 }
 
-async function guardarMeta(btn) {
-    const row    = btn.closest('.meta-row');
+// Persiste una fila (crea o actualiza su meta). Devuelve la respuesta del servidor.
+async function guardarMetaRow(row) {
     const metaId = row.dataset.metaId ? parseInt(row.dataset.metaId) : null;
     const nombre = row.querySelector('.f-nombre').value.trim();
-    if (!nombre) { alert('El nombre del trámite es requerido.'); return; }
-
-    btn.disabled = true; btn.textContent = '...';
+    if (!nombre) return { ok: false, error: 'El nombre del trámite es requerido.' };
 
     const expIdRaw  = row.querySelector('.f-expid')?.value;
     const traIdxRaw = row.querySelector('.f-tramiteidx')?.value;
@@ -372,10 +389,19 @@ async function guardarMeta(btn) {
         expedienteId:        expIdRaw ? parseInt(expIdRaw) : null,
         expedienteTramiteIndex: traIdxRaw !== '' && traIdxRaw != null ? parseInt(traIdxRaw) : null
     });
+    if (data.ok) row.dataset.metaId = data.metaId;
+    return data;
+}
 
+async function guardarMeta(btn) {
+    const row = btn.closest('.meta-row');
+    if (!row.querySelector('.f-nombre').value.trim()) { alert('El nombre del trámite es requerido.'); return; }
+
+    btn.disabled = true; btn.textContent = '...';
+    const data = await guardarMetaRow(row);
     btn.disabled = false;
+
     if (data.ok) {
-        row.dataset.metaId = data.metaId;
         btn.textContent = '✓ Guardado';
         const estado = parseInt(row.querySelector('.f-estado').value);
         row.classList.toggle('table-success', estado === 3);
@@ -411,7 +437,8 @@ async function guardarObs() {
     await postJson('ActualizarObs', { observaciones: obs });
 }
 
-function agregarFila() {
+function crearFilaMeta() {
+    document.getElementById('empty-metas-msg')?.style.setProperty('display', 'none');
     const tbody = document.getElementById('metas-tbody');
     const orden = tbody.querySelectorAll('.meta-row').length + 1;
     const estados = [
@@ -447,6 +474,11 @@ function agregarFila() {
             </div>
         </td>`;
     tbody.appendChild(row);
+    return row;
+}
+
+function agregarFila() {
+    const row = crearFilaMeta();
     row.querySelector('.f-nombre').focus();
     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -461,6 +493,7 @@ const EXP_ESTADOS = {
 };
 
 let _pickerRow = null;
+let _pickerExpActual = null;   // { id, codigo } del expediente abierto en el paso 2
 let _buscaTimer = null;
 
 function abrirPickerExp(btn) {
@@ -477,12 +510,16 @@ function abrirPickerExp(btn) {
 function modoPickerExpedientes() {
     document.getElementById('exp-picker-title').textContent = 'Seleccionar expediente';
     document.getElementById('exp-picker-search-box').style.display = '';
+    document.getElementById('exp-picker-footer').style.display = 'none';
+    _pickerExpActual = null;
 }
 
 function cerrarPickerExp(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById('modal-exp-picker').classList.remove('open');
+    document.getElementById('exp-picker-footer').style.display = 'none';
     _pickerRow = null;
+    _pickerExpActual = null;
 }
 
 function buscarExpedientesModal(inp) {
@@ -543,6 +580,7 @@ async function elegirExp(id, codigo) {
     // Sin trámites registrados: vincular directo al expediente completo
     if (!tramites.length) { vincular(id, codigo, null, null); return; }
 
+    _pickerExpActual = { id, codigo };
     cont.innerHTML = '';
 
     const back = document.createElement('button');
@@ -553,33 +591,129 @@ async function elegirExp(id, codigo) {
     back.onclick = () => { modoPickerExpedientes(); consultarExpedientes(document.getElementById('exp-picker-search').value.trim()); };
     cont.appendChild(back);
 
+    // Opción para vincular el expediente completo a la fila de origen (acción individual)
     const todo = document.createElement('button');
     todo.type = 'button';
     todo.className = 'exp-result';
     todo.innerHTML = `<span><span class="exp-cod">Todo el expediente</span><br/>
-        <span class="exp-meta">Sin trámite específico</span></span>`;
+        <span class="exp-meta">Vincular el expediente completo a la fila actual</span></span>`;
     todo.onclick = () => vincular(id, codigo, null, null);
     cont.appendChild(todo);
 
+    // Marcar todos
+    const allLbl = document.createElement('label');
+    allLbl.className = 'tram-check-all';
+    const allChk = document.createElement('input');
+    allChk.type = 'checkbox';
+    allChk.id = 'tram-check-all';
+    allChk.onchange = () => {
+        cont.querySelectorAll('.tram-check').forEach(c => { c.checked = allChk.checked; });
+        actualizarSeleccionTramites();
+    };
+    const allTxt = document.createElement('span');
+    allTxt.textContent = 'Marcar todos los trámites';
+    allLbl.appendChild(allChk);
+    allLbl.appendChild(allTxt);
+    cont.appendChild(allLbl);
+
+    // Lista de trámites con checkbox (multi-selección)
     tramites.forEach(t => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'exp-result';
-        b.innerHTML = `<span><span class="exp-cod"></span><br/><span class="exp-meta"></span></span>`;
-        b.querySelector('.exp-cod').textContent  = t.nombre;
-        b.querySelector('.exp-meta').textContent = t.areaResponsable ? `Área: ${t.areaResponsable}` : `Trámite ${t.tramiteIndex + 1}`;
-        b.onclick = () => vincular(id, codigo, t.tramiteIndex, t.nombre);
-        cont.appendChild(b);
+        const lbl = document.createElement('label');
+        lbl.className = 'tram-check-row';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.className = 'tram-check';
+        chk.dataset.idx = t.tramiteIndex;
+        chk.dataset.nombre = t.nombre;
+        chk.onchange = actualizarSeleccionTramites;
+        const info = document.createElement('span');
+        const nom = document.createElement('span');
+        nom.className = 'tc-nombre';
+        nom.textContent = t.nombre;
+        const meta = document.createElement('span');
+        meta.className = 'tc-meta';
+        meta.textContent = t.areaResponsable ? ` · Área: ${t.areaResponsable}` : ` · Trámite ${t.tramiteIndex + 1}`;
+        info.appendChild(nom);
+        info.appendChild(document.createElement('br'));
+        info.appendChild(meta);
+        lbl.appendChild(chk);
+        lbl.appendChild(info);
+        cont.appendChild(lbl);
     });
+
+    document.getElementById('exp-picker-footer').style.display = 'flex';
+    actualizarSeleccionTramites();
 }
 
-function vincular(expId, codigo, tramiteIdx, tramiteNombre) {
-    if (!_pickerRow) return;
-    _pickerRow.querySelector('.f-expid').value      = expId;
-    _pickerRow.querySelector('.f-tramiteidx').value = tramiteIdx ?? '';
+function actualizarSeleccionTramites() {
+    const cont  = document.getElementById('exp-picker-results');
+    const total = cont.querySelectorAll('.tram-check').length;
+    const n     = cont.querySelectorAll('.tram-check:checked').length;
+    const all   = document.getElementById('tram-check-all');
+    if (all) all.checked = n > 0 && n === total;
+    document.getElementById('exp-sel-info').textContent =
+        n === 0 ? 'Ninguno seleccionado' : `${n} de ${total} seleccionado${n === 1 ? '' : 's'}`;
+    const listo = document.getElementById('exp-listo-btn');
+    listo.disabled = n === 0;
+    listo.textContent = n === 0 ? 'Listo' : `Listo (${n})`;
+}
+
+// Vuelca los trámites marcados como filas del plan (crea las que falten) y las guarda.
+async function agregarSeleccionados() {
+    if (!_pickerExpActual) return;
+    const { id: expId, codigo } = _pickerExpActual;
+
+    const cont   = document.getElementById('exp-picker-results');
+    const checks = [...cont.querySelectorAll('.tram-check:checked')];
+    if (!checks.length) { alert('Marca al menos un trámite para jalar.'); return; }
+
+    const seleccion = checks.map(chk => ({
+        idx:    chk.dataset.idx === '' ? null : parseInt(chk.dataset.idx),
+        nombre: chk.dataset.nombre
+    }));
+
+    // Reutiliza la fila desde la que se abrió el picker solo si está vacía (sin nombre)
+    let filaOrigen = _pickerRow;
+    if (filaOrigen && filaOrigen.querySelector('.f-nombre').value.trim()) filaOrigen = null;
+
+    cerrarPickerExp();
+
+    const filas = seleccion.map((s, i) => {
+        const row = (i === 0 && filaOrigen) ? filaOrigen : crearFilaMeta();
+        row.querySelector('.f-nombre').value = s.nombre;
+        aplicarExpLink(row, expId, codigo, s.idx, s.nombre);
+        return row;
+    });
+    actualizarOrdenes();
+    filas[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Auto-guardar cada fila creada
+    let ok = 0, fail = 0;
+    for (const row of filas) {
+        const btnGuardar = row.querySelector('.btns-group .btns-primary');
+        if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.textContent = '...'; }
+        const res = await guardarMetaRow(row);
+        if (btnGuardar) btnGuardar.disabled = false;
+        if (res.ok) {
+            ok++;
+            row.classList.add('table-success');
+            if (btnGuardar) { btnGuardar.textContent = '✓ Guardado'; setTimeout(() => btnGuardar.textContent = 'Guardar', 2500); }
+        } else {
+            fail++;
+            row.classList.add('table-danger');
+            if (btnGuardar) btnGuardar.textContent = 'Guardar';
+        }
+    }
+    if (fail) alert(`Se agregaron ${ok} trámite(s). ${fail} no se pudieron guardar; revísalos y usa "Guardar".`);
+}
+
+// Vincula un expediente/trámite a una fila concreta (sin cerrar el modal).
+function aplicarExpLink(row, expId, codigo, tramiteIdx, tramiteNombre) {
+    row.querySelector('.f-expid').value      = expId;
+    row.querySelector('.f-tramiteidx').value = tramiteIdx ?? '';
 
     const texto = tramiteNombre ? `${codigo} · ${tramiteNombre}` : codigo;
-    const chip  = _pickerRow.querySelector('.f-exp-chip');
+    const chip  = row.querySelector('.f-exp-chip');
     chip.innerHTML = '';
     chip.title = texto;
     const span = document.createElement('span');
@@ -593,10 +727,14 @@ function vincular(expId, codigo, tramiteIdx, tramiteNombre) {
     chip.appendChild(x);
     chip.style.display = '';
 
-    const btn = _pickerRow.querySelector('.f-exp-btn');
+    const btn = row.querySelector('.f-exp-btn');
     btn.textContent = 'Cambiar';
     btn.classList.remove('btns-primary');
+}
 
+function vincular(expId, codigo, tramiteIdx, tramiteNombre) {
+    if (!_pickerRow) return;
+    aplicarExpLink(_pickerRow, expId, codigo, tramiteIdx, tramiteNombre);
     cerrarPickerExp();
 }
 
