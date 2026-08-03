@@ -1,0 +1,293 @@
+@page
+@using System.Text.Json
+@using Diger.TramitesEstado.Application.Dashboards.Queries.GetTramitesSeguimiento
+@model Diger.TramitesEstado.Web.Pages.Tableros.TramitesModel
+@{
+    ViewData["Title"] = "Tablero de trámites";
+    var d = Model.Data;
+
+    string BandaCls(BandaAvance b) => b switch
+    {
+        BandaAvance.Avanzado  => "sem-verde",
+        BandaAvance.EnProceso => "sem-naranja",
+        _                     => "sem-rojo",
+    };
+    string EstadoLbl(EstadoExpediente e) => e switch
+    {
+        EstadoExpediente.EnExploracion   => "En exploración",
+        EstadoExpediente.EnLevantamiento => "En levantamiento",
+        EstadoExpediente.EnModelado      => "En modelado",
+        EstadoExpediente.EnValidacion    => "En validación",
+        EstadoExpediente.Cerrado         => "Cerrado",
+        _                                => e.ToString(),
+    };
+
+    // El modal se arma en el cliente desde este arreglo: una entrada por fila,
+    // con sus etapas ya calculadas en el servidor.
+    var datosModal = d.Tramites.Select(t => new
+    {
+        k = $"{t.ExpedienteId}-{t.TramiteIndex}",
+        exp = t.ExpedienteId,
+        tram = t.TramiteIndex,
+        cod = t.Codigo,
+        inst = t.Institucion,
+        nom = t.NombreTramite,
+        pct = t.AvancePct,
+        banda = BandaCls(t.Banda),
+        etapas = t.Etapas.Select(e => new { e.Num, e.Label, peso = e.PesoPct, pct = e.AvancePct, banda = BandaCls(e.Banda) })
+    });
+}
+
+<div class="container" style="max-width:1280px">
+    <partial name="_SuccessBanner" />
+
+    <div class="hist-header">
+        <div>
+            <h2>Tablero de trámites</h2>
+            <p>Avance de seguimiento por trámite — su alcance</p>
+        </div>
+    </div>
+
+    @* ── Filtros ─────────────────────────────────────────────────── *@
+    <form method="get" class="dash-card trm-filtros">
+        <div class="f">
+            <label>Institución</label>
+            <select name="institucion" onchange="this.form.submit()">
+                <option value="">Todas las instituciones</option>
+                @foreach (var i in Model.Instituciones)
+                {
+                    <option value="@i.Id" selected="@(i.Id == Model.InstitucionId)">@i.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="f">
+            <label>Banda del semáforo</label>
+            <div class="trm-bandas">
+                @{
+                    var bandas = new (BandaAvance? V, string Txt, string Cls, int N)[]
+                    {
+                        (null, "Todas", "", d.Total),
+                        (BandaAvance.Rezagado,  SemaforoAvance.EtiquetaCorta(BandaAvance.Rezagado),  "sem-rojo",    d.Rezagados),
+                        (BandaAvance.EnProceso, SemaforoAvance.EtiquetaCorta(BandaAvance.EnProceso), "sem-naranja", d.EnProceso),
+                        (BandaAvance.Avanzado,  SemaforoAvance.EtiquetaCorta(BandaAvance.Avanzado),  "sem-verde",   d.Avanzados),
+                    };
+                }
+                @foreach (var b in bandas)
+                {
+                    <a class="trm-banda @b.Cls @(Model.Banda == b.V ? "on" : "")"
+                       asp-page="/Tableros/Tramites"
+                       asp-route-institucion="@Model.InstitucionId"
+                       asp-route-banda="@(b.V?.ToString())">
+                        @b.Txt <span class="trm-banda-n">@b.N</span>
+                    </a>
+                }
+            </div>
+        </div>
+    </form>
+
+    @* ── Resumen ─────────────────────────────────────────────────── *@
+    <div class="kpi-strip" style="--kpi-cols:4">
+        <div class="kpi-cell">
+            <div class="kpi-cell-top"><span class="kpi-cell-lbl">Trámites</span></div>
+            <div class="kpi-cell-num">@d.Total</div>
+            <div class="kpi-cell-sub">en el filtro actual</div>
+        </div>
+        <div class="kpi-cell @(d.Rezagados > 0 ? "is-crit" : "is-zero")">
+            <div class="kpi-cell-top"><span class="kpi-cell-lbl">Rezagados</span></div>
+            <div class="kpi-cell-num">@d.Rezagados</div>
+            <div class="kpi-cell-sub">bajo @SemaforoAvance.UmbralEnProceso%</div>
+        </div>
+        <div class="kpi-cell @(d.EnProceso > 0 ? "is-warn" : "is-zero")">
+            <div class="kpi-cell-top"><span class="kpi-cell-lbl">En proceso</span></div>
+            <div class="kpi-cell-num">@d.EnProceso</div>
+            <div class="kpi-cell-sub">@SemaforoAvance.UmbralEnProceso–@(SemaforoAvance.UmbralAvanzado - 1)%</div>
+        </div>
+        <div class="kpi-cell @(d.Avanzados > 0 ? "is-ok" : "is-zero")">
+            <div class="kpi-cell-top"><span class="kpi-cell-lbl">Avanzados</span></div>
+            <div class="kpi-cell-num">@d.Avanzados</div>
+            <div class="kpi-cell-sub">@SemaforoAvance.UmbralAvanzado% o más · promedio @d.AvancePromedio%</div>
+        </div>
+    </div>
+
+    @* ── Tabla ───────────────────────────────────────────────────── *@
+    <div class="dash-card" style="padding:0;overflow:hidden">
+        @if (d.Total == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-state-ico"><svg class="ico"><use href="#i-expediente"></use></svg></div>
+                <div class="empty-state-t1">Sin trámites para este filtro</div>
+                <div class="empty-state-t2">Probá con otra institución o quitá el filtro de banda</div>
+            </div>
+        }
+        else
+        {
+            <table class="seg-table trm-tabla">
+                <thead>
+                    <tr>
+                        <th style="width:13%">Institución</th>
+                        <th>Trámite</th>
+                        <th style="width:14%">Expediente</th>
+                        <th style="width:13%">Responsable</th>
+                        <th style="width:16%">Avance</th>
+                        <th style="width:9%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in d.Tramites)
+                    {
+                        var k = $"{t.ExpedienteId}-{t.TramiteIndex}";
+                        d.UltimaNotaPorExpediente.TryGetValue(t.ExpedienteId, out var nota);
+                        <tr>
+                            <td class="trm-inst">@t.Institucion</td>
+                            <td>
+                                <div class="trm-nom">@t.NombreTramite</div>
+                                <div class="trm-sub">@EstadoLbl(t.EstadoExpediente)</div>
+                            </td>
+                            <td>
+                                <a asp-page="/Expedientes/Seguimiento" asp-route-id="@t.ExpedienteId" asp-route-t="@t.TramiteIndex"
+                                   class="trm-cod">@t.Codigo</a>
+                                @* data-* en vez de interpolar el código dentro del onclick: el
+                                   código es dato de la base y no debe terminar en un literal JS. *@
+                                <button type="button" class="trm-nota-btn" data-exp="@t.ExpedienteId" data-cod="@t.Codigo"
+                                        onclick="abrirNotas(this)">
+                                    <svg class="ico"><use href="#i-respuesta"></use></svg>
+                                    @(nota is null ? "Sin notas" : $"{nota.Total} nota{(nota.Total == 1 ? "" : "s")}")
+                                </button>
+                            </td>
+                            <td class="trm-sub">@(string.IsNullOrWhiteSpace(t.Analista) ? "(Sin asignar)" : t.Analista)</td>
+                            <td>
+                                <div class="trm-avance">
+                                    <span class="trm-barra @BandaCls(t.Banda)"><i style="width:@t.AvancePct%"></i></span>
+                                    <span class="trm-pct @BandaCls(t.Banda)">@t.AvancePct%</span>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btns btns-sm" onclick="abrirEtapas('@k')">Etapas</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@* ── Modal: avance por etapa ─────────────────────────────────────── *@
+<div class="trm-modal" id="modal-etapas" hidden>
+    <div class="trm-modal-fondo" onclick="cerrarModal('modal-etapas')"></div>
+    <div class="trm-modal-caja" role="dialog" aria-modal="true" aria-labelledby="me-titulo">
+        <div class="trm-modal-head">
+            <div style="min-width:0">
+                <div class="trm-modal-kick" id="me-inst">—</div>
+                <h3 class="trm-modal-titulo" id="me-titulo">—</h3>
+            </div>
+            <div class="trm-modal-pct" id="me-pct">—</div>
+            <button type="button" class="trm-modal-x" onclick="cerrarModal('modal-etapas')" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="trm-modal-body" id="me-etapas"></div>
+    </div>
+</div>
+
+@* ── Modal: notas de seguimiento ─────────────────────────────────── *@
+<div class="trm-modal" id="modal-notas" hidden>
+    <div class="trm-modal-fondo" onclick="cerrarModal('modal-notas')"></div>
+    <div class="trm-modal-caja" role="dialog" aria-modal="true" aria-labelledby="mn-titulo">
+        <div class="trm-modal-head">
+            <div style="min-width:0">
+                <div class="trm-modal-kick">Notas de seguimiento</div>
+                <h3 class="trm-modal-titulo" id="mn-titulo">—</h3>
+            </div>
+            <button type="button" class="trm-modal-x" onclick="cerrarModal('modal-notas')" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="trm-modal-body">
+            <form method="post" asp-page-handler="Nota"
+                  asp-route-institucion="@Model.InstitucionId" asp-route-banda="@(Model.Banda?.ToString())">
+                <input type="hidden" name="expedienteId" id="mn-exp" />
+                <div class="f">
+                    <label>¿En qué punto estamos con la institución?</label>
+                    <textarea name="texto" id="mn-texto" rows="3" maxlength="1000"
+                              placeholder="Ej: se reagendó el taller; falta que envíen el inventario de requisitos."></textarea>
+                </div>
+                <div style="display:flex;justify-content:flex-end;margin-top:.6rem">
+                    <button type="submit" class="btnp">Agregar nota</button>
+                </div>
+            </form>
+            <div id="mn-lista" class="trm-notas"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+  var TRAMITES = @Html.Raw(JsonSerializer.Serialize(datosModal));
+  var NOTAS_URL = '@Url.Page("/Tableros/Tramites", "Notas")';
+  var SEG_URL   = '@Url.Page("/Expedientes/Seguimiento", new { id = 0 })';
+
+  var porClave = {};
+  TRAMITES.forEach(function(t){ porClave[t.k] = t; });
+
+  function abrirModal(id){ document.getElementById(id).hidden = false; document.body.style.overflow = 'hidden'; }
+  function cerrarModal(id){ document.getElementById(id).hidden = true; document.body.style.overflow = ''; }
+
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    ['modal-etapas','modal-notas'].forEach(function(id){
+      var m = document.getElementById(id); if (m && !m.hidden) cerrarModal(id);
+    });
+  });
+
+  function abrirEtapas(k){
+    var t = porClave[k];
+    if (!t) return;
+    document.getElementById('me-inst').textContent = t.inst + ' · ' + t.cod;
+    document.getElementById('me-titulo').textContent = t.nom;
+    var pct = document.getElementById('me-pct');
+    pct.textContent = t.pct + '%';
+    pct.className = 'trm-modal-pct ' + t.banda;
+
+    // El enlace lleva al seguimiento de ESTE trámite y ancla en la etapa, para
+    // que el usuario no tenga que buscarla entre las once.
+    var base = SEG_URL.replace(/\/0$/, '/' + t.exp) + '?t=' + t.tram;
+    document.getElementById('me-etapas').innerHTML = t.etapas.map(function(e){
+      return '<div class="trm-etapa">'
+        + '<div class="trm-etapa-top">'
+          + '<span class="trm-etapa-num">' + e.Num + '</span>'
+          + '<span class="trm-etapa-lbl">' + e.Label + '</span>'
+          + '<span class="trm-etapa-peso">' + e.peso + '% del proyecto</span>'
+        + '</div>'
+        + '<div class="trm-etapa-bar">'
+          + '<span class="trm-barra ' + e.banda + '"><i style="width:' + e.pct + '%"></i></span>'
+          + '<span class="trm-pct ' + e.banda + '">' + e.pct + '%</span>'
+          + '<a class="btns btns-sm" href="' + base + '#et-card-' + e.Num + '">Ver ›</a>'
+        + '</div>'
+      + '</div>';
+    }).join('');
+    abrirModal('modal-etapas');
+  }
+
+  async function abrirNotas(btn){
+    var expedienteId = btn.dataset.exp;
+    document.getElementById('mn-exp').value = expedienteId;
+    document.getElementById('mn-titulo').textContent = btn.dataset.cod;
+    document.getElementById('mn-texto').value = '';
+    var lista = document.getElementById('mn-lista');
+    lista.innerHTML = '<p class="trm-notas-vacio">Cargando…</p>';
+    abrirModal('modal-notas');
+    try {
+      var r = await fetch(NOTAS_URL + '&expedienteId=' + expedienteId, { headers:{ 'Accept':'application/json' } });
+      var notas = r.ok ? await r.json() : [];
+      lista.innerHTML = notas.length
+        ? notas.map(function(n){
+            return '<div class="trm-nota">'
+              + '<div class="trm-nota-meta">' + n.fecha + ' · ' + n.autor + '</div>'
+              + '<div class="trm-nota-txt"></div></div>';
+          }).join('')
+        : '<p class="trm-notas-vacio">Todavía no hay notas para este expediente.</p>';
+      // El texto va por textContent para no inyectar HTML de la base.
+      lista.querySelectorAll('.trm-nota-txt').forEach(function(el, i){ el.textContent = notas[i].texto; });
+    } catch (e) {
+      lista.innerHTML = '<p class="trm-notas-vacio">No se pudieron cargar las notas.</p>';
+    }
+  }
+</script>
+}

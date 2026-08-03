@@ -163,6 +163,7 @@ public interface IApplicationDbContext
     DbSet<InfraChecklistItem>       ChecklistInfra { get; }
     DbSet<ExpedienteSeccionEstado>  Secciones     { get; }
     DbSet<ExpedienteEtapaAvance>    ExpedienteEtapaAvances { get; }
+    DbSet<NotaSeguimientoExpediente> NotasSeguimiento { get; }
     DbSet<Ticket>                   Tickets       { get; }
     DbSet<TicketComentario>         TicketComentarios { get; }
     DbSet<CategoriaTicket>          CategoriasTicket { get; }

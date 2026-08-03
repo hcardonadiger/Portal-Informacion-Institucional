@@ -34,6 +34,7 @@ public sealed class AppDbContext(
     public DbSet<InfraChecklistItem>       ChecklistInfra     { get; init; } = default!;
     public DbSet<ExpedienteSeccionEstado>  Secciones          { get; init; } = default!;
     public DbSet<ExpedienteEtapaAvance>    ExpedienteEtapaAvances { get; init; } = default!;
+    public DbSet<NotaSeguimientoExpediente> NotasSeguimiento  { get; init; } = default!;
     public DbSet<Ticket>                   Tickets            { get; init; } = default!;
     public DbSet<TicketComentario>         TicketComentarios  { get; init; } = default!;
     public DbSet<CategoriaTicket>          CategoriasTicket   { get; init; } = default!;
@@ -755,6 +756,23 @@ public sealed class ExpedienteEtapaAvanceConfiguration : IEntityTypeConfiguratio
         b.Property(x => x.Id).ValueGeneratedOnAdd();
         b.Property(x => x.SubId).HasMaxLength(20).IsRequired();
         b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex, x.SubId }).IsUnique();
+        b.HasOne<Expediente>().WithMany()
+            .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class NotaSeguimientoExpedienteConfiguration : IEntityTypeConfiguration<NotaSeguimientoExpediente>
+{
+    public void Configure(EntityTypeBuilder<NotaSeguimientoExpediente> b)
+    {
+        b.ToTable("NotasSeguimientoExpediente");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Texto).HasMaxLength(NotaSeguimientoExpediente.MaxTexto).IsRequired();
+        b.Property(x => x.CreadoPor).HasMaxLength(150).IsRequired();
+        // El tablero pide la última nota de cada expediente: el índice descendente
+        // por fecha evita ordenar en memoria.
+        b.HasIndex(x => new { x.ExpedienteId, x.CreadoEl }).IsDescending(false, true);
         b.HasOne<Expediente>().WithMany()
             .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
     }
