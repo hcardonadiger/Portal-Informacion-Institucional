@@ -15,18 +15,34 @@ public sealed record TendenciaDto(int Actual, int Anterior)
     public int PorcentajeCambio => Anterior == 0 ? (Actual > 0 ? 100 : 0) : (int)Math.Round((Actual - Anterior) * 100.0 / Anterior);
 }
 
-// ── Resumen general (Inicio) ──────────────────────────────────────────────
+// ── Resumen ejecutivo (Inicio) ────────────────────────────────────────────
 public sealed record ResumenDto(
+    // Tickets
     int TicketsAbiertos, int TicketsEnProgreso, int TicketsCriticos, int TicketsTotal,
-    int ExpedientesTotal, int ExpedientesCerrados, int ExpedientesEnProceso,
-    int ReunionesTotal, int ReunionesMes,
-    int AcuerdosVencidos, int AcuerdosProximos,
+    int TicketsResueltos, int TicketsDiasPromedioResolucion,
     TendenciaDto TicketsCreados,
     IReadOnlyList<SerieMensualDto> TicketsPorMes,
-    IReadOnlyList<ResumenTicketDto> UltimosTickets);
+    IReadOnlyList<SerieMensualDto> TicketsResueltosPorMes,
+    // Expedientes
+    int ExpedientesTotal, int ExpedientesCerrados, int ExpedientesEnProceso,
+    // Reuniones y acuerdos
+    int ReunionesTotal, int ReunionesMes,
+    int AcuerdosVencidos, int AcuerdosProximos,
+    int AcuerdosTotal, int AcuerdosCumplidos, int TasaCumplimiento,
+    // Capacitación
+    int PersonasCapacitadas, int AsistenciasCapacitacion,
+    // Digitalización
+    int DigTotalTramites, int DigEnOperacion, int DigEnProceso, int DigNoIniciados,
+    double DigAvanceGlobal,
+    IReadOnlyList<AvanceInstitucionDto> DigPorInstitucion,
+    IReadOnlyList<AnalistaAvanceDto> DigPorAnalista);
 
 public sealed record ResumenTicketDto(
     int Id, string Numero, string Titulo, EstadoTicket Estado, PrioridadTicket Prioridad, string? Institucion);
+
+public sealed record SemaforoInstitucionDto(
+    string Institucion, int Expedientes,
+    double AvanceDigitalizacion, int TicketsAbiertos, int AcuerdosVencidos);
 
 // ── Tickets ───────────────────────────────────────────────────────────────
 public sealed record TicketsDashboardDto(
@@ -93,7 +109,9 @@ public sealed record DigitalizacionDashboardDto(
     IReadOnlyList<AvanceEtapaDto> PorEtapaMetodologia,
     IReadOnlyList<ConteoDto> DistribucionAvance,
     IReadOnlyList<AnalistaAvanceDto> PorAnalista,
-    IReadOnlyList<TramiteAvanceDto> TramitesRezagados);
+    IReadOnlyList<TramiteAvanceDto> TramitesRezagados,
+    IReadOnlyList<TramiteEtapaDetalleDto> DetallePorEtapa,
+    IReadOnlyList<TramiteAvanceDto> TodosLosTramites);
 
 public sealed record AvanceInstitucionDto(
     string Institucion, int TotalTramites, int Completados, double AvancePromedio);
@@ -105,7 +123,11 @@ public sealed record AnalistaAvanceDto(
     string Analista, int TotalTramites, int Completados, double AvancePromedio);
 
 public sealed record TramiteAvanceDto(
-    string Institucion, string Tramite, string? Analista, double Avance);
+    int ExpedienteId, string Institucion, string Tramite, string? Analista, double Avance);
+
+public sealed record TramiteEtapaDetalleDto(
+    int ExpedienteId, string Institucion, string Tramite, string? Analista,
+    string EtapaNum, double AvanceEtapa);
 
 // ── Helper de series mensuales ─────────────────────────────────────────────
 public static class SerieMensual

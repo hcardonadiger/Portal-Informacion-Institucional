@@ -43,7 +43,7 @@
             <div class="tkm-mark">TK</div>
             <div>
                 <h1>Tickets de soporte</h1>
-                <p>Incidencias y solicitudes sobre la plataforma SOL</p>
+                <p>Incidencias y solicitudes sobre la plataforma SOL <span class="help-tip tip-down" data-tip="Reporte problemas técnicos, solicite cambios o haga consultas sobre la plataforma SOL. Cada ticket se clasifica por tema y tiene un tiempo máximo de atención.">?</span></p>
             </div>
         </div>
         <div class="tkm-actions">
@@ -60,10 +60,10 @@
     </div>
 
     <div class="tkm-metrics">
-        <div class="tkm-metric" onclick="aplicarFiltroMetrica('Abierto', false)"><span>Abiertos</span><strong>@abiertos</strong><small>pendientes de toma</small></div>
-        <div class="tkm-metric" onclick="aplicarFiltroMetrica('EnProgreso', false)"><span>En progreso</span><strong>@progreso</strong><small>con responsable</small></div>
-        <div class="tkm-metric tkm-metric-alert" onclick="aplicarFiltroMetrica('', true)"><span>Vencidos</span><strong>@vencidos</strong><small>requieren prioridad</small></div>
-        <div class="tkm-metric" onclick="aplicarFiltroMetrica('Resuelto', false)"><span>Resueltos</span><strong>@resueltos</strong><small>en esta vista</small></div>
+        <div class="tkm-metric" onclick="aplicarFiltroMetrica('Abierto', false)"><span>Abiertos <span class="help-tip tip-down" data-tip="Tickets recién creados que aún no han sido tomados por un técnico.">?</span></span><strong>@abiertos</strong><small>pendientes de toma</small></div>
+        <div class="tkm-metric" onclick="aplicarFiltroMetrica('EnProgreso', false)"><span>En progreso <span class="help-tip tip-down" data-tip="Tickets asignados a un técnico y en proceso de resolución.">?</span></span><strong>@progreso</strong><small>con responsable</small></div>
+        <div class="tkm-metric tkm-metric-alert" onclick="aplicarFiltroMetrica('', true)"><span>Vencidos <span class="help-tip tip-down" data-tip="Tickets que superaron el tiempo máximo de atención definido por su tema. Requieren atención inmediata.">?</span></span><strong>@vencidos</strong><small>requieren prioridad</small></div>
+        <div class="tkm-metric" onclick="aplicarFiltroMetrica('Resuelto', false)"><span>Resueltos <span class="help-tip tip-down tip-left" data-tip="Tickets que ya fueron atendidos y cerrados.">?</span></span><strong>@resueltos</strong><small>en esta vista</small></div>
     </div>
 
     @if (Model.EsTecnicoRestringido)

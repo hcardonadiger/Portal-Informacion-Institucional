@@ -115,7 +115,7 @@
                     <nav class="main-nav" id="mainNav">
                         @if (puedeTableros || puedeCalendario || puedeExpedientes)
                         {
-                            var grpSeg = EsRuta("/Tableros") || EsRuta("/Calendario") || EsRuta("/", "/Expedientes") || EsRuta("/Informes") || EsRuta("/PlanTrabajo");
+                            var grpSeg = EsRuta("/Tableros") || EsRuta("/Calendario") || EsRuta("/", "/Expedientes") || EsRuta("/Informes") || EsRuta("/PlanTrabajo") || EsRuta("/Siger");
                             <div class="nav-group @(grpSeg ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Seguimiento<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
@@ -134,6 +134,8 @@
                                         <a class="nav-item @(EsRuta("/Informes") ? "on" : "")" asp-page="/Informes/Index">Informes</a>
                                         <a class="nav-item @(EsRuta("/PlanTrabajo") ? "on" : "")" asp-page="/PlanTrabajo/Index">Plan de Trabajo</a>
                                         <a class="nav-item @(EsRuta("/Recursos") ? "on" : "")" asp-page="/Recursos/Index">Recursos y Plantillas</a>
+                                        <a class="nav-item @(EsRuta("/Siger/Index") ? "on" : "")" asp-page="/Siger/Index">Inventario SIGER</a>
+                                        <a class="nav-item @(EsRuta("/Siger/Tablero") ? "on" : "")" asp-page="/Siger/Tablero">Observatorio SIGER</a>
                                     }
                                 </div>
                             </div>

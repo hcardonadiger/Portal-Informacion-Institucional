@@ -22,7 +22,7 @@
     <div class="hist-header">
         <div>
             <h2>Expedientes de Digitalización</h2>
-            <p>Expedientes de trámites nuevos por institución</p>
+            <p>Expedientes de trámites nuevos por institución <span class="help-tip tip-down" data-tip="Cada expediente documenta el proceso de digitalización de uno o más trámites de una institución, desde el levantamiento hasta la validación final.">?</span></p>
         </div>
         <div style="display:flex;gap:8px">
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
@@ -62,9 +62,9 @@
                 <tr>
                     <th>Institución</th>
                     <th>Código</th>
-                    <th>Estado</th>
+                    <th>Estado <span class="help-tip tip-down" data-tip="Fase actual: Exploración → Levantamiento → Modelado → Validación → Cerrado.">?</span></th>
                     <th>Responsable del Acta</th>
-                    <th style="text-align:center">Trámites</th>
+                    <th style="text-align:center">Trámites <span class="help-tip tip-down tip-left" data-tip="Cantidad de trámites incluidos en este expediente. Pase el cursor sobre el número para ver los nombres.">?</span></th>
                     <th>Apertura</th>
                     <th style="width:1%"></th>
                 </tr>

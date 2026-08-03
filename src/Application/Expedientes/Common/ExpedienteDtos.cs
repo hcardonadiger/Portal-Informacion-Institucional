@@ -25,7 +25,8 @@ public sealed record TramiteInput(
     string? Horario,
     string? Telefono,
     string? EmailTramite,
-    string? SitioWeb);
+    string? SitioWeb,
+    int?    TramiteSigerId = null);
 
 public sealed record RequisitoInput(
     int TramiteIndex, int Orden, string Requisito, string? Obs,

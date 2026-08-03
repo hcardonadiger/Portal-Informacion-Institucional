@@ -31,7 +31,7 @@
             <section class="tkm-panel">
                 <h2>Reporte de incidente o problema</h2>
                 <div class="field">
-                    <label>Titulo <span style="color:#dc2626">*</span></label>
+                    <label>Titulo <span style="color:#dc2626">*</span> <span class="help-tip" data-tip="Escriba un resumen breve y claro del problema. Ej: 'Error al cargar formulario de trámite X'.">?</span></label>
                     <input asp-for="Datos.Titulo" placeholder="Resumen breve del problema" />
                 </div>
                 <div class="field">
@@ -40,7 +40,7 @@
                 </div>
                 <div class="tkm-grid-3">
                     <div class="field">
-                        <label>Tema</label>
+                        <label>Tema <span class="help-tip" data-tip="Clasifica el ticket y determina el tiempo máximo de atención (SLA). El equipo técnico del tema asignado lo recibirá.">?</span></label>
                         <select asp-for="Datos.TemaId" id="tk-tema" onchange="toggleTemaOtro()">
                             <option value="">Sin clasificar</option>
                             @foreach (var grupo in Model.Temas.GroupBy(t => t.Categoria ?? "Sin categoria").OrderBy(g => g.Key))
@@ -61,7 +61,7 @@
                         <span asp-validation-for="Datos.TemaOtro" class="text-danger"></span>
                     </div>
                     <div class="field">
-                        <label>Prioridad</label>
+                        <label>Prioridad <span class="help-tip" data-tip="Nivel de urgencia. Crítica y Alta se atienden primero. Use Crítica solo para bloqueos totales de la plataforma.">?</span></label>
                         <select asp-for="Datos.Prioridad">
                             @foreach (var p in Model.Prioridades)
                             {
