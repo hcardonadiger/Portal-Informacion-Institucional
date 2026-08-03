@@ -17,6 +17,7 @@ public static class OriginalShapeMapper
         {
             var f = t < o.Tramites.Count ? o.Tramites[t] : new();
             string? G(string k) => f.TryGetValue(k, out var v) ? v : null;
+            int? sigerId = int.TryParse(G("tramite_siger_id"), out var sid) ? sid : null;
             tramites.Add(new TramiteInput(
                 t,
                 At(o.TramiteNombres, t) ?? G("nombre_tramite") ?? "",
@@ -24,7 +25,8 @@ public static class OriginalShapeMapper
                 G("modalidad"), G("plazo_legal"), G("tercero"), G("tiempo_real"),
                 G("metodo_pago"), G("pago_banco"), G("pago_cuenta"), G("tgr_inst"), G("tgr_rubro"), G("tgr_monto"),
                 G("doc_entregado"), G("objetivo"), G("alcance"), G("alcance_obs"), G("descripcion"),
-                G("dirigido"), G("horario"), G("telefono"), G("email_tramite"), G("sitio_web")));
+                G("dirigido"), G("horario"), G("telefono"), G("email_tramite"), G("sitio_web"),
+                sigerId));
         }
 
         var requisitos = new List<RequisitoInput>();
@@ -128,7 +130,8 @@ public static class OriginalShapeMapper
                 ["tgr_inst"] = t.TgrInst, ["tgr_rubro"] = t.TgrRubro, ["tgr_monto"] = t.TgrMonto,
                 ["doc_entregado"] = t.DocEntregado, ["objetivo"] = t.Objetivo, ["alcance"] = t.Alcance,
                 ["alcance_obs"] = t.AlcanceObs, ["descripcion"] = t.Descripcion, ["dirigido"] = t.Dirigido,
-                ["horario"] = t.Horario, ["telefono"] = t.Telefono, ["email_tramite"] = t.EmailTramite, ["sitio_web"] = t.SitioWeb
+                ["horario"] = t.Horario, ["telefono"] = t.Telefono, ["email_tramite"] = t.EmailTramite, ["sitio_web"] = t.SitioWeb,
+                ["tramite_siger_id"] = t.TramiteSigerId?.ToString()
             });
         }
 

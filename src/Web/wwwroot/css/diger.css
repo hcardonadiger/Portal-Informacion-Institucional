@@ -987,11 +987,121 @@ tr.contacto-inactivo td {
     font-size: 13px;
 }
 
+.hint {
+    font-size: 12px;
+    color: var(--diger-text-muted);
+    margin-top: 3px;
+    display: block;
+}
+
 .hint.error {
     font-size: 12px;
     color: var(--diger-danger);
     margin-top: 4px;
     display: block;
+}
+
+/* ── CONTEXTUAL HELP TOOLTIPS ─────────────────────────────────── */
+.help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--diger-border);
+    color: var(--diger-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    font-style: normal;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+    user-select: none;
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.help-tip:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue);
+}
+
+.help-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--diger-blue-dark);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+    padding: 8px 12px;
+    border-radius: 8px;
+    white-space: normal;
+    width: max-content;
+    max-width: 260px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s, visibility .15s;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(2, 42, 69, .25);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.help-tip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-tip::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--diger-blue-dark);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s, visibility .15s;
+    z-index: 100;
+}
+
+.help-tip:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-tip.tip-down::after {
+    bottom: auto;
+    top: calc(100% + 8px);
+}
+
+.help-tip.tip-down::before {
+    bottom: auto;
+    top: calc(100% + 2px);
+    border-top-color: transparent;
+    border-bottom-color: var(--diger-blue-dark);
+}
+
+.help-tip.tip-left::after {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+
+.help-tip.tip-left::before {
+    left: auto;
+    right: 3px;
+    transform: none;
 }
 
 /* ── APP SHELL: cascarón institucional (Manual de Marca 2026) ─────────── */

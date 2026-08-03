@@ -72,7 +72,8 @@ public static class ExpedienteMapper
                 PagoCuenta = t.PagoCuenta, TgrInst = t.TgrInst, TgrRubro = t.TgrRubro, TgrMonto = t.TgrMonto,
                 DocEntregado = t.DocEntregado, Objetivo = t.Objetivo, Alcance = t.Alcance,
                 AlcanceObs = t.AlcanceObs, Descripcion = t.Descripcion, Dirigido = t.Dirigido,
-                Horario = t.Horario, Telefono = t.Telefono, EmailTramite = t.EmailTramite, SitioWeb = t.SitioWeb
+                Horario = t.Horario, Telefono = t.Telefono, EmailTramite = t.EmailTramite, SitioWeb = t.SitioWeb,
+                TramiteSigerId = t.TramiteSigerId
             });
 
         foreach (var r in d.Requisitos.Where(x => !string.IsNullOrWhiteSpace(x.Requisito)))
@@ -141,7 +142,7 @@ public static class ExpedienteMapper
             t.TramiteIndex, t.NombreTramite, t.NombreCorto, t.AreaResponsable, t.Modalidad, t.PlazoLegal,
             t.Tercero, t.TiempoReal, t.MetodoPago, t.PagoBanco, t.PagoCuenta, t.TgrInst, t.TgrRubro,
             t.TgrMonto, t.DocEntregado, t.Objetivo, t.Alcance, t.AlcanceObs, t.Descripcion, t.Dirigido,
-            t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb)).ToList(),
+            t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb, t.TramiteSigerId)).ToList(),
         e.Requisitos.OrderBy(r => r.TramiteIndex).ThenBy(r => r.Orden).Select(r => new RequisitoInput(
             r.TramiteIndex, r.Orden, r.Requisito, r.Obs, r.Accion, r.Justificacion,
             r.PlantillaOrigenId, r.EsPersonalizado)).ToList(),

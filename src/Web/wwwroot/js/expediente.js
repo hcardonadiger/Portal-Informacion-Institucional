@@ -621,9 +621,10 @@ function tramRowHTML(i){
   if(window.__EXPMETA__ && window.__EXPMETA__.plantillas){
     window.__EXPMETA__.plantillas.forEach(function(p){ opts += '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; });
   }
+  var sigerBadge = (_sigerIds[i]) ? ' <span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1455a4;padding:1px 6px;border-radius:4px;vertical-align:middle">SIGER</span>' : '';
   return '<div class="tram-row" style="flex-direction:row;align-items:flex-start;gap:10px;flex-wrap:wrap">'
     + '<div class="f" style="flex:1;min-width:250px"><label>Trámite ' + (i+1) + ' <span class="star">*</span>'
-    + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
+    + sigerBadge + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
     + '<input type="text" id="tnam-'+i+'" placeholder="Nombre completo del trámite ' + (i+1) + '" oninput="actualizarMeta();actualizarTabsTramite();syncNombreTramite('+i+')"></div>'
     + '<div class="f" style="flex:1;min-width:200px"><label>Plantilla base</label>'
     + '<select id="tplan-'+i+'" onchange="seleccionarPlantilla('+i+', this.value)" style="padding:11px 12px;border:1px solid var(--borde);border-radius:8px;font-size:14px;background:#fafbfd;font-family:inherit;width:100%">' + opts + '</select></div>'
@@ -663,12 +664,14 @@ function snapshotTramites(){
     FICHA_FIELDS.forEach(function(f){ o[f] = gv(f+'_'+i); });
     var al = document.querySelector('input[name="alcance_'+i+'"]:checked');
     o.alcance = al ? al.value : '';
+    o._sigerId = (_sigerIds[i] !== undefined) ? _sigerIds[i] : null;
     snap.push(o);
   }
   return snap;
 }
 
 function restoreTramites(snap){
+  _sigerIds = [];
   for(var i=0; i<snap.length; i++){
     sv('tnam-'+i, snap[i].tnam || '');
     sv('area_resp-'+i, snap[i].area || '');
@@ -679,6 +682,7 @@ function restoreTramites(snap){
       if(al){ al.checked = true; var tp = al.closest('.tp'); if(tp) tp.classList.add('on'); }
     }
     togglePago(i);
+    _sigerIds.push(snap[i]._sigerId || null);
   }
   syncAllNombreTramites();
 }
@@ -691,6 +695,177 @@ function agregarTramiteApertura(){
   renderModeloReqs(activeTram);
   actualizarBVA();
   actualizarMeta();
+}
+
+// ── IMPORTAR DESDE SIGER ──────────────────────────────────────
+var _sigerTimer = null;
+var _sigerIds = [];
+
+function actualizarBadgesSiger(){
+  for(var i=0; i<tramiteCount; i++){
+    var label = document.querySelector('#tramites-nombres-wrap .tram-row:nth-child('+(i+1)+') label');
+    if(!label) continue;
+    var existing = label.querySelector('.siger-badge');
+    if(_sigerIds[i]){
+      if(!existing){
+        var badge = document.createElement('span');
+        badge.className = 'siger-badge';
+        badge.style.cssText = 'font-size:10px;font-weight:700;background:#dbeafe;color:#1455a4;padding:1px 6px;border-radius:4px;vertical-align:middle;margin-left:4px';
+        badge.textContent = 'SIGER';
+        var star = label.querySelector('.star');
+        if(star) star.after(badge);
+        else label.appendChild(badge);
+      }
+    } else if(existing) existing.remove();
+  }
+}
+
+function abrirModalSiger(){
+  var m = document.getElementById('siger-modal');
+  if(m){ m.style.display='flex'; }
+  var inp = document.getElementById('siger-buscar');
+  if(inp){ inp.value=''; inp.focus(); }
+  document.getElementById('siger-resultados').innerHTML =
+    '<div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Escriba al menos 2 caracteres para buscar</div>';
+}
+
+function cerrarModalSiger(){
+  var m = document.getElementById('siger-modal');
+  if(m) m.style.display='none';
+}
+
+function buscarSigerDebounce(){
+  clearTimeout(_sigerTimer);
+  _sigerTimer = setTimeout(buscarSiger, 300);
+}
+
+async function buscarSiger(){
+  var q = (document.getElementById('siger-buscar')||{}).value||'';
+  var wrap = document.getElementById('siger-resultados');
+  if(q.length < 2){
+    wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Escriba al menos 2 caracteres para buscar</div>';
+    return;
+  }
+  wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Buscando...</div>';
+  var meta = window.__EXPMETA__ || {};
+  try{
+    var resp = await fetch(meta.sigerUrl + '&q=' + encodeURIComponent(q));
+    var items = await resp.json();
+    if(!items.length){
+      wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Sin resultados para "'+escHtml(q)+'"</div>';
+      return;
+    }
+    var html = '';
+    items.forEach(function(it){
+      html += '<div class="siger-item" onclick=\'seleccionarSiger('+JSON.stringify(it).replace(/'/g,"&#39;")+')\' style="padding:10px 0;border-bottom:1px solid #f1f5f9;cursor:pointer">'
+        + '<div style="display:flex;gap:8px;align-items:baseline">'
+        + '<span style="font-size:11px;font-weight:700;color:#1455a4;white-space:nowrap">'+escHtml(it.codigo)+'</span>'
+        + '<span style="font-size:14px;font-weight:600;color:#0a2d6e">'+escHtml(it.nombre)+'</span>'
+        + '</div>'
+        + '<div style="font-size:12px;color:#64748b;margin-top:2px">'+escHtml(it.institucion||'')+(it.sigla?' · '+escHtml(it.sigla):'')+'</div>'
+        + (it.objetivo ? '<div style="font-size:11.5px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(it.objetivo.substring(0,120))+'</div>' : '')
+        + '</div>';
+    });
+    wrap.innerHTML = html;
+  }catch(e){
+    wrap.innerHTML = '<div style="text-align:center;color:#dc2626;padding:2rem;font-size:13px">Error al buscar: '+escHtml(e.message)+'</div>';
+  }
+}
+
+async function seleccionarSiger(it){
+  var snap = snapshotTramites();
+  tramiteCount++;
+  var newIdx = tramiteCount - 1;
+
+  while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
+  _sigerIds[newIdx] = it.id;
+
+  actualizarNumTramites();
+  restoreTramites(snap);
+  _sigerIds[newIdx] = it.id;
+
+  sv('tnam-'+newIdx, it.nombre||'');
+  sv('area_resp-'+newIdx, it.dependencia||'');
+
+  renderFichasPanels();
+  setTimeout(function(){
+    sv('nombre_tramite_'+newIdx, it.nombre||'');
+    sv('descripcion_'+newIdx, it.descripcion||'');
+    sv('objetivo_'+newIdx, it.objetivo||'');
+    sv('dirigido_'+newIdx, it.dirigidoA||'');
+  }, 50);
+
+  cerrarModalSiger();
+  mostrarToast('Importando trámite "'+it.nombre+'" desde SIGER…');
+
+  var meta = window.__EXPMETA__ || {};
+  try {
+    var resp = await fetch(meta.sigerDetalleUrl + '&id=' + it.id);
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    var det = await resp.json();
+
+    setTimeout(function(){
+      if(det.disponibleEnLinea) sv('modalidad_'+newIdx, 'En línea (total)');
+      if(det.enlacePrincipal) sv('sitio_web_'+newIdx, det.enlacePrincipal);
+      if(det.vigenciaDocumento) sv('plazo_legal_'+newIdx, det.vigenciaDocumento);
+
+      var entregables = det.entregables || [];
+      if(entregables.length){
+        var nombres = entregables.map(function(e){ return e.entregable; });
+        sv('doc_entregado_'+newIdx, nombres.join('; '));
+      }
+
+      var lugares = det.lugares || [];
+      if(lugares.length){
+        var l0 = lugares[0];
+        if(l0.telefonos) sv('telefono_'+newIdx, l0.telefonos);
+      }
+
+      var requisitos = det.requisitos || [];
+      if(requisitos.length){
+        if(!reqsTram[newIdx]) reqsTram[newIdx] = [];
+        requisitos.forEach(function(r){
+          var obs = [r.tipo, r.documentoSoporte, r.formato].filter(function(x){ return x; }).join(' — ');
+          reqsTram[newIdx].push({ requisito: r.requisito, obs: obs });
+        });
+        renderReqFichaRows(newIdx);
+        actualizarNumReq();
+      }
+
+      var pasos = det.pasos || [];
+      if(pasos.length){
+        if(!flujosActual[newIdx]) flujosActual[newIdx] = [];
+        pasos.forEach(function(p){
+          flujosActual[newIdx].push({
+            tipo: 'Paso',
+            titulo: p.descripcion || '',
+            area: p.lugarDependencia || '',
+            tiempo: p.tiempoRegistrado || '',
+            doc_emitido: p.salidaResultado || '',
+            obs: ''
+          });
+        });
+        if(activeTram === newIdx){
+          renderFlujo('actual');
+          actualizarBVA();
+        }
+      }
+
+      renderModeloReqs(activeTram);
+      actualizarBVA();
+      actualizarMeta();
+      actualizarTabsTramite();
+      syncAllNombreTramites();
+      mostrarToast('Trámite "'+it.nombre+'" importado con '+pasos.length+' pasos y '+requisitos.length+' requisitos');
+    }, 80);
+  } catch(e) {
+    renderModeloReqs(activeTram);
+    actualizarBVA();
+    actualizarMeta();
+    actualizarTabsTramite();
+    syncAllNombreTramites();
+    mostrarToast('Trámite importado (datos parciales — error al cargar detalle)');
+  }
 }
 
 function quitarTramiteApertura(i){
@@ -1368,6 +1543,7 @@ function recolectar(){
     fichaFields.forEach(function(f){ ft[f] = gv(f+'_'+t); });
     var alc = document.querySelector('input[name="alcance_'+t+'"]:checked');
     ft.alcance = alc ? alc.value : '';
+    if(_sigerIds[t]) ft.tramite_siger_id = String(_sigerIds[t]);
     d.tramites.push(ft);
   }
 
@@ -1649,6 +1825,7 @@ function poblarFormulario(d){
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
     'horario','telefono','email_tramite','sitio_web'];
+  _sigerIds = [];
   if(d.tramites) d.tramites.forEach(function(ft,t){
     fichaFields.forEach(function(f){
       if(f === 'nombre_tramite') return; // siempre derivado de tnam en apertura
@@ -1657,7 +1834,10 @@ function poblarFormulario(d){
     onTgrInstChange(t); sv('tgr_rubro_'+t, ft.tgr_rubro||'');
     if(ft.alcance){ var al=document.querySelector('input[name="alcance_'+t+'"][value="'+ft.alcance+'"]'); if(al) al.checked=true; }
     togglePago(t);
+    _sigerIds.push(ft.tramite_siger_id ? parseInt(ft.tramite_siger_id) : null);
   });
+  while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
+  actualizarBadgesSiger();
   syncAllNombreTramites();
 
   // Infraestructura SOL

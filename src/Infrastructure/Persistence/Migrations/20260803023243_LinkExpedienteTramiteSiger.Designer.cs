@@ -4,16 +4,19 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Diger.TramitesEstado.Infrastructure.Migrations
+namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803023243_LinkExpedienteTramiteSiger")]
+    partial class LinkExpedienteTramiteSiger
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1819,38 +1822,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Movimientos", (string)null);
                 });
 
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.NotaSeguimientoExpediente", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreadoEl")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreadoPor")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<int>("ExpedienteId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Texto")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpedienteId", "CreadoEl")
-                        .IsDescending(false, true);
-
-                    b.ToTable("NotasSeguimientoExpediente", (string)null);
-                });
-
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Notificacion", b =>
                 {
                     b.Property<int>("Id")
@@ -3430,14 +3401,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.TramiteSiger", null)
                         .WithMany("Pasos")
                         .HasForeignKey("TramiteSigerId")
-                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.NotaSeguimientoExpediente", b =>
-                {
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
-                        .WithMany()
-                        .HasForeignKey("ExpedienteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

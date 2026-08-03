@@ -31,6 +31,8 @@ public sealed class ExpedienteTramite : BaseEntity
     public string? Telefono    { get; set; }
     public string? EmailTramite { get; set; }
     public string? SitioWeb    { get; set; }
+
+    public int? TramiteSigerId { get; set; }
 }
 
 /// <summary>Requisito de un trámite y la acción propuesta en el modelo.</summary>

@@ -89,56 +89,61 @@
     <div class="dash-grid">
         <div class="dash-card">
             <h3>Distribución de avance</h3>
+            <p style="font-size:11.5px;color:var(--diger-text-muted);margin:0 0 4px">Haga clic en una barra para ver los trámites de ese rango</p>
             <div style="position:relative;height:220px"><canvas id="chDist"></canvas></div>
-            <p style="font-size:11.5px;color:var(--diger-text-muted);margin:8px 0 0">Cantidad de trámites por rango de avance global</p>
         </div>
         <div class="dash-card" style="min-width:0">
             <h3>Avance por etapa de la metodología</h3>
+            <p style="font-size:11.5px;color:var(--diger-text-muted);margin:0 0 4px">Haga clic en una barra para ver los trámites de esa etapa</p>
             <div style="position:relative;height:360px"><canvas id="chEtapas"></canvas></div>
         </div>
     </div>
 
-    @* ── Tabla de trámites rezagados ──────────────────────────── *@
-    <div class="dash-grid" style="grid-template-columns:1fr">
+    @* ── Detalle por etapa (se muestra al hacer clic en el gráfico) ─── *@
+    <div id="etapa-detalle" class="dash-grid" style="grid-template-columns:1fr;display:none">
         <div class="dash-card">
-            <h3>Trámites con menor avance</h3>
-            @if (!d.TramitesRezagados.Any())
-            {
-                <p style="font-size:13px;color:var(--diger-text-muted)">Sin trámites registrados.</p>
-            }
-            else
-            {
-                <div style="overflow-x:auto">
-                <table class="tbl" style="width:100%">
-                    <thead><tr>
-                        <th>Institución</th>
-                        <th>Trámite</th>
-                        <th>Analista</th>
-                        <th style="width:180px">Avance</th>
-                    </tr></thead>
-                    <tbody>
-                    @foreach (var t in d.TramitesRezagados)
-                    {
-                        var pct = (int)Math.Round(t.Avance * 100);
-                        var barColor = pct >= 100 ? "#2f7d32" : pct >= 50 ? "#1455a4" : pct > 0 ? "#ef9f27" : "#888780";
-                        <tr>
-                            <td>@t.Institucion</td>
-                            <td>@t.Tramite</td>
-                            <td style="font-size:12px;color:var(--diger-text-muted)">@(t.Analista ?? "—")</td>
-                            <td>
-                                <div style="display:flex;align-items:center;gap:8px">
-                                    <div class="bar-track" style="flex:1"><div class="bar-fill" style="width:@(Math.Max(pct, 1))%;background:@barColor"></div></div>
-                                    <span style="font-size:12px;font-weight:700;min-width:36px;text-align:right;color:@barColor">@pct%</span>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-                </div>
-            }
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <h3 id="etapa-detalle-titulo" style="margin:0"></h3>
+                <button type="button" class="btns" onclick="cerrarDetalleEtapa()" style="font-size:12px;padding:4px 12px">✕ Cerrar</button>
+            </div>
+            <div id="etapa-detalle-kpis" style="display:flex;gap:16px;margin-bottom:12px"></div>
+            <div style="overflow-x:auto">
+            <table class="tbl" style="width:100%">
+                <thead><tr>
+                    <th>Institución</th>
+                    <th>Trámite</th>
+                    <th>Analista</th>
+                    <th style="width:180px">Avance de etapa</th>
+                    <th style="width:60px"></th>
+                </tr></thead>
+                <tbody id="etapa-detalle-body"></tbody>
+            </table>
+            </div>
         </div>
     </div>
+
+    @* ── Detalle por rango de avance (se muestra al hacer clic en distribución) *@
+    <div id="dist-detalle" class="dash-grid" style="grid-template-columns:1fr;display:none">
+        <div class="dash-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <h3 id="dist-detalle-titulo" style="margin:0"></h3>
+                <button type="button" class="btns" onclick="cerrarDetalleDist()" style="font-size:12px;padding:4px 12px">✕ Cerrar</button>
+            </div>
+            <div style="overflow-x:auto">
+            <table class="tbl" style="width:100%">
+                <thead><tr>
+                    <th>Institución</th>
+                    <th>Trámite</th>
+                    <th>Analista</th>
+                    <th style="width:180px">Avance global</th>
+                    <th style="width:60px"></th>
+                </tr></thead>
+                <tbody id="dist-detalle-body"></tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @section Scripts {
@@ -173,10 +178,14 @@
   Chart.defaults.plugins.legend.position = 'bottom';
 
   // Distribución de avance (barras verticales por rango)
+  var distLabels = @J(d.DistribucionAvance.Select(x => x.Etiqueta));
+  var distRangos = [[0, 25], [25, 50], [50, 75], [75, 101]];
+  var todosTramites = @J(d.TodosLosTramites.Select(t => new { expedienteId = t.ExpedienteId, institucion = t.Institucion, tramite = t.Tramite, analista = t.Analista ?? "", pct = Math.Round(t.Avance * 100, 1) }));
+
   new Chart(document.getElementById('chDist'), {
     type: 'bar',
     data: {
-      labels: @J(d.DistribucionAvance.Select(x => x.Etiqueta)),
+      labels: distLabels,
       datasets: [{
         data: @J(d.DistribucionAvance.Select(x => x.Cantidad)),
         backgroundColor: ['#c4c3bc', '#ef9f27', '#1455a4', '#2f7d32'],
@@ -187,23 +196,29 @@
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ctx.parsed.y + ' trámites' } } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' trámites'; } } } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      onClick: function(evt, elements) {
+        if (!elements.length) return;
+        mostrarDetalleDist(elements[0].index);
+      }
     }
   });
 
   // Etapas de la metodología (barras horizontales)
-  new Chart(document.getElementById('chEtapas'), {
+  var etapaNums = @J(d.PorEtapaMetodologia.Select(e => e.EtapaNum));
+  var etapaLabels = @J(d.PorEtapaMetodologia.Select(e => e.Etiqueta));
+  var etapaResumen = @J(d.PorEtapaMetodologia.Select(e => new { completados = e.Completados, total = e.Total, pct = Math.Round(e.AvancePromedio * 100, 1) }));
+  var detallePorEtapa = @J(d.DetallePorEtapa.Select(t => new { expedienteId = t.ExpedienteId, institucion = t.Institucion, tramite = t.Tramite, analista = t.Analista ?? "", etapaNum = t.EtapaNum, pct = Math.Round(t.AvanceEtapa * 100, 1) }));
+
+  var chEtapas = new Chart(document.getElementById('chEtapas'), {
     type: 'bar',
     data: {
-      labels: @J(d.PorEtapaMetodologia.Select(e => e.EtapaNum + ". " + (e.Etiqueta.Length > 28 ? e.Etiqueta[..28] + "…" : e.Etiqueta))),
+      labels: etapaNums.map(function(n, i) { return n + '. ' + (etapaLabels[i].length > 28 ? etapaLabels[i].substring(0, 28) + '…' : etapaLabels[i]); }),
       datasets: [{
         label: 'Avance promedio %',
-        data: @J(d.PorEtapaMetodologia.Select(e => Math.Round(e.AvancePromedio * 100, 1))),
-        backgroundColor: @J(d.PorEtapaMetodologia.Select(e =>
-            e.AvancePromedio >= 0.9999 ? "#2f7d32" :
-            e.AvancePromedio >= 0.5 ? "#1455a4" :
-            e.AvancePromedio > 0 ? "#ef9f27" : "#c4c3bc")),
+        data: etapaResumen.map(function(e) { return e.pct; }),
+        backgroundColor: etapaResumen.map(function(e) { return e.pct >= 99.99 ? '#2f7d32' : e.pct >= 50 ? '#1455a4' : e.pct > 0 ? '#ef9f27' : '#c4c3bc'; }),
         borderRadius: 4,
         barThickness: 20
       }]
@@ -213,12 +228,138 @@
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ctx.parsed.x.toFixed(1) + '%' } } },
+        tooltip: { callbacks: { label: function(ctx) { var r = etapaResumen[ctx.dataIndex]; return r.pct + '% — ' + r.completados + '/' + r.total + ' completados'; } } } },
       scales: {
-        x: { min: 0, max: 100, ticks: { callback: v => v + '%' } },
+        x: { min: 0, max: 100, ticks: { callback: function(v) { return v + '%'; } } },
         y: { ticks: { font: { size: 11 } } }
+      },
+      onClick: function(evt, elements) {
+        if (!elements.length) return;
+        mostrarDetalleEtapa(elements[0].index);
       }
     }
   });
+
+  var _etapaItems = [];
+  var _etapaFiltro = 'proceso';
+
+  function clasificar(t) { return t.pct >= 99.99 ? 'ok' : t.pct > 0 ? 'proceso' : 'cero'; }
+
+  function mostrarDetalleEtapa(idx) {
+    var num = etapaNums[idx];
+    var label = etapaLabels[idx];
+    _etapaItems = detallePorEtapa.filter(function(t) { return t.etapaNum === num; });
+    _etapaItems.sort(function(a, b) { return a.pct - b.pct; });
+
+    document.getElementById('etapa-detalle-titulo').textContent = 'Etapa ' + num + ' — ' + label;
+
+    var cOk = _etapaItems.filter(function(t) { return clasificar(t) === 'ok'; }).length;
+    var cProc = _etapaItems.filter(function(t) { return clasificar(t) === 'proceso'; }).length;
+    var cCero = _etapaItems.filter(function(t) { return clasificar(t) === 'cero'; }).length;
+
+    document.getElementById('etapa-detalle-kpis').innerHTML =
+      kpiBadge('todos', _etapaItems.length, 'Todos', '#0a2d6e', '#e8edf5') +
+      kpiBadge('ok', cOk, 'Completados', '#2f7d32', '#e8f5e9') +
+      kpiBadge('proceso', cProc, 'En proceso', '#ef9f27', '#fff3e0') +
+      kpiBadge('cero', cCero, 'No iniciados', '#888780', '#f5f5f4');
+
+    _etapaFiltro = cProc > 0 ? 'proceso' : cCero > 0 ? 'cero' : 'todos';
+    renderTablaEtapa();
+
+    var panel = document.getElementById('etapa-detalle');
+    panel.style.display = '';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function kpiBadge(filtro, n, label, fg, bg) {
+    return '<button type="button" onclick="filtrarEtapa(\'' + filtro + '\')" ' +
+      'class="etapa-kpi-btn" data-filtro="' + filtro + '" ' +
+      'style="font-size:13px;padding:4px 12px;border-radius:12px;border:2px solid transparent;' +
+      'background:' + bg + ';color:' + fg + ';font-weight:700;cursor:pointer">' +
+      n + ' ' + label + '</button>';
+  }
+
+  function filtrarEtapa(filtro) {
+    _etapaFiltro = filtro;
+    renderTablaEtapa();
+  }
+
+  function renderTablaEtapa() {
+    var filtered = _etapaFiltro === 'todos' ? _etapaItems :
+      _etapaItems.filter(function(t) { return clasificar(t) === _etapaFiltro; });
+
+    document.querySelectorAll('.etapa-kpi-btn').forEach(function(btn) {
+      btn.style.borderColor = btn.getAttribute('data-filtro') === _etapaFiltro ? btn.style.color : 'transparent';
+    });
+
+    if (!filtered.length) {
+      document.getElementById('etapa-detalle-body').innerHTML =
+        '<tr><td colspan="5" style="text-align:center;color:var(--diger-text-muted);padding:24px">Sin trámites en esta categoría</td></tr>';
+      return;
+    }
+    var html = '';
+    filtered.forEach(function(t) {
+      var barColor = t.pct >= 99.99 ? '#2f7d32' : t.pct >= 50 ? '#1455a4' : t.pct > 0 ? '#ef9f27' : '#888780';
+      html += '<tr>' +
+        '<td>' + esc(t.institucion) + '</td>' +
+        '<td style="font-weight:600;color:#0a2d6e">' + esc(t.tramite) + '</td>' +
+        '<td style="font-size:12px;color:var(--diger-text-muted)">' + (t.analista || '—') + '</td>' +
+        '<td><div style="display:flex;align-items:center;gap:8px">' +
+          '<div class="bar-track" style="flex:1"><div class="bar-fill" style="width:' + Math.max(t.pct, 1) + '%;background:' + barColor + '"></div></div>' +
+          '<span style="font-size:12px;font-weight:700;min-width:36px;text-align:right;color:' + barColor + '">' + t.pct + '%</span>' +
+        '</div></td>' +
+        '<td style="text-align:right"><a class="btns" href="/Expedientes/Editor/' + t.expedienteId + '" style="font-size:11.5px;padding:4px 10px">Ver</a></td>' +
+        '</tr>';
+    });
+    document.getElementById('etapa-detalle-body').innerHTML = html;
+  }
+
+  function cerrarDetalleEtapa() {
+    document.getElementById('etapa-detalle').style.display = 'none';
+  }
+
+  function mostrarDetalleDist(idx) {
+    var rango = distRangos[idx];
+    var label = distLabels[idx];
+    var items = todosTramites.filter(function(t) {
+      return t.pct >= rango[0] && t.pct < rango[1];
+    });
+    items.sort(function(a, b) { return a.pct - b.pct; });
+
+    document.getElementById('dist-detalle-titulo').textContent = 'Trámites con avance ' + label + ' (' + items.length + ')';
+
+    if (!items.length) {
+      document.getElementById('dist-detalle-body').innerHTML =
+        '<tr><td colspan="5" style="text-align:center;color:var(--diger-text-muted);padding:24px">Sin trámites en este rango</td></tr>';
+    } else {
+      var html = '';
+      items.forEach(function(t) {
+        var barColor = t.pct >= 99.99 ? '#2f7d32' : t.pct >= 50 ? '#1455a4' : t.pct > 0 ? '#ef9f27' : '#888780';
+        html += '<tr>' +
+          '<td>' + esc(t.institucion) + '</td>' +
+          '<td style="font-weight:600;color:#0a2d6e">' + esc(t.tramite) + '</td>' +
+          '<td style="font-size:12px;color:var(--diger-text-muted)">' + (t.analista || '—') + '</td>' +
+          '<td><div style="display:flex;align-items:center;gap:8px">' +
+            '<div class="bar-track" style="flex:1"><div class="bar-fill" style="width:' + Math.max(t.pct, 1) + '%;background:' + barColor + '"></div></div>' +
+            '<span style="font-size:12px;font-weight:700;min-width:36px;text-align:right;color:' + barColor + '">' + t.pct + '%</span>' +
+          '</div></td>' +
+          '<td style="text-align:right"><a class="btns" href="/Expedientes/Editor/' + t.expedienteId + '" style="font-size:11.5px;padding:4px 10px">Ver</a></td>' +
+          '</tr>';
+      });
+      document.getElementById('dist-detalle-body').innerHTML = html;
+    }
+
+    var panel = document.getElementById('dist-detalle');
+    panel.style.display = '';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function cerrarDetalleDist() {
+    document.getElementById('dist-detalle').style.display = 'none';
+  }
+
+  function esc(s) {
+    var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+  }
 </script>
 }

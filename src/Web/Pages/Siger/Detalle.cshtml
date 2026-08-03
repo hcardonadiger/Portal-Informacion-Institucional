@@ -1,0 +1,379 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Siger.DetalleModel
+@{
+    ViewData["Title"] = Model.Tramite.Codigo + " — " + Model.Tramite.Nombre;
+    var t = Model.Tramite;
+    var esAdmin = User.IsInRole(nameof(RolUsuario.Administrador));
+}
+
+<div class="container" style="max-width:1040px">
+    <div class="hist-header">
+        <div>
+            <h2>@t.Codigo — @t.Nombre</h2>
+            <p>@t.Institucion (@t.Sigla)</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            @if (esAdmin)
+            {
+                <a class="btns" asp-page="/Siger/Editor" asp-route-id="@t.Id">Editar</a>
+                <form method="post" asp-page-handler="Eliminar" asp-route-id="@t.Id"
+                      onsubmit="return confirm('Eliminar este tramite?')">
+                    <button class="btns" style="color:#dc2626" type="submit">Eliminar</button>
+                </form>
+            }
+            <a class="btns" asp-page="/Siger/Index">Volver al listado</a>
+        </div>
+    </div>
+
+    @* ── Ficha principal ─────────────────────────────────────────── *@
+    <div class="card" style="margin-bottom:1.25rem">
+        <div class="detail-grid">
+            <div class="detail-row">
+                <span class="detail-lbl">Codigo</span>
+                <span>@t.Codigo</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Id SIGER</span>
+                <span>@t.IdSiger</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Institucion</span>
+                <span>
+                    @if (t.InstitucionId != null)
+                    {
+                        <a asp-page="/Instituciones/Editor" asp-route-id="@t.InstitucionId"
+                           style="color:#1455a4;font-weight:600">@t.Institucion</a>
+                        <span style="color:var(--diger-text-muted)">(@t.Sigla)</span>
+                    }
+                    else
+                    {
+                        @t.Institucion @:(@t.Sigla)
+                    }
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Dependencia</span>
+                <span>@(t.Dependencia ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Estado en SIGER <span class="help-tip" data-tip="Estado del trámite en el sistema SIGER: Registrado (ingresado) o Aprobado (validado y oficial).">?</span></span>
+                <span>
+                    @{
+                        var cls = t.EstadoSiger switch { "Registrado" => "wf-registrada", "Aprobado" => "wf-completada", _ => "wf-asignada" };
+                    }
+                    <span class="@cls">@t.EstadoSiger</span>
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Publicado en portal</span>
+                <span>@(t.Publicado ? "Si" : "No")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Disponible en linea</span>
+                <span>@(t.DisponibleEnLinea ? "Si" : "No")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">En plan de digitalizacion <span class="help-tip" data-tip="Indica si este trámite está incluido en el plan nacional de digitalización de servicios públicos.">?</span></span>
+                <span>@(t.EnPlanDigitalizacion ? "Si" : "No")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Dirigido a</span>
+                <span>@(t.DirigidoA ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Vigencia</span>
+                <span>@(t.VigenciaDocumento ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Temporalidad</span>
+                <span>@(t.Temporalidad ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Fecha ingreso</span>
+                <span>@(t.FechaIngreso?.ToString("dd/MM/yyyy") ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Ultima modificacion</span>
+                <span>@(t.UltimaModificacion?.ToString("dd/MM/yyyy") ?? "—")</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(t.EnlacePrincipal))
+            {
+                <div class="detail-row">
+                    <span class="detail-lbl">Enlace principal</span>
+                    <span><a href="@t.EnlacePrincipal" target="_blank" rel="noopener">@t.EnlacePrincipal</a></span>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(t.DiagramaUrl))
+            {
+                var diagramaHref = t.DiagramaUrl.Replace("~/", "https://beta.sigpret.gob.hn/");
+                <div class="detail-row">
+                    <span class="detail-lbl">Diagrama del proceso</span>
+                    <span><a href="@diagramaHref" target="_blank" rel="noopener" class="btnp" style="font-size:12px;padding:5px 14px;text-decoration:none">Ver diagrama</a></span>
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(t.Descripcion))
+        {
+            <h4 style="margin:1rem 0 .5rem">Descripcion</h4>
+            <p style="white-space:pre-line">@t.Descripcion</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(t.Objetivo))
+        {
+            <h4 style="margin:1rem 0 .5rem">Objetivo</h4>
+            <p style="white-space:pre-line">@t.Objetivo</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(t.ObservacionesDiger))
+        {
+            <h4 style="margin:1rem 0 .5rem">Observaciones DIGER</h4>
+            <p style="white-space:pre-line;color:#b45309">@t.ObservacionesDiger</p>
+        }
+    </div>
+
+    @* ── Pasos del proceso ───────────────────────────────────────── *@
+    @if (t.Pasos.Count > 0)
+    {
+        <div class="card" style="margin-bottom:1.25rem">
+            <h3>Pasos del proceso (@t.Pasos.Count)</h3>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">N.ro</th>
+                            <th>Descripcion</th>
+                            <th>Lugar/Dependencia</th>
+                            <th>Salida/Resultado</th>
+                            <th style="width:60px">Tiempo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in t.Pasos)
+                        {
+                            <tr>
+                                <td style="text-align:center">@p.NumeroPaso</td>
+                                <td>@p.Descripcion</td>
+                                <td>@(p.LugarDependencia ?? "—")</td>
+                                <td>@(p.SalidaResultado ?? "—")</td>
+                                <td style="text-align:center">@(p.TiempoRegistrado ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ── Requisitos ──────────────────────────────────────────────── *@
+    @if (t.Requisitos.Count > 0)
+    {
+        <div class="card" style="margin-bottom:1.25rem">
+            <h3>Requisitos (@t.Requisitos.Count)</h3>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">N.ro</th>
+                            <th>Requisito</th>
+                            <th>Tipo</th>
+                            <th>Documento de soporte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in t.Requisitos)
+                        {
+                            <tr>
+                                <td style="text-align:center">@r.Numero</td>
+                                <td>@r.Requisito</td>
+                                <td>@(r.Tipo ?? "—")</td>
+                                <td>@(r.DocumentoSoporte ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ── Entregables ─────────────────────────────────────────────── *@
+    @if (t.Entregables.Count > 0)
+    {
+        <div class="card" style="margin-bottom:1.25rem">
+            <h3>Entregables (@t.Entregables.Count)</h3>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">N.ro</th>
+                            <th>Entregable</th>
+                            <th>Formato</th>
+                            <th>Presentacion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in t.Entregables)
+                        {
+                            <tr>
+                                <td style="text-align:center">@e.Numero</td>
+                                <td>@e.Entregable</td>
+                                <td>@(e.Formato ?? "—")</td>
+                                <td>@(e.Presentacion ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ── Lugares de atencion ─────────────────────────────────────── *@
+    @if (t.LugaresAtencion.Count > 0)
+    {
+        <div class="card" style="margin-bottom:1.25rem">
+            <h3>Lugares de atencion (@t.LugaresAtencion.Count)</h3>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">N.ro</th>
+                            <th>Lugar</th>
+                            <th>Ciudad</th>
+                            <th>Direccion</th>
+                            <th>Telefonos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var l in t.LugaresAtencion)
+                        {
+                            <tr>
+                                <td style="text-align:center">@l.Numero</td>
+                                <td>@l.Lugar</td>
+                                <td>@(l.Ciudad ?? "—")</td>
+                                <td>@(l.Direccion ?? "—")</td>
+                                <td>@(l.Telefonos ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ── Enlaces ─────────────────────────────────────────────────── *@
+    @if (t.Enlaces.Count > 0)
+    {
+        <div class="card" style="margin-bottom:1.25rem">
+            <h3>Enlaces (@t.Enlaces.Count)</h3>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">N.ro</th>
+                            <th>URL</th>
+                            <th>Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in t.Enlaces)
+                        {
+                            <tr>
+                                <td style="text-align:center">@e.Numero</td>
+                                <td><a href="@e.Url" target="_blank" rel="noopener" style="word-break:break-all">@e.Url</a></td>
+                                <td>@(e.Tipo ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ── Tareas de digitalizacion ────────────────────────────────── *@
+    @if (t.TareasDigitalizacion.Count > 0)
+    {
+        <div class="card" style="margin-bottom:1.25rem">
+            <h3>Tareas de digitalizacion (@t.TareasDigitalizacion.Count)</h3>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px">N.ro</th>
+                            <th>Descripcion</th>
+                            <th>Estado</th>
+                            <th>Fecha cumplimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in t.TareasDigitalizacion)
+                        {
+                            <tr>
+                                <td style="text-align:center">@d.NumeroTarea</td>
+                                <td>@d.Descripcion</td>
+                                <td>
+                                    @{
+                                        var dcls = d.Estado switch { "Completado" or "Completada" => "wf-completada", "En proceso" => "wf-enproceso", _ => "wf-registrada" };
+                                    }
+                                    <span class="@dcls">@(d.Estado ?? "—")</span>
+                                </td>
+                                <td>@(d.FechaCumplimiento?.ToString("dd/MM/yyyy") ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ── Expedientes vinculados ─────────────────────────────────── *@
+    @if (Model.ExpedientesVinculados.Count > 0)
+    {
+        <div class="card" style="margin-top:1.25rem">
+            <h3 style="margin:0 0 .6rem">Expedientes vinculados <span style="font-weight:400;font-size:13px;color:var(--diger-text-muted)">(@Model.ExpedientesVinculados.Count)</span></h3>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead><tr>
+                        <th>Código</th>
+                        <th>Institución</th>
+                        <th>Trámite en expediente</th>
+                        <th style="width:80px"></th>
+                    </tr></thead>
+                    <tbody>
+                        @foreach (var ev in Model.ExpedientesVinculados)
+                        {
+                            <tr>
+                                <td style="font-weight:600">@ev.Codigo</td>
+                                <td>@ev.Institucion</td>
+                                <td>@ev.NombreTramite</td>
+                                <td><a asp-page="/Expedientes/Editor" asp-route-id="@ev.Id" class="btns" style="font-size:12px;padding:4px 10px">Ver</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<style>
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+    }
+    .detail-row {
+        display: flex;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--diger-border, #e8e7e1);
+    }
+    .detail-lbl {
+        font-weight: 600;
+        color: var(--diger-text-muted, #6b7fa3);
+        min-width: 160px;
+        flex-shrink: 0;
+    }
+    @@media (max-width: 768px) {
+        .detail-grid { grid-template-columns: 1fr; }
+    }
+</style>
+}

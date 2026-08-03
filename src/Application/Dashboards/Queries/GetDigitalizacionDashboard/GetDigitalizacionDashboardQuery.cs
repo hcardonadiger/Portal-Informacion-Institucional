@@ -54,12 +54,12 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
                     return MetodologiaDigitalizacion.Global(estados, aplica);
                 });
 
-        var tramitesConAvance = new List<(string Institucion, string Tramite, string? Analista, double Avance)>();
+        var tramitesConAvance = new List<(int ExpId, string Institucion, string Tramite, string? Analista, double Avance)>();
         foreach (var exp in listaExp)
         foreach (var t in exp.Tramites)
         {
             var pct = avancePorTramite.TryGetValue((exp.Id, t.TramiteIndex), out var v) ? v : 0;
-            tramitesConAvance.Add((exp.Institucion, t.NombreTramite, exp.Analista, pct));
+            tramitesConAvance.Add((exp.Id, exp.Institucion, t.NombreTramite, exp.Analista, pct));
         }
 
         var enOperacion = tramitesConAvance.Count(t => t.Avance >= 0.9999);
@@ -94,6 +94,7 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
                 g => g.Key,
                 g => g.ToDictionary(r => r.SubId[7..], r => r.Estado == 1));
 
+        var detallePorEtapa = new List<TramiteEtapaDetalleDto>();
         var porEtapa = MetodologiaDigitalizacion.Etapas.Select(etapa =>
         {
             var valores = new List<double>();
@@ -108,6 +109,9 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
                 var pct = MetodologiaDigitalizacion.EtapaPct(etapa, estados);
                 valores.Add(pct);
                 if (pct >= 0.9999) completados++;
+                detallePorEtapa.Add(new TramiteEtapaDetalleDto(
+                    exp.Id, exp.Institucion, t.NombreTramite, exp.Analista,
+                    etapa.Num, pct));
             }
             return new AvanceEtapaDto(
                 etapa.Num,
@@ -138,16 +142,21 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
             .OrderByDescending(x => x.TotalTramites)
             .ToList();
 
-        // Trámites con menor avance
-        var rezagados = tramitesConAvance
+        // Todos los trámites con avance global
+        var todosAvance = tramitesConAvance
+            .Select(t => new TramiteAvanceDto(t.ExpId, t.Institucion, t.Tramite, t.Analista, t.Avance))
+            .ToList();
+
+        // Trámites con menor avance (top 10)
+        var rezagados = todosAvance
             .OrderBy(t => t.Avance)
             .Take(10)
-            .Select(t => new TramiteAvanceDto(t.Institucion, t.Tramite, t.Analista, t.Avance))
             .ToList();
 
         return new DigitalizacionDashboardDto(
             totalTramites, enOperacion, enProceso, noIniciados,
             institucionesActivas, avanceGlobal,
-            porInstitucion, porEtapa, distribucion, porAnalista, rezagados);
+            porInstitucion, porEtapa, distribucion, porAnalista, rezagados, detallePorEtapa,
+            todosAvance);
     }
 }

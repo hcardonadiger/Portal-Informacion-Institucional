@@ -1,9 +1,9 @@
 using Diger.TramitesEstado.Application.Dashboards.Common;
+using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetResumen;
 
 public sealed record GetResumenQuery(
-    // Alcance del técnico: cuando TecnicoUserId != null, los KPIs de tickets se limitan a sus temas o asignados.
     IReadOnlyList<int>? TecnicoTemaIds = null, Guid? TecnicoUserId = null) : IRequest<ResumenDto>;
 
 public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
@@ -15,12 +15,14 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
         var primerDiaMes = new DateOnly(hoy.Year, hoy.Month, 1);
         var finMes = primerDiaMes.AddMonths(1).AddDays(-1);
 
+        // ── Tickets ──────────────────────────────────────────────────
         var tickets = ctx.Tickets.AsNoTracking();
         if (q.TecnicoUserId is Guid tuid)
         {
             var temaIds = q.TecnicoTemaIds ?? [];
             tickets = tickets.Where(t => (t.TemaId != null && temaIds.Contains(t.TemaId.Value)) || t.AsignadoAId == tuid);
         }
+
         var ticketsTotal      = await tickets.CountAsync(ct);
         var ticketsAbiertos   = await tickets.CountAsync(t => t.Estado == EstadoTicket.Abierto, ct);
         var ticketsEnProgreso = await tickets.CountAsync(t => t.Estado == EstadoTicket.EnProgreso, ct);
@@ -28,42 +30,140 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
             t.Prioridad == PrioridadTicket.Critica &&
             (t.Estado == EstadoTicket.Abierto || t.Estado == EstadoTicket.EnProgreso), ct);
 
-        var expedientesTotal    = await ctx.Expedientes.CountAsync(ct);
-        var expedientesCerrados = await ctx.Expedientes.CountAsync(e => e.EstadoExpediente == EstadoExpediente.Cerrado, ct);
+        var ticketsResueltos = await tickets.CountAsync(t => t.Estado == EstadoTicket.Resuelto, ct);
 
-        var reunionesTotal = await ctx.Reuniones.CountAsync(ct);
-        var reunionesMes   = await ctx.Reuniones.CountAsync(r => r.Fecha >= primerDiaMes && r.Fecha <= finMes, ct);
-
-        // "Abierto" = no cumplido ni cancelado. Los vencidos/próximos solo cuentan compromisos abiertos.
-        var acuerdos = ctx.Reuniones.SelectMany(r => r.Acuerdos)
-            .Where(a => a.Estado == EstadoCompromiso.Pendiente || a.Estado == EstadoCompromiso.EnProgreso || a.Estado == EstadoCompromiso.Reprogramado);
-        var acuerdosVencidos = await acuerdos.CountAsync(a => a.Plazo != null && a.Plazo < hoy, ct);
-        var acuerdosProximos = await acuerdos.CountAsync(a => a.Plazo != null && a.Plazo >= hoy, ct);
-
-        var ultimos = await tickets
-            .OrderByDescending(t => t.CreatedAt)
-            .Take(6)
-            .Select(t => new ResumenTicketDto(t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad, t.Institucion))
+        var resueltosFechas = await tickets
+            .Where(t => t.Estado == EstadoTicket.Resuelto && t.FechaResolucion != null)
+            .Select(t => new { t.CreatedAt, Resuelto = t.FechaResolucion!.Value })
             .ToListAsync(ct);
+        var diasPromedio = resueltosFechas.Count == 0
+            ? 0 : (int)Math.Round(resueltosFechas.Average(t => (t.Resuelto - t.CreatedAt).TotalDays));
 
-        // Tendencia de tickets creados (mes actual vs anterior) + serie 12 meses.
         var iniMes = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
         var iniMesAnt = iniMes.AddMonths(-1);
-        var creadosMes = await tickets.CountAsync(t => t.CreatedAt >= iniMes, ct);
+        var creadosMes    = await tickets.CountAsync(t => t.CreatedAt >= iniMes, ct);
         var creadosMesAnt = await tickets.CountAsync(t => t.CreatedAt >= iniMesAnt && t.CreatedAt < iniMes, ct);
+
         var desde12 = iniMes.AddMonths(-11);
         var porMesRaw = (await tickets.Where(t => t.CreatedAt >= desde12)
             .GroupBy(t => new { t.CreatedAt.Year, t.CreatedAt.Month })
             .Select(g => new { g.Key.Year, g.Key.Month, C = g.Count() }).ToListAsync(ct))
             .Select(x => (x.Year, x.Month, x.C));
 
+        var resueltosMesRaw = (await tickets
+            .Where(t => t.Estado == EstadoTicket.Resuelto && t.FechaResolucion != null && t.FechaResolucion >= desde12)
+            .GroupBy(t => new { t.FechaResolucion!.Value.Year, t.FechaResolucion!.Value.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, C = g.Count() }).ToListAsync(ct))
+            .Select(x => (x.Year, x.Month, x.C));
+
+        // ── Expedientes ──────────────────────────────────────────────
+        var expedientesTotal    = await ctx.Expedientes.CountAsync(ct);
+        var expedientesCerrados = await ctx.Expedientes.CountAsync(e => e.EstadoExpediente == EstadoExpediente.Cerrado, ct);
+
+        // ── Reuniones y acuerdos ─────────────────────────────────────
+        var reunionesTotal = await ctx.Reuniones.CountAsync(ct);
+        var reunionesMes   = await ctx.Reuniones.CountAsync(r => r.Fecha >= primerDiaMes && r.Fecha <= finMes, ct);
+
+        var acuerdos = ctx.Reuniones.SelectMany(r => r.Acuerdos);
+        var abiertos = acuerdos.Where(a =>
+            a.Estado == EstadoCompromiso.Pendiente || a.Estado == EstadoCompromiso.EnProgreso || a.Estado == EstadoCompromiso.Reprogramado);
+        var acuerdosVencidos  = await abiertos.CountAsync(a => a.Plazo != null && a.Plazo < hoy, ct);
+        var acuerdosProximos  = await abiertos.CountAsync(a => a.Plazo != null && a.Plazo >= hoy, ct);
+        var acuerdosTotal     = await acuerdos.CountAsync(ct);
+        var acuerdosCumplidos = await acuerdos.CountAsync(a => a.Estado == EstadoCompromiso.Cumplido, ct);
+        var tasaCumplimiento  = acuerdosTotal == 0 ? 0 : (int)Math.Round(acuerdosCumplidos * 100.0 / acuerdosTotal);
+
+        // ── Capacitación (conteo simplificado) ───────────────────────
+        var correosCap = await ctx.Reuniones.AsNoTracking()
+            .Where(x => x.EsCapacitacionPlataforma || (x.Tipo != null && x.Tipo.Contains("Capacitaci")))
+            .SelectMany(x => x.Asistentes.Select(a => new { a.Correo, a.Nombre }))
+            .ToListAsync(ct);
+
+        var asistenciasCap = correosCap.Count;
+        var personasCap = correosCap
+            .Where(a => !string.IsNullOrWhiteSpace(a.Nombre))
+            .Select(a => !string.IsNullOrWhiteSpace(a.Correo) ? a.Correo.Trim().ToLowerInvariant() : a.Nombre!.Trim().ToLowerInvariant())
+            .Distinct()
+            .Count();
+
+        // ── Digitalización ───────────────────────────────────────────
+        var listaExp = await ctx.Expedientes.AsNoTracking()
+            .Select(e => new
+            {
+                e.Id, e.Institucion, e.InstitucionId, e.Analista,
+                Tramites = e.Tramites.Select(t => new { t.TramiteIndex, t.NombreTramite }).ToList()
+            })
+            .ToListAsync(ct);
+
+        var digTotalTramites = listaExp.Sum(e => e.Tramites.Count);
+        var expIds = listaExp.Select(e => e.Id).ToList();
+        var avances = await ctx.ExpedienteEtapaAvances.AsNoTracking()
+            .Where(a => expIds.Contains(a.ExpedienteId))
+            .ToListAsync(ct);
+
+        var avancePorTramite = avances
+            .GroupBy(a => (a.ExpedienteId, a.TramiteIndex))
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var estados = new Dictionary<string, int>();
+                    var aplica = new Dictionary<string, bool>();
+                    foreach (var row in g)
+                    {
+                        if (row.SubId.StartsWith("APLICA:"))
+                            aplica[row.SubId[7..]] = row.Estado == 1;
+                        else
+                            estados[row.SubId] = row.Estado;
+                    }
+                    return MetodologiaDigitalizacion.Global(estados, aplica);
+                });
+
+        var tramitesConAvance = new List<(string Institucion, string? Analista, double Avance)>();
+        foreach (var exp in listaExp)
+        foreach (var t in exp.Tramites)
+        {
+            var pct = avancePorTramite.TryGetValue((exp.Id, t.TramiteIndex), out var v) ? v : 0;
+            tramitesConAvance.Add((exp.Institucion, exp.Analista, pct));
+        }
+
+        var digEnOperacion  = tramitesConAvance.Count(t => t.Avance >= 0.9999);
+        var digEnProceso    = tramitesConAvance.Count(t => t.Avance > 0 && t.Avance < 0.9999);
+        var digNoIniciados  = tramitesConAvance.Count(t => t.Avance <= 0);
+        var digAvanceGlobal = tramitesConAvance.Count == 0
+            ? 0 : tramitesConAvance.Average(t => t.Avance);
+
+        var digPorInstitucion = tramitesConAvance
+            .GroupBy(t => t.Institucion)
+            .Select(g => new AvanceInstitucionDto(
+                g.Key, g.Count(),
+                g.Count(t => t.Avance >= 0.9999),
+                g.Average(t => t.Avance)))
+            .OrderByDescending(x => x.AvancePromedio)
+            .ToList();
+
+        var digPorAnalista = tramitesConAvance
+            .Where(t => !string.IsNullOrWhiteSpace(t.Analista))
+            .GroupBy(t => t.Analista!)
+            .Select(g => new AnalistaAvanceDto(
+                g.Key, g.Count(),
+                g.Count(t => t.Avance >= 0.9999),
+                g.Average(t => t.Avance)))
+            .OrderByDescending(x => x.TotalTramites)
+            .ToList();
+
         return new ResumenDto(
             ticketsAbiertos, ticketsEnProgreso, ticketsCriticos, ticketsTotal,
+            ticketsResueltos, diasPromedio,
+            new TendenciaDto(creadosMes, creadosMesAnt),
+            SerieMensual.Ultimos12(porMesRaw),
+            SerieMensual.Ultimos12(resueltosMesRaw),
             expedientesTotal, expedientesCerrados, expedientesTotal - expedientesCerrados,
             reunionesTotal, reunionesMes,
             acuerdosVencidos, acuerdosProximos,
-            new TendenciaDto(creadosMes, creadosMesAnt),
-            SerieMensual.Ultimos12(porMesRaw),
-            ultimos);
+            acuerdosTotal, acuerdosCumplidos, tasaCumplimiento,
+            personasCap, asistenciasCap,
+            digTotalTramites, digEnOperacion, digEnProceso, digNoIniciados, digAvanceGlobal,
+            digPorInstitucion, digPorAnalista);
     }
 }

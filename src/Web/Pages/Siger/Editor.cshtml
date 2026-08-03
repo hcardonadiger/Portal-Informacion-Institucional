@@ -1,0 +1,153 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Siger.EditorModel
+@{
+    ViewData["Title"] = Model.EsNuevo ? "Nuevo Tramite SIGER" : "Editar Tramite SIGER";
+}
+
+<div class="container" style="max-width:860px">
+    <div class="hist-header">
+        <div>
+            <h2>@ViewData["Title"]</h2>
+            <p>@(Model.EsNuevo ? "Registrar un nuevo tramite en el inventario" : "Modificar datos del tramite")</p>
+        </div>
+        <a class="btns" asp-page="/Siger/Index">Cancelar</a>
+    </div>
+
+    <form method="post" class="card">
+        <input type="hidden" asp-for="Form.Id" />
+
+        <div class="form-grid">
+            <div class="field">
+                <label asp-for="Form.IdSiger">Id SIGER</label>
+                <input asp-for="Form.IdSiger" type="number" required />
+            </div>
+            <div class="field">
+                <label asp-for="Form.Codigo">Codigo</label>
+                <input asp-for="Form.Codigo" required maxlength="20" placeholder="400-001" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Nombre">Nombre del tramite</label>
+            <input asp-for="Form.Nombre" required maxlength="600" />
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label asp-for="Form.Institucion">Institucion</label>
+                <input asp-for="Form.Institucion" required maxlength="200" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.Sigla">Sigla</label>
+                <input asp-for="Form.Sigla" maxlength="30" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Dependencia">Dependencia o area responsable</label>
+            <input asp-for="Form.Dependencia" maxlength="400" />
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Descripcion">Descripcion</label>
+            <textarea asp-for="Form.Descripcion" rows="3"></textarea>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Objetivo">Objetivo</label>
+            <textarea asp-for="Form.Objetivo" rows="2"></textarea>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.DirigidoA">Dirigido a</label>
+            <textarea asp-for="Form.DirigidoA" rows="2"></textarea>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="field">
+                <label asp-for="Form.EstadoSiger">Estado en SIGER</label>
+                <select asp-for="Form.EstadoSiger">
+                    <option value="">— Seleccione —</option>
+                    <option value="Registrado">Registrado</option>
+                    <option value="Aprobado">Aprobado</option>
+                    <option value="Borrador">Borrador</option>
+                </select>
+            </div>
+            <div class="field">
+                <label asp-for="Form.VigenciaDocumento">Vigencia del documento</label>
+                <input asp-for="Form.VigenciaDocumento" maxlength="60" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.Temporalidad">Temporalidad</label>
+                <input asp-for="Form.Temporalidad" maxlength="60" />
+            </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="field">
+                <label class="chk-label">
+                    <input asp-for="Form.Publicado" type="checkbox" /> Publicado en portal
+                </label>
+            </div>
+            <div class="field">
+                <label class="chk-label">
+                    <input asp-for="Form.DisponibleEnLinea" type="checkbox" /> Disponible en linea
+                </label>
+            </div>
+            <div class="field">
+                <label class="chk-label">
+                    <input asp-for="Form.EnPlanDigitalizacion" type="checkbox" /> En plan de digitalizacion
+                </label>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label asp-for="Form.EnlacePrincipal">Enlace principal</label>
+                <input asp-for="Form.EnlacePrincipal" type="url" maxlength="600" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.DiagramaUrl">URL del diagrama</label>
+                <input asp-for="Form.DiagramaUrl" maxlength="600" />
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label asp-for="Form.FechaIngreso">Fecha de ingreso</label>
+                <input asp-for="Form.FechaIngreso" type="date" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.UltimaModificacion">Ultima modificacion</label>
+                <input asp-for="Form.UltimaModificacion" type="date" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.ObservacionesDiger">Observaciones DIGER</label>
+            <textarea asp-for="Form.ObservacionesDiger" rows="3"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
+            <a class="btns" asp-page="/Siger/Index">Cancelar</a>
+            <button class="btnp" type="submit">@(Model.EsNuevo ? "Crear tramite" : "Guardar cambios")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<style>
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 16px;
+    }
+    .chk-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        padding: 8px 0;
+    }
+</style>
+}
