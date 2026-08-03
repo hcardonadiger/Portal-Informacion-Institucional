@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 using Diger.TramitesEstado.Application.Informes;
 using Diger.TramitesEstado.Application.Informes.Common;
 using QuestPDF;
@@ -198,6 +199,22 @@ public sealed class InformeService : IInformeService
         return doc.GeneratePdf();
     }
 
+    // ── Semáforo de avance ────────────────────────────────────────────────────
+    // Los cortes y los colores salen de SemaforoAvance (Application): es la misma
+    // fuente que usan el tablero de trámites y la página de Informes, para que el
+    // mismo trámite no caiga en bandas distintas según dónde se lo mire.
+
+    /// <summary>Pinta la celda de avance según su banda. Se aplica después del
+    /// sombreado de filas alternas, que si no la sobrescribiría.</summary>
+    private static void PintarAvance(IXLCell celda, int avancePct)
+    {
+        var (fondo, texto, _) = SemaforoAvance.Colores(SemaforoAvance.Banda(avancePct));
+        celda.Style.Fill.BackgroundColor = XLColor.FromHtml(fondo);
+        celda.Style.Font.FontColor = XLColor.FromHtml(texto);
+        celda.Style.Font.Bold = true;
+        celda.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+    }
+
     // ── Excel ─────────────────────────────────────────────────────────────────
     public byte[] GenerarExcel(InformeInstitucionDto dto)
     {
@@ -236,6 +253,24 @@ public sealed class InformeService : IInformeService
         ResumenFila(wsRes, 12, "En Levantamiento",    dto.EnLevantamiento.ToString());
         ResumenFila(wsRes, 13, "En Exploración",      dto.EnExploracion.ToString());
 
+        // Leyenda del semáforo: sin ella los colores de las otras hojas no significan nada.
+        wsRes.Cell(15, 1).Value = "Semáforo de avance";
+        wsRes.Cell(15, 1).Style.Font.Bold = true;
+        var bandas = new[] { BandaAvance.Avanzado, BandaAvance.EnProceso, BandaAvance.Rezagado };
+        for (int i = 0; i < bandas.Length; i++)
+        {
+            var fila = 16 + i;
+            var (fondo, texto, _) = SemaforoAvance.Colores(bandas[i]);
+            var etiqueta = SemaforoAvance.Etiqueta(bandas[i]);
+            wsRes.Cell(fila, 1).Value = etiqueta;
+            wsRes.Cell(fila, 1).Style.Fill.BackgroundColor = XLColor.FromHtml(fondo);
+            wsRes.Cell(fila, 1).Style.Font.FontColor = XLColor.FromHtml(texto);
+            wsRes.Cell(fila, 1).Style.Font.Bold = true;
+        }
+        wsRes.Cell(19, 1).Value = "El avance es el ponderado de la metodología (mismo cálculo que la pantalla de Seguimiento).";
+        wsRes.Cell(19, 1).Style.Font.FontColor = XLColor.Gray;
+        wsRes.Cell(19, 1).Style.Font.FontSize = 9;
+
         wsRes.Columns(1, 2).AdjustToContents();
 
         // ── Hoja 2: Expedientes ────────────────────────────────────────────
@@ -264,6 +299,8 @@ public sealed class InformeService : IInformeService
             if (rowExp % 2 == 0)
                 wsExp.Row(rowExp).Style.Fill.BackgroundColor = XLColor.FromHtml("#f5f8fd");
 
+            PintarAvance(wsExp.Cell(rowExp, 6), exp.AvancePct);
+
             rowExp++;
         }
 
@@ -272,7 +309,9 @@ public sealed class InformeService : IInformeService
 
         // ── Hoja 3: Trámites ───────────────────────────────────────────────
         var wsTr = wb.Worksheets.Add("Tramites");
-        var hdrsTr = new[] { "Código Exp.", "Trámite", "Estado Exp.", "Analista", "Pasos totales", "Pasos completados", "Avance %" };
+        // La columna "Semáforo" repite la banda en texto: el color solo no es
+        // accesible (daltonismo) y además permite filtrar y agrupar por banda.
+        var hdrsTr = new[] { "Código Exp.", "Trámite", "Estado Exp.", "Analista", "Pasos totales", "Pasos completados", "Avance %", "Semáforo" };
         for (int i = 0; i < hdrsTr.Length; i++)
         {
             var cell = wsTr.Cell(1, i + 1);
@@ -294,9 +333,15 @@ public sealed class InformeService : IInformeService
                 wsTr.Cell(rowTr, 5).Value = t.TotalPasos;
                 wsTr.Cell(rowTr, 6).Value = t.PasosCompletados;
                 wsTr.Cell(rowTr, 7).Value = $"{t.AvancePct}%";
+                wsTr.Cell(rowTr, 8).Value = SemaforoAvance.Etiqueta(SemaforoAvance.Banda(t.AvancePct));
 
                 if (rowTr % 2 == 0)
                     wsTr.Row(rowTr).Style.Fill.BackgroundColor = XLColor.FromHtml("#f5f8fd");
+
+                // Después del sombreado de fila: si no, éste lo taparía.
+                PintarAvance(wsTr.Cell(rowTr, 7), t.AvancePct);
+                PintarAvance(wsTr.Cell(rowTr, 8), t.AvancePct);
+                wsTr.Cell(rowTr, 8).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
 
                 rowTr++;
             }

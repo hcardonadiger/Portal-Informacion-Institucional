@@ -19,6 +19,16 @@
         EstadoExpediente.EnLevantamiento => "badge-warning",
         _                                => "badge-secondary"
     };
+
+    // Los cortes salen de SemaforoAvance: antes esta página tenía los suyos (80/40)
+    // y clasificaba distinto que el Excel del mismo informe.
+    string BarraBanda(int pct) => SemaforoAvance.Banda(pct) switch
+    {
+        BandaAvance.Avanzado  => "bg-success",
+        BandaAvance.EnProceso => "bg-warning",
+        _                     => "bg-danger",
+    };
+    string TituloBanda(int pct) => SemaforoAvance.Etiqueta(SemaforoAvance.Banda(pct));
 }
 
 <div class="page-header">
@@ -158,8 +168,8 @@
                                 <td class="text-center">@exp.Tramites.Count</td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <div class="progress flex-grow-1" style="height:6px">
-                                            <div class="progress-bar @(exp.AvancePct >= 80 ? "bg-success" : exp.AvancePct >= 40 ? "bg-primary" : "bg-warning")"
+                                        <div class="progress flex-grow-1" style="height:6px" title="@TituloBanda(exp.AvancePct)">
+                                            <div class="progress-bar @BarraBanda(exp.AvancePct)"
                                                  style="width:@exp.AvancePct%"></div>
                                         </div>
                                         <span class="text-muted" style="width:32px;text-align:right;font-size:.8em">@exp.AvancePct%</span>
@@ -178,8 +188,8 @@
                                         <td colspan="4" class="text-muted">@t.NombreTramite</td>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
-                                                <div class="progress flex-grow-1" style="height:4px">
-                                                    <div class="progress-bar @(t.AvancePct >= 80 ? "bg-success" : t.AvancePct >= 40 ? "bg-primary" : "bg-warning")"
+                                                <div class="progress flex-grow-1" style="height:4px" title="@TituloBanda(t.AvancePct)">
+                                                    <div class="progress-bar @BarraBanda(t.AvancePct)"
                                                          style="width:@t.AvancePct%"></div>
                                                 </div>
                                                 <span class="text-muted" style="width:32px;text-align:right;font-size:.8em">@t.AvancePct%</span>
