@@ -49,27 +49,27 @@
     <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.5rem">
         <a class="kpi-card @(d.CompromisosPendientes > 0 ? "warn" : "")" href="#sec-compromisos" onclick="activarTab('tab-comp')">
             <div class="kpi-num">@d.CompromisosPendientes</div>
-            <div class="kpi-lbl">Compromisos pendientes</div>
+            <div class="kpi-lbl">Compromisos pendientes <span class="help-tip tip-down" data-tip="Acuerdos de reuniones asignados a usted que aún no se han cumplido.">?</span></div>
         </a>
 
         <a class="kpi-card @(d.CompromisosVencidos > 0 ? "alert" : "")" href="#sec-compromisos" onclick="activarTab('tab-comp')">
             <div class="kpi-num">@d.CompromisosVencidos</div>
-            <div class="kpi-lbl">Compromisos vencidos</div>
+            <div class="kpi-lbl">Compromisos vencidos <span class="help-tip tip-down" data-tip="Compromisos que superaron su fecha límite sin ser completados. Requieren atención prioritaria.">?</span></div>
         </a>
 
         <a class="kpi-card" href="#sec-reuniones" onclick="activarTab('tab-reun')">
             <div class="kpi-num">@d.ReunionesProximas</div>
-            <div class="kpi-lbl">Próximas reuniones</div>
+            <div class="kpi-lbl">Próximas reuniones <span class="help-tip tip-down" data-tip="Reuniones en las que participará próximamente como organizador o convocado.">?</span></div>
         </a>
 
         <a class="kpi-card @(d.TicketsAbiertos > 0 ? "warn" : "")" href="#sec-tickets" onclick="activarTab('tab-tick')">
             <div class="kpi-num">@d.TicketsAbiertos</div>
-            <div class="kpi-lbl">Tickets abiertos</div>
+            <div class="kpi-lbl">Tickets abiertos <span class="help-tip tip-down tip-left" data-tip="Tickets de soporte que usted creó o tiene asignados y que aún están activos.">?</span></div>
         </a>
 
         <a class="kpi-card ok" href="#sec-expedientes" onclick="activarTab('tab-exp')">
             <div class="kpi-num">@d.ExpedientesAsignados</div>
-            <div class="kpi-lbl">Expedientes asignados</div>
+            <div class="kpi-lbl">Expedientes asignados <span class="help-tip tip-down tip-left" data-tip="Expedientes de digitalización donde usted es el responsable del acta.">?</span></div>
         </a>
     </div>
 

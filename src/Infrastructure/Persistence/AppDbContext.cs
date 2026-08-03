@@ -52,6 +52,13 @@ public sealed class AppDbContext(
     public DbSet<PlanTrabajo>               PlanTrabajos          { get; init; } = default!;
     public DbSet<MetaTramite>               MetasTrabajo          { get; init; } = default!;
     public DbSet<Recurso>                   Recursos              { get; init; } = default!;
+    public DbSet<TramiteSiger>              TramitesSiger         { get; init; } = default!;
+    public DbSet<PasoSiger>                 PasosSiger            { get; init; } = default!;
+    public DbSet<RequisitoSiger>            RequisitosSiger       { get; init; } = default!;
+    public DbSet<EntregableSiger>           EntregablesSiger      { get; init; } = default!;
+    public DbSet<LugarAtencionSiger>        LugaresAtencionSiger  { get; init; } = default!;
+    public DbSet<EnlaceSiger>               EnlacesSiger          { get; init; } = default!;
+    public DbSet<TareaDigitalizacionSiger>  TareasDigitalizacionSiger { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -557,6 +564,9 @@ public sealed class ExpedienteTramiteConfiguration : IEntityTypeConfiguration<Ex
         b.Property(x => x.Telefono).HasMaxLength(60);
         b.Property(x => x.EmailTramite).HasMaxLength(200);
         b.Property(x => x.SitioWeb).HasMaxLength(300);
+        b.HasOne<TramiteSiger>().WithMany()
+            .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => x.TramiteSigerId);
         b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
     }
 }
@@ -1169,5 +1179,136 @@ public sealed class MetaTramiteConfiguration : IEntityTypeConfiguration<MetaTram
         b.Property(x => x.Observaciones).HasMaxLength(2000);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
         b.HasIndex(x => new { x.PlanTrabajoId, x.Orden });
+    }
+}
+
+// ── Inventario SIGER ─────────────────────────────────────────────────────
+public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<TramiteSiger>
+{
+    public void Configure(EntityTypeBuilder<TramiteSiger> b)
+    {
+        b.ToTable("TramitesSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Codigo).HasMaxLength(20).IsRequired();
+        b.Property(x => x.Nombre).HasMaxLength(600).IsRequired();
+        b.Property(x => x.Institucion).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Sigla).HasMaxLength(30);
+        b.Property(x => x.Dependencia).HasMaxLength(400);
+        b.Property(x => x.Descripcion).HasMaxLength(4000);
+        b.Property(x => x.Objetivo).HasMaxLength(4000);
+        b.Property(x => x.DirigidoA).HasMaxLength(2000);
+        b.Property(x => x.EstadoSiger).HasMaxLength(30);
+        b.Property(x => x.VigenciaDocumento).HasMaxLength(60);
+        b.Property(x => x.Temporalidad).HasMaxLength(60);
+        b.Property(x => x.DiagramaUrl).HasMaxLength(600);
+        b.Property(x => x.EnlacePrincipal).HasMaxLength(600);
+        b.Property(x => x.ObservacionesDiger).HasMaxLength(4000);
+
+        b.HasIndex(x => x.IdSiger).IsUnique();
+        b.HasIndex(x => x.Codigo).IsUnique();
+        b.HasIndex(x => x.Institucion);
+        b.HasIndex(x => x.Sigla);
+        b.HasIndex(x => x.EstadoSiger);
+        b.HasIndex(x => x.Publicado);
+        b.HasIndex(x => x.DisponibleEnLinea);
+        b.HasIndex(x => x.EnPlanDigitalizacion);
+
+        b.Property(x => x.InstitucionId).HasMaxLength(120);
+        b.HasOne<Institucion>().WithMany()
+            .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => x.InstitucionId);
+
+        b.HasMany(x => x.Pasos).WithOne().HasForeignKey(p => p.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Requisitos).WithOne().HasForeignKey(r => r.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Entregables).WithOne().HasForeignKey(e => e.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.LugaresAtencion).WithOne().HasForeignKey(l => l.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Enlaces).WithOne().HasForeignKey(e => e.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.TareasDigitalizacion).WithOne().HasForeignKey(t => t.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PasoSigerConfiguration : IEntityTypeConfiguration<PasoSiger>
+{
+    public void Configure(EntityTypeBuilder<PasoSiger> b)
+    {
+        b.ToTable("PasosSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Descripcion).HasMaxLength(2000).IsRequired();
+        b.Property(x => x.LugarDependencia).HasMaxLength(400);
+        b.Property(x => x.SalidaResultado).HasMaxLength(2000);
+        b.Property(x => x.TiempoRegistrado).HasMaxLength(60);
+        b.HasIndex(x => new { x.TramiteSigerId, x.NumeroPaso });
+    }
+}
+
+public sealed class RequisitoSigerConfiguration : IEntityTypeConfiguration<RequisitoSiger>
+{
+    public void Configure(EntityTypeBuilder<RequisitoSiger> b)
+    {
+        b.ToTable("RequisitosSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Requisito).HasMaxLength(2000).IsRequired();
+        b.Property(x => x.Tipo).HasMaxLength(100);
+        b.Property(x => x.DocumentoSoporte).HasMaxLength(2000);
+        b.Property(x => x.Formato).HasMaxLength(600);
+        b.HasIndex(x => new { x.TramiteSigerId, x.Numero });
+    }
+}
+
+public sealed class EntregableSigerConfiguration : IEntityTypeConfiguration<EntregableSiger>
+{
+    public void Configure(EntityTypeBuilder<EntregableSiger> b)
+    {
+        b.ToTable("EntregablesSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Entregable).HasMaxLength(1000).IsRequired();
+        b.Property(x => x.Formato).HasMaxLength(2000);
+        b.Property(x => x.Presentacion).HasMaxLength(600);
+        b.HasIndex(x => new { x.TramiteSigerId, x.Numero });
+    }
+}
+
+public sealed class LugarAtencionSigerConfiguration : IEntityTypeConfiguration<LugarAtencionSiger>
+{
+    public void Configure(EntityTypeBuilder<LugarAtencionSiger> b)
+    {
+        b.ToTable("LugaresAtencionSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Lugar).HasMaxLength(1000).IsRequired();
+        b.Property(x => x.Ciudad).HasMaxLength(2000);
+        b.Property(x => x.Direccion).HasMaxLength(2000);
+        b.Property(x => x.Telefonos).HasMaxLength(1000);
+        b.HasIndex(x => new { x.TramiteSigerId, x.Numero });
+    }
+}
+
+public sealed class EnlaceSigerConfiguration : IEntityTypeConfiguration<EnlaceSiger>
+{
+    public void Configure(EntityTypeBuilder<EnlaceSiger> b)
+    {
+        b.ToTable("EnlacesSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Url).HasMaxLength(1000).IsRequired();
+        b.Property(x => x.Tipo).HasMaxLength(100);
+        b.HasIndex(x => new { x.TramiteSigerId, x.Numero });
+    }
+}
+
+public sealed class TareaDigitalizacionSigerConfiguration : IEntityTypeConfiguration<TareaDigitalizacionSiger>
+{
+    public void Configure(EntityTypeBuilder<TareaDigitalizacionSiger> b)
+    {
+        b.ToTable("TareasDigitalizacionSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Descripcion).HasMaxLength(1000).IsRequired();
+        b.Property(x => x.Estado).HasMaxLength(60);
+        b.HasIndex(x => new { x.TramiteSigerId, x.NumeroTarea });
     }
 }
