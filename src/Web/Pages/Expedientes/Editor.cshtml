@@ -9,6 +9,8 @@
         : Url.Page("/Expedientes/Editor");
     var contactosUrl = Url.Page("/Expedientes/Editor", "Contactos");
     var plantillaUrl = Url.Page("/Expedientes/Editor", "Plantilla");
+    var sigerUrl = Url.Page("/Expedientes/Editor", "BuscarSiger");
+    var sigerDetalleUrl = Url.Page("/Expedientes/Editor", "DetalleSiger");
 }
 <link rel="stylesheet" href="~/css/expediente.css" asp-append-version="true" />
 
@@ -33,7 +35,7 @@
     <div class="sbi" id="sb5" onclick="ir(5)"><div class="sbi-dot"></div>Infraestructura SOL</div>
     <div class="sbi" id="sb6" onclick="ir(6)"><div class="sbi-dot"></div>Estado del expediente</div>
 
-    <div class="sb-hdr" style="margin-top:.9rem">Por trámite</div>
+    <div class="sb-hdr" style="margin-top:.9rem">Por trámite <span class="help-tip tip-down" data-tip="Estas secciones se completan por cada trámite del expediente. Use las pestañas para cambiar entre trámites.">?</span></div>
     <div class="sbi" id="sb1" onclick="ir(1)"><div class="sbi-dot"></div>Ficha del trámite</div>
     <div class="sbi" id="sb2" onclick="ir(2)"><div class="sbi-dot"></div>Marco legal y documentación</div>
     <div class="sbi" id="sb3" onclick="ir(3)"><div class="sbi-dot"></div>Proceso actual</div>
@@ -99,7 +101,7 @@
 
     <!-- ══ SECCIÓN 0: APERTURA ══ -->
     <div class="sec active" id="sec0">
-      <div class="sec-title">Apertura del expediente <span style="font-size:9px;font-weight:400;color:#c0c8d8;letter-spacing:.05em;margin-left:6px">v4.2</span></div>
+      <div class="sec-title">Apertura del expediente <span class="help-tip" data-tip="Datos generales del expediente: institución, responsable del acta y trámites a digitalizar.">?</span> <span style="font-size:9px;font-weight:400;color:#c0c8d8;letter-spacing:.05em;margin-left:6px">v4.2</span></div>
 
       <div class="card accent">
         <div class="ct">Identificación del expediente</div>
@@ -161,7 +163,10 @@
           <span class="hint">Define el número de inicio para los códigos</span>
         </div>
         <div id="tramites-nombres-wrap"></div>
-        <button type="button" class="btn-add" onclick="agregarTramiteApertura()">+ Agregar trámite</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn-add" onclick="agregarTramiteApertura()">+ Agregar trámite</button>
+          <button type="button" class="btn-add" style="background:#eff6ff;color:#1455a4;border-color:#bfdbfe" onclick="abrirModalSiger()">📥 Importar desde SIGER</button>
+        </div>
         <span class="hint" style="display:block;margin-top:6px">Agregue tantos trámites como necesite; use ✕ para quitar uno.</span>
       </div>
 
@@ -189,7 +194,7 @@
 
     <!-- ══ SECCIÓN 1: FICHA DEL TRÁMITE ══ -->
     <div class="sec" id="sec1">
-      <div class="sec-title">Ficha del trámite</div>
+      <div class="sec-title">Ficha del trámite <span class="help-tip" data-tip="Datos específicos de cada trámite: nombre oficial, tipo, área responsable, requisitos y costos.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-1" style="display:none"></div>
       <div id="fichas-wrap"></div>
 
@@ -201,7 +206,7 @@
 
     <!-- ══ SECCIÓN 2: MARCO LEGAL ══ -->
     <div class="sec" id="sec2">
-      <div class="sec-title">Marco legal y documentación solicitada</div>
+      <div class="sec-title">Marco legal y documentación solicitada <span class="help-tip" data-tip="Registre los fundamentos legales del trámite y la documentación solicitada a la institución.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-2" style="display:none"></div>
 
       <div class="card accent">
@@ -238,7 +243,7 @@
 
     <!-- ══ SECCIÓN 3: PROCESO ACTUAL ══ -->
     <div class="sec" id="sec3">
-      <div class="sec-title">Proceso actual del trámite</div>
+      <div class="sec-title">Proceso actual del trámite <span class="help-tip" data-tip="Levantamiento del flujo real de actividades: métricas, pasos, documentos internos y observaciones de campo.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-3" style="display:none"></div>
 
       <div class="card">
@@ -303,7 +308,7 @@
 
     <!-- ══ SECCIÓN 4: MODELO PROPUESTO ══ -->
     <div class="sec" id="sec4">
-      <div class="sec-title">Modelo propuesto (trámite racionalizado)</div>
+      <div class="sec-title">Modelo propuesto (trámite racionalizado) <span class="help-tip" data-tip="Diseño del trámite digitalizado: comparación antes/después, flujo optimizado y acción propuesta para cada requisito.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-4" style="display:none"></div>
 
       <!-- ANTES VS AHORA -->
@@ -378,7 +383,7 @@
 
     <!-- ══ SECCIÓN 5: INFRAESTRUCTURA SOL ══ -->
     <div class="sec" id="sec5">
-      <div class="sec-title">Requerimientos mínimos de infraestructura SOL</div>
+      <div class="sec-title">Requerimientos mínimos de infraestructura SOL <span class="help-tip" data-tip="Evaluación de la capacidad tecnológica de la institución para alojar la plataforma SOL. Se completa una sola vez por expediente.">?</span></div>
       <p style="font-size:12px;color:var(--muted);margin:-0.9rem 0 1.2rem">Evaluación de la institución frente a los requerimientos mínimos para alojar la plataforma SOL. Se completa una sola vez por expediente.</p>
 
       <div class="card accent">
@@ -446,7 +451,7 @@
 
     <!-- ══ SECCIÓN 6: ESTADO ══ -->
     <div class="sec" id="sec6">
-      <div class="sec-title">Estado del expediente</div>
+      <div class="sec-title">Estado del expediente <span class="help-tip" data-tip="Control general del avance del expediente, estado por sección y datos de validación y cierre.">?</span></div>
 
       <div class="card accent">
         <div class="ct">Estado general</div>
@@ -551,6 +556,27 @@
 <div id="flow-add-menu"
      style="display:none;position:fixed;z-index:1001;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 12px 32px rgba(10,45,110,.18);padding:5px;min-width:140px"></div>
 
+@* ── Modal buscar e importar trámite SIGER ── *@
+<div id="siger-modal" onclick="cerrarModalSiger()"
+     style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+  <div onclick="event.stopPropagation()"
+       style="background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid #eef1f7">
+      <span style="font-size:18px">📥</span>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:#0a2d6e">Importar trámite desde inventario SIGER</div></div>
+      <button type="button" onclick="cerrarModalSiger()" aria-label="Cerrar"
+              style="flex:none;border:0;background:#f0f4fa;color:#64748b;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
+    </div>
+    <div style="padding:1rem 1.3rem;border-bottom:1px solid #eef1f7">
+      <input type="text" id="siger-buscar" placeholder="Buscar por nombre, código o sigla..." oninput="buscarSigerDebounce()"
+             style="width:100%;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;font-family:inherit">
+    </div>
+    <div id="siger-resultados" style="flex:1;overflow-y:auto;padding:0.5rem 1.3rem;min-height:200px;max-height:50vh">
+      <div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Escriba al menos 2 caracteres para buscar</div>
+    </div>
+  </div>
+</div>
+
 <style>
   .nm-lbl { font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:2px }
 </style>
@@ -564,6 +590,8 @@
             indexUrl: '@Url.Page("/Index")',
             contactosUrl: '@contactosUrl',
             plantillaUrl: '@plantillaUrl',
+            sigerUrl: '@sigerUrl',
+            sigerDetalleUrl: '@sigerDetalleUrl',
             plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
             esAdmin: @(Model.EsAdmin ? "true" : "false"),
             usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(

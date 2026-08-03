@@ -5,13 +5,15 @@ using Diger.TramitesEstado.Application.Instituciones.Commands.CrearInstitucion;
 using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
 using Diger.TramitesEstado.Infrastructure.Security;
+using Microsoft.EntityFrameworkCore;
 
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
 [Authorize]
 public sealed class EditorModel(
     ISender sender, IInstitucionRepository institucionRepo,
-    ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
+    ICurrentUserService currentUser, IWebHostEnvironment env,
+    IApplicationDbContext db) : PageModel
 {
     public int?    ExpId   { get; private set; }
     public string  Codigo  { get; private set; } = "";
@@ -74,6 +76,64 @@ public sealed class EditorModel(
         if (string.IsNullOrWhiteSpace(nombre)) return new JsonResult(null);
         var plantilla = await sender.Send(new GetPlantillaPorNombreQuery(nombre), ct);
         return new JsonResult(plantilla);
+    }
+
+    public async Task<IActionResult> OnGetBuscarSigerAsync(string? q, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+            return new JsonResult(Array.Empty<object>());
+
+        var term = q.Trim();
+        var results = await db.TramitesSiger.AsNoTracking()
+            .Where(t => t.Nombre.Contains(term) || t.Codigo.Contains(term) || (t.Sigla != null && t.Sigla.Contains(term)))
+            .OrderBy(t => t.Nombre)
+            .Take(20)
+            .Select(t => new
+            {
+                t.Id, t.Codigo, t.Nombre, t.Institucion, t.Sigla,
+                t.Descripcion, t.Objetivo, t.DirigidoA, t.Dependencia
+            })
+            .ToListAsync(ct);
+
+        return new JsonResult(results);
+    }
+
+    public async Task<IActionResult> OnGetDetalleSigerAsync(int id, CancellationToken ct)
+    {
+        var t = await db.TramitesSiger.AsNoTracking()
+            .Include(x => x.Pasos.OrderBy(p => p.NumeroPaso))
+            .Include(x => x.Requisitos.OrderBy(r => r.Numero))
+            .Include(x => x.Entregables.OrderBy(e => e.Numero))
+            .Include(x => x.LugaresAtencion.OrderBy(l => l.Numero))
+            .Include(x => x.Enlaces.OrderBy(e => e.Numero))
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+
+        if (t is null) return NotFound();
+
+        return new JsonResult(new
+        {
+            t.Id, t.Codigo, t.Nombre, t.Institucion, t.Sigla, t.Dependencia,
+            t.Descripcion, t.Objetivo, t.DirigidoA, t.DisponibleEnLinea,
+            t.EnlacePrincipal, t.VigenciaDocumento, t.Temporalidad,
+            pasos = t.Pasos.Select(p => new
+            {
+                p.NumeroPaso, p.Descripcion, p.LugarDependencia,
+                p.SalidaResultado, p.TiempoRegistrado
+            }),
+            requisitos = t.Requisitos.Select(r => new
+            {
+                r.Numero, r.Requisito, r.Tipo, r.DocumentoSoporte, r.Formato
+            }),
+            entregables = t.Entregables.Select(e => new
+            {
+                e.Numero, e.Entregable, e.Formato, e.Presentacion
+            }),
+            lugares = t.LugaresAtencion.Select(l => new
+            {
+                l.Numero, l.Lugar, l.Ciudad, l.Direccion, l.Telefonos
+            }),
+            enlaces = t.Enlaces.Select(e => new { e.Numero, e.Url, e.Tipo })
+        });
     }
 
     /// <summary>Sube un documento de "Documentación solicitada" y devuelve su URL (consumido por expediente.js).</summary>

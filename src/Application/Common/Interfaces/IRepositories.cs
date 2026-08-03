@@ -186,5 +186,12 @@ public interface IApplicationDbContext
     DbSet<Diger.TramitesEstado.Domain.Entities.PlanTrabajo> PlanTrabajos { get; }
     DbSet<MetaTramite>              MetasTrabajo           { get; }
     DbSet<Recurso>                 Recursos               { get; }
+    DbSet<TramiteSiger>            TramitesSiger          { get; }
+    DbSet<PasoSiger>               PasosSiger             { get; }
+    DbSet<RequisitoSiger>          RequisitosSiger        { get; }
+    DbSet<EntregableSiger>         EntregablesSiger       { get; }
+    DbSet<LugarAtencionSiger>      LugaresAtencionSiger   { get; }
+    DbSet<EnlaceSiger>             EnlacesSiger           { get; }
+    DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

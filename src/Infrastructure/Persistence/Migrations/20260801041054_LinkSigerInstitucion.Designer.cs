@@ -4,16 +4,19 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Diger.TramitesEstado.Infrastructure.Migrations
+namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260801041054_LinkSigerInstitucion")]
+    partial class LinkSigerInstitucion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1137,12 +1140,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<int>("TramiteIndex")
                         .HasColumnType("int");
 
-                    b.Property<int?>("TramiteSigerId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("TramiteSigerId");
 
                     b.HasIndex("ExpedienteId", "TramiteIndex");
 
@@ -3314,11 +3312,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasForeignKey("ExpedienteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.TramiteSiger", null)
-                        .WithMany()
-                        .HasForeignKey("TramiteSigerId")
-                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.FlujoNodo", b =>
