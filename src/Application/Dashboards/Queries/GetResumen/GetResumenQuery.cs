@@ -58,7 +58,9 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
             .Select(x => (x.Year, x.Month, x.C));
 
         // ── Expedientes (con filtros de período y estado de trámite) ──
-        var expedientes = ctx.Expedientes.AsNoTracking().AsQueryable();
+        // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
+        var expedientes = ctx.Expedientes.AsNoTracking()
+            .Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha);
         if (q.Desde is { } desdeExp)
             expedientes = expedientes.Where(e => e.Tramites.Any(t => t.FechaCreacion >= desdeExp));
         if (q.Hasta is { } hastaExp)

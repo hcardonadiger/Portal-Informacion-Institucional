@@ -347,6 +347,12 @@ select.field-input:focus {
     color: var(--diger-blue);
 }
 
+.btns.on {
+    background: var(--diger-blue);
+    border-color: var(--diger-blue);
+    color: #fff;
+}
+
 .nav {
     display: flex;
     justify-content: space-between;

@@ -13,7 +13,9 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
     public async Task<DigitalizacionDashboardDto> Handle(
         GetDigitalizacionDashboardQuery q, CancellationToken ct)
     {
-        var expedientes = ctx.Expedientes.AsNoTracking();
+        // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
+        var expedientes = ctx.Expedientes.AsNoTracking()
+            .Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha);
         if (!string.IsNullOrWhiteSpace(q.InstitucionId))
             expedientes = expedientes.Where(x => x.InstitucionId == q.InstitucionId);
 

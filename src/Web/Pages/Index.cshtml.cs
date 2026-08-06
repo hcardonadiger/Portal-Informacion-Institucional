@@ -5,12 +5,14 @@ public sealed class IndexModel(ISender sender) : PageModel
     public PagedResult<ExpedienteListItemDto> Resultado { get; private set; } = PagedResult<ExpedienteListItemDto>.Empty(Paginacion.TamanoDefecto);
     public IReadOnlyList<ExpedienteListItemDto> Todos { get; private set; } = [];
     public string? Q { get; private set; }
+    public bool? Legado { get; private set; }
 
-    public async Task OnGetAsync(string? q, int? pg, CancellationToken ct)
+    public async Task OnGetAsync(string? q, int? pg, bool? legado, CancellationToken ct)
     {
         Q = q;
-        Resultado = await sender.Send(new GetExpedientesQuery(q, pg), ct);
-        Todos = (await sender.Send(new GetExpedientesQuery(q, Page: 1, Size: 100), ct)).Items;
+        Legado = legado;
+        Resultado = await sender.Send(new GetExpedientesQuery(q, pg, Legado: legado), ct);
+        Todos = (await sender.Send(new GetExpedientesQuery(q, Page: 1, Size: 100, Legado: legado), ct)).Items;
     }
 
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
