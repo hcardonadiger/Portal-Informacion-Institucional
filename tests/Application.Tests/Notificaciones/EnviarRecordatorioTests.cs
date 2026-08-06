@@ -22,7 +22,7 @@ public class EnviarRecordatorioTests : IDisposable
         var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _ctx = new AppDbContext(opts, new FakeCurrentUser());
+        _ctx = new AppDbContext(opts, new FakeCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
         _notifSvc = Substitute.For<INotificacionService>();
         _emailSvc = Substitute.For<IEmailService>();
     }

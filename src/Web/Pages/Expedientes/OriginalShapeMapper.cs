@@ -26,7 +26,9 @@ public static class OriginalShapeMapper
                 G("metodo_pago"), G("pago_banco"), G("pago_cuenta"), G("tgr_inst"), G("tgr_rubro"), G("tgr_monto"),
                 G("doc_entregado"), G("objetivo"), G("alcance"), G("alcance_obs"), G("descripcion"),
                 G("dirigido"), G("horario"), G("telefono"), G("email_tramite"), G("sitio_web"),
-                sigerId));
+                sigerId,
+                ParseDate(G("fecha_creacion")),
+                ParseEstadoTramite(G("estado_tramite"))));
         }
 
         var requisitos = new List<RequisitoInput>();
@@ -92,7 +94,9 @@ public static class OriginalShapeMapper
             o.AnalistaId,
             o.ContraparteUsuarioId,
             o.ContraparteUsuarioNombre,
-            ParseDate(o.FechaLimiteEntrega));
+            ParseDate(o.FechaLimiteEntrega),
+            o.ValidadoDigerUsuarioId,
+            o.ValidadoInstUsuarioId);
     }
 
     // ── DTO de aplicación → forma editor (al abrir para editar) ───────────
@@ -114,7 +118,8 @@ public static class OriginalShapeMapper
             FuncDig = d.FuncionariosDig?.ToString(), TiempoDig = d.TiempoDig, ObsModelo = d.ObsModelo,
             EstadoExp = FmtEstadoExp(d.EstadoExpediente), EstadoLev = FmtEstadoLev(d.EstadoLevantamiento),
             ObsExpediente = d.ObsExpediente, ObsLevantamiento = d.ObsLevantamiento,
-            ValidadoDiger = d.ValidadoDiger, ValidadoInst = d.ValidadoInst,
+            ValidadoDiger = d.ValidadoDiger, ValidadoDigerUsuarioId = d.ValidadoDigerUsuarioId,
+            ValidadoInst = d.ValidadoInst, ValidadoInstUsuarioId = d.ValidadoInstUsuarioId,
             FechaValidacion = Fmt(d.FechaValidacion), NumActa = d.NumActa
         };
 
@@ -131,7 +136,9 @@ public static class OriginalShapeMapper
                 ["doc_entregado"] = t.DocEntregado, ["objetivo"] = t.Objetivo, ["alcance"] = t.Alcance,
                 ["alcance_obs"] = t.AlcanceObs, ["descripcion"] = t.Descripcion, ["dirigido"] = t.Dirigido,
                 ["horario"] = t.Horario, ["telefono"] = t.Telefono, ["email_tramite"] = t.EmailTramite, ["sitio_web"] = t.SitioWeb,
-                ["tramite_siger_id"] = t.TramiteSigerId?.ToString()
+                ["tramite_siger_id"] = t.TramiteSigerId?.ToString(),
+                ["fecha_creacion"] = Fmt(t.FechaCreacion),
+                ["estado_tramite"] = FmtEstadoTramite(t.EstadoTramite)
             });
         }
 
@@ -236,6 +243,19 @@ public static class OriginalShapeMapper
     {
         EstadoSeccion.EnProgreso => "En progreso", EstadoSeccion.Completo => "Completo",
         EstadoSeccion.Validado => "Validado", _ => "Pendiente"
+    };
+
+    private static EstadoTramite? ParseEstadoTramite(string? s) => s switch
+    {
+        "Pendiente" => EstadoTramite.Pendiente, "En proceso" => EstadoTramite.EnProceso,
+        "Completado" => EstadoTramite.Completado, "En operación" => EstadoTramite.EnOperacion,
+        "Suspendido" => EstadoTramite.Suspendido, _ => null
+    };
+    private static string? FmtEstadoTramite(EstadoTramite? s) => s switch
+    {
+        EstadoTramite.Pendiente => "Pendiente", EstadoTramite.EnProceso => "En proceso",
+        EstadoTramite.Completado => "Completado", EstadoTramite.EnOperacion => "En operación",
+        EstadoTramite.Suspendido => "Suspendido", _ => null
     };
 
     private static EstadoExpediente ParseEstadoExp(string? s) => s switch

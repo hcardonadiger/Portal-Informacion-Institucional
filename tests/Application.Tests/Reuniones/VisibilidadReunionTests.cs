@@ -36,7 +36,7 @@ public class VisibilidadReunionTests
 
         // El dueño (usuario 1, alcance a institución 7) crea una privada y una pública.
         var uid1 = Guid.NewGuid();
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(uid1, false, ["7"])))
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(uid1, false, ["7"]), NSubstitute.Substitute.For<MediatR.IPublisher>()))
         {
             var priv = Reunion.Crear("Privada"); priv.InstitucionId = "7"; priv.Institucion = "SENASA";
             priv.Visibilidad = VisibilidadReunion.Privada; priv.CreadoPorId = uid1;
@@ -46,17 +46,17 @@ public class VisibilidadReunionTests
         }
 
         // El dueño ve ambas.
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(uid1, false, ["7"])))
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(uid1, false, ["7"]), NSubstitute.Substitute.For<MediatR.IPublisher>()))
             (await ctx.Reuniones.Select(r => r.Titulo).ToListAsync())
                 .Should().BeEquivalentTo(["Privada", "Pública"]);
 
         // Otro usuario con alcance a la misma institución NO ve la privada.
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(Guid.NewGuid(), false, ["7"])))
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(Guid.NewGuid(), false, ["7"]), NSubstitute.Substitute.For<MediatR.IPublisher>()))
             (await ctx.Reuniones.Select(r => r.Titulo).ToListAsync())
                 .Should().BeEquivalentTo(["Pública"]);
 
         // Un administrador global tampoco ve la privada de otro.
-        await using (var ctx = new AppDbContext(Opts(db), new Usuario(Guid.NewGuid(), true, [])))
+        await using (var ctx = new AppDbContext(Opts(db), new Usuario(Guid.NewGuid(), true, []), NSubstitute.Substitute.For<MediatR.IPublisher>()))
             (await ctx.Reuniones.Select(r => r.Titulo).ToListAsync())
                 .Should().BeEquivalentTo(["Pública"]);
     }

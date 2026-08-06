@@ -35,7 +35,7 @@ public class InstitucionQueryTests : IDisposable
         var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _ctx = new AppDbContext(opts, new FakeGlobalCurrentUser());
+        _ctx = new AppDbContext(opts, new FakeGlobalCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
         _repo = new InstitucionRepository(_ctx);
     }
 

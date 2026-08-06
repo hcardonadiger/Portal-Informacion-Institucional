@@ -12,7 +12,8 @@
     <div class="hist-header">
         <div><h2>Tablero de Digitalización</h2><p>Seguimiento gerencial del avance de digitalización de trámites</p></div>
         <div class="btns-group">
-            <a class="btns btns-primary" asp-page-handler="Excel" asp-route-institucionId="@Model.InstitucionId">⬇ Descargar Excel</a>
+            <a class="btns btns-primary" asp-page-handler="Excel" asp-route-institucionId="@Model.InstitucionId"
+               asp-route-desde="@(Model.Desde?.ToString("yyyy-MM-dd"))" asp-route-hasta="@(Model.Hasta?.ToString("yyyy-MM-dd"))">⬇ Descargar Excel</a>
             <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
         </div>
     </div>
@@ -24,6 +25,19 @@
                 @foreach (var i in Model.Instituciones) { <option value="@i.Id" selected="@(Model.InstitucionId == i.Id)">@i.Nombre</option> }
             </select>
         </div>
+        <div class="field"><label>Estado trámite</label>
+            <select name="estado" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                <option value="Pendiente" selected="@(Model.Estado == EstadoTramite.Pendiente)">Pendiente</option>
+                <option value="EnProceso" selected="@(Model.Estado == EstadoTramite.EnProceso)">En proceso</option>
+                <option value="Completado" selected="@(Model.Estado == EstadoTramite.Completado)">Completado</option>
+                <option value="EnOperacion" selected="@(Model.Estado == EstadoTramite.EnOperacion)">En operación</option>
+                <option value="Suspendido" selected="@(Model.Estado == EstadoTramite.Suspendido)">Suspendido</option>
+            </select>
+        </div>
+        <div class="field"><label>Desde</label><input type="date" name="desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" /></div>
+        <div class="field"><label>Hasta</label><input type="date" name="hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" /></div>
+        <button class="btnp" type="submit" style="margin-bottom:.1rem">Filtrar</button>
         <a class="btns" asp-page="/Tableros/Digitalizacion" style="margin-bottom:.1rem">Limpiar</a>
     </form>
 

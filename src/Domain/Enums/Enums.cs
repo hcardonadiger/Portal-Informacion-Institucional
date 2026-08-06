@@ -35,6 +35,16 @@ public enum EstadoExpediente
     Cerrado         = 5
 }
 
+// ── Estado individual de un trámite dentro de un expediente ───────────────
+public enum EstadoTramite
+{
+    Pendiente    = 1,
+    EnProceso    = 2,
+    Completado   = 3,
+    EnOperacion  = 4,
+    Suspendido   = 5
+}
+
 // ── Estado del levantamiento de campo ─────────────────────────────────────
 public enum EstadoLevantamientoExp
 {

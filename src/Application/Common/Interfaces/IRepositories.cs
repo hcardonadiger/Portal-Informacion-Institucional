@@ -164,6 +164,7 @@ public interface IApplicationDbContext
     DbSet<ExpedienteSeccionEstado>  Secciones     { get; }
     DbSet<ExpedienteEtapaAvance>    ExpedienteEtapaAvances { get; }
     DbSet<NotaSeguimientoExpediente> NotasSeguimiento { get; }
+    DbSet<BitacoraExpediente>       BitacorasExpediente { get; }
     DbSet<Ticket>                   Tickets       { get; }
     DbSet<TicketComentario>         TicketComentarios { get; }
     DbSet<CategoriaTicket>          CategoriasTicket { get; }

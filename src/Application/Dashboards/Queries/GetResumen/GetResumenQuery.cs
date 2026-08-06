@@ -4,7 +4,8 @@ using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetResumen;
 
 public sealed record GetResumenQuery(
-    IReadOnlyList<int>? TecnicoTemaIds = null, Guid? TecnicoUserId = null) : IRequest<ResumenDto>;
+    IReadOnlyList<int>? TecnicoTemaIds = null, Guid? TecnicoUserId = null,
+    DateOnly? Desde = null, DateOnly? Hasta = null, EstadoTramite? Estado = null) : IRequest<ResumenDto>;
 
 public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetResumenQuery, ResumenDto>
@@ -56,9 +57,17 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
             .Select(g => new { g.Key.Year, g.Key.Month, C = g.Count() }).ToListAsync(ct))
             .Select(x => (x.Year, x.Month, x.C));
 
-        // ── Expedientes ──────────────────────────────────────────────
-        var expedientesTotal    = await ctx.Expedientes.CountAsync(ct);
-        var expedientesCerrados = await ctx.Expedientes.CountAsync(e => e.EstadoExpediente == EstadoExpediente.Cerrado, ct);
+        // ── Expedientes (con filtros de período y estado de trámite) ──
+        var expedientes = ctx.Expedientes.AsNoTracking().AsQueryable();
+        if (q.Desde is { } desdeExp)
+            expedientes = expedientes.Where(e => e.Tramites.Any(t => t.FechaCreacion >= desdeExp));
+        if (q.Hasta is { } hastaExp)
+            expedientes = expedientes.Where(e => e.Tramites.Any(t => t.FechaCreacion <= hastaExp));
+        if (q.Estado is { } estadoExp)
+            expedientes = expedientes.Where(e => e.Tramites.Any(t => t.EstadoTramite == estadoExp));
+
+        var expedientesTotal    = await expedientes.CountAsync(ct);
+        var expedientesCerrados = await expedientes.CountAsync(e => e.EstadoExpediente == EstadoExpediente.Cerrado, ct);
 
         // ── Reuniones y acuerdos ─────────────────────────────────────
         var reunionesTotal = await ctx.Reuniones.CountAsync(ct);
@@ -87,11 +96,11 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
             .Count();
 
         // ── Digitalización ───────────────────────────────────────────
-        var listaExp = await ctx.Expedientes.AsNoTracking()
+        var listaExp = await expedientes
             .Select(e => new
             {
                 e.Id, e.Institucion, e.InstitucionId, e.Analista,
-                Tramites = e.Tramites.Select(t => new { t.TramiteIndex, t.NombreTramite }).ToList()
+                Tramites = e.Tramites.Select(t => new { t.TramiteIndex, t.NombreTramite, t.FechaCreacion, t.EstadoTramite }).ToList()
             })
             .ToListAsync(ct);
 
@@ -123,6 +132,9 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
         foreach (var exp in listaExp)
         foreach (var t in exp.Tramites)
         {
+            if (q.Desde is { } dT && t.FechaCreacion < dT) continue;
+            if (q.Hasta is { } hT && t.FechaCreacion > hT) continue;
+            if (q.Estado is { } sT && t.EstadoTramite != sT) continue;
             var pct = avancePorTramite.TryGetValue((exp.Id, t.TramiteIndex), out var v) ? v : 0;
             tramitesConAvance.Add((exp.Institucion, exp.Analista, pct));
         }
