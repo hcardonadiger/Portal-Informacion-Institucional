@@ -27,7 +27,7 @@ public class PasswordRecoveryTests : IDisposable
         var fakeCurrentUser = Substitute.For<ICurrentUserService>();
         fakeCurrentUser.EsGlobal.Returns(true);
 
-        _ctx = new AppDbContext(opts, fakeCurrentUser);
+        _ctx = new AppDbContext(opts, fakeCurrentUser, NSubstitute.Substitute.For<MediatR.IPublisher>());
         _emailService = Substitute.For<IEmailService>();
         _passwordHasher = new PasswordHasher();
     }

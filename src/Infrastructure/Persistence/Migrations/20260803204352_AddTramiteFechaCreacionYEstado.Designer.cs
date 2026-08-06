@@ -4,16 +4,19 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Diger.TramitesEstado.Infrastructure.Migrations
+namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803204352_AddTramiteFechaCreacionYEstado")]
+    partial class AddTramiteFechaCreacionYEstado
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -253,43 +256,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("ReunionId");
 
                     b.ToTable("Asistentes", (string)null);
-                });
-
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.BitacoraExpediente", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Actor")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("Detalle")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("ExpedienteId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpedienteId", "Fecha")
-                        .IsDescending(false, true);
-
-                    b.ToTable("BitacoraExpediente", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.CategoriaTicket", b =>
@@ -815,12 +781,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<DateOnly?>("FechaApertura")
                         .HasColumnType("date");
 
-                    b.Property<DateTime?>("FechaHoraValidacionDiger")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaHoraValidacionInst")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateOnly?>("FechaLimiteEntrega")
                         .HasColumnType("date");
 
@@ -940,15 +900,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<Guid?>("ValidadoDigerUsuarioId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("ValidadoInst")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<Guid?>("ValidadoInstUsuarioId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int?>("VolumenAnual")
                         .HasColumnType("int");
@@ -3262,15 +3216,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Reunion", null)
                         .WithMany("Asistentes")
                         .HasForeignKey("ReunionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.BitacoraExpediente", b =>
-                {
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
-                        .WithMany()
-                        .HasForeignKey("ExpedienteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
