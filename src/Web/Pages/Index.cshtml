@@ -82,7 +82,7 @@
                         <td><span class="wf-badge @w.cls">@w.txt</span></td>
                         <td>@e.Analista</td>
                         <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                        <td class="res-meta">@e.FechaCreacion.ToFechaCorta()</td>
+                        <td class="res-meta">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
@@ -128,7 +128,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var e in grupo.OrderByDescending(e => e.FechaCreacion))
+                                @foreach (var e in grupo.OrderByDescending(e => e.FechaApertura))
                                 {
                                     var w = Wf(e.Estado);
                                     var tooltip = e.TramiteNombres.Any() ? string.Join(" · ", e.TramiteNombres) : "Sin trámites";
@@ -137,7 +137,7 @@
                                         <td><span class="wf-badge @w.cls">@w.txt</span></td>
                                         <td>@e.Analista</td>
                                         <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                                        <td class="res-meta">@e.FechaCreacion.ToFechaCorta()</td>
+                                        <td class="res-meta">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
                                         <td style="white-space:nowrap;text-align:right">
                                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
