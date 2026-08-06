@@ -9,6 +9,7 @@ public sealed record ExpedienteListItemDto(
     int                NumTramites,
     EstadoExpediente   Estado,
     DateTime           FechaCreacion,
+    DateOnly?          FechaApertura,
     IReadOnlyList<string> TramiteNombres);
 
 public sealed record GetExpedientesQuery(string? Q = null, int? Page = null, int? Size = null, bool Todos = false)
@@ -30,7 +31,9 @@ public sealed class GetExpedientesQueryHandler(IApplicationDbContext ctx)
 
         var total = await baseq.CountAsync(ct);
 
-        var ordenada = baseq.OrderByDescending(e => e.CreatedAt);
+        var ordenada = baseq
+            .OrderByDescending(e => e.FechaApertura)
+            .ThenByDescending(e => e.CreatedAt);
         // Todos: lista completa (p.ej. para selectores dependientes), sin paginar.
         var paginada = query.Todos
             ? (IQueryable<Expediente>)ordenada
@@ -46,6 +49,7 @@ public sealed class GetExpedientesQueryHandler(IApplicationDbContext ctx)
                 e.Tramites.Count,
                 e.EstadoExpediente,
                 e.CreatedAt,
+                e.FechaApertura,
                 e.Tramites.OrderBy(t => t.TramiteIndex).Select(t => t.NombreTramite).ToList()))
             .ToListAsync(ct);
 
