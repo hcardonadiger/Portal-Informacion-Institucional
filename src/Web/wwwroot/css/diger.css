@@ -15,6 +15,14 @@ body {
     min-height: 100vh;
 }
 
+:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
 /* ── CONTAINER ──────────────────────────────────────────────── */
 .container {
     max-width: 780px;
@@ -337,6 +345,12 @@ select.field-input:focus {
     background: #f0f4ff;
     border-color: var(--diger-blue);
     color: var(--diger-blue);
+}
+
+.btns.on {
+    background: var(--diger-blue);
+    border-color: var(--diger-blue);
+    color: #fff;
 }
 
 .nav {
@@ -987,11 +1001,121 @@ tr.contacto-inactivo td {
     font-size: 13px;
 }
 
+.hint {
+    font-size: 12px;
+    color: var(--diger-text-muted);
+    margin-top: 3px;
+    display: block;
+}
+
 .hint.error {
     font-size: 12px;
     color: var(--diger-danger);
     margin-top: 4px;
     display: block;
+}
+
+/* ── CONTEXTUAL HELP TOOLTIPS ─────────────────────────────────── */
+.help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--diger-border);
+    color: var(--diger-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    font-style: normal;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+    user-select: none;
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.help-tip:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue);
+}
+
+.help-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--diger-blue-dark);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+    padding: 8px 12px;
+    border-radius: 8px;
+    white-space: normal;
+    width: max-content;
+    max-width: 260px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s, visibility .15s;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(2, 42, 69, .25);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.help-tip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-tip::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--diger-blue-dark);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s, visibility .15s;
+    z-index: 100;
+}
+
+.help-tip:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-tip.tip-down::after {
+    bottom: auto;
+    top: calc(100% + 8px);
+}
+
+.help-tip.tip-down::before {
+    bottom: auto;
+    top: calc(100% + 2px);
+    border-top-color: transparent;
+    border-bottom-color: var(--diger-blue-dark);
+}
+
+.help-tip.tip-left::after {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+
+.help-tip.tip-left::before {
+    left: auto;
+    right: 3px;
+    transform: none;
 }
 
 /* ── APP SHELL: cascarón institucional (Manual de Marca 2026) ─────────── */
@@ -2172,6 +2296,26 @@ tr.contacto-inactivo td {
         grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     }
 
+    /* La tira se parte en filas: las celdas necesitan borde inferior
+       porque el derecho ya no las separa visualmente. */
+    .kpi-strip {
+        --kpi-cols: 3;
+    }
+
+    .kpi-cell {
+        border-bottom: 1px solid var(--diger-border);
+    }
+
+    .kpi-cell:nth-child(3n) {
+        border-right: 0;
+    }
+
+    /* La última fila no lleva borde inferior: quedaría pegado al borde
+       del contenedor y se leería como una línea doble. */
+    .kpi-cell:nth-last-child(-n+3) {
+        border-bottom: 0;
+    }
+
     .row2,
     .row3 {
         grid-template-columns: 1fr 1fr;
@@ -2264,6 +2408,26 @@ tr.contacto-inactivo td {
     .doc-add-grid {
         grid-template-columns: 1fr 1fr;
     }
+
+    .kpi-strip {
+        --kpi-cols: 2;
+    }
+
+    .kpi-cell:nth-child(3n) {
+        border-right: 1px solid var(--diger-border);
+    }
+
+    .kpi-cell:nth-child(2n) {
+        border-right: 0;
+    }
+
+    .kpi-cell:nth-last-child(-n+3) {
+        border-bottom: 1px solid var(--diger-border);
+    }
+
+    .kpi-cell:nth-last-child(-n+2) {
+        border-bottom: 0;
+    }
 }
 
 /* ── REUNIONES: encabezado de sección + checkbox ───────────────── */
@@ -2306,6 +2470,10 @@ tr.contacto-inactivo td {
     border-radius: 14px;
     padding: 1rem 1.2rem;
     box-shadow: var(--diger-shadow-sm);
+    /* La tarjeta misma suele ser un <a>: sin esto el navegador subraya el
+       label y lo pinta de azul-enlace (`.kpi-card a` no alcanza al propio <a>). */
+    text-decoration: none;
+    color: inherit;
 }
 
 .kpi-card .kpi-num {
@@ -2417,6 +2585,602 @@ tr.contacto-inactivo td {
 
 .bar-fill.c-teal {
     background: #0f8a6a;
+}
+
+/* ── ÍCONOS (sprite SVG de _IconSprite.cshtml) ──────────────────── */
+/* Uso: <svg class="ico"><use href="#i-alerta"></use></svg>
+   Hereda tamaño (1em) y color del contenedor, así que se ajusta con
+   font-size/color en vez de repetir width/height/stroke en cada llamada. */
+.ico {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.125em;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+}
+
+/* ── TIRA DE KPIs (Tableros/Index) ──────────────────────────────── */
+/* Una sola superficie dividida en celdas, en lugar de N tarjetas sueltas:
+   los valores en cero se apagan y solo lo accionable lleva color. */
+.kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(var(--kpi-cols, 6), minmax(0, 1fr));
+    background: #fff;
+    border: 1px solid var(--diger-border);
+    border-radius: 16px;
+    box-shadow: var(--diger-shadow-sm);
+    overflow: hidden;
+    margin-bottom: 1.4rem;
+}
+
+.kpi-cell {
+    position: relative;
+    display: block;
+    padding: 1.05rem 1.1rem;
+    border-right: 1px solid var(--diger-border);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--diger-transition);
+}
+
+.kpi-cell:last-child {
+    border-right: 0;
+}
+
+a.kpi-cell:hover {
+    background: #f7f9fd;
+}
+
+.kpi-cell-top {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: .55rem;
+}
+
+.kpi-cell-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2f8;
+    color: var(--diger-text-muted);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.kpi-cell-lbl {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-muted);
+    line-height: 1.25;
+}
+
+.kpi-cell-num {
+    font-size: 29px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--diger-blue-dark);
+    font-variant-numeric: tabular-nums;
+}
+
+.kpi-cell-sub {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--diger-text-faint);
+    margin-top: 5px;
+}
+
+/* Flecha de afordancia: solo aparece en las celdas que son enlace */
+.kpi-cell-arw {
+    margin-left: auto;
+    color: var(--diger-text-faint);
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity var(--diger-transition);
+}
+
+a.kpi-cell:hover .kpi-cell-arw {
+    opacity: 1;
+}
+
+/* Cero = buena noticia, no dato: se apaga y confirma en verde */
+.kpi-cell.is-zero .kpi-cell-num {
+    color: var(--diger-text-faint);
+    font-weight: 500;
+}
+
+.kpi-cell.is-zero .kpi-cell-sub {
+    color: var(--diger-success);
+}
+
+.kpi-cell.is-crit {
+    background: #fffafa;
+}
+
+.kpi-cell.is-crit::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--diger-danger);
+}
+
+.kpi-cell.is-crit .kpi-cell-ico {
+    background: var(--diger-danger-bg);
+    color: var(--diger-danger-text);
+}
+
+.kpi-cell.is-crit .kpi-cell-num {
+    color: var(--diger-danger-text);
+}
+
+.kpi-cell.is-crit .kpi-cell-sub {
+    color: var(--diger-danger-text);
+    font-weight: 600;
+}
+
+.kpi-cell.is-warn .kpi-cell-ico {
+    background: var(--diger-warning-bg);
+    color: var(--diger-warning);
+}
+
+.kpi-cell.is-warn .kpi-cell-num {
+    color: var(--diger-warning);
+}
+
+.kpi-cell.is-ok .kpi-cell-ico {
+    background: var(--diger-success-bg);
+    color: var(--diger-success);
+}
+
+/* ── FILA DE NAVEGACIÓN (atajos a tableros) ─────────────────────── */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--diger-transition), border-color var(--diger-transition);
+}
+
+.nav-item:hover {
+    background: var(--diger-blue-light);
+    border-color: var(--diger-blue-pale);
+}
+
+.nav-item-ico {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.nav-item-tx {
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-item-t1 {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--diger-text);
+    line-height: 1.3;
+}
+
+.nav-item-t2 {
+    display: block;
+    font-size: 11.5px;
+    color: var(--diger-text-muted);
+    margin-top: 1px;
+}
+
+.nav-item-ct {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--diger-blue-dark);
+    font-variant-numeric: tabular-nums;
+}
+
+.nav-item-chev {
+    color: var(--diger-text-faint);
+    font-size: 14px;
+}
+
+.nav-sep {
+    height: 1px;
+    background: var(--diger-border);
+    margin: 4px 0;
+}
+
+/* ── ESTADO VACÍO DENTRO DE UNA CARD ────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.empty-state-ico {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin: 0 auto .8rem;
+}
+
+.empty-state-t1 {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+}
+
+.empty-state-t2 {
+    font-size: 12px;
+    color: var(--diger-text-muted);
+    margin-top: 3px;
+}
+
+/* ── TABLERO DE TRÁMITES ────────────────────────────────────────── */
+/* Bandas del semáforo. Los hex son los mismos de SemaforoAvance (Application),
+   que es lo que consumen el Excel y la página de Informes. */
+.sem-rojo    { --sem-fondo:#FCEBEB; --sem-texto:#A32D2D; --sem-solido:#E24B4A; }
+.sem-naranja { --sem-fondo:#FAEEDA; --sem-texto:#854F0B; --sem-solido:#EF9F27; }
+.sem-verde   { --sem-fondo:#EAF3DE; --sem-texto:#27500A; --sem-solido:#639922; }
+
+.trm-filtros {
+    display: flex;
+    gap: 18px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.trm-filtros .f {
+    margin: 0;
+}
+
+.trm-filtros label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+    margin-bottom: 5px;
+}
+
+.trm-filtros select {
+    height: 34px;
+    min-width: 240px;
+    padding: 0 10px;
+    border: 1px solid var(--diger-border);
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 13px;
+    background: #fff;
+    color: var(--diger-text);
+}
+
+.trm-bandas {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.trm-banda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--diger-border);
+    border-radius: 9px;
+    background: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    transition: .14s;
+}
+
+.trm-banda:hover {
+    border-color: var(--diger-blue-pale);
+}
+
+.trm-banda.on {
+    background: var(--sem-fondo, var(--diger-blue-light));
+    border-color: var(--sem-solido, var(--diger-blue-mid));
+    color: var(--sem-texto, var(--diger-blue-dark));
+}
+
+.trm-banda-n {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--diger-text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-banda.on .trm-banda-n {
+    color: inherit;
+}
+
+.trm-tabla td {
+    vertical-align: middle;
+}
+
+.trm-inst {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--diger-blue-mid);
+}
+
+.trm-nom {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--diger-text);
+    line-height: 1.35;
+}
+
+.trm-sub {
+    font-size: 11.5px;
+    color: var(--diger-text-muted);
+    margin-top: 1px;
+}
+
+.trm-cod {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--diger-blue-mid);
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-cod:hover {
+    text-decoration: underline;
+}
+
+.trm-nota-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--diger-text-faint);
+    cursor: pointer;
+}
+
+.trm-nota-btn:hover {
+    color: var(--diger-blue-mid);
+    text-decoration: underline;
+}
+
+/* Barra de avance con el color de su banda */
+.trm-avance {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trm-barra {
+    flex: 1;
+    min-width: 40px;
+    height: 6px;
+    border-radius: 99px;
+    background: #eef1f6;
+    overflow: hidden;
+}
+
+.trm-barra > i {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: var(--sem-solido, var(--diger-blue-mid));
+}
+
+.trm-pct {
+    flex-shrink: 0;
+    min-width: 36px;
+    text-align: right;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--sem-texto, var(--diger-blue-dark));
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Modales del tablero ─────────────────────────────────────────── */
+.trm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+}
+
+.trm-modal[hidden] {
+    display: none;
+}
+
+.trm-modal-fondo {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 42, 69, .45);
+}
+
+.trm-modal-caja {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--diger-shadow-md);
+    overflow: hidden;
+}
+
+.trm-modal-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--diger-border);
+}
+
+.trm-modal-kick {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+}
+
+.trm-modal-titulo {
+    margin: 2px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--diger-blue-dark);
+    line-height: 1.3;
+}
+
+.trm-modal-pct {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--sem-texto, var(--diger-blue-dark));
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-modal-x {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: none;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--diger-text-faint);
+    cursor: pointer;
+}
+
+.trm-modal-x:hover {
+    color: var(--diger-text);
+}
+
+.trm-modal-body {
+    padding: 12px 16px 16px;
+    overflow: auto;
+}
+
+.trm-etapa {
+    padding: 9px 0;
+    border-bottom: 1px solid #f2f5f9;
+}
+
+.trm-etapa:last-child {
+    border-bottom: 0;
+}
+
+.trm-etapa-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.trm-etapa-num {
+    flex-shrink: 0;
+    min-width: 26px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    color: var(--diger-text-faint);
+}
+
+.trm-etapa-lbl {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--diger-text);
+}
+
+.trm-etapa-peso {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--diger-text-faint);
+}
+
+.trm-etapa-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 34px;
+}
+
+.trm-notas {
+    margin-top: 1rem;
+    border-top: 1px solid var(--diger-border);
+    padding-top: .6rem;
+}
+
+.trm-nota {
+    padding: 8px 0;
+    border-bottom: 1px solid #f2f5f9;
+}
+
+.trm-nota:last-child {
+    border-bottom: 0;
+}
+
+.trm-nota-meta {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--diger-text-faint);
+}
+
+.trm-nota-txt {
+    font-size: 13px;
+    color: var(--diger-text);
+    line-height: 1.5;
+    margin-top: 2px;
+    white-space: pre-wrap;
+}
+
+.trm-notas-vacio {
+    font-size: 12.5px;
+    color: var(--diger-text-muted);
+    padding: .5rem 0;
 }
 
 /* ── EDITOR DE TEXTO ENRIQUECIDO (RTE) ──────────────────────────── */
@@ -2659,25 +3423,137 @@ tr.contacto-inactivo td {
 .cal-nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+}
+
+/* Las dos flechas van pegadas en un control segmentado: navegar mes es una
+   sola acción con dos sentidos, no dos botones de formulario sueltos. */
+.cal-seg {
+    display: inline-flex;
+    background: #fff;
+    border: 1px solid var(--diger-border);
+    border-radius: 9px;
+    overflow: hidden;
+}
+
+.cal-seg > a {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--diger-text-secondary);
+    font-size: 15px;
+    text-decoration: none;
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.cal-seg > a:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue);
+}
+
+.cal-seg > a + a {
+    border-left: 1px solid var(--diger-border);
+}
+
+.cal-hoy {
+    height: 32px;
+    padding: 0 13px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--diger-border);
+    background: #fff;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    transition: border-color var(--diger-transition), color var(--diger-transition);
+}
+
+.cal-hoy:hover {
+    border-color: var(--diger-blue-pale);
+    color: var(--diger-blue);
+}
+
+/* ── Conmutador de granularidad (día / semana / mes) ────────────── */
+.cal-vistas {
+    display: inline-flex;
+    background: #eef1f7;
+    border-radius: 9px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.cal-vista {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 13px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--diger-text-muted);
+    text-decoration: none;
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.cal-vista:hover {
+    color: var(--diger-blue);
+}
+
+.cal-vista.on {
+    background: #fff;
+    color: var(--diger-blue-dark);
+    box-shadow: 0 1px 2px rgba(10, 45, 110, .10);
 }
 
 .cal-title {
-    margin: 0;
+    margin: 0 0 0 6px;
     font-size: 20px;
+    font-weight: 700;
     color: var(--diger-blue-dark);
-    min-width: 190px;
-    text-align: center;
+    min-width: 158px;
     text-transform: capitalize;
 }
 
+.cal-title span {
+    color: var(--diger-text-faint);
+    font-weight: 500;
+}
+
+.cal-counts {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--diger-text-muted);
+}
+
+.cal-counts b {
+    color: var(--diger-blue-dark);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Las dos columnas se estiran a la misma altura (stretch, no start): antes el
+   calendario terminaba a media página y dejaba un hueco blanco hasta donde
+   llegaba el feed. La fila toma la altura de la columna más alta. */
 .cal-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 16px;
-    align-items: start;
+    align-items: stretch;
 }
 
+.cal-cal {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* En una sola columna .cal-cal no tiene alto definido, así que el flex:1 de
+   .cal-body no reparte nada y las semanas vuelven solas a su alto natural. */
 @media (max-width: 980px) {
     .cal-layout {
         grid-template-columns: 1fr;
@@ -2689,83 +3565,132 @@ tr.contacto-inactivo td {
     grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
+/* El encabezado va dentro de la misma tarjeta que la grilla: si queda afuera,
+   la tarjeta del calendario arranca más abajo que la del feed y las dos
+   columnas dejan de alinearse. Pierde el relleno gris, no la caja. */
 .cal-head {
-    background: #f3f6fb;
+    background: #fff;
     border: 1px solid var(--diger-border);
-    border-bottom: 0;
+    border-bottom: 1px solid #f2f5f9;
     border-radius: 12px 12px 0 0;
+    padding-top: 2px;
 }
 
 .cal-dow {
-    padding: 8px 6px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--diger-text-muted);
+    padding: 4px 8px 7px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--diger-text-faint);
     text-transform: uppercase;
-    letter-spacing: .03em;
+    letter-spacing: .07em;
 }
 
 .cal-body {
     border: 1px solid var(--diger-border);
+    border-top: 0;
     border-radius: 0 0 12px 12px;
     overflow: hidden;
+    background: #fff;
+    /* Absorbe el alto sobrante de la columna y lo reparte entre las semanas;
+       el mínimo de .cal-cell sigue siendo el piso. */
+    flex: 1;
+    grid-auto-rows: 1fr;
 }
 
 .cal-cell {
-    min-height: 104px;
+    min-height: 96px;
     min-width: 0;
     overflow: hidden;
-    border-right: 1px solid #eef1f6;
-    border-top: 1px solid #eef1f6;
-    padding: 4px 5px 6px;
+    border-right: 1px solid #f2f5f9;
+    border-top: 1px solid #f2f5f9;
+    padding: 5px 6px 7px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    background: #fff;
+    gap: 2px;
+    cursor: pointer;
+    transition: background var(--diger-transition);
+}
+
+/* La primera fila no lleva línea superior: ya la delimita el borde del contenedor. */
+.cal-cell:nth-child(-n+7) {
+    border-top: 0;
+}
+
+.cal-cell:hover {
+    background: #f8fbff;
 }
 
 .cal-cell:nth-child(7n) {
     border-right: 0;
 }
 
+/* Los días de relleno se apagan con el número, no con un bloque gris: el
+   relleno creaba manchas macizas en las esquinas de la grilla. */
 .cal-out {
-    background: var(--diger-bg-soft);
+    cursor: default;
+}
+
+.cal-out:hover {
+    background: none;
 }
 
 .cal-out .cal-num {
-    color: #c2cbda;
+    color: #cdd6e2;
+    font-weight: 400;
 }
 
+/* Día seleccionado: lo pone y lo quita el JS con una clase, no con estilos
+   en línea — así no pisa el fondo de .cal-out ni el de .cal-today. */
+.cal-sel {
+    background: #eef3fc;
+}
+
+.cal-sel:hover {
+    background: #e7eefb;
+}
+
+/* Hoy se marca en el número, no con un recuadro alrededor de toda la celda
+   (el recuadro competía con las líneas de la grilla). */
 .cal-today {
-    background: #eef5ff;
-    box-shadow: inset 0 0 0 2px var(--diger-blue);
+    background: #f7fafe;
 }
 
 .cal-cell-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    min-height: 21px;
 }
 
 .cal-num {
-    font-size: 13px;
-    font-weight: 700;
+    width: 21px;
+    height: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12.5px;
+    font-weight: 600;
     color: #334;
+    font-variant-numeric: tabular-nums;
 }
 
 .cal-today .cal-num {
-    color: var(--diger-blue-dark);
+    background: var(--diger-blue);
+    color: #fff;
+    font-weight: 700;
 }
 
 .cal-add {
-    width: 18px;
-    height: 18px;
-    line-height: 17px;
-    text-align: center;
+    width: 19px;
+    height: 19px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
     border-radius: 6px;
     color: #94a3b8;
-    font-weight: 700;
     text-decoration: none;
     opacity: 0;
     transition: .12s;
@@ -2780,54 +3705,245 @@ tr.contacto-inactivo td {
     color: #fff;
 }
 
+/* La hora se queda en el mismo flujo de texto que el título (una columna flex
+   aparte cuesta el gap y una caja propia: medido, deja ~89px para el título
+   contra ~97px así). Lo que se recorta es el tamaño de la hora, no su lugar. */
+/* Sin relleno: tres bloques tintados por celda era lo que más pesaba en la
+   grilla. La identidad de color queda en la regla izquierda, y el fondo
+   aparece solo al pasar el puntero. */
 .cal-chip {
     display: block;
     font-size: 11.5px;
-    line-height: 1.35;
-    padding: 2px 6px;
-    border-radius: 6px;
-    background: #e6f0fb;
-    color: #0c447c;
+    line-height: 1.4;
+    padding: 1px 4px 1px 6px;
+    border-radius: 4px;
+    background: none;
+    color: var(--diger-text-secondary);
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border-left: 3px solid var(--diger-blue);
+    border-left: 2px solid var(--diger-blue-mid);
+    transition: background var(--diger-transition), color var(--diger-transition);
 }
 
 .cal-chip:hover {
-    background: #d5e6fa;
+    background: #eef4fc;
+    color: #0c447c;
 }
 
-.cal-chip b {
-    font-weight: 700;
+.cal-chip time {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--diger-text-faint);
+}
+
+.cal-chip:hover time {
+    color: #3d6fa8;
+}
+
+/* Reunión privada: se distingue con el dorado institucional */
+.cal-chip.priv {
+    border-left-color: var(--diger-gold);
+}
+
+.cal-chip.priv:hover {
+    background: #fbf6e8;
+    color: #6b5209;
+}
+
+.cal-chip.priv:hover time {
+    color: #8a6c0e;
 }
 
 .cal-mas {
+    display: block;
+    width: 100%;
+    margin-top: 1px;
+    padding: 0 0 0 9px;
+    border: 0;
+    background: none;
+    font-family: inherit;
     font-size: 10.5px;
-    color: var(--diger-text-muted);
-    padding-left: 2px;
+    font-weight: 500;
+    text-align: left;
+    color: var(--diger-text-faint);
+    cursor: pointer;
 }
 
-.cal-dots {
+.cal-mas:hover {
+    color: var(--diger-blue-mid);
+    text-decoration: underline;
+}
+
+/* Barra de actividad: reemplaza la fila de puntos sueltos. Cada segmento es
+   proporcional a cuántos eventos de ese tipo hubo, así se ve la carga del día
+   sin tener que contar puntos. */
+.cal-act {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 5px;
     margin-top: auto;
-    padding-top: 2px;
-    flex-wrap: wrap;
+    padding-top: 4px;
+}
+
+.cal-act-bar {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    height: 3px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: #f2f5f9;
+}
+
+.cal-act-bar > i {
+    display: block;
+    height: 100%;
+}
+
+.cal-act-n {
+    flex-shrink: 0;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--diger-text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── VISTA DE DÍA ───────────────────────────────────────────────── */
+/* La grilla de 7 columnas no aporta nada para un solo día: se lista la
+   agenda a lo ancho, con espacio para institución y tipo. */
+.cal-dia {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--diger-border);
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.cal-dia-hdr {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f2f5f9;
+}
+
+.cal-dia-num {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-dark);
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-dia-hdr.es-hoy .cal-dia-num {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+.cal-dia-tx {
+    flex: 1;
+    min-width: 0;
+}
+
+.cal-dia-t1 {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--diger-blue-dark);
+    text-transform: capitalize;
+}
+
+.cal-dia-t2 {
+    display: block;
+    font-size: 12px;
+    color: var(--diger-text-muted);
+    margin-top: 1px;
+}
+
+.cal-dia-lista {
+    flex: 1;
+    padding: 8px;
+    overflow: auto;
+}
+
+.cal-dia-item {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    border-left: 3px solid var(--diger-blue-mid);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--diger-transition);
+}
+
+.cal-dia-item + .cal-dia-item {
+    margin-top: 3px;
+}
+
+.cal-dia-item:hover {
+    background: #f5f8fc;
+}
+
+.cal-dia-item.priv {
+    border-left-color: var(--diger-gold);
+}
+
+.cal-dia-item.priv:hover {
+    background: #fbf6e8;
+}
+
+.cal-dia-hora {
+    flex-shrink: 0;
+    width: 46px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--diger-blue-mid);
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-dia-item.priv .cal-dia-hora {
+    color: var(--diger-gold);
+}
+
+.cal-dia-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.cal-dia-titulo {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--diger-text);
+    line-height: 1.35;
+}
+
+.cal-dia-meta {
+    display: block;
+    font-size: 11.5px;
+    color: var(--diger-text-muted);
+    margin-top: 2px;
 }
 
 .cal-dot {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     display: inline-block;
-}
-
-.cal-dot-mas {
-    font-size: 10px;
-    color: var(--diger-text-muted);
+    flex-shrink: 0;
 }
 
 .cal-legend {
@@ -2847,33 +3963,53 @@ tr.contacto-inactivo td {
     color: #5b6b86;
 }
 
+.cal-legend-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+    margin-right: 2px;
+}
+
+/* Sin borde ni relleno: seis píldoras delineadas competían con la grilla.
+   El recuadro aparece solo al pasar el puntero o al apagar el tipo. */
 .cal-filtro {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    font-family: inherit;
     font-size: 12px;
-    font-weight: 600;
-    color: #334;
+    font-weight: 500;
+    color: var(--diger-text-secondary);
     cursor: pointer;
-    background: #fff;
-    border: 1.5px solid var(--diger-border);
+    background: none;
+    border: 1px solid transparent;
     border-radius: var(--diger-radius-pill);
-    padding: 4px 11px;
-    transition: .12s;
+    padding: 3px 10px 3px 8px;
+    transition: .14s;
 }
 
 .cal-filtro:hover {
-    border-color: var(--diger-blue);
+    background: #fff;
+    border-color: var(--diger-border);
 }
 
+.cal-filtro-n {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--diger-text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Una sola señal para el estado apagado: antes se acumulaban opacidad,
+   escala de grises y tachado para comunicar lo mismo. */
 .cal-filtro.off {
-    opacity: .5;
-    background: #f3f4f7;
-    text-decoration: line-through;
+    color: var(--diger-text-faint);
 }
 
 .cal-filtro.off .cal-dot {
-    filter: grayscale(1);
+    background: #cdd5e0 !important;
 }
 
 .cal-feed {
@@ -2891,23 +4027,39 @@ tr.contacto-inactivo td {
     color: var(--diger-blue-dark);
 }
 
+/* La regla a la derecha separa el encabezado del contenido cuando queda
+   fijo durante el scroll — antes se superponía sin ninguna división. */
 .cal-feed-day {
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--diger-text-muted);
-    text-transform: capitalize;
-    margin: .7rem 0 .3rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--diger-text-faint);
+    margin: .9rem 0 .35rem;
     position: sticky;
     top: 0;
+    z-index: 1;
     background: #fff;
-    padding: 2px 0;
+    padding: 3px 0;
+}
+
+.cal-feed-day::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--diger-border);
+}
+
+.cal-feed-day:first-of-type {
+    margin-top: 0;
 }
 
 .cal-ev {
     display: flex;
     gap: 9px;
-    padding: 7px 6px;
-    border-radius: 9px;
+    padding: 6px;
+    border-radius: 8px;
     text-decoration: none;
     color: inherit;
 }
@@ -2917,13 +4069,13 @@ tr.contacto-inactivo td {
 }
 
 .cal-ev-ico {
-    flex: 0 0 30px;
-    height: 30px;
+    flex: 0 0 26px;
+    height: 26px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .cal-ev-body {
@@ -2942,12 +4094,13 @@ tr.contacto-inactivo td {
 }
 
 .cal-ev-tag {
-    font-family: monospace;
-    font-size: 11px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .03em;
     color: var(--diger-blue);
     background: #eef3fb;
     border-radius: 5px;
-    padding: 0 5px;
+    padding: 1px 6px;
 }
 
 .cal-ev-time {
@@ -3025,6 +4178,20 @@ tr.contacto-inactivo td {
 
 .seg-etapa.no-aplica {
     opacity: .45;
+}
+
+/* Realce al llegar desde el tablero de trámites con #et-card-{Num}: sin esto,
+   el scroll deja al usuario en medio de una lista de 11 tarjetas iguales. */
+.seg-etapa-destacada {
+    border-color: var(--diger-blue-mid);
+    box-shadow: 0 0 0 3px rgba(20, 85, 164, .16);
+    animation: seg-etapa-pulso 2.4s ease-out;
+}
+
+@keyframes seg-etapa-pulso {
+    0%   { box-shadow: 0 0 0 0 rgba(20, 85, 164, .40); }
+    35%  { box-shadow: 0 0 0 8px rgba(20, 85, 164, .10); }
+    100% { box-shadow: 0 0 0 3px rgba(20, 85, 164, .16); }
 }
 
 .seg-etapa-head {
@@ -3924,5 +5091,102 @@ textarea.form-control { resize: vertical; }
     padding: 3rem 1rem;
     color: var(--diger-text-muted);
     font-size: 14px;
+}
+
+/* ── Barra de progreso global (QW1) ────────────────────────── */
+.dg-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0;
+    background: var(--diger-blue, #1d4ed8);
+    z-index: 99999;
+    opacity: 0;
+    pointer-events: none;
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--diger-blue, #1d4ed8) 50%, transparent);
+}
+.dg-progress.active { opacity: 1; }
+
+/* ── Modal de confirmación (QW5) ───────────────────────────── */
+.dg-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease;
+    backdrop-filter: blur(2px);
+}
+.dg-confirm-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+.dg-confirm-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.75rem 2rem 1.5rem;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, .18);
+    text-align: center;
+    transform: scale(.92);
+    transition: transform .15s ease;
+}
+.dg-confirm-overlay.open .dg-confirm-box { transform: scale(1); }
+.dg-confirm-icon {
+    font-size: 2rem;
+    margin-bottom: .5rem;
+    line-height: 1;
+}
+.dg-confirm-msg {
+    font-size: .9rem;
+    color: #334155;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
+}
+.dg-confirm-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.dg-confirm-cancel,
+.dg-confirm-ok {
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all .12s ease;
+}
+.dg-confirm-cancel {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #e2e8f0;
+}
+.dg-confirm-cancel:hover { background: #e2e8f0; }
+.dg-confirm-ok {
+    background: #dc2626;
+    color: #fff;
+}
+.dg-confirm-ok:hover { background: #b91c1c; }
+.dg-confirm-ok:focus-visible,
+.dg-confirm-cancel:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .dg-confirm-overlay { background: rgba(0, 0, 0, .55); }
+    .dg-confirm-box { background: #1e293b; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+    .dg-confirm-msg { color: #cbd5e1; }
+    .dg-confirm-cancel { background: #334155; color: #e2e8f0; border-color: #475569; }
+    .dg-confirm-cancel:hover { background: #475569; }
 }
 

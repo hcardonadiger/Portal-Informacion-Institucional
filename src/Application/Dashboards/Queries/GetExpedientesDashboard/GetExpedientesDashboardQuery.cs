@@ -1,16 +1,27 @@
 using Diger.TramitesEstado.Application.Dashboards.Common;
+using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetExpedientesDashboard;
 
-public sealed record GetExpedientesDashboardQuery(string? InstitucionId = null) : IRequest<ExpedientesDashboardDto>;
+public sealed record GetExpedientesDashboardQuery(
+    string? InstitucionId = null, DateOnly? Desde = null, DateOnly? Hasta = null, EstadoTramite? Estado = null)
+    : IRequest<ExpedientesDashboardDto>;
 
 public sealed class GetExpedientesDashboardQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetExpedientesDashboardQuery, ExpedientesDashboardDto>
 {
     public async Task<ExpedientesDashboardDto> Handle(GetExpedientesDashboardQuery q, CancellationToken ct)
     {
-        var e = ctx.Expedientes.AsNoTracking();
+        // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
+        var e = ctx.Expedientes.AsNoTracking()
+            .Where(x => x.FechaApertura != null && x.FechaApertura >= CorteLegado.Fecha);
         if (!string.IsNullOrWhiteSpace(q.InstitucionId)) e = e.Where(x => x.InstitucionId == q.InstitucionId);
+        if (q.Desde is { } desde)
+            e = e.Where(x => x.Tramites.Any(t => t.FechaCreacion >= desde));
+        if (q.Hasta is { } hasta)
+            e = e.Where(x => x.Tramites.Any(t => t.FechaCreacion <= hasta));
+        if (q.Estado is { } estado)
+            e = e.Where(x => x.Tramites.Any(t => t.EstadoTramite == estado));
         var total = await e.CountAsync(ct);
         var cerrados = await e.CountAsync(x => x.EstadoExpediente == EstadoExpediente.Cerrado, ct);
         var tramites = total == 0 ? 0 : await e.SumAsync(x => x.Tramites.Count, ct);

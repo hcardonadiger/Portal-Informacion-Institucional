@@ -82,7 +82,7 @@
           <div class="field"><label>Hora</label><input asp-for="Datos.Hora" type="time" /></div>
           <div class="field"><label>Duración</label><input asp-for="Datos.Duracion" placeholder="2 horas" /></div>
         </div>
-        <div class="fg-hdr">Tipo y modalidad</div>
+        <div class="fg-hdr">Tipo y modalidad <span class="help-tip tip-down" data-tip="El tipo determina las secciones del formulario. Las capacitaciones incluyen secciones adicionales de resultados y evidencia.">?</span></div>
         <div class="row2">
           <div class="field"><label>Modalidad</label>
             <select id="md-sel" onchange="otroSync('md')">
@@ -101,7 +101,7 @@
             <input type="hidden" asp-for="Datos.Tipo" id="tp-val" />
           </div>
         </div>
-        <div class="fg-hdr">Instituciones convocadas</div>
+        <div class="fg-hdr">Instituciones convocadas <span class="help-tip tip-down" data-tip="Las instituciones agregadas aquí estarán disponibles al registrar asistentes y asignar responsables de acuerdos.">?</span></div>
         <div class="field">
           <label>Agregar institución</label>
           <div style="display:flex;gap:8px">
