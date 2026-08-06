@@ -292,11 +292,8 @@
   var tituloFeed = document.getElementById('feed-title');
   var btnVerTodo = document.getElementById('btn-ver-todo');
 
-  // En la vista de día no hay grilla: el feed ya viene acotado a ese día.
   var grilla = document.getElementById('cal-body');
   if (grilla) {
-    // Un solo listener delegado. Los <a> (chips y el "+" de nueva reunión)
-    // navegan; cualquier otro punto de la celda selecciona el día.
     grilla.addEventListener('click', function(ev){
       if (ev.target.closest('a')) return;
       var celda = ev.target.closest('.cal-cell');
@@ -333,7 +330,6 @@
     var off = ocultos();
     document.querySelectorAll('[data-tipo]').forEach(function(el){
       var esDelDia = !diaSeleccionado || el.getAttribute('data-fecha') === diaSeleccionado;
-      // Los chips y segmentos de la grilla no llevan data-fecha: el día ya lo da su celda.
       if (!el.hasAttribute('data-fecha')) esDelDia = true;
       el.style.display = (off.has(el.getAttribute('data-tipo')) || !esDelDia) ? 'none' : '';
     });
@@ -341,7 +337,6 @@
       var on = !off.has(b.getAttribute('data-filtro'));
       b.classList.toggle('on', on); b.classList.toggle('off', !on);
     });
-    // El conteo de la barra debe reflejar solo los tipos visibles.
     document.querySelectorAll('.cal-act').forEach(function(barra){
       var n = 0;
       barra.querySelectorAll('.cal-act-bar > i').forEach(function(seg){
@@ -350,7 +345,6 @@
       barra.querySelector('.cal-act-n').textContent = n;
       barra.style.display = n ? '' : 'none';
     });
-    // Oculta encabezados de día del feed que quedaron sin eventos visibles o si no corresponden al día
     document.querySelectorAll('.cal-feed-day').forEach(function(h){
       if (diaSeleccionado && h.getAttribute('data-fecha') !== diaSeleccionado) {
           h.style.display = 'none';
@@ -374,5 +368,274 @@
   }
 
   aplicarFiltros();
+
+  /* ── Navegación AJAX del calendario ──────────────────────────────── */
+  var MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  var calState = {
+    vista: '@vista',
+    fecha: '@desde.ToString("yyyy-MM-dd")',
+    puedeGestionar: @(Model.PuedeGestionar ? "true" : "false"),
+    tiposUi: null,
+    loading: false
+  };
+
+  function parseDate(s){ var p=s.split('-'); return new Date(+p[0], +p[1]-1, +p[2], 12, 0, 0); }
+  function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function hoy(){ return isoDate(new Date()); }
+
+  function escH(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+  function diaLargo(iso){
+    var d = parseDate(iso);
+    return d.toLocaleDateString('es-HN', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  }
+
+  function calcNav(vista, fechaIso){
+    var d = parseDate(fechaIso);
+    var ant, sig;
+    if(vista==='Dia'){ ant=new Date(d); ant.setDate(d.getDate()-1); sig=new Date(d); sig.setDate(d.getDate()+1); }
+    else if(vista==='Semana'){ ant=new Date(d); ant.setDate(d.getDate()-7); sig=new Date(d); sig.setDate(d.getDate()+7); }
+    else { ant=new Date(d.getFullYear(), d.getMonth()-1, 1, 12); sig=new Date(d.getFullYear(), d.getMonth()+1, 1, 12); }
+    return { anterior: isoDate(ant), siguiente: isoDate(sig) };
+  }
+
+  function calTitulo(vista, desdeIso, hastaIso){
+    var d = parseDate(desdeIso);
+    if(vista==='Dia') return diaLargo(desdeIso);
+    if(vista==='Semana'){
+      var h = parseDate(hastaIso); h.setDate(h.getDate()-1);
+      if(d.getMonth()===h.getMonth()) return d.getDate()+' – '+h.getDate()+' de '+MESES[d.getMonth()+1].toLowerCase()+' <span>'+d.getFullYear()+'</span>';
+      return d.getDate()+' '+MESES[d.getMonth()+1].substring(0,3).toLowerCase()+' – '+h.getDate()+' '+MESES[h.getMonth()+1].substring(0,3).toLowerCase()+' <span>'+h.getFullYear()+'</span>';
+    }
+    return MESES[d.getMonth()+1]+' <span>'+d.getFullYear()+'</span>';
+  }
+
+  async function calNavegar(vista, fecha){
+    if(calState.loading) return;
+    calState.loading = true;
+    calState.vista = vista;
+    calState.fecha = fecha;
+    diaSeleccionado = null;
+
+    if(window._dgProgress) window._dgProgress.start();
+    try {
+      var resp = await fetch('/Calendario?handler=Data&vista='+vista+'&fecha='+fecha);
+      var data = await resp.json();
+      if(data.tiposUi) calState.tiposUi = data.tiposUi;
+      renderCalendario(data, vista);
+      var nav = calcNav(vista, data.desde);
+      actualizarToolbar(vista, data.desde, data.hasta, nav, data);
+      history.replaceState(null, '', '/Calendario?vista='+vista+'&fecha='+fecha);
+    } catch(e){ console.error('Error cargando calendario:', e); }
+    calState.loading = false;
+    if(window._dgProgress) window._dgProgress.done();
+  }
+
+  function actualizarToolbar(vista, desde, hasta, nav, data){
+    var titulo = document.querySelector('.cal-title');
+    if(titulo) titulo.innerHTML = calTitulo(vista, desde, hasta);
+
+    document.querySelectorAll('.cal-seg a').forEach(function(a, i){
+      a.href = '#';
+      a.onclick = function(e){ e.preventDefault(); calNavegar(vista, i===0? nav.anterior : nav.siguiente); };
+    });
+
+    var hoyBtn = document.querySelector('.cal-hoy');
+    if(hoyBtn){ hoyBtn.href='#'; hoyBtn.onclick=function(e){ e.preventDefault(); calNavegar(vista, hoy()); }; }
+
+    document.querySelectorAll('.cal-vista').forEach(function(a){
+      var v = a.textContent.trim();
+      if(v==='Día') v='Dia'; else if(v==='Semana') v='Semana'; else v='Mes';
+      a.classList.toggle('on', v===vista);
+      a.href='#';
+      a.onclick=function(e){ e.preventDefault(); calNavegar(v, desde); };
+    });
+
+    var counts = document.querySelector('.cal-counts');
+    if(counts){
+      var nr = data.reuniones.length;
+      var na = data.actividad.length;
+      counts.innerHTML = '<span><b>'+nr+'</b> '+(nr===1?'reunión':'reuniones')+'</span><span><b>'+na+'</b> '+(na===1?'actividad':'actividades')+'</span>';
+    }
+
+    var nuevoBtn = document.querySelector('.cal-toolbar .btnp');
+    if(nuevoBtn) nuevoBtn.href = '/Reuniones/Editor?fecha='+desde;
+  }
+
+  function tipoUi(tipoStr){
+    if(!calState.tiposUi) return {etiqueta:tipoStr, color:'#888', fondo:'#f1f1f1', texto:'#444', iconoId:'i-calendario'};
+    var found = calState.tiposUi.find(function(t){ return t.tipo===tipoStr; });
+    return found || {etiqueta:tipoStr, color:'#888', fondo:'#f1f1f1', texto:'#444', iconoId:'i-calendario'};
+  }
+
+  function renderCalendario(data, vista){
+    var calCal = document.querySelector('.cal-cal');
+    if(!calCal) return;
+    var hoyIso = hoy();
+
+    var reusPorDia = {};
+    data.reuniones.forEach(function(r){ if(!reusPorDia[r.fecha]) reusPorDia[r.fecha]=[]; reusPorDia[r.fecha].push(r); });
+    var actsPorDia = {};
+    data.actividad.forEach(function(e){ if(!actsPorDia[e.fecha]) actsPorDia[e.fecha]=[]; actsPorDia[e.fecha].push(e); });
+
+    var html = '';
+    if(vista==='Dia'){
+      var reus = reusPorDia[data.desde] || [];
+      var acts = actsPorDia[data.desde] || [];
+      html += '<div class="cal-dia">';
+      html += '<div class="cal-dia-hdr'+(data.desde===hoyIso?' es-hoy':'')+'"><span class="cal-dia-num">'+parseDate(data.desde).getDate()+'</span>';
+      html += '<span class="cal-dia-tx"><span class="cal-dia-t1">'+escH(diaLargo(data.desde))+'</span>';
+      html += '<span class="cal-dia-t2">'+(reus.length===1?'1 reunión':reus.length+' reuniones')+' · '+(acts.length===1?'1 acción registrada':acts.length+' acciones registradas')+'</span></span>';
+      if(calState.puedeGestionar) html += '<a class="btns btns-sm" href="/Reuniones/Editor?fecha='+data.desde+'"><svg class="ico"><use href="#i-mas"></use></svg> Agendar</a>';
+      html += '</div><div class="cal-dia-lista">';
+      if(!reus.length){
+        html += '<div class="empty-state"><div class="empty-state-ico"><svg class="ico"><use href="#i-calendario"></use></svg></div><div class="empty-state-t1">Sin reuniones este día</div><div class="empty-state-t2">Las acciones del portal siguen listadas a la derecha</div></div>';
+      } else {
+        reus.forEach(function(r){
+          var destino = calState.puedeGestionar ? '/Reuniones/Editor/' : '/Reuniones/Acta/';
+          var meta = [r.institucion, r.tipo, r.privada?'Privada':null].filter(Boolean).join(' · ');
+          html += '<a class="cal-dia-item'+(r.privada?' priv':'')+'" data-tipo="Reunion" href="'+destino+r.id+'">';
+          html += '<span class="cal-dia-hora">'+(r.hora||'—')+'</span><span class="cal-dia-body"><span class="cal-dia-titulo">'+escH(r.titulo)+'</span>';
+          if(meta) html += '<span class="cal-dia-meta">'+escH(meta)+'</span>';
+          html += '</span></a>';
+        });
+      }
+      html += '</div></div>';
+    } else {
+      var desdeD = parseDate(data.desde);
+      var tope = vista==='Semana' ? 8 : 3;
+      var inicioGrid, celdas;
+      if(vista==='Semana'){ inicioGrid=new Date(desdeD); celdas=7; }
+      else {
+        inicioGrid = new Date(desdeD);
+        inicioGrid.setDate(1);
+        inicioGrid.setDate(inicioGrid.getDate() - inicioGrid.getDay());
+        var diasMes = new Date(desdeD.getFullYear(), desdeD.getMonth()+1, 0).getDate();
+        var offset = new Date(desdeD.getFullYear(), desdeD.getMonth(), 1).getDay();
+        celdas = Math.ceil((offset + diasMes) / 7) * 7;
+      }
+
+      html += '<div class="cal-grid cal-head">';
+      DIAS.forEach(function(d){ html += '<div class="cal-dow">'+d+'</div>'; });
+      html += '</div><div class="cal-grid cal-body" id="cal-body">';
+
+      for(var i=0; i<celdas; i++){
+        var dia = new Date(inicioGrid);
+        dia.setDate(inicioGrid.getDate() + i);
+        var iso = isoDate(dia);
+        var enRango = iso >= data.desde && iso < data.hasta;
+        var esHoy = iso === hoyIso;
+        var reus = reusPorDia[iso] || [];
+        var acts = actsPorDia[iso] || [];
+
+        html += '<div class="cal-cell'+(enRango?'':' cal-out')+(esHoy?' cal-today':'')+'" data-fecha="'+(enRango?iso:'')+'">';
+        html += '<div class="cal-cell-top"><span class="cal-num">'+dia.getDate()+'</span>';
+        if(calState.puedeGestionar && enRango) html += '<a class="cal-add" title="Nueva reunión" href="/Reuniones/Editor?fecha='+iso+'"><svg class="ico"><use href="#i-mas"></use></svg></a>';
+        html += '</div>';
+
+        reus.slice(0, tope).forEach(function(r){
+          var destino = calState.puedeGestionar ? '/Reuniones/Editor/' : '/Reuniones/Acta/';
+          html += '<a class="cal-chip'+(r.privada?' priv':'')+'" data-tipo="Reunion" href="'+destino+r.id+'" title="'+escH((r.privada?'Privada · ':'')+(r.hora?r.hora+' · ':'')+r.titulo)+'">';
+          if(r.hora) html += '<time>'+escH(r.hora)+'</time>';
+          html += escH(r.titulo)+'</a>';
+        });
+        if(reus.length > tope) html += '<button type="button" class="cal-mas" data-tipo="Reunion">+'+(reus.length-tope)+' más</button>';
+
+        if(acts.length){
+          var grupos = {};
+          acts.forEach(function(a){ if(!grupos[a.tipo]) grupos[a.tipo]={n:0,ui:tipoUi(a.tipo)}; grupos[a.tipo].n++; });
+          var totalActs = acts.length;
+          html += '<div class="cal-act" title="'+totalActs+' acción(es)"><span class="cal-act-bar">';
+          Object.keys(grupos).sort().forEach(function(t){ html += '<i data-tipo="'+t+'" data-n="'+grupos[t].n+'" style="flex:'+grupos[t].n+';background:'+grupos[t].ui.color+'"></i>'; });
+          html += '</span><span class="cal-act-n">'+totalActs+'</span></div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Leyenda
+    var tipos = calState.tiposUi || [];
+    var porTipo = {};
+    data.actividad.forEach(function(e){ porTipo[e.tipo] = (porTipo[e.tipo]||0)+1; });
+    data.reuniones.forEach(function(){ porTipo['Reunion'] = (porTipo['Reunion']||0)+1; });
+    html += '<div class="cal-legend"><span class="cal-legend-lbl">Mostrar</span>';
+    tipos.forEach(function(t){
+      html += '<button type="button" class="cal-filtro on" data-filtro="'+t.tipo+'" onclick="toggleFiltro(this)"><span class="cal-dot" style="background:'+t.color+'"></span>'+escH(t.etiqueta)+'<span class="cal-filtro-n">'+(porTipo[t.tipo]||0)+'</span></button>';
+    });
+    html += '</div>';
+
+    calCal.innerHTML = html;
+
+    // Feed de actividad
+    var feed = document.querySelector('.cal-feed');
+    if(feed){
+      var alcance = vista==='Dia'?'del día':vista==='Semana'?'de la semana':'del mes';
+      var feedHtml = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:1rem"><h3 style="margin:0" id="feed-title" data-defecto="Actividad '+alcance+'">Actividad '+alcance+'</h3><button type="button" class="btns btns-sm" id="btn-ver-todo" style="display:none" onclick="verTodoElRango()">Ver todo</button></div>';
+      if(!data.actividad.length){
+        feedHtml += '<div class="empty-state"><div class="empty-state-ico"><svg class="ico"><use href="#i-calendario"></use></svg></div><div class="empty-state-t1">Sin acciones registradas</div><div class="empty-state-t2">Las reuniones, tickets y expedientes del período aparecerán aquí</div></div>';
+      } else {
+        var lastDay = null;
+        data.actividad.forEach(function(e){
+          if(lastDay !== e.fecha){
+            lastDay = e.fecha;
+            feedHtml += '<div class="cal-feed-day" data-fecha="'+e.fecha+'">'+escH(diaLargo(e.fecha))+'</div>';
+          }
+          var ui = tipoUi(e.tipo);
+          var detalle = e.detalle && e.detalle.length > 90 ? e.detalle.substring(0,90)+'…' : e.detalle;
+          var hora = e.cuando ? e.cuando.split('T')[1] : '';
+          feedHtml += '<a class="cal-ev" data-tipo="'+e.tipo+'" data-fecha="'+e.fecha+'" href="'+e.pagina+'/'+e.refId+'">';
+          feedHtml += '<span class="cal-ev-ico" style="background:'+ui.fondo+';color:'+ui.texto+'"><svg class="ico"><use href="#'+ui.iconoId+'"></use></svg></span>';
+          feedHtml += '<span class="cal-ev-body"><span class="cal-ev-top"><b>'+escH(ui.etiqueta)+'</b>';
+          if(e.etiqueta) feedHtml += '<span class="cal-ev-tag">'+escH(e.etiqueta)+'</span>';
+          feedHtml += '<span class="cal-ev-time">'+hora+'</span></span>';
+          feedHtml += '<span class="cal-ev-titulo">'+escH(e.titulo)+'</span>';
+          if(detalle) feedHtml += '<span class="cal-ev-det">'+escH(detalle)+'</span>';
+          feedHtml += '</span></a>';
+        });
+      }
+      feed.innerHTML = feedHtml;
+    }
+
+    tituloFeed = document.getElementById('feed-title');
+    btnVerTodo = document.getElementById('btn-ver-todo');
+
+    // Re-bind grid click
+    grilla = document.getElementById('cal-body');
+    if(grilla){
+      grilla.addEventListener('click', function(ev){
+        if(ev.target.closest('a')) return;
+        var celda = ev.target.closest('.cal-cell');
+        if(celda && celda.dataset.fecha) seleccionarDia(celda.dataset.fecha);
+      });
+    }
+
+    aplicarFiltros();
+  }
+
+  /* Interceptar links de navegación del calendario */
+  document.querySelector('.cal-toolbar').addEventListener('click', function(ev){
+    var a = ev.target.closest('a.cal-vista, a.cal-hoy, .cal-seg a');
+    if(!a) return;
+    if(a.href && a.href !== '#' && !a.onclick){
+      ev.preventDefault();
+      var url = new URL(a.href, location.origin);
+      var v = url.searchParams.get('vista') || calState.vista;
+      var f = url.searchParams.get('fecha') || calState.fecha;
+      calNavegar(v, f);
+    }
+  });
+
+  /* Inicializar tiposUi desde el servidor (primer render) */
+  (function(){
+    calState.tiposUi = [
+      @foreach (var t in Enum.GetValues<TipoEventoCalendario>())
+      {
+        var ui = CalendarioUi.Evento(t);
+        <text>{tipo:'@t',etiqueta:'@ui.Etiqueta',color:'@ui.Color',fondo:'@ui.Fondo',texto:'@ui.Texto',iconoId:'@ui.IconoId'},</text>
+      }
+    ];
+  })();
 </script>
 }

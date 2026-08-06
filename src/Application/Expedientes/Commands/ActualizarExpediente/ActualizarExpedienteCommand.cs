@@ -39,6 +39,26 @@ public sealed class ActualizarExpedienteCommandHandler(
             datos = datos with { ContraparteUsuarioNombre = nombreC };
         }
 
+        if (datos.ValidadoDigerUsuarioId.HasValue)
+        {
+            var nombreVD = await ctx.Usuarios
+                .Where(u => u.Id == datos.ValidadoDigerUsuarioId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct)
+                ?? throw new NotFoundException(nameof(Usuario), datos.ValidadoDigerUsuarioId.Value);
+            datos = datos with { ValidadoDiger = nombreVD };
+        }
+
+        if (datos.ValidadoInstUsuarioId.HasValue)
+        {
+            var nombreVI = await ctx.Usuarios
+                .Where(u => u.Id == datos.ValidadoInstUsuarioId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct)
+                ?? throw new NotFoundException(nameof(Usuario), datos.ValidadoInstUsuarioId.Value);
+            datos = datos with { ValidadoInst = nombreVI };
+        }
+
         var hoy = DateOnly.FromDateTime(DateTime.Today);
         if (exp.ContraparteUsuarioId.HasValue && exp.ContraparteUsuarioId == currentUser.UserId && !currentUser.EsGlobal)
         {
@@ -50,8 +70,32 @@ public sealed class ActualizarExpedienteCommandHandler(
         }
 
         var estadoAnterior = exp.EstadoExpediente;
-        ExpedienteMapper.Aplicar(exp, datos);
+        var validadoDigerAnterior = exp.ValidadoDigerUsuarioId;
+        var validadoInstAnterior  = exp.ValidadoInstUsuarioId;
+
+        var diffHijos = ExpedienteMapper.Aplicar(exp, datos);
         exp.MarcarActualizado();
+
+        var actor = currentUser.Nombre ?? currentUser.Correo ?? "—";
+        if (datos.EstadoExpediente != estadoAnterior)
+            exp.CambiarEstado(datos.EstadoExpediente, actor);
+
+        if (diffHijos is not null)
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(exp.Id, TipoEventoBitacora.ModificacionHijos, diffHijos, actor));
+
+        if (datos.ValidadoDigerUsuarioId.HasValue && datos.ValidadoDigerUsuarioId != validadoDigerAnterior)
+        {
+            exp.FechaHoraValidacionDiger = DateTime.UtcNow;
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(exp.Id, TipoEventoBitacora.Validacion,
+                $"Validado por DIGER: {exp.ValidadoDiger}", actor));
+        }
+
+        if (datos.ValidadoInstUsuarioId.HasValue && datos.ValidadoInstUsuarioId != validadoInstAnterior)
+        {
+            exp.FechaHoraValidacionInst = DateTime.UtcNow;
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(exp.Id, TipoEventoBitacora.Validacion,
+                $"Validado por institución: {exp.ValidadoInst}", actor));
+        }
 
         // Cuando el expediente cierra por primera vez, cumplir metas vinculadas
         if (cmd.Datos.EstadoExpediente == EstadoExpediente.Cerrado

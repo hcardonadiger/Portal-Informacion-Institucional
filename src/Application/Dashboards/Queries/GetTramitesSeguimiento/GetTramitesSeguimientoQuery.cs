@@ -42,7 +42,9 @@ public sealed record TramitesSeguimientoDto(
 }
 
 /// <param name="Banda">Filtro por banda del semáforo; null = todas.</param>
-public sealed record GetTramitesSeguimientoQuery(string? InstitucionId, BandaAvance? Banda)
+public sealed record GetTramitesSeguimientoQuery(
+    string? InstitucionId, BandaAvance? Banda,
+    DateOnly? Desde = null, DateOnly? Hasta = null, EstadoTramite? Estado = null)
     : IRequest<TramitesSeguimientoDto>;
 
 public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx)
@@ -51,15 +53,18 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
     public async Task<TramitesSeguimientoDto> Handle(GetTramitesSeguimientoQuery q, CancellationToken ct)
     {
         // ctx.Expedientes ya viene filtrado por el alcance institucional del usuario.
-        var expedientes = await ctx.Expedientes
+        var expQuery = ctx.Expedientes
             .AsNoTracking()
             .Include(e => e.Tramites)
+            .AsQueryable();
+
+        var expedientes = await expQuery
             .OrderBy(e => e.Institucion).ThenBy(e => e.Codigo)
             .Select(e => new
             {
                 e.Id, e.Codigo, e.InstitucionId, e.Institucion, e.Analista, e.EstadoExpediente,
                 Tramites = e.Tramites.OrderBy(t => t.TramiteIndex)
-                    .Select(t => new { t.TramiteIndex, t.NombreTramite }).ToList()
+                    .Select(t => new { t.TramiteIndex, t.NombreTramite, t.FechaCreacion, t.EstadoTramite }).ToList()
             })
             .ToListAsync(ct);
 
@@ -110,14 +115,16 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
         {
             foreach (var t in e.Tramites)
             {
+                if (q.Desde is { } desde && t.FechaCreacion < desde) continue;
+                if (q.Hasta is { } hasta && t.FechaCreacion > hasta) continue;
+                if (q.Estado is { } estado && t.EstadoTramite != estado) continue;
+
                 var hay = porTramite.TryGetValue((e.Id, t.TramiteIndex), out var d);
                 var estados = hay ? d.Estados : sinDatosEstados;
                 var aplica  = hay ? d.Aplica  : sinDatosAplica;
 
                 var avance = (int)Math.Round(MetodologiaDigitalizacion.Global(estados, aplica) * 100);
 
-                // Solo las etapas aplicables: una etapa apagada no debe figurar en el
-                // modal como "0%", porque no es que falte — es que no corre.
                 var etapas = MetodologiaDigitalizacion.Etapas
                     .Where(et => MetodologiaDigitalizacion.Aplica(et, aplica))
                     .Select(et => new EtapaAvanceDto(

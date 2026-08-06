@@ -26,7 +26,9 @@ public sealed record TramiteInput(
     string? Telefono,
     string? EmailTramite,
     string? SitioWeb,
-    int?    TramiteSigerId = null);
+    int?    TramiteSigerId = null,
+    DateOnly? FechaCreacion = null,
+    EstadoTramite? EstadoTramite = null);
 
 public sealed record RequisitoInput(
     int TramiteIndex, int Orden, string Requisito, string? Obs,
@@ -107,4 +109,6 @@ public sealed record ExpedienteInputDto(
     Guid?    AnalistaId = null,
     Guid?    ContraparteUsuarioId = null,
     string?  ContraparteUsuarioNombre = null,
-    DateOnly? FechaLimiteEntrega = null);
+    DateOnly? FechaLimiteEntrega = null,
+    Guid?    ValidadoDigerUsuarioId = null,
+    Guid?    ValidadoInstUsuarioId = null);

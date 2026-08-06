@@ -293,6 +293,7 @@
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','decision')">Decisión</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','fin')">■ Fin</button>
         </div>
+        <div id="flujo-actual-warnings" class="flow-warnings"></div>
       </div>
 
       <div class="card">
@@ -346,6 +347,7 @@
         <div class="flow-toggle">
           <button class="ftog active" id="ftog-propuesto-edit" onclick="toggleFlowView('propuesto','edit')">Editar</button>
           <button class="ftog" id="ftog-propuesto-diag" onclick="toggleFlowView('propuesto','diag')">Ver diagrama</button>
+          <button class="ftog" onclick="copiarFlujoActualAPropuesto()" title="Copia todos los pasos del flujo actual como punto de partida">⧉ Copiar flujo actual</button>
         </div>
         <div id="flujo-propuesto-list" class="flow-list"></div>
         <div id="flujo-propuesto-diag" style="display:none"></div>
@@ -355,6 +357,7 @@
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','decision')">Decisión</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','fin')">■ Fin</button>
         </div>
+        <div id="flujo-propuesto-warnings" class="flow-warnings"></div>
       </div>
 
       <!-- REQUISITOS -->
@@ -498,8 +501,26 @@
       <div class="card">
         <div class="ct">Validaciones y firma de cierre</div>
         <div class="g2">
-          <div class="f"><label>Validado por (DIGER)</label><input type="text" id="validado_diger" placeholder="Nombre completo"></div>
-          <div class="f"><label>Validado por (institución)</label><input type="text" id="validado_inst" placeholder="Nombre completo y cargo"></div>
+          <div class="f">
+            <label>Validado por (DIGER)</label>
+            <select id="validado_diger" onchange="actualizarMeta()">
+              <option value="">— Seleccione —</option>
+              @foreach (var u in Model.Usuarios)
+              {
+                <option>@u.Nombre</option>
+              }
+            </select>
+          </div>
+          <div class="f">
+            <label>Validado por (institución)</label>
+            <select id="validado_inst" onchange="actualizarMeta()">
+              <option value="">— Seleccione —</option>
+              @foreach (var u in Model.Usuarios)
+              {
+                <option>@u.Nombre</option>
+              }
+            </select>
+          </div>
         </div>
         <div class="g2">
           <div class="f"><label>Fecha de validación</label><input type="date" id="fecha_validacion"></div>

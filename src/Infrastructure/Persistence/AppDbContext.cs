@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Diger.TramitesEstado.Infrastructure.Persistence;
@@ -5,7 +6,8 @@ namespace Diger.TramitesEstado.Infrastructure.Persistence;
 // ── DbContext ─────────────────────────────────────────────────────────────
 public sealed class AppDbContext(
     DbContextOptions<AppDbContext> options,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IPublisher publisher)
     : DbContext(options), IApplicationDbContext, IUnitOfWork
 {
     public DbSet<Institucion>              Instituciones      { get; init; } = default!;
@@ -35,6 +37,7 @@ public sealed class AppDbContext(
     public DbSet<ExpedienteSeccionEstado>  Secciones          { get; init; } = default!;
     public DbSet<ExpedienteEtapaAvance>    ExpedienteEtapaAvances { get; init; } = default!;
     public DbSet<NotaSeguimientoExpediente> NotasSeguimiento  { get; init; } = default!;
+    public DbSet<BitacoraExpediente>       BitacorasExpediente { get; init; } = default!;
     public DbSet<Ticket>                   Tickets            { get; init; } = default!;
     public DbSet<TicketComentario>         TicketComentarios  { get; init; } = default!;
     public DbSet<CategoriaTicket>          CategoriasTicket   { get; init; } = default!;
@@ -244,7 +247,21 @@ public sealed class AppDbContext(
                 entry.Entity.UpdatedBy = actor;
             }
         }
-        return await base.SaveChangesAsync(ct);
+        var result = await base.SaveChangesAsync(ct);
+
+        // ── Dispatch de domain events ────────────────────────────────────────
+        // Se despacha después de guardar: los Ids ya están asignados y solo se
+        // publican eventos de una escritura que efectivamente ocurrió.
+        var conEventos = ChangeTracker.Entries<IHasDomainEvents>()
+            .Select(e => e.Entity)
+            .Where(e => e.DomainEvents.Count > 0)
+            .ToList();
+        var eventos = conEventos.SelectMany(e => e.DomainEvents).ToList();
+        conEventos.ForEach(e => e.ClearDomainEvents());
+        foreach (var ev in eventos)
+            await publisher.Publish(ev, ct);
+
+        return result;
     }
 }
 
@@ -565,6 +582,7 @@ public sealed class ExpedienteTramiteConfiguration : IEntityTypeConfiguration<Ex
         b.Property(x => x.Telefono).HasMaxLength(60);
         b.Property(x => x.EmailTramite).HasMaxLength(200);
         b.Property(x => x.SitioWeb).HasMaxLength(300);
+        b.Property(x => x.EstadoTramite).HasDefaultValue(EstadoTramite.Pendiente);
         b.HasOne<TramiteSiger>().WithMany()
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => x.TramiteSigerId);
@@ -773,6 +791,23 @@ public sealed class NotaSeguimientoExpedienteConfiguration : IEntityTypeConfigur
         // El tablero pide la última nota de cada expediente: el índice descendente
         // por fecha evita ordenar en memoria.
         b.HasIndex(x => new { x.ExpedienteId, x.CreadoEl }).IsDescending(false, true);
+        b.HasOne<Expediente>().WithMany()
+            .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class BitacoraExpedienteConfiguration : IEntityTypeConfiguration<BitacoraExpediente>
+{
+    public void Configure(EntityTypeBuilder<BitacoraExpediente> b)
+    {
+        b.ToTable("BitacoraExpediente");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30).IsRequired();
+        b.Property(x => x.Detalle).HasMaxLength(500).IsRequired();
+        b.Property(x => x.Actor).HasMaxLength(150).IsRequired();
+        // La bitácora se consulta como historial por expediente, más reciente primero.
+        b.HasIndex(x => new { x.ExpedienteId, x.Fecha }).IsDescending(false, true);
         b.HasOne<Expediente>().WithMany()
             .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
     }
