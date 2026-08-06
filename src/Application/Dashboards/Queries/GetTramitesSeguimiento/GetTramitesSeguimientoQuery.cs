@@ -53,8 +53,10 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
     public async Task<TramitesSeguimientoDto> Handle(GetTramitesSeguimientoQuery q, CancellationToken ct)
     {
         // ctx.Expedientes ya viene filtrado por el alcance institucional del usuario.
+        // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
         var expQuery = ctx.Expedientes
             .AsNoTracking()
+            .Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha)
             .Include(e => e.Tramites)
             .AsQueryable();
 
