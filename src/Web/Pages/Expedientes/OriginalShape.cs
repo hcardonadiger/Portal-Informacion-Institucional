@@ -54,7 +54,9 @@ public sealed class OriginalExpedienteDto
     [JsonPropertyName("obs_levantamiento")]  public string? ObsLevantamiento { get; set; }
     [JsonPropertyName("obs_expediente")]     public string? ObsExpediente { get; set; }
     [JsonPropertyName("validado_diger")]     public string? ValidadoDiger { get; set; }
+    [JsonPropertyName("validado_diger_usuario_id")] public Guid? ValidadoDigerUsuarioId { get; set; }
     [JsonPropertyName("validado_inst")]      public string? ValidadoInst { get; set; }
+    [JsonPropertyName("validado_inst_usuario_id")]  public Guid? ValidadoInstUsuarioId { get; set; }
     [JsonPropertyName("fecha_validacion")]   public string? FechaValidacion { get; set; }
     [JsonPropertyName("num_acta")]           public string? NumActa { get; set; }
 

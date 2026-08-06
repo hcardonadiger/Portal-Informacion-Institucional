@@ -33,7 +33,6 @@ public sealed class IndexModel(ISender sender) : PageModel
     {
         Vista = Enum.TryParse<VistaCalendario>(vista, ignoreCase: true, out var v) ? v : VistaCalendario.Mes;
 
-        // La fecha ancla puede venir de cualquier vista; cada una la recorta a su rango.
         var referencia = fecha ?? Hoy;
 
         (Desde, Hasta) = Vista switch
@@ -44,8 +43,6 @@ public sealed class IndexModel(ISender sender) : PageModel
                                        new DateOnly(referencia.Year, referencia.Month, 1).AddMonths(1)),
         };
 
-        // Se navega desde el inicio del rango, no desde la fecha ancla: así pasar
-        // de mes no arrastra el día (31 de enero → 28 de febrero → 28 de marzo).
         (Anterior, Siguiente) = Vista switch
         {
             VistaCalendario.Dia    => (Desde.AddDays(-1),   Desde.AddDays(1)),
@@ -56,5 +53,44 @@ public sealed class IndexModel(ISender sender) : PageModel
         Data = await sender.Send(new GetCalendarioQuery(Desde, Hasta), ct);
         ReunionesPorDia = Data.Reuniones.ToLookup(r => r.Fecha);
         ActividadPorDia = Data.Actividad.ToLookup(e => e.Fecha);
+    }
+
+    public async Task<IActionResult> OnGetDataAsync(string? vista, DateOnly? fecha, CancellationToken ct)
+    {
+        var v = Enum.TryParse<VistaCalendario>(vista, ignoreCase: true, out var vp) ? vp : VistaCalendario.Mes;
+        var referencia = fecha ?? DateOnly.FromDateTime(DateTime.Today);
+
+        var (desde, hasta) = v switch
+        {
+            VistaCalendario.Dia    => (referencia, referencia.AddDays(1)),
+            VistaCalendario.Semana => (InicioSemana(referencia), InicioSemana(referencia).AddDays(7)),
+            _                      => (new DateOnly(referencia.Year, referencia.Month, 1),
+                                       new DateOnly(referencia.Year, referencia.Month, 1).AddMonths(1)),
+        };
+
+        var data = await sender.Send(new GetCalendarioQuery(desde, hasta), ct);
+
+        var eventosUi = Enum.GetValues<TipoEventoCalendario>()
+            .Select(t => { var ui = CalendarioUi.Evento(t); return new { tipo = t.ToString(), ui.Etiqueta, ui.Color, ui.Fondo, ui.Texto, ui.IconoId }; })
+            .ToList();
+
+        return new JsonResult(new
+        {
+            desde = desde.ToString("yyyy-MM-dd"),
+            hasta = hasta.ToString("yyyy-MM-dd"),
+            reuniones = data.Reuniones.Select(r => new
+            {
+                r.Id, r.Titulo, fecha = r.Fecha.ToString("yyyy-MM-dd"), r.Hora, r.Tipo, r.Institucion, r.Privada
+            }),
+            actividad = data.Actividad.Select(e => new
+            {
+                fecha = e.Fecha.ToString("yyyy-MM-dd"),
+                cuando = e.Cuando.ToString("yyyy-MM-ddTHH:mm"),
+                tipo = e.Tipo.ToString(),
+                e.Titulo, e.Detalle, e.Etiqueta, e.Pagina, e.RefId
+            }),
+            tiposUi = eventosUi,
+            puedeGestionar = User.CanMutate()
+        });
     }
 }

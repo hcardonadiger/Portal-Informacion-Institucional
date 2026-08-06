@@ -10,6 +10,9 @@ public sealed class ExpedienteTramite : BaseEntity
     public string? NombreCorto     { get; set; }
     public string? AreaResponsable { get; set; }
 
+    public DateOnly   FechaCreacion  { get; set; }
+    public EstadoTramite EstadoTramite { get; set; } = EstadoTramite.Pendiente;
+
     // Ficha
     public string? Modalidad   { get; set; }
     public string? PlazoLegal  { get; set; }

@@ -98,15 +98,15 @@ public sealed class EditorModel(
         return new JsonResult(results);
     }
 
-    public async Task<IActionResult> OnGetDetalleSigerAsync(int id, CancellationToken ct)
+    public async Task<IActionResult> OnGetDetalleSigerAsync([FromQuery] int sigerId, CancellationToken ct)
     {
         var t = await db.TramitesSiger.AsNoTracking()
-            .Include(x => x.Pasos.OrderBy(p => p.NumeroPaso))
+            .Include(x => x.Pasos.Where(p => p.NumeroPaso > 0).OrderBy(p => p.NumeroPaso))
             .Include(x => x.Requisitos.OrderBy(r => r.Numero))
             .Include(x => x.Entregables.OrderBy(e => e.Numero))
             .Include(x => x.LugaresAtencion.OrderBy(l => l.Numero))
             .Include(x => x.Enlaces.OrderBy(e => e.Numero))
-            .FirstOrDefaultAsync(x => x.Id == id, ct);
+            .FirstOrDefaultAsync(x => x.Id == sigerId, ct);
 
         if (t is null) return NotFound();
 

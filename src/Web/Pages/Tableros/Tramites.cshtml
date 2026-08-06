@@ -61,6 +61,20 @@
             </select>
         </div>
         <div class="f">
+            <label>Estado trámite</label>
+            <select name="estado" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                <option value="Pendiente" selected="@(Model.Estado == EstadoTramite.Pendiente)">Pendiente</option>
+                <option value="EnProceso" selected="@(Model.Estado == EstadoTramite.EnProceso)">En proceso</option>
+                <option value="Completado" selected="@(Model.Estado == EstadoTramite.Completado)">Completado</option>
+                <option value="EnOperacion" selected="@(Model.Estado == EstadoTramite.EnOperacion)">En operación</option>
+                <option value="Suspendido" selected="@(Model.Estado == EstadoTramite.Suspendido)">Suspendido</option>
+            </select>
+        </div>
+        <div class="f"><label>Desde</label><input type="date" name="desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" /></div>
+        <div class="f"><label>Hasta</label><input type="date" name="hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" /></div>
+        <div class="f" style="align-self:end"><button class="btnp" type="submit">Filtrar</button></div>
+        <div class="f">
             <label>Banda del semáforo</label>
             <div class="trm-bandas">
                 @{
@@ -77,7 +91,10 @@
                     <a class="trm-banda @b.Cls @(Model.Banda == b.V ? "on" : "")"
                        asp-page="/Tableros/Tramites"
                        asp-route-institucion="@Model.InstitucionId"
-                       asp-route-banda="@(b.V?.ToString())">
+                       asp-route-banda="@(b.V?.ToString())"
+                       asp-route-desde="@(Model.Desde?.ToString("yyyy-MM-dd"))"
+                       asp-route-hasta="@(Model.Hasta?.ToString("yyyy-MM-dd"))"
+                       asp-route-estado="@(Model.Estado?.ToString())">
                         @b.Txt <span class="trm-banda-n">@b.N</span>
                     </a>
                 }
@@ -153,6 +170,11 @@
                                     <svg class="ico"><use href="#i-respuesta"></use></svg>
                                     @(nota is null ? "Sin notas" : $"{nota.Total} nota{(nota.Total == 1 ? "" : "s")}")
                                 </button>
+                                <button type="button" class="trm-nota-btn" data-exp="@t.ExpedienteId" data-cod="@t.Codigo"
+                                        onclick="abrirBitacora(this)">
+                                    <svg class="ico"><use href="#i-reloj"></use></svg>
+                                    Bitácora
+                                </button>
                             </td>
                             <td class="trm-sub">@(string.IsNullOrWhiteSpace(t.Analista) ? "(Sin asignar)" : t.Analista)</td>
                             <td>
@@ -201,7 +223,9 @@
         </div>
         <div class="trm-modal-body">
             <form method="post" asp-page-handler="Nota"
-                  asp-route-institucion="@Model.InstitucionId" asp-route-banda="@(Model.Banda?.ToString())">
+                  asp-route-institucion="@Model.InstitucionId" asp-route-banda="@(Model.Banda?.ToString())"
+                  asp-route-desde="@(Model.Desde?.ToString("yyyy-MM-dd"))" asp-route-hasta="@(Model.Hasta?.ToString("yyyy-MM-dd"))"
+                  asp-route-estado="@(Model.Estado?.ToString())">
                 <input type="hidden" name="expedienteId" id="mn-exp" />
                 <div class="f">
                     <label>¿En qué punto estamos con la institución?</label>
@@ -217,10 +241,28 @@
     </div>
 </div>
 
+@* ── Modal: bitácora de auditoría ─────────────────────────────────── *@
+<div class="trm-modal" id="modal-bitacora" hidden>
+    <div class="trm-modal-fondo" onclick="cerrarModal('modal-bitacora')"></div>
+    <div class="trm-modal-caja" role="dialog" aria-modal="true" aria-labelledby="mb-titulo">
+        <div class="trm-modal-head">
+            <div style="min-width:0">
+                <div class="trm-modal-kick">Bitácora de auditoría</div>
+                <h3 class="trm-modal-titulo" id="mb-titulo">—</h3>
+            </div>
+            <button type="button" class="trm-modal-x" onclick="cerrarModal('modal-bitacora')" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="trm-modal-body">
+            <div id="mb-lista" class="trm-notas"></div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
   var TRAMITES = @Html.Raw(JsonSerializer.Serialize(datosModal));
   var NOTAS_URL = '@Url.Page("/Tableros/Tramites", "Notas")';
+  var BITACORA_URL = '@Url.Page("/Tableros/Tramites", "Bitacora")';
   var SEG_URL   = '@Url.Page("/Expedientes/Seguimiento", new { id = 0 })';
 
   var porClave = {};
@@ -231,7 +273,7 @@
 
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Escape') return;
-    ['modal-etapas','modal-notas'].forEach(function(id){
+    ['modal-etapas','modal-notas','modal-bitacora'].forEach(function(id){
       var m = document.getElementById(id); if (m && !m.hidden) cerrarModal(id);
     });
   });
@@ -287,6 +329,29 @@
       lista.querySelectorAll('.trm-nota-txt').forEach(function(el, i){ el.textContent = notas[i].texto; });
     } catch (e) {
       lista.innerHTML = '<p class="trm-notas-vacio">No se pudieron cargar las notas.</p>';
+    }
+  }
+
+  async function abrirBitacora(btn){
+    var expedienteId = btn.dataset.exp;
+    document.getElementById('mb-titulo').textContent = btn.dataset.cod;
+    var lista = document.getElementById('mb-lista');
+    lista.innerHTML = '<p class="trm-notas-vacio">Cargando…</p>';
+    abrirModal('modal-bitacora');
+    try {
+      var r = await fetch(BITACORA_URL + '&expedienteId=' + expedienteId, { headers:{ 'Accept':'application/json' } });
+      var entradas = r.ok ? await r.json() : [];
+      lista.innerHTML = entradas.length
+        ? entradas.map(function(e){
+            return '<div class="trm-nota">'
+              + '<div class="trm-nota-meta">' + e.fecha + ' · ' + e.actor + ' · ' + e.tipo + '</div>'
+              + '<div class="trm-nota-txt"></div></div>';
+          }).join('')
+        : '<p class="trm-notas-vacio">Todavía no hay bitácora para este expediente.</p>';
+      // El texto va por textContent para no inyectar HTML de la base.
+      lista.querySelectorAll('.trm-nota-txt').forEach(function(el, i){ el.textContent = entradas[i].detalle; });
+    } catch (e) {
+      lista.innerHTML = '<p class="trm-notas-vacio">No se pudo cargar la bitácora.</p>';
     }
   }
 </script>

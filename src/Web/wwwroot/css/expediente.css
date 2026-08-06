@@ -129,6 +129,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--dige
 .fn-ret{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:12px;color:var(--diger-text-muted)}
 .fn-ret select{padding:4px 8px;border:1.5px solid var(--diger-border);border-radius:6px;font-size:12px;font-family:inherit;background:#fafbfd;cursor:pointer}
 .ret-badge{display:inline-flex;align-items:center;gap:4px;background:var(--diger-warning-bg);color:var(--diger-warning);border:1px solid var(--diger-warning);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-top:5px}
+/* DRAG AND DROP */
+.flow-node[draggable="true"]{cursor:grab}
+.flow-node[draggable="true"]:active{cursor:grabbing}
+.flow-node.fn-dragging{opacity:.35}
+.flow-node.fn-dragover{border-top:2.5px solid var(--diger-blue-mid);margin-top:-2.5px}
+.fn-drag-handle{cursor:grab;color:var(--diger-text-muted);font-size:14px;user-select:none;padding:2px 0;letter-spacing:-1px}
+.fn-drag-handle:active{cursor:grabbing}
+/* FLOW VALIDATION */
+.flow-warnings{margin-top:.6rem}
+.flow-warn-item{display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:12px;color:var(--diger-warning);background:var(--diger-warning-bg);border-radius:6px;margin-top:4px}
+.flow-warn-item::before{content:'⚠';font-size:11px}
 /* FLOW DIAGRAM TOGGLE */
 .flow-toggle{display:flex;gap:6px;margin-bottom:1rem}
 .ftog{padding:6px 14px;border:1.5px solid var(--diger-border);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--diger-text-muted);transition:all .18s}

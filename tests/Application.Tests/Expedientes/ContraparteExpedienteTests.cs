@@ -39,7 +39,7 @@ public class ContraparteExpedienteTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         var fakeUser = new FakeContraparteCurrentUser(_contraparteId);
-        _ctx = new AppDbContext(opts, fakeUser);
+        _ctx = new AppDbContext(opts, fakeUser, NSubstitute.Substitute.For<MediatR.IPublisher>());
         _repo = new ExpedienteRepository(_ctx);
     }
 

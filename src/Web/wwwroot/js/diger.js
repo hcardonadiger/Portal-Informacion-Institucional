@@ -123,19 +123,140 @@ document.addEventListener('keydown', function (e) {
     });
 })();
 
-/* ── Confirmar antes de enviar (data-confirm="mensaje" en el botón) ──── */
-document.addEventListener('submit', function (e) {
-    var btn = e.submitter;
-    if (!btn) return;
-    var msg = btn.dataset.confirm;
-    if (msg) {
-        if (!confirm(msg)) e.preventDefault();
-        return;
-    }
-    if (btn.classList.contains('hist-del')) {
-        if (!confirm('¿Eliminar este levantamiento? Esta acción no se puede deshacer.')) {
-            e.preventDefault();
+/* ── Barra de progreso global (QW1) ───────────────────────────────────── */
+(function(){
+    var bar = document.createElement('div');
+    bar.className = 'dg-progress';
+    document.body.appendChild(bar);
+
+    window._dgProgress = {
+        start: function(){
+            bar.style.transition = 'none';
+            bar.style.width = '0';
+            bar.offsetWidth;
+            bar.classList.add('active');
+            bar.style.transition = 'width 8s cubic-bezier(.1,.7,.3,1)';
+            bar.style.width = '85%';
+        },
+        done: function(){
+            bar.style.transition = 'width .2s ease';
+            bar.style.width = '100%';
+            setTimeout(function(){ bar.classList.remove('active'); bar.style.width = '0'; }, 250);
         }
+    };
+
+    document.addEventListener('submit', function(e){
+        var form = e.target;
+        if(form.method && form.method.toLowerCase() === 'get') return;
+        if(form.dataset.noProgress) return;
+        window._dgProgress.start();
+    });
+
+    var _origSubmit = HTMLFormElement.prototype.submit;
+    var selects = document.querySelectorAll('select[onchange*="this.form.submit"]');
+    selects.forEach(function(sel){
+        sel.addEventListener('change', function(){ window._dgProgress.start(); });
+    });
+})();
+
+/* ── Debounce para filtros de texto (QW2) ─────────────────────────────── */
+(function(){
+    var timers = {};
+    document.querySelectorAll('input[type="search"], .seg-filters input[type="text"]').forEach(function(inp){
+        var form = inp.closest('form');
+        if(!form) return;
+        inp.addEventListener('input', function(){
+            var key = inp.name || inp.id || 'default';
+            clearTimeout(timers[key]);
+            timers[key] = setTimeout(function(){
+                if(typeof inp._dgFilter === 'function') inp._dgFilter();
+            }, 300);
+        });
+    });
+
+    window._dgDebounce = function(fn, ms){
+        var t;
+        return function(){
+            var ctx = this, args = arguments;
+            clearTimeout(t);
+            t = setTimeout(function(){ fn.apply(ctx, args); }, ms || 300);
+        };
+    };
+})();
+
+/* ── Modal de confirmación estilizado (QW5) ───────────────────────────── */
+(function(){
+    var overlay = document.createElement('div');
+    overlay.className = 'dg-confirm-overlay';
+    overlay.innerHTML =
+        '<div class="dg-confirm-box">'
+        + '<div class="dg-confirm-icon">⚠</div>'
+        + '<div class="dg-confirm-msg"></div>'
+        + '<div class="dg-confirm-btns">'
+          + '<button class="dg-confirm-cancel" type="button">Cancelar</button>'
+          + '<button class="dg-confirm-ok" type="button">Confirmar</button>'
+        + '</div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+
+    var msgEl = overlay.querySelector('.dg-confirm-msg');
+    var okBtn = overlay.querySelector('.dg-confirm-ok');
+    var cancelBtn = overlay.querySelector('.dg-confirm-cancel');
+    var _resolve = null;
+    var _pendingForm = null;
+    var _pendingSubmitter = null;
+
+    function showConfirm(msg){
+        msgEl.textContent = msg;
+        overlay.classList.add('open');
+        okBtn.focus();
+        return new Promise(function(resolve){ _resolve = resolve; });
     }
-});
+
+    function close(result){
+        overlay.classList.remove('open');
+        if(_resolve) _resolve(result);
+        _resolve = null;
+    }
+
+    okBtn.addEventListener('click', function(){
+        close(true);
+        if(_pendingForm){
+            var form = _pendingForm;
+            var submitter = _pendingSubmitter;
+            _pendingForm = null;
+            _pendingSubmitter = null;
+            if(submitter && submitter.name){
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = submitter.name;
+                hidden.value = submitter.value || '';
+                form.appendChild(hidden);
+            }
+            form.submit();
+        }
+    });
+    cancelBtn.addEventListener('click', function(){ _pendingForm = null; _pendingSubmitter = null; close(false); });
+    overlay.addEventListener('click', function(e){ if(e.target === overlay){ _pendingForm = null; _pendingSubmitter = null; close(false); }});
+    document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape' && overlay.classList.contains('open')){ _pendingForm = null; _pendingSubmitter = null; close(false); }
+    });
+
+    document.addEventListener('submit', function(e){
+        var btn = e.submitter;
+        if(!btn) return;
+        var msg = btn.dataset.confirm;
+        if(!msg && btn.classList.contains('hist-del')){
+            msg = '¿Eliminar este elemento? Esta acción no se puede deshacer.';
+        }
+        if(msg){
+            e.preventDefault();
+            _pendingForm = e.target;
+            _pendingSubmitter = btn;
+            showConfirm(msg);
+        }
+    });
+
+    window._dgConfirm = showConfirm;
+})();
 

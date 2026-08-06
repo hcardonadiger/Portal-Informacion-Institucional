@@ -3,7 +3,8 @@ using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetDigitalizacionDashboard;
 
-public sealed record GetDigitalizacionDashboardQuery(string? InstitucionId = null)
+public sealed record GetDigitalizacionDashboardQuery(
+    string? InstitucionId = null, DateOnly? Desde = null, DateOnly? Hasta = null, EstadoTramite? Estado = null)
     : IRequest<DigitalizacionDashboardDto>;
 
 public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext ctx)
@@ -23,7 +24,7 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
                 e.Institucion,
                 e.InstitucionId,
                 e.Analista,
-                Tramites = e.Tramites.Select(t => new { t.TramiteIndex, t.NombreTramite }).ToList()
+                Tramites = e.Tramites.Select(t => new { t.TramiteIndex, t.NombreTramite, t.FechaCreacion, t.EstadoTramite }).ToList()
             })
             .ToListAsync(ct);
 
@@ -58,6 +59,9 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
         foreach (var exp in listaExp)
         foreach (var t in exp.Tramites)
         {
+            if (q.Desde is { } desde && t.FechaCreacion < desde) continue;
+            if (q.Hasta is { } hasta && t.FechaCreacion > hasta) continue;
+            if (q.Estado is { } estado && t.EstadoTramite != estado) continue;
             var pct = avancePorTramite.TryGetValue((exp.Id, t.TramiteIndex), out var v) ? v : 0;
             tramitesConAvance.Add((exp.Id, exp.Institucion, t.NombreTramite, exp.Analista, pct));
         }
@@ -102,6 +106,9 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
             foreach (var exp in listaExp)
             foreach (var t in exp.Tramites)
             {
+                if (q.Desde is { } d && t.FechaCreacion < d) continue;
+                if (q.Hasta is { } h && t.FechaCreacion > h) continue;
+                if (q.Estado is { } st && t.EstadoTramite != st) continue;
                 var key = (exp.Id, t.TramiteIndex);
                 var estados = etapaPorTramite.TryGetValue(key, out var e) ? e : new Dictionary<string, int>();
                 var aplica = aplicaPorTramite.TryGetValue(key, out var a) ? a : new Dictionary<string, bool>();

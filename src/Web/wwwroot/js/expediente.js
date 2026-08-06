@@ -665,6 +665,8 @@ function snapshotTramites(){
     var al = document.querySelector('input[name="alcance_'+i+'"]:checked');
     o.alcance = al ? al.value : '';
     o._sigerId = (_sigerIds[i] !== undefined) ? _sigerIds[i] : null;
+    o.fecha_creacion = gv('fecha_creacion_'+i);
+    o.estado_tramite = gv('estado_tramite_'+i);
     snap.push(o);
   }
   return snap;
@@ -683,6 +685,8 @@ function restoreTramites(snap){
     }
     togglePago(i);
     _sigerIds.push(snap[i]._sigerId || null);
+    sv('fecha_creacion_'+i, snap[i].fecha_creacion || '');
+    sv('estado_tramite_'+i, snap[i].estado_tramite || '');
   }
   syncAllNombreTramites();
 }
@@ -800,7 +804,7 @@ async function seleccionarSiger(it){
 
   var meta = window.__EXPMETA__ || {};
   try {
-    var resp = await fetch(meta.sigerDetalleUrl + '&id=' + it.id);
+    var resp = await fetch(meta.sigerDetalleUrl + '&sigerId=' + it.id);
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     var det = await resp.json();
 
@@ -837,7 +841,7 @@ async function seleccionarSiger(it){
         if(!flujosActual[newIdx]) flujosActual[newIdx] = [];
         pasos.forEach(function(p){
           flujosActual[newIdx].push({
-            tipo: 'Paso',
+            tipo: 'paso',
             titulo: p.descripcion || '',
             area: p.lugarDependencia || '',
             tiempo: p.tiempoRegistrado || '',
@@ -864,6 +868,7 @@ async function seleccionarSiger(it){
     actualizarMeta();
     actualizarTabsTramite();
     syncAllNombreTramites();
+    console.error('Error al cargar detalle SIGER:', e);
     mostrarToast('Trámite importado (datos parciales — error al cargar detalle)');
   }
 }
@@ -1024,7 +1029,11 @@ function fichaHTML(i, nombre, show){
     + '<div class="card accent"><div class="ct">Datos generales — ' + escHtml(nombre) + codBadge + '</div>'
       + '<div class="f"><label>Nombre completo del trámite <span class="star">*</span></label><input type="text" id="nombre_tramite_'+i+'" placeholder="Nombre oficial del trámite"></div>'
       + '<div class="g3">'
+        + '<div class="f"><label>Fecha de creación</label><input type="date" id="fecha_creacion_'+i+'" readonly style="background:#f0f0f0;cursor:default"></div>'
+        + '<div class="f"><label>Estado del trámite</label><select id="estado_tramite_'+i+'"><option value="">— Pendiente —</option><option value="Pendiente">Pendiente</option><option value="En proceso">En proceso</option><option value="Completado">Completado</option><option value="En operación">En operación</option><option value="Suspendido">Suspendido</option></select></div>'
         + '<div class="f"><label>Nombre corto / abreviatura</label><input type="text" id="nombre_corto_'+i+'" placeholder="Nombre común"></div>'
+      + '</div>'
+      + '<div class="g3">'
         + '<div class="f"><label>Modalidad actual</label><select id="modalidad_'+i+'"><option value="">— Seleccione —</option><option>Presencial</option><option>En línea (parcial)</option><option>En línea (total)</option><option>Mixto</option></select></div>'
         + '<div class="f"><label>Plazo máximo legal</label><input type="text" id="plazo_legal_'+i+'" placeholder="Ej: 15 días hábiles"></div>'
       + '</div>'
@@ -1102,9 +1111,11 @@ var FLOW_STANDARD_AREAS = ['Ciudadano','SAC','Técnico','Legal','Resolución y a
 
 function renderFlujosActual(){
   renderFlujoList('flujo-actual-list', flujosActual[activeTram] || []);
+  validateFlow('actual');
 }
 function renderFlujosPropuesto(){
   renderFlujoList('flujo-propuesto-list', flujosPropuesto[activeTram] || []);
+  validateFlow('propuesto');
 }
 
 function renderFlujoList(listId, data){
@@ -1143,8 +1154,8 @@ function buildNodeHTML(listId, step, idx, allSteps){
   var isActual = listId === 'flujo-actual-list';
   var fnKey = isActual ? 'actual' : 'propuesto';
 
-  return '<div class="flow-node fn-'+tipo+'" id="fn-'+listId+'-'+idx+'">'
-    + '<div class="flow-num">'+TIPO_ICONS[tipo]+'</div>'
+  return '<div class="flow-node fn-'+tipo+'" id="fn-'+listId+'-'+idx+'" draggable="true" ondragstart="onFlowDragStart(event,\''+fnKey+'\','+idx+')" ondragover="onFlowDragOver(event)" ondragenter="onFlowDragEnter(event,this)" ondragleave="onFlowDragLeave(event,this)" ondrop="onFlowDrop(event,\''+fnKey+'\','+idx+')" ondragend="onFlowDragEnd()">'
+    + '<div class="flow-num"><span class="fn-drag-handle" title="Arrastrar para reordenar">⠿</span> '+(idx+1)+'</div>'
     + '<div class="flow-body">'
       + '<div class="fn-hdr">'
         + '<select class="fn-tipo-sel" onchange="updateFlowTipo(\''+fnKey+'\','+idx+',this.value)" title="Tipo de nodo">'
@@ -1154,6 +1165,7 @@ function buildNodeHTML(listId, step, idx, allSteps){
         + '<div class="fn-acts">'
           + (idx>0 ? '<button onclick="moveFlowNode(\''+fnKey+'\','+idx+',-1)" title="Subir">↑</button>' : '')
           + (idx<allSteps.length-1 ? '<button onclick="moveFlowNode(\''+fnKey+'\','+idx+',1)" title="Bajar">↓</button>' : '')
+          + '<button onclick="duplicateFlowNode(\''+fnKey+'\','+idx+')" title="Duplicar">⧉</button>'
           + '<button class="fn-del" onclick="removeFlowNode(\''+fnKey+'\','+idx+')" title="Eliminar">✕</button>'
         + '</div>'
       + '</div>'
@@ -1195,12 +1207,91 @@ function saveOtherFlowArea(key, idx, value){
   if(key==='actual') renderFlujosActual(); else renderFlujosPropuesto();
 }
 
+function _newNode(tipo){ return {tipo:tipo||'paso', titulo:'', area:'', tiempo:'', doc_emitido:'', obs:'', retorno_a:null}; }
+
 function addFlowNode(key, tipo){
   var arr = key==='actual' ? flujosActual[activeTram] : flujosPropuesto[activeTram];
   if(!arr){ if(key==='actual') flujosActual[activeTram]=[]; else flujosPropuesto[activeTram]=[]; arr=key==='actual'?flujosActual[activeTram]:flujosPropuesto[activeTram]; }
-  arr.push({tipo:tipo||'paso', titulo:'', area:'', tiempo:'', doc_emitido:'', obs:'', retorno_a:null});
-  if(key==='actual') renderFlujosActual(); else renderFlujosPropuesto();
+  if(arr.length === 0 && tipo !== 'inicio' && tipo !== 'fin'){
+    arr.push(_newNode('inicio'));
+    arr.push(_newNode(tipo));
+    arr.push(_newNode('fin'));
+  } else {
+    arr.push(_newNode(tipo));
+  }
+  if(key==='actual'){ renderFlujosActual(); validateFlow('actual'); } else { renderFlujosPropuesto(); validateFlow('propuesto'); }
   actualizarBVA();
+}
+
+function copiarFlujoActualAPropuesto(){
+  var src = flujosActual[activeTram] || [];
+  if(!src.length){ mostrarToast('El flujo actual está vacío — nada que copiar'); return; }
+  var dest = flujosPropuesto[activeTram] || [];
+  if(dest.length && !confirm('El flujo propuesto ya tiene '+dest.length+' pasos. ¿Reemplazar con una copia del flujo actual?')) return;
+  flujosPropuesto[activeTram] = src.map(function(s){ return {tipo:s.tipo, titulo:s.titulo, area:s.area, tiempo:s.tiempo, doc_emitido:s.doc_emitido, obs:s.obs, retorno_a:s.retorno_a}; });
+  renderFlujosPropuesto();
+  validateFlow('propuesto');
+  actualizarBVA();
+  mostrarToast('Flujo actual copiado al propuesto ('+src.length+' pasos)');
+}
+
+function duplicateFlowNode(key, idx){
+  var arr = key==='actual' ? flujosActual[activeTram] : flujosPropuesto[activeTram];
+  var src = arr[idx];
+  var clone = {tipo:src.tipo, titulo:src.titulo, area:src.area, tiempo:src.tiempo, doc_emitido:src.doc_emitido, obs:'', retorno_a:null};
+  arr.splice(idx+1, 0, clone);
+  arr.forEach(function(s){ if(s.retorno_a !== null && s.retorno_a !== undefined && parseInt(s.retorno_a) > idx) s.retorno_a = parseInt(s.retorno_a) + 1; });
+  if(key==='actual'){ renderFlujosActual(); validateFlow('actual'); } else { renderFlujosPropuesto(); validateFlow('propuesto'); }
+  actualizarBVA();
+}
+
+var _dragKey = null, _dragIdx = null;
+function onFlowDragStart(e, key, idx){
+  _dragKey = key; _dragIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.target.closest('.flow-node').classList.add('fn-dragging');
+}
+function onFlowDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+function onFlowDragEnter(e, el){ e.preventDefault(); el.classList.add('fn-dragover'); }
+function onFlowDragLeave(e, el){ el.classList.remove('fn-dragover'); }
+function onFlowDragEnd(){
+  _dragKey = null; _dragIdx = null;
+  document.querySelectorAll('.fn-dragging,.fn-dragover').forEach(function(el){ el.classList.remove('fn-dragging','fn-dragover'); });
+}
+function onFlowDrop(e, key, toIdx){
+  e.preventDefault();
+  document.querySelectorAll('.fn-dragover').forEach(function(el){ el.classList.remove('fn-dragover'); });
+  if(_dragKey !== key || _dragIdx === null || _dragIdx === toIdx) return;
+  var arr = key==='actual' ? flujosActual[activeTram] : flujosPropuesto[activeTram];
+  var node = arr.splice(_dragIdx, 1)[0];
+  arr.splice(toIdx > _dragIdx ? toIdx - 1 : toIdx, 0, node);
+  arr.forEach(function(s){ s.retorno_a = null; });
+  _dragKey = null; _dragIdx = null;
+  if(key==='actual'){ renderFlujosActual(); validateFlow('actual'); } else { renderFlujosPropuesto(); validateFlow('propuesto'); }
+  actualizarBVA();
+}
+
+function validateFlow(key){
+  var arr = key==='actual' ? (flujosActual[activeTram]||[]) : (flujosPropuesto[activeTram]||[]);
+  var el = document.getElementById('flujo-'+key+'-warnings');
+  if(!el) return;
+  if(!arr.length){ el.innerHTML = ''; return; }
+  var warns = [];
+  var tipos = arr.map(function(s){ return s.tipo||'paso'; });
+  if(tipos.indexOf('inicio') < 0) warns.push('Sin nodo de inicio');
+  if(tipos.indexOf('fin') < 0) warns.push('Sin nodo de fin');
+  arr.forEach(function(s, i){
+    if(!(s.titulo||'').trim()) warns.push('Paso '+(i+1)+': sin título');
+  });
+  arr.forEach(function(s, i){
+    if((s.tipo||'paso')==='decision' && (s.retorno_a===null||s.retorno_a===undefined||s.retorno_a===''))
+      warns.push('Decisión '+(i+1)+': sin retorno asignado');
+  });
+  arr.forEach(function(s, i){
+    if(!(s.area||'').trim()) warns.push('Paso '+(i+1)+': sin área responsable');
+  });
+  if(warns.length > 5) warns = warns.slice(0, 5).concat(['… y '+(warns.length-5)+' más']);
+  el.innerHTML = warns.length ? warns.map(function(w){ return '<div class="flow-warn-item">'+escHtml(w)+'</div>'; }).join('') : '';
 }
 
 function removeFlowNode(key, idx){
@@ -1544,6 +1635,8 @@ function recolectar(){
     var alc = document.querySelector('input[name="alcance_'+t+'"]:checked');
     ft.alcance = alc ? alc.value : '';
     if(_sigerIds[t]) ft.tramite_siger_id = String(_sigerIds[t]);
+    ft.fecha_creacion = gv('fecha_creacion_'+t) || '';
+    ft.estado_tramite = gv('estado_tramite_'+t) || '';
     d.tramites.push(ft);
   }
 
@@ -1608,6 +1701,12 @@ function recolectar(){
   d.estado_lev = radLev ? radLev.value : '';
   d.obs_levantamiento = gv('obs_levantamiento');
   ['obs_expediente','validado_diger','validado_inst','fecha_validacion','num_acta'].forEach(function(id){ d[id]=gv(id); });
+  // Vincular validaciones al usuario del sistema por nombre (null si es texto legado)
+  var __usuariosVal = (window.__EXPMETA__ && __EXPMETA__.usuarios) || [];
+  var uValDiger = __usuariosVal.filter(function(u){ return u.nombre === d.validado_diger; })[0];
+  d.validado_diger_usuario_id = uValDiger ? uValDiger.id : null;
+  var uValInst = __usuariosVal.filter(function(u){ return u.nombre === d.validado_inst; })[0];
+  d.validado_inst_usuario_id = uValInst ? uValInst.id : null;
 
   d._ts = new Date().toISOString();
   return d;
@@ -1835,6 +1934,8 @@ function poblarFormulario(d){
     if(ft.alcance){ var al=document.querySelector('input[name="alcance_'+t+'"][value="'+ft.alcance+'"]'); if(al) al.checked=true; }
     togglePago(t);
     _sigerIds.push(ft.tramite_siger_id ? parseInt(ft.tramite_siger_id) : null);
+    if(ft.fecha_creacion) sv('fecha_creacion_'+t, ft.fecha_creacion);
+    if(ft.estado_tramite) sv('estado_tramite_'+t, ft.estado_tramite);
   });
   while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
   actualizarBadgesSiger();
@@ -1908,6 +2009,18 @@ function poblarFormulario(d){
   }
   sv('obs_levantamiento', d.obs_levantamiento||'');
   ['obs_expediente','validado_diger','validado_inst','fecha_validacion','num_acta'].forEach(function(id){ sv(id, d[id]||''); });
+  // Validadores legados (texto sin usuario del sistema): agregar opción ad-hoc para no perderlos
+  [['validado_diger', d.validado_diger], ['validado_inst', d.validado_inst]].forEach(function(par){
+    var sel = document.getElementById(par[0]);
+    var val = par[1];
+    if(sel && val && sel.value !== val){
+      var opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = val + ' (texto)';
+      sel.appendChild(opt);
+      sel.value = val;
+    }
+  });
 
   actualizarMeta();
   actualizarEstados();
