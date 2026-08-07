@@ -7,6 +7,8 @@
 @using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario
 @using Diger.TramitesEstado.Infrastructure.Security
 @using Diger.TramitesEstado.Web.Common
+@using Diger.TramitesEstado.Application.Common.Models
+@using Microsoft.Extensions.Options
 @inject AccesoModulosService Acceso
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnv
 @inject JerarquiaUiService JerarquiaUi
@@ -14,9 +16,11 @@
 @inject INotificacionService _notifSvc
 @inject IChatService chatSvc
 @inject IApplicationDbContext ctx
+@inject IOptions<InstitucionOptions> InstOpts
 @{
     var _activeInstId = User.FindFirstValue(AppClaims.ActiveInstitucion);
     var _instBranding = await BrandingSvc.GetAsync(_activeInstId);
+    var _inst = InstOpts.Value;
 
     bool EsRuta(params string[] prefijos)
     {
@@ -41,10 +45,27 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    @* Setea el tema ANTES de que se carguen las hojas de estilo, para no
+       parpadear claro→oscuro en cada carga si el usuario ya eligió oscuro. *@
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('diger-theme');
+                if (saved === 'dark' || saved === 'light') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) { }
+        })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="@(_instBranding?.Color ?? "#02395e")" />
-    <title>@ViewData["Title"] — DIGER</title>
+    <title>@ViewData["Title"] — @_inst.NombreCorto</title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="~/img/favicon-32.png" asp-append-version="true">
+    <link rel="icon" type="image/png" sizes="192x192" href="~/img/favicon-192.png" asp-append-version="true">
+    <link rel="icon" type="image/png" sizes="512x512" href="~/img/favicon-512.png" asp-append-version="true">
+    <link rel="apple-touch-icon" sizes="180x180" href="~/img/favicon-180.png" asp-append-version="true">
 
     @* Token Anti-CSRF disponible para peticiones AJAX/Fetch futuras *@
     @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
@@ -86,14 +107,19 @@
         <div class="app-shell">
             <div class="gov-bar">
                 <div class="gov-bar-inner">
-                    <span>Gobierno de la República de Honduras</span>
-                    <a href="https://www.diger.gob.hn" target="_blank" rel="noopener">diger.gob.hn</a>
+                    <span>@_inst.Eslogan</span>
+                    <a href="@_inst.SitioWeb" target="_blank" rel="noopener">@(_inst.SitioWeb.Replace("https://", "").Replace("http://", ""))</a>
                 </div>
             </div>
             <header class="app-header">
                 <div class="app-header-inner">
                     <a class="app-brand" asp-page="/Tableros/Index" title="Inicio">
-                        <span class="app-brand-word">DIGER</span>
+                        <svg width="27" height="20" viewBox="0 0 70 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="flex-shrink:0">
+                            <rect x="0" y="4" width="34" height="13" rx="6.5" fill="#7ACBDD"/>
+                            <rect x="0" y="20" width="50" height="13" rx="6.5" fill="#BFE3EE"/>
+                            <rect x="0" y="36" width="66" height="13" rx="6.5" fill="#FFFFFF"/>
+                        </svg>
+                        <span class="app-brand-word">@_inst.NombreCorto</span>
                         <span class="app-brand-divider"></span>
                         @if (_instBranding is not null)
                         {
@@ -232,6 +258,7 @@
                         };
                     }
                     <div class="header-right">
+                        <button type="button" class="header-icon" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Cambiar a modo oscuro" title="Cambiar tema">🌙</button>
                         <div class="notif-wrap" id="notifWrap">
                             <button type="button" class="header-icon notif-btn" onclick="toggleNotifPanel(event)" title="Notificaciones" aria-haspopup="true">
                                 &#128276;
@@ -374,8 +401,8 @@
 
             <footer class="diger-footer">
                 <div class="diger-footer-inner">
-                    <span>© @DateTime.Now.Year DIGER — Gobierno de la República de Honduras. Todos los derechos reservados.</span>
-                    <a href="https://www.diger.gob.hn" target="_blank" rel="noopener">Portal DIGER</a>
+                    <span>© @DateTime.Now.Year @_inst.NombreCorto — @_inst.Eslogan. Todos los derechos reservados.</span>
+                    <a href="@_inst.SitioWeb" target="_blank" rel="noopener">Portal @_inst.NombreCorto</a>
                 </div>
             </footer>
         </div>
@@ -447,17 +474,38 @@
 }
 .notif-ver-todas:hover { background: var(--diger-blue-light); }
 @@media (prefers-color-scheme: dark) {
-    .notif-panel { background: #1e293b; border-color: #334155; }
-    .notif-item:hover { background: #0f172a; }
-    .ni-titulo { color: #e2e8f0; }
-    .notif-panel-title { color: #f1f5f9; }
-    .ni-check, .ni-go { background: #0f172a; border-color: #334155; }
-    .notif-ver-todas { background: #1e293b; }
+    .notif-panel { background: var(--diger-surface); border-color: var(--diger-border); }
+    .notif-item:hover { background: var(--diger-bg); }
+    .ni-titulo { color: var(--diger-text); }
+    .notif-panel-title { color: var(--diger-text-strong); }
+    .ni-check, .ni-go { background: var(--diger-bg); border-color: var(--diger-border); }
+    .notif-ver-todas { background: var(--diger-surface); color: var(--diger-cyan); }
 }
 </style>
 <script>
 (function() {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    // ── Tema claro/oscuro ────────────────────────────────────────────
+    function temaActual() {
+        const attr = document.documentElement.getAttribute('data-theme');
+        if (attr === 'dark' || attr === 'light') return attr;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    function sincronizarBotonTema() {
+        const btn = document.getElementById('themeToggleBtn');
+        if (!btn) return;
+        const oscuro = temaActual() === 'dark';
+        btn.textContent = oscuro ? '☀️' : '🌙';
+        btn.setAttribute('aria-label', oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+    }
+    window.toggleTheme = function () {
+        const siguiente = temaActual() === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', siguiente);
+        try { localStorage.setItem('diger-theme', siguiente); } catch (e) { }
+        sincronizarBotonTema();
+    };
+    sincronizarBotonTema();
 
     window.toggleNotifPanel = function(e) {
         e?.stopPropagation();
@@ -548,7 +596,7 @@
                             }
                         </div>
                     }
-                    <button type="button" onclick="toggleChatWidget()" class="cwp-close">✕</button>
+                    <button type="button" onclick="toggleChatWidget()" class="cwp-close" aria-label="Cerrar chat">✕</button>
                 </div>
             </div>
             <div class="cwp-body" id="cwpBody">
@@ -860,7 +908,7 @@
     }
     .chat-widget-panel {
         width:320px;border-radius:14px;overflow:hidden;
-        box-shadow:0 8px 32px rgba(0,0,0,.18);background:#fff;
+        box-shadow:0 8px 32px rgba(0,0,0,.18);background:var(--diger-surface);
         border:1.5px solid var(--diger-border);
         display:flex;flex-direction:column;max-height:480px;
     }

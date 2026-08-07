@@ -551,15 +551,15 @@
 <div id="node-modal" onclick="closeNodeModal()"
      style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
   <div onclick="event.stopPropagation()"
-       style="background:#fff;border-radius:16px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
-    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid #eef1f7">
-      <span id="nm-badge" style="flex:none;width:30px;height:30px;border-radius:50%;background:#1455a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">1</span>
+       style="background:var(--diger-surface);border-radius:16px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid var(--diger-border-soft)">
+      <span id="nm-badge" style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--diger-blue-mid);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">1</span>
       <div style="flex:1;min-width:0">
-        <div id="nm-tipo" style="font-size:10px;font-weight:800;letter-spacing:.08em;color:#1455a4">PASO</div>
-        <div id="nm-titulo" style="font-size:15px;font-weight:700;color:#0a2d6e">Paso</div>
+        <div id="nm-tipo" style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--diger-blue-strong)">PASO</div>
+        <div id="nm-titulo" style="font-size:15px;font-weight:700;color:var(--diger-blue-title)">Paso</div>
       </div>
       <button type="button" onclick="closeNodeModal()" aria-label="Cerrar"
-              style="flex:none;border:0;background:#f0f4fa;color:#64748b;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
+              style="flex:none;border:0;background:var(--diger-bg-soft);color:var(--diger-text-muted);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
     </div>
     <div style="padding:1.1rem 1.3rem;display:flex;flex-direction:column;gap:.9rem">
       <div><div class="nm-lbl">Responsable</div><div id="nm-responsable" style="font-size:14px">—</div></div>
@@ -599,7 +599,7 @@
 </div>
 
 <style>
-  .nm-lbl { font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:2px }
+  .nm-lbl { font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--diger-text-muted);margin-bottom:2px }
 </style>
 
 @section Scripts {
