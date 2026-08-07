@@ -487,13 +487,13 @@
 /* ══ Enhanced form fields ══════════════════════════════════════════ */
 .main .field { margin-bottom: .9rem; }
 .main .field:last-child { margin-bottom: 0; }
-.main .field label { font-size: 12px; font-weight: 700; color: var(--diger-blue); }
+.main .field label { font-size: 12px; font-weight: 700; color: var(--diger-text-secondary); }
 .main .field input, .main .field select, .main .field textarea {
     border-color: var(--diger-border); border-radius: 8px; background: var(--diger-bg-soft);
     transition: border-color .2s, box-shadow .2s;
 }
 .main .field input:focus, .main .field select:focus, .main .field textarea:focus {
-    outline: none; border-color: var(--diger-blue-mid); background: #fff;
+    outline: none; border-color: var(--diger-blue-mid); background: var(--diger-surface);
     box-shadow: 0 0 0 3px rgba(20,85,164,.08);
 }
 
@@ -508,12 +508,12 @@
     border-radius: 5px; font-size: 12.5px; cursor: pointer;
     background: transparent; color: var(--diger-text); transition: all .15s;
 }
-.main .rte-toolbar button:hover { background: #fff; border-color: var(--diger-border); color: var(--diger-blue-mid); }
+.main .rte-toolbar button:hover { background: var(--diger-surface); border-color: var(--diger-border); color: var(--diger-blue-mid); }
 .main .rte-body {
     min-height: 120px; resize: vertical; overflow: auto;
     border: 1.5px solid var(--diger-border); border-radius: 0 0 8px 8px;
     padding: 10px 12px; font-size: 13.5px; line-height: 1.65;
-    background: #fff; color: var(--diger-text);
+    background: var(--diger-surface); color: var(--diger-text);
     transition: border-color .2s, box-shadow .2s;
 }
 .main .rte-body:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(20,85,164,.08); }
@@ -527,7 +527,7 @@
     background: var(--diger-bg-soft);
     transition: border-color .15s, box-shadow .15s;
 }
-.acuerdo-item:focus-within { border-color: var(--diger-blue-mid); background: #fff; box-shadow: 0 2px 8px rgba(20,85,164,.07); }
+.acuerdo-item:focus-within { border-color: var(--diger-blue-mid); background: var(--diger-surface); box-shadow: 0 2px 8px rgba(20,85,164,.07); }
 .ac-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .ac-num {
     display: inline-flex; align-items: center; justify-content: center;
@@ -539,7 +539,7 @@
 .ac-compromiso {
     width: 100%; box-sizing: border-box; resize: vertical; font-size: 13.5px;
     margin-bottom: 10px; border: 1.5px solid var(--diger-border); border-radius: 7px;
-    padding: 8px 10px; background: #fff; font-family: inherit; line-height: 1.55;
+    padding: 8px 10px; background: var(--diger-surface); color: var(--diger-text); font-family: inherit; line-height: 1.55;
     transition: border-color .2s;
 }
 .ac-compromiso:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(20,85,164,.08); }
@@ -556,7 +556,7 @@
 .dir-results {
     display: none; position: absolute; z-index: 10; top: 100%; left: 0; right: 0;
     max-height: 260px; overflow-y: auto;
-    background: #fff; border: 1.5px solid var(--diger-blue-mid); border-top: none;
+    background: var(--diger-surface); border: 1.5px solid var(--diger-blue-mid); border-top: none;
     border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,.12);
 }
 .dir-result {
