@@ -24,15 +24,14 @@ public sealed class EditorModel(
     [BindProperty] public IFormFile?          Foto1File  { get; set; }
     [BindProperty] public IFormFile?          Foto2File  { get; set; }
 
-    private static readonly string[] ExtPermitidas = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
-
     /// <summary>Guarda una imagen subida en wwwroot/uploads/reuniones y devuelve su ruta relativa.</summary>
     private async Task<string?> GuardarFotoAsync(IFormFile? file, CancellationToken ct)
     {
         if (file is null || file.Length == 0) return null;
-        if (file.Length > 5 * 1024 * 1024) throw new DomainException("La imagen supera el límite de 5 MB.");
+        if (file.Length > UploadsConfig.ReunionesMaxBytes)
+            throw new DomainException($"La imagen supera el límite de {UploadsConfig.ReunionesMaxBytes / (1024 * 1024)} MB.");
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!ExtPermitidas.Contains(ext)) throw new DomainException("Formato de imagen no permitido (use JPG, PNG, WEBP o GIF).");
+        if (!UploadsConfig.ExtensionesImagenesPermitidas.Contains(ext)) throw new DomainException("Formato de imagen no permitido (use JPG, PNG, WEBP o GIF).");
 
         var dir = Path.Combine(env.ContentRootPath, "App_Data", "uploads", "reuniones");
         Directory.CreateDirectory(dir);

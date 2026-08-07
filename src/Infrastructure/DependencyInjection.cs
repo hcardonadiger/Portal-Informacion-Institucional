@@ -13,7 +13,9 @@ using Diger.TramitesEstado.Infrastructure.Notifications;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
 using Diger.TramitesEstado.Infrastructure.Reports;
 using Diger.TramitesEstado.Infrastructure.Security;
+using Diger.TramitesEstado.Application.Common.Models;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Infrastructure;
 
@@ -59,19 +61,27 @@ public static class DependencyInjection
         services.AddScoped<IActaPdfService, ActaPdfService>();
 
         // Notificaciones
+        services.Configure<NotificacionesOptions>(configuration.GetSection("Notificaciones"));
         services.AddScoped<INotificacionService, NotificacionService>();
         services.AddHostedService<RecordatorioBackgroundService>();
+
+        // Autenticación (expiración de cookie/token de recuperación)
+        services.Configure<AuthOptions>(configuration.GetSection("Auth"));
+
+        // Identidad institucional (nombre, logo, contacto — usados en layout/login)
+        services.Configure<InstitucionOptions>(configuration.GetSection("Institucion"));
 
         // Chat de soporte
         services.AddScoped<IChatService, ChatService>();
 
         // Agente IA (asistente virtual en cola de chat)
         services.Configure<AgenteOptions>(configuration.GetSection("Ai"));
-        services.AddHttpClient<IAgenteService, AgenteService>(client =>
+        services.AddHttpClient<IAgenteService, AgenteService>((sp, client) =>
         {
-            client.BaseAddress = new Uri("https://api.anthropic.com");
+            var opts = sp.GetRequiredService<IOptions<AgenteOptions>>().Value;
+            client.BaseAddress = new Uri(opts.BaseUrl);
             client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-            client.Timeout = TimeSpan.FromSeconds(30);
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
         });
 
         // Servicio de correo SMTP (Office 365 / Configurable)

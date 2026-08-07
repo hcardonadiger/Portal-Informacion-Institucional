@@ -51,7 +51,7 @@
                                 <a class="btns" asp-page="/Admin/PlantillaTramiteEditor" asp-route-id="@p.Id" style="font-size:12.5px;padding:6px 12px">Editar</a>
                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                     <input type="hidden" name="id" value="@p.Id" />
-                                    <button class="hist-del" type="submit" data-confirm="¿Eliminar la plantilla «@p.Nombre»?">✕</button>
+                                    <button class="hist-del" type="submit" aria-label="Eliminar plantilla" data-confirm="¿Eliminar la plantilla «@p.Nombre»?">✕</button>
                                 </form>
                             </td>
                         </tr>

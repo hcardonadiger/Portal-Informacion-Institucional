@@ -25,14 +25,40 @@ TaskScheduler.UnobservedTaskException += (_, e) =>
     e.SetObserved();
 };
 
+// ── Parámetros generales cargados de appsettings (editables sin recompilar) ─
+var uploadsMaxRequestMb = builder.Configuration.GetValue("Uploads:MaxRequestMb", 50);
+var uploadsMaxFormValueMb = builder.Configuration.GetValue("Uploads:MaxFormValueMb", 10);
+Diger.TramitesEstado.Web.Common.UploadsConfig.TicketsMaxBytes =
+    builder.Configuration.GetValue("Uploads:TicketsMaxMb", 10) * 1024L * 1024L;
+Diger.TramitesEstado.Web.Common.UploadsConfig.ReunionesMaxBytes =
+    builder.Configuration.GetValue("Uploads:ReunionesMaxMb", 5) * 1024L * 1024L;
+if (builder.Configuration.GetSection("Uploads:ExtensionesPermitidas").Get<string[]>() is { Length: > 0 } extsDoc)
+    Diger.TramitesEstado.Web.Common.UploadsConfig.ExtensionesPermitidas = extsDoc;
+if (builder.Configuration.GetSection("Uploads:ExtensionesImagenesPermitidas").Get<string[]>() is { Length: > 0 } extsImg)
+    Diger.TramitesEstado.Web.Common.UploadsConfig.ExtensionesImagenesPermitidas = extsImg;
+
+Diger.TramitesEstado.Application.Expedientes.Seguimiento.SemaforoAvance.UmbralAvanzado =
+    builder.Configuration.GetValue("Expedientes:Semaforo:UmbralAvanzado", 70);
+Diger.TramitesEstado.Application.Expedientes.Seguimiento.SemaforoAvance.UmbralEnProceso =
+    builder.Configuration.GetValue("Expedientes:Semaforo:UmbralEnProceso", 20);
+
+Diger.TramitesEstado.Application.Common.Models.Paginacion.TamanoDefecto =
+    builder.Configuration.GetValue("Paginacion:TamanoDefecto", 20);
+Diger.TramitesEstado.Application.Common.Models.Paginacion.TamanoMaximo =
+    builder.Configuration.GetValue("Paginacion:TamanoMaximo", 100);
+
+var devMainPort = builder.Configuration.GetValue("Ports:DevMain", 49175);
+var devCertPort = builder.Configuration.GetValue("Ports:DevCert", 49176);
+var devHttpPort = builder.Configuration.GetValue("Ports:DevHttp", 49177);
+
 builder.WebHost.ConfigureKestrel((context, options) =>
 {
-    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+    options.Limits.MaxRequestBodySize = uploadsMaxRequestMb * 1024L * 1024L;
 
     if (context.HostingEnvironment.IsDevelopment())
     {
         // Puerto HTTPS principal (para navegación sin alertas)
-        options.ListenLocalhost(49175, listenOptions =>
+        options.ListenLocalhost(devMainPort, listenOptions =>
         {
             listenOptions.UseHttps(httpsOptions =>
             {
@@ -41,12 +67,12 @@ builder.WebHost.ConfigureKestrel((context, options) =>
         });
 
         // Puerto HTTPS de Autenticación (para pedir el certificado)
-        options.ListenLocalhost(49176, listenOptions =>
+        options.ListenLocalhost(devCertPort, listenOptions =>
         {
             listenOptions.UseHttps(httpsOptions =>
             {
                 httpsOptions.ClientCertificateMode = Microsoft.AspNetCore.Server.Kestrel.Https.ClientCertificateMode.AllowCertificate;
-                
+
                 // Hacks para Tokens Físicos (Bit4Id, etc) que fallan en TLS 1.3 o sin internet para CRL
                 httpsOptions.CheckCertificateRevocation = false;
                 httpsOptions.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
@@ -60,7 +86,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
         });
 
         // Puerto HTTP local
-        options.ListenLocalhost(49177);
+        options.ListenLocalhost(devHttpPort);
     }
     else
     {
@@ -74,17 +100,18 @@ builder.WebHost.ConfigureKestrel((context, options) =>
 
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 50 * 1024 * 1024;
-    options.ValueLengthLimit = 10 * 1024 * 1024;
+    options.MultipartBodyLengthLimit = uploadsMaxRequestMb * 1024L * 1024L;
+    options.ValueLengthLimit = uploadsMaxFormValueMb * 1024 * 1024;
 });
 
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration);
 
+var dataProtectionKeysPath = builder.Configuration.GetValue<string>("Storage:DataProtectionKeysPath") ?? @"C:\PortalDigital_Keys";
 builder.Services.AddDataProtection()
     .SetApplicationName("PortalDigital")
-    .PersistKeysToFileSystem(new DirectoryInfo(@"C:\PortalDigital_Keys"));
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 
 // Importador de expedientes desde el portal demo (Supabase) — usado por Admin/ImportarExpedientes
 builder.Services.AddHttpClient<Diger.TramitesEstado.Web.Import.SupabaseExpedienteImporter>();
@@ -105,7 +132,7 @@ builder.Services
         opts.LoginPath        = "/Cuenta/Login";
         opts.LogoutPath       = "/Cuenta/Logout";
         opts.AccessDeniedPath = "/Cuenta/Denegado";
-        opts.ExpireTimeSpan   = TimeSpan.FromHours(8);
+        opts.ExpireTimeSpan   = TimeSpan.FromHours(builder.Configuration.GetValue("Auth:CookieExpirationHours", 8));
         opts.SlidingExpiration = true;
         
         // Compartir la cookie de sesión entre el subdominio cert.* y el dominio principal

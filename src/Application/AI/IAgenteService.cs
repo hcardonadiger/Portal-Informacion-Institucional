@@ -7,6 +7,8 @@ public sealed class AgenteOptions
     public string ApiKey    { get; init; } = "";
     public string Model     { get; init; } = "claude-haiku-4-5-20251001";
     public int    MaxTokens { get; init; } = 400;
+    public string BaseUrl   { get; init; } = "https://api.anthropic.com";
+    public int    TimeoutSeconds { get; init; } = 30;
 
     public bool Habilitado => !string.IsNullOrWhiteSpace(ApiKey);
 }

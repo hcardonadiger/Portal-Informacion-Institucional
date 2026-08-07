@@ -53,10 +53,10 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
     {
         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
         var host = Request.Host.Host;
-        var certPort = config.GetValue<int>("Ports:Cert", 444);
-        
-        var targetUrl = isDev 
-            ? $"https://localhost:49176/Cuenta/LoginCertificado" 
+        var certPort = config.GetValue<int>("Ports:Cert", 8444);
+
+        var targetUrl = isDev
+            ? $"https://localhost:{config.GetValue<int>("Ports:DevCert", 49176)}/Cuenta/LoginCertificado"
             : $"https://{host}:{certPort}/Cuenta/LoginCertificado";
 
         if (!string.IsNullOrEmpty(returnUrl))

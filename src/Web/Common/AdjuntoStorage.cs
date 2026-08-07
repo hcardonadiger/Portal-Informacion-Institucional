@@ -3,14 +3,6 @@ namespace Diger.TramitesEstado.Web.Common;
 /// <summary>Guarda archivos adjuntos de tickets en wwwroot/uploads/tickets y devuelve sus metadatos.</summary>
 public static class AdjuntoStorage
 {
-    private static readonly string[] ExtPermitidas =
-    [
-        ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif",
-        ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-        ".txt", ".csv", ".log", ".zip"
-    ];
-    private const long MaxBytes = 10 * 1024 * 1024; // 10 MB por archivo
-
     public static async Task<List<AdjuntoInput>> GuardarAsync(
         IEnumerable<IFormFile>? files, IWebHostEnvironment env, CancellationToken ct, string carpeta = "tickets")
     {
@@ -19,11 +11,11 @@ public static class AdjuntoStorage
 
         foreach (var f in files.Where(x => x is { Length: > 0 }))
         {
-            if (f.Length > MaxBytes)
-                throw new DomainException($"«{f.FileName}» supera el límite de 10 MB.");
+            if (f.Length > UploadsConfig.TicketsMaxBytes)
+                throw new DomainException($"«{f.FileName}» supera el límite de {UploadsConfig.TicketsMaxBytes / (1024 * 1024)} MB.");
 
             var ext = Path.GetExtension(f.FileName).ToLowerInvariant();
-            if (!ExtPermitidas.Contains(ext))
+            if (!UploadsConfig.ExtensionesPermitidas.Contains(ext))
                 throw new DomainException($"Tipo de archivo no permitido: {ext}. Permitidos: PDF, imágenes, Office, TXT/CSV/LOG, ZIP.");
 
             var rootPath = Path.Combine(env.ContentRootPath, "App_Data", "uploads");

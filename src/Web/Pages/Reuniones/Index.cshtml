@@ -119,7 +119,7 @@
                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                     <input type="hidden" name="id" value="@r.Id" />
                                     <button class="hist-del" type="submit" style="margin-left:4px"
-                                            onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
+                                            aria-label="Eliminar reunión" onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
                                 </form>
                             }
                         </td>
@@ -176,7 +176,7 @@
                                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                                     <input type="hidden" name="id" value="@r.Id" />
                                                     <button class="hist-del" type="submit" style="margin-left:4px"
-                                                            onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
+                                                            aria-label="Eliminar reunión" onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
                                                 </form>
                                             }
                                         </td>
