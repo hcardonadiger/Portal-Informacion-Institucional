@@ -106,11 +106,11 @@ public sealed class LoginCertificadoModel(ISender sender, IConfiguration config)
         
         if (environment == "Development" && host == "localhost")
         {
-            return Redirect($"https://localhost:49175{finalUrl}");
+            return Redirect($"https://localhost:{config.GetValue<int>("Ports:DevMain", 49175)}{finalUrl}");
         }
 
         // Forzamos el regreso al puerto principal en la misma IP/Host
-        var mainPort = config.GetValue<int>("Ports:Main", 443);
+        var mainPort = config.GetValue<int>("Ports:Main", 8443);
         var portSuffix = mainPort == 443 ? "" : $":{mainPort}";
         
         // Si aún entran por subdominio (híbrido) quitamos el cert.

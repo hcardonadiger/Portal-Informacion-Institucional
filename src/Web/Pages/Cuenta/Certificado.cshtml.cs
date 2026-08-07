@@ -42,11 +42,11 @@ public sealed class CertificadoModel(ISender sender, ICurrentUserService current
         TieneCertificadoVinculado = !string.IsNullOrWhiteSpace(dto.CertificadoThumbprint);
 
         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
-        var certPort = config.GetValue<int>("Ports:Cert", 444);
+        var certPort = config.GetValue<int>("Ports:Cert", 8444);
         var host = Request.Host.Host;
 
         CertUrl = isDev
-            ? "https://localhost:49176/Cuenta/VincularCertificado"
+            ? $"https://localhost:{config.GetValue<int>("Ports:DevCert", 49176)}/Cuenta/VincularCertificado"
             : $"https://{host}:{certPort}/Cuenta/VincularCertificado";
     }
 }

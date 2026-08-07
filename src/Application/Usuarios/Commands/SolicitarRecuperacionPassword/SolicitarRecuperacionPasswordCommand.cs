@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Common.Models;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.SolicitarRecuperacionPassword;
 
@@ -18,7 +20,8 @@ public sealed class SolicitarRecuperacionPasswordCommandValidator : AbstractVali
 public sealed class SolicitarRecuperacionPasswordCommandHandler(
     IApplicationDbContext ctx,
     IUnitOfWork uow,
-    IEmailService emailService) : IRequestHandler<SolicitarRecuperacionPasswordCommand, Unit>
+    IEmailService emailService,
+    IOptions<AuthOptions> authOptions) : IRequestHandler<SolicitarRecuperacionPasswordCommand, Unit>
 {
     public async Task<Unit> Handle(SolicitarRecuperacionPasswordCommand cmd, CancellationToken ct)
     {
@@ -37,8 +40,8 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
             .Replace("/", "_")
             .Replace("=", "");
 
-        // 20 minutos de vigencia acordados
-        usuario.GenerarTokenRecuperacion(token, TimeSpan.FromMinutes(20));
+        var validezMinutos = authOptions.Value.PasswordResetTokenMinutes;
+        usuario.GenerarTokenRecuperacion(token, TimeSpan.FromMinutes(validezMinutos));
         await uow.SaveChangesAsync(ct);
 
         var resetUrl = $"{cmd.BaseUrl.TrimEnd('/')}/Cuenta/RestablecerPassword?token={Uri.EscapeDataString(token)}&correo={Uri.EscapeDataString(usuario.Correo)}";
@@ -70,7 +73,7 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
                         <a href="{{resetUrl}}" class="btn" target="_blank">Restablecer mi Contraseña</a>
                     </div>
                     <div class="warning">
-                        <strong>Nota importante:</strong> Este enlace es válido únicamente por <strong>20 minutos</strong>. Si tú no solicitaste este cambio, puedes ignorar este correo de forma segura.
+                        <strong>Nota importante:</strong> Este enlace es válido únicamente por <strong>{{validezMinutos}} minutos</strong>. Si tú no solicitaste este cambio, puedes ignorar este correo de forma segura.
                     </div>
                     <p style="font-size: 13px; color: #475569;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:<br />
                     <a href="{{resetUrl}}" style="color: #2563eb; word-break: break-all;">{{resetUrl}}</a></p>
