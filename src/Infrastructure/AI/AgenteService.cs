@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Diger.TramitesEstado.Application.AI;
 using Diger.TramitesEstado.Application.Chat;
+using Diger.TramitesEstado.Application.Common.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -11,18 +12,19 @@ namespace Diger.TramitesEstado.Infrastructure.AI;
 public sealed class AgenteService(
     HttpClient http,
     IOptions<AgenteOptions> options,
+    IOptions<InstitucionOptions> institucion,
     ILogger<AgenteService> logger) : IAgenteService
 {
     private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
 
-    private const string PromptBase =
-        """
-        Eres el Asistente Virtual de Soporte del sistema SOL de DIGER (Dirección General
-        de Recursos Humanos del Gobierno de Honduras). Atiendes consultas de funcionarios
+    private static string ConstruirPromptBase(InstitucionOptions inst) =>
+        $"""
+        Eres el Asistente Virtual de Soporte del sistema de Digitalización de Trámites de
+        {inst.NombreCorto} ({inst.Nombre}, {inst.Eslogan}). Atiendes consultas de funcionarios
         públicos mientras un técnico especializado se conecta a la sesión.
 
         Puedes orientar sobre:
-        - Uso general del sistema SOL: expedientes, trámites, tickets y reuniones
+        - Uso general del sistema: expedientes, reuniones, compromisos, tickets y contactos
         - Estado o seguimiento de trámites y expedientes
         - Pasos para registrar o consultar información en el sistema
 
@@ -46,7 +48,7 @@ public sealed class AgenteService(
         var mensajes = ConstruirMensajes(sesion.Mensajes);
         if (mensajes is null) return null;
 
-        var systemPrompt = PromptBase;
+        var systemPrompt = ConstruirPromptBase(institucion.Value);
         if (sesion.Sesion.TemaNombre is { } tema)
             systemPrompt += $"\n\nContexto de la consulta: el usuario pregunta sobre el tema «{tema}».";
 

@@ -627,7 +627,7 @@ function tramRowHTML(i){
     + sigerBadge + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
     + '<input type="text" id="tnam-'+i+'" placeholder="Nombre completo del trámite ' + (i+1) + '" oninput="actualizarMeta();actualizarTabsTramite();syncNombreTramite('+i+')"></div>'
     + '<div class="f" style="flex:1;min-width:200px"><label>Plantilla base</label>'
-    + '<select id="tplan-'+i+'" onchange="seleccionarPlantilla('+i+', this.value)" style="padding:11px 12px;border:1px solid var(--borde);border-radius:8px;font-size:14px;background:#fafbfd;font-family:inherit;width:100%">' + opts + '</select></div>'
+    + '<select id="tplan-'+i+'" onchange="seleccionarPlantilla('+i+', this.value)">' + opts + '</select></div>'
     + '<div class="f" style="flex:1;max-width:380px"><label>Área o dirección responsable</label>'
     + '<input type="text" id="area_resp-'+i+'" placeholder="Unidad interna que gestiona el trámite"></div>'
     + rm

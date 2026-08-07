@@ -231,7 +231,7 @@
                                 <td>
                                     <div class="btns-group">
                                         <button class="btns btns-sm btns-primary" onclick="guardarMeta(this)">Guardar</button>
-                                        <button class="btns btns-sm" onclick="eliminarMeta(this)">✕</button>
+                                        <button class="btns btns-sm" aria-label="Eliminar meta" onclick="eliminarMeta(this)">✕</button>
                                     </div>
                                 </td>
                             }
@@ -303,11 +303,11 @@
     .exp-chip-remove:hover { opacity: 1; }
     .exp-result {
         display: flex; justify-content: space-between; align-items: center; gap: 10px;
-        width: 100%; text-align: left; background: #fff; cursor: pointer;
+        width: 100%; text-align: left; background: var(--diger-surface); color: var(--diger-text); cursor: pointer;
         border: 1px solid var(--diger-border); border-radius: 10px;
         padding: 9px 13px; margin-bottom: 7px; font: inherit;
     }
-    .exp-result:hover { border-color: var(--diger-blue, #1a56c4); background: #f5f8ff; }
+    .exp-result:hover { border-color: var(--diger-blue, #1a56c4); background: var(--diger-bg-blue-alt); }
     .exp-result .exp-cod { font-weight: 700; font-size: 13px; }
     .exp-result .exp-meta { font-size: 11.5px; color: var(--diger-text-muted, #6b7fa3); }
     /* Multi-selección de trámites (checkbox list) */
@@ -318,10 +318,10 @@
     }
     .tram-check-row {
         display: flex; align-items: flex-start; gap: 9px; width: 100%; text-align: left;
-        background: #fff; cursor: pointer; border: 1px solid var(--diger-border);
+        background: var(--diger-surface); color: var(--diger-text); cursor: pointer; border: 1px solid var(--diger-border);
         border-radius: 10px; padding: 8px 12px; margin-bottom: 7px;
     }
-    .tram-check-row:hover { border-color: var(--diger-blue, #1a56c4); background: #f5f8ff; }
+    .tram-check-row:hover { border-color: var(--diger-blue, #1a56c4); background: var(--diger-bg-blue-alt); }
     .tram-check-row input { margin-top: 3px; flex: 0 0 auto; }
     .tram-check-row .tc-nombre { font-weight: 600; font-size: 13px; }
     .tram-check-row .tc-meta   { font-size: 11.5px; color: var(--diger-text-muted, #6b7fa3); }
@@ -334,7 +334,7 @@
     <div class="modal-card" style="max-width:540px;align-items:stretch;text-align:left;padding:0;gap:0">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 12px;border-bottom:1px solid var(--diger-border)">
             <strong style="font-size:15px" id="exp-picker-title">Seleccionar expediente</strong>
-            <button class="btns btns-sm" onclick="cerrarPickerExp()" type="button">✕</button>
+            <button class="btns btns-sm" aria-label="Cerrar" onclick="cerrarPickerExp()" type="button">✕</button>
         </div>
         <div style="padding:14px 20px 10px" id="exp-picker-search-box">
             <input type="text" id="exp-picker-search" class="form-control"
@@ -470,7 +470,7 @@ function crearFilaMeta() {
         <td>
             <div class="btns-group">
                 <button class="btns btns-sm btns-primary" onclick="guardarMeta(this)">Guardar</button>
-                <button class="btns btns-sm" onclick="eliminarMeta(this)">✕</button>
+                <button class="btns btns-sm" aria-label="Eliminar meta" onclick="eliminarMeta(this)">✕</button>
             </div>
         </td>`;
     tbody.appendChild(row);

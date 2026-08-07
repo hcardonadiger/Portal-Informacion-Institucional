@@ -25,6 +25,7 @@
     --diger-text-faint: #9aadcc;
     --diger-bg: #eef1f7;
     --diger-bg-soft: #fafbfd;
+    --diger-surface: #fff;          /* fondo de card/modal/panel (agregado 2026-08-07) — antes literal #fff repetido 54 veces */
 
     /* Color — estado semántico */
     --diger-success: #15803d;
@@ -35,11 +36,36 @@
     --diger-danger-text: #b91c1c;
     --diger-danger-bg: #fee2e2;
 
-    /* Radios de borde — solo valores que ya se repiten idénticos 3+ veces.
-       El resto de radios (16px, 14px, 10px, 9px, 8px, 7px, 6px) se dejan
-       como literales por componente: ver DESIGN.md, "Inconsistencias
-       conocidas". */
+    /* Color — nuevos, nombrados a partir de literales repetidos 4+ veces
+       (agregado 2026-08-07, ver DESIGN.md "Deuda conocida"). NO son alias
+       de los tokens de arriba: son hex realmente distintos (a32d2d vs
+       b91c1c, por ejemplo) — fusionarlos habría cambiado el contraste de
+       texto sin poder verificarlo visualmente. Quedan documentados así
+       hasta que alguien confirme si son variantes intencionales o deriva
+       accidental. --danger-strong y --warning-strong además coinciden con
+       los --sem-texto locales de las clases .sem-rojo/.sem-naranja
+       (sistema de semáforo aparte, con su propio --sem-fondo/--sem-solido). */
+    --diger-danger-strong: #a32d2d;
+    --diger-warning-strong: #854f0b;
+    --diger-blue-title: #0a2d6e;
+    --diger-blue-strong: #0c447c;
+    --diger-text-strong: #2d3748;
+    --diger-text-slate: #94a3b8;
+    --diger-text-slate-dark: #475569;
+    --diger-bg-blue: #f5f8ff;
+    --diger-bg-blue-alt: #f8fbff;
+    --diger-bg-blue-pale: #f0f4ff;
+    --diger-border-soft: #f2f5f9;
+
+    /* Radios de borde — escala consolidada 2026-08-07 (ver DESIGN.md §3).
+       sm agrupa el clúster 6-10px (inputs/botones pequeños, la mayoría del
+       CSS existente); md ya existía y absorbe 11-14px; lg promueve el 16px
+       de .card (la superficie base de casi todo el portal) a token en vez
+       de literal; pill sigue siendo 20px/99px (mismo resultado visual, un
+       pill se redondea al 50% de su alto sin importar cuál de los dos se use). */
+    --diger-radius-sm: 8px;
     --diger-radius-md: 12px;
+    --diger-radius-lg: 16px;
     --diger-radius-pill: 20px;
 
     /* Sombras */
@@ -47,6 +73,213 @@
     --diger-shadow-md: 0 6px 20px rgba(10,45,110,.12);
     --diger-shadow-lg: 0 4px 14px rgba(10,45,110,.3);
 
+    /* Anillo de foco (agregado 2026-08-07) — el "glow" que ya usan .field,
+       .edit-grid, .lista-buscar, .form-control/.form-select y
+       .topnav-context select al enfocar, antes repetido con spread/opacidad
+       ligeramente distintos en cada uno (3px/4px, .1/.15). Un solo valor,
+       el más común de los cinco (4px/.1). No es el mismo caso que
+       .step-item.active o .seg-etapa-destacada — esos son estados activos
+       persistentes, no de foco de teclado, y quedan con su rgba() propio. */
+    --diger-ring: 0 0 0 4px rgba(20, 85, 164, .1);
+
     /* Transición estándar (la mayoría de las reglas ya usa .2s/.22s/.25s) */
     --diger-transition: .2s;
+
+    /* Escala de densidad propia de Trámites (agregada 2026-08-07). El CSS
+       real de diger.css es mucho más chico que la tipografía del sitio
+       público (tablas y badges densos, no contenido editorial) — migrar a
+       --diger-text-* de abajo habría agrandado esa UI en vez de solo
+       renombrarla. Estos 4 valores absorben ~177 de los ~192 font-size
+       de 9-14.5px agrupando por el clúster real más cercano (ver DESIGN.md
+       §1); de 15px para arriba ya empalma con --diger-text-base y el resto
+       de la escala del sitio público, así que no hace falta un token nuevo. */
+    --diger-fs-2xs:  10.5px;  /* agrupa 9 / 9.5 / 10 / 10.5px */
+    --diger-fs-xs:   11px;    /* pico real, sin agrupar */
+    --diger-fs-sm:   12.5px;  /* agrupa 11.5 / 12 / 12.5 / 13px — el clúster más grande */
+    --diger-fs-base: 14px;    /* agrupa 13.5 / 14 / 14.5px */
+
+    /* Escala tipográfica (agregada 2026-08-07, aditiva — ver DESIGN.md §5).
+       Mismos valores que tokens.css del sitio público (diger.gob.hn), para que
+       ambos compartan una sola referencia de tamaños si en algún momento se
+       homologan. Nadie las usa todavía: el CSS existente sigue con literales
+       por componente hasta que se migre pieza por pieza. */
+    --diger-text-xs:   0.75rem;   /* 12px */
+    --diger-text-sm:   0.875rem;  /* 14px */
+    --diger-text-base: 1rem;      /* 16px */
+    --diger-text-lg:   1.125rem;  /* 18px */
+    --diger-text-xl:   1.25rem;   /* 20px */
+    --diger-text-2xl:  1.5rem;    /* 24px */
+    --diger-text-3xl:  1.875rem;  /* 30px */
+    --diger-text-4xl:  2.25rem;   /* 36px */
+    --diger-text-5xl:  3rem;      /* 48px */
+
+    --diger-weight-regular:   400;
+    --diger-weight-medium:    500;
+    --diger-weight-semibold:  600;
+    --diger-weight-bold:      700;
+    --diger-weight-extrabold: 800;
+
+    --diger-leading-tight:  1.15;  /* titulares */
+    --diger-leading-normal: 1.55;  /* cuerpo */
+    --diger-leading-loose:  1.8;   /* listas, microcopy */
+
+    /* Escala de espaciado — grid de 8pt, mismos valores que el sitio público. */
+    --diger-space-1:  0.25rem;  /* 4px */
+    --diger-space-2:  0.5rem;   /* 8px */
+    --diger-space-3:  0.75rem;  /* 12px */
+    --diger-space-4:  1rem;     /* 16px */
+    --diger-space-5:  1.25rem;  /* 20px */
+    --diger-space-6:  1.5rem;   /* 24px */
+    --diger-space-8:  2rem;     /* 32px */
+    --diger-space-10: 2.5rem;   /* 40px */
+    --diger-space-12: 3rem;     /* 48px */
+    --diger-space-16: 4rem;     /* 64px */
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Modo oscuro (agregado 2026-08-07, ver DESIGN.md "Deuda conocida").
+   Redefine solo los tokens semánticos de arriba (bg/surface/text/border/
+   sombras) — la marca (--diger-blue/gold/cyan) NO cambia entre modos,
+   mismo criterio que el sitio público.
+
+   La paleta no se inventó de cero: son los MISMOS grises "slate" que ya
+   usaban, sin tokenizar, tres bloques `@media (prefers-color-scheme:
+   dark)` que ya existían (el modal de confirmación en diger.css, el panel
+   de notificaciones en _Layout.cshtml, y Expedientes/Cronograma.cshtml)
+   — se homologó el valor en vez de inventar uno nuevo, y esos tres
+   bloques ahora referencian estos tokens.
+
+   Se activa automáticamente por preferencia del sistema operativo
+   (@media). El selector [data-theme] queda listo para un toggle manual
+   futuro (todavía no existe ningún botón en la UI que lo setee) — hasta
+   entonces, [data-theme="dark"] no tiene ningún efecto por sí solo.
+   ══════════════════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* Le dice al navegador que use SU tema oscuro nativo para <select>/
+           <option>, scrollbars, date pickers, etc. — controles que el CSS
+           de la página no puede estilar bien (ej. las opciones de un
+           <select> seguían con texto negro sobre fondo oscuro sin esto). */
+        color-scheme: dark;
+
+        --diger-bg:          #0f172a;
+        --diger-bg-soft:     #0f172a;
+        --diger-surface:     #1e293b;
+        --diger-border:      #334155;
+        --diger-border-soft: #1e293b;
+
+        --diger-text:           #e2e8f0;
+        --diger-text-strong:    #f1f5f9;
+        --diger-text-secondary: #cbd5e1;
+        --diger-text-muted:     #94a3b8;
+        --diger-text-faint:     #64748b;
+        --diger-text-slate-dark: #94a3b8;
+
+        --diger-bg-blue:      #1a2942;
+        --diger-bg-blue-alt:  #17223a;
+        --diger-bg-blue-pale: #1c2a45;
+        --diger-blue-light:   #1e3a5f;
+
+        /* Los tres siguientes eran texto oscuro (navy/rojo/ámbar) sobre
+           fondo claro — invisibles tal cual sobre fondo oscuro, así que
+           se aclaran. Valores tomados de los mismos tres bloques dark ya
+           existentes que motivaron esta paleta (.cron-central-info,
+           .cron-venc, .cron-prox), no inventados de cero. */
+        --diger-blue-title:    #93c5fd;
+        --diger-blue-strong:   #60a5fa;
+        --diger-danger-strong: #fca5a5;
+        --diger-warning-strong: #fde68a;
+        --diger-success-strong: #6ee7b7;
+        --diger-danger-text:   #fca5a5;
+
+        /* --diger-success/-warning/-danger (base, SIN -strong/-bg) se
+           dejan constantes a propósito — a diferencia de -strong, se usan
+           mucho como background/border sólido (puntos de estado, círculos
+           de flujo, botones .dg-confirm-ok) donde SÍ hace falta que se
+           queden saturados en oscuro. Solo -bg (el fondo pálido del badge)
+           y -strong (el texto que va sobre ese fondo) son theme-aware. */
+        --diger-success-bg:  #064e3b;
+        --diger-warning-bg:  #78350f;
+        --diger-danger-bg:   #7f1d1d;
+
+        --diger-shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+        --diger-shadow-md: 0 6px 20px rgba(0,0,0,.35);
+        --diger-shadow-lg: 0 12px 40px rgba(0,0,0,.4);
+    }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --diger-bg:          #0f172a;
+    --diger-bg-soft:     #0f172a;
+    --diger-surface:     #1e293b;
+    --diger-border:      #334155;
+    --diger-border-soft: #1e293b;
+
+    --diger-text:           #e2e8f0;
+    --diger-text-strong:    #f1f5f9;
+    --diger-text-secondary: #cbd5e1;
+    --diger-text-muted:     #94a3b8;
+    --diger-text-faint:     #64748b;
+    --diger-text-slate-dark: #94a3b8;
+
+    --diger-bg-blue:      #1a2942;
+    --diger-bg-blue-alt:  #17223a;
+    --diger-bg-blue-pale: #1c2a45;
+    --diger-blue-light:   #1e3a5f;
+
+    --diger-blue-title:    #93c5fd;
+    --diger-blue-strong:   #60a5fa;
+    --diger-danger-strong: #fca5a5;
+    --diger-warning-strong: #fde68a;
+    --diger-success-strong: #6ee7b7;
+    --diger-danger-text:   #fca5a5;
+
+    --diger-success-bg:  #064e3b;
+    --diger-warning-bg:  #78350f;
+    --diger-danger-bg:   #7f1d1d;
+
+    --diger-shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+    --diger-shadow-md: 0 6px 20px rgba(0,0,0,.35);
+    --diger-shadow-lg: 0 12px 40px rgba(0,0,0,.4);
+}
+
+/* Fuerza modo claro aunque el sistema operativo esté en oscuro — para
+   cuando exista el toggle manual. */
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    --diger-bg:          #eef1f7;
+    --diger-bg-soft:     #fafbfd;
+    --diger-surface:     #fff;
+    --diger-border:      #e2e8f0;
+    --diger-border-soft: #f2f5f9;
+
+    --diger-text:           #1a1a1a;
+    --diger-text-strong:    #2d3748;
+    --diger-text-secondary: #4a5568;
+    --diger-text-muted:     #6b7fa3;
+    --diger-text-faint:     #9aadcc;
+    --diger-text-slate-dark: #475569;
+
+    --diger-bg-blue:      #f5f8ff;
+    --diger-bg-blue-alt:  #f8fbff;
+    --diger-bg-blue-pale: #f0f4ff;
+    --diger-blue-light:   #e8f0ff;
+
+    --diger-blue-title:    #0a2d6e;
+    --diger-blue-strong:   #0c447c;
+    --diger-danger-strong: #a32d2d;
+    --diger-warning-strong: #854f0b;
+    --diger-success-strong: #15803d;
+    --diger-danger-text:   #b91c1c;
+
+    --diger-success-bg:  #dcfce7;
+    --diger-warning-bg:  #fef3c7;
+    --diger-danger-bg:   #fee2e2;
+
+    --diger-shadow-sm: 0 2px 8px rgba(10,45,110,.06);
+    --diger-shadow-md: 0 6px 20px rgba(10,45,110,.12);
+    --diger-shadow-lg: 0 4px 14px rgba(10,45,110,.3);
 }

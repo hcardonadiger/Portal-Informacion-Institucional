@@ -19,11 +19,13 @@ public enum BandaAvance
 /// </remarks>
 public static class SemaforoAvance
 {
-    /// <summary>Desde este porcentaje (inclusive) el avance es verde.</summary>
-    public const int UmbralAvanzado = 70;
+    /// <summary>Desde este porcentaje (inclusive) el avance es verde. Configurable vía
+    /// appsettings ("Expedientes:Semaforo:UmbralAvanzado"), asignado en Program.cs al arrancar.</summary>
+    public static int UmbralAvanzado { get; set; } = 70;
 
-    /// <summary>Desde este porcentaje (inclusive) el avance es naranja.</summary>
-    public const int UmbralEnProceso = 20;
+    /// <summary>Desde este porcentaje (inclusive) el avance es naranja. Configurable vía
+    /// appsettings ("Expedientes:Semaforo:UmbralEnProceso"), asignado en Program.cs al arrancar.</summary>
+    public static int UmbralEnProceso { get; set; } = 20;
 
     public static BandaAvance Banda(int avancePct) =>
         avancePct >= UmbralAvanzado  ? BandaAvance.Avanzado  :

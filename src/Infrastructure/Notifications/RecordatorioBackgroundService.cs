@@ -1,18 +1,22 @@
 using Diger.TramitesEstado.Application.Notificaciones;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Infrastructure.Notifications;
 
 /// <summary>Genera notificaciones de sistema: compromisos vencidos, reuniones del día siguiente y etapas de cronograma.</summary>
 public sealed class RecordatorioBackgroundService(
     IServiceScopeFactory scopeFactory,
+    IOptions<NotificacionesOptions> options,
     ILogger<RecordatorioBackgroundService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        // Esperar 2 minutos al arranque para no competir con las migraciones EF del startup
-        await Task.Delay(TimeSpan.FromMinutes(2), ct);
+        var opts = options.Value;
+
+        // Esperar al arranque para no competir con las migraciones EF del startup
+        await Task.Delay(TimeSpan.FromMinutes(opts.DelayInicialMinutos), ct);
 
         while (!ct.IsCancellationRequested)
         {
@@ -21,7 +25,7 @@ public sealed class RecordatorioBackgroundService(
             {
                 logger.LogError(ex, "Error en RecordatorioBackgroundService");
             }
-            await Task.Delay(TimeSpan.FromHours(4), ct);
+            await Task.Delay(TimeSpan.FromHours(opts.IntervaloHoras), ct);
         }
     }
 
