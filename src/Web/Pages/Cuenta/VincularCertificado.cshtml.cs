@@ -56,10 +56,10 @@ public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService
         
         if (isDev && host == "localhost")
         {
-            return Redirect($"https://localhost:49175{backUrl}");
+            return Redirect($"https://localhost:{config.GetValue<int>("Ports:DevMain", 49175)}{backUrl}");
         }
 
-        var mainPort = config.GetValue<int>("Ports:Main", 443);
+        var mainPort = config.GetValue<int>("Ports:Main", 8443);
         var portSuffix = mainPort == 443 ? "" : $":{mainPort}";
         var mainDomain = host.StartsWith("cert.") ? host.Substring(5) : host;
         

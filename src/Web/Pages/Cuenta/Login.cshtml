@@ -1,9 +1,13 @@
 @page
+@using Diger.TramitesEstado.Application.Common.Models
+@using Microsoft.Extensions.Options
 @model Diger.TramitesEstado.Web.Pages.Cuenta.LoginModel
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject IOptions<InstitucionOptions> InstOpts
 @{
     ViewData["Title"] = "Iniciar sesión";
     Layout = "_Layout";
+    var _inst = InstOpts.Value;
 
     var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
     var certPort = Config.GetValue<int>("Ports:Cert", 8444);
@@ -21,7 +25,7 @@
 
         <main class="lg-formwrap">
             <div class="lg-formcard">
-                <img src="~/img/logo_diger.png" alt="Gobierno de la República de Honduras — DIGER" class="login-logo" />
+                <img src="@_inst.Logo" alt="@(_inst.Eslogan) — @(_inst.NombreCorto)" class="login-logo" />
                 <h1 class="login-title">Portal de Información Institucional</h1>
                 <partial name="_LoginForm" model="Model" />
             </div>
