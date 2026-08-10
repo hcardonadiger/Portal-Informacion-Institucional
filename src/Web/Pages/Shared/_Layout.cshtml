@@ -139,28 +139,52 @@
                     <button type="button" class="nav-toggle" onclick="toggleMainNav()" aria-label="Abrir menú">&#9776;</button>
 
                     <nav class="main-nav" id="mainNav" aria-label="Menú principal">
+                        @*
+                            Seis grupos, uno por pregunta que se hace el usuario: qué trabajo tengo,
+                            qué hay en SIGER, cómo vamos, qué tengo agendado, qué me están pidiendo,
+                            y qué administro. Ningún menú pasa de seis entradas a propósito: el grupo
+                            "Digitalización" anterior acumulaba nueve y mezclaba las tres primeras.
+                        *@
+                        @if (puedeExpedientes)
+                        {
+                            var grpExp = EsRuta("/", "/Expedientes") || EsRuta("/PlanTrabajo") || EsRuta("/Recursos");
+                            <div class="nav-group @(grpExp ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Expedientes<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    <a class="nav-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index"><svg class="ico"><use href="#i-expediente"></use></svg>Expedientes</a>
+                                    <a class="nav-item @(EsRuta("/PlanTrabajo") ? "on" : "")" asp-page="/PlanTrabajo/Index"><svg class="ico"><use href="#i-plan"></use></svg>Plan de Trabajo</a>
+                                    <a class="nav-item @(EsRuta("/Recursos") ? "on" : "")" asp-page="/Recursos/Index"><svg class="ico"><use href="#i-recursos"></use></svg>Recursos y Plantillas</a>
+                                </div>
+                            </div>
+                        }
+                        @if (puedeExpedientes)
+                        {
+                            <div class="nav-group @(EsRuta("/Siger") ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">SIGER<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    <a class="nav-item @(EsRuta("/Siger/Index") ? "on" : "")" asp-page="/Siger/Index"><svg class="ico"><use href="#i-inventario"></use></svg>Inventario</a>
+                                    <a class="nav-item @(EsRuta("/Siger/Tablero") ? "on" : "")" asp-page="/Siger/Tablero"><svg class="ico"><use href="#i-grafica"></use></svg>Observatorio</a>
+                                    @if (User.IsInRole(nameof(RolUsuario.Administrador)))
+                                    {
+                                        <a class="nav-item @(EsRuta("/Siger/Conciliacion") ? "on" : "")" asp-page="/Siger/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
+                                    }
+                                </div>
+                            </div>
+                        }
                         @if (puedeTableros || puedeExpedientes)
                         {
-                            var grpDig = EsRuta("/", "/Expedientes") || EsRuta("/Tableros") || EsRuta("/Informes") || EsRuta("/PlanTrabajo") || EsRuta("/Siger") || EsRuta("/Recursos");
-                            <div class="nav-group @(grpDig ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Digitalización<span class="nav-caret">&#9662;</span></button>
+                            var grpTab = EsRuta("/Tableros") || EsRuta("/Informes");
+                            <div class="nav-group @(grpTab ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Tableros<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
-                                    @if (puedeExpedientes)
-                                    {
-                                        <a class="nav-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index">Expedientes</a>
-                                    }
                                     @if (puedeTableros)
                                     {
-                                        <a class="nav-item @(EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/MiTablero">Mi Tablero</a>
-                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/Index">Tableros General</a>
+                                        <a class="nav-item @(EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/MiTablero"><svg class="ico"><use href="#i-tablero"></use></svg>Mi Tablero</a>
+                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/Index"><svg class="ico"><use href="#i-grafica"></use></svg>Tableros General</a>
                                     }
                                     @if (puedeExpedientes)
                                     {
-                                        <a class="nav-item @(EsRuta("/Informes") ? "on" : "")" asp-page="/Informes/Index">Informes</a>
-                                        <a class="nav-item @(EsRuta("/PlanTrabajo") ? "on" : "")" asp-page="/PlanTrabajo/Index">Plan de Trabajo</a>
-                                        <a class="nav-item @(EsRuta("/Recursos") ? "on" : "")" asp-page="/Recursos/Index">Recursos y Plantillas</a>
-                                        <a class="nav-item @(EsRuta("/Siger/Index") ? "on" : "")" asp-page="/Siger/Index">Inventario SIGER</a>
-                                        <a class="nav-item @(EsRuta("/Siger/Tablero") ? "on" : "")" asp-page="/Siger/Tablero">Observatorio SIGER</a>
+                                        <a class="nav-item @(EsRuta("/Informes") ? "on" : "")" asp-page="/Informes/Index"><svg class="ico"><use href="#i-informe"></use></svg>Informes</a>
                                     }
                                 </div>
                             </div>
@@ -173,16 +197,12 @@
                                 <div class="nav-group-menu">
                                     @if (puedeCalendario)
                                     {
-                                        <a class="nav-item @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index">Calendario</a>
+                                        <a class="nav-item @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index"><svg class="ico"><use href="#i-calendario"></use></svg>Calendario</a>
                                     }
                                     @if (puedeReuniones)
                                     {
-                                        <a class="nav-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index">Reuniones</a>
-                                        <a class="nav-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos">Compromisos</a>
-                                        @if (Acceso.EsAdministrador && HostEnv.IsDevelopment())
-                                        {
-                                            <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase">Migrar desde Supabase</a>
-                                        }
+                                        <a class="nav-item @(EsRuta("/Reuniones") && !EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Index"><svg class="ico"><use href="#i-reunion"></use></svg>Reuniones</a>
+                                        <a class="nav-item @(EsRuta("/Reuniones/Compromisos") ? "on" : "")" asp-page="/Reuniones/Compromisos"><svg class="ico"><use href="#i-check"></use></svg>Compromisos</a>
                                     }
                                 </div>
                             </div>
@@ -195,35 +215,41 @@
                                 <div class="nav-group-menu">
                                     @if (puedeTickets)
                                     {
-                                        <a class="nav-item @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index">Tickets</a>
+                                        <a class="nav-item @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index"><svg class="ico"><use href="#i-ticket"></use></svg>Tickets</a>
                                     }
                                     @if (puedeSoporte)
                                     {
-                                        <a class="nav-item @(EsRuta("/Chat") ? "on" : "")" asp-page="/Chat/Index">Chat de Soporte</a>
+                                        <a class="nav-item @(EsRuta("/Chat") ? "on" : "")" asp-page="/Chat/Index"><svg class="ico"><use href="#i-respuesta"></use></svg>Chat de Soporte</a>
                                     }
                                     @if (puedeContactos)
                                     {
-                                        <a class="nav-item @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index">Contactos</a>
+                                        <a class="nav-item @(EsRuta("/Contactos") ? "on" : "")" asp-page="/Contactos/Index"><svg class="ico"><use href="#i-contactos"></use></svg>Contactos</a>
                                     }
                                 </div>
                             </div>
                         }
                         @if (Acceso.EsAdministrador || User.FindFirstValue(AppClaims.ActiveRol) == "JefeInstitucion")
                         {
-                            var grpAdmin = EsRuta("/Instituciones") || EsRuta("/Areas") || EsRuta("/Unidades") || EsRuta("/Usuarios") || EsRuta("/Accesos");
+                            var grpAdmin = EsRuta("/Instituciones") || EsRuta("/Areas") || EsRuta("/Unidades")
+                                        || EsRuta("/Usuarios") || EsRuta("/Accesos") || EsRuta("/Admin");
                             <div class="nav-group @(grpAdmin ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Administración<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
                                     @if (Acceso.EsAdministrador)
                                     {
-                                        <a class="nav-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index">Instituciones</a>
+                                        <a class="nav-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index"><svg class="ico"><use href="#i-institucion"></use></svg>Instituciones</a>
                                     }
-                                    <a class="nav-item @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index">Áreas</a>
-                                    <a class="nav-item @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index">Unidades</a>
+                                    <a class="nav-item @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index"><svg class="ico"><use href="#i-area"></use></svg>Áreas</a>
+                                    <a class="nav-item @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index"><svg class="ico"><use href="#i-unidad"></use></svg>Unidades</a>
                                     @if (Acceso.EsAdministrador)
                                     {
-                                        <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index">Usuarios</a>
-                                        <a class="nav-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index">Accesos</a>
+                                        <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><svg class="ico"><use href="#i-usuarios"></use></svg>Usuarios</a>
+                                        <a class="nav-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index"><svg class="ico"><use href="#i-accesos"></use></svg>Accesos</a>
+                                        @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
+                                        @if (HostEnv.IsDevelopment())
+                                        {
+                                            <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
+                                        }
                                     }
                                 </div>
                             </div>
