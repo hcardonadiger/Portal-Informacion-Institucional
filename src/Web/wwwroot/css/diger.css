@@ -30,8 +30,18 @@ body {
     padding: 2rem 1rem 3rem;
 }
 
+/* Contenedor de página para las pantallas que no usan .container.
+   Mismo margen que .container; el ancho es el de un listado con acciones. */
+.pg-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2rem 1rem 3rem;
+}
+
 /* ── ENCABEZADO DE PÁGINA (Manual de Marca: navy + subrayado dorado) ── */
-.page-title {
+/* .pg-title es el mismo título; lo usan Chat y Notificaciones. */
+.page-title,
+.pg-title {
     color: var(--diger-blue-strong);
     font-weight: 700;
     font-size: 1.6rem;
@@ -1308,6 +1318,57 @@ tr.contacto-inactivo td {
 .nav-item.on {
     background: var(--diger-blue);
     color: #fff;
+}
+
+/* Entradas del desplegable del navbar.
+   Se escriben con dos clases a propósito: más abajo, la fila de atajos a tableros
+   redefine `.nav-item` (borde, gap y color propios) y, con igual especificidad,
+   ganaba por orden de aparición. Al calificar con el contenedor, el navbar deja de
+   depender de en qué parte del archivo esté escrito. */
+.nav-group-menu .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    padding: 9px 12px;
+    border-radius: var(--diger-radius-sm);
+    text-decoration: none;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    white-space: nowrap;
+}
+
+.nav-group-menu .nav-item:hover {
+    background: var(--diger-bg-soft);
+    border: 0;
+    color: var(--diger-blue-strong);
+}
+
+.nav-group-menu .nav-item.on {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+/* El icono acompaña, no compite: algo más tenue que el texto salvo en la entrada activa. */
+.nav-group-menu .nav-item .ico {
+    width: 16px;
+    height: 16px;
+    opacity: .6;
+}
+
+.nav-group-menu .nav-item:hover .ico,
+.nav-group-menu .nav-item.on .ico {
+    opacity: 1;
+}
+
+/* Con seis grupos el ancho aprieta en la franja previa al menú lateral (900px).
+   Acotado por abajo para no encoger también los botones del drawer, que ya van a lo ancho. */
+@media (min-width: 901px) and (max-width: 1180px) {
+    .nav-group-btn {
+        padding: 9px 9px;
+        font-size: var(--diger-fs-sm);
+    }
 }
 
 /* Lado derecho: notificaciones + usuario */
@@ -4864,14 +4925,24 @@ a.kpi-cell:hover .kpi-cell-arw {
    ══════════════════════════════════════════════════════════════ */
 
 /* ── Encabezado de página ────────────────────────────────────── */
-.page-header {
+/* .pg-hdr es el mismo encabezado; lo usan Chat y Notificaciones. */
+.page-header,
+.pg-hdr {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 1.4rem;
     flex-wrap: wrap;
-    padding: 1.8rem 1.6rem .4rem;
+}
+
+/* Agrupa el título con su contador. Alineado por línea base para que el
+   contador se apoye en la del título y no en el borde dorado. */
+.pg-hdr-left {
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
+    flex-wrap: wrap;
 }
 
 /* ── Card body / header ──────────────────────────────────────── */
