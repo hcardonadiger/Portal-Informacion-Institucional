@@ -30,6 +30,14 @@ body {
     padding: 2rem 1rem 3rem;
 }
 
+/* Contenedor de página para las pantallas que no usan .container.
+   Mismo margen que .container; el ancho es el de un listado con acciones. */
+.pg-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2rem 1rem 3rem;
+}
+
 /* ── ENCABEZADO DE PÁGINA (Manual de Marca: navy + subrayado dorado) ── */
 .page-title {
     color: var(--diger-blue-strong);
@@ -4922,7 +4930,6 @@ a.kpi-cell:hover .kpi-cell-arw {
     gap: 12px;
     margin-bottom: 1.4rem;
     flex-wrap: wrap;
-    padding: 1.8rem 1.6rem .4rem;
 }
 
 /* ── Card body / header ──────────────────────────────────────── */
