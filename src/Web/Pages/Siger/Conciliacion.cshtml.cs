@@ -14,16 +14,26 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
     public const string TabSinCandidato = "nuevas";
     public const string TabDescartados  = "descartados";
 
+    /// <summary>Filas por página. Mantiene la pantalla legible y el POST pequeño.</summary>
+    private const int TamanoPagina = 20;
+
     [BindProperty(SupportsGet = true)] public string  Tab    { get; set; } = TabPendientes;
     [BindProperty(SupportsGet = true)] public string? Buscar { get; set; }
     [BindProperty(SupportsGet = true)] public string? Sigla  { get; set; }
+    [BindProperty(SupportsGet = true)] public int?    Pg     { get; set; }
 
     /// <summary>Filas enviadas por el formulario. Solo se actúa sobre las marcadas.</summary>
     [BindProperty] public List<FilaPost> Seleccion { get; set; } = [];
 
-    public IReadOnlyList<FilaVm>  Filas   { get; private set; } = [];
-    public IReadOnlyList<string>  Siglas  { get; private set; } = [];
-    public ResumenConciliacion    Resumen { get; private set; } = new();
+    public PagedResult<FilaVm>    Resultado { get; private set; } = PagedResult<FilaVm>.Empty(TamanoPagina);
+    public IReadOnlyList<string>  Siglas    { get; private set; } = [];
+    public ResumenConciliacion    Resumen   { get; private set; } = new();
+
+    /// <summary>
+    /// Cuántos de alta confianza hay en el filtro completo, no solo en la página visible.
+    /// Es lo que permite ofrecer "confirmar los N" sin obligar a recorrer todas las páginas.
+    /// </summary>
+    public int AltaConfianzaEnFiltro { get; private set; }
 
     public async Task OnGetAsync(CancellationToken ct) => await CargarAsync(ct);
 
@@ -99,6 +109,42 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
 
         await ctx.SaveChangesAsync(ct);
         TempData["SuccessMsg"] = $"{aplicables.Count} trámite(s) enlazado(s) al inventario SIGER.";
+        return Redirigir();
+    }
+
+    /// <summary>
+    /// Enlaza de una vez todos los de alta confianza del filtro actual, no solo los de la
+    /// página visible. Se recalcula el cruce en el servidor: la petición no trae qué enlazar,
+    /// así que un formulario manipulado no puede colar pares arbitrarios.
+    /// </summary>
+    public async Task<IActionResult> OnPostEnlazarAltaConfianzaAsync(CancellationToken ct)
+    {
+        var candidatas = AplicarFiltros(await ConstruirFilasAsync(ct))
+            .Where(EsEnlazableAutomatico)
+            .ToList();
+
+        if (candidatas.Count == 0)
+        {
+            TempData["SuccessMsg"] = "No quedan tramites de alta confianza en el filtro actual.";
+            return Redirigir();
+        }
+
+        var ids      = candidatas.Select(f => f.Id).ToList();
+        var tramites = await ctx.Tramites.Where(t => ids.Contains(t.Id)).ToListAsync(ct);
+        var previas  = await ctx.ConciliacionesSiger
+            .Where(c => ids.Contains(c.ExpedienteTramiteId)).ToListAsync(ct);
+
+        foreach (var fila in candidatas)
+        {
+            var tramite = tramites.FirstOrDefault(t => t.Id == fila.Id);
+            if (tramite is null) continue;
+
+            tramite.TramiteSigerId = fila.SugeridoId;
+            RegistrarDecision(previas, fila.Id, DecisionConciliacion.Enlazado, fila.SugeridoId);
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        TempData["SuccessMsg"] = $"{candidatas.Count} tramite(s) de alta confianza enlazado(s) al inventario SIGER.";
         return Redirigir();
     }
 
@@ -212,11 +258,15 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
                   select et.Id).ToListAsync(ct);
 
     private IActionResult Redirigir()
-        => RedirectToPage(new { Tab, Buscar, Sigla });
+        => RedirectToPage(new { Tab, Buscar, Sigla, Pg });
 
     // ── Carga y clasificación ─────────────────────────────────────────────────
 
-    private async Task CargarAsync(CancellationToken ct)
+    /// <summary>
+    /// Clasifica los trámites del alcance del usuario contra todo el inventario SIGER.
+    /// Devuelve el universo completo, sin filtrar ni paginar, y deja calculado el resumen.
+    /// </summary>
+    private async Task<List<FilaVm>> ConstruirFilasAsync(CancellationToken ct)
     {
         var crudos = await (from et in ctx.Tramites
                             join e in ctx.Expedientes on et.ExpedienteId equals e.Id
@@ -316,6 +366,12 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
                       .Where(s => !string.IsNullOrWhiteSpace(s))
                       .Select(s => s!).Distinct().OrderBy(s => s).ToList();
 
+        return todas;
+    }
+
+    /// <summary>Aplica pestaña, búsqueda e institución. Lo que sobrevive es lo que el usuario ve.</summary>
+    private List<FilaVm> AplicarFiltros(IEnumerable<FilaVm> todas)
+    {
         var delTab = Tab switch
         {
             TabEnlazados    => todas.Where(f => f.Enlazado is not null),
@@ -336,12 +392,35 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
         if (!string.IsNullOrWhiteSpace(Sigla))
             delTab = delTab.Where(f => f.InstitucionId == Sigla);
 
-        Filas = delTab
+        return delTab
             .OrderBy(f => f.Cubeta)
             .ThenBy(f => f.Institucion)
             .ThenBy(f => f.Nombre)
             .ToList();
     }
+
+    private async Task CargarAsync(CancellationToken ct)
+    {
+        var filtradas = AplicarFiltros(await ConstruirFilasAsync(ct));
+
+        AltaConfianzaEnFiltro = filtradas.Count(EsEnlazableAutomatico);
+
+        var (_, page, size) = Paginacion.Normalizar(null, Pg, TamanoPagina);
+
+        // Si un filtro deja menos páginas que la pedida, se cae a la última en vez de mostrar vacío.
+        var totalPaginas = Math.Max(1, (int)Math.Ceiling(filtradas.Count / (double)size));
+        if (page > totalPaginas) page = totalPaginas;
+
+        var pagina = filtradas.Skip((page - 1) * size).Take(size).ToList();
+        Resultado = new PagedResult<FilaVm>(pagina, filtradas.Count, page, size);
+    }
+
+    /// <summary>Alta confianza con ficha sugerida: lo único que el botón global puede enlazar solo.</summary>
+    private static bool EsEnlazableAutomatico(FilaVm f)
+        => f.Enlazado is null
+        && f.Decision is null
+        && f.Cubeta == CubetaConciliacion.AltaConfianza
+        && f.SugeridoId is not null;
 
     /// <summary>Pendiente = sin enlazar, sin decisión previa y con algún candidato que ofrecer.</summary>
     private static bool EsPendiente(FilaVm f)
