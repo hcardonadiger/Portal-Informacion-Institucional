@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Common.Models;
 using Diger.TramitesEstado.Application.Usuarios.Commands.RestablecerPassword;
 using Diger.TramitesEstado.Application.Usuarios.Commands.SolicitarRecuperacionPassword;
 using Diger.TramitesEstado.Domain.Common;
@@ -17,6 +18,8 @@ public class PasswordRecoveryTests : IDisposable
     private readonly AppDbContext _ctx;
     private readonly IEmailService _emailService;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly Microsoft.Extensions.Options.IOptions<AuthOptions> _authOptions =
+        Microsoft.Extensions.Options.Options.Create(new AuthOptions());
 
     public PasswordRecoveryTests()
     {
@@ -40,7 +43,7 @@ public class PasswordRecoveryTests : IDisposable
         await _ctx.Usuarios.AddAsync(usuario);
         await _ctx.SaveChangesAsync();
 
-        var handler = new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _emailService);
+        var handler = new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _emailService, _authOptions);
 
         // Act
         var result = await handler.Handle(
@@ -63,7 +66,7 @@ public class PasswordRecoveryTests : IDisposable
     public async Task SolicitarRecuperacion_UsuarioInexistente_NoGeneraErrorNiEnviaCorreo()
     {
         // Arrange
-        var handler = new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _emailService);
+        var handler = new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _emailService, _authOptions);
 
         // Act
         var act = async () => await handler.Handle(

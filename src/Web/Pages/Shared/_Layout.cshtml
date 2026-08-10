@@ -161,6 +161,10 @@
                                         <a class="nav-item @(EsRuta("/Recursos") ? "on" : "")" asp-page="/Recursos/Index">Recursos y Plantillas</a>
                                         <a class="nav-item @(EsRuta("/Siger/Index") ? "on" : "")" asp-page="/Siger/Index">Inventario SIGER</a>
                                         <a class="nav-item @(EsRuta("/Siger/Tablero") ? "on" : "")" asp-page="/Siger/Tablero">Observatorio SIGER</a>
+                                        @if (User.IsInRole(nameof(RolUsuario.Administrador)))
+                                        {
+                                            <a class="nav-item @(EsRuta("/Siger/Conciliacion") ? "on" : "")" asp-page="/Siger/Conciliacion">Conciliación SIGER</a>
+                                        }
                                     }
                                 </div>
                             </div>

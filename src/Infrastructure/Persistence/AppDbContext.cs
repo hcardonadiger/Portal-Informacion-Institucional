@@ -63,6 +63,7 @@ public sealed class AppDbContext(
     public DbSet<LugarAtencionSiger>        LugaresAtencionSiger  { get; init; } = default!;
     public DbSet<EnlaceSiger>               EnlacesSiger          { get; init; } = default!;
     public DbSet<TareaDigitalizacionSiger>  TareasDigitalizacionSiger { get; init; } = default!;
+    public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -1363,5 +1364,28 @@ public sealed class TareaDigitalizacionSigerConfiguration : IEntityTypeConfigura
         b.Property(x => x.Descripcion).HasMaxLength(1000).IsRequired();
         b.Property(x => x.Estado).HasMaxLength(60);
         b.HasIndex(x => new { x.TramiteSigerId, x.NumeroTarea });
+    }
+}
+
+public sealed class ConciliacionSigerConfiguration : IEntityTypeConfiguration<ConciliacionSiger>
+{
+    public void Configure(EntityTypeBuilder<ConciliacionSiger> b)
+    {
+        b.ToTable("ConciliacionesSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nota).HasMaxLength(500);
+
+        // Una sola decisión vigente por trámite: al revisar de nuevo se actualiza, no se acumula.
+        b.HasIndex(x => x.ExpedienteTramiteId).IsUnique();
+
+        // Si el trámite del expediente desaparece, su decisión deja de tener sentido.
+        b.HasOne<ExpedienteTramite>().WithMany()
+            .HasForeignKey(x => x.ExpedienteTramiteId).OnDelete(DeleteBehavior.Cascade);
+
+        // La ficha SIGER se conserva aunque se borre: la decisión sigue siendo historial válido.
+        b.HasOne<TramiteSiger>().WithMany()
+            .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => x.TramiteSigerId);
     }
 }

@@ -1,0 +1,327 @@
+@page
+@using Diger.TramitesEstado.Web.Pages.Siger
+@using Diger.TramitesEstado.Application.Siger
+@model Diger.TramitesEstado.Web.Pages.Siger.ConciliacionModel
+@{
+    ViewData["Title"] = "Conciliacion Expedientes - SIGER";
+    var buscarUrl = Url.Page("/Siger/Conciliacion", "BuscarSiger");
+    var idx = 0;
+
+    string ClaseCubeta(CubetaConciliacion c) => c switch
+    {
+        CubetaConciliacion.AltaConfianza  => "background:#dcfce7;color:#15803d",
+        CubetaConciliacion.MediaConfianza => "background:#dbeafe;color:#1455a4",
+        CubetaConciliacion.Ambiguo        => "background:#fef3c7;color:#b45309",
+        CubetaConciliacion.Parcial        => "background:#f1f5f9;color:#475569",
+        _                                 => "background:#fee2e2;color:#b91c1c"
+    };
+}
+
+<div class="container" style="max-width:1400px">
+    <partial name="_SuccessBanner" />
+
+    <div class="hist-header">
+        <div>
+            <h2>Conciliacion Expedientes &harr; SIGER</h2>
+            <p>Enlaza los tramites trabajados en expedientes con su ficha del inventario SIGER. Nada se guarda hasta que usted confirme.</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a class="btns" asp-page="/Siger/Index">Inventario SIGER</a>
+        </div>
+    </div>
+
+    @* ── KPIs ──────────────────────────────────────────────────── *@
+    <div class="row2" style="grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.25rem">
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#0a2d6e">@Model.Resumen.Total</div>
+            <div class="prog-label">Tramites en expedientes</div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#15803d">@Model.Resumen.Enlazados</div>
+            <div class="prog-label">Enlazados a SIGER</div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#b45309">@Model.Resumen.Pendientes</div>
+            <div class="prog-label">Pendientes de revisar</div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#1455a4">@Model.Resumen.AltaConfianza</div>
+            <div class="prog-label">Alta confianza <span class="help-tip tip-down" data-tip="Nombre idéntico, misma institución y un solo candidato. Vienen premarcados.">?</span></div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#0a2d6e">@Model.Resumen.PctCobertura%</div>
+            <div class="prog-label">Cobertura SIGER <span class="help-tip tip-down tip-left" data-tip="@Model.Resumen.FichasCubiertas de @Model.Resumen.FichasSiger fichas del inventario tienen al menos un expediente trabajándolas.">?</span></div>
+        </div>
+    </div>
+
+    @* ── Pestañas ──────────────────────────────────────────────── *@
+    <div style="display:flex;gap:6px;border-bottom:2px solid #e2e8f0;margin-bottom:1rem;flex-wrap:wrap">
+        @{
+            var tabs = new (string Key, string Label, int Count)[]
+            {
+                (ConciliacionModel.TabPendientes,   "Propuestas",      Model.Resumen.Pendientes),
+                (ConciliacionModel.TabEnlazados,    "Enlazados",       Model.Resumen.Enlazados),
+                (ConciliacionModel.TabSinCandidato, "Sin equivalente", Model.Resumen.SinCandidato + Model.Resumen.PropuestasFicha),
+                (ConciliacionModel.TabDescartados,  "Descartados",     Model.Resumen.Descartados)
+            };
+        }
+        @foreach (var t in tabs)
+        {
+            var activa = Model.Tab == t.Key;
+            <a asp-page="/Siger/Conciliacion" asp-route-tab="@t.Key" asp-route-buscar="@Model.Buscar" asp-route-sigla="@Model.Sigla"
+               style="padding:8px 16px;text-decoration:none;font-weight:600;font-size:14px;border-bottom:3px solid @(activa ? "#1455a4" : "transparent");color:@(activa ? "#1455a4" : "#64748b")">
+                @t.Label <span style="opacity:.7">(@t.Count)</span>
+            </a>
+        }
+    </div>
+
+    @* ── Filtros ───────────────────────────────────────────────── *@
+    <form method="get" class="seg-filters">
+        <input type="hidden" name="tab" value="@Model.Tab" />
+        <div class="field">
+            <label>Buscar</label>
+            <input name="buscar" value="@Model.Buscar" placeholder="Nombre del tramite o codigo de expediente..." />
+        </div>
+        <div class="field" style="min-width:160px">
+            <label>Institucion</label>
+            <select name="sigla">
+                <option value="">Todas</option>
+                @foreach (var s in Model.Siglas)
+                {
+                    <option value="@s" selected="@(Model.Sigla == s)">@s</option>
+                }
+            </select>
+        </div>
+        <button class="btnp" type="submit">Filtrar</button>
+        <a class="btns" asp-page="/Siger/Conciliacion" asp-route-tab="@Model.Tab">Limpiar</a>
+    </form>
+
+    @if (!Model.Filas.Any())
+    {
+        <div class="hist-empty">
+            <div class="ico"></div>
+            <p>No hay tramites en esta pestaña con los criterios actuales.</p>
+        </div>
+    }
+    else if (Model.Tab == ConciliacionModel.TabEnlazados)
+    {
+        @* ══ Enlazados: solo consulta y deshacer ══ *@
+        <div style="overflow-x:auto">
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Expediente</th>
+                        <th>Institucion</th>
+                        <th>Tramite del expediente</th>
+                        <th>Ficha SIGER</th>
+                        <th style="text-align:center">Consistencia</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        <tr>
+                            <td style="white-space:nowrap;font-weight:600">@f.ExpedienteCodigo</td>
+                            <td style="white-space:nowrap">@f.InstitucionId</td>
+                            <td>@f.Nombre</td>
+                            <td>
+                                @if (f.Enlazado is not null)
+                                {
+                                    <a asp-page="/Siger/Detalle" asp-route-id="@f.Enlazado.Id" style="color:#1455a4;font-weight:600;text-decoration:none">
+                                        @f.Enlazado.Codigo
+                                    </a>
+                                    <span> &mdash; @f.Enlazado.Nombre</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#b91c1c">Ficha SIGER eliminada</span>
+                                }
+                            </td>
+                            <td style="text-align:center">
+                                @if (f.NombreCoincide)
+                                {
+                                    <span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#dcfce7;color:#15803d">Coincide</span>
+                                }
+                                else
+                                {
+                                    <span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:#fef3c7;color:#b45309"
+                                          title="El nombre del tramite ya no es igual al de la ficha SIGER. Puede ser un cambio legitimo o un enlace equivocado.">Revisar</span>
+                                }
+                            </td>
+                            <td style="text-align:right;white-space:nowrap">
+                                <form method="post" asp-page-handler="Desenlazar" asp-route-id="@f.Id" style="display:inline">
+                                    <input type="hidden" name="Tab" value="@Model.Tab" />
+                                    <input type="hidden" name="Buscar" value="@Model.Buscar" />
+                                    <input type="hidden" name="Sigla" value="@Model.Sigla" />
+                                    <button class="btns" style="font-size:12px;padding:4px 10px" type="submit">Desenlazar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else if (Model.Tab == ConciliacionModel.TabDescartados)
+    {
+        @* ══ Descartados: reabrir ══ *@
+        <div style="overflow-x:auto">
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Expediente</th>
+                        <th>Institucion</th>
+                        <th>Tramite del expediente</th>
+                        <th>Descartado por</th>
+                        <th>Fecha</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        <tr>
+                            <td style="white-space:nowrap;font-weight:600">@f.ExpedienteCodigo</td>
+                            <td style="white-space:nowrap">@f.InstitucionId</td>
+                            <td>@f.Nombre</td>
+                            <td style="white-space:nowrap">@(f.DecididoPor ?? "—")</td>
+                            <td style="white-space:nowrap">@(f.DecididoEl?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                            <td style="text-align:right;white-space:nowrap">
+                                <form method="post" asp-page-handler="Reabrir" asp-route-id="@f.Id" style="display:inline">
+                                    <input type="hidden" name="Tab" value="@Model.Tab" />
+                                    <input type="hidden" name="Buscar" value="@Model.Buscar" />
+                                    <input type="hidden" name="Sigla" value="@Model.Sigla" />
+                                    <button class="btns" style="font-size:12px;padding:4px 10px" type="submit">Reabrir</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        @* ══ Propuestas y Sin equivalente: seleccion masiva ══ *@
+        var esSinCandidato = Model.Tab == ConciliacionModel.TabSinCandidato;
+
+        <form method="post">
+            <input type="hidden" name="Tab" value="@Model.Tab" />
+            <input type="hidden" name="Buscar" value="@Model.Buscar" />
+            <input type="hidden" name="Sigla" value="@Model.Sigla" />
+
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+                <button class="btns" type="button" style="font-size:12px;padding:5px 12px" onclick="marcarTodos(true)">Marcar todos</button>
+                <button class="btns" type="button" style="font-size:12px;padding:5px 12px" onclick="marcarTodos(false)">Desmarcar todos</button>
+                @if (!esSinCandidato)
+                {
+                    <span style="font-size:12px;color:#64748b">Los de <b>alta confianza</b> vienen premarcados con su ficha sugerida.</span>
+                }
+            </div>
+
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:34px"></th>
+                            <th>Expediente</th>
+                            <th>Inst.</th>
+                            <th>Tramite del expediente</th>
+                            <th style="text-align:center">Cruce</th>
+                            <th style="min-width:420px">Ficha SIGER a enlazar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in Model.Filas)
+                        {
+                            var i = idx++;
+                            <tr>
+                                <td style="text-align:center">
+                                    <input type="checkbox" class="chk-fila" id="chk-@i" name="Seleccion[@i].Marcada" value="true"
+                                           checked="@f.Preseleccionado" />
+                                    <input type="hidden" name="Seleccion[@i].Marcada" value="false" />
+                                    <input type="hidden" name="Seleccion[@i].ExpedienteTramiteId" value="@f.Id" />
+                                </td>
+                                <td style="white-space:nowrap;font-weight:600">@f.ExpedienteCodigo</td>
+                                <td style="white-space:nowrap">@f.InstitucionId</td>
+                                <td>@f.Nombre</td>
+                                <td style="text-align:center">
+                                    <span style="padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap;@ClaseCubeta(f.Cubeta)">
+                                        @f.Cubeta.Etiqueta()
+                                    </span>
+                                </td>
+                                <td>
+                                    <select name="Seleccion[@i].TramiteSigerId" id="sel-@i" style="width:100%;max-width:520px"
+                                            onchange="document.getElementById('chk-@i').checked = this.value !== '';">
+                                        <option value="">&mdash; sin enlazar &mdash;</option>
+                                        @foreach (var c in f.Candidatos)
+                                        {
+                                            <option value="@c.Id" selected="@(f.SugeridoId == c.Id)">@c.Texto</option>
+                                        }
+                                    </select>
+                                    <div style="display:flex;gap:6px;margin-top:5px">
+                                        <input type="text" id="q-@i" placeholder="Buscar otra ficha en SIGER..."
+                                               style="flex:1;max-width:340px;font-size:12px;padding:4px 8px"
+                                               onkeydown="if(event.key==='Enter'){event.preventDefault();buscarSiger(@i);}" />
+                                        <button type="button" class="btns" style="font-size:12px;padding:4px 10px"
+                                                onclick="buscarSiger(@i)">Buscar</button>
+                                    </div>
+                                    <div id="msg-@i" style="font-size:11px;color:#64748b;margin-top:3px"></div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+                <button class="btnp" type="submit" asp-page-handler="Enlazar">Enlazar seleccionados</button>
+                @if (esSinCandidato)
+                {
+                    <button class="btns" type="submit" asp-page-handler="Proponer">Marcar para alta en SIGER</button>
+                }
+                <button class="btns" type="submit" asp-page-handler="Descartar">Descartar seleccionados</button>
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        const urlBuscarSiger = '@Html.Raw(buscarUrl)';
+
+        function marcarTodos(valor) {
+            document.querySelectorAll('.chk-fila').forEach(c => c.checked = valor);
+        }
+
+        async function buscarSiger(i) {
+            const termino = document.getElementById('q-' + i).value.trim();
+            const msg = document.getElementById('msg-' + i);
+            if (termino.length < 2) { msg.textContent = 'Escriba al menos 2 caracteres.'; return; }
+
+            msg.textContent = 'Buscando...';
+            try {
+                const resp = await fetch(urlBuscarSiger + '&q=' + encodeURIComponent(termino));
+                if (!resp.ok) { msg.textContent = 'No se pudo buscar (error ' + resp.status + ').'; return; }
+                const datos = await resp.json();
+                if (!datos.length) { msg.textContent = 'Sin resultados en SIGER.'; return; }
+
+                // Se agregan como opciones nuevas para no perder las que propuso el cruce.
+                const sel = document.getElementById('sel-' + i);
+                datos.forEach(d => {
+                    if (sel.querySelector('option[value="' + d.id + '"]')) return;
+                    const op = document.createElement('option');
+                    op.value = d.id;
+                    op.textContent = d.codigo + ' — ' + d.nombre + (d.sigla ? ' (' + d.sigla + ')' : '');
+                    sel.appendChild(op);
+                });
+                sel.value = datos[0].id;
+                document.getElementById('chk-' + i).checked = true;
+                msg.textContent = datos.length + ' resultado(s) agregado(s). Revise la seleccion.';
+            } catch {
+                msg.textContent = 'No se pudo contactar al servidor.';
+            }
+        }
+    </script>
+}
