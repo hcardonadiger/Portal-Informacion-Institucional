@@ -195,3 +195,12 @@ public enum EstadoCompromiso
     Cancelado    = 5,
     EnRevision   = 6
 }
+
+// ── Decisión tomada en la bandeja de conciliación Expedientes ↔ SIGER ──────
+// Se guarda para que lo ya revisado no vuelva a proponerse en cada pasada.
+public enum DecisionConciliacion
+{
+    Enlazado           = 1, // el trámite quedó vinculado a una ficha SIGER
+    Descartado         = 2, // se revisó y no corresponde enlazarlo
+    ProponerFichaNueva = 3  // no existe en SIGER; queda en cola para darlo de alta
+}

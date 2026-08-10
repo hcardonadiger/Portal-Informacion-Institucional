@@ -81,6 +81,7 @@ global using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarioById;
 global using Diger.TramitesEstado.Application.AI;
 global using Diger.TramitesEstado.Application.Chat;
 global using Diger.TramitesEstado.Application.Notificaciones;
+global using Diger.TramitesEstado.Application.Siger;
 global using MediatR;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Mvc;
