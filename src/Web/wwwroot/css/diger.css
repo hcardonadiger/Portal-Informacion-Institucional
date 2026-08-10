@@ -39,7 +39,9 @@ body {
 }
 
 /* ── ENCABEZADO DE PÁGINA (Manual de Marca: navy + subrayado dorado) ── */
-.page-title {
+/* .pg-title es el mismo título; lo usan Chat y Notificaciones. */
+.page-title,
+.pg-title {
     color: var(--diger-blue-strong);
     font-weight: 700;
     font-size: 1.6rem;
@@ -4923,12 +4925,23 @@ a.kpi-cell:hover .kpi-cell-arw {
    ══════════════════════════════════════════════════════════════ */
 
 /* ── Encabezado de página ────────────────────────────────────── */
-.page-header {
+/* .pg-hdr es el mismo encabezado; lo usan Chat y Notificaciones. */
+.page-header,
+.pg-hdr {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 1.4rem;
+    flex-wrap: wrap;
+}
+
+/* Agrupa el título con su contador. Alineado por línea base para que el
+   contador se apoye en la del título y no en el borde dorado. */
+.pg-hdr-left {
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
     flex-wrap: wrap;
 }
 
