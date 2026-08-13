@@ -38,6 +38,7 @@ Todas las variables usan el prefijo `--diger-` para no colisionar con las de
 | `--diger-danger-text` | `#b91c1c` | Texto sobre `--diger-danger-bg` (más oscuro que `--diger-danger`) |
 | `--diger-danger-strong` | `#a32d2d` | Rojo alterno (agregado 2026-08-07) — NO es alias de `--diger-danger-text`, hex distinto a propósito, ver "Deuda conocida" |
 | `--diger-warning-strong` | `#854f0b` | Ámbar alterno (agregado 2026-08-07), mismo criterio que arriba |
+| `--diger-success-strong` | `#15803d` | Verde alterno. **Faltaba en `:root`** hasta 2026-08-13: solo estaba en `@media dark`, `[data-theme=dark]` y `[data-theme=light]`, así que con la preferencia del sistema en claro y sin elección explícita quedaba sin valor — el patrón que advierte la regla de abajo |
 | `--diger-blue-title` | `#0a2d6e` | Azul de títulos/encabezados (agregado 2026-08-07) — distinto de `--diger-blue`/`--diger-blue-dark` |
 | `--diger-blue-strong` | `#0c447c` | Azul alterno (agregado 2026-08-07) |
 | `--diger-text-strong` | `#2d3748` | Texto oscuro alterno, más suave que `--diger-text` (agregado 2026-08-07) |
@@ -80,6 +81,7 @@ de usarlo suelto en `diger.css`.
 | `.dash-card`, `.kpi-card` | Variantes de `.card` para tableros | Radio 14px (no 16px — ver deuda) |
 | `.hist-header` / `.hist-item` / `.hist-empty` | Encabezado de listado + fila + estado vacío | Patrón estándar para listas (Contactos, Reuniones, Tickets, Instituciones) |
 | `.seg-table` | Tabla con header gris claro y hover de fila | Tabla estándar del portal |
+| `.edit-grid` | Modificador de `.seg-table` para tablas **con controles en las celdas** | Estila `input` y `select` (que si no quedan con la apariencia por defecto del navegador, incluido fondo blanco en modo oscuro) y aplica `table-layout: fixed`. **Con layout fijo hay que dar anchos en píxeles**: `width:1%` deja de significar «tan angosta como el contenido» y se toma literal, así que los botones desbordan |
 | `.wf-badge` + `.wf-registrada/.wf-asignada/.wf-enproceso/.wf-completada/.wf-cancelada` | Badge de estado de flujo (Expedientes) | |
 | `.status-badge` + `.abierto/.enproceso/.resuelto/.default/.vencido` | Badge de estado de ticket | Nuevo — antes eran estilos inline con una función C# `EstadoColor` duplicada en 3 archivos |
 | `.prio-badge` + `.critica/.alta/.media/.default` | Badge de prioridad de ticket | Nuevo, mismo motivo que arriba |
@@ -215,9 +217,16 @@ de usarlo suelto en `diger.css`.
 
 ## 5. Checklist — cómo agregar una página nueva
 
+0. **Declará su permiso.** Toda página lleva `[Permission(modulo, accion)]`,
+   `[AllowAnonymous]` o `[PermisoNoRequerido(razon)]`; si no, arranca con una
+   advertencia en el log. Y cada botón o enlace hacia otra pantalla se muestra
+   según la clave de **su destino** (`await Acceso.PuedeClaveAsync(...)`), no
+   según la de la página donde vive — si no, se ve y termina en «acceso
+   denegado». Ver la sección de autorización en `CLAUDE.md`.
 1. ¿Es un listado? Usá `.hist-header` + `.hist-item`/`.seg-table` +
    `.hist-empty` para el estado vacío, y `<partial name="_Paginacion"
-   model="..."/>` si pagina.
+   model="..."/>` si pagina. Si las celdas llevan `input`/`select`, agregá
+   `.edit-grid` **y anchos en píxeles** (ver sección 2).
 2. ¿Tiene filtros? 2+ campos → `.seg-filters` (sin envolver en `.card`).
    Un solo campo de búsqueda → `.lista-buscar`.
 3. ¿Redirige tras una acción con mensaje de éxito? Seteá

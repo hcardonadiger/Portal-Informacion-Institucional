@@ -72,11 +72,37 @@ Every request flows through `LoggingBehavior` → `ValidationBehavior` → handl
 
 ### Institutional scope (data isolation)
 
-`AppDbContext` applies global EF query filters on `Expediente`, `Contacto`, `Ticket`, and `Reunion` so non-admin users only see records belonging to their assigned institutions. Each filter is `!IsDeleted && (<institutional scope>)` — soft-delete (`ISoftDeletable`) is AND-ed into the same filter, so ordinary queries never see soft-deleted rows. Filters are built from `ICurrentUserService.EsGlobal` / `InstitucionesAsignadas` at DbContext creation time. Queries that need to bypass scope (e.g., unique-code generation, or importers checking existing `OrigenExternoId`s) call `.IgnoreQueryFilters()` explicitly.
+`AppDbContext` applies global EF query filters so users only see records within their scope. Each filter is `!IsDeleted && (<scope>)` — soft-delete (`ISoftDeletable`) is AND-ed into the same filter, so ordinary queries never see soft-deleted rows.
+
+The scope comes from **`NivelAlcance`**, a property of the user's role (`Global` / `Institucion` / `Area` / `Unidad`), not from the role's name. Every non-global branch is anchored on `InstitucionId == _activeInst`; without that anchor the area/unit branches leaked records across institutions. A role that can't be resolved falls back to `Unidad`, the most restrictive.
+
+Queries that need to bypass scope (unique-code generation, importers checking existing `OrigenExternoId`s) call `.IgnoreQueryFilters()` explicitly.
+
+`Usuario` and `AsignacionUsuario` are **not** filtered — user administration is global today.
 
 ### Authentication
 
-Cookie-based auth (`CookieAuthenticationDefaults`). Roles (`RolUsuario` enum): `Administrador`, `JefeInstitucion`, `JefeArea`, `JefeUnidad`, `Empleado`, `Consultor`. A user can hold multiple assignments (`AsignacionUsuario`); the login sets the first as the active context and stores the rest in the `AsignacionesJson` claim, letting the user switch context in the UI. Authorization policies (e.g., `PuedeGestionarExpedientes`, `PuedeAdministrarCatalogo`) are defined in `Web/Program.cs`. All Razor Pages require authentication; `/Cuenta/*` is the anonymous exception.
+Cookie-based auth (`CookieAuthenticationDefaults`). A user holds one or more assignments (`AsignacionUsuario` = institution + optional area/unit + role); the login makes the first one the active context and stores the rest in the `AsignacionesJson` claim so the user can switch context in the UI.
+
+**A user with no assignment has no role.** The login emits no role claim, which makes `CurrentUserService` fail closed (minimum scope, no capabilities) and denies every module; the user is redirected to their profile with a notice. Don't reintroduce a default role here — an earlier `?? "Empleado"` silently granted 32 permission keys to unconfigured accounts.
+
+All Razor Pages require authentication. `/Cuenta/*` is exempt by convention because login needs it, so pages in that folder that *do* require a session carry their own `[Authorize]`.
+
+### Authorization
+
+Roles are **rows in the `Roles` table**, administered at `/Accesos/Roles` — not an enum. The `RolUsuario` enum survives only as the documented source of the six seeded roles; it is not dead code. A role carries `NivelAlcance` plus four capabilities that replaced checks formerly hardcoded by role name: `EsAdministrador` (approves everything by code), `EsSoloLectura`, `EsSupervisor`, `EsTecnicoSoporte`.
+
+Permissions are `Modulo.Accion` keys with a fixed action vocabulary (`Ver`, `Crear`, `Editar`, `Eliminar`). When finer granularity is needed, use a more specific *module* (`Usuarios.Contrasenas`, `Contactos.Estado`) rather than inventing verbs, so the admin matrix stays readable as module × action.
+
+- Declare with `[Permission(modulo, accion)]` on a PageModel or on a single handler. `PermissionPageFilter` enforces it per handler — `[Authorize(Policy=...)]` can't, because it only applies at class/endpoint level.
+- `PermissionCatalogSyncService` discovers the keys by reflection at startup and syncs the `Permisos` table. **Any handler without `[Permission]`, `[AllowAnonymous]` or `[PermisoNoRequerido]` is logged as a warning** — the goal is to fail visibly.
+- `[PermisoNoRequerido(razon)]` is the third case: self-service pages (own profile, own password, own notifications). Gating those with a grantable key would let one unchecked box stop someone from changing their own password.
+- The grant cache is **per role and is not baked into the cookie**, so revoking applies to live sessions instead of waiting for them to expire.
+- In views, ask `AccesoModulosService.PuedeClaveAsync` before rendering an action. Gate each link with the key of its *destination*, not the key of the page it lives on.
+
+Two invariants protect against locking everyone out: `RolesModule` keeps at least one active role with `EsAdministrador`, and `AdministradoresInvariante` keeps at least one active user assigned to such a role.
+
+`/Accesos/Permisos` administers the matrix, `/Accesos/Auditoria` reads the append-only change log, and `/Accesos/Diagnostico` answers "why can't this user do X".
 
 ### Data import (from the legacy demo portal on Supabase)
 
