@@ -47,6 +47,10 @@
        (sistema de semáforo aparte, con su propio --sem-fondo/--sem-solido). */
     --diger-danger-strong: #a32d2d;
     --diger-warning-strong: #854f0b;
+    /* Faltaba en :root: solo estaba definido en los bloques de tema (media dark,
+       [data-theme=dark] y [data-theme=light]), así que con la preferencia del sistema en
+       claro y sin elección explícita el token quedaba sin valor. Corregido 2026-08-13. */
+    --diger-success-strong: #15803d;
     --diger-blue-title: #0a2d6e;
     --diger-blue-strong: #0c447c;
     --diger-text-strong: #2d3748;

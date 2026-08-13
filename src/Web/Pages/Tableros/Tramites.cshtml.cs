@@ -7,6 +7,7 @@ using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
+[Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
 public sealed class TramitesModel(ISender sender, IInstitucionRepository institucionRepo) : PageModel
 {
     public TramitesSeguimientoDto Data { get; private set; } = default!;
@@ -71,6 +72,9 @@ public sealed class TramitesModel(ISender sender, IInstitucionRepository institu
         _ => t.ToString(),
     };
 
+    // Escribe una nota de seguimiento sobre el expediente: es una mutación del expediente,
+    // no del tablero, así que pide el permiso del módulo dueño del dato.
+    [Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
     public async Task<IActionResult> OnPostNotaAsync(int expedienteId, string? texto, CancellationToken ct)
     {
         try

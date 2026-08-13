@@ -1,6 +1,9 @@
 namespace Diger.TramitesEstado.Domain.Enums;
 
 // ── Rol del usuario interno DIGER ─────────────────────────────────────────
+// Los roles ya NO son este enum: viven en la tabla Roles y se administran desde
+// /Accesos/Roles. Este enum se conserva como fuente del seed de los 6 roles base
+// (DbSeeder / migración) y de los nameof(...) en los chequeos de Administrador.
 public enum RolUsuario
 {
     Administrador   = 1, // Gestiona usuarios y todo el portal
@@ -9,6 +12,25 @@ public enum RolUsuario
     JefeUnidad      = 4, // Gestiona toda su unidad
     Empleado        = 5, // Gestiona sus propios datos en su unidad
     Consultor       = 6  // Solo lectura
+}
+
+// ── Alcance de datos que otorga un rol (reemplaza las ramas por nombre de rol
+// que tenían los filtros RLS de AppDbContext) ─────────────────────────────────
+public enum NivelAlcance
+{
+    Global      = 1, // Ve todo el portal, sin filtro institucional
+    Institucion = 2, // Ve todo lo de su institución
+    Area        = 3, // Ve lo de su área
+    Unidad      = 4  // Ve lo de su unidad
+}
+
+// ── Acción sobre un módulo (vocabulario fijo de la matriz de permisos) ────────
+public enum AccionModulo
+{
+    Ver      = 1,
+    Crear    = 2,
+    Editar   = 3,
+    Eliminar = 4
 }
 
 // ── Tipo de documento (documentación solicitada) ──────────────────────────

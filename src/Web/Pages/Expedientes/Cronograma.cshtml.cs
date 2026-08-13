@@ -4,10 +4,11 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
 [Authorize]
+[Permission("Expedientes", AccionModulo.Ver, "Ver expedientes")]
 public sealed class CronogramaModel(ISender sender) : PageModel
 {
     public CronogramaExpedienteDto Data { get; private set; } = default!;
-    public bool PuedeGestionar => User.CanMutate();
+    public bool PuedeGestionar => HttpContext.CanMutate();
 
     public async Task<IActionResult> OnGetAsync(int id, int? t, CancellationToken ct)
     {
@@ -23,6 +24,7 @@ public sealed class CronogramaModel(ISender sender) : PageModel
         string?   Responsable,
         string?   Observacion);
 
+    [Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
     public async Task<IActionResult> OnPostGuardarAsync(int id, int tramite, [FromBody] GuardarRequest req, CancellationToken ct)
     {
         if (!PuedeGestionar) return Forbid();
@@ -44,6 +46,7 @@ public sealed class CronogramaModel(ISender sender) : PageModel
     }
 
     /// <summary>Guardado centralizado: aplica la etapa a todos los trámites del expediente.</summary>
+    [Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
     public async Task<IActionResult> OnPostGuardarTodosAsync(int id, [FromBody] GuardarRequest req, CancellationToken ct)
     {
         if (!PuedeGestionar) return Forbid();

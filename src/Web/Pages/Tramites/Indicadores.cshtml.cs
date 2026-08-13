@@ -8,6 +8,8 @@ namespace Diger.TramitesEstado.Web.Pages.Tramites;
 // queda sin acceso (404) y sin enlace en el menú. Para reactivarla: quitar el atributo y
 // restaurar el enlace en Pages/Shared/_Layout.cshtml.
 [SeccionDeshabilitada]
+[Authorize]
+[Permission("Tramites", AccionModulo.Ver, "Ver indicadores de trámites")]
 public sealed class IndicadoresModel(IWebHostEnvironment environment) : PageModel
 {
     public void OnGet() { }

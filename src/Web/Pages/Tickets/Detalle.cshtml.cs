@@ -4,12 +4,17 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
 [Authorize]
-public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
+// Ver el detalle basta con Tickets.Ver; tomar, liberar, comentar o cambiar el estado son
+// mutaciones y piden Tickets.Editar (ver los overrides por handler más abajo).
+[Permission("Tickets", AccionModulo.Ver, "Ver tickets")]
+public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser, IWebHostEnvironment env, AccesoModulosService acceso) : PageModel
 {
     public TicketDetailDto Ticket { get; private set; } = default!;
     public string? Error { get; set; }
 
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    /// <summary>Antes era "el rol se llama Administrador"; ahora es la clave concreta que el
+    /// servidor va a exigir en los handlers de mutación, así el botón y el gateo coinciden.</summary>
+    public bool EsAdmin { get; private set; }
 
     public bool PuedeGestionar => EsAdmin;
     public bool EsAsignado => Ticket.AsignadoAId is Guid a && a == currentUser.UserId;
@@ -23,12 +28,14 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
     {
         try { Ticket = await sender.Send(new GetTicketByIdQuery(id), ct); }
         catch (NotFoundException) { return false; }
+        EsAdmin = await acceso.PuedeEditarAsync("Tickets", ct);
         return true;
     }
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
         => await CargarAsync(id, ct) ? Page() : NotFound();
 
+    [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
     public async Task<IActionResult> OnPostCambiarEstadoAsync(int id, EstadoTicket estado, string? nota, CancellationToken ct)
     {
         if (!await CargarAsync(id, ct)) return NotFound();
@@ -42,6 +49,7 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         catch (DomainException ex) { Error = ex.Message; return Page(); }
     }
 
+    [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
     public async Task<IActionResult> OnPostTomarAsync(int id, CancellationToken ct)
     {
         if (!await CargarAsync(id, ct)) return NotFound();
@@ -56,6 +64,7 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         return RedirectToPage(new { id });
     }
 
+    [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
     public async Task<IActionResult> OnPostLiberarAsync(int id, CancellationToken ct)
     {
         if (!await CargarAsync(id, ct)) return NotFound();
@@ -65,10 +74,11 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         return RedirectToPage(new { id });
     }
 
+    [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
     public async Task<IActionResult> OnPostComentarAsync(int id, string texto, List<IFormFile>? archivos, CancellationToken ct)
     {
         if (!await CargarAsync(id, ct)) return NotFound();
-        if (!User.CanMutate()) return Forbid();
+        if (!HttpContext.CanMutate()) return Forbid();
         if (string.IsNullOrWhiteSpace(texto))
         {
             Error = "El comentario no puede estar vacío.";
@@ -84,6 +94,7 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         catch (DomainException ex) { Error = ex.Message; return Page(); }
     }
 
+    [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
     public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
     {
         if (!await CargarAsync(id, ct)) return NotFound();

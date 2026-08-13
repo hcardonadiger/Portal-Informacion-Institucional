@@ -10,10 +10,13 @@ using Microsoft.EntityFrameworkCore;
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
 [Authorize]
+// Toda la página es de edición (incluidos los OnGet* que alimentan sus buscadores por AJAX):
+// para consultar un expediente sin modificarlo está Resumen.cshtml, que pide Expedientes.Ver.
+[Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
 public sealed class EditorModel(
     ISender sender, IInstitucionRepository institucionRepo,
     ICurrentUserService currentUser, IWebHostEnvironment env,
-    IApplicationDbContext db) : PageModel
+    IApplicationDbContext db, AccesoModulosService acceso) : PageModel
 {
     public int?    ExpId   { get; private set; }
     public string  Codigo  { get; private set; } = "";
@@ -27,10 +30,14 @@ public sealed class EditorModel(
 
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    /// <summary>Distingue al equipo DIGER de la contraparte institucional: enciende el modo
+    /// edición completo y habilita crear un expediente desde cero. Antes era el nombre del rol;
+    /// ahora es la clave que el servidor exige en esta misma página.</summary>
+    public bool EsAdmin { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        EsAdmin    = await acceso.PuedeEditarAsync("Expedientes", ct);
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
         Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         if (id is null && !EsAdmin)

@@ -2,7 +2,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Diger.TramitesEstado.Web.Pages.Siger;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+// Antes era [Authorize(Roles = nameof(RolUsuario.Administrador))], que comparaba contra el
+// código literal del rol: un rol personalizado con capacidad de administrador quedaba fuera.
+[Authorize]
+[Permission("Siger", AccionModulo.Editar, "Crear y editar fichas SIGER")]
 public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
 {
     [BindProperty] public TramiteSigerForm Form { get; set; } = new();

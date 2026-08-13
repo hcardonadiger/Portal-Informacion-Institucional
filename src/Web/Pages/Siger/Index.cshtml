@@ -1,8 +1,9 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Siger.IndexModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Inventario de Tramites SIGER";
-    var esAdmin = User.IsInRole(nameof(RolUsuario.Administrador));
+    var esAdmin = await Acceso.PuedeEditarAsync("Siger");
 }
 
 <div class="container" style="max-width:1200px">

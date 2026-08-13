@@ -17,15 +17,18 @@ public sealed class CambiarEstadoCompromisoCommandHandler(
         if (acuerdo is null)
             throw new NotFoundException(nameof(AcuerdoReunion), request.CompromisoId);
 
-        var esAdmin = currentUser.Rol == nameof(RolUsuario.Administrador);
+        // Lo decide la capacidad EsAdministrador del rol (tabla Roles), no que el rol se
+        // llame "Administrador": un rol personalizado con esa capacidad tiene que poder
+        // destrabar un compromiso igual que el rol base.
+        var esAdmin = currentUser.EsGlobal;
 
-        // Regla: Si está Cumplido/Aceptado, nadie salvo Admin puede destrabar/cambiar el estado.
+        // Regla: Si está Cumplido/Aceptado, nadie salvo un administrador puede destrabarlo.
         if (acuerdo.Estado == EstadoCompromiso.Cumplido && !esAdmin)
-            throw new DomainException("El compromiso está Aceptado / Cumplido. Solo un Administrador puede cambiar su estado.");
+            throw new DomainException("El compromiso está Aceptado / Cumplido. Solo un rol con capacidad de administrador puede cambiar su estado.");
 
-        // Regla: Los no-admins no pueden auto-aprobar a Cumplido.
+        // Regla: quien no es administrador no puede auto-aprobar a Cumplido.
         if (request.NuevoEstado == EstadoCompromiso.Cumplido && !esAdmin)
-            throw new DomainException("Solo los Administradores pueden marcar un compromiso como Aceptado / Cumplido.");
+            throw new DomainException("Solo un rol con capacidad de administrador puede marcar un compromiso como Aceptado / Cumplido.");
 
         var actor = !string.IsNullOrWhiteSpace(currentUser.Nombre)
             ? $"{currentUser.Nombre} ({currentUser.Rol})"

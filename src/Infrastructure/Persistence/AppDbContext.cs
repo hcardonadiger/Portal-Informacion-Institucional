@@ -44,6 +44,10 @@ public sealed class AppDbContext(
     public DbSet<TemaTicket>               TemasTicket        { get; init; } = default!;
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
+    public DbSet<Rol>                      Roles                { get; init; } = default!;
+    public DbSet<Permiso>                  Permisos             { get; init; } = default!;
+    public DbSet<RolPermiso>               RolPermisos          { get; init; } = default!;
+    public DbSet<PermisoAuditoria>         PermisosAuditoria    { get; init; } = default!;
     public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
     public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
     public DbSet<ChatSesion>                ChatSesiones          { get; init; } = default!;
@@ -70,18 +74,23 @@ public sealed class AppDbContext(
     private readonly string? _activeInst    = currentUser.ActiveInstitucionId;
     private readonly string? _activeArea    = currentUser.ActiveAreaId;
     private readonly string? _activeUnidad  = currentUser.ActiveUnidadId;
-    private readonly string? _activeRol     = currentUser.Rol;
     private readonly Guid?   _usuarioId     = currentUser.UserId;
+    // Alcance y solo-lectura vienen de la tabla Roles (vía IRolCatalogo), no del nombre
+    // del rol: así un rol creado desde /Accesos/Roles funciona en RLS sin tocar código.
+    private readonly NivelAlcance _nivel    = currentUser.NivelAlcance;
+    private readonly bool    _esSoloLectura = currentUser.EsSoloLectura;
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
         mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
         // ── Filtros Globales RLS (Row-Level Security) ───────────────────────
-        // JefeInstitucion: ve todo de su institución.
-        // JefeArea: ve todo lo asignado a su área.
-        // JefeUnidad / Empleado: ven lo asignado a su unidad.
-        // Administrador (_alcanceGlobal = true): ve todo.
+        // El alcance lo determina NivelAlcance del rol (tabla Roles), no su nombre:
+        //   Institucion: ve todo de su institución.
+        //   Area:        ve todo lo asignado a su área.
+        //   Unidad:      ve lo asignado a su unidad.
+        //   Global (_alcanceGlobal = true): ve todo, sin filtro.
+        // Un rol sin resolver cae en Unidad (lo más restrictivo) — ver CurrentUserService.
 
         // ── Filtros RLS + Soft-Delete (fusionados) ─────────────────────────
         // Soft-Delete (!IsDeleted) se AND-ea con el filtro RLS existente.
@@ -94,36 +103,36 @@ public sealed class AppDbContext(
         mb.Entity<Expediente>().HasQueryFilter(e => !e.IsDeleted && (
             _alcanceGlobal ||
             (e.InstitucionId == _activeInst && (
-                (_activeRol == "JefeInstitucion" &&
+                (_nivel == NivelAlcance.Institucion &&
                     (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea || e.AreaId == null) &&
                     (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
-                (_activeRol == "JefeArea"        && (e.AreaId == _activeArea || e.AreaId == null) &&
+                (_nivel == NivelAlcance.Area      && (e.AreaId == _activeArea || e.AreaId == null) &&
                     (string.IsNullOrEmpty(_activeUnidad) || e.UnidadId == _activeUnidad || e.UnidadId == null)) ||
-                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (e.UnidadId == _activeUnidad || e.UnidadId == null))
+                (_nivel == NivelAlcance.Unidad    && (e.UnidadId == _activeUnidad || e.UnidadId == null))
             ))
         ));
 
         mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
             _alcanceGlobal ||
             (c.InstitucionId == _activeInst && (
-                (_activeRol == "JefeInstitucion" &&
+                (_nivel == NivelAlcance.Institucion &&
                     (string.IsNullOrEmpty(_activeArea) || c.AreaId == _activeArea || c.AreaId == null) &&
                     (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
-                (_activeRol == "JefeArea"        && (c.AreaId == _activeArea || c.AreaId == null) &&
+                (_nivel == NivelAlcance.Area      && (c.AreaId == _activeArea || c.AreaId == null) &&
                     (string.IsNullOrEmpty(_activeUnidad) || c.UnidadId == _activeUnidad || c.UnidadId == null)) ||
-                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (c.UnidadId == _activeUnidad || c.UnidadId == null))
+                (_nivel == NivelAlcance.Unidad    && (c.UnidadId == _activeUnidad || c.UnidadId == null))
             ))
         ));
 
         mb.Entity<Ticket>().HasQueryFilter(t => !t.IsDeleted && (
             _alcanceGlobal ||
             (t.InstitucionId == _activeInst && (
-                (_activeRol == "JefeInstitucion" &&
+                (_nivel == NivelAlcance.Institucion &&
                     (string.IsNullOrEmpty(_activeArea) || t.AreaId == _activeArea) &&
                     (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
-                (_activeRol == "JefeArea"        && t.AreaId == _activeArea &&
+                (_nivel == NivelAlcance.Area      && t.AreaId == _activeArea &&
                     (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
-                ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && t.UnidadId == _activeUnidad)
+                (_nivel == NivelAlcance.Unidad    && t.UnidadId == _activeUnidad)
             ))
         ));
 
@@ -133,12 +142,12 @@ public sealed class AppDbContext(
             (r.Visibilidad != VisibilidadReunion.Privada && (
                 _alcanceGlobal ||
                 (r.InstitucionId == _activeInst && (
-                    (_activeRol == "JefeInstitucion" &&
+                    (_nivel == NivelAlcance.Institucion &&
                         (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea || r.AreaId == null) &&
                         (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
-                    (_activeRol == "JefeArea"        && (r.AreaId == _activeArea || r.AreaId == null) &&
+                    (_nivel == NivelAlcance.Area      && (r.AreaId == _activeArea || r.AreaId == null) &&
                         (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
-                    ((_activeRol == "JefeUnidad" || _activeRol == "Empleado" || _activeRol == "Consultor") && (r.UnidadId == _activeUnidad || r.UnidadId == null))
+                    (_nivel == NivelAlcance.Unidad    && (r.UnidadId == _activeUnidad || r.UnidadId == null))
                 ))
             )) ||
             (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
@@ -170,13 +179,13 @@ public sealed class AppDbContext(
 
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        // ── Bloqueo de seguridad duro para rol Consultor (Solo lectura) ────────
-        var hasMutations = ChangeTracker.Entries().Any(e => 
+        // ── Bloqueo de seguridad duro para roles de solo lectura ───────────────
+        var hasMutations = ChangeTracker.Entries().Any(e =>
             e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted);
-            
-        if (hasMutations && _activeRol == "Consultor")
+
+        if (hasMutations && _esSoloLectura)
         {
-            throw new UnauthorizedAccessException("El rol Consultor es de solo lectura y no puede mutar datos.");
+            throw new UnauthorizedAccessException("El rol activo es de solo lectura y no puede mutar datos.");
         }
 
         // ── Validación de seguridad dura para mutaciones de Áreas y Unidades por Institución ──
@@ -1008,6 +1017,23 @@ public sealed class TemaTicketConfiguration : IEntityTypeConfiguration<TemaTicke
     }
 }
 
+public sealed class RolConfiguration : IEntityTypeConfiguration<Rol>
+{
+    public void Configure(EntityTypeBuilder<Rol> b)
+    {
+        b.ToTable("Roles");
+        b.HasKey(x => x.Id);
+        // El Id es el código del rol asignado por el usuario/seed (no autogenerado),
+        // mismo ancho que AsignacionesUsuario.Rol para que cualquier rol creado sea asignable.
+        b.Property(x => x.Id).HasMaxLength(60).ValueGeneratedNever();
+        b.Property(x => x.Nombre).HasMaxLength(100).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(300);
+        b.Property(x => x.Color).HasMaxLength(20);
+        b.Property(x => x.NivelAlcance).HasConversion<string>().HasMaxLength(20);
+        b.HasIndex(x => x.Activo);
+    }
+}
+
 public sealed class RolModuloAccesoConfiguration : IEntityTypeConfiguration<RolModuloAcceso>
 {
     public void Configure(EntityTypeBuilder<RolModuloAcceso> b)
@@ -1015,9 +1041,55 @@ public sealed class RolModuloAccesoConfiguration : IEntityTypeConfiguration<RolM
         b.ToTable("RolModuloAccesos");
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedOnAdd();
-        b.Property(x => x.Rol).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.RolId).HasMaxLength(60).IsRequired();
         b.Property(x => x.Modulo).HasMaxLength(40).IsRequired();
-        b.HasIndex(x => new { x.Rol, x.Modulo }).IsUnique();
+        b.HasIndex(x => new { x.RolId, x.Modulo }).IsUnique();
+        b.HasOne<Rol>().WithMany().HasForeignKey(x => x.RolId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PermisoConfiguration : IEntityTypeConfiguration<Permiso>
+{
+    public void Configure(EntityTypeBuilder<Permiso> b)
+    {
+        b.ToTable("Permisos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasMaxLength(80).ValueGeneratedNever();
+        b.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Modulo).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Accion).HasConversion<string>().HasMaxLength(20);
+        b.HasIndex(x => new { x.Modulo, x.Accion });
+    }
+}
+
+public sealed class RolPermisoConfiguration : IEntityTypeConfiguration<RolPermiso>
+{
+    public void Configure(EntityTypeBuilder<RolPermiso> b)
+    {
+        b.ToTable("RolPermisos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.RolId).HasMaxLength(60).IsRequired();
+        b.Property(x => x.PermisoClave).HasMaxLength(80).IsRequired();
+        b.HasIndex(x => new { x.RolId, x.PermisoClave }).IsUnique();
+        b.HasOne<Rol>().WithMany().HasForeignKey(x => x.RolId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PermisoAuditoriaConfiguration : IEntityTypeConfiguration<PermisoAuditoria>
+{
+    public void Configure(EntityTypeBuilder<PermisoAuditoria> b)
+    {
+        b.ToTable("PermisosAuditoria");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        // Sin FK a Roles: la bitácora debe sobrevivir a la eliminación del rol auditado.
+        b.Property(x => x.RolId).HasMaxLength(60).IsRequired();
+        b.Property(x => x.PermisoClave).HasMaxLength(80).IsRequired();
+        b.Property(x => x.PermisoNombre).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Accion).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.Actor).HasMaxLength(150).IsRequired();
+        b.HasIndex(x => new { x.PermisoClave, x.Fecha });
     }
 }
 
