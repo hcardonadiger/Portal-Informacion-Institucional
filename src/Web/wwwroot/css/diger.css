@@ -2318,7 +2318,11 @@ tr.contacto-inactivo td {
     text-align: center;
 }
 
-.edit-grid input {
+/* Los select van con los input: una tabla editable que mezcla ambos se veía partida,
+   porque el select se quedaba con la apariencia por defecto del navegador. Las casillas
+   quedan fuera a propósito: width:100% estira un checkbox a lo ancho de la celda. */
+.edit-grid input:not([type="checkbox"]):not([type="radio"]),
+.edit-grid select {
     width: 100%;
     box-sizing: border-box;
     padding: 8px 10px;
@@ -2331,7 +2335,8 @@ tr.contacto-inactivo td {
     transition: border .2s, box-shadow .2s, background .2s;
 }
 
-.edit-grid input:focus {
+.edit-grid input:not([type="checkbox"]):not([type="radio"]):focus,
+.edit-grid select:focus {
     outline: none;
     border-color: var(--diger-blue-strong);
     background: var(--diger-surface);
