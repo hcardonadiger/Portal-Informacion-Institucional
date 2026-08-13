@@ -4,16 +4,19 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Diger.TramitesEstado.Infrastructure.Migrations
+namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812174438_AddPermisosModule")]
+    partial class AddPermisosModule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2038,11 +2041,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
 
-                    b.Property<string>("Accion")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
@@ -2070,7 +2068,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Modulo", "Accion");
+                    b.HasIndex("Modulo");
 
                     b.ToTable("Permisos", (string)null);
                 });
@@ -2106,10 +2104,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<string>("RolId")
+                    b.Property<string>("Rol")
                         .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
@@ -2638,67 +2636,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("ReunionInstituciones", (string)null);
                 });
 
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Rol", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Color")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Descripcion")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<bool>("EsAdministrador")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EsSistema")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EsSoloLectura")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EsSupervisor")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("EsTecnicoSoporte")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("NivelAlcance")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Activo");
-
-                    b.ToTable("Roles", (string)null);
-                });
-
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolModuloAcceso", b =>
                 {
                     b.Property<int>("Id")
@@ -2712,14 +2649,14 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
-                    b.Property<string>("RolId")
+                    b.Property<string>("Rol")
                         .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RolId", "Modulo")
+                    b.HasIndex("Rol", "Modulo")
                         .IsUnique();
 
                     b.ToTable("RolModuloAccesos", (string)null);
@@ -2738,14 +2675,14 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
 
-                    b.Property<string>("RolId")
+                    b.Property<string>("Rol")
                         .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RolId", "PermisoClave")
+                    b.HasIndex("Rol", "PermisoClave")
                         .IsUnique();
 
                     b.ToTable("RolPermisos", (string)null);
@@ -3800,24 +3737,6 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Reunion", null)
                         .WithMany("InstitucionesParticipantes")
                         .HasForeignKey("ReunionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolModuloAcceso", b =>
-                {
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Rol", null)
-                        .WithMany()
-                        .HasForeignKey("RolId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolPermiso", b =>
-                {
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Rol", null)
-                        .WithMany()
-                        .HasForeignKey("RolId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
