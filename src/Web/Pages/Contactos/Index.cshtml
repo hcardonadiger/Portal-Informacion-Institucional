@@ -1,9 +1,10 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Contactos.IndexModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Directorio de Contactos";
-    var puedeGestionar = User.CanMutate();
-    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
+    var puedeGestionar = await Acceso.PuedeEditarAsync("Contactos");
+    var puedeEliminar  = await Acceso.PuedeEliminarAsync("Contactos");
 }
 
 <div class="container" style="max-width:1040px">

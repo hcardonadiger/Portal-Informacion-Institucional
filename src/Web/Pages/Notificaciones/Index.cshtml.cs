@@ -5,6 +5,7 @@ using System.Security.Claims;
 namespace Diger.TramitesEstado.Web.Pages.Notificaciones;
 
 [Authorize]
+[PermisoNoRequerido("Autoservicio: cada usuario ve y marca sus propias notificaciones.")]
 public sealed class IndexModel(INotificacionService notifSvc) : PageModel
 {
     public IReadOnlyList<NotificacionDto> Notificaciones { get; private set; } = [];

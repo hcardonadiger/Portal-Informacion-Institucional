@@ -4,6 +4,7 @@ using Diger.TramitesEstado.Application.Informes.Queries;
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
+[Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
 public sealed class DigitalizacionModel(ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser, IInformeService informeSvc) : PageModel
 {
     public DigitalizacionDashboardDto Data { get; private set; } = default!;

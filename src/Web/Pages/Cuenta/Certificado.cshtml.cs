@@ -7,6 +7,9 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
+// [Authorize] explícito: ver la nota de Perfil.cshtml.cs sobre la exención de /Cuenta.
+[Authorize]
+[PermisoNoRequerido("Autoservicio: el usuario administra el certificado digital vinculado a su propia cuenta.")]
 public sealed class CertificadoModel(ISender sender, ICurrentUserService currentUser, IConfiguration config) : PageModel
 {
     public bool TieneCertificadoVinculado { get; private set; }

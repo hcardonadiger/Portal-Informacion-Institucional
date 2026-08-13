@@ -2,6 +2,7 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Instituciones.Queries.GetInstitucionById;
 using Diger.TramitesEstado.Application.Instituciones.Queries.GetInstituciones;
 using Diger.TramitesEstado.Domain.Entities;
+using Diger.TramitesEstado.Domain.Enums;
 using Diger.TramitesEstado.Infrastructure.Persistence;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
 using FluentAssertions;
@@ -18,6 +19,11 @@ internal sealed class FakeGlobalCurrentUser : ICurrentUserService
     public string?     Rol                  => "Administrador";
     public bool        IsAuthenticated       => true;
     public bool        EsGlobal             => true;
+    // Capacidades del rol: antes se deducían del nombre, ahora vienen de la tabla Roles.
+    public NivelAlcance NivelAlcance         => NivelAlcance.Global;
+    public bool        EsSoloLectura         => false;
+    public bool        EsSupervisor          => true;
+    public bool        EsTecnicoSoporte      => true;
     public string?     ActiveInstitucionId   => null;
     public string?     ActiveAreaId          => null;
     public string?     ActiveUnidadId        => null;

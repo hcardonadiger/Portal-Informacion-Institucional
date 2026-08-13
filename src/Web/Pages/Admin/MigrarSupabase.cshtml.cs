@@ -3,7 +3,8 @@ using Diger.TramitesEstado.Web.Import;
 
 namespace Diger.TramitesEstado.Web.Pages.Admin;
 
-[Authorize(Policy = "PuedeAdministrarCatalogo")]
+[Permission("Admin.Migraciones", AccionModulo.Crear, "Migrar datos desde Supabase")]
+[Authorize(Policy = "Admin.Migraciones.Crear")]
 [SoloEnDesarrollo]   // en producción la página no existe (404), aunque se escriba la URL
 public sealed class MigrarSupabaseModel(
     SupabaseMigracionScanner scanner,

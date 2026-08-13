@@ -5,6 +5,9 @@ using Diger.TramitesEstado.Application.Informes.Queries;
 namespace Diger.TramitesEstado.Web.Pages.Informes;
 
 [Authorize]
+// Los OnPost solo generan el PDF/Excel de lo mismo que ya muestra la página: exportar no es
+// una mutación, así que comparten la clave de consulta.
+[Permission("Informes", AccionModulo.Ver, "Generar y descargar informes")]
 public sealed class IndexModel(ISender sender, IInformeService informeSvc) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string?   InstitucionId { get; set; }

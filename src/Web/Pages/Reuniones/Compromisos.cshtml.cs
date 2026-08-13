@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
+[Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
 public sealed class CompromisosModel(
     ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser) : PageModel
 {

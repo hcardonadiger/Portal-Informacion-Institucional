@@ -11,7 +11,8 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Web.Pages.Areas;
 
-[Authorize(Roles = $"{nameof(RolUsuario.Administrador)},{nameof(RolUsuario.JefeInstitucion)}")]
+[Permission("Areas", AccionModulo.Editar, "Crear y editar áreas")]
+[Authorize(Policy = "Areas.Editar")]
 public class EditorModel(ISender sender) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? IdFromRoute { get; set; }

@@ -1,11 +1,11 @@
 @page
 @model IndexModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Expedientes de Digitalización";
 
-    var esAdmin = User.IsInRole(nameof(RolUsuario.Administrador));
-    var puedeGestionar = esAdmin;
-    var puedeEliminar  = esAdmin;
+    var puedeGestionar = await Acceso.PuedeEditarAsync("Expedientes");
+    var puedeEliminar  = await Acceso.PuedeEliminarAsync("Expedientes");
 
     static (string cls, string txt) Wf(EstadoExpediente e) => e switch
     {
@@ -26,9 +26,15 @@
         </div>
         <div style="display:flex;gap:8px">
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
-            @if (esAdmin)
+            @* Cada enlace se gatea con la clave de SU destino, no con la de esta página:
+               plantillas vive en el módulo de administración y pide otra clave, así que
+               mostrarlo junto a "nuevo expediente" llevaba a un Forbidden. *@
+            @if (await Acceso.PuedeClaveAsync("Admin.PlantillasTramite.Ver"))
             {
                 <a class="btns" asp-page="/Admin/PlantillasTramite">Plantillas de trámite</a>
+            }
+            @if (puedeGestionar)
+            {
                 <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
             }
         </div>
@@ -104,7 +110,7 @@
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
                             <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
-                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(esAdmin ? "Editar" : "Ver")</a>
+                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Editar" : "Ver")</a>
                             @if (puedeEliminar)
                             {
                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">

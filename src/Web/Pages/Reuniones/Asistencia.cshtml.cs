@@ -4,9 +4,10 @@ using Diger.TramitesEstado.Web.Common;
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
-public sealed class AsistenciaModel(ISender sender) : PageModel
+[Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
+public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso) : PageModel
 {
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    public bool EsAdmin { get; private set; }
     public AsistenciaAdminDto Data { get; private set; } = default!;
     public string PublicUrl { get; private set; } = "";
     public string QrDataUri { get; private set; } = "";
@@ -69,10 +70,14 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
     {
-        try { await CargarAsync(id, ct); return Page(); }
+        try { await CargarAsync(id, ct); }
         catch (NotFoundException) { return NotFound(); }
+
+        EsAdmin = await acceso.PuedeEditarAsync("Reuniones", ct);
+        return Page();
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostToggleAsync(int id, bool abrir, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -81,6 +86,7 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
         return RedirectToPage(new { id });
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostRegenerarAsync(int id, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -89,6 +95,7 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
         return RedirectToPage(new { id });
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, int asistenteId, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -97,6 +104,7 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
         return RedirectToPage(new { id });
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostAgregarDirectorioAsync(int id, List<int> contactoIds, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -107,6 +115,7 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
         return RedirectToPage(new { id });
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostPreregistrarAsync(int id, List<int> contactoIds, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -117,6 +126,7 @@ public sealed class AsistenciaModel(ISender sender) : PageModel
         return RedirectToPage(new { id });
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostConfirmarAsync(int id, int asistenteId, bool asistio, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();

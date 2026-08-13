@@ -1,5 +1,6 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Instituciones.IndexModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Catálogo de Instituciones";
 }
@@ -15,7 +16,11 @@
             <h2>Catálogo de Instituciones</h2>
             <p>Catálogo de instituciones del Estado</p>
         </div>
-        <a class="btnp" asp-page="/Instituciones/Editor">+ Nueva institución</a>
+        @* Ver la nota de Usuarios/Index: la lista pide Ver, el editor pide Editar. *@
+        @if (await Acceso.PuedeEditarAsync("Instituciones"))
+        {
+            <a class="btnp" asp-page="/Instituciones/Editor">+ Nueva institución</a>
+        }
     </div>
 
     <form method="get" class="lista-buscar">

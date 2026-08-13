@@ -70,7 +70,7 @@ que las listas no se cruzan.
 
 ## 4. Guion sugerido
 
-1. **Admin Global** → `/Usuarios` y `/Accesos`: el organigrama completo y la matriz rol × módulo.
+1. **Admin Global** → `/Usuarios`, `/Accesos/Roles` y `/Accesos/Permisos`: el organigrama completo, el catálogo de roles con su alcance y capacidades, y la matriz módulo × acción de cada rol.
 2. **Admin Global** → `/Tableros`: KPIs sobre los 12 tickets, incluidos los vencidos de SLA.
 3. **Ana Maradiaga** → `/Tickets`, vista *Sus temas*: solo aparecen los de Plataforma SOL.
    `TCK-2026-0007` está **vencido** (SLA de 8 h, abierto hace 3 días).
@@ -86,8 +86,9 @@ que las listas no se cruzan.
 
 - **Los técnicos de soporte ven los mismos módulos que cualquier empleado**
   (Tableros, Calendario, Expedientes, Reuniones, Contactos, Tickets). La tabla
-  `RolModuloAccesos` asigna módulos **por rol**, y soporte comparte el rol `Empleado` con los
-  empleados de unidad. Un menú propio para soporte requeriría un rol `Mantenimiento` nuevo.
+  los permisos se otorgan **por rol**, y soporte comparte el rol `Empleado` con los empleados
+  de unidad. Con el catálogo de roles administrable, un menú propio para soporte ya no requiere
+  tocar código: se crea un rol `Mantenimiento` en `/Accesos/Roles` y se le marcan sus claves.
 
 - **Los empleados de unidad (Óscar, Lourdes, René, Dilcia) ven 0 tickets.** No es un error de
   los datos: el filtro global de `Ticket` para el rol `Empleado` es `t.UnidadId == _activeUnidad`,

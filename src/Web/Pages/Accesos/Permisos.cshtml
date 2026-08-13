@@ -1,0 +1,200 @@
+@page
+@using Diger.TramitesEstado.Web.Pages.Accesos
+@model PermisosModel
+@{
+    ViewData["Title"] = "Administrar permisos";
+}
+
+<div class="container" style="max-width:1000px">
+    <partial name="_SuccessBanner" />
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error">@Model.Error</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Administrar permisos</h2>
+            <p>Define qué acción puede hacer cada rol sobre cada módulo. Los roles con capacidad de <strong>administrador</strong> tienen acceso completo por código y no se configuran acá.</p>
+        </div>
+    </div>
+    <p class="hint">
+        <a href="/Accesos/Roles">Administrar roles →</a>
+        &nbsp;·&nbsp;
+        <a asp-page="./Auditoria">Bitácora de cambios →</a>
+        &nbsp;·&nbsp;
+        <a asp-page="./Diagnostico">Diagnóstico de acceso →</a>
+        &nbsp;·&nbsp;
+        @if (Model.Comparar)
+        {
+            <a asp-page="./Permisos" asp-route-rol="@Model.Rol?.RolId">← Volver a editar</a>
+        }
+        else
+        {
+            <a asp-page="./Permisos" asp-route-vista="comparar">Comparar todos los roles →</a>
+        }
+    </p>
+
+    @if (Model.Roles.Count == 0)
+    {
+        <div class="card">
+            <p class="hint">No hay roles configurables. Cree un rol sin capacidad de administrador en <a href="/Accesos/Roles">Administrar roles</a>.</p>
+        </div>
+    }
+    else if (Model.Comparar)
+    {
+        <div class="card">
+            <div class="stitle">Comparación de roles</div>
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th>Módulo</th>
+                            <th style="width:70px;text-align:center">Acción</th>
+                            @foreach (var r in Model.Roles)
+                            {
+                                <th style="width:96px;text-align:center" title="@r.RolId">@r.Nombre</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (area, filas) in Model.Areas)
+                        {
+                            <tr><td colspan="@(2 + Model.Roles.Count)" style="background:var(--diger-bg-soft)"><strong>@area</strong></td></tr>
+                            @foreach (var f in filas)
+                            {
+                                foreach (var accion in PermisosModel.Acciones)
+                                {
+                                    var clave = f.Claves[accion];
+                                    if (clave is null) { continue; }
+                                    <tr>
+                                        <td>@f.Modulo.Etiqueta</td>
+                                        <td style="text-align:center" class="hint">@accion</td>
+                                        @foreach (var r in Model.Roles)
+                                        {
+                                            var tiene = Model.Matriz.TryGetValue(r.RolId, out var s) && s.Contains(clave);
+                                            <td style="text-align:center;color:@(tiene ? "var(--diger-success-strong)" : "var(--diger-text-muted)")"
+                                                aria-label="@(tiene ? "otorgado" : "no otorgado")">@(tiene ? "✓" : "·")</td>
+                                        }
+                                    </tr>
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="hint" style="margin-top:.8rem">Vista de solo lectura. Para cambiar algo, elegí el rol en la vista de edición.</p>
+        </div>
+    }
+    else
+    {
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem">
+            @foreach (var r in Model.Roles)
+            {
+                var activo = r.RolId == Model.Rol?.RolId;
+                <a class="@(activo ? "btnp" : "btns")" style="font-size:13px;padding:6px 14px"
+                   asp-page="./Permisos" asp-route-rol="@r.RolId" asp-route-q="@Model.Q">
+                    @r.Nombre<span style="opacity:.7;margin-left:7px" title="Claves concedidas">@Model.Otorgados(r.RolId)</span>
+                </a>
+            }
+        </div>
+
+        @if (Model.Rol is not null)
+        {
+            <div class="card">
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--diger-radius-sm);margin-bottom:1rem;background:@(Model.Rol.EsSoloLectura ? "var(--diger-warning-bg)" : "var(--diger-bg-blue)");color:@(Model.Rol.EsSoloLectura ? "var(--diger-warning-strong)" : "var(--diger-blue-strong)")">
+                    <span>
+                        Alcance <strong>@Model.Rol.NivelAlcance</strong>
+                        @if (Model.Rol.EsSoloLectura)
+                        {
+                            <text> · solo lectura: las columnas Crear, Editar y Eliminar quedan bloqueadas por la capacidad del rol, no por la matriz.</text>
+                        }
+                    </span>
+                </div>
+
+                <form method="get" style="display:flex;gap:8px;align-items:center;margin-bottom:1rem">
+                    <input type="hidden" name="rol" value="@Model.Rol.RolId" />
+                    <input type="text" name="q" value="@Model.Q" placeholder="Buscar módulo" style="flex:1" />
+                    <button class="btns" type="submit">Buscar</button>
+                    @if (!string.IsNullOrWhiteSpace(Model.Q))
+                    {
+                        <a class="btns" asp-page="./Permisos" asp-route-rol="@Model.Rol.RolId">Limpiar</a>
+                    }
+                </form>
+
+                <form method="post" id="formPermisos">
+                    <input type="hidden" name="rol" value="@Model.Rol.RolId" />
+                    <input type="hidden" name="q" value="@Model.Q" />
+
+                    @if (Model.Areas.Count == 0)
+                    {
+                        <p class="hint">Ningún módulo coincide con la búsqueda.</p>
+                    }
+
+                    @foreach (var (area, filas) in Model.Areas)
+                    {
+                        <div style="display:grid;grid-template-columns:1fr repeat(4,64px);gap:6px;align-items:center;margin:1.2rem 0 .4rem">
+                            <span class="hint">@area</span>
+                            @foreach (var accion in PermisosModel.Acciones)
+                            {
+                                <span class="hint" style="text-align:center">@accion</span>
+                            }
+                        </div>
+
+                        @foreach (var f in filas)
+                        {
+                            <div style="display:grid;grid-template-columns:1fr repeat(4,64px);gap:6px;align-items:center;padding:7px 0;border-top:1px solid var(--diger-border-soft)">
+                                <span style="@(f.Modulo.EsSubmodulo ? "padding-left:18px;color:var(--diger-text-secondary)" : "")"
+                                      title="@f.Modulo.Clave">@f.Modulo.Etiqueta</span>
+                                @foreach (var accion in PermisosModel.Acciones)
+                                {
+                                    var clave = f.Claves[accion];
+                                    <span style="text-align:center">
+                                        @if (clave is null)
+                                        {
+                                            <span class="hint" title="Esta acción no existe para este módulo">–</span>
+                                        }
+                                        else
+                                        {
+                                            <input type="hidden" name="presentes" value="@clave" />
+                                            <input type="checkbox" name="otorgadas" value="@clave"
+                                                   checked="@Model.Tiene(clave)"
+                                                   disabled="@Model.Bloqueada(accion)"
+                                                   aria-label="@accion en @f.Modulo.Etiqueta" />
+                                        }
+                                    </span>
+                                }
+                            </div>
+                        }
+                    }
+
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:1.3rem;padding-top:1rem;border-top:1px solid var(--diger-border)">
+                        <button class="btnp" type="submit">Guardar permisos de @Model.Rol.Nombre</button>
+                        <span class="hint" id="dirty" aria-live="polite"></span>
+                    </div>
+                </form>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.getElementById('formPermisos');
+            if (!form) return;
+            var aviso = document.getElementById('dirty');
+            var n = 0;
+            form.addEventListener('change', function (e) {
+                if (e.target.type !== 'checkbox') return;
+                n++;
+                aviso.textContent = n === 1 ? '1 cambio sin guardar' : n + ' cambios sin guardar';
+            });
+            window.addEventListener('beforeunload', function (e) {
+                if (n > 0) { e.preventDefault(); e.returnValue = ''; }
+            });
+            form.addEventListener('submit', function () { n = 0; });
+        })();
+    </script>
+}

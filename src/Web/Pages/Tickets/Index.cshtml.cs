@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
 [Authorize]
+[Permission("Tickets", AccionModulo.Ver, "Ver tickets")]
 public sealed class IndexModel(ISender sender, IInstitucionRepository institucionRepo, IUsuarioRepository usuarioRepo, ICurrentUserService currentUser) : PageModel
 {
     public PagedResult<TicketListItemDto> Resultado { get; private set; } = PagedResult<TicketListItemDto>.Empty(Paginacion.TamanoDefecto);
@@ -27,11 +28,10 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
         Estado = estado; Prioridad = prioridad; InstitucionId = institucionId; SoloVencidos = soloVencidos; Q = q;
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
 
-        EsTecnicoRestringido =
-            !User.IsInRole(nameof(RolUsuario.Administrador))
-            && !User.IsInRole(nameof(RolUsuario.JefeInstitucion))
-            && !User.IsInRole(nameof(RolUsuario.JefeArea))
-            && !User.IsInRole(nameof(RolUsuario.JefeUnidad));
+        // "No es jefatura" ⇒ alcance restringido. Lo decide la capacidad EsSupervisor del
+        // rol (tabla Roles), no una lista de nombres — así un rol nuevo entra en la
+        // categoría correcta sin tocar código.
+        EsTecnicoRestringido = !currentUser.EsGlobal && !currentUser.EsSupervisor;
 
         Guid? asignado;
         IReadOnlyList<int>? temaIds = null;
@@ -72,10 +72,10 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
             new GetTicketsQuery(null, prioridad, institucionId, asignado, q, Page: 1, Size: 100, TemaIds: temaIds, SoloVencidos: false), ct)).Items;
     }
 
+    [Permission("Tickets", AccionModulo.Eliminar, "Eliminar tickets")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)))
-            return Forbid();
+        // El chequeo de rol por nombre que había acá lo sustituye el [Permission] de arriba.
         await sender.Send(new EliminarTicketCommand(id), ct);
         TempData["SuccessMsg"] = "Ticket eliminado.";
         return RedirectToPage();

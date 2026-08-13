@@ -66,7 +66,11 @@ Every request flows through `LoggingBehavior` → `ValidationBehavior` → handl
 
 ### Authentication
 
-Cookie-based auth (`CookieAuthenticationDefaults`). Roles: `Administrador`, `Coordinador`, `Tecnico`. Authorization policies (e.g., `PuedeGestionarExpedientes`) are defined in `Web/Program.cs`. All Razor Pages require authentication; `/Cuenta/*` is the anonymous exception.
+Cookie-based auth (`CookieAuthenticationDefaults`). All Razor Pages require authentication; `/Cuenta/*` is exempt by convention because login needs it, so pages there that *do* require a session carry their own `[Authorize]`.
+
+**Roles are rows in the `Roles` table**, not an enum, and are administered at `/Accesos/Roles`. A role carries a `NivelAlcance` (which drives the RLS query filters) plus four capabilities: `EsAdministrador`, `EsSoloLectura`, `EsSupervisor`, `EsTecnicoSoporte`. A user with no assignment has **no role** and is denied everything — don't add a default.
+
+Authorization is per action, not per page: declare `[Permission(modulo, accion)]` on a PageModel or a single handler, and `PermissionPageFilter` enforces it. The key catalog is discovered by reflection at startup, so there is no list to maintain; handlers without `[Permission]`, `[AllowAnonymous]` or `[PermisoNoRequerido]` are logged as warnings. The old static policies in `Program.cs` are gone. See `CLAUDE.md` for the full picture.
 
 ### Data import
 

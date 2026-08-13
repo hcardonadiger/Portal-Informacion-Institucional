@@ -4,19 +4,24 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
 [Authorize]
-public sealed class SeguimientoModel(ISender sender) : PageModel
+[Permission("Expedientes", AccionModulo.Ver, "Ver expedientes")]
+public sealed class SeguimientoModel(ISender sender, AccesoModulosService acceso) : PageModel
 {
     public SeguimientoExpedienteDto Data { get; private set; } = default!;
 
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    public bool EsAdmin { get; private set; }
     public bool PuedeGestionar => EsAdmin;
 
     public async Task<IActionResult> OnGetAsync(int id, int? t, CancellationToken ct)
     {
-        try { Data = await sender.Send(new GetSeguimientoExpedienteQuery(id, t), ct); return Page(); }
+        try { Data = await sender.Send(new GetSeguimientoExpedienteQuery(id, t), ct); }
         catch (NotFoundException) { return NotFound(); }
+
+        EsAdmin = await acceso.PuedeEditarAsync("Expedientes", ct);
+        return Page();
     }
 
+    [Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
     public async Task<IActionResult> OnPostSubAsync(int id, int tramite, string subId, int estado, CancellationToken ct)
     {
         if (!PuedeGestionar) return Forbid();
@@ -31,6 +36,7 @@ public sealed class SeguimientoModel(ISender sender) : PageModel
         }
     }
 
+    [Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
     public async Task<IActionResult> OnPostAplicaAsync(int id, int tramite, string etapa, bool aplica, CancellationToken ct)
     {
         if (!PuedeGestionar) return Forbid();

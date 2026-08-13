@@ -12,22 +12,26 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Diger.TramitesEstado.Web.Pages.Recursos;
 
 [Authorize]
+[Permission("Recursos", AccionModulo.Ver, "Ver y descargar recursos")]
 public sealed class IndexModel(
     ISender sender,
-    IWebHostEnvironment env) : PageModel
+    IWebHostEnvironment env,
+    AccesoModulosService acceso) : PageModel
 {
     public IReadOnlyList<RecursoDto> Recursos { get; private set; } = [];
     public string? Q { get; private set; }
     public string CategoriaSeleccionada { get; private set; } = "Todos";
     public string? Error { get; set; }
 
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    /// <summary>Controla los botones de publicar, editar y eliminar recursos.</summary>
+    public bool EsAdmin { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(string? q, string? categoria, CancellationToken ct)
     {
         Q = q;
         CategoriaSeleccionada = string.IsNullOrWhiteSpace(categoria) ? "Todos" : categoria.Trim();
         Recursos = await sender.Send(new GetRecursosQuery(q, CategoriaSeleccionada), ct);
+        EsAdmin = await acceso.PuedeEditarAsync("Recursos", ct);
         return Page();
     }
 
@@ -58,6 +62,7 @@ public sealed class IndexModel(
         return PhysicalFile(fullPath, "application/octet-stream", rec.ArchivoNombre);
     }
 
+    [Permission("Recursos", AccionModulo.Crear, "Publicar recursos")]
     public async Task<IActionResult> OnPostCrearAsync(
         [FromForm] string titulo,
         [FromForm] string? descripcion,
@@ -105,6 +110,7 @@ public sealed class IndexModel(
         }
     }
 
+    [Permission("Recursos", AccionModulo.Editar, "Editar recursos")]
     public async Task<IActionResult> OnPostActualizarAsync(
         [FromForm] int id,
         [FromForm] string titulo,
@@ -153,6 +159,7 @@ public sealed class IndexModel(
         }
     }
 
+    [Permission("Recursos", AccionModulo.Eliminar, "Eliminar recursos")]
     public async Task<IActionResult> OnPostEliminarAsync([FromForm] int id, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();

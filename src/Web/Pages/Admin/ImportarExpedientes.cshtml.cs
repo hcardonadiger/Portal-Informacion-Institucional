@@ -2,7 +2,8 @@ using Diger.TramitesEstado.Web.Import;
 
 namespace Diger.TramitesEstado.Web.Pages.Admin;
 
-[Authorize(Policy = "PuedeAdministrarCatalogo")]
+[Permission("Admin.Importaciones", AccionModulo.Crear, "Importar expedientes desde Supabase")]
+[Authorize(Policy = "Admin.Importaciones.Crear")]
 public sealed class ImportarExpedientesModel(SupabaseExpedienteImporter importer, IWebHostEnvironment env) : PageModel
 {
     public bool EsDesarrollo => env.IsDevelopment();

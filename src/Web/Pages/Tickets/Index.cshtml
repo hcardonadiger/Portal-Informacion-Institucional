@@ -1,9 +1,10 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Tickets.IndexModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Tickets de soporte";
-    var puedeGestionar = User.CanMutate();
-    var puedeEliminar  = User.IsInRole(nameof(RolUsuario.Administrador));
+    var puedeGestionar = await Acceso.PuedeEditarAsync("Tickets");
+    var puedeEliminar  = await Acceso.PuedeEliminarAsync("Tickets");
 
     string EstadoClase(EstadoTicket e) => e switch
     {
