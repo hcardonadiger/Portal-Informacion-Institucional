@@ -19,6 +19,11 @@ public class VisibilidadReunionTests
         public string?     Rol                  => "Empleado";
         public bool        IsAuthenticated       => true;
         public bool        EsGlobal             => global;
+        // Empleado sin alcance global ⇒ rama de Unidad, igual que antes por nombre de rol.
+        public NivelAlcance NivelAlcance         => global ? NivelAlcance.Global : NivelAlcance.Unidad;
+        public bool        EsSoloLectura         => false;
+        public bool        EsSupervisor          => false;
+        public bool        EsTecnicoSoporte      => true;
         public string?     ActiveInstitucionId   => inst.Length > 0 ? inst[0] : null;
         public string?     ActiveAreaId          => null;
         public string?     ActiveUnidadId        => null;

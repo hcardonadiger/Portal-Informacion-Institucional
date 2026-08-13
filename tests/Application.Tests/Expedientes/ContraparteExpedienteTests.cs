@@ -4,6 +4,7 @@ using Diger.TramitesEstado.Domain.Common;
 using Diger.TramitesEstado.Application.Expedientes.Commands.ActualizarExpediente;
 using Diger.TramitesEstado.Application.Expedientes.Common;
 using Diger.TramitesEstado.Domain.Entities;
+using Diger.TramitesEstado.Domain.Enums;
 using Diger.TramitesEstado.Infrastructure.Persistence;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
 using FluentAssertions;
@@ -20,6 +21,11 @@ internal class FakeContraparteCurrentUser(Guid userId) : ICurrentUserService
     public string?     Rol                  => "Empleado";
     public bool        IsAuthenticated       => true;
     public bool        EsGlobal             => false;
+    // Empleado: el alcance de unidad reproduce la rama de RLS que antes se elegía por nombre.
+    public NivelAlcance NivelAlcance         => NivelAlcance.Unidad;
+    public bool        EsSoloLectura         => false;
+    public bool        EsSupervisor          => false;
+    public bool        EsTecnicoSoporte      => true;
     public string?     ActiveInstitucionId   => "CNBS";
     public string?     ActiveAreaId          => null;
     public string?     ActiveUnidadId        => null;
