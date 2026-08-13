@@ -9,18 +9,21 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.PlanTrabajo;
 
 [Authorize]
+// Los OnGet* (incluidos los buscadores AJAX) solo consultan; las metas se editan con los
+// overrides por handler de más abajo.
+[Permission("PlanTrabajo", AccionModulo.Ver, "Ver planes de trabajo")]
 public sealed class EditorModel(ISender sender) : PageModel
 {
     public PlanTrabajoDetailDto Plan { get; private set; } = default!;
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
-    public bool PuedeEditar => User.CanMutate() && Plan.Estado != EstadoPlanTrabajo.Cerrado;
+    public bool PuedeEditar => HttpContext.CanMutate() && Plan.Estado != EstadoPlanTrabajo.Cerrado;
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
     {
         try   { Plan = await sender.Send(new GetPlanTrabajoByIdQuery(id), ct); }
         catch (NotFoundException) { return NotFound(); }
 
-        if (User.CanMutate() && Plan.Estado != EstadoPlanTrabajo.Cerrado)
+        if (HttpContext.CanMutate() && Plan.Estado != EstadoPlanTrabajo.Cerrado)
             Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
 
         return Page();
@@ -39,6 +42,7 @@ public sealed class EditorModel(ISender sender) : PageModel
         int?       ExpedienteId,
         int?       ExpedienteTramiteIndex);
 
+    [Permission("PlanTrabajo", AccionModulo.Editar, "Editar planes de trabajo")]
     public async Task<IActionResult> OnPostGuardarMetaAsync(int id, [FromBody] GuardarMetaRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.NombreTramite))
@@ -69,6 +73,7 @@ public sealed class EditorModel(ISender sender) : PageModel
     // ── Eliminar meta ───────────────────────────────────────────────────────
     public sealed record EliminarMetaRequest(int MetaId);
 
+    [Permission("PlanTrabajo", AccionModulo.Eliminar, "Eliminar metas del plan de trabajo")]
     public async Task<IActionResult> OnPostEliminarMetaAsync(int id, [FromBody] EliminarMetaRequest req, CancellationToken ct)
     {
         try
@@ -85,6 +90,7 @@ public sealed class EditorModel(ISender sender) : PageModel
     // ── Cambiar estado del plan ─────────────────────────────────────────────
     public sealed record CambiarEstadoRequest(int NuevoEstado);
 
+    [Permission("PlanTrabajo", AccionModulo.Editar, "Editar planes de trabajo")]
     public async Task<IActionResult> OnPostCambiarEstadoAsync(int id, [FromBody] CambiarEstadoRequest req, CancellationToken ct)
     {
         try
@@ -121,6 +127,7 @@ public sealed class EditorModel(ISender sender) : PageModel
     // ── Actualizar observaciones del plan ───────────────────────────────────
     public sealed record ActualizarObsRequest(string? Observaciones);
 
+    [Permission("PlanTrabajo", AccionModulo.Editar, "Editar planes de trabajo")]
     public async Task<IActionResult> OnPostActualizarObsAsync(int id, [FromBody] ActualizarObsRequest req, CancellationToken ct)
     {
         await sender.Send(new ActualizarPlanCommand(id, req.Observaciones), ct);

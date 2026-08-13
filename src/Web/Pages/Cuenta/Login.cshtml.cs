@@ -89,11 +89,10 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
             if (active.AreaId != null) claims.Add(new Claim(AppClaims.ActiveArea, active.AreaId));
             if (active.UnidadId != null) claims.Add(new Claim(AppClaims.ActiveUnidad, active.UnidadId));
         }
-        else
-        {
-            claims.Add(new Claim(ClaimTypes.Role,           usuario.RolGlobal));
-            claims.Add(new Claim(AppClaims.ActiveRol,       usuario.RolGlobal));
-        }
+        // Sin asignaciones no se emite claim de rol: la cuenta entra sin capacidades y sin
+        // alcance, y CurrentUserService la trata como no resuelta (fail-closed). Antes se
+        // emitía un rol "Empleado" inventado, que le daba acceso real a quien nadie configuró.
+        // Lo único que queda accesible es el autoservicio: perfil, contraseña y ayuda.
 
         var identity  = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
@@ -102,6 +101,12 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             new AuthenticationProperties { IsPersistent = true });
+
+        // Una cuenta sin asignación no puede ver ningún módulo: mandarla al tablero la dejaría
+        // en un "acceso denegado" sin explicación. Se la lleva a su perfil, que sí puede ver y
+        // donde el aviso le dice qué le falta y a quién pedírselo.
+        if (usuario.Asignaciones.Count == 0)
+            return RedirectToPage("/Cuenta/Perfil", new { sinAsignacion = true });
 
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/")
             return LocalRedirect(returnUrl);

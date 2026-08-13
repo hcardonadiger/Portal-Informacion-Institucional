@@ -7,6 +7,9 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
+// [Authorize] explícito: ver la nota de Perfil.cshtml.cs sobre la exención de /Cuenta.
+[Authorize]
+[PermisoNoRequerido("Autoservicio: cambiar la contraseña propia no puede depender de un permiso otorgable.")]
 public sealed class ContrasenaModel(ISender sender, ICurrentUserService currentUser) : PageModel
 {
     [BindProperty]

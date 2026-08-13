@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Diger.TramitesEstado.Web.Pages.Siger;
 
 [Authorize]
+[Permission("Siger", AccionModulo.Ver, "Ver el inventario SIGER")]
 public sealed class DetalleModel(IApplicationDbContext ctx) : PageModel
 {
     public TramiteSiger Tramite { get; private set; } = default!;
@@ -33,9 +34,11 @@ public sealed class DetalleModel(IApplicationDbContext ctx) : PageModel
         return Page();
     }
 
+    [Permission("Siger", AccionModulo.Eliminar, "Eliminar fichas SIGER")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador))) return Forbid();
+        // El chequeo de rol por nombre que había acá lo sustituye el [Permission] de arriba,
+        // que PermissionPageFilter resuelve contra la matriz antes de entrar al handler.
         var t = await ctx.TramitesSiger.FindAsync([id], ct);
         if (t is null) return NotFound();
         ctx.TramitesSiger.Remove(t);

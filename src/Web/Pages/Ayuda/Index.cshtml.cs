@@ -1,4 +1,3 @@
-using Diger.TramitesEstado.Application.Accesos;
 using Diger.TramitesEstado.Web.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -6,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Diger.TramitesEstado.Web.Pages.Ayuda;
 
 [Authorize]
+[PermisoNoRequerido("Documentación de uso del portal: no expone datos, restringirla no protege nada.")]
 public sealed class IndexModel(AccesoModulosService acceso, ICurrentUserService currentUser) : PageModel
 {
     public bool EsAdmin { get; private set; }

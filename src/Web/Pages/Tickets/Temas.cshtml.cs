@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+[Permission("Tickets.Temas", AccionModulo.Editar, "Administrar temas y categorías de tickets")]
+[Authorize(Policy = "Tickets.Temas.Editar")]
 public sealed class TemasModel(ISender sender) : PageModel
 {
     public IReadOnlyList<TemaAdminDto> Temas { get; private set; } = [];

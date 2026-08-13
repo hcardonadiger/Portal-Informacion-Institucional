@@ -2032,6 +2032,92 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("PasosSiger", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Permiso", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Modulo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Modulo", "Accion");
+
+                    b.ToTable("Permisos", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PermisoAuditoria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PermisoClave")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("PermisoNombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("RolId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PermisoClave", "Fecha");
+
+                    b.ToTable("PermisosAuditoria", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlanTrabajo", b =>
                 {
                     b.Property<int>("Id")
@@ -2552,6 +2638,67 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("ReunionInstituciones", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Rol", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("EsAdministrador")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EsSistema")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EsSoloLectura")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EsSupervisor")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EsTecnicoSoporte")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("NivelAlcance")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Activo");
+
+                    b.ToTable("Roles", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolModuloAcceso", b =>
                 {
                     b.Property<int>("Id")
@@ -2565,17 +2712,43 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
-                    b.Property<string>("Rol")
+                    b.Property<string>("RolId")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Rol", "Modulo")
+                    b.HasIndex("RolId", "Modulo")
                         .IsUnique();
 
                     b.ToTable("RolModuloAccesos", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolPermiso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("PermisoClave")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("RolId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RolId", "PermisoClave")
+                        .IsUnique();
+
+                    b.ToTable("RolPermisos", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.TareaDigitalizacionSiger", b =>
@@ -3627,6 +3800,24 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Reunion", null)
                         .WithMany("InstitucionesParticipantes")
                         .HasForeignKey("ReunionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolModuloAcceso", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Rol", null)
+                        .WithMany()
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RolPermiso", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Rol", null)
+                        .WithMany()
+                        .HasForeignKey("RolId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

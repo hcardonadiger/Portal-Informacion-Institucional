@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Diger.TramitesEstado.Web.Pages.Siger;
 
 [Authorize]
+[Permission("Siger", AccionModulo.Ver, "Ver el inventario SIGER")]
 public sealed class IndexModel(IApplicationDbContext ctx) : PageModel
 {
     public PagedResult<TramiteSigerRow> Resultado { get; private set; } = PagedResult<TramiteSigerRow>.Empty(25);

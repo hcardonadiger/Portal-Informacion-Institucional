@@ -33,9 +33,22 @@
     </form>
 
     <h3 class="cuenta-card-title" style="margin-top:2rem">Contexto institucional</h3>
-    <p style="font-size:12px;color:#9aadcc;margin:-0.4rem 0 1rem">
-        Tu institución, área y rol los asigna un administrador. Para cambiarlos, contacta a soporte.
-    </p>
+
+    @if (Model.SinAsignacion)
+    {
+        <div class="alert-error" style="margin:.4rem 0 1rem">
+            <strong>Tu cuenta todavía no tiene institución ni rol asignado.</strong>
+            Podés entrar y administrar tus datos personales, pero el resto del portal te va a
+            responder «acceso denegado» hasta que un administrador te asigne una institución
+            desde <em>Usuarios</em>.
+        </div>
+    }
+    else
+    {
+        <p style="font-size:12px;color:var(--diger-text-muted);margin:-0.4rem 0 1rem">
+            Tu institución, área y rol los asigna un administrador. Para cambiarlos, contacta a soporte.
+        </p>
+    }
 
     <div class="cuenta-readonly-grid">
         <div>

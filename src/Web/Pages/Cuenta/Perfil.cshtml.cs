@@ -8,6 +8,11 @@ using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
+// [Authorize] explícito: la carpeta /Cuenta está exenta por convención (AllowAnonymousToFolder,
+// necesario para login/logout/recuperación), así que sin esto la página de perfil quedaba
+// alcanzable sin sesión.
+[Authorize]
+[PermisoNoRequerido("Autoservicio: cualquier usuario autenticado ve y edita su propio perfil.")]
 public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser) : PageModel
 {
     [BindProperty] public string Nombre { get; set; } = string.Empty;
@@ -20,9 +25,17 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
     public string? AreaActiva { get; private set; }
     public string? UnidadActiva { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync(CancellationToken ct)
+    /// <summary>La cuenta no tiene institución ni rol asignado, así que no puede usar ningún
+    /// módulo. Es adonde el login la manda, porque el perfil es de lo poco que sí puede ver.</summary>
+    public bool SinAsignacion { get; private set; }
+
+    public async Task<IActionResult> OnGetAsync(bool sinAsignacion, CancellationToken ct)
     {
         if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
+
+        // Se confía en el estado real, no en el parámetro: el aviso aparece también si el
+        // usuario llega al perfil por su cuenta, y no se puede provocar con la URL.
+        SinAsignacion = string.IsNullOrWhiteSpace(currentUser.Rol);
 
         var dto = await sender.Send(new GetUsuarioByIdQuery(currentUser.UserId.Value), ct);
         Nombre = dto.Nombre;
@@ -36,6 +49,8 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
         if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
+
+        SinAsignacion = string.IsNullOrWhiteSpace(currentUser.Rol);
 
         if (!ModelState.IsValid)
         {

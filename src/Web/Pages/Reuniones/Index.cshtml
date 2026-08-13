@@ -1,5 +1,6 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Reuniones.IndexModel
+@inject AccesoModulosService Acceso
 @functions {
     static string IC(string? inst)
     {
@@ -15,9 +16,8 @@
 }
 @{
     ViewData["Title"] = "Reuniones y Asistencias";
-    var esAdmin = User.IsInRole(nameof(RolUsuario.Administrador));
-    var puedeGestionar = esAdmin;
-    var puedeEliminar  = esAdmin;
+    var puedeGestionar = await Acceso.PuedeEditarAsync("Reuniones");
+    var puedeEliminar  = await Acceso.PuedeEliminarAsync("Reuniones");
 }
 
 <div class="container" style="max-width:1040px">
@@ -29,7 +29,7 @@
         </div>
         <div style="display:flex;gap:8px">
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaReuniones()">Vista por institución</button>
-            @if (esAdmin)
+            @if (puedeGestionar)
             {
                 <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
             }
@@ -92,7 +92,7 @@
                             <div class="reun-titulo-cell">
                                 <span class="inst-av av-sm @IC(r.Institucion)" aria-hidden="true">@InstIni(r.Institucion)</span>
                                 <div>
-                                    <a class="seg-inst" asp-page="@(esAdmin ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>
+                                    <a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>
                                     @if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }
                                 </div>
                             </div>
@@ -112,7 +112,7 @@
                                style="font-size:12.5px;padding:6px 12px">Acta</a>
                             <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
                                style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
-                            @if (esAdmin)
+                            @if (puedeGestionar)
                             {
                                 <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
                                    style="font-size:12.5px;padding:6px 12px;margin-left:4px">Editar</a>
@@ -157,7 +157,7 @@
                                 @foreach (var r in grupo.OrderByDescending(r => r.Fecha))
                                 {
                                     <tr>
-                                        <td><a class="seg-inst" asp-page="@(esAdmin ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
+                                        <td><a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
                                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
                                         <td style="text-align:center">
@@ -169,7 +169,7 @@
                                                style="font-size:12.5px;padding:6px 12px">Acta</a>
                                             <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
                                                style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
-                                            @if (esAdmin)
+                                            @if (puedeGestionar)
                                             {
                                                 <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
                                                    style="font-size:12.5px;padding:6px 12px;margin-left:4px">Editar</a>

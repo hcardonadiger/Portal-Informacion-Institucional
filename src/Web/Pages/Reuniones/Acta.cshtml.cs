@@ -1,9 +1,10 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
-public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageModel
+[Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
+public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoModulosService acceso) : PageModel
 {
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    public bool EsAdmin { get; private set; }
     public int ReunionId { get; private set; }
     public ReunionFormDto      Datos      { get; private set; } = new();
     public List<AsistenteInput> Asistentes { get; private set; } = [];
@@ -24,6 +25,7 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageMod
     {
         try
         {
+            EsAdmin = await acceso.PuedeEditarAsync("Reuniones", ct);
             var d = await sender.Send(new GetReunionByIdQuery(id), ct);
             ReunionId  = d.Id;
             Datos      = d.Datos;
@@ -106,6 +108,7 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageMod
         }
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEnlazarAsync(int id, int otraReunionId, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -126,6 +129,7 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageMod
         return RedirectToPage(new { id });
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostDesenlazarAsync(int id, CancellationToken ct)
     {
         if (!EsAdmin) return Forbid();
@@ -141,6 +145,7 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf) : PageMod
         return RedirectToPage(new { id });
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
     {
         try

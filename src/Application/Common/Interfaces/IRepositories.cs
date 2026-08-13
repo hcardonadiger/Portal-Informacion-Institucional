@@ -115,8 +115,19 @@ public interface ICurrentUserService
     string?     Rol      { get; }
     bool        IsAuthenticated { get; }
 
-    /// <summary>Acceso global (Administrador, o procesos del sistema sin usuario).</summary>
+    /// <summary>Acceso global (rol con EsAdministrador, o procesos del sistema sin usuario).</summary>
     bool EsGlobal { get; }
+
+    /// <summary>Alcance de datos del rol activo — lo usan los filtros RLS de AppDbContext.
+    /// Sin rol resuelto se asume el más restrictivo (Unidad).</summary>
+    NivelAlcance NivelAlcance { get; }
+    /// <summary>El rol activo no puede mutar datos (ex-Consultor).</summary>
+    bool EsSoloLectura { get; }
+    /// <summary>El rol activo es de jefatura (ve trabajo de otros, no solo el propio).</summary>
+    bool EsSupervisor { get; }
+    /// <summary>El rol activo atiende el chat de soporte.</summary>
+    bool EsTecnicoSoporte { get; }
+
     /// <summary>Contexto activo: Institución.</summary>
     string? ActiveInstitucionId { get; }
     /// <summary>Contexto activo: Área.</summary>
@@ -171,6 +182,10 @@ public interface IApplicationDbContext
     DbSet<TemaTicket>               TemasTicket   { get; }
     DbSet<UsuarioTema>              UsuarioTemas  { get; }
     DbSet<RolModuloAcceso>          RolModuloAccesos { get; }
+    DbSet<Rol>                      Roles            { get; }
+    DbSet<Permiso>                  Permisos         { get; }
+    DbSet<RolPermiso>               RolPermisos      { get; }
+    DbSet<PermisoAuditoria>         PermisosAuditoria { get; }
     DbSet<AsignacionUsuario>        AsignacionesUsuario { get; }
     DbSet<Area>                     Areas               { get; }
     DbSet<Unidad>                   Unidades            { get; }

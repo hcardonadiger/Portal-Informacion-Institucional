@@ -2,6 +2,9 @@ using Diger.TramitesEstado.Application.Areas.Queries;
 
 namespace Diger.TramitesEstado.Web.Pages.Asistencia;
 
+// Auto-registro público de asistencia a reuniones: ya exento por convención
+// (AllowAnonymousToFolder("/Asistencia")); el atributo lo hace explícito.
+[AllowAnonymous]
 public sealed class RegistroModel(ISender sender) : PageModel
 {
     public ReunionPublicaDto? Reunion { get; private set; }

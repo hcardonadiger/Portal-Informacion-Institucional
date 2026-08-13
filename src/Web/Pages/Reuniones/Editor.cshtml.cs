@@ -1,11 +1,17 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
+[Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
 public sealed class EditorModel(
     ISender sender, IInstitucionRepository institucionRepo,
     ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
 {
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    /// <summary>Enciende el modo edición de la pantalla. Hoy siempre es true porque la clase
+    /// entera exige Reuniones.Editar — la vista de solo lectura de una reunión es Acta.cshtml,
+    /// que es adonde Index manda a quien no puede editar. Se deja resuelto contra la matriz y
+    /// no fijo en true para que siga siendo correcto si alguna vez se afloja el gateo de la
+    /// página.</summary>
+    public bool EsAdmin { get; private set; } = true;
     public int? ReunionId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
     public IReadOnlyList<ContactoDto> ContactosDirectorio { get; private set; } = [];

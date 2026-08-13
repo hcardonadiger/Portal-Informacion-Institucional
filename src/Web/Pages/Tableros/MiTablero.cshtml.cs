@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
+[PermisoNoRequerido("Autoservicio: resume el trabajo asignado al propio usuario, no datos de otros.")]
 public sealed class MiTableroModel(ISender sender) : PageModel
 {
     public MiTableroDto Data { get; private set; } = default!;
