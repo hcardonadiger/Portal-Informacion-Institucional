@@ -154,21 +154,33 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorizationBuilder()
-    // Gestión: Administrador, Jefes y Empleado pueden crear/editar; el ALCANCE institucional
-    // (filtro global + validación al crear) limita sobre qué registros pueden actuar.
-    .AddPolicy("PuedeGestionarExpedientes", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
-    .AddPolicy("PuedeAdministrarCatalogo", p => p.RequireRole(
-        nameof(RolUsuario.Administrador)))
-    .AddPolicy("PuedeGestionarContactos", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
-    .AddPolicy("PuedeGestionarReuniones", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
-    .AddPolicy("PuedeGestionarTickets", p => p.RequireRole(
-        nameof(RolUsuario.Administrador), nameof(RolUsuario.JefeInstitucion), nameof(RolUsuario.JefeArea), nameof(RolUsuario.JefeUnidad), nameof(RolUsuario.Empleado)))
-    .AddPolicy("PuedeAdministrarUsuarios", p => p.RequireRole(
-        nameof(RolUsuario.Administrador)));
+// Todas las policies estáticas que vivían aquí (PuedeAdministrarCatalogo,
+// PuedeGestionarContactos, PuedeGestionarTickets, PuedeAdministrarUsuarios,
+// PuedeGestionarExpedientes, PuedeGestionarReuniones) ya se migraron a permisos dinámicos
+// ([Permission] en cada página + matriz administrable en /Accesos/Permisos) — ver
+// PermissionPolicyProvider: cualquier nombre de policy no registrado explícitamente se
+// interpreta como una clave de Permiso (ej. "Expedientes.Crear") y se resuelve contra la
+// matriz rol×permiso en BD.
+// Catálogo de roles en memoria. Singleton porque AppDbContext lo consulta de forma
+// SÍNCRONA al armar los filtros RLS; RolCatalogoLoader lo llena antes del primer request
+// y debe quedar registrado ANTES de PermissionCatalogSyncService (los IHostedService
+// arrancan en orden de registro y la sincronización del catálogo de permisos ya asume
+// que los roles están cargados).
+builder.Services.AddSingleton<Diger.TramitesEstado.Application.Common.Interfaces.IRolCatalogo,
+                               Diger.TramitesEstado.Infrastructure.Security.RolCatalogo>();
+builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.RolCatalogoLoader>();
+
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider,
+                               Diger.TramitesEstado.Infrastructure.Security.PermissionPolicyProvider>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+                            Diger.TramitesEstado.Infrastructure.Security.PermissionAuthorizationHandler>();
+builder.Services.AddSingleton<Diger.TramitesEstado.Application.Common.Interfaces.IPermissionCache,
+                               Diger.TramitesEstado.Infrastructure.Security.PermissionCache>();
+builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.PermissionCatalogSyncService>();
+// DESPUÉS del sync: la siembra traduce la matriz por módulo a permisos por acción y necesita
+// el catálogo ya poblado. Solo actúa la primera vez (ver la guarda en el propio servicio).
+builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.PermisosSeedService>();
 
 
 builder.Services.AddRazorPages(opts =>
@@ -182,6 +194,7 @@ builder.Services.AddRazorPages(opts =>
 .AddMvcOptions(options =>
 {
     options.Filters.Add<Diger.TramitesEstado.Web.Common.ConsultorReadOnlyPageFilter>();
+    options.Filters.Add<Diger.TramitesEstado.Web.Common.PermissionPageFilter>();
 });
 
 builder.Services.AddSignalR();
@@ -247,11 +260,20 @@ app.UseCertificateForwarding();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Control de accesos por rol a las opciones del portal (bloquea por URL directa).
-app.UseMiddleware<Diger.TramitesEstado.Web.Common.ModuloAccesoMiddleware>();
+// El bloqueo por URL directa lo hacía ModuloAccesoMiddleware, con un switch de 9 prefijos
+// escrito a mano que se fue quedando atrás (11 de los 20 módulos del portal ya no estaban
+// en la lista). Ahora lo hace PermissionPageFilter en cada handler, con el catálogo que se
+// descubre por reflexión al arrancar — no hay lista que mantener.
 
 app.UseExceptionHandler();
 app.MapRazorPages();
 app.MapHub<SoporteHub>("/hubs/soporte");
 
 await app.RunAsync();
+
+/// <summary>
+/// Las top-level statements generan una clase Program interna, invisible desde otro ensamblado.
+/// Esta declaración parcial la hace pública para que WebApplicationFactory&lt;Program&gt; pueda
+/// levantar la aplicación en las pruebas de integración. No agrega comportamiento.
+/// </summary>
+public partial class Program { }

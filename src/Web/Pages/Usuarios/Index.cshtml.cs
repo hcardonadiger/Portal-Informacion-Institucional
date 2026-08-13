@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Usuarios;
 
-[Authorize(Policy = "PuedeAdministrarUsuarios")]
+[Permission("Usuarios", AccionModulo.Ver, "Ver usuarios")]
+[Authorize(Policy = "Usuarios.Ver")]
 public sealed class IndexModel(ISender sender) : PageModel
 {
     public PagedResult<UsuarioListItemDto> Resultado { get; private set; } = PagedResult<UsuarioListItemDto>.Empty(Paginacion.TamanoDefecto);

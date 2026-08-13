@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
+[Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
 public sealed class ReunionesModel(ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser) : PageModel
 {
     public ReunionesDashboardDto Data { get; private set; } = default!;

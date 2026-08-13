@@ -106,7 +106,7 @@
                     </div>
                 }
 
-                @if (User.CanMutate())
+                @if (ViewContext.HttpContext.CanMutate())
                 {
                     <form method="post" asp-page-handler="Comentar" asp-route-id="@t.Id" enctype="multipart/form-data" style="margin-top:1rem">
                     <div class="field" style="margin-bottom:.5rem">

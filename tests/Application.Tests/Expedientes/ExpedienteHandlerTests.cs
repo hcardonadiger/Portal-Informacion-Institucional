@@ -19,6 +19,10 @@ internal sealed class FakeCurrentUser : ICurrentUserService
     public string?     Rol                  => "Coordinador";
     public bool        IsAuthenticated       => true;
     public bool        EsGlobal             => true;
+    public NivelAlcance NivelAlcance         => NivelAlcance.Global;
+    public bool        EsSoloLectura         => false;
+    public bool        EsSupervisor          => true;
+    public bool        EsTecnicoSoporte      => true;
     public string?     ActiveInstitucionId   => null;
     public string?     ActiveAreaId          => null;
     public string?     ActiveUnidadId        => null;

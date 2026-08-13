@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Instituciones;
 
-[Authorize(Policy = "PuedeAdministrarCatalogo")]
+[Permission("Instituciones", AccionModulo.Ver, "Ver instituciones")]
+[Authorize(Policy = "Instituciones.Ver")]
 public sealed class IndexModel(ISender sender) : PageModel
 {
     public PagedResult<InstitucionListItemDto> Resultado { get; private set; } = PagedResult<InstitucionListItemDto>.Empty(Paginacion.TamanoDefecto);

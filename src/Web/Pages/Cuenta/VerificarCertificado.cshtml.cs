@@ -8,6 +8,7 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [Authorize]
+[PermisoNoRequerido("Autoservicio: verifica el certificado de la propia sesión.")]
 public sealed class VerificarCertificadoModel(ISender sender, ICurrentUserService currentUser, IConfiguration config) : PageModel
 {
     public string? Error { get; set; }

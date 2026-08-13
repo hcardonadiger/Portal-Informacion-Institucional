@@ -6,7 +6,8 @@ namespace Diger.TramitesEstado.Web.Pages.Siger;
 /// Bandeja de conciliación entre los trámites de los expedientes y el inventario SIGER.
 /// Propone enlaces, deja que una persona los confirme y recuerda lo ya decidido.
 /// </summary>
-[Authorize(Policy = "PuedeAdministrarCatalogo")]
+[Permission("Siger.Conciliacion", AccionModulo.Editar, "Conciliar trámites SIGER con expedientes")]
+[Authorize(Policy = "Siger.Conciliacion.Editar")]
 public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
 {
     public const string TabPendientes   = "pendientes";

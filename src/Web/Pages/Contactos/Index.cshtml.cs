@@ -5,6 +5,7 @@ using Diger.TramitesEstado.Application.Contactos.Commands.ReactivarContacto;
 namespace Diger.TramitesEstado.Web.Pages.Contactos;
 
 [Authorize]
+[Permission("Contactos", AccionModulo.Ver, "Ver el directorio de contactos")]
 public sealed class IndexModel(ISender sender, IInstitucionRepository institucionRepo) : PageModel
 {
     private IReadOnlyList<ContactoDto> _todos = [];
@@ -39,28 +40,29 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
         Resultado = new PagedResult<ContactoDto>(items, Contactos.Count, p, size);
     }
 
+    [Permission("Contactos", AccionModulo.Eliminar, "Eliminar contactos")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (User.IsInRole(nameof(RolUsuario.Empleado)) || User.IsInRole(nameof(RolUsuario.Consultor)))
-            return Forbid();
+        // El chequeo de rol por nombre que había acá lo sustituye el [Permission] de arriba.
         await sender.Send(new EliminarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto eliminado.";
         return RedirectToPage(new { Buscar, Institucion, EstadoFiltro });
     }
 
+    // Dar de baja y reactivar estaba restringido a Administrador y JefeInstitucion, más
+    // estrecho que "crear y editar contactos". Se conserva esa distinción con un submódulo
+    // propio en vez de diluirla en Contactos.Editar — mismo patrón que Usuarios.Contrasenas.
+    [Permission("Contactos.Estado", AccionModulo.Editar, "Dar de baja y reactivar contactos")]
     public async Task<IActionResult> OnPostDarDeBajaAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.JefeInstitucion)))
-            return Forbid();
         await sender.Send(new DarDeBajaContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto dado de baja.";
         return RedirectToPage(new { Buscar, Institucion, EstadoFiltro });
     }
 
+    [Permission("Contactos.Estado", AccionModulo.Editar, "Dar de baja y reactivar contactos")]
     public async Task<IActionResult> OnPostReactivarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)) && !User.IsInRole(nameof(RolUsuario.JefeInstitucion)))
-            return Forbid();
         await sender.Send(new ReactivarContactoCommand(id), ct);
         TempData["SuccessMsg"] = "Contacto reactivado.";
         return RedirectToPage(new { Buscar, Institucion, EstadoFiltro });

@@ -2,8 +2,14 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Web.Pages.Usuarios;
 
-[Authorize(Policy = "PuedeAdministrarUsuarios")]
-public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo, IAreaRepository areaRepo, IUnidadRepository unidadRepo) : PageModel
+// Granularidad por handler (no una sola policy de clase): OnGetAsync/OnPostAsync usan
+// Usuarios.Gestionar (crear/editar), OnPostRestablecerAsync usa un permiso propio más
+// específico — así se puede delegar "restablecer contraseña" a un rol sin darle además
+// crear/desactivar usuarios. El gateo real lo hace PermissionPageFilter, que lee el
+// handler seleccionado; [Permission] a nivel de clase es el permiso por defecto para los
+// handlers que no tienen el suyo propio.
+[Permission("Usuarios", AccionModulo.Editar, "Crear y editar usuarios")]
+public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo, IAreaRepository areaRepo, IUnidadRepository unidadRepo, IRolCatalogo rolCatalogo) : PageModel
 {
     public Guid? UsuarioId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
@@ -28,7 +34,11 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
     public string JerarquiaJson { get; set; } = "[]";
 
     public string? Error { get; set; }
-    public string[] Roles => Enum.GetNames<Diger.TramitesEstado.Domain.Enums.RolUsuario>();
+
+    /// <summary>Roles activos del catálogo (ya no los nombres del enum): un rol creado en
+    /// /Accesos/Roles queda asignable acá sin tocar código, y uno desactivado desaparece
+    /// de la lista sin afectar a los usuarios que ya lo tienen.</summary>
+    public IReadOnlyList<RolInfo> Roles => rolCatalogo.Activos();
 
     private async Task CargarCatalogosAsync(CancellationToken ct)
     {
@@ -116,6 +126,7 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
         }
     }
 
+    [Permission("Usuarios.Contrasenas", AccionModulo.Editar, "Restablecer contraseña de usuario")]
     public async Task<IActionResult> OnPostRestablecerAsync(Guid id, CancellationToken ct)
     {
         UsuarioId = id;

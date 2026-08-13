@@ -8,6 +8,7 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [Authorize]
+[PermisoNoRequerido("Autoservicio: vincula un certificado a la propia cuenta.")]
 public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService currentUser, IConfiguration config) : PageModel
 {
     public string? Error { get; set; }

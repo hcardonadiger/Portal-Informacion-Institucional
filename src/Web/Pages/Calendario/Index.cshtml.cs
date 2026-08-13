@@ -3,6 +3,7 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Calendario;
 
 [Authorize]
+[Permission("Calendario", AccionModulo.Ver, "Ver el calendario")]
 public sealed class IndexModel(ISender sender) : PageModel
 {
     public CalendarioDto Data { get; private set; } = default!;
@@ -24,7 +25,7 @@ public sealed class IndexModel(ISender sender) : PageModel
     public ILookup<DateOnly, ReunionCalendarioDto> ReunionesPorDia { get; private set; } = default!;
     public ILookup<DateOnly, EventoCalendarioDto>  ActividadPorDia { get; private set; } = default!;
 
-    public bool PuedeGestionar => User.CanMutate();
+    public bool PuedeGestionar => HttpContext.CanMutate();
 
     /// <summary>Domingo de la semana que contiene <paramref name="d"/> (la grilla arranca en domingo).</summary>
     public static DateOnly InicioSemana(DateOnly d) => d.AddDays(-(int)d.DayOfWeek);
@@ -90,7 +91,7 @@ public sealed class IndexModel(ISender sender) : PageModel
                 e.Titulo, e.Detalle, e.Etiqueta, e.Pagina, e.RefId
             }),
             tiposUi = eventosUi,
-            puedeGestionar = User.CanMutate()
+            puedeGestionar = HttpContext.CanMutate()
         });
     }
 }
