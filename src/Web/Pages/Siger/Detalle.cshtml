@@ -1,9 +1,10 @@
 @page "{id:int}"
 @model Diger.TramitesEstado.Web.Pages.Siger.DetalleModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = Model.Tramite.Codigo + " — " + Model.Tramite.Nombre;
     var t = Model.Tramite;
-    var esAdmin = User.IsInRole(nameof(RolUsuario.Administrador));
+    var esAdmin = await Acceso.PuedeEditarAsync("Siger");
 }
 
 <div class="container" style="max-width:1040px">

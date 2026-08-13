@@ -2,7 +2,8 @@ using Diger.TramitesEstado.Application.Areas.Queries;
 
 namespace Diger.TramitesEstado.Web.Pages.Contactos;
 
-[Authorize(Policy = "PuedeGestionarContactos")]
+[Permission("Contactos", AccionModulo.Editar, "Crear y editar contactos")]
+[Authorize(Policy = "Contactos.Editar")]
 public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser) : PageModel
 {
     public int? ContactoId { get; private set; }

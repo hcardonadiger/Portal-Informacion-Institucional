@@ -1,4 +1,3 @@
-@using Diger.TramitesEstado.Application.Accesos
 @using Diger.TramitesEstado.Application.Notificaciones
 @using Diger.TramitesEstado.Application.Chat
 @using System.Security.Claims
@@ -164,7 +163,7 @@
                                 <div class="nav-group-menu">
                                     <a class="nav-item @(EsRuta("/Siger/Index") ? "on" : "")" asp-page="/Siger/Index"><svg class="ico"><use href="#i-inventario"></use></svg>Inventario</a>
                                     <a class="nav-item @(EsRuta("/Siger/Tablero") ? "on" : "")" asp-page="/Siger/Tablero"><svg class="ico"><use href="#i-grafica"></use></svg>Observatorio</a>
-                                    @if (User.IsInRole(nameof(RolUsuario.Administrador)))
+                                    @if (await Acceso.PuedeClaveAsync("Siger.Conciliacion.Editar"))
                                     {
                                         <a class="nav-item @(EsRuta("/Siger/Conciliacion") ? "on" : "")" asp-page="/Siger/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
                                     }
@@ -244,7 +243,8 @@
                                     @if (Acceso.EsAdministrador)
                                     {
                                         <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><svg class="ico"><use href="#i-usuarios"></use></svg>Usuarios</a>
-                                        <a class="nav-item @(EsRuta("/Accesos") ? "on" : "")" asp-page="/Accesos/Index"><svg class="ico"><use href="#i-accesos"></use></svg>Accesos</a>
+                                        <a class="nav-item @(EsRuta("/Accesos/Roles") ? "on" : "")" asp-page="/Accesos/Roles"><svg class="ico"><use href="#i-accesos"></use></svg>Roles</a>
+                                        <a class="nav-item @(EsRuta("/Accesos/Permisos") ? "on" : "")" asp-page="/Accesos/Permisos"><svg class="ico"><use href="#i-accesos"></use></svg>Permisos</a>
                                         @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
                                         @if (HostEnv.IsDevelopment())
                                         {

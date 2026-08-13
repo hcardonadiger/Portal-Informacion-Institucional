@@ -1,5 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages;
 
+// La raíz del portal es la lista de expedientes.
+[Permission("Expedientes", AccionModulo.Ver, "Ver expedientes")]
 public sealed class IndexModel(ISender sender) : PageModel
 {
     public PagedResult<ExpedienteListItemDto> Resultado { get; private set; } = PagedResult<ExpedienteListItemDto>.Empty(Paginacion.TamanoDefecto);
@@ -15,10 +17,10 @@ public sealed class IndexModel(ISender sender) : PageModel
         Todos = (await sender.Send(new GetExpedientesQuery(q, Page: 1, Size: 100, Legado: legado), ct)).Items;
     }
 
+    [Permission("Expedientes", AccionModulo.Eliminar, "Eliminar expedientes")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (!User.IsInRole(nameof(RolUsuario.Administrador)))
-            return Forbid();
+        // El chequeo de rol por nombre que había acá lo sustituye el [Permission] de arriba.
         await sender.Send(new EliminarExpedienteCommand(id), ct);
         return RedirectToPage();
     }

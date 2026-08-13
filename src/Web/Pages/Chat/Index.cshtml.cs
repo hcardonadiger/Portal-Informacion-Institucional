@@ -12,6 +12,10 @@ using System.Text;
 namespace Diger.TramitesEstado.Web.Pages.Chat;
 
 [Authorize]
+// Bandeja del chat de soporte. Quién puede atenderla se sigue decidiendo además por la
+// capacidad EsTecnicoSoporte del rol (ver SoporteHub); este permiso controla el acceso a la
+// bandeja como módulo.
+[Permission("Chat", AccionModulo.Ver, "Ver la bandeja del chat de soporte")]
 public sealed class IndexModel(
     IChatService chatSvc,
     ICurrentUserService currentUser,
@@ -41,6 +45,7 @@ public sealed class IndexModel(
     }
 
     // Tomar sesión de la cola (POST desde el panel)
+    [Permission("Chat", AccionModulo.Editar, "Atender el chat de soporte")]
     public async Task<IActionResult> OnPostTomarAsync(int sesionId, CancellationToken ct)
     {
         var uid    = currentUser.UserId;
@@ -60,6 +65,7 @@ public sealed class IndexModel(
     }
 
     // Cerrar sesión como resuelta
+    [Permission("Chat", AccionModulo.Editar, "Atender el chat de soporte")]
     public async Task<IActionResult> OnPostCerrarAsync(int sesionId, CancellationToken ct)
     {
         await chatSvc.CerrarSesionAsync(sesionId, ChatEstado.Resuelto, ct);
@@ -82,6 +88,7 @@ public sealed class IndexModel(
     }
 
     // Iniciar sesión desde el widget flotante (usuario final)
+    [Permission("Chat", AccionModulo.Editar, "Atender el chat de soporte")]
     public async Task<IActionResult> OnPostIniciarSesionAsync(
         [FromBody] IniciarSesionRequest req, CancellationToken ct)
     {
@@ -113,6 +120,8 @@ public sealed class IndexModel(
     public sealed record IniciarSesionRequest(int? TemaId, string? Mensaje);
 
     // Generar ticket de soporte a partir del historial de chat
+    // Crea un ticket a partir de la conversación: la mutación es sobre Tickets, no sobre Chat.
+    [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
     public async Task<IActionResult> OnPostCrearTicketDesdeChatAsync(
         [FromBody] CrearTicketDesdeChatRequest req, CancellationToken ct)
     {

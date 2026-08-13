@@ -2,7 +2,8 @@ using Diger.TramitesEstado.Web.Common;
 
 namespace Diger.TramitesEstado.Web.Pages.Instituciones;
 
-[Authorize(Policy = "PuedeAdministrarCatalogo")]
+[Permission("Instituciones", AccionModulo.Editar, "Crear y editar instituciones")]
+[Authorize(Policy = "Instituciones.Editar")]
 public sealed class EditorModel(ISender sender, IInstitucionBrandingService branding) : PageModel
 {
     public string? InstId { get; private set; }

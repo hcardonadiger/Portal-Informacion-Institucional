@@ -35,7 +35,7 @@
                 <select asp-for="Rol">
                     @foreach (var r in Model.Roles)
                     {
-                        <option value="@r">@r</option>
+                        <option value="@r.Codigo">@r.Nombre</option>
                     }
                 </select>
             </div>

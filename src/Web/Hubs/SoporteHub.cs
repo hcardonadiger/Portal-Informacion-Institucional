@@ -29,8 +29,7 @@ public sealed class SoporteHub(
         if (uid is null) return;
 
         // El técnico se suscribe a su grupo personal para recibir alertas de nuevos chats
-        var rol = Context.User?.FindFirstValue("diger:rol");
-        if (EsTecnico(rol))
+        if (currentUser.EsTecnicoSoporte)
             await Groups.AddToGroupAsync(Context.ConnectionId, GrupoTecnico(uid.Value));
 
         logger.LogDebug("Chat: usuario {Uid} conectado ({ConnectionId})", uid, Context.ConnectionId);
@@ -166,8 +165,4 @@ public sealed class SoporteHub(
         return Guid.TryParse(raw, out var g) ? g : null;
     }
 
-    private static bool EsTecnico(string? rol) => rol is
-        nameof(RolUsuario.Empleado) or nameof(RolUsuario.JefeUnidad) or
-        nameof(RolUsuario.JefeArea) or nameof(RolUsuario.JefeInstitucion) or
-        nameof(RolUsuario.Administrador);
 }

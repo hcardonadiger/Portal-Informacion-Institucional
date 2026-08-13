@@ -5,12 +5,15 @@ using Diger.TramitesEstado.Web.Common;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
+[Authorize]
+[Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
 public sealed class CompromisoDetalleModel(
     ISender sender,
-    IWebHostEnvironment env) : PageModel
+    IWebHostEnvironment env,
+    AccesoModulosService acceso) : PageModel
 {
     public CompromisoDetalleDto Compromiso { get; private set; } = default!;
-    public bool EsAdmin => User.IsInRole(nameof(RolUsuario.Administrador));
+    public bool EsAdmin { get; private set; }
     public string? Error { get; set; }
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
@@ -18,6 +21,7 @@ public sealed class CompromisoDetalleModel(
         try
         {
             Compromiso = await sender.Send(new GetCompromisoDetalleQuery(id), ct);
+            EsAdmin = await acceso.PuedeEditarAsync("Reuniones", ct);
             return Page();
         }
         catch (NotFoundException)
@@ -26,6 +30,7 @@ public sealed class CompromisoDetalleModel(
         }
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostComentarAsync(int id, string? comentario, List<IFormFile>? archivos, CancellationToken ct)
     {
         try
@@ -68,6 +73,7 @@ public sealed class CompromisoDetalleModel(
         }
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEstadoAsync(int id, EstadoCompromiso nuevoEstado, string? nota, CancellationToken ct)
     {
         try
@@ -93,6 +99,7 @@ public sealed class CompromisoDetalleModel(
         }
     }
 
+    [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEnviarRecordatorioAsync(int id, string? mensaje, CancellationToken ct)
     {
         try

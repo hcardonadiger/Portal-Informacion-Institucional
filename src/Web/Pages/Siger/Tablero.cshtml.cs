@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Diger.TramitesEstado.Web.Pages.Siger;
 
 [Authorize]
+[Permission("Siger", AccionModulo.Ver, "Ver el inventario SIGER")]
 public sealed class TableroModel(IApplicationDbContext ctx) : PageModel
 {
     public TableroSigerData D { get; private set; } = new();

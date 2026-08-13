@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
+[Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
 public sealed class HiloModel(ISender sender) : PageModel
 {
     public HiloDetalleDto Hilo { get; private set; } = null!;

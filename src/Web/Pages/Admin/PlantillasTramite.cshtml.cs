@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Admin;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+[Permission("Admin.PlantillasTramite", AccionModulo.Ver, "Ver plantillas de trámite")]
+[Authorize(Policy = "Admin.PlantillasTramite.Ver")]
 public sealed class PlantillasTramiteModel(ISender sender) : PageModel
 {
     public IReadOnlyList<PlantillaListItemDto> Plantillas { get; private set; } = [];

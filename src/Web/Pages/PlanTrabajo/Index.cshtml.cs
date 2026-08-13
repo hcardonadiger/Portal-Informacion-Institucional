@@ -5,6 +5,7 @@ using Diger.TramitesEstado.Application.PlanTrabajo.Queries;
 namespace Diger.TramitesEstado.Web.Pages.PlanTrabajo;
 
 [Authorize]
+[Permission("PlanTrabajo", AccionModulo.Ver, "Ver planes de trabajo")]
 public sealed class IndexModel(ISender sender) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? InstitucionId { get; set; }
@@ -26,6 +27,7 @@ public sealed class IndexModel(ISender sender) : PageModel
         await CargarAsync(ct);
     }
 
+    [Permission("PlanTrabajo", AccionModulo.Crear, "Crear planes de trabajo")]
     public async Task<IActionResult> OnPostCrearAsync(CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(NuevaInstitucionId) || string.IsNullOrWhiteSpace(NuevaInstitucion))
