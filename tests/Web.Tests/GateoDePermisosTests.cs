@@ -86,12 +86,17 @@ public sealed class GateoDePermisosTests : IAsyncLifetime
     {
         // A Administrador no se le otorgó nada en InitializeAsync a propósito: si igual entra,
         // es porque PermissionAuthorizationHandler lo aprueba por capacidad, no por la matriz.
-        var respuestas = await Task.WhenAll(
-            _portal.ClienteComo("Administrador").GetAsync("/Accesos/Permisos"),
-            _portal.ClienteComo("Administrador").GetAsync("/Usuarios"),
-            _portal.ClienteComo("Administrador").GetAsync("/Expedientes/Editor"));
+        //
+        // En serie y no con Task.WhenAll: toda la fixture comparte una única conexión SQLite
+        // en memoria, que no admite acceso concurrente. Con peticiones en paralelo el test
+        // falla de forma intermitente por la base, no por el permiso que quiere probar.
+        var cliente = _portal.ClienteComo("Administrador");
 
-        respuestas.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.OK);
+        foreach (var ruta in new[] { "/Accesos/Permisos", "/Usuarios", "/Expedientes/Editor" })
+        {
+            var respuesta = await cliente.GetAsync(ruta);
+            respuesta.StatusCode.Should().Be(HttpStatusCode.OK, "el rol administrador aprueba {0} por capacidad", ruta);
+        }
     }
 
     // ── Cuenta sin asignación: sin rol, sin nada ──────────────────────────
