@@ -23,10 +23,11 @@ public sealed class AgregarComentarioCompromisoCommandHandler(
         if (acuerdo is null)
             throw new NotFoundException(nameof(AcuerdoReunion), request.CompromisoId);
 
-        var esAdmin = currentUser.Rol == nameof(RolUsuario.Administrador);
+        // Ver la nota de CambiarEstadoCompromisoCommand: capacidad del rol, no su nombre.
+        var esAdmin = currentUser.EsGlobal;
 
         if (acuerdo.Estado == EstadoCompromiso.Cumplido)
-            throw new DomainException("El compromiso se encuentra Aceptado / Cumplido. No se permiten comentarios ni archivos a menos que un Administrador cambie primero su estado.");
+            throw new DomainException("El compromiso se encuentra Aceptado / Cumplido. No se permiten comentarios ni archivos a menos que un administrador cambie primero su estado.");
 
         if (!esAdmin && acuerdo.Estado == EstadoCompromiso.EnRevision)
             throw new DomainException("El compromiso está En Revisión. Cambie el estado a 'En Proceso' si necesita agregar más comentarios o archivos.");
