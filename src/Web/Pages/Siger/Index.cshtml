@@ -14,8 +14,10 @@
             <p>Registro de tramites del Portal de Tramites y Servicios</p>
         </div>
         <div style="display:flex;gap:8px">
+            <a class="btns" asp-page="/Siger/Completitud">Completitud</a>
             @if (esAdmin)
             {
+                <a class="btns" asp-page="/Siger/CapturaLote">Captura por lotes</a>
                 <a class="btnp" asp-page="/Siger/Editor">+ Nuevo tramite</a>
             }
         </div>

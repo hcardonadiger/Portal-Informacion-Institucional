@@ -205,6 +205,7 @@ public interface IApplicationDbContext
     DbSet<Recurso>                 Recursos               { get; }
     DbSet<TramiteSiger>            TramitesSiger          { get; }
     DbSet<PasoSiger>               PasosSiger             { get; }
+    DbSet<CategoriaTramite>        CategoriasTramite      { get; }
     DbSet<RequisitoSiger>          RequisitosSiger        { get; }
     DbSet<EntregableSiger>         EntregablesSiger       { get; }
     DbSet<LugarAtencionSiger>      LugaresAtencionSiger   { get; }

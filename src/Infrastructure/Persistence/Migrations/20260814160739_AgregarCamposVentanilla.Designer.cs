@@ -4,16 +4,19 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Diger.TramitesEstado.Infrastructure.Migrations
+namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260814160739_AgregarCamposVentanilla")]
+    partial class AgregarCamposVentanilla
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1598,8 +1601,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)")
-                        .UseCollation("Modern_Spanish_CI_AI");
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<string>("NombreCorto")
                         .HasMaxLength(30)
@@ -2181,7 +2183,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.ToTable("PasosSiger", null, t =>
                         {
-                            t.HasCheckConstraint("CK_PasosSiger_Modalidad", "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido', 'Interno')");
+                            t.HasCheckConstraint("CK_PasosSiger_Modalidad", "[Modalidad] IS NULL OR [Modalidad] IN (N'Virtual', N'Presencial', N'Hibrido', N'Interno')");
                         });
                 });
 
@@ -2503,7 +2505,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Recursos", (string)null);
+                    b.ToTable("Recursos");
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.RequisitoSiger", b =>
@@ -3367,8 +3369,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.Property<string>("Descripcion")
                         .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)")
-                        .UseCollation("Modern_Spanish_CI_AI");
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<string>("DiagramaUrl")
                         .HasMaxLength(600)
@@ -3411,8 +3412,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Institucion")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
-                        .UseCollation("Modern_Spanish_CI_AI");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("InstitucionId")
                         .HasMaxLength(120)
@@ -3425,13 +3425,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(600)
-                        .HasColumnType("nvarchar(600)")
-                        .UseCollation("Modern_Spanish_CI_AI");
+                        .HasColumnType("nvarchar(600)");
 
                     b.Property<string>("Objetivo")
                         .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)")
-                        .UseCollation("Modern_Spanish_CI_AI");
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<string>("ObservacionesDiger")
                         .HasMaxLength(4000)
@@ -3512,7 +3510,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.ToTable("TramitesSiger", null, t =>
                         {
-                            t.HasCheckConstraint("CK_TramitesSiger_Modalidad", "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')");
+                            t.HasCheckConstraint("CK_TramitesSiger_Modalidad", "[Modalidad] IS NULL OR [Modalidad] IN (N'Virtual', N'Presencial', N'Hibrido')");
 
                             t.HasCheckConstraint("CK_TramitesSiger_Sol", "[EstaEnSol] = 0 OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
                         });
