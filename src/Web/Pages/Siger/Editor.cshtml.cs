@@ -10,9 +10,18 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
 {
     [BindProperty] public TramiteSigerForm Form { get; set; } = new();
     public bool EsNuevo => Form.Id == 0;
+    public IReadOnlyList<CategoriaTramite> Categorias { get; private set; } = [];
+
+    /// <summary>Solo informativo: recalculado en cada carga con la misma regla que usa la API
+    /// pública (FichaPublicaCompletitud), para que el editor nunca contradiga lo que se publica.</summary>
+    public bool FichaCompleta { get; private set; }
+    public bool PublicadoActual { get; private set; }
+    public DateTime? UltimaRevision { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
+
         if (id is not null)
         {
             var t = await ctx.TramitesSiger.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -22,19 +31,31 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
                 Id = t.Id, IdSiger = t.IdSiger, Codigo = t.Codigo, Nombre = t.Nombre,
                 Institucion = t.Institucion, Sigla = t.Sigla, Dependencia = t.Dependencia,
                 Descripcion = t.Descripcion, Objetivo = t.Objetivo, DirigidoA = t.DirigidoA,
-                EstadoSiger = t.EstadoSiger, Publicado = t.Publicado,
+                EstadoSiger = t.EstadoSiger,
                 DisponibleEnLinea = t.DisponibleEnLinea, EnPlanDigitalizacion = t.EnPlanDigitalizacion,
                 VigenciaDocumento = t.VigenciaDocumento, Temporalidad = t.Temporalidad,
                 DiagramaUrl = t.DiagramaUrl, EnlacePrincipal = t.EnlacePrincipal,
-                ObservacionesDiger = t.ObservacionesDiger,
-                FechaIngreso = t.FechaIngreso, UltimaModificacion = t.UltimaModificacion
+                ObservacionesDiger = t.ObservacionesDiger, FechaIngreso = t.FechaIngreso,
+                CategoriaId = t.CategoriaId, Modalidad = t.Modalidad, EstaEnSol = t.EstaEnSol,
+                SolUrl = t.SolUrl, CostoTexto = t.CostoTexto, CostoEsGratuito = t.CostoEsGratuito,
+                TiempoTexto = t.TiempoTexto, EsPopular = t.EsPopular
             };
+            PublicadoActual = t.Publicado;
+            FichaCompleta = FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
+            UltimaRevision = t.UpdatedAt ?? t.UltimaModificacion ?? t.CreatedAt;
         }
         return Page();
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
+        Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
+
+        if (!string.IsNullOrWhiteSpace(Form.SolUrl) && !(Form.SolUrl.StartsWith("http://") || Form.SolUrl.StartsWith("https://")))
+            ModelState.AddModelError("Form.SolUrl", "El enlace a SOL debe ser una URL absoluta (http:// o https://).");
+        if (Form.EstaEnSol && string.IsNullOrWhiteSpace(Form.SolUrl))
+            ModelState.AddModelError("Form.SolUrl", "Si el trámite está en SOL, el enlace es obligatorio.");
+
         if (!ModelState.IsValid) return Page();
 
         if (Form.Id == 0)
@@ -44,13 +65,17 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
                 IdSiger = Form.IdSiger, Codigo = Form.Codigo!, Nombre = Form.Nombre!,
                 Institucion = Form.Institucion!, Sigla = Form.Sigla, Dependencia = Form.Dependencia,
                 Descripcion = Form.Descripcion, Objetivo = Form.Objetivo, DirigidoA = Form.DirigidoA,
-                EstadoSiger = Form.EstadoSiger, Publicado = Form.Publicado,
+                EstadoSiger = Form.EstadoSiger,
                 DisponibleEnLinea = Form.DisponibleEnLinea, EnPlanDigitalizacion = Form.EnPlanDigitalizacion,
                 VigenciaDocumento = Form.VigenciaDocumento, Temporalidad = Form.Temporalidad,
                 DiagramaUrl = Form.DiagramaUrl, EnlacePrincipal = Form.EnlacePrincipal,
-                ObservacionesDiger = Form.ObservacionesDiger,
-                FechaIngreso = Form.FechaIngreso, UltimaModificacion = Form.UltimaModificacion
+                ObservacionesDiger = Form.ObservacionesDiger, FechaIngreso = Form.FechaIngreso,
+                CategoriaId = Form.CategoriaId, Modalidad = Form.Modalidad, EstaEnSol = Form.EstaEnSol,
+                SolUrl = Form.SolUrl, CostoTexto = Form.CostoTexto, CostoEsGratuito = Form.CostoEsGratuito,
+                TiempoTexto = Form.TiempoTexto, EsPopular = Form.EsPopular,
+                SolVerificadoEl = string.IsNullOrWhiteSpace(Form.SolUrl) ? null : DateTime.UtcNow
             };
+            entity.Publicado = CalcularPublicado(entity);
             ctx.TramitesSiger.Add(entity);
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = "Tramite creado.";
@@ -71,7 +96,6 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
             entity.Objetivo = Form.Objetivo;
             entity.DirigidoA = Form.DirigidoA;
             entity.EstadoSiger = Form.EstadoSiger;
-            entity.Publicado = Form.Publicado;
             entity.DisponibleEnLinea = Form.DisponibleEnLinea;
             entity.EnPlanDigitalizacion = Form.EnPlanDigitalizacion;
             entity.VigenciaDocumento = Form.VigenciaDocumento;
@@ -80,13 +104,32 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
             entity.EnlacePrincipal = Form.EnlacePrincipal;
             entity.ObservacionesDiger = Form.ObservacionesDiger;
             entity.FechaIngreso = Form.FechaIngreso;
-            entity.UltimaModificacion = Form.UltimaModificacion;
+            entity.CategoriaId = Form.CategoriaId;
+            entity.Modalidad = Form.Modalidad;
+            entity.EstaEnSol = Form.EstaEnSol;
+            entity.CostoTexto = Form.CostoTexto;
+            entity.CostoEsGratuito = Form.CostoEsGratuito;
+            entity.TiempoTexto = Form.TiempoTexto;
+            entity.EsPopular = Form.EsPopular;
+
+            // Solo se sella al cambiar el texto de la URL — no en cada guardado.
+            if (!string.Equals(entity.SolUrl, Form.SolUrl, StringComparison.Ordinal))
+                entity.SolVerificadoEl = string.IsNullOrWhiteSpace(Form.SolUrl) ? null : DateTime.UtcNow;
+            entity.SolUrl = Form.SolUrl;
+
+            entity.Publicado = CalcularPublicado(entity);
 
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = "Tramite actualizado.";
             return RedirectToPage("/Siger/Detalle", new { id = entity.Id });
         }
     }
+
+    /// <summary>Publicado deja de ser una casilla suelta: es consecuencia de que la ficha esté
+    /// aprobada Y completa (D-02 + ficha mínima). Misma regla que evalúa la API pública.</summary>
+    private static bool CalcularPublicado(TramiteSiger t) =>
+        t.EstadoSiger is "Aprobado" or "Completo" &&
+        FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
 }
 
 public sealed class TramiteSigerForm
@@ -102,7 +145,6 @@ public sealed class TramiteSigerForm
     public string? Objetivo { get; set; }
     public string? DirigidoA { get; set; }
     public string? EstadoSiger { get; set; }
-    public bool Publicado { get; set; }
     public bool DisponibleEnLinea { get; set; }
     public bool EnPlanDigitalizacion { get; set; }
     public string? VigenciaDocumento { get; set; }
@@ -111,5 +153,14 @@ public sealed class TramiteSigerForm
     public string? EnlacePrincipal { get; set; }
     public string? ObservacionesDiger { get; set; }
     public DateTime? FechaIngreso { get; set; }
-    public DateTime? UltimaModificacion { get; set; }
+
+    // ── Ficha pública (Ventanilla Digital) ──────────────────────────────────
+    public int?    CategoriaId { get; set; }
+    public string? Modalidad { get; set; }
+    public bool    EstaEnSol { get; set; }
+    public string? SolUrl { get; set; }
+    public string? CostoTexto { get; set; }
+    public bool?   CostoEsGratuito { get; set; }
+    public string? TiempoTexto { get; set; }
+    public bool    EsPopular { get; set; }
 }
