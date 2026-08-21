@@ -84,6 +84,7 @@ global using Diger.TramitesEstado.Application.Chat;
 global using Diger.TramitesEstado.Application.Notificaciones;
 global using Diger.TramitesEstado.Application.Siger;
 global using Diger.TramitesEstado.Application.Siger.Publico;
+global using Diger.TramitesEstado.Application.Siger.Promocion;
 global using Diger.TramitesEstado.Infrastructure.Security;
 global using MediatR;
 global using Microsoft.AspNetCore.Authorization;

@@ -77,7 +77,7 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
                 TiempoTexto = Form.TiempoTexto, EsPopular = Form.EsPopular,
                 SolVerificadoEl = string.IsNullOrWhiteSpace(Form.SolUrl) ? null : DateTime.UtcNow
             };
-            entity.Publicado = CalcularPublicado(entity);
+            entity.Publicado = ReglaPublicacion.SePublica(entity.EstadoSiger);
             ctx.TramitesSiger.Add(entity);
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = "Tramite creado.";
@@ -119,7 +119,7 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
                 entity.SolVerificadoEl = string.IsNullOrWhiteSpace(Form.SolUrl) ? null : DateTime.UtcNow;
             entity.SolUrl = Form.SolUrl;
 
-            entity.Publicado = CalcularPublicado(entity);
+            entity.Publicado = ReglaPublicacion.SePublica(entity.EstadoSiger);
 
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = "Tramite actualizado.";
@@ -127,31 +127,6 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
         }
     }
 
-    /// <summary>Publicado es consecuencia del estado de la ficha, y de nada más: aprobada o
-    /// completa se publica (D-02).</summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Hasta el 20-08-2026 exigía además que la ficha estuviera completa</b>, y eso tenía
-    /// un efecto que nadie quería: el primer guardado que no llenara la ficha entera en el
-    /// mismo paso la despublicaba. Un técnico llenando por tandas —la categoría de treinta
-    /// fichas, luego la modalidad— veía el catálogo vaciarse mientras trabajaba. En producción
-    /// había 49 fichas publicadas y ninguna cumplía la regla: la primera edición de cualquiera
-    /// de ellas la habría borrado del portal del ciudadano.
-    /// </para>
-    /// <para>
-    /// <b>Se separó por decisión del usuario (P-09, opción 1):</b> una ficha incompleta se
-    /// queda publicada y HondurasÁgil enseña un guion donde falta el dato. Al ciudadano le
-    /// sirve más saber que el trámite existe y quién lo atiende, que no encontrarlo.
-    /// </para>
-    /// <para>
-    /// La completitud <b>no desaparece, deja de censurar</b>: FichaPublicaCompletitud sigue
-    /// calculando qué falta, el editor y el listado lo siguen avisando al técnico, y la API
-    /// pública lo sigue publicando en el campo FichaCompleta. Lo único que cambió es que ya no
-    /// decide si el ciudadano puede ver el trámite.
-    /// </para>
-    /// </remarks>
-    private static bool CalcularPublicado(TramiteSiger t) =>
-        t.EstadoSiger is "Aprobado" or "Completo";
 }
 
 public sealed class TramiteSigerForm
