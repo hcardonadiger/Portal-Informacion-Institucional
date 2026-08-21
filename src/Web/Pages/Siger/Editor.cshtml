@@ -13,6 +13,27 @@
         <a class="btns" asp-page="/Siger/Index">Cancelar</a>
     </div>
 
+    @* ── Qué le falta a esta ficha ───────────────────────────────── *@
+    @if (!Model.EsNuevo && Model.Faltantes.Count > 0)
+    {
+        <div class="card" role="alert"
+             style="margin-bottom:1rem;border-left:4px solid #b45309;background:#fffbeb">
+            <strong style="color:#b45309">@FichaPublicaCompletitud.Frase(Model.Faltantes)</strong>
+            <p style="margin:6px 0 0">
+                Mientras falte cualquiera de esos datos, el trámite no se publica en el Portal de
+                Trámites y Servicios, aunque esté aprobado.
+            </p>
+        </div>
+    }
+    else if (!Model.EsNuevo)
+    {
+        <div class="card"
+             style="margin-bottom:1rem;border-left:4px solid #15803d;background:#f0fdf4">
+            <strong style="color:#15803d">La ficha pública está completa.</strong>
+            <span>Se publica en cuanto el trámite quede en estado Aprobado o Completo.</span>
+        </div>
+    }
+
     <form method="post" class="card">
         <input type="hidden" asp-for="Form.Id" />
 

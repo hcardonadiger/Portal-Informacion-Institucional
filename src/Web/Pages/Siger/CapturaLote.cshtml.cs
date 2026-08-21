@@ -49,8 +49,11 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
                     _ => t.CostoEsGratuito
                 };
 
-                t.Publicado = t.EstadoSiger is "Aprobado" or "Completo" &&
-                    FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
+                // P-09, opción 1 (20-08-2026): publicar ya NO exige ficha completa. El motivo
+                // completo está en Editor.CalcularPublicado, y aquí pesa el doble: esta es la
+                // pantalla pensada para llenar por tandas, así que era justo aquí donde la
+                // regla anterior despublicaba lo que el técnico acababa de mejorar.
+                t.Publicado = t.EstadoSiger is "Aprobado" or "Completo";
             }
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = $"{entidades.Count} trámite(s) actualizados.";

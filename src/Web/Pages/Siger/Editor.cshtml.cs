@@ -14,7 +14,8 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
 
     /// <summary>Solo informativo: recalculado en cada carga con la misma regla que usa la API
     /// pública (FichaPublicaCompletitud), para que el editor nunca contradiga lo que se publica.</summary>
-    public bool FichaCompleta { get; private set; }
+    public IReadOnlyList<string> Faltantes { get; private set; } = [];
+    public bool FichaCompleta => Faltantes.Count == 0;
     public bool PublicadoActual { get; private set; }
     public DateTime? UltimaRevision { get; private set; }
 
@@ -41,7 +42,8 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
                 TiempoTexto = t.TiempoTexto, EsPopular = t.EsPopular
             };
             PublicadoActual = t.Publicado;
-            FichaCompleta = FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
+            Faltantes = FichaPublicaCompletitud.CamposFaltantes(
+                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
             UltimaRevision = t.UpdatedAt ?? t.UltimaModificacion ?? t.CreatedAt;
         }
         return Page();
@@ -125,11 +127,31 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
         }
     }
 
-    /// <summary>Publicado deja de ser una casilla suelta: es consecuencia de que la ficha esté
-    /// aprobada Y completa (D-02 + ficha mínima). Misma regla que evalúa la API pública.</summary>
+    /// <summary>Publicado es consecuencia del estado de la ficha, y de nada más: aprobada o
+    /// completa se publica (D-02).</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Hasta el 20-08-2026 exigía además que la ficha estuviera completa</b>, y eso tenía
+    /// un efecto que nadie quería: el primer guardado que no llenara la ficha entera en el
+    /// mismo paso la despublicaba. Un técnico llenando por tandas —la categoría de treinta
+    /// fichas, luego la modalidad— veía el catálogo vaciarse mientras trabajaba. En producción
+    /// había 49 fichas publicadas y ninguna cumplía la regla: la primera edición de cualquiera
+    /// de ellas la habría borrado del portal del ciudadano.
+    /// </para>
+    /// <para>
+    /// <b>Se separó por decisión del usuario (P-09, opción 1):</b> una ficha incompleta se
+    /// queda publicada y HondurasÁgil enseña un guion donde falta el dato. Al ciudadano le
+    /// sirve más saber que el trámite existe y quién lo atiende, que no encontrarlo.
+    /// </para>
+    /// <para>
+    /// La completitud <b>no desaparece, deja de censurar</b>: FichaPublicaCompletitud sigue
+    /// calculando qué falta, el editor y el listado lo siguen avisando al técnico, y la API
+    /// pública lo sigue publicando en el campo FichaCompleta. Lo único que cambió es que ya no
+    /// decide si el ciudadano puede ver el trámite.
+    /// </para>
+    /// </remarks>
     private static bool CalcularPublicado(TramiteSiger t) =>
-        t.EstadoSiger is "Aprobado" or "Completo" &&
-        FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
+        t.EstadoSiger is "Aprobado" or "Completo";
 }
 
 public sealed class TramiteSigerForm

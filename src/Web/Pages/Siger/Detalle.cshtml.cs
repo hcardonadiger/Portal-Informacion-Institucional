@@ -9,6 +9,9 @@ public sealed class DetalleModel(IApplicationDbContext ctx) : PageModel
     public TramiteSiger Tramite { get; private set; } = default!;
     public List<ExpedienteVinculadoRow> ExpedientesVinculados { get; private set; } = [];
 
+    /// <summary>Qué le falta a esta ficha para poder publicarse. Vacía = completa.</summary>
+    public IReadOnlyList<string> Faltantes { get; private set; } = [];
+
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
     {
         var t = await ctx.TramitesSiger.AsNoTracking()
@@ -22,6 +25,9 @@ public sealed class DetalleModel(IApplicationDbContext ctx) : PageModel
 
         if (t is null) return NotFound();
         Tramite = t;
+
+        Faltantes = FichaPublicaCompletitud.CamposFaltantes(
+            t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
 
         var raw = await ctx.Tramites.AsNoTracking()
             .Where(et => et.TramiteSigerId == id)
@@ -42,6 +48,9 @@ public sealed class DetalleModel(IApplicationDbContext ctx) : PageModel
         var t = await ctx.TramitesSiger.FindAsync([id], ct);
         if (t is null) return NotFound();
         ctx.TramitesSiger.Remove(t);
+
+        Faltantes = FichaPublicaCompletitud.CamposFaltantes(
+            t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
         await ctx.SaveChangesAsync(ct);
         TempData["SuccessMsg"] = "Tramite eliminado.";
         return RedirectToPage("/Siger/Index");

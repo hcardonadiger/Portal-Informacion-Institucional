@@ -43,6 +43,16 @@
         </div>
     </div>
 
+    @* ── Aviso de fichas incompletas ──────────────────────────── *@
+    @if (Model.TotalIncompletas > 0)
+    {
+        <div class="card" style="margin:0 0 1.25rem;border-left:4px solid #b45309;background:#fffbeb">
+            <strong style="color:#b45309">@Model.TotalIncompletas de @Model.TotalRegistros fichas están incompletas.</strong>
+            <span>Ninguna de ellas se publica en el Portal de Trámites y Servicios hasta que se capture lo que falta.</span>
+            <a class="btns" style="margin-left:8px" asp-page="/Siger/Index" asp-route-Completa="No">Ver solo las incompletas</a>
+        </div>
+    }
+
     @* ── Filtros ───────────────────────────────────────────────── *@
     <form method="get" class="seg-filters">
         <div class="field">
@@ -85,6 +95,14 @@
                 <option value="No">No</option>
             </select>
         </div>
+        <div class="field" style="min-width:130px">
+            <label>Ficha publica <span class="help-tip tip-down" data-tip="Una ficha está completa cuando tiene categoría, modalidad, tiempo, costo y, si el trámite está en SOL, su enlace. Solo las completas se publican.">?</span></label>
+            <select asp-for="Completa">
+                <option value="">Todas</option>
+                <option value="No">Incompletas</option>
+                <option value="Si">Completas</option>
+            </select>
+        </div>
         <button class="btnp" type="submit">Filtrar</button>
         <a class="btns" asp-page="/Siger/Index">Limpiar</a>
     </form>
@@ -124,6 +142,11 @@
                                 <a asp-page="/Siger/Detalle" asp-route-id="@t.Id" style="color:var(--diger-text);text-decoration:none">
                                     @(t.Nombre.Length > 80 ? t.Nombre[..80] + "..." : t.Nombre)
                                 </a>
+                                @if (!t.FichaCompleta)
+                                {
+                                    <span class="wf-registrada" style="margin-left:6px;font-size:11px;white-space:nowrap"
+                                          title="@t.TextoFaltantes">Ficha incompleta</span>
+                                }
                             </td>
                             <td style="white-space:nowrap">
                                 @if (t.InstitucionId != null)

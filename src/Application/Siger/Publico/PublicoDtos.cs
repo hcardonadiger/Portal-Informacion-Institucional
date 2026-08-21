@@ -92,8 +92,45 @@ public sealed record SaludPublicaDto(string Estado, bool BaseDeDatos, DateTime H
 /// ?soloFichasCompletas=true) — un solo lugar para no desincronizar el resumen del filtro.</summary>
 public static class FichaPublicaCompletitud
 {
+    /// <summary>Qué le falta a la ficha para poder publicarse. Lista vacía = ficha completa.</summary>
+    /// <remarks>
+    /// Los nombres son los que el técnico ve en el editor, no los de las columnas: quien lee la
+    /// alerta va a buscar el campo en la pantalla, no en la base. El costo se decide por
+    /// <paramref name="costoEsGratuito"/> y no por el texto del monto, porque "es gratuito" ya es
+    /// una respuesta completa aunque no haya monto que escribir.
+    /// <para>
+    /// La comparación es contra <c>null</c> y no contra cadena vacía a propósito: el filtro
+    /// <c>?soloFichasCompletas=true</c> se resuelve en SQL, donde este método no se puede llamar,
+    /// y tiene que decidir exactamente lo mismo. Si acá se apretara el criterio, el catálogo
+    /// público mostraría fichas que esta alerta declara incompletas.
+    /// </para>
+    /// </remarks>
+    public static IReadOnlyList<string> CamposFaltantes(int? categoriaId, string? modalidad,
+        string? tiempoTexto, bool? costoEsGratuito, bool estaEnSol, string? solUrl)
+    {
+        var faltantes = new List<string>(5);
+
+        if (categoriaId is null)         faltantes.Add("categoría");
+        if (modalidad is null)           faltantes.Add("modalidad");
+        if (tiempoTexto is null)         faltantes.Add("tiempo");
+        if (costoEsGratuito is null)     faltantes.Add("costo");
+        if (estaEnSol && solUrl is null) faltantes.Add("enlace a SOL");
+
+        return faltantes;
+    }
+
+    /// <summary>Una ficha está completa cuando no le falta nada. Definido sobre
+    /// <see cref="CamposFaltantes"/> a propósito: el día que se agregue un campo obligatorio, la
+    /// alerta que ve el técnico y el filtro que ve el ciudadano no pueden decir cosas distintas.</summary>
     public static bool Evaluar(int? categoriaId, string? modalidad, string? tiempoTexto,
         bool? costoEsGratuito, bool estaEnSol, string? solUrl) =>
-        categoriaId is not null && modalidad is not null && tiempoTexto is not null &&
-        costoEsGratuito is not null && (!estaEnSol || solUrl is not null);
+        CamposFaltantes(categoriaId, modalidad, tiempoTexto, costoEsGratuito, estaEnSol, solUrl).Count == 0;
+
+    /// <summary>Cómo se le dice al técnico qué falta. Vive junto a la regla y no en cada página
+    /// para que el inventario, el detalle y el editor no acaben con tres redacciones distintas
+    /// del mismo aviso.</summary>
+    public static string Frase(IReadOnlyList<string> faltantes) =>
+        faltantes.Count == 0
+            ? "La ficha pública está completa."
+            : $"Falta capturar: {string.Join(", ", faltantes)}.";
 }
