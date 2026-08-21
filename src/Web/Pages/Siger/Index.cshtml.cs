@@ -106,8 +106,9 @@ public sealed class IndexModel(IApplicationDbContext ctx) : PageModel
 }
 
 /// <param name="Faltantes">Qué le falta a la ficha para poder publicarse. Vacía = completa.</param>
+/// <param name="IdSiger">Vacío en una ficha creada desde un expediente: no existe en SIGER.</param>
 public sealed record TramiteSigerRow(
-    int Id, int IdSiger, string Codigo, string Nombre, string Institucion, string? Sigla,
+    int Id, int? IdSiger, string Codigo, string Nombre, string Institucion, string? Sigla,
     string? Estado, bool Publicado, bool EnLinea, bool EnPlan,
     int Pasos, int Requisitos, int Entregables, string? DiagramaUrl,
     string? InstitucionId, int Expedientes,

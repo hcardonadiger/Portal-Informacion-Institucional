@@ -132,7 +132,8 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
 public sealed class TramiteSigerForm
 {
     public int Id { get; set; }
-    public int IdSiger { get; set; }
+    /// <summary>Vacío en una ficha creada desde un expediente: no existe en SIGER.</summary>
+    public int? IdSiger { get; set; }
     public string? Codigo { get; set; }
     public string? Nombre { get; set; }
     public string? Institucion { get; set; }

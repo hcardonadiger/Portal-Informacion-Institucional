@@ -39,8 +39,11 @@
 
         <div class="form-grid">
             <div class="field">
+                @* Sin «required»: una ficha creada desde un expediente no existe en SIGER y por
+                   tanto no tiene identificador. Dejarlo vacío es la forma de decirlo. *@
                 <label asp-for="Form.IdSiger">Id SIGER</label>
-                <input asp-for="Form.IdSiger" type="number" required />
+                <input asp-for="Form.IdSiger" type="number" placeholder="Vacío si no viene de SIGER" />
+                <span class="res-meta">Déjelo vacío si la ficha se creó desde un expediente.</span>
             </div>
             <div class="field">
                 <label asp-for="Form.Codigo">Codigo</label>
@@ -127,7 +130,11 @@
             else
             {
                 <span class="wf-badge wf-registrada">No</span>
-                <span class="res-meta">— se publica solo cuando el estado es Aprobado/Completo y la ficha está completa (categoría, modalidad, tiempo, costo, y enlace a SOL si aplica)</span>
+                @* El texto decía además «y la ficha está completa». Dejó de ser cierto con P-09
+                   (20-08-2026): la completitud ya no decide la publicación, solo avisa. Un aviso
+                   que describe una regla que el sistema ya no aplica manda al técnico a llenar
+                   campos que no van a publicarle nada. *@
+                <span class="res-meta">— se publica cuando el estado es Aprobado o Completo</span>
             }
             @if (!Model.EsNuevo)
             {

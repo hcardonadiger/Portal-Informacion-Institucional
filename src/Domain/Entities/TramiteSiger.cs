@@ -2,7 +2,11 @@ namespace Diger.TramitesEstado.Domain.Entities;
 
 public sealed class TramiteSiger : BaseAuditableEntity
 {
-    public int IdSiger { get; set; }
+    /// <summary>Identificador en el sistema SIGER. Vacío cuando la ficha nació en este portal
+    /// —promovida desde un expediente— y por tanto no existe en SIGER. Ese vacío es la marca:
+    /// de él salen las insignias del expediente, el aviso del detalle y el filtro del
+    /// inventario, sin necesidad de una columna aparte.</summary>
+    public int? IdSiger { get; set; }
     public string Codigo { get; set; } = default!;
     public string Nombre { get; set; } = default!;
     public string Institucion { get; set; } = default!;

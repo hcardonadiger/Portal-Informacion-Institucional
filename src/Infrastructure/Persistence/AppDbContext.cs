@@ -1392,7 +1392,10 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
                 "[EstaEnSol] = 0 OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
         });
 
-        b.HasIndex(x => x.IdSiger).IsUnique();
+        // Filtrado a propósito: SQL Server solo admite UN nulo en un índice único sin filtro, y
+        // las fichas promovidas desde un expediente son todas de IdSiger nulo. Sin el filtro, la
+        // segunda promoción falla con violación de índice.
+        b.HasIndex(x => x.IdSiger).IsUnique().HasFilter("[IdSiger] IS NOT NULL");
         b.HasIndex(x => x.Codigo).IsUnique();
         b.HasIndex(x => x.Institucion);
         b.HasIndex(x => x.Sigla);
