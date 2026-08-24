@@ -1,0 +1,163 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Siger.PublicacionModel
+@inject AccesoModulosService Acceso
+@{
+    ViewData["Title"] = "Publicado en Honduras Ágil";
+    var puedePublicar = await Acceso.PuedeClaveAsync("Siger.Publicacion.Editar");
+}
+
+<div class="container">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
+        <a class="btns" asp-page="/Siger/Index" style="font-size:13px">← Inventario</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Publicado en Honduras Ágil</h2>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+        <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+            Esto es exactamente lo que el ciudadano ve en Honduras Ágil.
+            <strong>@Model.Publicadas</strong> de <strong>@Model.TotalFichas</strong> fichas están
+            publicadas; hay <strong>@Model.Candidatas</strong> candidatas esperando decisión.
+            Publicar es un acto deliberado: nada sale al público por sí solo.
+        </p>
+    </div>
+
+    @* ── Pestañas ──────────────────────────────────────────────── *@
+    <div style="display:flex;gap:6px;border-bottom:2px solid #e2e8f0;margin-bottom:1rem;flex-wrap:wrap">
+        @{
+            var tabs = new (string Key, string Label, int Count)[]
+            {
+                (PublicacionModel.TabPublicadas, "En Honduras Ágil", Model.Publicadas),
+                (PublicacionModel.TabCandidatas, "Candidatas",       Model.Candidatas),
+                (PublicacionModel.TabTodas,      "Todo el inventario", Model.TotalFichas)
+            };
+        }
+        @foreach (var t in tabs)
+        {
+            var activa = Model.Tab == t.Key;
+            <a asp-page="/Siger/Publicacion" asp-route-tab="@t.Key" asp-route-buscar="@Model.Buscar" asp-route-sigla="@Model.Sigla"
+               style="padding:8px 16px;text-decoration:none;font-weight:600;font-size:14px;border-bottom:3px solid @(activa ? "#1455a4" : "transparent");color:@(activa ? "#1455a4" : "#64748b")">
+                @t.Label <span style="opacity:.7">(@t.Count)</span>
+            </a>
+        }
+    </div>
+
+    @* ── Filtros ───────────────────────────────────────────────── *@
+    <form method="get" class="seg-filters">
+        <input type="hidden" name="tab" value="@Model.Tab" />
+        <div class="field">
+            <label>Buscar</label>
+            <input name="buscar" value="@Model.Buscar" placeholder="Nombre, código o institución..." />
+        </div>
+        <div class="field" style="min-width:160px">
+            <label>Institución</label>
+            <select name="sigla">
+                <option value="">Todas</option>
+                @foreach (var s in Model.Siglas)
+                {
+                    <option value="@s" selected="@(Model.Sigla == s)">@s</option>
+                }
+            </select>
+        </div>
+        <button class="btnp" type="submit">Filtrar</button>
+        <a class="btns" asp-page="/Siger/Publicacion" asp-route-tab="@Model.Tab">Limpiar</a>
+    </form>
+
+    @if (!Model.Resultado.Items.Any())
+    {
+        <div class="card">
+            <p style="font-size:14px;color:#64748b;margin:0">
+                @(Model.Tab == PublicacionModel.TabCandidatas
+                    ? "No hay candidatas con este filtro. Una ficha es candidata cuando su estado es Aprobado o Completo y todavía no está publicada."
+                    : "No hay fichas con este filtro.")
+            </p>
+        </div>
+    }
+    else
+    {
+        <form method="post">
+            <input type="hidden" name="tab" value="@Model.Tab" />
+            <input type="hidden" name="buscar" value="@Model.Buscar" />
+            <input type="hidden" name="sigla" value="@Model.Sigla" />
+            <input type="hidden" name="pg" value="@Model.Resultado.Page" />
+
+            @if (puedePublicar)
+            {
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:.6rem;flex-wrap:wrap">
+                    <button class="btnp" type="submit" asp-page-handler="Publicar">Publicar seleccionadas</button>
+                    <button class="btns" type="submit" asp-page-handler="Quitar">Quitar de Honduras Ágil</button>
+                    <span class="res-meta">Quitar despublica; la ficha se queda entera en el inventario.</span>
+                </div>
+            }
+
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            @if (puedePublicar)
+                            {
+                                <th style="width:34px"><input type="checkbox" onclick="document.querySelectorAll('.chk-ficha').forEach(c=>c.checked=this.checked)" /></th>
+                            }
+                            <th>Código</th>
+                            <th>Trámite</th>
+                            <th>Institución</th>
+                            <th>Estado</th>
+                            <th>En HA</th>
+                            <th>Avisos</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in Model.Resultado.Items)
+                        {
+                            <tr>
+                                @if (puedePublicar)
+                                {
+                                    <td><input class="chk-ficha" type="checkbox" name="Seleccion" value="@f.Id" /></td>
+                                }
+                                <td style="white-space:nowrap">@f.Codigo</td>
+                                <td>@f.Nombre</td>
+                                <td style="white-space:nowrap">@(f.Sigla ?? f.Institucion)</td>
+                                <td style="white-space:nowrap">@(f.EstadoSiger ?? "—")</td>
+                                <td style="white-space:nowrap">
+                                    @if (f.Publicado)
+                                    {
+                                        <span style="font-size:11px;font-weight:700;background:#d1e7dd;color:#0f5132;padding:2px 8px;border-radius:4px">Publicada</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:11px;color:#64748b">No</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (f.TieneAviso)
+                                    {
+                                        <span style="font-size:12px;color:#b45309">@f.Aviso</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:12px;color:#15803d">sin observaciones</span>
+                                    }
+                                </td>
+                                <td style="white-space:nowrap">
+                                    <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/Siger/Detalle" asp-route-id="@f.Id">Ver</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </form>
+
+        <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+    }
+
+    <div class="card" style="margin-top:1rem">
+        <h3 class="sec-h">Sobre los avisos</h3>
+        <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+            Un aviso <strong>no impide publicar</strong>. Señala que el estado de la ficha es
+            distinto de Aprobado o Completo, o que le faltan campos que Honduras Ágil enseñará
+            con un guion. Se decidió a propósito que al ciudadano le sirve más ver el trámite
+            incompleto —saber que existe y quién lo atiende— que no encontrarlo.
+        </p>
+    </div>
+</div>

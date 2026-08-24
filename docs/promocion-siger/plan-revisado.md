@@ -151,7 +151,7 @@ Tamaño: de 17 tareas a unas **37**. Cuatro hechas, ~33 por delante.
 | 1 | **Hecha** — `IdSiger` opcional, índice filtrado, regla unificada | ✓ 4 |
 | 2 | **Hecha** — La foto del SIGER original | ✓ 1 |
 | 3 | **Hecha** — Detener la pérdida de conciliaciones | ✓ 3 |
-| 4 | Control de publicación en HA + pantalla de administración | ~4 |
+| 4 | **Hecha** — Control de publicación en HA + pantalla de administración | ✓ 4 |
 | 5 | Llenado asistido | ~3 |
 | 6 | URL SOL compuesta | ~3 |
 | 7 | El expediente aprende a guardar todo lo que SIGER guarda | ~8 |
@@ -226,27 +226,41 @@ apuntando a otro trámite si alguien reacomoda el expediente. Ahora existe una c
 que migrarlos.
 
 
-### Fase 4 — Control de publicación en HA + pantalla de administración (~4 tareas)
+### Fase 4 — Control de publicación en HA + pantalla de administración — HECHA
 
 **Entrega:** D-08, D-09, D-10, D-16.
 
-**Por qué antes del llenado:** conviene tener la compuerta construida antes de que llegue la
-avenida. La Fase 5 va a dejar completas más de mil fichas; sin el control manual ya en su sitio,
-esa avenida llegaría al ciudadano sin que nadie la haya mirado.
+**El defecto que arregla.** `Publicado` no lo elegía nadie: lo recalculaban tres pantallas desde
+`EstadoSiger` en cada guardado. Eso tenía dos consecuencias. Corregir una tilde podía sacar un
+trámite del portal del ciudadano —o meterlo— sin que nadie lo pidiera. Y como la bandera solo se
+recalculaba al editar, había 303 fichas en Aprobado o Completo y solo 50 publicadas: las otras
+253 no iban a corregirse nunca, porque nadie las iba a volver a editar.
 
-Arregla además un defecto vivo: 303 fichas en Aprobado/Completo y solo 50 publicadas, porque la
-bandera solo se recalcula al editar.
+**Lo construido:**
 
-1. Bandera manual de publicación. `ReglaPublicacion` pasa a alimentar una advertencia que
-   **no bloquea** (D-10).
-2. Migración y relleno **conservador**: las 50 publicadas siguen publicadas; las demás quedan
-   sin publicar, listadas como *candidatas*.
-3. Pantalla «Publicado en HondurasÁgil». **Ya existe el 70 %**: `Siger/Index.cshtml.cs` tiene
-   filtro `Publicado` Sí/No y contador `TotalPublicados`. Falta publicar/despublicar
-   —individual y en lote—, la advertencia y la lista de candidatas.
-4. Permiso propio para publicar, distinto del de editar una ficha.
+1. Se quitaron las tres asignaciones automáticas (dos en el editor, una en la captura por lotes).
+   `ReglaPublicacion` sobrevive pero cambia de papel: de decidir a aconsejar, y se renombró a
+   `EstadoListoParaPublicar` para que el nombre no mienta.
+2. Pantalla **Siger → Publicado en HA**: tres pestañas (en HondurasÁgil, candidatas, todo el
+   inventario), búsqueda, filtro por institución, selección múltiple y las dos acciones. Cada
+   fila lleva su aviso —estado distinto de Aprobado, o campos sin llenar— y **el aviso no
+   bloquea** (D-10).
+3. Permiso propio `Siger.Publicacion`, separado de `Siger`: se puede corregir contenido todo el
+   día sin poder decidir qué sale al público. `Ver` para mirar, `Editar` para publicar y quitar.
+4. Quitar de HA **despublica**, no borra (D-16).
 
----
+**No hizo falta ninguna migración.** El relleno conservador que pedía el plan ocurre por no hacer
+nada: la columna ya existe y ya trae las 50 publicadas de hoy. Al dejar de recalcularla, esas 50
+se quedan y las 253 candidatas esperan decisión, que es exactamente lo que se buscaba.
+
+**Medido en Ensayo:** 50 publicadas de 1 057, 253 candidatas, ninguna publicada con estado
+dudoso, y 29 publicadas a las que les falta algún campo —esas salen con aviso.
+
+Las dos pruebas que más importan no son las de la pantalla sino las que impiden que la bandera
+se vuelva a mover sola: editar una ficha publicada sin aprobar no la despublica, y editar una
+aprobada sin publicar no la publica. Ambas comprueban además que el guardado ocurrió, para que
+no pasen en verde por no haber hecho nada.
+
 
 ### Fase 5 — Llenado asistido (~3 tareas)
 

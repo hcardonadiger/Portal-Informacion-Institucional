@@ -49,11 +49,10 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
                     _ => t.CostoEsGratuito
                 };
 
-                // P-09, opción 1 (20-08-2026): publicar ya NO exige ficha completa. El motivo
-                // completo está en ReglaPublicacion, y aquí pesa el doble: esta es la pantalla
-                // pensada para llenar por tandas, así que era justo aquí donde la regla anterior
-                // despublicaba lo que el técnico acababa de mejorar.
-                t.Publicado = ReglaPublicacion.SePublica(t.EstadoSiger);
+                // La captura por lotes no toca la publicación: llenar campos y decidir qué ve el
+                // ciudadano son cosas distintas, y esta pantalla existe para lo primero. Antes
+                // recalculaba la bandera acá, que era donde más dolía —la pantalla de llenar por
+                // tandas despublicando justo lo que el técnico acababa de mejorar.
             }
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = $"{entidades.Count} trámite(s) actualizados.";

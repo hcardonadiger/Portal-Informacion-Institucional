@@ -1,43 +1,43 @@
 namespace Diger.TramitesEstado.Application.Siger.Promocion;
 
-/// <summary>Publicado es consecuencia del estado de la ficha, y de nada más: aprobada o
-/// completa se publica (D-02).</summary>
+/// <summary>
+/// Cuándo el estado de una ficha SIGER <b>sugiere</b> que ya se puede publicar en HondurasÁgil.
+/// </summary>
 /// <remarks>
 /// <para>
-/// <b>Hasta el 20-08-2026 exigía además que la ficha estuviera completa</b>, y eso tenía
-/// un efecto que nadie quería: el primer guardado que no llenara la ficha entera en el
-/// mismo paso la despublicaba. Un técnico llenando por tandas —la categoría de treinta
-/// fichas, luego la modalidad— veía el catálogo vaciarse mientras trabajaba. En producción
-/// había 49 fichas publicadas y ninguna cumplía la regla: la primera edición de cualquiera
-/// de ellas la habría borrado del portal del ciudadano.
+/// <b>Esta regla ya no decide nada; aconseja.</b> Hasta la Fase 4 era lo que ponía y quitaba la
+/// bandera <c>Publicado</c> en cada guardado, y eso tenía dos consecuencias malas. La primera:
+/// nadie elegía qué ve el ciudadano —lo elegía un campo de estado administrativo—. La segunda,
+/// peor: la bandera solo se recalculaba al editar, así que había 303 fichas en Aprobado o
+/// Completo y solo 50 publicadas, y las otras 253 no iban a corregirse nunca porque nadie las
+/// iba a volver a editar.
 /// </para>
 /// <para>
-/// <b>Se separó por decisión del usuario (P-09, opción 1):</b> una ficha incompleta se
-/// queda publicada y HondurasÁgil enseña un guion donde falta el dato. Al ciudadano le
-/// sirve más saber que el trámite existe y quién lo atiende, que no encontrarlo.
+/// Desde D-10 la publicación es <b>manual y no se bloquea</b>: quien administra PortalDigital
+/// marca qué se publica, y esta regla solo alimenta el aviso de la pantalla y la lista de
+/// candidatas. Un aviso informa; un bloqueo se impondría sobre el criterio de quien sí conoce
+/// el trámite.
 /// </para>
 /// <para>
-/// La completitud <b>no desaparece, deja de censurar</b>: FichaPublicaCompletitud sigue
-/// calculando qué falta, el editor y el listado lo siguen avisando al técnico, y la API
-/// pública lo sigue publicando en el campo FichaCompleta. Lo único que cambió es que ya no
-/// decide si el ciudadano puede ver el trámite.
-/// </para>
-/// <para>
-/// <b>Por qué vive acá y no en la página del editor:</b> la promoción de un trámite de
-/// expediente a ficha SIGER necesita exactamente esta misma regla. Dos copias de una regla
-/// que decide qué ve el ciudadano acabarían discrepando, y la discrepancia se vería en el
-/// portal público. Es el mismo motivo por el que <c>FichaPublicaCompletitud</c> vive en esta
-/// capa y no en cada pantalla que la consulta.
+/// <b>Por qué vive acá y no en la página.</b> Tanto la pantalla de publicación como la promoción
+/// de un trámite de expediente necesitan la misma respuesta. Dos copias de una regla que habla
+/// de lo que ve el ciudadano acabarían discrepando, y la discrepancia se vería en el portal
+/// público. Ya pasó: antes de la Fase 1 había tres copias escritas a mano.
 /// </para>
 /// </remarks>
 public static class ReglaPublicacion
 {
     /// <summary>Estado con el que nace una ficha promovida desde un expediente: no se publica
-    /// hasta que alguien la apruebe. Promover y publicar son dos actos distintos.</summary>
+    /// hasta que alguien lo decida. Promover y publicar son dos actos distintos.</summary>
     public const string Registrado = "Registrado";
     public const string Aprobado   = "Aprobado";
     public const string Completo   = "Completo";
 
-    public static bool SePublica(string? estadoSiger) =>
+    /// <summary>
+    /// Cierto cuando el estado administrativo de la ficha no da motivo para dudar de publicarla.
+    /// No es permiso ni impedimento: es lo que separa a las candidatas del resto y lo que decide
+    /// si la pantalla muestra un aviso junto a la fila.
+    /// </summary>
+    public static bool EstadoListoParaPublicar(string? estadoSiger) =>
         estadoSiger is Aprobado or Completo;
 }

@@ -77,7 +77,8 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
                 TiempoTexto = Form.TiempoTexto, EsPopular = Form.EsPopular,
                 SolVerificadoEl = string.IsNullOrWhiteSpace(Form.SolUrl) ? null : DateTime.UtcNow
             };
-            entity.Publicado = ReglaPublicacion.SePublica(entity.EstadoSiger);
+            // Una ficha nace sin publicar, sea cual sea su estado. Promover y publicar son actos
+            // distintos: el segundo se hace a mano en Siger/Publicacion (D-08, D-10).
             ctx.TramitesSiger.Add(entity);
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = "Tramite creado.";
@@ -119,7 +120,9 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
                 entity.SolVerificadoEl = string.IsNullOrWhiteSpace(Form.SolUrl) ? null : DateTime.UtcNow;
             entity.SolUrl = Form.SolUrl;
 
-            entity.Publicado = ReglaPublicacion.SePublica(entity.EstadoSiger);
+            // Editar una ficha NO cambia si está publicada. Cuando este renglón la recalculaba,
+            // corregir una tilde podía sacarla del portal del ciudadano —o meterla— sin que
+            // nadie lo hubiera pedido. Publicar se decide en Siger/Publicacion (D-10).
 
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = "Tramite actualizado.";
