@@ -1,0 +1,74 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Siger.ArchivoModel
+@{
+    ViewData["Title"] = "Archivo del SIGER original";
+}
+
+<div class="container" style="max-width:760px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
+        <a class="btns" asp-page="/Siger/Index" style="font-size:13px">← Volver al inventario</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Archivo del SIGER original</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error">@Model.Error</div>
+    }
+
+    @if (Model.Resultado is { } r)
+    {
+        <div class="alert-ok" style="margin-bottom:1rem">
+            Captura finalizada — <strong>@r.Capturadas</strong> fichas retratadas ahora,
+            <strong>@r.YaTenian</strong> que ya estaban en el archivo, de <strong>@r.Total</strong>
+            en el inventario.
+        </div>
+    }
+
+    <div class="card" style="margin-bottom:1rem">
+        <h3 class="sec-h">Estado</h3>
+        <p style="font-size:15px;margin:.4rem 0">
+            <strong>@Model.ConFoto</strong> de <strong>@Model.TotalFichas</strong> fichas tienen
+            su foto original guardada.
+            @if (Model.Pendientes > 0)
+            {
+                <span style="color:#b45309"> Faltan @Model.Pendientes.</span>
+            }
+            else if (Model.TotalFichas > 0)
+            {
+                <span style="color:#15803d"> El inventario completo está archivado.</span>
+            }
+        </p>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">¿Qué hace esto?</h3>
+        <p style="font-size:14px;line-height:1.55;color:#4a5568">
+            Guarda una copia congelada de cada ficha SIGER y de sus seis listas hijas —pasos,
+            requisitos, entregables, lugares de atención, enlaces y tareas de digitalización—
+            tal como están hoy, antes de que el portal escriba nada encima.
+        </p>
+        <p style="font-size:14px;line-height:1.55;color:#4a5568">
+            Es la única copia de la información <strong>anterior</strong> a que PortalDigital
+            empiece a mandar. El historial de versiones que viene después solo puede grabar lo
+            que pase de aquí en adelante; lo de antes se guarda ahora o no se guarda nunca.
+        </p>
+        <p style="font-size:14px;line-height:1.55;color:#4a5568">
+            Es <strong>idempotente</strong>: las fichas ya archivadas se dejan intactas, así que
+            se puede ejecutar varias veces sin riesgo de repisar el original.
+        </p>
+
+        @if (Model.Pendientes > 0)
+        {
+            <form method="post">
+                <button class="btnp" type="submit"
+                        onclick="this.disabled=true;this.textContent='Capturando…';this.form.submit()">
+                    Capturar las @Model.Pendientes que faltan
+                </button>
+            </form>
+        }
+        else
+        {
+            <p style="font-size:13px;color:#64748b;margin:0">No hay nada pendiente que capturar.</p>
+        }
+    </div>
+</div>

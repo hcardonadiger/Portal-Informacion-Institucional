@@ -71,6 +71,13 @@
                 <span>@(t.IdSiger?.ToString() ?? "— creada desde un expediente")</span>
             </div>
             <div class="detail-row">
+                <span class="detail-lbl">Original de SIGER</span>
+                @* El archivo guarda cómo llegó esta ficha antes de que el portal escribiera
+                   encima. El enlace se muestra siempre: si no hay foto, la pantalla lo dice y
+                   explica dónde se toma —más útil que esconder la opción. *@
+                <span><a asp-page="/Siger/Original" asp-route-id="@t.Id">Ver cómo llegó desde SIGER →</a></span>
+            </div>
+            <div class="detail-row">
                 <span class="detail-lbl">Institucion</span>
                 <span>
                     @if (t.InstitucionId != null)

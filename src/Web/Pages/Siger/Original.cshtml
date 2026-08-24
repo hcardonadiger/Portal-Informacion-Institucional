@@ -1,0 +1,103 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Siger.OriginalModel
+@{
+    ViewData["Title"] = "Original de SIGER";
+    var f = Model.Foto;
+}
+
+<div class="container" style="max-width:900px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap">
+        <a class="btns" asp-page="/Siger/Detalle" asp-route-id="@Model.Id" style="font-size:13px">← Volver a la ficha</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Cómo llegó esta ficha desde SIGER</h2>
+    </div>
+
+    @if (f is null)
+    {
+        <div class="card">
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+                Esta ficha no tiene foto original guardada. Si el inventario aún no se ha
+                archivado, se toma desde <a asp-page="/Siger/Archivo">Archivo del SIGER original</a>.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="res-meta" style="margin-bottom:1rem">
+            Código <strong>@f.Codigo</strong>
+            @if (f.IdSiger is int idS) { <text> · Id SIGER <strong>@idS</strong></text> }
+            · archivada el <strong>@f.CapturadaEl.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
+        </div>
+
+        if (!f.Legible || f.Ficha is null)
+        {
+            <div class="alert-error" style="margin-bottom:1rem">
+                El documento archivado no se pudo interpretar. Se muestra tal cual quedó guardado.
+            </div>
+            <div class="card"><pre style="white-space:pre-wrap;font-size:12px;margin:0">@f.Contenido</pre></div>
+        }
+        else
+        {
+            var d = f.Ficha;
+            var secciones = new (string Titulo, List<string> Filas)[]
+            {
+                ("Pasos del proceso", d.Pasos.Select(p =>
+                    $"{p.NumeroPaso}. {p.Titulo ?? p.Descripcion}" +
+                    (string.IsNullOrWhiteSpace(p.LugarDependencia) ? "" : $" — {p.LugarDependencia}")).ToList()),
+                ("Requisitos", d.Requisitos.Select(r =>
+                    $"{r.Numero}. {r.Requisito}" +
+                    (string.IsNullOrWhiteSpace(r.Tipo) ? "" : $" ({r.Tipo})")).ToList()),
+                ("Entregables", d.Entregables.Select(e =>
+                    $"{e.Numero}. {e.Entregable}" +
+                    (string.IsNullOrWhiteSpace(e.Formato) ? "" : $" ({e.Formato})")).ToList()),
+                ("Lugares de atención", d.LugaresAtencion.Select(l =>
+                    $"{l.Numero}. {l.Lugar}" +
+                    (string.IsNullOrWhiteSpace(l.Ciudad) ? "" : $" — {l.Ciudad}")).ToList()),
+                ("Enlaces", d.Enlaces.Select(e => $"{e.Numero}. {e.Url}").ToList()),
+                ("Tareas de digitalización", d.TareasDigitalizacion.Select(x =>
+                    $"{x.NumeroTarea}. {x.Descripcion}" +
+                    (string.IsNullOrWhiteSpace(x.Estado) ? "" : $" [{x.Estado}]")).ToList())
+            };
+
+            <div class="card" style="margin-bottom:1rem">
+                <h3 class="sec-h">@d.Nombre</h3>
+                <dl style="display:grid;grid-template-columns:180px 1fr;gap:.45rem 1rem;font-size:14px;margin:0">
+                    <dt style="color:#64748b">Institución</dt>
+                    <dd style="margin:0">@d.Institucion @(string.IsNullOrWhiteSpace(d.Sigla) ? "" : $"({d.Sigla})")</dd>
+                    <dt style="color:#64748b">Dependencia</dt><dd style="margin:0">@(d.Dependencia ?? "—")</dd>
+                    <dt style="color:#64748b">Estado en SIGER</dt><dd style="margin:0">@(d.EstadoSiger ?? "—")</dd>
+                    <dt style="color:#64748b">Publicada</dt><dd style="margin:0">@(d.Publicado ? "Sí" : "No")</dd>
+                    <dt style="color:#64748b">Modalidad</dt><dd style="margin:0">@(d.Modalidad ?? "—")</dd>
+                    <dt style="color:#64748b">Tiempo</dt><dd style="margin:0">@(d.TiempoTexto ?? "—")</dd>
+                    <dt style="color:#64748b">Costo</dt><dd style="margin:0">@(d.CostoTexto ?? "—")</dd>
+                    <dt style="color:#64748b">En SOL</dt><dd style="margin:0">@(d.EstaEnSol ? (d.SolUrl ?? "Sí") : "No")</dd>
+                    <dt style="color:#64748b">Dirigido a</dt><dd style="margin:0">@(d.DirigidoA ?? "—")</dd>
+                    <dt style="color:#64748b">Objetivo</dt><dd style="margin:0">@(d.Objetivo ?? "—")</dd>
+                    <dt style="color:#64748b">Descripción</dt><dd style="margin:0">@(d.Descripcion ?? "—")</dd>
+                    <dt style="color:#64748b">Vigencia</dt><dd style="margin:0">@(d.VigenciaDocumento ?? "—")</dd>
+                    <dt style="color:#64748b">Temporalidad</dt><dd style="margin:0">@(d.Temporalidad ?? "—")</dd>
+                    <dt style="color:#64748b">Observaciones DIGER</dt><dd style="margin:0">@(d.ObservacionesDiger ?? "—")</dd>
+                </dl>
+            </div>
+
+            foreach (var s in secciones)
+            {
+                <div class="card" style="margin-bottom:1rem">
+                    <h3 class="sec-h">@s.Titulo (@s.Filas.Count)</h3>
+                    @if (s.Filas.Count == 0)
+                    {
+                        <p style="font-size:13px;color:#64748b;margin:0">Sin registros en el original.</p>
+                    }
+                    else
+                    {
+                        <ul style="margin:0;padding-left:1.2rem">
+                            @foreach (var fila in s.Filas)
+                            {
+                                <li style="font-size:13px;margin-bottom:.3rem">@fila</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        }
+    }
+</div>

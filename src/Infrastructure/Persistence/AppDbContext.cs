@@ -69,6 +69,7 @@ public sealed class AppDbContext(
     public DbSet<EnlaceSiger>               EnlacesSiger          { get; init; } = default!;
     public DbSet<TareaDigitalizacionSiger>  TareasDigitalizacionSiger { get; init; } = default!;
     public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
+    public DbSet<FotoTramiteSiger>         FotosTramiteSiger  { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -1552,5 +1553,31 @@ public sealed class ConciliacionSigerConfiguration : IEntityTypeConfiguration<Co
         b.HasOne<TramiteSiger>().WithMany()
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => x.TramiteSigerId);
+    }
+}
+
+// ── Archivo del SIGER original (Fase 2 del plan revisado) ──────────────────
+public sealed class FotoTramiteSigerConfiguration : IEntityTypeConfiguration<FotoTramiteSiger>
+{
+    public void Configure(EntityTypeBuilder<FotoTramiteSiger> b)
+    {
+        b.ToTable("FotosTramiteSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Origen).HasMaxLength(40).IsRequired();
+        b.Property(x => x.Codigo).HasMaxLength(20).IsRequired();
+        b.Property(x => x.Contenido).IsRequired();   // nvarchar(max): la ficha entera y sus hijos
+
+        // Una sola foto por ficha y versión. Es lo que hace idempotente a la captura del
+        // original: sin este índice, dos corridas simultáneas guardarían la versión 0 dos veces
+        // y el archivo dejaría de tener una respuesta única a «cómo era esto al principio».
+        b.HasIndex(x => new { x.TramiteSigerId, x.Version }).IsUnique();
+
+        // Para buscar en el archivo una ficha que ya se borró del inventario.
+        b.HasIndex(x => x.Codigo);
+
+        // Deliberadamente sin HasOne<TramiteSiger>(): el archivo tiene que sobrevivir a que la
+        // ficha se borre. Con cascada, borrar una ficha destruiría la única copia de su
+        // información original. Ver las notas de la entidad.
     }
 }

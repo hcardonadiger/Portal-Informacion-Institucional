@@ -73,6 +73,7 @@ Tres lecturas:
 | **D-21** | Los buckets de importación se marcan con `OrigenExternoId` y se **excluyen** de los listados, conteos y tableros del módulo de expedientes. |
 | **D-22** | Desenlazar una ficha la **desbloquea**, con advertencia explícita de que vuelve a editarse por su lado. |
 | **D-23** | La captura en lote **se queda como está**. Solo debe excluir las fichas bloqueadas. |
+| **D-24** | El llenado asistido deja todo en **cola de revisión**; no escribe directo. Cada valor que proponga queda marcado en una columna **`Autollenado`**, para distinguirlo después de lo verificado por una persona. |
 
 ### D-17 — el bloqueo condicional
 
@@ -148,7 +149,7 @@ Tamaño: de 17 tareas a unas **37**. Cuatro hechas, ~33 por delante.
 | # | Fase | Tareas |
 |---|---|---|
 | 1 | **Hecha** — `IdSiger` opcional, índice filtrado, regla unificada | ✓ 4 |
-| 2 | La foto del SIGER original | ~1 |
+| 2 | **Hecha** — La foto del SIGER original | ✓ 1 |
 | 3 | Detener la pérdida de conciliaciones | ~3 |
 | 4 | Control de publicación en HA + pantalla de administración | ~4 |
 | 5 | Llenado asistido | ~3 |
@@ -167,12 +168,19 @@ de código. 217 pruebas en verde.
 
 ---
 
-### Fase 2 — La foto del SIGER original (~1 tarea)
+### Fase 2 — La foto del SIGER original — HECHA
 
 **Entrega:** D-18. Copia completa y permanente de las 1 057 fichas y sus seis colecciones hijas.
 
 **Va primera y no se puede posponer.** Cualquier escritura anterior a esta foto es información
 original perdida para siempre. Es la fase más barata del plan y sostiene la mitad de la meta.
+
+**Lo construido:** la tabla `FotosTramiteSiger` guarda cada ficha como documento JSON congelado,
+sin llave foránea al inventario para que el archivo sobreviva a que borren la ficha, y con índice
+único sobre `(TramiteSigerId, Version)` para que el original sea irrepetible. La captura es
+idempotente y va por lotes de cien, así que una corrida interrumpida no pierde lo ya retratado.
+Se dispara desde **Siger → Archivo del original**, que además responde de forma permanente
+«¿ya se tomó, y de cuántas?». Cada ficha enlaza a **Siger → Original**, que enseña cómo llegó.
 
 Debe quedar consultable, no solo respaldada: la meta dice «poderla visitar».
 
@@ -234,8 +242,8 @@ por D-17, y llenarla habría que hacerlo por el expediente, una por una. La vent
 
 **Condición previa innegociable:** la Fase 2. El llenado toca 1 032 fichas.
 
-**Dos cosas que definir al arrancar la fase** (ver P-18): si escribe directo o deja todo en
-cola, y cómo queda registrado que un valor lo puso una máquina y no una persona.
+**Cómo escribe** (D-24): nada va directo a la ficha; todo pasa por cola de revisión, y cada valor
+propuesto queda marcado en la columna `Autollenado`.
 
 ---
 
@@ -314,23 +322,19 @@ inventario. Más actualizar `diseno.md` y `plan.md` a lo acordado aquí.
 
 ---
 
-## 6. Lo único que queda por definir
+## 6. Notas de implementación
 
-**P-18 — Cómo escribe el llenado asistido.** Dos decisiones que no bloquean el plan pero sí el
-arranque de la Fase 5:
+**La cola de revisión de la Fase 5 necesita aprobación por tandas.** D-24 manda que nada se
+escriba directo, y son 1 032 fichas. Revisar una por una reproduce el problema que la fase viene
+a resolver, así que la cola debe permitir aprobar en bloque —filtrando por institución, por campo
+o por nivel de certeza— y no solo de una en una.
 
-- **¿Escribe directo o deja todo en cola de revisión?** Recomiendo escribir directo lo que sea
-  derivable con certeza —hoy esos campos están vacíos, así que cualquier valor correcto es
-  ganancia— y encolar lo dudoso. Revisar 1 032 fichas a mano reproduce el problema que la fase
-  viene a resolver.
-- **¿Cómo se distingue después lo que puso una máquina de lo que verificó una persona?**
-  Recomiendo dejarlo registrado por campo o al menos por ficha. Es una columna, y es la
-  diferencia entre poder auditar el llenado más adelante y no poder.
+**`Autollenado` debe sobrevivir a la aprobación.** Marca de dónde vino el dato, no si está
+pendiente. Una vez alguien lo aprueba deja de estar en cola, pero sigue siendo un valor que
+propuso una máquina, y eso es lo que hace auditable el llenado más adelante.
 
 **Asumido salvo corrección:** el `Codigo` de la ficha se sigue generando del lado de SIGER; es
 identidad de la ficha, no contenido del trámite.
-
----
 
 ## 7. Riesgos transversales
 
@@ -339,7 +343,7 @@ identidad de la ficha, no contenido del trámite.
 | Escribir sobre el inventario antes de tomar la foto original | Fase 2 |
 | Llenar fichas después de importarlas, ya bloqueadas | Fase 5 |
 | Que la avenida de fichas completas llegue al ciudadano sin compuerta | Fase 4 → 5 |
-| No poder distinguir después el llenado automático del verificado | Fase 5 / P-18 |
+| No poder distinguir después el llenado automático del verificado | Fase 5 / D-24 |
 | Buckets contaminando listados y tableros de expedientes | Fase 9 / D-21 |
 | Desenlazar sin advertencia y devolver el mando sin querer | Fase 9 / D-22 |
 | Enlaces SOL rotos en HA por el cambio de significado de `SolUrl` | Fase 6 |

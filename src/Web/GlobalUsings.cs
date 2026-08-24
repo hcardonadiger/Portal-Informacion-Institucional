@@ -90,3 +90,6 @@ global using MediatR;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.Mvc.RazorPages;
+global using Diger.TramitesEstado.Application.Siger.Historial;
+global using Diger.TramitesEstado.Application.Siger.Historial.Commands.CapturarFotosOriginales;
+global using Diger.TramitesEstado.Application.Siger.Historial.Queries.GetFotoOriginal;
