@@ -70,6 +70,7 @@ public sealed class AppDbContext(
     public DbSet<TareaDigitalizacionSiger>  TareasDigitalizacionSiger { get; init; } = default!;
     public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
     public DbSet<FotoTramiteSiger>         FotosTramiteSiger  { get; init; } = default!;
+    public DbSet<PropuestaLlenado>          PropuestasLlenado  { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -1591,5 +1592,38 @@ public sealed class FotoTramiteSigerConfiguration : IEntityTypeConfiguration<Fot
         // Deliberadamente sin HasOne<TramiteSiger>(): el archivo tiene que sobrevivir a que la
         // ficha se borre. Con cascada, borrar una ficha destruiría la única copia de su
         // información original. Ver las notas de la entidad.
+    }
+}
+
+// ── Llenado asistido de fichas SIGER (Fase 5 del plan revisado) ────────────
+public sealed class PropuestaLlenadoConfiguration : IEntityTypeConfiguration<PropuestaLlenado>
+{
+    public void Configure(EntityTypeBuilder<PropuestaLlenado> b)
+    {
+        b.ToTable("PropuestasLlenado");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+
+        b.Property(x => x.ValorPropuesto).HasMaxLength(300);
+        b.Property(x => x.Justificacion).HasMaxLength(400).IsRequired();
+        b.Property(x => x.DecididaPor).HasMaxLength(120);
+
+        // Una sola propuesta pendiente por ficha y campo. Filtrado a propósito: el generador se
+        // corre varias veces mientras se afinan las reglas, y sin esto cada pasada acumularía
+        // otra fila para el mismo hueco hasta volver la cola inservible. Que sea filtrado —y no
+        // único a secas— deja volver a proponer un campo que alguien rechazó, que es justo lo que
+        // se quiere cuando la regla mejora.
+        b.HasIndex(x => new { x.TramiteSigerId, x.Campo })
+            .IsUnique()
+            .HasFilter("[Estado] = 0");
+
+        // Para la pantalla: se entra por estado y se filtra por certeza dentro.
+        b.HasIndex(x => new { x.Estado, x.Certeza });
+
+        // Con cascada, al revés que el archivo de la Fase 2. El archivo guarda cómo era la ficha
+        // y tiene que sobrevivirla; esto guarda qué se propuso para sus huecos, y sin la ficha no
+        // significa nada.
+        b.HasOne<TramiteSiger>().WithMany()
+            .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
     }
 }

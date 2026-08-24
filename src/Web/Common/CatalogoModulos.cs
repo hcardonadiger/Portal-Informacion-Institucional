@@ -41,6 +41,7 @@ public static class CatalogoModulos
             ["Siger"]                   = ("Inventario",               "SIGER", 10),
             ["Siger.Conciliacion"]      = ("Conciliación",             "SIGER", 11),
             ["Siger.Publicacion"]       = ("Publicado en HondurasÁgil", "SIGER", 12),
+            ["Siger.Llenado"]           = ("Llenado asistido",        "SIGER", 13),
 
             // ── Tableros ─────────────────────────────────────────────────
             ["Tableros"]                = ("Tableros",                 "Tableros", 10),

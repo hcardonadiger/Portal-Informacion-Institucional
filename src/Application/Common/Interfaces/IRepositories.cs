@@ -213,5 +213,6 @@ public interface IApplicationDbContext
     DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
     DbSet<FotoTramiteSiger>        FotosTramiteSiger      { get; }
+    DbSet<PropuestaLlenado>        PropuestasLlenado      { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

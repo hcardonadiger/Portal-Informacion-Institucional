@@ -73,7 +73,7 @@ Tres lecturas:
 | **D-21** | Los buckets de importación se marcan con `OrigenExternoId` y se **excluyen** de los listados, conteos y tableros del módulo de expedientes. |
 | **D-22** | Desenlazar una ficha la **desbloquea**, con advertencia explícita de que vuelve a editarse por su lado. |
 | **D-23** | La captura en lote **se queda como está**. Solo debe excluir las fichas bloqueadas. |
-| **D-24** | El llenado asistido deja todo en **cola de revisión**; no escribe directo. Cada valor que proponga queda marcado en una columna **`Autollenado`**, para distinguirlo después de lo verificado por una persona. |
+| **D-24** | El llenado asistido deja todo en **cola de revisión**; no escribe directo. Cada valor propuesto queda con su procedencia registrada, para distinguirlo después de lo verificado por una persona. *(Al construirlo, la procedencia quedó en la fila de la propuesta y no en una columna `Autollenado` de la ficha — ver Fase 5.)* |
 | **D-25** | La documentación del API se hace en la **Fase 6**, sin esperar al resto, y **consolidando**: la especificación generada es la verdad sobre la forma, y el documento a mano solo cubre lo que aquélla no puede expresar. |
 
 ### D-17 — el bloqueo condicional
@@ -264,19 +264,80 @@ aprobada sin publicar no la publica. Ambas comprueban además que el guardado oc
 no pasen en verde por no haber hecho nada.
 
 
-### Fase 5 — Llenado asistido (~3 tareas)
+### Fase 5 — Llenado asistido — HECHA
 
-**Entrega:** D-19. Completar los campos que faltan en 1 032 fichas, derivando lo que se pueda
-derivar y dejando en cola de revisión lo que necesite criterio humano.
+**Entrega:** D-19, D-24.
 
-**Por qué aquí y no al final:** hoy 1 056 de 1 057 fichas están desbloqueadas, que es la
-condición más barata posible para llenarlas. Cada ficha que se importe después queda bloqueada
-por D-17, y llenarla habría que hacerlo por el expediente, una por una. La ventana es ahora.
+**El problema medido.** De 1 057 fichas, 1 032 no tienen categoría, ni modalidad, ni tiempo, ni
+costo: 4 128 huecos. Llenarlos a mano son meses; llenarlos en automático y directo mete datos sin
+verificar en el portal que ve el ciudadano. D-24 corta por en medio: la máquina propone en masa,
+la persona decide en bloque.
 
-**Condición previa innegociable:** la Fase 2. El llenado toca 1 032 fichas.
+**Lo que se descubrió al mirar los datos, y que cambió el diseño.** Antes de escribir una línea se
+midió qué había de dónde derivar, y dos de los cuatro campos no tenían nada:
 
-**Cómo escribe** (D-24): nada va directo a la ficha; todo pasa por cola de revisión, y cada valor
-propuesto queda marcado en la columna `Autollenado`.
+| Señal | Realidad |
+|---|---|
+| `CostoTexto` | lleno en **1** ficha de 1 057 — el costo no se deriva de ahí |
+| `PasoSiger.Modalidad` | **ningún** paso la declara |
+| `EstaEnSol` / `DisponibleEnLinea` | en **0** fichas |
+| `PasoSiger.TiempoRegistrado` | **numérico en días** (1, 0.5, 30) en 706 fichas — esto sí se suma |
+| Lugares de atención | en 1 008 fichas |
+
+Sin esa medición, la regla del costo se habría escrito «si no menciona pago, es gratuito», que
+es la peor de las respuestas posibles: un dato inventado con la misma apariencia que uno
+verificado.
+
+**Lo construido:**
+
+1. **`PropuestasLlenado`** — la cola. Cada fila es un valor propuesto para un campo de una ficha,
+   con su **certeza** y su **justificación** en lenguaje llano. Índice único **filtrado** sobre
+   `(TramiteSigerId, Campo)` para pendientes: garantiza en la base que un hueco no acumule dos
+   propuestas, y deja volver a proponer lo que alguien rechazó si la regla mejora.
+2. **Cuatro reglas** (`ReglasLlenado`), funciones puras y probadas sin base de datos:
+   - *Tiempo* — suma los días declarados en los pasos. Certeza **Alta** si todos declararon;
+     Media si alguno no, porque entonces la suma se queda corta. Redondea **hacia arriba**.
+   - *Costo* — solo si el texto de pasos o requisitos dice algo, y **cita la frase**. El silencio
+     no se interpreta.
+   - *Categoría* — palabras del nombre contra las ocho categorías; la descripción solo si el
+     nombre calla, y con certeza más baja. **Un empate no se resuelve, se abandona.**
+   - *Modalidad* — la más débil; ninguna respuesta pasa de certeza **Baja** y todas se declaran
+     «supuesto, no dato».
+3. **Pantalla SIGER → Llenado asistido** con filtros por institución, campo y certeza; aprobar y
+   rechazar marcadas, y **aprobar todo lo que coincide con el filtro** diciendo cuántas son antes
+   de hacerlo. Permiso propio `Siger.Llenado`.
+4. **Aprobar nunca pisa trabajo humano.** Antes de escribir se comprueba que el campo siga vacío;
+   si alguien lo llenó a mano entre la propuesta y la aprobación, la propuesta se descarta y se
+   reporta aparte.
+
+**Medido en Ensayo, sobre las 1 032 fichas reales:**
+
+| | Propuestas | |
+|---|---|---|
+| modalidad | 989 | Presencial 630 · Híbrido 357 · Virtual 2 |
+| categoría | 751 | repartidas en las ocho categorías |
+| tiempo | 703 | 625 de ellas con certeza Alta |
+| costo | 368 | 363 «tiene costo» · 5 «gratuito» |
+| **total** | **2 811** | Alta 625 · Media 887 · Baja 1 299 |
+
+Quedan **1 317 huecos sin propuesta** —664 de costo, 329 de tiempo, 281 de categoría, 43 de
+modalidad—. No es un fallo: es la parte del inventario que ninguna regla puede derivar
+honestamente y que necesita a una persona. La pantalla los cuenta a la vista para que no pasen
+por resueltos.
+
+Segunda corrida: **0 propuestas nuevas**, 2 811 reconocidas como ya encoladas. Idempotente.
+
+**Desviación de D-24, deliberada: no hay columna `Autollenado` en la ficha.** La procedencia vive
+en la fila de la propuesta, que sobrevive a la aprobación. El motivo es que una bandera guardada
+en `TramitesSiger` se vuelve mentira en cuanto alguien corrige el campo a mano —seguiría diciendo
+«esto lo puso una máquina» sobre un valor que puso una persona— y limpiarla obligaría a enganchar
+todas las rutas de edición. Aquí la pregunta se responde comparando: el campo es de origen
+automático si existe una propuesta aprobada para él **y** la ficha todavía tiene ese valor
+(`ValorLlenado.SigueVigente`). Esa respuesta no se desactualiza sola. Si se prefiere la columna
+literal, es media hora de trabajo.
+
+**Despliegue:** `scripts/sql/12-cola-llenado-asistido.sql`, idempotente, probado dos veces contra
+una base llevada al estado exacto previo. No toca ningún dato existente: crea una tabla vacía.
 
 ---
 
@@ -394,14 +455,15 @@ inventario. Más actualizar `diseno.md` y `plan.md` a lo acordado aquí.
 
 ## 6. Notas de implementación
 
-**La cola de revisión de la Fase 5 necesita aprobación por tandas.** D-24 manda que nada se
-escriba directo, y son 1 032 fichas. Revisar una por una reproduce el problema que la fase viene
-a resolver, así que la cola debe permitir aprobar en bloque —filtrando por institución, por campo
-o por nivel de certeza— y no solo de una en una.
+**La cola de revisión de la Fase 5 necesita aprobación por tandas — RESUELTO.** D-24 manda que
+nada se escriba directo, y son 1 032 fichas: revisar una por una reproduce el problema que la
+fase viene a resolver. La pantalla filtra por institución, campo y certeza, y tiene un botón que
+aprueba **todo lo que coincide con el filtro**, diciendo cuántas son antes de hacerlo.
 
-**`Autollenado` debe sobrevivir a la aprobación.** Marca de dónde vino el dato, no si está
-pendiente. Una vez alguien lo aprueba deja de estar en cola, pero sigue siendo un valor que
-propuso una máquina, y eso es lo que hace auditable el llenado más adelante.
+**La procedencia debe sobrevivir a la aprobación — RESUELTO, aunque no como decía D-24.** Marca
+de dónde vino el dato, no si está pendiente. Se guarda en la fila de la propuesta —que no se
+borra al aprobarse— y no en una columna `Autollenado` de la ficha: esa columna se vuelve mentira
+en cuanto alguien corrige el campo a mano. Ver la desviación explicada en la Fase 5.
 
 **Asumido salvo corrección:** el `Codigo` de la ficha se sigue generando del lado de SIGER; es
 identidad de la ficha, no contenido del trámite.

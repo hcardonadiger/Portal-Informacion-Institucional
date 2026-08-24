@@ -226,3 +226,40 @@ public enum DecisionConciliacion
     Descartado         = 2, // se revisó y no corresponde enlazarlo
     ProponerFichaNueva = 3  // no existe en SIGER; queda en cola para darlo de alta
 }
+
+// ── Llenado asistido de fichas SIGER (Fase 5 del plan revisado) ────────────
+
+// Los campos que el llenado asistido puede proponer. Son exactamente los que
+// FichaPublicaCompletitud exige para dar una ficha por completa, menos el enlace a SOL: ese
+// depende de la Fase 7 y no se deriva de nada que exista hoy.
+public enum CampoFicha
+{
+    Categoria = 1,
+    Modalidad = 2,
+    Tiempo    = 3,
+    Costo     = 4
+}
+
+// Cuánto se puede confiar en la propuesta. Es el eje sobre el que se aprueba por tandas: quien
+// revisa acepta en bloque lo Alta y mira una por una lo Baja.
+public enum CertezaLlenado
+{
+    // Sale de un dato que ya está en la base y solo hubo que transformarlo. Un humano que
+    // revise llegaría al mismo valor.
+    Alta = 1,
+
+    // Sale de una señal fuerte pero indirecta: el texto menciona un pago, la institución dedica
+    // todos sus trámites a un tema. Suele acertar; puede fallar.
+    Media = 2,
+
+    // Es un supuesto razonable, no una derivación. Se propone porque un valor por defecto
+    // correcto sirve más que el vacío, pero merece que alguien lo mire.
+    Baja = 3
+}
+
+public enum EstadoPropuesta
+{
+    Pendiente = 0,
+    Aprobada  = 1,
+    Rechazada = 2
+}
