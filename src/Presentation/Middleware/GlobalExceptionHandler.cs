@@ -23,13 +23,28 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             _                   => (StatusCodes.Status500InternalServerError, "Error interno del servidor")
         };
 
-        var detail = ex is ValidationException ve
-            ? string.Join("; ", ve.Errors.Select(e => e.ErrorMessage))
-            : ex.Message;
+        // El detalle de un 500 NO se publica. `ex.Message` de una excepción no controlada
+        // trae el nombre del servidor, de la base o de la tabla — y esto es una API pública.
+        // Las otras tres son excepciones de negocio: su mensaje está escrito para leerse.
+        // El diagnóstico técnico va al log de arriba, junto al TraceId de la petición.
+        var detail = ex switch
+        {
+            ValidationException ve => string.Join("; ", ve.Errors.Select(e => e.ErrorMessage)),
+            NotFoundException or DomainException => ex.Message,
+            _ => "Ocurrió un error interno. Comunique el identificador de la traza al administrador."
+        };
 
         ctx.Response.StatusCode = status;
         await ctx.Response.WriteAsJsonAsync(
-            new ProblemDetails { Status = status, Title = title, Detail = detail }, ct);
+            new ProblemDetails
+            {
+                Status = status,
+                Title  = title,
+                Detail = detail,
+                // Permite cruzar lo que ve el consumidor con lo que quedó en el log del servidor
+                // sin contarle nada de la máquina.
+                Extensions = { ["traceId"] = ctx.TraceIdentifier }
+            }, ct);
 
         return true;
     }

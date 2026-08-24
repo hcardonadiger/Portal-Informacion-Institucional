@@ -3,14 +3,17 @@
     "Diger.TramitesEstado.Presentation": {
       "commandName": "Project",
       "launchBrowser": true,
+      "launchUrl": "swagger",
+      "dotnetRunMessages": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:49176;http://localhost:49178"
+      "applicationUrl": "https://localhost:7199;http://localhost:5199"
     },
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
+      "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

@@ -16,6 +16,7 @@
 @inject IChatService chatSvc
 @inject IApplicationDbContext ctx
 @inject IOptions<InstitucionOptions> InstOpts
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 @{
     var _activeInstId = User.FindFirstValue(AppClaims.ActiveInstitucion);
     var _instBranding = await BrandingSvc.GetAsync(_activeInstId);
@@ -81,6 +82,19 @@
     }
 </head>
 <body>
+@* Cinta de entorno. En el mismo servidor conviven Ensayo y Producción y las pantallas son
+   idénticas; sin este cartel, saber dónde está uno parado exige abrir la configuración. Se
+   muestra siempre a propósito: en Ensayo tranquiliza, y en Producción avisa. *@
+@{
+    var _baseDatos = EntornoActual.BaseDeDatos(Config);
+    var _esProdBd  = EntornoActual.EsProduccion(Config);
+}
+<div style="padding:3px 12px;font-size:11.5px;font-weight:600;letter-spacing:.02em;text-align:center;
+            color:@(_esProdBd ? "#fff" : "#0f5132");
+            background:@(_esProdBd ? "#b91c1c" : "#d1e7dd");
+            border-bottom:1px solid @(_esProdBd ? "#7f1d1d" : "#a3cfbb")">
+    @(_esProdBd ? "⚠ PRODUCCIÓN — datos reales" : "Entorno de pruebas") · base @_baseDatos
+</div>
     <partial name="_IconSprite" />
     @if (User.Identity?.IsAuthenticated == true)
     {

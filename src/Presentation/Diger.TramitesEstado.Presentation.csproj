@@ -8,6 +8,14 @@
     <RootNamespace>Diger.TramitesEstado.Presentation</RootNamespace>
     <AssemblyName>Diger.TramitesEstado.Presentation</AssemblyName>
     <UserSecretsId>diger-tramites-estado</UserSecretsId>
+
+    <!-- Los controladores ya llevan su documentación escrita; sin esto el compilador no
+         genera el .xml y Swagger no puede mostrarla. CS1591 se silencia porque exigir un
+         comentario en cada miembro público convertiría el aviso en ruido.
+         1573 también: el CancellationToken de cada acción es fontanería del framework, no
+         viaja en el contrato y no aparece en Swagger; documentarlo sería ruido. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591;1573</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

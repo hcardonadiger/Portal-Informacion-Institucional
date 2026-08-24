@@ -10,7 +10,30 @@ namespace Diger.TramitesEstado.Presentation.Controllers;
 [Route("api/v1/tramites")]
 public sealed class TramitesPublicosController(ISender sender) : ControllerBase
 {
-    /// <summary>GET /api/v1/tramites — catálogo paginado.</summary>
+    /// <summary>Catálogo de trámites publicados, paginado.</summary>
+    /// <remarks>
+    /// Devuelve la ficha resumida: lo justo para pintar una lista. Para el detalle completo
+    /// —pasos, requisitos, entregables, lugares y enlaces— hay que pedir cada trámite por su
+    /// código.
+    ///
+    /// Los filtros se combinan con Y, no con O: pedir institución y modalidad a la vez
+    /// devuelve los que cumplen las dos cosas.
+    /// </remarks>
+    /// <param name="busqueda">Texto libre. Busca en nombre, descripción y objetivo, y no
+    /// distingue tildes: «migracion» encuentra «Migración».</param>
+    /// <param name="categoria">Id numérico de la categoría. La lista está en /api/v1/categorias.</param>
+    /// <param name="institucion">Sigla de la institución, tal como sale en /api/v1/instituciones
+    /// (por ejemplo INPREMA). No es el nombre largo.</param>
+    /// <param name="modalidad">Presencial, Virtual o Mixto.</param>
+    /// <param name="soloGratuitos">Solo los que no cuestan nada.</param>
+    /// <param name="soloEnSol">Solo los que ya se pueden hacer en línea.</param>
+    /// <param name="soloFichasCompletas">Solo los que tienen categoría, modalidad, tiempo y
+    /// costo. Es el filtro que debe usar un portal de cara al ciudadano: sin él pueden salir
+    /// fichas sin plazo ni costo, que al ciudadano le sirven de poco.</param>
+    /// <param name="orden">nombre, institucion o populares. Por omisión, nombre.</param>
+    /// <param name="pagina">Desde 1.</param>
+    /// <param name="tamano">Entre 1 y 100. Un valor fuera de rango no da error: se recorta
+    /// en silencio a ese intervalo.</param>
     [HttpGet]
     [ProducesResponseType<CatalogoPublicoDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<CatalogoPublicoDto>> Listar(
@@ -25,7 +48,16 @@ public sealed class TramitesPublicosController(ISender sender) : ControllerBase
         return Ok(resultado);
     }
 
-    /// <summary>GET /api/v1/tramites/{codigo} — ficha completa. Por Codigo, no por Id.</summary>
+    /// <summary>Ficha completa de un trámite, por su código.</summary>
+    /// <remarks>
+    /// La identidad pública es el **código** (por ejemplo 603-019), no el Id interno. El Id
+    /// interno no viaja nunca: es un detalle de esta base y podría cambiar.
+    ///
+    /// Trae el detalle entero: pasos, requisitos, entregables, lugares de atención y enlaces.
+    /// </remarks>
+    /// <param name="codigo">Código del trámite, tal como aparece en el catálogo.</param>
+    /// <response code="404">No existe, o no está publicado. **Son el mismo código a
+    /// propósito**: distinguirlos permitiría averiguar qué códigos existen sin verlos.</response>
     [HttpGet("{codigo}")]
     [ProducesResponseType<TramiteDetallePublicoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
