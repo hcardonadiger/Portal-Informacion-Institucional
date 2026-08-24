@@ -1,8 +1,8 @@
 # Plan revisado — integración PortalDigital ↔ SIGER ↔ HondurasÁgil
 
 Sustituye el orden de fases de `plan.md`. Las tareas de `plan.md` **no se descartan**:
-se reubican y se les suman frentes nuevos. `diseno.md` sigue vigente; sus decisiones
-PR-01…PR-07 no fueron contradichas por jefatura.
+se reubican y se les suman frentes nuevos. `diseno.md` sigue vigente salvo por el reparto
+de propiedad de campos, que D-12 rehace.
 
 Origen: acuerdos con jefatura de HondurasÁgil y PortalDigital.
 
@@ -15,12 +15,19 @@ Origen: acuerdos con jefatura de HondurasÁgil y PortalDigital.
 | **D-01** | PortalDigital es la fuente principal de información para HondurasÁgil. |
 | **D-02** | «Pasar a SIGER» escribe en la tabla `TramitesSiger` **local de PD**. No hay integración con un sistema SIGER externo. |
 | **D-03** | HA lee de PD salvo que el trámite solo exista en SIGER. Si existe en ambos y hay conciliación, manda PD y se ignora SIGER. Todo sale en **una sola lista**. |
-| **D-04** | La institución gana una URL base de SOL. El trámite solo guarda el tramo final. La URL completa se **compone**: `sol.gob.hn/<base institución>/<tramo trámite>`. |
-| **D-05** | Editar un trámite de SIGER se hace **siempre en PD**. Si no tiene conciliación, primero se importa a PD. |
+| **D-04** | La institución gana una URL base de SOL. El trámite solo guarda el tramo final. |
+| **D-05** | Editar un trámite de SIGER se hace **siempre en el expediente**. Si no tiene conciliación, primero se importa. |
 | **D-06** | Al importar, el usuario elige el expediente destino, **o** el bucket «Trámites Importados de SIGER» de esa institución. |
 | **D-07** | «Pasar a SIGER» crea una **versión nueva**. La anterior no se borra: queda en historial. Se muestra la más nueva. |
 | **D-08** | Quién controla PD **selecciona manualmente** qué trámites se publican en HA. |
-| **D-09** | PD tiene una pantalla que lista todo lo publicado en HA, para administrarlo (editar o quitar de HA). |
+| **D-09** | PD tiene una pantalla que lista todo lo publicado en HA, para administrarlo. |
+| **D-10** | La publicación es **manual pura y no bloquea**. La regla de estado (`Aprobado`/`Completo`) queda como *advertencia* en pantalla, nunca como impedimento. |
+| **D-11** | Los pasos del proceso siguen siendo propiedad de SIGER. **No** se mapean con el flujo del expediente. |
+| **D-12** | **Todo el contenido se edita en el expediente.** `EstadoSiger` es lo único que se sigue editando en la ficha. |
+| **D-13** | El trámite captura solo el tramo final de la URL SOL. La pantalla muestra `sol.gob.hn/<URL de la institución>/` como prefijo fijo, y al lado el textbox donde el usuario termina la dirección. |
+| **D-14** | Las URLs SOL completas ya cargadas **no se tocan**, y solo las usan los trámites que nunca pasaron por PD. |
+| **D-15** | El historial es una **tabla de fotos** de la ficha y sus hijos. La fila viva es la última versión. |
+| **D-16** | «Quitar de HA» **despublica**, no borra. |
 
 ### Cómo D-03 se vuelve una sola consulta
 
@@ -30,16 +37,26 @@ Los tres casos de D-03 no son tres caminos de código. Se resuelven **al escribi
 - Solo en PD → ficha promovida, con `IdSiger` nulo (ya construido en la Fase 1).
 - En ambos → la ficha que PD **sobrescribió** al pasar a SIGER. PD manda porque PD escribió encima.
 
-Resultado: `TramitesSiger` sigue siendo la única superficie de lectura, HA no cambia
-una línea, y todo sale en la misma lista. Si en cambio se resolviera al leer, habría que
-mezclar dos esquemas en cada consulta y el filtro `SoloFichasCompletas` dejaría de
-funcionar, porque evalúa columnas de `TramitesSiger` que ya no serían los valores efectivos.
+Resultado: `TramitesSiger` sigue siendo la única superficie de lectura, HA no cambia una
+línea, y todo sale en la misma lista. Si se resolviera al leer, habría que mezclar dos
+esquemas en cada consulta y el filtro `SoloFichasCompletas` dejaría de funcionar, porque
+evalúa columnas de `TramitesSiger` que ya no serían los valores efectivos.
 
-**Consecuencia que conviene tener presente:** un trámite conciliado cuyo contenido se editó
-en PD pero **aún no se ha pasado a SIGER** sigue mostrándose en HA con el contenido viejo.
-Eso es deliberado: un borrador sin revisar no debe llegar al ciudadano, y es lo que le da
-sentido al botón. Hoy hay 240 trámites de expediente y 1 enlazado, así que casi todos
-arrancarán en ese estado hasta que alguien los pase.
+**Consecuencia:** un trámite conciliado cuyo contenido se editó en PD pero **aún no se ha
+pasado a SIGER** sigue viéndose en HA con el contenido viejo. Es deliberado —un borrador sin
+revisar no debe llegar al ciudadano— y es lo que le da sentido al botón. Hoy hay 240 trámites
+de expediente y 1 enlazado, así que casi todos arrancarán así.
+
+### Cómo D-13 y D-14 conviven
+
+Una sola regla, evaluada en un solo lugar al componer la dirección:
+
+- Si el trámite tiene tramo → `URL base de la institución` + `tramo`.
+- Si no tiene tramo → la URL completa heredada, tal cual (D-14).
+- Si tiene tramo pero la institución no tiene URL base → **no se emite enlace**. Nunca componer
+  a medias: produciría un enlace roto en producción.
+
+La API pública sigue emitiendo la **URL absoluta** en todos los casos, para que HA no cambie.
 
 ---
 
@@ -47,28 +64,27 @@ arrancarán en ese estado hasta que alguien los pase.
 
 **La Fase 1 completa (4 commits en `Jamil`).** Cero reescritura:
 
-- `ModalidadNormalizador`, `CodigoPromovido`, `ReglaPublicacion` — intactos.
+- `ModalidadNormalizador`, `CodigoPromovido` — intactos.
 - `IdSiger` nulable + índice único filtrado + migración `SigerIdOpcional` — **reforzado**: es
-  exactamente el mecanismo que sostiene «si solo existe en PD, se trae PD» (D-03).
+  el mecanismo que sostiene «si solo existe en PD, se trae PD» (D-03).
+- `ReglaPublicacion` — sobrevive pero cambia de papel: de determinante a advertencia (D-10).
 
-`ReglaPublicacion` es el único punto que D-08 toca, y para demotarla de *determinante* a
-*advertencia* (ver Fase 3 y P-01).
+**Las tareas 5–17 de `plan.md`** se reubican en las fases 5, 6 y 8. Ninguna se descarta.
 
-**Las tareas 5–17 de `plan.md`** se reubican en las fases 5, 6 y 8 de este documento.
-Ninguna se descarta.
-
-Tamaño: el plan pasa de 17 tareas a unas **32**. Cuatro hechas, ~28 por delante.
+Tamaño: de 17 tareas a unas **34**. Cuatro hechas, ~30 por delante. D-12 es lo que más
+engorda la Fase 5.
 
 ---
 
 ## 3. Fases
 
 Orden elegido con dos criterios: **primero lo que detiene un daño que ya está ocurriendo**
-y lo que entrega control visible sin depender de nada; después la cadena invasiva.
+y lo que entrega control sin depender de nada; después la cadena invasiva.
 
 ### Fase 1 — HECHA
-`IdSiger` opcional, índice filtrado, regla de publicación unificada, normalizador y
-generador de código. 217 pruebas en verde.
+
+`IdSiger` opcional, índice filtrado, regla de publicación unificada, normalizador y generador
+de código. 217 pruebas en verde.
 
 ---
 
@@ -76,191 +92,171 @@ generador de código. 217 pruebas en verde.
 
 **Entrega:** que una decisión de conciliación sobreviva a que alguien guarde el expediente.
 
-**Por qué va primera:** D-05 convierte la conciliación en el **interruptor que decide todo
-el flujo de edición** (con conciliación se edita en PD; sin ella se importa primero). Si las
-decisiones se evaporan, el enrutamiento es no determinista: el mismo trámite se editaría en
-PD un día y se importaría de nuevo al siguiente, **creando un duplicado**. No se puede
-construir la Fase 7 encima de esto.
+**Por qué va primera:** D-05 convierte la conciliación en el **interruptor que decide todo el
+flujo de edición**. Si las decisiones se evaporan, el enrutamiento es no determinista: el
+mismo trámite se editaría en el expediente un día y se importaría de nuevo al siguiente,
+**creando un duplicado**. La Fase 7 no se puede construir encima de esto.
 
 **El defecto, verificado en código:** `ExpedienteMapper.Aplicar` llama a `LimpiarHijos()`,
 que hace `_tramites.Clear()`, y vuelve a agregar los trámites desde cero — cada guardado
 borra y reinserta los `ExpedienteTramite` con Id nuevo. `ConciliacionesSiger` tiene FK a ese
-Id con `OnDelete(DeleteBehavior.Cascade)`. El enlace en sí sobrevive porque `TramiteSigerId`
-viaja en el DTO y se reescribe; las decisiones **Descartado** y **ProponerFichaNueva** solo
-viven en esa tabla y no tienen contraparte en el trámite, así que desaparecen. La bandeja
-cuenta como pendiente todo lo que tiene `Decision is null`: un trámite descartado a mano
-regresa a la bandeja después del siguiente guardado, que es exactamente lo que el comentario
-de la propia entidad dice que existe para evitar.
+Id con `OnDelete(DeleteBehavior.Cascade)`. El enlace sobrevive porque `TramiteSigerId` viaja
+en el DTO y se reescribe; las decisiones **Descartado** y **ProponerFichaNueva** solo viven en
+esa tabla y desaparecen. La bandeja cuenta como pendiente todo lo que tiene `Decision is null`:
+un trámite descartado a mano regresa a la bandeja al siguiente guardado, que es exactamente lo
+que el comentario de la propia entidad dice que existe para evitar.
 
-*Ruta de código leída completa; no ejecutada contra base. Primer paso de la fase es medir el
-daño real en `TramitesEstado_Ensayo`.*
+*Ruta de código leída completa; no ejecutada contra base. Primer paso: medir el daño real en
+`TramitesEstado_Ensayo`.*
 
-**Camino recomendado:** rekeyar `ConciliacionSiger` sobre `(ExpedienteId, TramiteIndex)` en
-vez de `ExpedienteTramiteId`. Es la identidad estable que ya reconoce `plan.md`, y es mucho
-menos invasivo que reescribir `ExpedienteMapper` para que preserve filas por `TramiteIndex`.
-
-**Riesgo:** la migración de rekey necesita resolver filas huérfanas preexistentes.
+**Camino recomendado:** rekeyar `ConciliacionSiger` sobre `(ExpedienteId, TramiteIndex)`, la
+identidad estable que ya reconoce `plan.md`. Mucho menos invasivo que reescribir
+`ExpedienteMapper` para preservar filas por `TramiteIndex`.
 
 ---
 
 ### Fase 3 — Control de publicación en HA + pantalla de administración (~4 tareas)
 
-**Entrega:** D-08 y D-09.
+**Entrega:** D-08, D-09, D-10, D-16.
 
-**Por qué va aquí:** no depende de nada de lo demás, y arregla un defecto vivo hoy —
-hay 303 fichas en Aprobado/Completo pero solo 50 con `Publicado = 1`, porque la bandera solo
-se recalcula al editar. D-05 empeora eso: si se prohíbe editar en SIGER, esas fichas **ya no
-se editarán nunca ahí** y jamás recalcularán su bandera. La arquitectura nueva convierte un
-bug latente en uno permanente si no se atiende ahora.
+**Por qué va aquí:** no depende de nada, y arregla un defecto vivo — hay 303 fichas en
+Aprobado/Completo pero solo 50 con `Publicado = 1`, porque la bandera solo se recalcula al
+editar. D-05 lo empeora: si se deja de editar en la ficha, esas fichas **jamás recalcularán
+su bandera**. La arquitectura nueva convierte un bug latente en uno permanente si no se
+atiende ahora.
 
 **Contenido:**
 
-1. Bandera manual de publicación en HA, y qué papel le queda a `ReglaPublicacion` (ver P-01).
-2. Migración y relleno **conservador**: las 50 fichas publicadas hoy siguen publicadas; las
-   ~253 restantes quedan **sin publicar** y aparecen como *candidatas*. Bajo ningún concepto
-   el relleno debe autopublicar 253 fichas sin revisar — eso vuelca contenido no revisado
-   sobre el ciudadano de golpe.
+1. Bandera manual de publicación. `ReglaPublicacion` pasa a alimentar una advertencia
+   («esta ficha está Registrada», «le faltan campos») que **no bloquea** (D-10).
+2. Migración y relleno **conservador**: las 50 publicadas hoy siguen publicadas; las ~253
+   restantes quedan **sin publicar**, listadas como *candidatas*. El relleno no debe
+   autopublicar 253 fichas sin revisar.
 3. Pantalla «Publicado en HondurasÁgil». **Ya existe el 70%**: `Siger/Index.cshtml.cs` tiene
-   filtro `Publicado` Sí/No y contador `TotalPublicados`. Falta la acción de publicar/quitar
-   —individual y en lote—, el aviso de ficha incompleta, y la lista de candidatas.
-4. Permiso propio para publicar (`[Permission(...)]`): publicar al ciudadano no debería ser
-   el mismo permiso que editar una ficha.
-
-**Riesgo:** que el relleno se escriba «publicar todo lo Aprobado» por comodidad.
+   filtro `Publicado` Sí/No y contador `TotalPublicados`. Falta publicar/despublicar
+   —individual y en lote—, la advertencia y la lista de candidatas.
+4. Permiso propio para publicar: publicar al ciudadano no debería ser el mismo permiso que
+   editar una ficha.
 
 ---
 
 ### Fase 4 — URL SOL compuesta (~3 tareas)
 
-**Entrega:** D-04.
+**Entrega:** D-04, D-13, D-14.
 
-**Por qué va aquí:** es independiente de todo lo demás y es la pieza más pequeña con valor
-propio. Puede adelantarse o atrasarse sin tocar el resto del plan.
+**Independiente de todo lo demás.** Puede adelantarse o atrasarse sin tocar el resto.
 
-**Contenido:**
-
-1. URL base de SOL en `Institucion`. Ojo: la entidad tiene setters privados y factoría
-   validadora; `RegistrarContacto` ya valida URL absoluta con la misma regla. Es un cambio
-   de dominio, no solo una columna.
-2. Tramo final en la ficha, y composición **en un solo lugar**.
-3. La API pública debe seguir emitiendo la **URL absoluta**.
+1. URL base de SOL en `Institucion`. Ojo: setters privados y factoría validadora;
+   `RegistrarContacto` ya valida URL absoluta con la misma regla. Es cambio de dominio, no
+   solo una columna. Hace falta saber cuántas instituciones quedarían sin llenar.
+2. Tramo final **en el trámite del expediente** (por D-12), y composición en un solo lugar,
+   con la regla de tres ramas descrita arriba. Normalizar barras ahí, no en cada uso.
+3. La pantalla muestra el prefijo fijo `sol.gob.hn/<URL institución>/` junto al textbox (D-13).
 
 **Riesgo — el más filoso del plan:** `TramiteSiger.SolUrl` hoy guarda la URL completa, el
-catálogo público ya la expone como absoluta (`t.SolUrl`) y `SoloFichasCompletas` la evalúa.
-Si el campo pasa a guardar solo el tramo sin componer en la salida, **se rompe cada enlace
-SOL de HA**. Además hay que decidir qué se hace con las URLs completas ya cargadas (P-05) y
-qué se muestra cuando el trámite tiene tramo pero la institución no tiene base — eso sería
-un enlace roto en producción. Normalizar barras en el punto de composición, no en cada uso.
+catálogo público ya la expone como absoluta y `SoloFichasCompletas` la evalúa. Si el campo
+pasa a guardar solo el tramo sin componer en la salida, **se rompe cada enlace SOL de HA**.
+Además el predicado de completitud pasa a cruzar dos tablas, porque «tiene dirección» ya no
+se responde mirando una sola columna.
 
 ---
 
-### Fase 5 — El expediente aprende a guardar lo que SIGER guarda (~5 tareas)
+### Fase 5 — El expediente aprende a guardar todo lo que SIGER guarda (~8 tareas)
 
-Las tareas 5–9 de `plan.md`, sin cambios de contenido: categoría, modalidad de catálogo
-cerrado, gratuidad, las dos tablas hijas (entregables y lugares), su siembra desde
-`DocEntregado`/`Horario`/`Telefono`/`DirSede`, la conversión de las 240 modalidades y la UI
-del expediente.
+**La fase que más creció con D-12.** Antes era conveniente; ahora es la base de todo: si el
+expediente no puede guardar un campo, ese campo no se puede editar en ninguna parte.
 
-**Lo que cambia es su justificación:** antes era conveniente; ahora es **obligatoria**. D-05
-baja trámites de SIGER al expediente, así que el expediente tiene que poder guardar todo lo
-que guarda SIGER o la importación pierde datos en el camino.
+Tareas 5–9 de `plan.md`: categoría, modalidad de catálogo cerrado, gratuidad, las dos tablas
+hijas (entregables y lugares), su siembra desde `DocEntregado`/`Horario`/`Telefono`/`DirSede`,
+la conversión de las 240 modalidades y la UI.
 
-**Riesgo ya identificado en `plan.md`:** la conversión de las 240 modalidades debe correr
-**antes** de aplicar el CHECK, no después.
+**Más lo que D-12 agrega:** vigencia del documento, temporalidad, observaciones DIGER, si está
+en SOL y el tramo de la dirección. Y la captura en lote (ver P-08).
+
+**Riesgo ya identificado:** la conversión de las 240 modalidades debe correr **antes** de
+aplicar el CHECK, no después.
 
 ---
 
 ### Fase 6 — De PD a SIGER: promover, actualizar y versionar (~6 tareas)
 
-**Entrega:** D-07, más las tareas 10–15 de `plan.md`.
+**Entrega:** D-07, D-15, más las tareas 10–15 de `plan.md`.
 
-**Por qué promover, actualizar y versionar van juntos:** son la misma operación —escribir de
-PD hacia la ficha— una creando y otra actualizando. Si el versionado aterriza después de los
-primeros «Pasar a SIGER», esos quedan como agujeros sin historial. El versionado tiene que
-existir desde la primera escritura.
+**Por qué van juntos:** promover y actualizar son la misma operación —escribir del expediente
+hacia la ficha— una creando y otra actualizando. Si el versionado aterriza después de los
+primeros «Pasar a SIGER», esos quedan como agujeros sin historial.
 
-**Contenido:**
-
-1. Historial de versiones (forma en P-06).
+1. Historial como tabla de fotos de la ficha y sus hijos (D-15).
 2. Promover: expediente → ficha nueva. Nace como versión 1.
 3. «Pasar a SIGER»: diff contra lo publicado, confirmación, escritura y versión nueva (PR-07).
 4. Ver el historial y una versión anterior.
 
-**Riesgo:** si el historial se implementa como fila-por-versión en `TramitesSiger`, revienta
-`ExpedienteTramite.TramiteSigerId`, `ConciliacionSiger.TramiteSigerId`, la unicidad de
-`Codigo` y el índice filtrado de `IdSiger`, y obliga a filtrar por versión vigente en el
-catálogo, Completitud, Tablero y Conciliación. Ver P-06.
-
 ---
 
-### Fase 7 — De SIGER a PD: importar y partir el editor (~5 tareas)
+### Fase 7 — De SIGER a PD: importar (~5 tareas)
 
-**Entrega:** D-05 y D-06. Dirección completamente nueva; no existe en ningún documento previo.
-
-**Depende de la Fase 5.** Sin los campos nuevos del expediente, importar pierde datos.
-
-**Contenido:**
+**Entrega:** D-05 y D-06. Dirección nueva; no existe en ningún documento previo.
+**Depende de la Fase 5.** Sin los campos nuevos, importar pierde datos.
 
 1. El bucket «Trámites Importados de SIGER» por institución: qué es ese expediente
-   contenedor, cómo se crea, quién lo ve.
-2. Selector de expediente destino (D-06: existente o bucket).
-3. La importación en sí: mapeo campo a campo, y qué **no** se trae (P-02, P-03).
-4. Guarda contra doble importación: dos personas importando la misma ficha producirían dos
-   trámites de expediente apuntando a la misma ficha. El enlace queda conciliado al importar.
-5. Partir el editor de SIGER: los campos de contenido pasan a solo lectura con enlace al
-   expediente; los campos propios de SIGER siguen editables ahí (P-03).
+   contenedor, cómo se crea, quién lo ve (ver P-11).
+2. Selector de expediente destino (D-06).
+3. La importación: mapeo campo a campo. No se traen los pasos (D-11).
+4. Guarda contra doble importación. `OrigenExternoId` ya existe en `Expediente` y ya se usa
+   como clave de idempotencia en la importación de reuniones — sirve de precedente.
+5. La ficha queda conciliada con el trámite en el mismo acto.
 
-**Riesgo:** que «partir el editor» se implemente como «bloquear el editor», dejando
-`EstadoSiger`, `EsPopular`, tareas de digitalización, observaciones DIGER, vigencia y los
-campos de SOL sin ningún lugar donde editarse.
+**El editor de la ficha se simplifica solo:** por D-12 se queda con `EstadoSiger` y poco más.
+No requiere partirlo con cuidado, requiere vaciarlo.
 
 ---
 
 ### Fase 8 — Visibilidad y cierre (~3 tareas)
 
-Las tareas 16–17 de `plan.md`: insignia en el expediente, aviso en el detalle, filtro en el
-inventario. Más la actualización de `diseno.md` y `plan.md` a lo acordado aquí.
+Tareas 16–17 de `plan.md`: insignia en el expediente, aviso en el detalle, filtro en el
+inventario. Más actualizar `diseno.md` y `plan.md` a lo acordado aquí.
 
 ---
 
 ## 4. Preguntas abiertas
 
-Cada una lleva recomendación, para que baste aprobar o corregir.
+**P-08 — La captura en lote choca de frente con D-12.**
+`CapturaLote.cshtml.cs` existe justo para asignar **categoría, modalidad, tiempo y costo** a
+una selección de fichas de una institución en una sola pantalla. Su propio comentario dice por
+qué: «con un formulario de uno en uno, cientos de fichas por piloto son meses de trabajo humano
+insufrible». D-12 mueve exactamente esos cuatro campos al expediente, así que la pantalla se
+queda sin objeto. El problema que resolvía no desaparece: **empeora**, porque ahora para llenar
+una ficha primero tiene que existir como trámite de expediente.
+*Recomiendo reconstruirla contra los trámites de expediente dentro de la Fase 5.* ¿O prefiere
+conservarla como excepción sobre la ficha, o retirarla?
 
-**P-01 — ¿La bandera de publicación es manual pura, o manual con compuerta de estado?**
-D-08 dice «pueden seleccionar». Recomiendo **manual pura**, con `ReglaPublicacion` demotada a
-*advertencia* visible en la pantalla («esta ficha está Registrada» / «le faltan campos»),
-sin bloquear. Un bloqueo duro haría que la pantalla se niegue a publicar fichas que el
-administrador sí quiere publicar; la advertencia cubre el riesgo sin quitarle el control.
+**P-09 — Tareas de digitalización: ¿al expediente o se quedan en la ficha?**
+Verifiqué que **no son públicas**: no aparecen en ningún DTO del catálogo. Y tienen `Estado` y
+`FechaCumplimiento`, que cambian seguido. Si viven en el expediente, marcar una tarea como
+completada obligaría a pasar a SIGER y **mintaría una versión nueva** de toda la ficha, llenando
+el historial de ruido operativo.
+*Recomiendo dejarlas en la ficha junto a `EstadoSiger`, como dato de gestión interna.*
 
-**P-02 — Pasos de SIGER ↔ flujo del expediente: ¿se mapean?**
-El mapeo es ambiguo y con pérdida en ambos sentidos. `FlujoNodo` tiene `Fase` (actual vs
-propuesto — habría que elegir cuál se publica), `Tipo` y `RetornoA`, que no tienen
-contraparte en SIGER; `PasoSiger` tiene `Descripcion` obligatoria y una `Modalidad` que
-incluye «Interno», que no tiene contraparte en el flujo. Recomiendo que **los pasos sigan
-siendo propiedad de SIGER** y no se mapeen, igual que las tareas de digitalización: el flujo
-del expediente es un artefacto de análisis, no una lista de pasos para el ciudadano.
+**P-10 — `EsPopular` y la bandera de publicación: ¿expediente o pantalla de administración?**
+Son palancas de curaduría del catálogo público, no contenido del trámite. Si la bandera de
+publicación viviera en el expediente, despublicar algo desde la pantalla de D-09 exigiría abrir
+el expediente y pasar a SIGER — que contradice «quitarlos de HA» como acción de esa pantalla.
+*Recomiendo que ambas vivan en la pantalla de administración de HA.*
 
-**P-03 — Al partir el editor, ¿qué campos siguen editándose en SIGER?**
-Mi lista: `EstadoSiger`, la bandera de publicación en HA, `EsPopular`,
-`TareasDigitalizacion`, `ObservacionesDiger`, `VigenciaDocumento`, `Temporalidad`,
-`EstaEnSol` y el tramo SOL. Ninguno tiene contraparte en el expediente. ¿Falta o sobra alguno?
+**P-11 — El bucket «Trámites Importados de SIGER» contamina el módulo de expedientes.**
+`Expediente` tiene una máquina de estados **lineal y estricta** (`CambiarEstado` lanza si el
+salto no es exactamente a la etapa siguiente), arranca en `EnExploracion`, y exige `Analista`,
+código, cronograma y validación. Un bucket por institución quedaría atrapado en `EnExploracion`
+para siempre y aparecería en cada listado, conteo y tablero de expedientes como si fuera un
+levantamiento real.
+*Recomiendo marcarlos con `OrigenExternoId` —que ya existe y ya se usa como clave de
+idempotencia— y excluirlos de los listados y conteos del módulo.* ¿Le parece?
 
-**P-04 — ¿Dónde se captura el tramo SOL: en la ficha SIGER o en el trámite del expediente?**
-Recomiendo **en la ficha SIGER**, por coherencia con el reparto de propiedad ya acordado:
-es dato de publicación, no de contenido del trámite.
+**P-12 — ¿Cuántas instituciones tienen hoy con qué llenar la URL base?** Si son pocas, la
+Fase 4 entrega enlaces compuestos para casi nadie y conviene reordenarla.
 
-**P-05 — ¿Qué se hace con las URLs SOL completas ya cargadas?**
-Recomiendo **dejarlas quietas**: componer cuando hay tramo, y usar la URL completa tal cual
-cuando no lo hay. Partir las existentes en base + tramo es adivinar, y se adivina mal.
-
-**P-06 — Versionamiento: ¿tabla de fotos o fila por versión?**
-Recomiendo una tabla de versiones que guarde una **foto** de la ficha y sus hijos, dejando la
-fila viva como la última versión. Cumple igual lo pedido en D-07 —no se borra, queda
-historial, se muestra la más nueva— y no toca ni una FK ni un índice. Fila-por-versión es lo
-que dispara el riesgo descrito en la Fase 6.
-
-**P-07 — «Quitar de HA» = despublicar, no borrar.** Lo asumo así salvo que me corrija.
+**Asumido salvo corrección:** el `Codigo` de la ficha se sigue generando y viviendo del lado de
+SIGER; es identidad de la ficha, no contenido del trámite.
 
 ---
 
@@ -269,14 +265,16 @@ que dispara el riesgo descrito en la Fase 6.
 | Riesgo | Dónde |
 |---|---|
 | Enlaces SOL rotos en HA por el cambio de significado de `SolUrl` | Fase 4 |
+| Componer a medias cuando la institución no tiene URL base | Fase 4 |
 | Autopublicar 253 fichas sin revisar en el relleno | Fase 3 |
+| Perder la captura en lote y volver al llenado de uno en uno | Fase 5 / P-08 |
+| Historial ahogado en ruido operativo | Fase 6 / P-09 |
+| Buckets contaminando listados y tableros de expedientes | Fase 7 / P-11 |
 | Duplicados por importar dos veces la misma ficha | Fase 7 |
-| Enrutamiento de edición no determinista si no se arregla la conciliación | Fase 2 → 7 |
-| Historial con agujeros si el versionado llega después del primer «Pasar a SIGER» | Fase 6 |
-| Campos propios de SIGER sin lugar donde editarse | Fase 7 |
+| Enrutamiento de edición no determinista | Fase 2 → 7 |
 | Conversión de modalidades corriendo después del CHECK | Fase 5 |
 
-Reglas ya vigentes en `plan.md` que siguen aplicando: `EnableRetryOnFailure` es incompatible
-con `BeginTransaction` explícito; las migraciones necesitan `--output-dir Persistence\Migrations`;
+Reglas vigentes de `plan.md` que siguen aplicando: `EnableRetryOnFailure` es incompatible con
+`BeginTransaction` explícito; las migraciones necesitan `--output-dir Persistence\Migrations`;
 `ExpedienteTramite.Id` no es estable; y el reparto de proveedor entre `Application.Tests`
 (EF In-Memory, sin CHECK ni índices únicos) y `Web.Tests` (SQLite, que sí los aplica).
