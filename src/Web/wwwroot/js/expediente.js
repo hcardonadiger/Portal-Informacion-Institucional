@@ -665,6 +665,7 @@ function snapshotTramites(){
     var al = document.querySelector('input[name="alcance_'+i+'"]:checked');
     o.alcance = al ? al.value : '';
     o._sigerId = (_sigerIds[i] !== undefined) ? _sigerIds[i] : null;
+    o._clave = (_claves[i] !== undefined) ? _claves[i] : null;
     o.fecha_creacion = gv('fecha_creacion_'+i);
     o.estado_tramite = gv('estado_tramite_'+i);
     snap.push(o);
@@ -673,7 +674,7 @@ function snapshotTramites(){
 }
 
 function restoreTramites(snap){
-  _sigerIds = [];
+  _sigerIds = []; _claves = [];
   for(var i=0; i<snap.length; i++){
     sv('tnam-'+i, snap[i].tnam || '');
     sv('area_resp-'+i, snap[i].area || '');
@@ -685,6 +686,7 @@ function restoreTramites(snap){
     }
     togglePago(i);
     _sigerIds.push(snap[i]._sigerId || null);
+    _claves.push(snap[i]._clave || null);
     sv('fecha_creacion_'+i, snap[i].fecha_creacion || '');
     sv('estado_tramite_'+i, snap[i].estado_tramite || '');
   }
@@ -704,6 +706,10 @@ function agregarTramiteApertura(){
 // ── IMPORTAR DESDE SIGER ──────────────────────────────────────
 var _sigerTimer = null;
 var _sigerIds = [];
+// Identidad estable de cada trámite, en paralelo a _sigerIds y tratada igual: se guarda dentro
+// del objeto al hacer snapshot y se reconstruye desde ahí, para que se mueva con su trámite
+// cuando alguien quita otro del medio o reordena. Vacía = trámite nuevo, el servidor la crea.
+var _claves = [];
 
 function actualizarBadgesSiger(){
   for(var i=0; i<tramiteCount; i++){
@@ -782,6 +788,7 @@ async function seleccionarSiger(it){
   var newIdx = tramiteCount - 1;
 
   while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
+  while(_claves.length < tramiteCount) _claves.push(null);
   _sigerIds[newIdx] = it.id;
 
   actualizarNumTramites();
@@ -1635,6 +1642,7 @@ function recolectar(){
     var alc = document.querySelector('input[name="alcance_'+t+'"]:checked');
     ft.alcance = alc ? alc.value : '';
     if(_sigerIds[t]) ft.tramite_siger_id = String(_sigerIds[t]);
+    if(_claves[t]) ft.clave_estable = String(_claves[t]);
     ft.fecha_creacion = gv('fecha_creacion_'+t) || '';
     ft.estado_tramite = gv('estado_tramite_'+t) || '';
     d.tramites.push(ft);
@@ -1924,7 +1932,7 @@ function poblarFormulario(d){
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
     'horario','telefono','email_tramite','sitio_web'];
-  _sigerIds = [];
+  _sigerIds = []; _claves = [];
   if(d.tramites) d.tramites.forEach(function(ft,t){
     fichaFields.forEach(function(f){
       if(f === 'nombre_tramite') return; // siempre derivado de tnam en apertura
@@ -1934,10 +1942,12 @@ function poblarFormulario(d){
     if(ft.alcance){ var al=document.querySelector('input[name="alcance_'+t+'"][value="'+ft.alcance+'"]'); if(al) al.checked=true; }
     togglePago(t);
     _sigerIds.push(ft.tramite_siger_id ? parseInt(ft.tramite_siger_id) : null);
+    _claves.push(ft.clave_estable || null);
     if(ft.fecha_creacion) sv('fecha_creacion_'+t, ft.fecha_creacion);
     if(ft.estado_tramite) sv('estado_tramite_'+t, ft.estado_tramite);
   });
   while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
+  while(_claves.length < tramiteCount) _claves.push(null);
   actualizarBadgesSiger();
   syncAllNombreTramites();
 

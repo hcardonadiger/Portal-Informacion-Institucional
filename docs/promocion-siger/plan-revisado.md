@@ -150,7 +150,7 @@ Tamaño: de 17 tareas a unas **37**. Cuatro hechas, ~33 por delante.
 |---|---|---|
 | 1 | **Hecha** — `IdSiger` opcional, índice filtrado, regla unificada | ✓ 4 |
 | 2 | **Hecha** — La foto del SIGER original | ✓ 1 |
-| 3 | Detener la pérdida de conciliaciones | ~3 |
+| 3 | **Hecha** — Detener la pérdida de conciliaciones | ✓ 3 |
 | 4 | Control de publicación en HA + pantalla de administración | ~4 |
 | 5 | Llenado asistido | ~3 |
 | 6 | URL SOL compuesta | ~3 |
@@ -186,28 +186,45 @@ Debe quedar consultable, no solo respaldada: la meta dice «poderla visitar».
 
 ---
 
-### Fase 3 — Detener la pérdida de conciliaciones (~3 tareas)
+### Fase 3 — Detener la pérdida de conciliaciones — HECHA
 
-**Entrega:** que una decisión de conciliación sobreviva a que alguien guarde el expediente.
+**El defecto.** `ExpedienteMapper.Aplicar` llama a `LimpiarHijos()`, que hace `_tramites.Clear()`,
+y vuelve a agregar los trámites desde cero: cada guardado borra y reinserta los
+`ExpedienteTramite` con Id nuevo. `ConciliacionesSiger` colgaba de ese Id con
+`OnDelete(Cascade)`, así que cada guardado se llevaba las decisiones por delante. El enlace
+sobrevivía porque `TramiteSigerId` viaja en la fila del formulario; las decisiones **Descartado**
+y **ProponerFichaNueva** solo vivían en esa tabla y desaparecían, y el trámite reaparecía en la
+bandeja como si nadie lo hubiera revisado.
 
-**El defecto, verificado en código:** `ExpedienteMapper.Aplicar` llama a `LimpiarHijos()`, que
-hace `_tramites.Clear()`, y vuelve a agregar los trámites desde cero — cada guardado borra y
-reinserta los `ExpedienteTramite` con Id nuevo. `ConciliacionesSiger` tiene FK a ese Id con
-`OnDelete(DeleteBehavior.Cascade)`. El enlace sobrevive porque `TramiteSigerId` viaja en el DTO;
-las decisiones **Descartado** y **ProponerFichaNueva** solo viven en esa tabla y desaparecen. La
-bandeja cuenta como pendiente todo lo que tiene `Decision is null`, así que un trámite
-descartado a mano regresa a la bandeja al siguiente guardado — justo lo que el comentario de la
-propia entidad dice que existe para evitar.
+**Lo que el plan recomendaba estaba mal, y se descartó.** Rekeyar sobre
+`(ExpedienteId, TramiteIndex)` no sirve: `TramiteIndex` se asigna por la **posición en el arreglo
+del formulario** (`OriginalShapeMapper.ToInput`, `for (var t = 0; ...)`), y el editor permite
+quitar un trámite del medio (`quitarTramiteApertura` → `splice`) y reordenar por arrastre. Es
+decir, el índice renumera. Rekeyar sobre él habría cambiado «la decisión se pierde» por «la
+decisión queda pegada al trámite equivocado» — dato callado y falso en lugar de callado y
+ausente, que es peor.
 
-*Ruta de código leída completa; no ejecutada contra base. Primer paso: medir el daño real.*
+**Lo construido.** `ExpedienteTramite.ClaveEstable`, un Guid que **viaja dentro de la fila del
+formulario**, exactamente por el mismo camino que `tramite_siger_id`: se guarda en el objeto al
+hacer `snapshotTramites()` y se reconstruye desde ahí en `restoreTramites()`, así que se mueve
+con su trámite en vez de quedarse fija en una posición. `ConciliacionSiger` se identifica ahora
+por esa clave, y su cascada cuelga del **expediente**, que sí es estable.
 
-**Camino recomendado:** rekeyar `ConciliacionSiger` sobre `(ExpedienteId, TramiteIndex)`. Ese
-índice **ya existe** en `ExpedienteTramite`, así que el cambio es barato.
+La migración no renombra la columna vieja —EF lo propuso, y habría dejado ids de trámite
+haciéndose pasar por ids de expediente— sino que crea las nuevas, las rellena cruzando contra
+`ExpedienteTramites` mientras la vieja todavía existe, y recién después la borra. El valor por
+defecto es `NEWID()` para que cada fila existente reciba una clave distinta; con el `Guid.Empty`
+que ponía EF, las 240 filas habrían quedado idénticas y el índice único habría fallado.
 
-**Nota:** el bloqueo de D-17 no depende de esta reparación. La Fase 3 protege la bandeja de
-conciliación, no el bloqueo.
+Aplicada a Ensayo: 240 claves distintas para 240 trámites, cero vacías, y la única conciliación
+que había quedó apuntando al mismo trámite de antes.
 
----
+**Un defecto emparentado que queda fuera de alcance.** `PlanTrabajo` enlaza sus metas por
+`ExpedienteTramiteIndex` y el tablero de trámites arma su llave como
+`$"{ExpedienteId}-{TramiteIndex}"`. Ambos sufren la misma renumeración: una meta puede quedar
+apuntando a otro trámite si alguien reacomoda el expediente. Ahora existe una clave estable a la
+que migrarlos.
+
 
 ### Fase 4 — Control de publicación en HA + pantalla de administración (~4 tareas)
 

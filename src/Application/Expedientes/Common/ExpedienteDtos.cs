@@ -28,7 +28,10 @@ public sealed record TramiteInput(
     string? SitioWeb,
     int?    TramiteSigerId = null,
     DateOnly? FechaCreacion = null,
-    EstadoTramite? EstadoTramite = null);
+    EstadoTramite? EstadoTramite = null,
+    /// <summary>Identidad estable del trámite. Viaja en la fila del formulario para que se
+    /// mueva con su trámite cuando alguien reordena o quita otro. Null solo la primera vez.</summary>
+    Guid?   ClaveEstable = null);
 
 public sealed record RequisitoInput(
     int TramiteIndex, int Orden, string Requisito, string? Obs,

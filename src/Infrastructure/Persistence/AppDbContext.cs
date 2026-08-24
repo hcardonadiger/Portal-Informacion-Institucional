@@ -623,6 +623,11 @@ public sealed class ExpedienteTramiteConfiguration : IEntityTypeConfiguration<Ex
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => x.TramiteSigerId);
         b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
+
+        // Identidad estable del trámite: única para que la conciliación pueda buscar por ella
+        // sin ambigüedad. Es un Guid, así que la unicidad no restringe nada real; lo que
+        // atrapa es un error de programación que asignara la misma clave a dos trámites.
+        b.HasIndex(x => x.ClaveEstable).IsUnique();
     }
 }
 
@@ -1543,11 +1548,18 @@ public sealed class ConciliacionSigerConfiguration : IEntityTypeConfiguration<Co
         b.Property(x => x.Nota).HasMaxLength(500);
 
         // Una sola decisión vigente por trámite: al revisar de nuevo se actualiza, no se acumula.
-        b.HasIndex(x => x.ExpedienteTramiteId).IsUnique();
+        b.HasIndex(x => x.ClaveTramite).IsUnique();
 
-        // Si el trámite del expediente desaparece, su decisión deja de tener sentido.
-        b.HasOne<ExpedienteTramite>().WithMany()
-            .HasForeignKey(x => x.ExpedienteTramiteId).OnDelete(DeleteBehavior.Cascade);
+        // Sin llave foránea a ExpedienteTramite, y es el arreglo entero de la Fase 3: la que
+        // había borraba en cascada, y como guardar un expediente borra y reinserta todos sus
+        // trámites, cada guardado se llevaba las decisiones por delante.
+        //
+        // La cascada cuelga del expediente, que sí es estable. Si desaparece un trámite suelto,
+        // su decisión queda huérfana y la bandeja simplemente no la encuentra —inofensivo al
+        // lado de perderlas todas en cada guardado.
+        b.HasOne<Expediente>().WithMany()
+            .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => x.ExpedienteId);
 
         // La ficha SIGER se conserva aunque se borre: la decisión sigue siendo historial válido.
         b.HasOne<TramiteSiger>().WithMany()

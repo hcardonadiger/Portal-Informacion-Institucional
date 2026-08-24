@@ -6,6 +6,13 @@ namespace Diger.TramitesEstado.Web.Pages.Siger;
 /// Bandeja de conciliación entre los trámites de los expedientes y el inventario SIGER.
 /// Propone enlaces, deja que una persona los confirme y recuerda lo ya decidido.
 /// </summary>
+/// <remarks>
+/// El formulario sigue viajando con el <c>Id</c> entero del trámite, y está bien: dentro de una
+/// misma petición esas filas existen y no se mueven. Lo que <b>no</b> puede guardarse con ese Id
+/// es la decisión, porque el siguiente guardado del expediente borra y reinserta los trámites con
+/// Id nuevo. Por eso lo que se persiste es la clave estable, y el Id solo se usa para llegar a
+/// ella. Ver <see cref="Domain.Entities.ConciliacionSiger"/>.
+/// </remarks>
 [Permission("Siger.Conciliacion", AccionModulo.Editar, "Conciliar trámites SIGER con expedientes")]
 [Authorize(Policy = "Siger.Conciliacion.Editar")]
 public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
@@ -75,15 +82,14 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
             return Redirigir();
         }
 
-        var idsTramite = elegidas.Select(s => s.ExpedienteTramiteId).ToList();
-        var idsSiger   = elegidas.Select(s => s.TramiteSigerId!.Value).Distinct().ToList();
+        var idsSiger = elegidas.Select(s => s.TramiteSigerId!.Value).Distinct().ToList();
 
-        var permitidos   = await IdsEnAlcanceAsync(idsTramite, ct);
+        var enAlcance    = await EnAlcanceAsync(elegidas.Select(s => s.ExpedienteTramiteId).ToList(), ct);
         var sigerExisten = await ctx.TramitesSiger.AsNoTracking()
             .Where(s => idsSiger.Contains(s.Id)).Select(s => s.Id).ToListAsync(ct);
 
         var aplicables = elegidas
-            .Where(s => permitidos.Contains(s.ExpedienteTramiteId)
+            .Where(s => enAlcance.ContainsKey(s.ExpedienteTramiteId)
                      && sigerExisten.Contains(s.TramiteSigerId!.Value))
             .ToList();
 
@@ -94,9 +100,8 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
         }
 
         var idsAplicables = aplicables.Select(s => s.ExpedienteTramiteId).ToList();
-        var tramites  = await ctx.Tramites.Where(t => idsAplicables.Contains(t.Id)).ToListAsync(ct);
-        var previas   = await ctx.ConciliacionesSiger
-            .Where(c => idsAplicables.Contains(c.ExpedienteTramiteId)).ToListAsync(ct);
+        var tramites = await ctx.Tramites.Where(t => idsAplicables.Contains(t.Id)).ToListAsync(ct);
+        var previas  = await PreviasDeAsync(aplicables.Select(s => enAlcance[s.ExpedienteTramiteId].Clave), ct);
 
         foreach (var fila in aplicables)
         {
@@ -104,7 +109,8 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
             if (tramite is null) continue;
 
             tramite.TramiteSigerId = fila.TramiteSigerId;
-            RegistrarDecision(previas, fila.ExpedienteTramiteId,
+            var (clave, expedienteId) = enAlcance[fila.ExpedienteTramiteId];
+            RegistrarDecision(previas, clave, expedienteId,
                 DecisionConciliacion.Enlazado, fila.TramiteSigerId);
         }
 
@@ -132,8 +138,7 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
 
         var ids      = candidatas.Select(f => f.Id).ToList();
         var tramites = await ctx.Tramites.Where(t => ids.Contains(t.Id)).ToListAsync(ct);
-        var previas  = await ctx.ConciliacionesSiger
-            .Where(c => ids.Contains(c.ExpedienteTramiteId)).ToListAsync(ct);
+        var previas  = await PreviasDeAsync(candidatas.Select(f => f.Clave), ct);
 
         foreach (var fila in candidatas)
         {
@@ -141,7 +146,8 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
             if (tramite is null) continue;
 
             tramite.TramiteSigerId = fila.SugeridoId;
-            RegistrarDecision(previas, fila.Id, DecisionConciliacion.Enlazado, fila.SugeridoId);
+            RegistrarDecision(previas, fila.Clave, fila.ExpedienteId,
+                DecisionConciliacion.Enlazado, fila.SugeridoId);
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -160,14 +166,14 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
     /// <summary>Deshace un enlace: el trámite vuelve a pendientes y se borra su decisión.</summary>
     public async Task<IActionResult> OnPostDesenlazarAsync(int id, CancellationToken ct)
     {
-        var permitidos = await IdsEnAlcanceAsync([id], ct);
-        if (!permitidos.Contains(id)) return NotFound();
+        var enAlcance = await EnAlcanceAsync([id], ct);
+        if (!enAlcance.TryGetValue(id, out var refTramite)) return NotFound();
 
         var tramite = await ctx.Tramites.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (tramite is null) return NotFound();
 
         tramite.TramiteSigerId = null;
-        await BorrarDecisionAsync(id, ct);
+        await BorrarDecisionAsync(refTramite.Clave, ct);
 
         await ctx.SaveChangesAsync(ct);
         TempData["SuccessMsg"] = "Enlace deshecho. El trámite volvió a la bandeja de pendientes.";
@@ -177,10 +183,10 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
     /// <summary>Reabre una decisión previa (descartado o propuesta de ficha) para revisarla de nuevo.</summary>
     public async Task<IActionResult> OnPostReabrirAsync(int id, CancellationToken ct)
     {
-        var permitidos = await IdsEnAlcanceAsync([id], ct);
-        if (!permitidos.Contains(id)) return NotFound();
+        var enAlcance = await EnAlcanceAsync([id], ct);
+        if (!enAlcance.TryGetValue(id, out var refTramite)) return NotFound();
 
-        await BorrarDecisionAsync(id, ct);
+        await BorrarDecisionAsync(refTramite.Clave, ct);
         await ctx.SaveChangesAsync(ct);
         TempData["SuccessMsg"] = "Decisión reabierta. El trámite volvió a la bandeja de pendientes.";
         return Redirigir();
@@ -198,37 +204,37 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
             return Redirigir();
         }
 
-        var permitidos = await IdsEnAlcanceAsync(ids, ct);
-        if (permitidos.Count == 0)
+        var enAlcance = await EnAlcanceAsync(ids, ct);
+        if (enAlcance.Count == 0)
         {
             TempData["SuccessMsg"] = "Ninguna de las filas marcadas pudo procesarse.";
             return Redirigir();
         }
 
-        var previas = await ctx.ConciliacionesSiger
-            .Where(c => permitidos.Contains(c.ExpedienteTramiteId)).ToListAsync(ct);
+        var previas = await PreviasDeAsync(enAlcance.Values.Select(v => v.Clave), ct);
 
-        foreach (var idTramite in permitidos)
-            RegistrarDecision(previas, idTramite, decision, null);
+        foreach (var (clave, expedienteId) in enAlcance.Values)
+            RegistrarDecision(previas, clave, expedienteId, decision, null);
 
         await ctx.SaveChangesAsync(ct);
-        TempData["SuccessMsg"] = mensaje(permitidos.Count);
+        TempData["SuccessMsg"] = mensaje(enAlcance.Count);
         return Redirigir();
     }
 
     /// <summary>Crea o actualiza la decisión vigente del trámite. Hay a lo sumo una.</summary>
     private void RegistrarDecision(
-        List<ConciliacionSiger> previas, int expedienteTramiteId,
+        List<ConciliacionSiger> previas, Guid claveTramite, int expedienteId,
         DecisionConciliacion decision, int? tramiteSigerId)
     {
-        var existente = previas.FirstOrDefault(c => c.ExpedienteTramiteId == expedienteTramiteId);
+        var existente = previas.FirstOrDefault(c => c.ClaveTramite == claveTramite);
         if (existente is null)
         {
             var nueva = new ConciliacionSiger
             {
-                ExpedienteTramiteId = expedienteTramiteId,
-                TramiteSigerId      = tramiteSigerId,
-                Decision            = decision
+                ClaveTramite   = claveTramite,
+                ExpedienteId   = expedienteId,
+                TramiteSigerId = tramiteSigerId,
+                Decision       = decision
             };
             ctx.ConciliacionesSiger.Add(nueva);
             previas.Add(nueva);
@@ -240,23 +246,31 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
         }
     }
 
-    private async Task BorrarDecisionAsync(int expedienteTramiteId, CancellationToken ct)
+    private async Task<List<ConciliacionSiger>> PreviasDeAsync(
+        IEnumerable<Guid> claves, CancellationToken ct)
+    {
+        var lista = claves.Distinct().ToList();
+        return await ctx.ConciliacionesSiger.Where(c => lista.Contains(c.ClaveTramite)).ToListAsync(ct);
+    }
+
+    private async Task BorrarDecisionAsync(Guid claveTramite, CancellationToken ct)
     {
         var previa = await ctx.ConciliacionesSiger
-            .FirstOrDefaultAsync(c => c.ExpedienteTramiteId == expedienteTramiteId, ct);
+            .FirstOrDefaultAsync(c => c.ClaveTramite == claveTramite, ct);
         if (previa is not null) ctx.ConciliacionesSiger.Remove(previa);
     }
 
     /// <summary>
-    /// Filtra los ids recibidos del formulario a los que el usuario realmente puede ver.
-    /// El join contra Expedientes aplica el filtro global de alcance institucional y de
-    /// borrado lógico; <c>ctx.Tramites</c> por sí solo no lo tiene.
+    /// Traduce los ids recibidos del formulario a la clave estable de cada trámite, dejando
+    /// fuera los que el usuario no puede ver. El join contra Expedientes aplica el filtro global
+    /// de alcance institucional y de borrado lógico; <c>ctx.Tramites</c> por sí solo no lo tiene.
     /// </summary>
-    private async Task<List<int>> IdsEnAlcanceAsync(List<int> ids, CancellationToken ct)
+    private async Task<Dictionary<int, RefTramite>> EnAlcanceAsync(List<int> ids, CancellationToken ct)
         => await (from et in ctx.Tramites
                   join e in ctx.Expedientes on et.ExpedienteId equals e.Id
                   where ids.Contains(et.Id)
-                  select et.Id).ToListAsync(ct);
+                  select new { et.Id, et.ClaveEstable, et.ExpedienteId })
+                 .ToDictionaryAsync(x => x.Id, x => new RefTramite(x.ClaveEstable, x.ExpedienteId), ct);
 
     private IActionResult Redirigir()
         => RedirectToPage(new { Tab, Buscar, Sigla, Pg });
@@ -274,6 +288,8 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
                             select new
                             {
                                 et.Id,
+                                et.ClaveEstable,
+                                et.ExpedienteId,
                                 et.NombreTramite,
                                 et.TramiteSigerId,
                                 ExpedienteCodigo = e.Codigo,
@@ -287,7 +303,7 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
             .ToListAsync(ct);
 
         var decisiones = await ctx.ConciliacionesSiger.AsNoTracking()
-            .ToDictionaryAsync(d => d.ExpedienteTramiteId, ct);
+            .ToDictionaryAsync(d => d.ClaveTramite, ct);
 
         var fichas = fichasCrudas
             .Select(f => new FichaIndexada(
@@ -302,13 +318,14 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
         foreach (var t in crudos)
         {
             var norm = ConciliacionMatcher.Normalizar(t.NombreTramite);
-            decisiones.TryGetValue(t.Id, out var decision);
+            decisiones.TryGetValue(t.ClaveEstable, out var decision);
 
             if (t.TramiteSigerId is int enlazadoId)
             {
                 var ficha = porId.GetValueOrDefault(enlazadoId);
                 todas.Add(new FilaVm(
-                    t.Id, t.ExpedienteCodigo, t.Institucion, t.InstitucionId, t.NombreTramite,
+                    t.Id, t.ClaveEstable, t.ExpedienteId,
+                    t.ExpedienteCodigo, t.Institucion, t.InstitucionId, t.NombreTramite,
                     CubetaConciliacion.AltaConfianza, [], null, false,
                     ficha?.ACandidato(), ficha is not null && ficha.NomNorm == norm,
                     decision?.Decision, decision?.CreatedBy, decision?.CreatedAt));
@@ -338,7 +355,8 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
             };
 
             todas.Add(new FilaVm(
-                t.Id, t.ExpedienteCodigo, t.Institucion, t.InstitucionId, t.NombreTramite,
+                t.Id, t.ClaveEstable, t.ExpedienteId,
+                t.ExpedienteCodigo, t.Institucion, t.InstitucionId, t.NombreTramite,
                 cubeta,
                 candidatos.Select(c => c.ACandidato()).ToList(),
                 sugerido,
@@ -429,6 +447,10 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
 
     // ── Modelos de vista ──────────────────────────────────────────────────────
 
+    /// <summary>Lo que hace falta para guardar una decisión: a qué trámite pertenece de verdad,
+    /// y de qué expediente cuelga para que la cascada pueda limpiarla.</summary>
+    private readonly record struct RefTramite(Guid Clave, int ExpedienteId);
+
     private sealed record FichaIndexada(
         int Id, string Codigo, string Nombre, string? Sigla, string? Estado, string NomNorm)
     {
@@ -442,8 +464,12 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
             : $"{Codigo} — {Nombre} ({Sigla})";
     }
 
+    /// <param name="Id">Id de la fila viva. Sirve dentro de esta petición; no se persiste.</param>
+    /// <param name="Clave">Identidad estable. Es lo que se guarda en la decisión.</param>
     public sealed record FilaVm(
         int Id,
+        Guid Clave,
+        int ExpedienteId,
         string ExpedienteCodigo,
         string Institucion,
         string? InstitucionId,

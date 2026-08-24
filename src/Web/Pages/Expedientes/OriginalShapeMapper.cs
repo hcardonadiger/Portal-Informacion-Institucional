@@ -18,6 +18,7 @@ public static class OriginalShapeMapper
             var f = t < o.Tramites.Count ? o.Tramites[t] : new();
             string? G(string k) => f.TryGetValue(k, out var v) ? v : null;
             int? sigerId = int.TryParse(G("tramite_siger_id"), out var sid) ? sid : null;
+            Guid? claveEstable = Guid.TryParse(G("clave_estable"), out var ce) ? ce : null;
             tramites.Add(new TramiteInput(
                 t,
                 At(o.TramiteNombres, t) ?? G("nombre_tramite") ?? "",
@@ -28,7 +29,8 @@ public static class OriginalShapeMapper
                 G("dirigido"), G("horario"), G("telefono"), G("email_tramite"), G("sitio_web"),
                 sigerId,
                 ParseDate(G("fecha_creacion")),
-                ParseEstadoTramite(G("estado_tramite"))));
+                ParseEstadoTramite(G("estado_tramite")),
+                claveEstable));
         }
 
         var requisitos = new List<RequisitoInput>();
@@ -137,6 +139,7 @@ public static class OriginalShapeMapper
                 ["alcance_obs"] = t.AlcanceObs, ["descripcion"] = t.Descripcion, ["dirigido"] = t.Dirigido,
                 ["horario"] = t.Horario, ["telefono"] = t.Telefono, ["email_tramite"] = t.EmailTramite, ["sitio_web"] = t.SitioWeb,
                 ["tramite_siger_id"] = t.TramiteSigerId?.ToString(),
+                ["clave_estable"] = t.ClaveEstable?.ToString(),
                 ["fecha_creacion"] = Fmt(t.FechaCreacion),
                 ["estado_tramite"] = FmtEstadoTramite(t.EstadoTramite)
             });

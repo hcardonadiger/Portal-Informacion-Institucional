@@ -72,6 +72,9 @@ public static class ExpedienteMapper
             e.Agregar(new ExpedienteTramite
             {
                 TramiteIndex = t.TramiteIndex, NombreTramite = t.NombreTramite.Trim(),
+                // Se preserva la que venga y solo se inventa una si el trámite es nuevo. Si acá
+                // se generara siempre, cada guardado le daría identidad nueva y no serviría de nada.
+                ClaveEstable = t.ClaveEstable ?? Guid.NewGuid(),
                 NombreCorto = t.NombreCorto, AreaResponsable = t.AreaResponsable,
                 FechaCreacion = t.FechaCreacion ?? DateOnly.FromDateTime(DateTime.Now),
                 EstadoTramite = t.EstadoTramite ?? EstadoTramite.Pendiente,
@@ -181,7 +184,7 @@ public static class ExpedienteMapper
             t.Tercero, t.TiempoReal, t.MetodoPago, t.PagoBanco, t.PagoCuenta, t.TgrInst, t.TgrRubro,
             t.TgrMonto, t.DocEntregado, t.Objetivo, t.Alcance, t.AlcanceObs, t.Descripcion, t.Dirigido,
             t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb, t.TramiteSigerId,
-            t.FechaCreacion, t.EstadoTramite)).ToList(),
+            t.FechaCreacion, t.EstadoTramite, t.ClaveEstable)).ToList(),
         e.Requisitos.OrderBy(r => r.TramiteIndex).ThenBy(r => r.Orden).Select(r => new RequisitoInput(
             r.TramiteIndex, r.Orden, r.Requisito, r.Obs, r.Accion, r.Justificacion,
             r.PlantillaOrigenId, r.EsPersonalizado)).ToList(),
