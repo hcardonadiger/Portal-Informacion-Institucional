@@ -74,6 +74,7 @@ Tres lecturas:
 | **D-22** | Desenlazar una ficha la **desbloquea**, con advertencia explícita de que vuelve a editarse por su lado. |
 | **D-23** | La captura en lote **se queda como está**. Solo debe excluir las fichas bloqueadas. |
 | **D-24** | El llenado asistido deja todo en **cola de revisión**; no escribe directo. Cada valor que proponga queda marcado en una columna **`Autollenado`**, para distinguirlo después de lo verificado por una persona. |
+| **D-25** | La documentación del API se hace en la **Fase 6**, sin esperar al resto, y **consolidando**: la especificación generada es la verdad sobre la forma, y el documento a mano solo cubre lo que aquélla no puede expresar. |
 
 ### D-17 — el bloqueo condicional
 
@@ -153,11 +154,12 @@ Tamaño: de 17 tareas a unas **37**. Cuatro hechas, ~33 por delante.
 | 3 | **Hecha** — Detener la pérdida de conciliaciones | ✓ 3 |
 | 4 | **Hecha** — Control de publicación en HA + pantalla de administración | ✓ 4 |
 | 5 | Llenado asistido | ~3 |
-| 6 | URL SOL compuesta | ~3 |
-| 7 | El expediente aprende a guardar todo lo que SIGER guarda | ~8 |
-| 8 | De PD a SIGER: promover, actualizar y versionar | ~6 |
-| 9 | De SIGER a PD: importar y aplicar el bloqueo | ~6 |
-| 10 | Visibilidad y cierre | ~3 |
+| 6 | Documentación del API pública | ~3 |
+| 7 | URL SOL compuesta | ~3 |
+| 8 | El expediente aprende a guardar todo lo que SIGER guarda | ~8 |
+| 9 | De PD a SIGER: promover, actualizar y versionar | ~6 |
+| 10 | De SIGER a PD: importar y aplicar el bloqueo | ~6 |
+| 11 | Visibilidad y cierre | ~3 |
 
 ---
 
@@ -278,7 +280,44 @@ propuesto queda marcado en la columna `Autollenado`.
 
 ---
 
-### Fase 6 — URL SOL compuesta (~3 tareas)
+### Fase 6 — Documentación del API pública (~3 tareas)
+
+**Va aquí y no al final** por tres razones. El consumidor ya existe: HondurasÁgil está integrado
+contra esta API hoy, así que documentación que llegue después del consumidor llega tarde por
+definición. El contrato ya está estable: de las fases que faltan, **solo la 7 roza la superficie
+del API**, y ni siquiera cambia la forma —`solUrl` sigue siendo una URL absoluta, lo que cambia
+es cómo se arma—. Y escribir la documentación es una revisión de diseño disfrazada: encontrar un
+problema de contrato redactándolo cuesta una tarde; encontrarlo cuando HA ya depende de él
+cuesta una migración coordinada entre dos sistemas.
+
+Va **después** de la Fase 5 para que los ejemplos se escriban sobre un catálogo con datos de
+verdad y no sobre las 25 fichas completas que hay hoy.
+
+**El problema real no es que falte documentación, es que hay tres.** Existen a la vez los
+comentarios XML que alimentan Swagger —generados del código, no pueden desfasarse—, un
+`docs/api-v1/openapi-v1.yaml` **escrito a mano** con siete rutas, y `trazabilidad-cambios.md`.
+El YAML a mano y el que genera Swagger describen la misma API: es la misma duplicación que ya
+mordió con la regla de publicación (tres copias) y con la identidad del trámite (dos), solo que
+esta discrepancia no la ve el ciudadano —la ve el integrador, y la descubre cuando su código ya
+falló.
+
+**Contenido:**
+
+1. La especificación **generada** pasa a ser la verdad sobre la forma: rutas, campos, tipos,
+   códigos. No puede mentir. El YAML a mano se retira o se genera, pero no se mantiene en paralelo.
+2. `docs/api-v1/` se queda solo con lo que una especificación generada no sabe decir: cómo
+   integrarse, el contrato de frescura con `/cambios` y sus dos cadencias, qué significa
+   `fichaCompleta` y por qué una ficha incompleta se publica igual, qué quiere decir un `solUrl`
+   vacío, la clave y los límites.
+3. Una comprobación que falle si las dos vuelven a divergir.
+
+**Lo que NO se documenta todavía:** el versionado y el flujo de promoción. Son internos y aún no
+existen; documentar lo que no está construido es la forma más segura de que la documentación
+empiece a mentir el primer día.
+
+---
+
+### Fase 7 — URL SOL compuesta (~3 tareas)
 
 **Entrega:** D-04, D-13, D-14, D-20.
 
@@ -298,7 +337,7 @@ rompen los enlaces SOL de HA.
 
 ---
 
-### Fase 7 — El expediente aprende a guardar todo lo que SIGER guarda (~8 tareas)
+### Fase 8 — El expediente aprende a guardar todo lo que SIGER guarda (~8 tareas)
 
 Si el expediente no puede guardar un campo, ese campo no se puede editar una vez la ficha queda
 bloqueada por D-17.
@@ -312,7 +351,7 @@ temporalidad, observaciones DIGER, si está en SOL y el tramo de la dirección.
 
 ---
 
-### Fase 8 — De PD a SIGER: promover, actualizar y versionar (~6 tareas)
+### Fase 9 — De PD a SIGER: promover, actualizar y versionar (~6 tareas)
 
 **Entrega:** D-07, D-15, más las tareas 10–15 de `plan.md`.
 
@@ -327,9 +366,9 @@ primeros pases, esos quedan como agujeros sin historial.
 
 ---
 
-### Fase 9 — De SIGER a PD: importar y aplicar el bloqueo (~6 tareas)
+### Fase 10 — De SIGER a PD: importar y aplicar el bloqueo (~6 tareas)
 
-**Entrega:** D-05, D-06, D-21, D-22 y la mitad de D-17. **Depende de la Fase 7.**
+**Entrega:** D-05, D-06, D-21, D-22 y la mitad de D-17. **Depende de la Fase 8.**
 
 1. El bucket «Trámites Importados de SIGER» por institución, marcado con `OrigenExternoId` y
    excluido de listados, conteos y tableros (D-21). Sin eso, los buckets quedarían atrapados en
@@ -346,7 +385,7 @@ primeros pases, esos quedan como agujeros sin historial.
 
 ---
 
-### Fase 10 — Visibilidad y cierre (~3 tareas)
+### Fase 11 — Visibilidad y cierre (~3 tareas)
 
 Tareas 16–17 de `plan.md`: insignia en el expediente, aviso en el detalle, filtro en el
 inventario. Más actualizar `diseno.md` y `plan.md` a lo acordado aquí.
@@ -375,11 +414,11 @@ identidad de la ficha, no contenido del trámite.
 | Llenar fichas después de importarlas, ya bloqueadas | Fase 5 |
 | Que la avenida de fichas completas llegue al ciudadano sin compuerta | Fase 4 → 5 |
 | No poder distinguir después el llenado automático del verificado | Fase 5 / D-24 |
-| Buckets contaminando listados y tableros de expedientes | Fase 9 / D-21 |
-| Desenlazar sin advertencia y devolver el mando sin querer | Fase 9 / D-22 |
-| Enlaces SOL rotos en HA por el cambio de significado de `SolUrl` | Fase 6 |
-| Duplicados por importar dos veces la misma ficha | Fase 9 |
-| Conversión de modalidades corriendo después del CHECK | Fase 7 |
+| Buckets contaminando listados y tableros de expedientes | Fase 10 / D-21 |
+| Desenlazar sin advertencia y devolver el mando sin querer | Fase 10 / D-22 |
+| Enlaces SOL rotos en HA por el cambio de significado de `SolUrl` | Fase 7 |
+| Duplicados por importar dos veces la misma ficha | Fase 10 |
+| Conversión de modalidades corriendo después del CHECK | Fase 8 |
 
 Reglas vigentes de `plan.md` que siguen aplicando: `EnableRetryOnFailure` es incompatible con
 `BeginTransaction` explícito; las migraciones necesitan `--output-dir Persistence\Migrations`;
