@@ -165,7 +165,17 @@ var publicarSwagger = app.Environment.IsDevelopment() ||
 
 if (publicarSwagger)
 {
-    app.UseSwagger();
+    app.UseSwagger(opciones =>
+    {
+        // Sin esto Swashbuckle escribe como «servidor» el host de quien pidió el documento:
+        // http://localhost en las pruebas, https://localhost:7199 en el escritorio de cada
+        // quien, y la dirección de IIS en el servidor. La especificación que se comprometió al
+        // repositorio cambiaría según quién la generó, y la comprobación de desfase daría falsos
+        // positivos eternos. Vacío significa «relativo a donde se sirve este documento», que es
+        // además lo cierto: la dirección de esta API depende del ambiente, no del contrato.
+        // Las direcciones de cada ambiente viven en docs/api-v1/README.md.
+        opciones.PreSerializeFilters.Add((documento, _) => documento.Servers.Clear());
+    });
     app.UseSwaggerUI(ui =>
     {
         ui.SwaggerEndpoint("/swagger/v1/swagger.json", $"API pública de trámites v1 — base {baseDeDatos}");
@@ -196,3 +206,10 @@ app.UseAuthorization();
 app.MapControllers();
 
 await app.RunAsync();
+
+/// <summary>
+/// Las top-level statements generan una clase Program interna, invisible desde otro ensamblado.
+/// Esta declaración parcial la hace pública para que WebApplicationFactory&lt;Program&gt; pueda
+/// levantar la API en las pruebas de contrato. No agrega comportamiento.
+/// </summary>
+public partial class Program { }

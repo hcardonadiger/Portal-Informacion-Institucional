@@ -19,21 +19,31 @@ public sealed class TramitesPublicosController(ISender sender) : ControllerBase
     /// Los filtros se combinan con Y, no con O: pedir institución y modalidad a la vez
     /// devuelve los que cumplen las dos cosas.
     /// </remarks>
-    /// <param name="busqueda">Texto libre. Busca en nombre, descripción y objetivo, y no
-    /// distingue tildes: «migracion» encuentra «Migración».</param>
+    /// <param name="busqueda">Texto libre. Es coincidencia parcial sobre <b>nombre, descripción
+    /// y objetivo</b>, y no distingue tildes ni mayúsculas: «migracion» encuentra «Migración».
+    /// Esa insensibilidad la garantiza la colación de esas columnas, no el código.
+    /// <b>No busca por código ni por institución</b>: para eso están el parámetro
+    /// <c>institucion</c> y la ruta de detalle por código.</param>
     /// <param name="categoria">Id numérico de la categoría. La lista está en /api/v1/categorias.</param>
     /// <param name="institucion">Sigla de la institución, tal como sale en /api/v1/instituciones
     /// (por ejemplo INPREMA). No es el nombre largo.</param>
-    /// <param name="modalidad">Presencial, Virtual o Mixto.</param>
+    /// <param name="modalidad">Presencial, Virtual o Hibrido — sin tilde y con esa grafía
+    /// exacta. Cuidado con una asimetría deliberada: <c>modalidad=Virtual</c> devuelve
+    /// **también los híbridos**, porque un trámite híbrido también se puede hacer en línea y
+    /// filtrar solo por Virtual subestimaría cuántos trámites hay en línea.
+    /// <c>modalidad=Hibrido</c>, en cambio, devuelve solo híbridos.</param>
     /// <param name="soloGratuitos">Solo los que no cuestan nada.</param>
     /// <param name="soloEnSol">Solo los que ya se pueden hacer en línea.</param>
     /// <param name="soloFichasCompletas">Solo los que tienen categoría, modalidad, tiempo y
     /// costo. Es el filtro que debe usar un portal de cara al ciudadano: sin él pueden salir
     /// fichas sin plazo ni costo, que al ciudadano le sirven de poco.</param>
-    /// <param name="orden">nombre, institucion o populares. Por omisión, nombre.</param>
-    /// <param name="pagina">Desde 1.</param>
-    /// <param name="tamano">Entre 1 y 100. Un valor fuera de rango no da error: se recorta
-    /// en silencio a ese intervalo.</param>
+    /// <param name="orden">Solo se reconoce <c>nombre</c>, que ordena de la A a la Z.
+    /// Cualquier otro valor —y no mandar ninguno— pone primero los marcados como populares y
+    /// dentro de cada grupo ordena por nombre. No existe orden por institución ni por tiempo:
+    /// pedirlos no da error, simplemente cae en ese orden por omisión.</param>
+    /// <param name="pagina">Desde 1. Un número menor se trata como 1.</param>
+    /// <param name="tamano">Entre 1 y 100. Un valor fuera de ese intervalo no da error, pero
+    /// tampoco se recorta: **vuelve al valor por omisión, 20**. Pedir 500 devuelve 20, no 100.</param>
     [HttpGet]
     [ProducesResponseType<CatalogoPublicoDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<CatalogoPublicoDto>> Listar(

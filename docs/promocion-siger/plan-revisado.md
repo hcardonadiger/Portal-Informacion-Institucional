@@ -74,7 +74,7 @@ Tres lecturas:
 | **D-22** | Desenlazar una ficha la **desbloquea**, con advertencia explícita de que vuelve a editarse por su lado. |
 | **D-23** | La captura en lote **se queda como está**. Solo debe excluir las fichas bloqueadas. |
 | **D-24** | El llenado asistido deja todo en **cola de revisión**; no escribe directo. Cada valor propuesto queda con su procedencia registrada, para distinguirlo después de lo verificado por una persona. *(Al construirlo, la procedencia quedó en la fila de la propuesta y no en una columna `Autollenado` de la ficha — ver Fase 5.)* |
-| **D-25** | La documentación del API se hace en la **Fase 6**, sin esperar al resto, y **consolidando**: la especificación generada es la verdad sobre la forma, y el documento a mano solo cubre lo que aquélla no puede expresar. |
+| **D-25** | La documentación del API se hace en la **Fase 6**, sin esperar al resto, y **consolidando**: la especificación generada es la verdad sobre la forma, y el documento a mano solo cubre lo que aquélla no puede expresar. *(Hecho. Redactarla encontró tres afirmaciones falsas que llevaban meses publicadas en Swagger — ver Fase 6.)* |
 
 ### D-17 — el bloqueo condicional
 
@@ -341,40 +341,76 @@ una base llevada al estado exacto previo. No toca ningún dato existente: crea u
 
 ---
 
-### Fase 6 — Documentación del API pública (~3 tareas)
+### Fase 6 — Documentación del API pública — HECHA
 
-**Va aquí y no al final** por tres razones. El consumidor ya existe: HondurasÁgil está integrado
-contra esta API hoy, así que documentación que llegue después del consumidor llega tarde por
-definición. El contrato ya está estable: de las fases que faltan, **solo la 7 roza la superficie
-del API**, y ni siquiera cambia la forma —`solUrl` sigue siendo una URL absoluta, lo que cambia
-es cómo se arma—. Y escribir la documentación es una revisión de diseño disfrazada: encontrar un
-problema de contrato redactándolo cuesta una tarde; encontrarlo cuando HA ya depende de él
-cuesta una migración coordinada entre dos sistemas.
+**Entrega:** D-25.
 
-Va **después** de la Fase 5 para que los ejemplos se escriban sobre un catálogo con datos de
-verdad y no sobre las 25 fichas completas que hay hoy.
+**El problema medido.** Había dos descripciones de la misma API: la que Swagger genera de los
+comentarios XML del código, y un `docs/api-v1/openapi-v1.yaml` **escrito y mantenido a mano**.
+Cuando dos documentos describen lo mismo, divergen. Y esta divergencia no la ve nadie de este
+lado: la ve el integrador, y la descubre cuando su código ya falló.
 
-**El problema real no es que falte documentación, es que hay tres.** Existen a la vez los
-comentarios XML que alimentan Swagger —generados del código, no pueden desfasarse—, un
-`docs/api-v1/openapi-v1.yaml` **escrito a mano** con siete rutas, y `trazabilidad-cambios.md`.
-El YAML a mano y el que genera Swagger describen la misma API: es la misma duplicación que ya
-mordió con la regla de publicación (tres copias) y con la identidad del trámite (dos), solo que
-esta discrepancia no la ve el ciudadano —la ve el integrador, y la descubre cuando su código ya
-falló.
+**Redactar la documentación encontró tres contratos rotos.** Ninguno era un fallo del código —el
+código siempre hizo lo correcto—. Lo que estaba mal era lo que se le decía a quien integra, y
+llevaba meses publicado en Swagger:
 
-**Contenido:**
+| Lo que la documentación afirmaba | Lo que la API hace |
+|---|---|
+| Se puede ordenar por `institucion` y por `tiempo` | Solo reconoce `nombre`; lo demás cae en el orden por omisión **sin avisar** |
+| Por omisión ordena por nombre | Por omisión pone primero los **populares** |
+| La modalidad admite `Mixto` | Se llama `Hibrido`; `Mixto` devuelve cero resultados |
+| Un `tamano` fuera de rango «se recorta al intervalo» | **Vuelve a 20.** Pedir 500 devuelve 20, no 100 |
 
-1. La especificación **generada** pasa a ser la verdad sobre la forma: rutas, campos, tipos,
-   códigos. No puede mentir. El YAML a mano se retira o se genera, pero no se mantiene en paralelo.
-2. `docs/api-v1/` se queda solo con lo que una especificación generada no sabe decir: cómo
-   integrarse, el contrato de frescura con `/cambios` y sus dos cadencias, qué significa
-   `fichaCompleta` y por qué una ficha incompleta se publica igual, qué quiere decir un `solUrl`
-   vacío, la clave y los límites.
-3. Una comprobación que falle si las dos vuelven a divergir.
+La tercera es la que más cuesta: quien pagine en bucle contando con 100 hace cinco veces más
+peticiones de las que presupuestó, y nada se lo dice.
 
-**Lo que NO se documenta todavía:** el versionado y el flujo de promoción. Son internos y aún no
-existen; documentar lo que no está construido es la forma más segura de que la documentación
-empiece a mentir el primer día.
+Se comprobó además una afirmación que **sí era cierta** —que la búsqueda ignora tildes— y de paso
+se documentó de dónde sale: no del código, sino de la colación `Modern_Spanish_CI_AI` de las
+columnas (migración `CorregirColacionBusqueda`). Apuntar esta API a una base sin esa colación
+cambia el comportamiento sin que nada avise.
+
+Y se documentó la asimetría que más fácil sorprende: **`?modalidad=Virtual` devuelve también los
+híbridos** —un trámite híbrido también se puede hacer en línea— pero `?modalidad=Hibrido` no
+devuelve los virtuales. Estaba en el código desde el principio, en ninguna documentación.
+
+**Lo construido:**
+
+1. **La especificación se genera y ya no se escribe.** `docs/api-v1/openapi-v1.yaml` lo produce
+   ahora el código, con una cabecera que dice cómo regenerarlo y prohíbe editarlo. El documento
+   **no declara ningún servidor**: la dirección depende del ambiente, no del contrato, y clavarla
+   haría que la especificación dijera que la API vive en la máquina de quien la generó.
+2. **`docs/api-v1/README.md`** con lo que una especificación no sabe decir: las dos cadencias de
+   sincronización y por qué hacen falta las dos, el punto ciego de la fecha de modificación, qué
+   significa `fichaCompleta` y por qué se publica lo incompleto, los tres estados del costo, los
+   tres significados de un `solUrl` vacío, la clave y los límites.
+3. **`tests/Presentation.Tests`** — proyecto nuevo, 15 pruebas. Levanta la API real en memoria.
+   - La comprobación de desfase: descarga la especificación que el código genera hoy y la compara
+     con la comprometida. Se verificó que **falla de verdad** adulterando el archivo a propósito,
+     no solo que pasa cuando todo coincide.
+   - La superficie exacta: **estas siete rutas y ninguna más**. Hacia abajo protege a
+     HondurasÁgil, que ya depende de las siete; hacia arriba obliga a que una ruta nueva pase por
+     una decisión en vez de colarse sola en la v1.
+   - Doce pruebas de contrato que atan **exactamente las frases** que ahora están escritas: el
+     orden, la asimetría de la modalidad, el tamaño que vuelve a 20, el 404 compartido entre lo
+     no publicado y lo inexistente, y que `/salud` es la única ruta sin clave.
+
+**Por qué las pruebas de contrato y no solo la comprobación de desfase.** La comprobación atrapa
+que el archivo se quede atrás, pero no que la prosa mienta: los tres errores encontrados vivían en
+comentarios que Swagger copiaba fielmente. Una documentación generada de una frase falsa sigue
+siendo falsa. Ahora, si alguien cambia el comportamiento, falla una prueba que nombra la frase que
+hay que corregir.
+
+**Medido en Ensayo el 25 de agosto de 2026**, y anotado en la guía porque el integrador lo
+necesita: 1 057 fichas en el inventario, **50 publicadas**, y de ésas **21 completas**. Con
+`?soloFichasCompletas=true` —el filtro que debe usar un portal de cara al ciudadano— el catálogo
+se reduce a menos de la mitad. No es un defecto de la API: es el estado real de la captura.
+
+**Despliegue: ninguno.** Esta fase no toca esquema ni datos. No hay script que llevar al
+Producción real.
+
+**Lo que NO se documentó, a propósito:** el versionado y el flujo de promoción. Son internos y
+todavía no existen del lado del contrato público; documentar lo que no está construido es la forma
+más segura de que la documentación empiece a mentir el primer día.
 
 ---
 
