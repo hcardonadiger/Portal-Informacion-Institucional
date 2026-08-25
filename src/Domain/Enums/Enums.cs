@@ -169,6 +169,7 @@ public enum TipoNotificacion
     RecordatorioManualExpediente  = 10,
     RecordatorioManualReunion     = 11,
     RecordatorioManualCompromiso  = 12,
+    ProyectoCambioEstado          = 13,
 }
 
 // ── Estado de una sesión de chat de soporte ───────────────────────────────
@@ -225,4 +226,33 @@ public enum DecisionConciliacion
     Enlazado           = 1, // el trámite quedó vinculado a una ficha SIGER
     Descartado         = 2, // se revisó y no corresponde enlazarlo
     ProponerFichaNueva = 3  // no existe en SIGER; queda en cola para darlo de alta
+}
+
+// ── Seguimiento de proyectos internos de DIGER ────────────────────────────
+// La secuencia no es lineal como EstadoExpediente: Suspendido va y vuelve, y
+// Cancelado se alcanza desde cualquier estado abierto. Las transiciones válidas
+// las declara Proyecto.CambiarEstado, no el orden de este enum.
+public enum EstadoProyecto
+{
+    Planificado = 1,
+    EnEjecucion = 2,
+    Suspendido  = 3,
+    Cerrado     = 4,
+    Cancelado   = 5
+}
+
+public enum PrioridadProyecto
+{
+    Alta  = 1,
+    Media = 2,
+    Baja  = 3
+}
+
+// ── Estado de un hito (entregable) dentro de un proyecto ───────────────────
+public enum EstadoHito
+{
+    Pendiente  = 1,
+    EnProceso  = 2,
+    Completado = 3,
+    Cancelado  = 4
 }

@@ -1,0 +1,942 @@
+@page "{id:int}"
+@using Diger.TramitesEstado.Application.Proyectos.Common
+@model Diger.TramitesEstado.Web.Pages.Proyectos.EditorModel
+@{
+    var p = Model.Proyecto;
+    ViewData["Title"] = p.Codigo + " — " + p.Nombre;
+
+    string EstadoCls(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.EnEjecucion => "status-badge abierto",
+        EstadoProyecto.Suspendido  => "status-badge enproceso",
+        EstadoProyecto.Cerrado     => "status-badge resuelto",
+        EstadoProyecto.Cancelado   => "status-badge vencido",
+        _                          => "status-badge default"
+    };
+    string EstadoTxt(EstadoProyecto e) => e == EstadoProyecto.EnEjecucion ? "En ejecución" : e.ToString();
+    string BarraCls(int pct) => pct >= 80 ? "bg-success" : pct >= 40 ? "bg-primary" : "bg-warning";
+    string Iso(DateOnly? d) => d?.ToString("yyyy-MM-dd") ?? "";
+    string Tamano(long? b) => b is null ? "" : b >= 1048576 ? $"{b / 1048576.0:0.#} MB" : $"{Math.Max(1, (int)(b / 1024))} KB";
+
+    // El único rol cuyo nombre en PascalCase no se lee bien tal cual.
+    string RolTexto(RolInteresado r) => r == RolInteresado.ContraparteTecnica ? "Contraparte técnica" : r.ToString();
+}
+
+<div class="container" style="max-width:1080px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>@p.Nombre</h2>
+            <p>
+                <strong>@p.Codigo</strong>
+                · <span class="@EstadoCls(p.Estado)" style="padding:3px 10px;font-size:var(--diger-fs-xs)">@EstadoTxt(p.Estado)</span>
+                · @(string.IsNullOrWhiteSpace(p.Responsable) ? "sin responsable" : p.Responsable)
+            </p>
+        </div>
+        <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
+    </div>
+
+    @* ── Resumen de ejecución ────────────────────────────────────── *@
+    <div class="card">
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+            <div style="flex:1;min-width:240px">
+                <label class="res-meta" style="display:block;margin-bottom:4px">Avance reportado</label>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <div class="progress" style="flex:1;height:10px">
+                        <div class="progress-bar @BarraCls(p.AvancePct)" style="width:@(p.AvancePct)%"></div>
+                    </div>
+                    <strong style="width:44px;text-align:right">@(p.AvancePct)%</strong>
+                </div>
+                @* Con la fecha del reporte al lado: el porcentaje lo declara el responsable, no se
+                   calcula, y sin fecha se lee como si fuera una medición de hoy. *@
+                <div class="res-meta" style="margin-top:3px">
+                    @if (Model.Avances.Count > 0)
+                    {
+                        <text>según el reporte del @Model.Avances.Max(a => a.Fecha).ToLocalTime().ToString("dd/MM/yyyy")</text>
+                    }
+                    else
+                    {
+                        <text>sin reportes: el porcentaje no viene de la bitácora</text>
+                    }
+                </div>
+            </div>
+            <div>
+                <label class="res-meta" style="display:block">Hitos completados</label>
+                <strong>@p.HitosCompletados / @p.TotalHitos</strong>
+                @if (p.HitosAtrasados > 0)
+                {
+                    <span class="badge badge-danger" style="margin-left:6px">@p.HitosAtrasados atrasado@(p.HitosAtrasados == 1 ? "" : "s")</span>
+                }
+            </div>
+            <div>
+                <label class="res-meta" style="display:block">Reportes</label>
+                <strong>@Model.Avances.Count</strong>
+            </div>
+
+            @if (Model.PuedeEditar && p.EstadosPosibles.Any())
+            {
+                @* El <select> solo ofrece las transiciones que el dominio acepta: la lista viene
+                   de Proyecto.PuedePasarA, no de un switch escrito acá. *@
+                <form method="post" asp-page-handler="CambiarEstado" asp-route-id="@p.Id"
+                      style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
+                    <div class="field" style="margin:0;min-width:170px">
+                        <label for="nuevo-estado">Cambiar estado a</label>
+                        <select id="nuevo-estado" name="nuevo">
+                            @foreach (var e in p.EstadosPosibles)
+                            {
+                                <option value="@((int)e)">@EstadoTxt(e)</option>
+                            }
+                        </select>
+                    </div>
+                    <button class="btns" type="submit" style="margin-bottom:.1rem">Aplicar</button>
+                </form>
+            }
+        </div>
+        @if (p.EstaCerrado)
+        {
+            <p class="res-meta" style="margin-top:.75rem">
+                El proyecto está @(EstadoTxt(p.Estado).ToLowerInvariant()): la ficha y la bitácora quedan en solo lectura.
+            </p>
+
+            @* Reabrir es la única salida de un estado terminal, y no está en el selector de estado
+               a propósito: revertir un cierre que alguien firmó pide decir por qué. *@
+            @if (Model.PuedeReabrir)
+            {
+                <form method="post" asp-page-handler="Reabrir" asp-route-id="@p.Id"
+                      style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:.75rem">
+                    <div class="field" style="flex:1;min-width:280px;margin:0">
+                        <label for="r-motivo">Motivo para reabrirlo <span style="color:var(--diger-danger)">*</span></label>
+                        <input id="r-motivo" name="MotivoReapertura" maxlength="500" required
+                               placeholder="Por qué vuelve a ejecución" />
+                    </div>
+                    <button type="submit" class="btns" style="margin-bottom:.1rem">Reabrir proyecto</button>
+                </form>
+            }
+        }
+    </div>
+
+    @* ── Ficha + hitos ───────────────────────────────────────────── *@
+    <form method="post" asp-page-handler="Guardar" asp-route-id="@p.Id">
+        <div class="card">
+            <h3 class="sec-h">Ficha</h3>
+
+            <div class="field">
+                <label for="f-nombre">Nombre <span style="color:var(--diger-danger)">*</span></label>
+                <input id="f-nombre" name="Nombre" value="@Model.Nombre" maxlength="300" required disabled="@(!Model.PuedeEditar)" />
+            </div>
+            <div class="field">
+                <label for="f-obj">Objetivo</label>
+                <textarea id="f-obj" name="Objetivo" rows="3" maxlength="2000" disabled="@(!Model.PuedeEditar)">@Model.Objetivo</textarea>
+            </div>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div class="field" style="flex:1;min-width:200px">
+                    <label for="f-resp">Responsable</label>
+                    <select id="f-resp" name="ResponsableId" disabled="@(!Model.PuedeEditar)">
+                        <option value="">— Sin asignar —</option>
+                        @foreach (var u in Model.Usuarios)
+                        {
+                            <option value="@u.Id" selected="@(Model.ResponsableId == u.Id)">@u.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="width:150px">
+                    <label for="f-prio">Prioridad</label>
+                    <select id="f-prio" name="Prioridad" disabled="@(!Model.PuedeEditar)">
+                        @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                        {
+                            <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="width:170px">
+                    <label for="f-ini">Inicio planificado</label>
+                    <input id="f-ini" type="date" name="FechaInicioPlan" value="@Iso(Model.FechaInicioPlan)" disabled="@(!Model.PuedeEditar)" />
+                </div>
+                <div class="field" style="width:170px">
+                    <label for="f-fin">Cierre planificado</label>
+                    <input id="f-fin" type="date" name="FechaFinPlan" value="@Iso(Model.FechaFinPlan)" disabled="@(!Model.PuedeEditar)" />
+                </div>
+
+                @* Alcance: quién ve el proyecto. Vacío = transversal, lo ve toda la institución. *@
+                <div class="field" style="width:200px">
+                    <label for="f-area">Área</label>
+                    <select id="f-area" name="AreaId" disabled="@(!Model.PuedeEditar)">
+                        <option value="">— Toda la institución —</option>
+                        @foreach (var a in Model.Alcance.Areas)
+                        {
+                            <option value="@a.Id" selected="@(Model.AreaId == a.Id)">@a.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="width:200px">
+                    <label for="f-unidad">Unidad</label>
+                    <select id="f-unidad" name="UnidadId" disabled="@(!Model.PuedeEditar)">
+                        <option value="">— Toda el área —</option>
+                        @foreach (var u in Model.Alcance.Unidades)
+                        {
+                            <option value="@u.Id" data-area="@u.Padre" selected="@(Model.UnidadId == u.Id)">@u.Nombre</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <p class="res-meta">
+                Ejecución real: @(p.FechaInicioReal?.ToString("dd/MM/yyyy") ?? "sin iniciar")
+                → @(p.FechaFinReal?.ToString("dd/MM/yyyy") ?? "abierto").
+                Las marca el cambio de estado, no se editan a mano.
+            </p>
+        </div>
+
+        <div class="card">
+            <h3 class="sec-h">Hitos</h3>
+            <p class="res-meta" style="margin-top:-.35rem">
+                Los entregables del proyecto y sus fechas. Sirven para el cronograma y el semáforo de atraso;
+                el porcentaje de avance lo reporta el responsable en la bitácora.
+            </p>
+
+            @* .edit-grid además de .seg-table: es la que estila los input/select dentro de las
+               celdas. Con table-layout:fixed hay que dar anchos en píxeles — width:1% se toma
+               literal y el contenido desborda. La primera columna va sin ancho y se queda el resto. *@
+            <table class="seg-table edit-grid" id="tabla-hitos">
+                <thead>
+                    <tr>
+                        <th>Hito</th>
+                        <th style="width:150px">Responsable</th>
+                        <th style="width:130px">Fecha plan.</th>
+                        <th style="width:130px">Fecha real</th>
+                        <th style="width:130px">Estado</th>
+                        @if (Model.PuedeReordenar)
+                        {
+                            <th style="width:66px">Orden</th>
+                        }
+                        <th style="width:46px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < p.Hitos.Count; i++)
+                    {
+                        var h = p.Hitos[i];
+                        <tr>
+                            @* Hitos.Index permite que los índices no sean correlativos: al borrar una
+                               fila en el navegador no hay que renumerar el resto para que el binder
+                               no corte la lista en el primer hueco. *@
+                            <input type="hidden" name="Hitos.Index" value="@i" />
+                            @* El Id viaja para que el comando actualice el hito en su lugar. Sin
+                               él habría que borrar y recrear, y eso desimputa los avances. *@
+                            <input type="hidden" name="Hitos[@i].Id" value="@h.Id" />
+                            @* La descripción viaja de ida y vuelta aunque la tabla no la muestre.
+                               Sin esto llega null y el comando la interpreta como «vaciar»: cada
+                               guardado de la ficha borraba las descripciones de todos los hitos. *@
+                            <input type="hidden" name="Hitos[@i].Descripcion" value="@h.Descripcion" />
+                            <td>
+                                <input name="Hitos[@i].Nombre" value="@h.Nombre" maxlength="300" style="width:100%" disabled="@(!Model.PuedeEditar)" />
+                                @if (h.EstaAtrasado)
+                                {
+                                    <span class="badge badge-danger" style="margin-top:4px">Atrasado</span>
+                                }
+                            </td>
+                            <td>
+                                <select name="Hitos[@i].ResponsableId" disabled="@(!Model.PuedeEditar)">
+                                    <option value="">—</option>
+                                    @foreach (var u in Model.Usuarios)
+                                    {
+                                        <option value="@u.Id" selected="@(h.ResponsableId == u.Id)">@u.Nombre</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><input type="date" name="Hitos[@i].FechaPlan" value="@Iso(h.FechaPlan)" disabled="@(!Model.PuedeEditar)" /></td>
+                            <td><input type="date" name="Hitos[@i].FechaReal" value="@Iso(h.FechaReal)" disabled="@(!Model.PuedeEditar)" /></td>
+                            <td>
+                                <select name="Hitos[@i].Estado" disabled="@(!Model.PuedeEditar)">
+                                    @foreach (var e in Enum.GetValues<EstadoHito>())
+                                    {
+                                        <option value="@((int)e)" selected="@(h.Estado == e)">@e</option>
+                                    }
+                                </select>
+                            </td>
+                            @if (Model.PuedeReordenar)
+                            {
+                                <td style="text-align:right;white-space:nowrap">
+                                    @* El Id viaja con la fila: al moverla en el DOM se mueve con ella,
+                                       así el orden que se postea es el que se ve. *@
+                                    <input type="hidden" name="OrdenHitos" value="@h.Id" />
+                                    <button type="button" class="hito-mov" aria-label="Subir «@h.Nombre»"
+                                            title="Subir" onclick="moverHito(this, -1)">▲</button>
+                                    <button type="button" class="hito-mov" aria-label="Bajar «@h.Nombre»"
+                                            title="Bajar" onclick="moverHito(this, 1)">▼</button>
+                                </td>
+                            }
+                            <td style="text-align:right">
+                                @if (Model.PuedeEditar)
+                                {
+                                    <button type="button" class="hist-del" aria-label="Quitar hito" onclick="quitarHito(this)">✕</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (Model.PuedeReordenar)
+            {
+                <div id="aviso-orden" class="res-meta" hidden
+                     style="margin-top:.6rem;padding:8px 12px;border-radius:var(--diger-radius-sm);
+                            background:var(--diger-warning-bg);color:var(--diger-warning-strong)">
+                    Movió hitos de lugar. El orden lo guarda <strong>«Guardar orden»</strong>, que es
+                    atribución suya como responsable; «Guardar cambios» nunca lo altera.
+                </div>
+            }
+
+            @if (!p.Hitos.Any() && !Model.PuedeEditar)
+            {
+                <p class="res-meta">Este proyecto no tiene hitos registrados.</p>
+            }
+
+            @if (Model.PuedeEditar)
+            {
+                <div style="display:flex;gap:8px;justify-content:space-between;margin-top:1rem;flex-wrap:wrap">
+                    <button type="button" class="btns" onclick="agregarHito()">+ Agregar hito</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        @if (Model.PuedeReordenar)
+                        {
+                            @* Mismo formulario, otro handler: el reordenamiento no pasa por el
+                               guardado en bloque de la ficha porque es una acción del propietario. *@
+                            <button type="submit" class="btns" asp-page-handler="ReordenarHitos" asp-route-id="@p.Id">
+                                Guardar orden
+                            </button>
+                        }
+                        <button type="submit" class="btnp">Guardar cambios</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </form>
+
+    @* ── Bitácora de ejecución ───────────────────────────────────── *@
+    <div class="card">
+        <h3 class="sec-h">Bitácora de ejecución</h3>
+        <p class="res-meta" style="margin-top:-.35rem">
+            Qué se hizo, cuándo y con qué respaldo. Ninguna entrada se borra; el responsable del
+            proyecto puede corregirlas, y la corrección queda marcada con quién la hizo y cuándo.
+        </p>
+
+        @if (Model.PuedeReportarAvance)
+        {
+            <form method="post" asp-page-handler="RegistrarAvance" asp-route-id="@p.Id" enctype="multipart/form-data"
+                  style="border:1px solid var(--diger-border);border-radius:var(--diger-radius-md);padding:1rem;margin-bottom:1.25rem">
+                <div class="field">
+                    <label for="a-desc">Qué se avanzó <span style="color:var(--diger-danger)">*</span></label>
+                    <textarea id="a-desc" name="AvanceDescripcion" rows="3" maxlength="2000" required
+                              placeholder="Detalle de lo ejecutado en este período"></textarea>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="field" style="width:150px">
+                        <label for="a-pct">Avance total (%)</label>
+                        <input id="a-pct" type="number" name="AvancePorcentaje" min="0" max="100" step="1" value="@p.AvancePct" required />
+                    </div>
+                    <div class="field" style="flex:1;min-width:200px">
+                        <label for="a-hito">Imputar a un hito</label>
+                        <select id="a-hito" name="AvanceHitoId" onchange="alternarCompletarHito()">
+                            <option value="">— Avance general —</option>
+                            @foreach (var h in p.Hitos)
+                            {
+                                <option value="@h.Id" data-cerrado="@(h.Estado == EstadoHito.Completado ? "1" : "0")">@h.Nombre</option>
+                            }
+                        </select>
+                        @* Cerrar el hito acá es lo que mantiene el cronograma al día: hacerlo en la
+                           tabla de arriba, aparte, es el paso que nadie da. Solo aparece con un hito
+                           elegido y todavía abierto. *@
+                        <label id="a-cerrar-hito" for="a-cerrar" hidden
+                               style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:var(--diger-fs-xs);cursor:pointer">
+                            <input id="a-cerrar" type="checkbox" name="AvanceCompletarHito" value="true" style="width:auto;margin:0" />
+                            <span>Dar este hito por cumplido</span>
+                        </label>
+                    </div>
+                    <div class="field" style="flex:1;min-width:220px">
+                        <label for="a-file">Evidencia (opcional)</label>
+                        <input id="a-file" type="file" name="AvanceArchivo" />
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:260px">
+                        <label for="a-bloq">Bloqueos</label>
+                        <input id="a-bloq" name="AvanceBloqueo" maxlength="1000" placeholder="Qué está trabando la ejecución, si algo" />
+                    </div>
+                    @* Solo si hay riesgos vivos que este bloqueo pueda estar confirmando. Vincularlo
+                       los pasa a «Materializado»: dejan de ser algo que podría pasar. *@
+                    @{
+                        var riesgosVivos = Model.Riesgos
+                            .Where(r => r.Estado is EstadoRiesgo.Abierto or EstadoRiesgo.EnTratamiento)
+                            .ToList();
+                    }
+                    @if (riesgosVivos.Count > 0)
+                    {
+                        <div class="field" style="flex:1;min-width:240px">
+                            <label for="a-riesgo">¿Se materializó un riesgo?</label>
+                            <select id="a-riesgo" name="AvanceRiesgoId">
+                                <option value="">— Ninguno de los registrados —</option>
+                                @foreach (var r in riesgosVivos)
+                                {
+                                    <option value="@r.Id">@(r.Descripcion.Length > 70 ? r.Descripcion[..70] + "…" : r.Descripcion)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <div style="display:flex;justify-content:flex-end">
+                    <button type="submit" class="btnp">Registrar avance</button>
+                </div>
+            </form>
+        }
+
+        @if (!Model.Avances.Any())
+        {
+            <div class="hist-empty">
+                <div class="ico">🗒️</div>
+                <p>Todavía no hay avances registrados.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var a in Model.Avances)
+            {
+                <div class="hist-item" style="display:block">
+                    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+                        <strong>@a.Autor</strong>
+                        <span class="res-meta">
+                            @a.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            @if (a.FueEditada)
+                            {
+                                @* La bitácora no aparenta ser intacta cuando no lo es. *@
+                                <span title="Corregida por @a.EditadoPor el @a.EditadoEn!.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")">
+                                    · editada
+                                </span>
+                            }
+                        </span>
+                    </div>
+                    <p style="margin:.4rem 0;white-space:pre-wrap">@a.Descripcion</p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        <span class="badge badge-primary">@a.PorcentajeReportado% reportado</span>
+                        @if (a.HitoNombre is { } hn)
+                        {
+                            <span class="badge badge-secondary">@hn</span>
+                        }
+                        @if (a.TieneEvidencia)
+                        {
+                            @* Descarga por handler autenticado, nunca el enlace directo a /uploads:
+                               esa carpeta se sirve como estática sin autorización. *@
+                            <a class="btns" style="font-size:12.5px;padding:5px 11px"
+                               asp-page-handler="Evidencia" asp-route-id="@p.Id" asp-route-avanceId="@a.Id">
+                                📎 @a.ArchivoNombre <span class="res-meta">@Tamano(a.ArchivoTamano)</span>
+                            </a>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(a.Bloqueo))
+                    {
+                        @* No usa .alert-error: eso es para errores de la página, no para contenido.
+                           Un bloqueo reportado es un dato del avance, aunque se pinte en rojo. *@
+                        <p style="margin:.6rem 0 0;padding:8px 12px;font-size:var(--diger-fs-sm);
+                                  background:var(--diger-danger-bg);color:var(--diger-danger-text);
+                                  border-radius:var(--diger-radius-sm)">
+                            <strong>Bloqueo:</strong> @a.Bloqueo
+                        </p>
+                    }
+
+                    @if (Model.PuedeCorregirBitacora)
+                    {
+                        <div style="margin-top:.6rem">
+                            <button type="button" class="btns" style="font-size:12.5px;padding:5px 11px"
+                                    onclick="alternarCorreccion(@a.Id)">Corregir</button>
+                        </div>
+
+                        @* El porcentaje y la evidencia no se editan: el porcentaje alimenta el
+                           snapshot del proyecto y cambiarlo hacia atrás lo desincronizaría. *@
+                        <form method="post" asp-page-handler="ActualizarAvance" asp-route-id="@p.Id"
+                              id="correccion-@a.Id" hidden style="margin-top:.6rem">
+                            <input type="hidden" name="CorreccionAvanceId" value="@a.Id" />
+                            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                                <div class="field" style="width:100%">
+                                    <label for="c-desc-@a.Id">Descripción</label>
+                                    <textarea id="c-desc-@a.Id" name="CorreccionDescripcion" rows="4"
+                                              maxlength="2000" required>@a.Descripcion</textarea>
+                                </div>
+                                <div class="field" style="width:100%">
+                                    <label for="c-bloq-@a.Id">Bloqueo</label>
+                                    <textarea id="c-bloq-@a.Id" name="CorreccionBloqueo" rows="2"
+                                              maxlength="1000">@a.Bloqueo</textarea>
+                                </div>
+                                <div class="field" style="flex:1;min-width:190px">
+                                    <label for="c-hito-@a.Id">Imputar a un hito</label>
+                                    <select id="c-hito-@a.Id" name="CorreccionHitoId">
+                                        <option value="">— avance general —</option>
+                                        @foreach (var h in p.Hitos)
+                                        {
+                                            <option value="@h.Id" selected="@(a.HitoId == h.Id)">@h.Nombre</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:.6rem">
+                                <button type="submit" class="btnp">Guardar corrección</button>
+                                <button type="button" class="btns" onclick="alternarCorreccion(@a.Id)">Cancelar</button>
+                            </div>
+                        </form>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    @* ── Interesados ─────────────────────────────────────────────── *@
+    <div class="card">
+        <h3 class="sec-h">Interesados</h3>
+        <p class="res-meta" style="margin-top:-.35rem">
+            Quién patrocina, ejecuta, acompaña, se beneficia o regula. La influencia alta en un rol
+            que decide es la que conviene tener del lado propio antes de que algo se trabe.
+        </p>
+
+        @if (!Model.Interesados.Any())
+        {
+            <p class="res-meta">Todavía no hay interesados registrados.</p>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th style="width:180px">Institución</th>
+                            <th style="width:160px">Rol</th>
+                            <th style="width:110px">Influencia</th>
+                            @if (Model.PuedeEditar) { <th style="width:46px"></th> }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var it in Model.Interesados)
+                        {
+                            <tr>
+                                <td style="white-space:normal">
+                                    <strong>@it.Nombre</strong>
+                                    @if (it.EsClave) { <span class="badge badge-primary" style="margin-left:6px">clave</span> }
+                                    @if (it.Cargo is { Length: > 0 } || it.Correo is { Length: > 0 })
+                                    {
+                                        <span class="res-meta" style="display:block;margin-top:3px">@it.Cargo@(it.Cargo is { Length: > 0 } && it.Correo is { Length: > 0 } ? " · " : "")@it.Correo</span>
+                                    }
+                                    @if (it.Notas is { Length: > 0 }) { <span class="res-meta" style="display:block;margin-top:3px">@it.Notas</span> }
+                                </td>
+                                <td style="white-space:normal">@(it.Institucion ?? "—")</td>
+                                <td>@RolTexto(it.Rol)</td>
+                                <td>@it.Influencia</td>
+                                @if (Model.PuedeEditar)
+                                {
+                                    <td style="text-align:right">
+                                        <form method="post" asp-page-handler="QuitarInteresado" asp-route-id="@p.Id">
+                                            <input type="hidden" name="IntId" value="@it.Id" />
+                                            <button type="submit" class="hist-del" aria-label="Quitar interesado"
+                                                    data-confirm="¿Quitar a @it.Nombre de los interesados?">✕</button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.PuedeEditar)
+        {
+            <details style="margin-top:1rem">
+                <summary class="btns" style="display:inline-block;cursor:pointer">+ Agregar interesado</summary>
+                <form method="post" asp-page-handler="GuardarInteresado" asp-route-id="@p.Id" style="margin-top:.8rem">
+                    <p class="res-meta" style="margin:0 0 .7rem">
+                        El interesado es un usuario del portal y <strong>pasa a ver este proyecto</strong>,
+                        aunque quede fuera de su institución, área o unidad. Si la persona no tiene
+                        cuenta, hay que creársela antes.
+                    </p>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <div class="field" style="flex:1;min-width:240px">
+                            <label for="i-usr">Usuario <span style="color:var(--diger-danger)">*</span></label>
+                            <select id="i-usr" name="IntUsuarioId" required>
+                                <option value="">— Elija un usuario —</option>
+                                @foreach (var u in Model.Usuarios)
+                                {
+                                    <option value="@u.Id">@u.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-rol">Rol</label>
+                            <select id="i-rol" name="IntRol">
+                                @foreach (var r in Enum.GetValues<RolInteresado>())
+                                {
+                                    <option value="@((int)r)">@RolTexto(r)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-inf">Influencia</label>
+                            <select id="i-inf" name="IntInfluencia">
+                                @foreach (var n in Enum.GetValues<NivelCualitativo>())
+                                {
+                                    <option value="@((int)n)" selected="@(n == NivelCualitativo.Media)">@n</option>
+                                }
+                            </select>
+                        </div>
+                        @* Institución y cargo siguen a mano: es por quién participa y con qué papel
+                           en esta mesa, que no siempre es la asignación que tiene en el portal. *@
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-inst">Participa por</label>
+                            <input id="i-inst" name="IntInstitucion" maxlength="200" placeholder="DIGER, INPREMA, mesa técnica…" />
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-cargo">Cargo</label>
+                            <input id="i-cargo" name="IntCargo" maxlength="200" />
+                        </div>
+                        <div class="field" style="width:100%">
+                            <label for="i-notas">Notas</label>
+                            <input id="i-notas" name="IntNotas" maxlength="1000" />
+                        </div>
+                    </div>
+                    <div style="margin-top:.6rem"><button type="submit" class="btnp">Agregar</button></div>
+                </form>
+            </details>
+        }
+    </div>
+
+    @* ── Riesgos ─────────────────────────────────────────────────── *@
+    <div class="card">
+        <h3 class="sec-h">Riesgos</h3>
+        <p class="res-meta" style="margin-top:-.35rem">
+            Severidad = probabilidad × impacto, de 1 a 9. Un riesgo <strong>materializado</strong> es
+            el que ya ocurrió: es el que aparece como bloqueo en la bitácora.
+        </p>
+
+        @if (!Model.Riesgos.Any())
+        {
+            <p class="res-meta">Todavía no hay riesgos registrados.</p>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th>Riesgo</th>
+                            <th style="width:120px">Categoría</th>
+                            <th style="width:96px">Severidad</th>
+                            <th style="width:120px">Estrategia</th>
+                            <th style="width:150px">Responsable</th>
+                            <th style="width:150px">Estado</th>
+                            @if (Model.PuedeEditar) { <th style="width:46px"></th> }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Riesgos)
+                        {
+                            <tr style="@(r.Estado == EstadoRiesgo.Cerrado ? "opacity:.55" : "")">
+                                <td style="white-space:normal">
+                                    @r.Descripcion
+                                    @if (r.Mitigacion is { Length: > 0 })
+                                    {
+                                        <span class="res-meta" style="display:block;margin-top:3px"><strong>Mitigación:</strong> @r.Mitigacion</span>
+                                    }
+                                    <span class="res-meta" style="display:block;margin-top:3px">
+                                        Detectado @r.FechaDeteccion.ToString("dd/MM/yyyy")
+                                        @if (r.FechaRevision is { } fr) { <text> · revisar @fr.ToString("dd/MM/yyyy")</text> }
+                                        @if (r.RevisionVencida) { <span class="badge badge-danger" style="margin-left:6px">revisión vencida</span> }
+                                        @if (r.SinPlan) { <span class="badge badge-warning" style="margin-left:6px">sin mitigación</span> }
+                                    </span>
+                                </td>
+                                <td>@r.Categoria</td>
+                                <td>
+                                    <span class="badge @(r.NivelSeveridad == NivelCualitativo.Alta ? "badge-danger"
+                                                       : r.NivelSeveridad == NivelCualitativo.Media ? "badge-warning" : "badge-secondary")">
+                                        @r.Severidad
+                                    </span>
+                                    <span class="res-meta" style="display:block;margin-top:3px">@r.Probabilidad × @r.Impacto</span>
+                                </td>
+                                <td>@r.Estrategia</td>
+                                <td style="white-space:normal">@(r.Responsable ?? "— sin asignar —")</td>
+                                <td>
+                                    @if (Model.PuedeEditar)
+                                    {
+                                        <form method="post" asp-page-handler="EstadoRiesgo" asp-route-id="@p.Id">
+                                            <input type="hidden" name="RiesgoId" value="@r.Id" />
+                                            <select name="RiesgoEstado" onchange="this.form.submit()">
+                                                @foreach (var e in Enum.GetValues<EstadoRiesgo>())
+                                                {
+                                                    <option value="@((int)e)" selected="@(r.Estado == e)">@e</option>
+                                                }
+                                            </select>
+                                        </form>
+                                    }
+                                    else { <text>@r.Estado</text> }
+                                </td>
+                                @if (Model.PuedeEditar)
+                                {
+                                    <td style="text-align:right">
+                                        <form method="post" asp-page-handler="EliminarRiesgo" asp-route-id="@p.Id">
+                                            <input type="hidden" name="RiesgoId" value="@r.Id" />
+                                            <button type="submit" class="hist-del" aria-label="Eliminar riesgo"
+                                                    data-confirm="¿Eliminar este riesgo? La auditoría conserva el rastro.">✕</button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.PuedeEditar)
+        {
+            <details style="margin-top:1rem">
+                <summary class="btns" style="display:inline-block;cursor:pointer">+ Registrar riesgo</summary>
+                <form method="post" asp-page-handler="GuardarRiesgo" asp-route-id="@p.Id" style="margin-top:.8rem">
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <div class="field" style="width:100%">
+                            <label for="r-desc">Riesgo *</label>
+                            <input id="r-desc" name="RiesgoDescripcion" maxlength="500" required
+                                   placeholder="Qué puede pasar y por qué" />
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-cat">Categoría</label>
+                            <select id="r-cat" name="RiesgoCategoria">
+                                @foreach (var c in Enum.GetValues<CategoriaRiesgo>())
+                                {
+                                    <option value="@((int)c)">@c</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-prob">Probabilidad</label>
+                            <select id="r-prob" name="RiesgoProbabilidad">
+                                @foreach (var n in Enum.GetValues<NivelCualitativo>())
+                                {
+                                    <option value="@((int)n)" selected="@(n == NivelCualitativo.Media)">@n</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-imp">Impacto</label>
+                            <select id="r-imp" name="RiesgoImpacto">
+                                @foreach (var n in Enum.GetValues<NivelCualitativo>())
+                                {
+                                    <option value="@((int)n)" selected="@(n == NivelCualitativo.Media)">@n</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-est">Estrategia</label>
+                            <select id="r-est" name="RiesgoEstrategia">
+                                @foreach (var e in Enum.GetValues<EstrategiaRiesgo>())
+                                {
+                                    <option value="@((int)e)" selected="@(e == EstrategiaRiesgo.Mitigar)">@e</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-resp">Responsable</label>
+                            <select id="r-resp" name="RiesgoResponsable">
+                                <option value="">—</option>
+                                @foreach (var u in Model.Usuarios)
+                                {
+                                    <option value="@u.Id">@u.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-rev">Revisar el</label>
+                            <input id="r-rev" type="date" name="RiesgoRevision" />
+                        </div>
+                        <div class="field" style="width:100%">
+                            <label for="r-mit">Mitigación</label>
+                            <input id="r-mit" name="RiesgoMitigacion" maxlength="1000"
+                                   placeholder="Qué se va a hacer para que no ocurra o duela menos" />
+                        </div>
+                    </div>
+                    <div style="margin-top:.6rem"><button type="submit" class="btnp">Registrar</button></div>
+                </form>
+            </details>
+        }
+    </div>
+
+    @* ── Auditoría ───────────────────────────────────────────────── *@
+    @if (Model.Auditoria.Any())
+    {
+        <div class="card">
+            <h3 class="sec-h">Auditoría</h3>
+            <p class="res-meta" style="margin-top:-.35rem">
+                Quién tocó la ficha, los hitos o la bitácora, y cuándo. Se escribe sola y no se
+                edita ni se borra.
+            </p>
+
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:140px">Fecha</th>
+                            <th style="width:150px">Tipo</th>
+                            <th>Detalle</th>
+                            <th style="width:160px">Quién</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in Model.Auditoria)
+                        {
+                            <tr>
+                                <td>@b.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td><span class="badge badge-secondary">@b.Etiqueta</span></td>
+                                <td style="white-space:normal">@b.Detalle</td>
+                                <td>@b.Actor</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (Model.PuedeEliminar)
+    {
+        <div style="display:flex;justify-content:flex-end;margin-bottom:2rem">
+            <form method="post" asp-page-handler="Eliminar" asp-route-id="@p.Id">
+                <button type="submit" class="btns"
+                        style="color:var(--diger-danger-text);border-color:var(--diger-danger-text)"
+                        data-confirm="¿Eliminar el proyecto «@p.Nombre»? Se archiva junto con sus hitos y su bitácora.">
+                    Eliminar proyecto
+                </button>
+            </form>
+        </div>
+    }
+</div>
+
+@* Las secciones no pueden declararse dentro de un bloque condicional: se define siempre y el
+   script solo hace algo si la tabla editable está en la página. *@
+@section Scripts {
+<script>
+    (function () {
+        var tabla = document.querySelector('#tabla-hitos tbody');
+        if (!tabla) return;
+
+        // El índice arranca donde terminó el render del servidor y solo crece: como cada fila
+        // lleva su propio Hitos.Index, borrar en el medio no obliga a renumerar nada.
+        var hitoIdx = @p.Hitos.Count;
+        var reordenable = @(Model.PuedeReordenar ? "true" : "false");
+        var usuariosOpts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre })));
+        var estados = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Enum.GetValues<EstadoHito>().Select(e => new { v = (int)e, t = e.ToString() })));
+
+        function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+
+        window.agregarHito = function () {
+            var i = hitoIdx++;
+            var opts = '<option value="">—</option>' +
+                usuariosOpts.map(function (u) {
+                    return '<option value="' + esc(u.id) + '">' + esc(u.nombre) + '</option>';
+                }).join('');
+            var estadoOpts = estados.map(function (e) {
+                return '<option value="' + e.v + '">' + esc(e.t) + '</option>';
+            }).join('');
+
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<input type="hidden" name="Hitos.Index" value="' + i + '" />' +
+                // Id 0 = fila nueva: el comando la inserta al final en vez de actualizar.
+                '<input type="hidden" name="Hitos[' + i + '].Id" value="0" />' +
+                '<input type="hidden" name="Hitos[' + i + '].Descripcion" value="" />' +
+                '<td><input name="Hitos[' + i + '].Nombre" maxlength="300" style="width:100%" placeholder="Nombre del hito" /></td>' +
+                '<td><select name="Hitos[' + i + '].ResponsableId">' + opts + '</select></td>' +
+                '<td><input type="date" name="Hitos[' + i + '].FechaPlan" /></td>' +
+                '<td><input type="date" name="Hitos[' + i + '].FechaReal" /></td>' +
+                '<td><select name="Hitos[' + i + '].Estado">' + estadoOpts + '</select></td>' +
+                // La columna de orden solo existe si el usuario puede reordenar; el hito nuevo
+                // todavía no tiene Id, así que va vacía y no participa del reordenamiento hasta
+                // que se guarde la ficha.
+                (reordenable ? '<td></td>' : '') +
+                '<td style="text-align:right"><button type="button" class="hist-del" aria-label="Quitar hito" onclick="quitarHito(this)">&#10005;</button></td>';
+            tabla.appendChild(tr);
+            tr.querySelector('input[name$=".Nombre"]').focus();
+        };
+
+        window.quitarHito = function (btn) {
+            btn.closest('tr').remove();
+        };
+
+        // ── Reordenar ────────────────────────────────────────────────────
+        // Solo mueve la fila en el DOM. El input OrdenHitos viaja dentro de ella, así que el
+        // orden que se postea a «Guardar orden» es exactamente el que quedó en pantalla.
+        window.moverHito = function (btn, dir) {
+            var fila = btn.closest('tr');
+            var destino = dir < 0 ? fila.previousElementSibling : fila.nextElementSibling;
+            if (!destino) return;
+
+            if (dir < 0) tabla.insertBefore(fila, destino);
+            else         tabla.insertBefore(destino, fila);
+
+            var aviso = document.getElementById('aviso-orden');
+            if (aviso) aviso.hidden = false;
+
+            // El foco se queda en el botón que se usó, que ahora está en otra posición.
+            var mismo = fila.querySelector(dir < 0 ? '.hito-mov' : '.hito-mov + .hito-mov');
+            if (mismo) mismo.focus();
+        };
+    })();
+
+    // Encadena unidad con área: solo se ofrecen las unidades del área elegida, y al cambiar de
+    // área se limpia la unidad para no dejar una combinación imposible.
+    (function () {
+        var area = document.getElementById('f-area');
+        var unidad = document.getElementById('f-unidad');
+        if (!area || !unidad) return;
+
+        function filtrar() {
+            var sel = area.value;
+            var hayQueLimpiar = false;
+            Array.prototype.forEach.call(unidad.options, function (o) {
+                if (!o.value) return;                       // la opción vacía siempre se ve
+                var visible = !sel || o.dataset.area === sel;
+                o.hidden = !visible;
+                if (!visible && o.selected) hayQueLimpiar = true;
+            });
+            if (hayQueLimpiar) unidad.value = '';
+        }
+
+        area.addEventListener('change', filtrar);
+        filtrar();
+    })();
+
+    // Fuera del bloque anterior: la bitácora existe aunque no haya tabla de hitos editable.
+    window.alternarCorreccion = function (id) {
+        var f = document.getElementById('correccion-' + id);
+        if (!f) return;
+        f.hidden = !f.hidden;
+        if (!f.hidden) f.querySelector('textarea').focus();
+    };
+
+    // «Dar el hito por cumplido» solo tiene sentido con un hito elegido que siga abierto.
+    // Al ocultarlo se destilda, para que no viaje marcado desde una selección anterior.
+    window.alternarCompletarHito = function () {
+        var sel = document.getElementById('a-hito');
+        var lbl = document.getElementById('a-cerrar-hito');
+        if (!sel || !lbl) return;
+
+        var op = sel.options[sel.selectedIndex];
+        var aplica = !!sel.value && op && op.getAttribute('data-cerrado') === '0';
+
+        lbl.hidden = !aplica;
+        if (!aplica) document.getElementById('a-cerrar').checked = false;
+    };
+    alternarCompletarHito();
+</script>
+}

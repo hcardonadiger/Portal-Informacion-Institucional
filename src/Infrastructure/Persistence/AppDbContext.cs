@@ -68,6 +68,12 @@ public sealed class AppDbContext(
     public DbSet<EnlaceSiger>               EnlacesSiger          { get; init; } = default!;
     public DbSet<TareaDigitalizacionSiger>  TareasDigitalizacionSiger { get; init; } = default!;
     public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
+    public DbSet<Proyecto>                  Proyectos             { get; init; } = default!;
+    public DbSet<HitoProyecto>              ProyectoHitos         { get; init; } = default!;
+    public DbSet<AvanceProyecto>            ProyectoAvances       { get; init; } = default!;
+    public DbSet<BitacoraProyecto>          BitacorasProyecto     { get; init; } = default!;
+    public DbSet<RiesgoProyecto>            ProyectoRiesgos       { get; init; } = default!;
+    public DbSet<InteresadoProyecto>        ProyectoInteresados   { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -173,6 +179,35 @@ public sealed class AppDbContext(
             _alcanceGlobal || p.InstitucionId == _activeInst
         ));
         mb.Entity<Recurso>().HasQueryFilter(r => !r.IsDeleted);
+
+        // Proyectos: mismo anclaje en InstitucionId que Expediente y Contacto —incluida la razón
+        // de por qué el ancla envuelve todas las ramas— más una excepción propia: el responsable
+        // ve su proyecto aunque caiga fuera de su alcance. Sin ella alguien puede quedar como
+        // responsable de un proyecto que no puede abrir, y las acciones reservadas al propietario
+        // (reordenar hitos, corregir bitácora) serían inalcanzables para el único autorizado.
+        //
+        // Hasta el 2026-08-23 esta entidad no tenía filtro: el portafolio completo quedaba a la
+        // vista de cualquiera con Proyectos.Ver, incluidos los usuarios de instituciones externas
+        // con rol Empleado.
+        //
+        // Segunda excepción, del 2026-08-24: los interesados también ven su proyecto fuera de su
+        // alcance. Es el motivo por el que InteresadoProyecto.UsuarioId pasó a ser obligatorio —
+        // un interesado sin cuenta no podría abrir nada. Se puede consultar ProyectoInteresados
+        // desde acá sin caer en recursión porque esa entidad no tiene filtro propio: hereda la
+        // protección de que sus consultas se unen contra Proyectos.
+        mb.Entity<Proyecto>().HasQueryFilter(p => !p.IsDeleted && (
+            _alcanceGlobal ||
+            (_usuarioId != null && p.ResponsableId == _usuarioId) ||
+            (_usuarioId != null && ProyectoInteresados.Any(i => i.ProyectoId == p.Id && i.UsuarioId == _usuarioId)) ||
+            (p.InstitucionId == _activeInst && (
+                (_nivel == NivelAlcance.Institucion &&
+                    (string.IsNullOrEmpty(_activeArea) || p.AreaId == _activeArea || p.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || p.UnidadId == _activeUnidad || p.UnidadId == null)) ||
+                (_nivel == NivelAlcance.Area      && (p.AreaId == _activeArea || p.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || p.UnidadId == _activeUnidad || p.UnidadId == null)) ||
+                (_nivel == NivelAlcance.Unidad    && (p.UnidadId == _activeUnidad || p.UnidadId == null))
+            ))
+        ));
 
         base.OnModelCreating(mb);
     }
@@ -823,6 +858,84 @@ public sealed class BitacoraExpedienteConfiguration : IEntityTypeConfiguration<B
     }
 }
 
+public sealed class BitacoraProyectoConfiguration : IEntityTypeConfiguration<BitacoraProyecto>
+{
+    public void Configure(EntityTypeBuilder<BitacoraProyecto> b)
+    {
+        b.ToTable("BitacoraProyecto");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30).IsRequired();
+        b.Property(x => x.Detalle).HasMaxLength(BitacoraProyecto.MaxDetalle).IsRequired();
+        b.Property(x => x.Actor).HasMaxLength(150).IsRequired();
+        // Se consulta como historial por proyecto, más reciente primero.
+        b.HasIndex(x => new { x.ProyectoId, x.Fecha }).IsDescending(false, true);
+        // Cascada: si el proyecto se borra de verdad, su auditoría se va con él. El borrado
+        // normal es lógico (IsDeleted), así que en la práctica no se dispara.
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class RiesgoProyectoConfiguration : IEntityTypeConfiguration<RiesgoProyecto>
+{
+    public void Configure(EntityTypeBuilder<RiesgoProyecto> b)
+    {
+        b.ToTable("ProyectoRiesgos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Descripcion).HasMaxLength(RiesgoProyecto.MaxDescripcion).IsRequired();
+        b.Property(x => x.Mitigacion).HasMaxLength(RiesgoProyecto.MaxMitigacion);
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        b.Property(x => x.RegistradoPor).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Categoria).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Probabilidad).HasConversion<string>().HasMaxLength(10).IsRequired();
+        b.Property(x => x.Impacto).HasConversion<string>().HasMaxLength(10).IsRequired();
+        b.Property(x => x.Estrategia).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20).IsRequired();
+
+        // La matriz se lee por proyecto y se ordena por lo que más pesa; el estado entra en el
+        // índice porque casi toda consulta filtra los cerrados.
+        b.HasIndex(x => new { x.ProyectoId, x.Estado });
+
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class InteresadoProyectoConfiguration : IEntityTypeConfiguration<InteresadoProyecto>
+{
+    public void Configure(EntityTypeBuilder<InteresadoProyecto> b)
+    {
+        b.ToTable("ProyectoInteresados");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(InteresadoProyecto.MaxNombre).IsRequired();
+        b.Property(x => x.Institucion).HasMaxLength(200);
+        b.Property(x => x.Cargo).HasMaxLength(200);
+        b.Property(x => x.Correo).HasMaxLength(200);
+        b.Property(x => x.Notas).HasMaxLength(InteresadoProyecto.MaxNotas);
+        b.Property(x => x.RegistradoPor).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Rol).HasConversion<string>().HasMaxLength(25).IsRequired();
+        b.Property(x => x.Influencia).HasConversion<string>().HasMaxLength(10).IsRequired();
+        b.Property(x => x.UsuarioId).IsRequired();
+
+        b.HasIndex(x => new { x.ProyectoId, x.Rol });
+
+        // La misma persona no puede figurar dos veces en un proyecto. Antes el nombre era texto
+        // libre y el duplicado era solo ruido; ahora cada fila otorga acceso, así que repetirla
+        // significaría dos permisos que hay que revocar por separado para sacar a alguien.
+        b.HasIndex(x => new { x.ProyectoId, x.UsuarioId }).IsUnique();
+
+        // Índice del lado del usuario: lo usa la rama del filtro de alcance que pregunta «¿de qué
+        // proyectos es interesado este usuario?», que corre en toda consulta de proyectos.
+        b.HasIndex(x => x.UsuarioId);
+
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 {
     public void Configure(EntityTypeBuilder<Ticket> b)
@@ -1459,5 +1572,96 @@ public sealed class ConciliacionSigerConfiguration : IEntityTypeConfiguration<Co
         b.HasOne<TramiteSiger>().WithMany()
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => x.TramiteSigerId);
+    }
+}
+
+// ── Seguimiento de proyectos internos ─────────────────────────────────────
+// El filtro de Proyecto (arriba, junto a los demás) solo excluye los borrados: a propósito no
+// lleva rama de alcance, porque son proyectos de DIGER y no hay InstitucionId del que colgarla.
+// Quién los ve lo decide el permiso Proyectos.Ver. Ver el XML doc de la entidad Proyecto.
+public sealed class ProyectoConfiguration : IEntityTypeConfiguration<Proyecto>
+{
+    public void Configure(EntityTypeBuilder<Proyecto> b)
+    {
+        b.ToTable("Proyectos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Codigo).HasMaxLength(30).IsRequired();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Objetivo).HasMaxLength(2000);
+        b.Property(x => x.InstitucionId).HasMaxLength(120);
+        b.Property(x => x.AreaId).HasMaxLength(120);
+        b.Property(x => x.UnidadId).HasMaxLength(120);
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        // El filtro de alcance entra por acá, así que conviene que el ancla esté indexada.
+        b.HasIndex(x => x.InstitucionId);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
+
+        // Filtrado: el índice único va sobre los vivos, porque el borrado es lógico y un código
+        // liberado por un borrado tiene que poder reutilizarse.
+        b.HasIndex(x => x.Codigo).IsUnique().HasFilter("[IsDeleted] = 0");
+        b.HasIndex(x => new { x.Estado, x.FechaFinPlan });
+
+        b.HasMany(x => x.Hitos)
+            .WithOne()
+            .HasForeignKey(h => h.ProyectoId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class HitoProyectoConfiguration : IEntityTypeConfiguration<HitoProyecto>
+{
+    public void Configure(EntityTypeBuilder<HitoProyecto> b)
+    {
+        b.ToTable("ProyectoHitos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(2000);
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+        b.HasIndex(x => new { x.ProyectoId, x.Orden });
+    }
+}
+
+public sealed class AvanceProyectoConfiguration : IEntityTypeConfiguration<AvanceProyecto>
+{
+    public void Configure(EntityTypeBuilder<AvanceProyecto> b)
+    {
+        b.ToTable("ProyectoAvances");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Descripcion).HasMaxLength(AvanceProyecto.MaxDescripcion).IsRequired();
+        b.Property(x => x.Autor).HasMaxLength(200).IsRequired();
+        // Mismo largo que Autor: guarda un nombre de usuario, no texto libre.
+        b.Property(x => x.EditadoPor).HasMaxLength(200);
+        b.Property(x => x.Bloqueo).HasMaxLength(1000);
+        b.Property(x => x.ArchivoNombre).HasMaxLength(300);
+        b.Property(x => x.ArchivoUrl).HasMaxLength(500);
+
+        // El timeline siempre pide "los avances de este proyecto, del más nuevo al más viejo".
+        b.HasIndex(x => new { x.ProyectoId, x.Fecha });
+
+        // El hito puede desaparecer al reeditar la lista (el editor los reemplaza en bloque);
+        // el avance no se pierde por eso, solo deja de estar imputado. Este SetNull es
+        // obligatorio: sin él, guardar el editor reventaría por violación de FK.
+        b.HasOne<HitoProyecto>().WithMany()
+            .HasForeignKey(x => x.HitoId).OnDelete(DeleteBehavior.SetNull);
+
+        // NoAction, no SetNull, aunque el efecto buscado sea el mismo que con el hito: borrar un
+        // proyecto ya cascadea a ProyectoRiesgos, y un SetNull acá abriría una segunda ruta de
+        // borrado hacia esta misma tabla — SQL Server lo rechaza de plano (Msg 1785). El desvínculo
+        // lo hace EliminarRiesgoCommand antes de borrar; ver el comentario allá.
+        b.HasOne<RiesgoProyecto>().WithMany()
+            .HasForeignKey(x => x.RiesgoId).OnDelete(DeleteBehavior.NoAction);
+
+        // Sin cascada desde Proyecto, a diferencia de los hitos. SQL Server rechaza el modelo
+        // con error 1785 ("multiple cascade paths") porque Proyecto→Hitos→Avances ya es un
+        // camino de borrado y Proyecto→Avances sería un segundo. No se pierde nada: el borrado
+        // de proyectos es lógico (IsDeleted), así que esta cascada nunca llegaría a dispararse,
+        // y para una bitácora append-only negarse a desaparecer en silencio es lo correcto.
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.NoAction);
     }
 }

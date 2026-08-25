@@ -148,3 +148,97 @@ public static class SerieMensual
         return res;
     }
 }
+
+// ── Portafolio de proyectos internos ──────────────────────────────────────
+public sealed record ProyectosDashboardDto(
+    int Total,
+    int Abiertos,
+    int EnEjecucion,
+    int Cerrados,
+    int AvancePromedio,
+    int Atrasados,
+
+    /// <summary>Proyectos abiertos sin fecha de cierre planificada.
+    ///
+    /// <para>Acompaña a <see cref="Atrasados"/> y no se puede leer sin él: un proyecto sin fecha
+    /// comprometida nunca cuenta como atrasado, así que un «0 atrasados» junto a un
+    /// <c>SinLineaBase</c> alto no significa que el portafolio esté al día — significa que no hay
+    /// contra qué medirlo. Sin este número el tablero da falso verde.</para></summary>
+    int SinLineaBase,
+
+    /// <summary>Proyectos abiertos cuyo avance declarado y cuyo cronograma cuentan historias
+    /// distintas: el porcentaje lo escribe el responsable y los hitos son lo verificable, y
+    /// cuando se separan una de las dos medidas dejó de mantenerse.</summary>
+    int ConDivergencia,
+
+    int SinReportar,
+    int SinResponsable,
+    int HitosVencidos,
+    int HitosProximos,
+    int ReportesTotal,
+    IReadOnlyList<ConteoDto>          PorEstado,
+    IReadOnlyList<ConteoDto>          PorResponsable,
+    IReadOnlyList<SerieMensualDto>    ReportesPorMes,
+    IReadOnlyList<ProyectoSemaforoDto> Semaforo,
+    IReadOnlyList<HitoAtencionDto>    Hitos,
+    IReadOnlyList<BloqueoDto>         Bloqueos);
+
+/// <summary>Una fila del semáforo del portafolio: el estado de un proyecto y las dos
+/// señales que definen si necesita atención (atraso de fecha y silencio del responsable).</summary>
+public sealed record ProyectoSemaforoDto(
+    int               ProyectoId,
+    string            Codigo,
+    string            Nombre,
+    string?           Responsable,
+    EstadoProyecto    Estado,
+    PrioridadProyecto Prioridad,
+    int               AvancePct,
+    int               TotalHitos,
+    int               HitosCompletados,
+    int               HitosVencidos,
+    DateOnly?         FechaFinPlan,
+    DateTime?         UltimoAvance,
+    int?              DiasSinReporte,
+    bool              Atrasado,
+    bool              SinReportar,
+
+    /// <summary>Abierto y sin fecha de cierre comprometida. No es lo mismo que ir a tiempo:
+    /// es que no hay fecha contra la cual estar atrasado.</summary>
+    bool              SinLineaBase)
+{
+    /// <summary>Avance según el cronograma: hitos completados sobre el total. Es la única medida
+    /// verificable que tiene el proyecto — <see cref="AvancePct"/> lo declara el responsable.</summary>
+    public int AvanceFisico => TotalHitos == 0 ? 0 : (int)Math.Round(HitosCompletados * 100.0 / TotalHitos);
+
+    /// <summary>Puntos de diferencia entre lo declarado y lo que muestran los hitos. Positiva:
+    /// se reporta más de lo que se cierra. Negativa: se cierran hitos sin reportarlos.</summary>
+    public int Brecha => AvancePct - AvanceFisico;
+
+    /// <summary>Diferencia lo bastante grande como para que las dos medidas del proyecto estén
+    /// contando cosas distintas. Solo aplica a proyectos con cronograma cargado.</summary>
+    public bool Divergente => TotalHitos > 0 && Math.Abs(Brecha) >= BrechaAtencion;
+
+    /// <summary>Umbral de la señal, en puntos porcentuales. 30 deja pasar el desfase normal entre
+    /// un hito grande y el reporte del mes, y marca los casos en que una de las dos medidas dejó
+    /// de mantenerse.</summary>
+    public const int BrechaAtencion = 30;
+}
+
+/// <summary>Hito abierto con fecha comprometida: vencido o dentro de la ventana próxima.</summary>
+public sealed record HitoAtencionDto(
+    int        ProyectoId,
+    string     Codigo,
+    string     Proyecto,
+    string     Hito,
+    string?    Responsable,
+    DateOnly   FechaPlan,
+    EstadoHito Estado);
+
+/// <summary>Bloqueo declarado en el último reporte de avance de un proyecto.</summary>
+public sealed record BloqueoDto(
+    int      ProyectoId,
+    string   Codigo,
+    string   Proyecto,
+    string   Texto,
+    string   Autor,
+    DateTime Fecha);

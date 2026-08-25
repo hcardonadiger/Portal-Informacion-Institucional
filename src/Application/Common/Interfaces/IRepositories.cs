@@ -211,5 +211,11 @@ public interface IApplicationDbContext
     DbSet<EnlaceSiger>             EnlacesSiger           { get; }
     DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
+    DbSet<Proyecto>                Proyectos              { get; }
+    DbSet<HitoProyecto>            ProyectoHitos          { get; }
+    DbSet<AvanceProyecto>          ProyectoAvances        { get; }
+    DbSet<BitacoraProyecto>        BitacorasProyecto      { get; }
+    DbSet<RiesgoProyecto>          ProyectoRiesgos        { get; }
+    DbSet<InteresadoProyecto>      ProyectoInteresados    { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

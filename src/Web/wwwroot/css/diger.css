@@ -565,6 +565,29 @@ select.field-input:focus {
     color: var(--diger-danger);
 }
 
+/* Reordenar hitos: mismo lenguaje que .hist-del, pero van DOS en una celda estrecha de una
+   tabla con table-layout:fixed, así que no pueden heredar de .btns (padding 11px 28px, que
+   desbordaba la columna y empujaba la ✕ fuera del borde). */
+.hito-mov {
+    padding: 5px 7px;
+    background: var(--diger-surface);
+    border: 1.5px solid var(--diger-border);
+    color: var(--diger-text-faint);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-2xs);
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all .2s;
+}
+
+.hito-mov + .hito-mov { margin-left: 3px; }
+
+.hito-mov:hover {
+    border-color: var(--diger-blue);
+    color: var(--diger-blue);
+}
+
 .hist-empty {
     text-align: center;
     padding: var(--diger-space-12) var(--diger-space-4);
