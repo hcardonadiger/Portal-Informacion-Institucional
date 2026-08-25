@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Bloqueo;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,7 +8,7 @@ namespace Diger.TramitesEstado.Web.Pages.Siger;
 // código literal del rol: un rol personalizado con capacidad de administrador quedaba fuera.
 [Authorize]
 [Permission("Siger", AccionModulo.Editar, "Crear y editar fichas SIGER")]
-public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> sol) : PageModel
+public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> sol, ISender sender) : PageModel
 {
     [BindProperty] public TramiteSigerForm Form { get; set; } = new();
     public bool EsNuevo => Form.Id == 0;
@@ -26,6 +27,9 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
     /// forma de saber qué dirección va a producir lo que teclea.
     /// </summary>
     public string PrefijoSol { get; private set; } = string.Empty;
+
+    /// <summary>Dónde se edita esta ficha (D-17). Una ficha sin enlazar responde «acá mismo».</summary>
+    public BloqueoFichaDto Bloqueo { get; private set; } = new(false, null, null, null, false);
 
     /// <summary>
     /// Arma el prefijo para la institución de la ficha. Si la institución no está en el catálogo
@@ -72,6 +76,7 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
                 t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo);
             UltimaRevision = t.UpdatedAt ?? t.UltimaModificacion ?? t.CreatedAt;
             PrefijoSol = await PrefijoAsync(t.InstitucionId ?? t.Sigla, ct);
+            Bloqueo    = await sender.Send(new GetBloqueoFichaQuery(t.Id), ct);
         }
         else
         {
@@ -81,11 +86,37 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         return Page();
     }
 
+
+    /// <summary>
+    /// Quita el enlace entre la ficha y el trámite del expediente, y con eso la desbloquea (D-22).
+    /// </summary>
+    /// <remarks>
+    /// <b>No borra el trámite del expediente.</b> Ese trámite lo levantó alguien y sigue siendo
+    /// trabajo válido; lo único que se corta es quién manda sobre la ficha. Después de esto los
+    /// dos lados evolucionan por su cuenta, que es exactamente lo que D-17 evita mientras el
+    /// enlace existe — por eso la pantalla lo advierte con todas sus letras antes de hacerlo.
+    /// </remarks>
+    public async Task<IActionResult> OnPostDesenlazarAsync(int id, CancellationToken ct)
+    {
+        var enlazados = await ctx.Tramites.Where(t => t.TramiteSigerId == id).ToListAsync(ct);
+        if (enlazados.Count == 0)
+        {
+            TempData["SuccessMsg"] = "Esta ficha ya no estaba enlazada a ningún expediente.";
+            return RedirectToPage("/Siger/Editor", new { id });
+        }
+
+        foreach (var t in enlazados) t.TramiteSigerId = null;
+        await ctx.SaveChangesAsync(ct);
+
+        TempData["SuccessMsg"] = "Ficha desenlazada. Vuelve a editarse en esta pantalla.";
+        return RedirectToPage("/Siger/Editor", new { id });
+    }
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
         Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
 
         PrefijoSol = await PrefijoAsync(Form.Sigla, ct);
+        if (Form.Id != 0) Bloqueo = await sender.Send(new GetBloqueoFichaQuery(Form.Id), ct);
 
         // ── El enlace a SOL (D-13, D-14) ──────────────────────────────────────
         //
@@ -152,45 +183,59 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             if (entity is null) return NotFound();
 
             entity.IdSiger = Form.IdSiger;
+            // ── El bloqueo condicional de D-17 ────────────────────────────
+            //
+            // Si la ficha está enlazada a un expediente, sus campos de CONTENIDO se editan allí y
+            // no acá. La comprobación es del servidor y no solo de la pantalla: los campos salen
+            // deshabilitados, pero un campo deshabilitado no impide nada —basta con quitarle el
+            // atributo en el navegador— y lo que se perdería es trabajo de otra persona en cuanto
+            // el siguiente pase desde el expediente lo reescriba.
+            //
+            // Lo que SÍ se sigue editando acá, esté enlazada o no: el código, el estado de SIGER
+            // y el plan de digitalización (son de SIGER), y si es popular (es curaduría).
+            if (!Bloqueo.Bloqueada)
+            {
+                entity.Nombre = Form.Nombre!;
+                entity.Institucion = Form.Institucion!;
+                entity.Sigla = Form.Sigla;
+                entity.Dependencia = Form.Dependencia;
+                entity.Descripcion = Form.Descripcion;
+                entity.Objetivo = Form.Objetivo;
+                entity.DirigidoA = Form.DirigidoA;
+                entity.VigenciaDocumento = Form.VigenciaDocumento;
+                entity.Temporalidad = Form.Temporalidad;
+                entity.EnlacePrincipal = Form.EnlacePrincipal;
+                entity.ObservacionesDiger = Form.ObservacionesDiger;
+                entity.CategoriaId = Form.CategoriaId;
+                entity.Modalidad = Form.Modalidad;
+                entity.EstaEnSol = Form.EstaEnSol;
+                entity.CostoTexto = Form.CostoTexto;
+                entity.CostoEsGratuito = Form.CostoEsGratuito;
+                entity.TiempoTexto = Form.TiempoTexto;
+
+                // Solo se sella al cambiar de verdad la dirección — no en cada guardado. Cuenta
+                // tanto capturar o corregir el tramo como quitar la URL heredada: las dos cosas
+                // cambian a dónde va el ciudadano.
+                var cambioLaDireccion =
+                    !string.Equals(entity.SolTramo, tramo, StringComparison.Ordinal) ||
+                    !string.Equals(entity.SolUrl, heredadaQueQueda, StringComparison.Ordinal);
+
+                if (cambioLaDireccion)
+                    entity.SolVerificadoEl = tramo is null && string.IsNullOrWhiteSpace(heredadaQueQueda)
+                        ? null
+                        : DateTime.UtcNow;
+
+                entity.SolTramo = tramo;
+                entity.SolUrl   = string.IsNullOrWhiteSpace(heredadaQueQueda) ? null : heredadaQueQueda;
+            }
+
             entity.Codigo = Form.Codigo!;
-            entity.Nombre = Form.Nombre!;
-            entity.Institucion = Form.Institucion!;
-            entity.Sigla = Form.Sigla;
-            entity.Dependencia = Form.Dependencia;
-            entity.Descripcion = Form.Descripcion;
-            entity.Objetivo = Form.Objetivo;
-            entity.DirigidoA = Form.DirigidoA;
             entity.EstadoSiger = Form.EstadoSiger;
             entity.DisponibleEnLinea = Form.DisponibleEnLinea;
             entity.EnPlanDigitalizacion = Form.EnPlanDigitalizacion;
-            entity.VigenciaDocumento = Form.VigenciaDocumento;
-            entity.Temporalidad = Form.Temporalidad;
             entity.DiagramaUrl = Form.DiagramaUrl;
-            entity.EnlacePrincipal = Form.EnlacePrincipal;
-            entity.ObservacionesDiger = Form.ObservacionesDiger;
             entity.FechaIngreso = Form.FechaIngreso;
-            entity.CategoriaId = Form.CategoriaId;
-            entity.Modalidad = Form.Modalidad;
-            entity.EstaEnSol = Form.EstaEnSol;
-            entity.CostoTexto = Form.CostoTexto;
-            entity.CostoEsGratuito = Form.CostoEsGratuito;
-            entity.TiempoTexto = Form.TiempoTexto;
             entity.EsPopular = Form.EsPopular;
-
-            // Solo se sella al cambiar de verdad la dirección — no en cada guardado. Cuenta
-            // tanto capturar o corregir el tramo como quitar la URL heredada: las dos cosas
-            // cambian a dónde va el ciudadano.
-            var cambioLaDireccion =
-                !string.Equals(entity.SolTramo, tramo, StringComparison.Ordinal) ||
-                !string.Equals(entity.SolUrl, heredadaQueQueda, StringComparison.Ordinal);
-
-            if (cambioLaDireccion)
-                entity.SolVerificadoEl = tramo is null && string.IsNullOrWhiteSpace(heredadaQueQueda)
-                    ? null
-                    : DateTime.UtcNow;
-
-            entity.SolTramo = tramo;
-            entity.SolUrl   = string.IsNullOrWhiteSpace(heredadaQueQueda) ? null : heredadaQueQueda;
 
             // Editar una ficha NO cambia si está publicada. Cuando este renglón la recalculaba,
             // corregir una tilde podía sacarla del portal del ciudadano —o meterla— sin que

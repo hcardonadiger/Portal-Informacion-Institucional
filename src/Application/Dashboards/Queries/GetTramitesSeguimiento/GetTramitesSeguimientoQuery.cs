@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Importacion;
 using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetTramitesSeguimiento;
@@ -54,7 +55,7 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
     {
         // ctx.Expedientes ya viene filtrado por el alcance institucional del usuario.
         // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
-        var expQuery = ctx.Expedientes
+        var expQuery = ctx.Expedientes.SinBuckets()
             .AsNoTracking()
             .Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha)
             .Include(e => e.Tramites)

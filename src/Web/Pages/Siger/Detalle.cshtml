@@ -26,6 +26,51 @@
         </div>
     </div>
 
+    @* ── De SIGER a un expediente (D-06, D-17) ──────────────────────────
+       El enlace es lo que bloquea la ficha, así que la tarjeta lo dice antes de que alguien lo
+       haga: no es «copiar datos», es «mudar dónde se editan». *@
+    @if (Model.Bloqueo.Bloqueada)
+    {
+        <div class="card" style="border-left:4px solid #b45309;background:#fffbeb;margin-bottom:1rem">
+            <h3 class="sec-h" style="color:#92400e">El contenido de esta ficha se edita en su expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+                Está enlazada al expediente
+                <a asp-page="/Expedientes/Editor" asp-route-id="@Model.Bloqueo.ExpedienteId"><strong>@Model.Bloqueo.ExpedienteCodigo</strong></a>,
+                como <strong>@Model.Bloqueo.NombreTramite</strong>@(Model.Bloqueo.EsBucket ? " (contenedor de importados)" : "").
+                Lo que se capture allí llega acá al pasar el trámite a SIGER.
+            </p>
+        </div>
+    }
+    else if (await Acceso.PuedeEditarAsync("Expedientes"))
+    {
+        <div class="card" style="margin-bottom:1rem">
+            <h3 class="sec-h">Traer esta ficha a un expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0 0 .7rem">
+                Copia el contenido de la ficha a un trámite de expediente y las deja enlazadas.
+                <strong>A partir de ese momento el contenido se edita en el expediente</strong> y esta
+                pantalla lo muestra de solo lectura; los pasos del proceso se quedan acá y no viajan.
+            </p>
+            <form method="post" asp-page-handler="Importar" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+                <input type="hidden" name="id" value="@t.Id" />
+                <div class="field" style="min-width:240px;margin:0">
+                    <label>Expediente destino</label>
+                    <select name="expedienteId">
+                        <option value="">Contenedor «Trámites Importados de SIGER»</option>
+                        @foreach (var e in Model.ExpedientesDestino)
+                        {
+                            <option value="@e.Id">@e.Codigo</option>
+                        }
+                    </select>
+                </div>
+                <button class="btnp" type="submit">Traer al expediente</button>
+            </form>
+            <span class="res-meta">
+                Si no elige uno, se usa el contenedor de importados de esta institución, que no
+                cuenta como levantamiento ni sale en los tableros.
+            </span>
+        </div>
+    }
+
     @* ── Alerta de ficha incompleta ──────────────────────────────── *@
     @if (Model.Faltantes.Count > 0)
     {

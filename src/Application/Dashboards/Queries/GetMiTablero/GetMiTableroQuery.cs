@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Importacion;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Domain.Enums;
@@ -167,7 +168,7 @@ public sealed class GetMiTableroQueryHandler(
         int tickAbiertos = ticketsList.Count(t => t.Estado == EstadoTicket.Abierto || t.Estado == EstadoTicket.EnProgreso);
 
         // 4. EXPEDIENTES VINCULADOS (Analista o Contacto)
-        var expedientesQuery = ctx.Expedientes.AsNoTracking()
+        var expedientesQuery = ctx.Expedientes.AsNoTracking().SinBuckets()
             .Where(e => (userId.HasValue && e.AnalistaId == userId.Value) ||
                         (!string.IsNullOrEmpty(correo) && e.ContactoCorreo != null && e.ContactoCorreo.ToLower() == correo));
 

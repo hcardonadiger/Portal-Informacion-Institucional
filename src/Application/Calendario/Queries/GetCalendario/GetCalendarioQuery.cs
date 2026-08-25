@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Importacion;
 namespace Diger.TramitesEstado.Application.Calendario.Queries.GetCalendario;
 
 public enum TipoEventoCalendario
@@ -66,7 +67,7 @@ public sealed class GetCalendarioQueryHandler(IApplicationDbContext ctx)
             select new { c.Id, c.Tipo, c.Fecha, c.Texto, t.Numero, TId = t.Id, t.Titulo })
             .ToListAsync(ct);
 
-        var expedientes = await ctx.Expedientes.AsNoTracking()
+        var expedientes = await ctx.Expedientes.AsNoTracking().SinBuckets()
             .Where(e => e.CreatedAt >= desdeUtc && e.CreatedAt < hastaUtc)
             .Select(e => new { e.Id, e.Codigo, e.Institucion, e.CreatedAt })
             .ToListAsync(ct);

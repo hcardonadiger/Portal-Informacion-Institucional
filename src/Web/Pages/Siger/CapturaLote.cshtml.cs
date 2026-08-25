@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Bloqueo;
 using Microsoft.EntityFrameworkCore;
 
 namespace Diger.TramitesEstado.Web.Pages.Siger;
@@ -68,7 +69,10 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
         Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
         var categoriaNombres = Categorias.ToDictionary(c => c.Id, c => c.Nombre);
 
-        var q = ctx.TramitesSiger.AsNoTracking().AsQueryable();
+        // D-23: la captura en lote se queda como está, pero no toca fichas bloqueadas. Sus campos
+        // de contenido se editan en el expediente que las tiene, y escribirlos acá sería trabajo
+        // que el siguiente pase desde ese expediente borraría sin dejar rastro.
+        var q = ctx.TramitesSiger.AsNoTracking().SinBloqueadas(ctx.Tramites.AsNoTracking()).AsQueryable();
         if (!string.IsNullOrWhiteSpace(InstitucionId))
             q = q.Where(t => t.InstitucionId == InstitucionId);
 

@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Importacion;
 using Diger.TramitesEstado.Application.Expedientes.Duplicados;
 using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
@@ -31,7 +32,7 @@ public sealed class GetExpedientesQueryHandler(IApplicationDbContext ctx)
     {
         var (q, page, size) = Paginacion.Normalizar(query.Q, query.Page, query.Size);
 
-        var baseq = ctx.Expedientes.AsNoTracking();
+        var baseq = ctx.Expedientes.AsNoTracking().SinBuckets();
         if (q is not null)
             baseq = baseq.Where(e =>
                 e.Codigo.Contains(q) || e.Institucion.Contains(q) || e.Analista.Contains(q) ||
@@ -64,7 +65,7 @@ public sealed class GetExpedientesQueryHandler(IApplicationDbContext ctx)
         // Posibles duplicados: se comparan los expedientes de esta página contra TODOS los de
         // la misma institución (no solo los de la página), para no perder coincidencias fuera de vista.
         var institucionIds = filas.Select(f => f.InstitucionId).Distinct().ToList();
-        var candidatos = await ctx.Expedientes.AsNoTracking()
+        var candidatos = await ctx.Expedientes.AsNoTracking().SinBuckets()
             .Where(e => institucionIds.Contains(e.InstitucionId))
             .Select(e => new ExpedienteDuplicadoCandidato(
                 e.Id, e.InstitucionId, e.Codigo,

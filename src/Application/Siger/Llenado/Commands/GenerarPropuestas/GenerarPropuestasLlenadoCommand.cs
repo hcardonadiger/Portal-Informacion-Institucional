@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Bloqueo;
 using Diger.TramitesEstado.Application.Siger.Llenado;
 
 namespace Diger.TramitesEstado.Application.Siger.Llenado.Commands.GenerarPropuestas;
@@ -54,7 +55,11 @@ public sealed class GenerarPropuestasLlenadoCommandHandler(IApplicationDbContext
         var categorias = await CatalogoDeCategoriasAsync(ct);
 
         // Solo interesan las fichas a las que les falta algo. El resto ni se carga.
-        var pendientes = await ctx.TramitesSiger.AsNoTracking()
+        //
+        // Y solo las que este portal todavía manda: una ficha enlazada a un expediente tiene sus
+        // campos de contenido de solo lectura acá (D-17), así que proponerle valores produciría
+        // una cola de sugerencias que nadie puede aprobar.
+        var pendientes = await ctx.TramitesSiger.AsNoTracking().SinBloqueadas(ctx.Tramites.AsNoTracking())
             .Where(t => t.CategoriaId == null || t.Modalidad == null
                      || t.TiempoTexto == null || t.CostoEsGratuito == null)
             .Select(t => t.Id).OrderBy(id => id).ToListAsync(ct);

@@ -54,8 +54,8 @@ Tres lecturas:
 | **D-02** | «Pasar a SIGER» escribe en la tabla `TramitesSiger` **local de PD**. No hay integración con un sistema SIGER externo. |
 | **D-03** | HA lee de PD salvo que el trámite solo exista en SIGER. Si existe en ambos, manda PD. Todo sale en **una sola lista**. |
 | **D-04** | La institución gana una URL base de SOL. El trámite solo guarda el tramo final. *(Hecho — ver Fase 7.)* |
-| **D-05** | Editar un trámite que ya está en PD se hace **siempre en el expediente**. |
-| **D-06** | Al importar, el usuario elige el expediente destino, **o** el bucket «Trámites Importados de SIGER» de esa institución. |
+| **D-05** | Editar un trámite que ya está en PD se hace **siempre en el expediente**. *(Hecho — ver Fase 10.)* |
+| **D-06** | Al importar, el usuario elige el expediente destino, **o** el bucket «Trámites Importados de SIGER» de esa institución. *(Hecho — ver Fase 10.)* |
 | **D-07** | «Pasar a SIGER» crea una **versión nueva**. La anterior no se borra. Se muestra la más nueva. *(Hecho — ver Fase 9.)* |
 | **D-08** | Quién controla PD **selecciona manualmente** qué trámites se publican en HA. |
 | **D-09** | PD tiene una pantalla que lista todo lo publicado en HA, para administrarlo. |
@@ -66,13 +66,13 @@ Tres lecturas:
 | **D-14** | Las URLs SOL completas ya cargadas **no se tocan**, y solo las usan los trámites que nunca pasaron por PD. *(Hecho. Medido: la única que hay apunta a google.com y está publicada — ver Fase 7.)* |
 | **D-15** | El historial es una **tabla de fotos** de la ficha y sus hijos. La fila viva es la última versión. *(Hecho. La versión 0 quedó de la Fase 2; los pases escriben de la 1 en adelante.)* |
 | **D-16** | «Quitar de HA» **despublica**, no borra. |
-| **D-17** | **Bloqueo condicional.** Si la ficha ya está en PD, sus campos de contenido quedan bloqueados en la ficha y solo se editan en el expediente. Si no está en PD, se editan en la ficha. Nunca en los dos lugares a la vez. |
+| **D-17** | **Bloqueo condicional.** Si la ficha ya está en PD, sus campos de contenido quedan bloqueados en la ficha y solo se editan en el expediente. Si no está en PD, se editan en la ficha. Nunca en los dos lugares a la vez. *(Hecho en las fases 8 y 10.)* |
 | **D-18** | Antes de tocar nada se guarda una **foto del inventario SIGER original**, completa y permanente. |
 | **D-19** | Hay una fase de **llenado asistido** de los campos que falten, adelantada para aprovechar que casi todo el inventario está libre. |
 | **D-20** | La URL base de la institución **sale por defecto de su llave primaria** (`CONSUCOOP`, `IHADFA`), y se puede corregir a mano cuando la ruta real de SOL difiera. *(Hecho. La columna es anulable y nula significa «vale la llave»: no se copia el Id.)* |
-| **D-21** | Los buckets de importación se marcan con `OrigenExternoId` y se **excluyen** de los listados, conteos y tableros del módulo de expedientes. |
-| **D-22** | Desenlazar una ficha la **desbloquea**, con advertencia explícita de que vuelve a editarse por su lado. |
-| **D-23** | La captura en lote **se queda como está**. Solo debe excluir las fichas bloqueadas. |
+| **D-21** | Los buckets de importación se marcan con `OrigenExternoId` y se **excluyen** de los listados, conteos y tableros del módulo de expedientes. *(Hecho. La extensión SinBuckets se aplica en los siete sitios que listan o cuentan.)* |
+| **D-22** | Desenlazar una ficha la **desbloquea**, con advertencia explícita de que vuelve a editarse por su lado. *(Hecho — ver Fase 10.)* |
+| **D-23** | La captura en lote **se queda como está**. Solo debe excluir las fichas bloqueadas. *(Hecho. Solo se le agregó excluir las bloqueadas.)* |
 | **D-24** | El llenado asistido deja todo en **cola de revisión**; no escribe directo. Cada valor propuesto queda con su procedencia registrada, para distinguirlo después de lo verificado por una persona. *(Al construirlo, la procedencia quedó en la fila de la propuesta y no en una columna `Autollenado` de la ficha — ver Fase 5.)* |
 | **D-25** | La documentación del API se hace en la **Fase 6**, sin esperar al resto, y **consolidando**: la especificación generada es la verdad sobre la forma, y el documento a mano solo cubre lo que aquélla no puede expresar. *(Hecho. Redactarla encontró tres afirmaciones falsas que llevaban meses publicadas en Swagger — ver Fase 6.)* |
 
@@ -659,24 +659,72 @@ expediente ya existían desde las fases 2 y 3—. No hay script que llevar al Pr
 
 ---
 
-### Fase 10 — De SIGER a PD: importar y aplicar el bloqueo (~6 tareas)
+### Fase 10 — De SIGER a PD: importar y aplicar el bloqueo — HECHA
 
-**Entrega:** D-05, D-06, D-21, D-22 y la mitad de D-17. **Depende de la Fase 8.**
+**Entrega:** D-05, D-06, D-21, D-22 y la mitad de D-17 que faltaba.
 
-1. El bucket «Trámites Importados de SIGER» por institución, marcado con `OrigenExternoId` y
-   excluido de listados, conteos y tableros (D-21). Sin eso, los buckets quedarían atrapados en
-   `EnExploracion` —`CambiarEstado` es una máquina lineal estricta— y saldrían en todas partes
-   como si fueran levantamientos reales.
-2. Selector de expediente destino (D-06).
-3. La importación: mapeo campo a campo. No se traen los pasos (D-11).
-4. Guarda contra doble importación. `OrigenExternoId` ya se usa como clave de idempotencia en la
-   importación de reuniones — sirve de precedente.
-5. La ficha queda enlazada en el mismo acto, y con eso **bloqueada**.
-6. El bloqueo en las pantallas: campos de contenido en solo lectura con enlace al expediente, y
-   la captura en lote excluyendo las bloqueadas (D-23). Desenlazar desbloquea, con advertencia
-   (D-22).
+**Lo que ya existía, y por qué no bastaba.** El editor de expedientes tenía desde antes un buscador
+de fichas SIGER que traía nombre, descripción y objetivo al formulario abierto, y dejaba puesto el
+enlace. Le faltaban las cuatro cosas que hacen que eso sea una importación y no un copiar-pegar:
+elegir a dónde va, no poder hacerlo dos veces, traer el contenido completo, y **que el enlace
+signifique algo**.
 
+**Lo construido:**
+
+1. **El contenedor por institución** —«Trámites Importados de SIGER»— marcado con
+   `OrigenExternoId` y **fuera de los listados, los tableros y el calendario** (D-21). Se creó
+   una extensión `SinBuckets()` y se aplicó en los **siete** sitios que listan o cuentan
+   expedientes. Siete copias escritas a mano de la misma condición acabarían discrepando: bastaría
+   con que una se olvidara para que las cifras de trabajo en curso incluyeran carpetas que nadie
+   abrió.
+2. **El selector de destino** (D-06): un expediente de la misma institución, o el contenedor.
+3. **El mapeo inverso**, campo a campo. **Los pasos del proceso no viajan** (D-11), ni los enlaces
+   ni las tareas de digitalización: el expediente no tiene dónde ponerlos y fabricar un hueco solo
+   para no perderlos lo convertiría en un espejo de SIGER en vez de una herramienta de
+   levantamiento.
+4. **La guarda contra doble importación.** Se apoya en el mismo enlace que produce el bloqueo, así
+   que no puede desincronizarse de él.
+5. **El bloqueo**, que es la mitad de D-17 que faltaba.
+
+**Por qué el contenedor no puede parecer un levantamiento.** Además de inflar las cifras,
+quedaría atrapado en `EnExploracion` para siempre: `CambiarEstado` solo admite avanzar a la etapa
+siguiente, y un contenedor de importados nunca se «levanta». Saldría en todos los tableros como
+trabajo estancado.
+
+**El bloqueo es del servidor, no de la pantalla.** Los campos de contenido salen deshabilitados en
+el editor de la ficha, pero un campo deshabilitado no impide nada —basta con quitarle el atributo
+en el navegador— así que el guardado también los ignora cuando la ficha está enlazada. Lo que se
+perdería si no fuera así es trabajo de otra persona, en cuanto el siguiente pase desde el
+expediente lo reescriba.
+
+Lo que **sigue editándose en la ficha**, esté enlazada o no: el código, el estado de SIGER y el
+plan de digitalización —son de SIGER— y si el trámite es popular —es curaduría—. Es el mismo
+reparto de tres grupos de D-17, ahora aplicado en las dos direcciones.
+
+**Cuatro pantallas obedecen la misma regla, escrita una sola vez.** El editor de la ficha, el
+detalle, la captura en lote (D-23) y el llenado asistido. Cuatro copias habrían discrepado, y la
+discrepancia sería peor que no tener bloqueo: una pantalla dejaría escribir lo que otra declara de
+solo lectura.
+
+**Desenlazar avisa de lo que significa** (D-22): la ficha vuelve a editarse en su pantalla y deja
+de recibir los cambios del expediente. **No borra el trámite del expediente** —eso lo levantó
+alguien y sigue siendo trabajo válido—; lo único que se corta es quién manda.
+
+**La prueba que ata las dos direcciones:** importar una ficha y devolverla con «Pasar a SIGER»
+**sin tocar nada no la cambia**. Importar y promover son inversas; si no lo fueran, el viaje de
+ida y vuelta deformaría algún campo y nadie sabría cuál ni cuándo.
+
+**Un detalle que se rechaza a propósito:** traer una ficha a un expediente de otra institución.
+Produciría un trámite que dice pertenecer a dos instituciones a la vez, y el pase de vuelta le
+cambiaría la institución a la ficha sin que nadie lo hubiera pedido.
+
+**Pruebas:** 13 nuevas, **400 en total**.
+
+**Despliegue: ninguno.** Esta fase no toca el esquema: `OrigenExternoId` en el expediente y
+`TramiteSigerId` en el trámite ya existían desde las fases 1 y 3. No hay script que llevar al
+Producción real.
 ---
+
 
 ### Fase 11 — Visibilidad y cierre (~3 tareas)
 

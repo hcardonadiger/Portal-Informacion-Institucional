@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Importacion;
 using Diger.TramitesEstado.Application.Dashboards.Common;
 using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
@@ -59,7 +60,7 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
 
         // ── Expedientes (con filtros de período y estado de trámite) ──
         // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
-        var expedientes = ctx.Expedientes.AsNoTracking()
+        var expedientes = ctx.Expedientes.AsNoTracking().SinBuckets()
             .Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha);
         if (q.Desde is { } desdeExp)
             expedientes = expedientes.Where(e => e.Tramites.Any(t => t.FechaCreacion >= desdeExp));

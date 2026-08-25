@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Importacion;
 using Diger.TramitesEstado.Application.Dashboards.Common;
 using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
@@ -14,7 +15,7 @@ public sealed class GetDigitalizacionDashboardQueryHandler(IApplicationDbContext
         GetDigitalizacionDashboardQuery q, CancellationToken ct)
     {
         // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
-        var expedientes = ctx.Expedientes.AsNoTracking()
+        var expedientes = ctx.Expedientes.AsNoTracking().SinBuckets()
             .Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha);
         if (!string.IsNullOrWhiteSpace(q.InstitucionId))
             expedientes = expedientes.Where(x => x.InstitucionId == q.InstitucionId);

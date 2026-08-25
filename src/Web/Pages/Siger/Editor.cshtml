@@ -2,6 +2,10 @@
 @model Diger.TramitesEstado.Web.Pages.Siger.EditorModel
 @{
     ViewData["Title"] = Model.EsNuevo ? "Nuevo Tramite SIGER" : "Editar Tramite SIGER";
+
+    // Con la ficha bloqueada (D-17) los campos de contenido salen deshabilitados. Razor omite el
+    // atributo cuando el valor es null, así que la misma marca sirve para los dos casos.
+    var bloq = Model.Bloqueo.Bloqueada ? "disabled" : null;
 }
 
 <div class="container" style="max-width:860px">
@@ -34,6 +38,38 @@
         </div>
     }
 
+    @* ── El bloqueo condicional (D-17) ──────────────────────────────────
+       Se dice arriba y con el enlace puesto: quien abra esta ficha para corregir algo tiene que
+       enterarse antes de escribir, no después de guardar y ver que no cambió nada. *@
+    @if (Model.Bloqueo.Bloqueada)
+    {
+        <div class="card" style="border-left:4px solid #b45309;background:#fffbeb;margin-bottom:1rem">
+            <h3 class="sec-h" style="color:#92400e">El contenido de esta ficha se edita en su expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0 0 .6rem">
+                Está enlazada al expediente
+                <a asp-page="/Expedientes/Editor" asp-route-id="@Model.Bloqueo.ExpedienteId"><strong>@Model.Bloqueo.ExpedienteCodigo</strong></a>,
+                como <strong>@Model.Bloqueo.NombreTramite</strong>.
+                @if (Model.Bloqueo.EsBucket)
+                {
+                    <text>Ese expediente es el contenedor de fichas importadas de SIGER, no un levantamiento.</text>
+                }
+                Nombre, descripción, categoría, modalidad, tiempo, costo y enlace a SOL se capturan allí
+                y llegan acá al pasar el trámite a SIGER.
+            </p>
+            <p style="font-size:13px;color:#78350f;margin:0">
+                Lo que sí se sigue editando en esta pantalla: el <strong>código</strong>, el
+                <strong>estado de SIGER</strong>, el plan de digitalización y si el trámite es popular.
+                Publicarla o quitarla del portal se decide en <a asp-page="/Siger/Publicacion">Publicación</a>.
+            </p>
+            <form method="post" asp-page-handler="Desenlazar" style="margin-top:.8rem"
+                  onsubmit="return confirm('Al desenlazarla, esta ficha vuelve a editarse en esta pantalla y deja de recibir los cambios del expediente @Model.Bloqueo.ExpedienteCodigo. El trámite del expediente se queda donde está, pero ya no manda sobre la ficha. ¿Continuar?')">
+                <input type="hidden" name="id" value="@Model.Form.Id" />
+                <button class="btns" type="submit" style="border-color:#b45309;color:#b45309">Desenlazar del expediente</button>
+                <span class="res-meta">Vuelve a editarse acá. Avisa antes de hacerlo.</span>
+            </form>
+        </div>
+    }
+
     <form method="post" class="card">
         <input type="hidden" asp-for="Form.Id" />
 
@@ -53,38 +89,38 @@
 
         <div class="field">
             <label asp-for="Form.Nombre">Nombre del tramite</label>
-            <input asp-for="Form.Nombre" required maxlength="600" />
+            <input asp-for="Form.Nombre" disabled="@bloq" required maxlength="600" />
         </div>
 
         <div class="form-grid">
             <div class="field">
                 <label asp-for="Form.Institucion">Institucion</label>
-                <input asp-for="Form.Institucion" required maxlength="200" />
+                <input asp-for="Form.Institucion" disabled="@bloq" required maxlength="200" />
             </div>
             <div class="field">
                 <label asp-for="Form.Sigla">Sigla</label>
-                <input asp-for="Form.Sigla" maxlength="30" />
+                <input asp-for="Form.Sigla" disabled="@bloq" maxlength="30" />
             </div>
         </div>
 
         <div class="field">
             <label asp-for="Form.Dependencia">Dependencia o area responsable</label>
-            <input asp-for="Form.Dependencia" maxlength="400" />
+            <input asp-for="Form.Dependencia" disabled="@bloq" maxlength="400" />
         </div>
 
         <div class="field">
             <label asp-for="Form.Descripcion">Descripcion</label>
-            <textarea asp-for="Form.Descripcion" rows="3"></textarea>
+            <textarea asp-for="Form.Descripcion" disabled="@bloq" rows="3"></textarea>
         </div>
 
         <div class="field">
             <label asp-for="Form.Objetivo">Objetivo</label>
-            <textarea asp-for="Form.Objetivo" rows="2"></textarea>
+            <textarea asp-for="Form.Objetivo" disabled="@bloq" rows="2"></textarea>
         </div>
 
         <div class="field">
             <label asp-for="Form.DirigidoA">Dirigido a</label>
-            <textarea asp-for="Form.DirigidoA" rows="2"></textarea>
+            <textarea asp-for="Form.DirigidoA" disabled="@bloq" rows="2"></textarea>
         </div>
 
         <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
@@ -100,11 +136,11 @@
             </div>
             <div class="field">
                 <label asp-for="Form.VigenciaDocumento">Vigencia del documento</label>
-                <input asp-for="Form.VigenciaDocumento" maxlength="60" />
+                <input asp-for="Form.VigenciaDocumento" disabled="@bloq" maxlength="60" />
             </div>
             <div class="field">
                 <label asp-for="Form.Temporalidad">Temporalidad</label>
-                <input asp-for="Form.Temporalidad" maxlength="60" />
+                <input asp-for="Form.Temporalidad" disabled="@bloq" maxlength="60" />
             </div>
         </div>
 
@@ -148,7 +184,7 @@
         <div class="form-grid" style="grid-template-columns:1fr 1fr">
             <div class="field">
                 <label asp-for="Form.CategoriaId">Categoría</label>
-                <select asp-for="Form.CategoriaId">
+                <select asp-for="Form.CategoriaId" disabled="@bloq">
                     <option value="">— Sin categoría —</option>
                     @foreach (var c in Model.Categorias)
                     {
@@ -158,7 +194,7 @@
             </div>
             <div class="field">
                 <label asp-for="Form.Modalidad">Modalidad</label>
-                <select asp-for="Form.Modalidad">
+                <select asp-for="Form.Modalidad" disabled="@bloq">
                     <option value="">— Sin definir —</option>
                     <option value="Virtual">Virtual</option>
                     <option value="Presencial">Presencial</option>
@@ -170,17 +206,17 @@
         <div class="form-grid" style="grid-template-columns:1fr 1fr">
             <div class="field">
                 <label asp-for="Form.TiempoTexto">Tiempo estimado (texto libre)</label>
-                <input asp-for="Form.TiempoTexto" maxlength="120" placeholder="ej. 5 días hábiles" />
+                <input asp-for="Form.TiempoTexto" disabled="@bloq" maxlength="120" placeholder="ej. 5 días hábiles" />
             </div>
             <div class="field">
                 <label asp-for="Form.CostoTexto">Costo (texto libre)</label>
-                <input asp-for="Form.CostoTexto" maxlength="250" placeholder="ej. L. 200.00, o Gratuito" />
+                <input asp-for="Form.CostoTexto" disabled="@bloq" maxlength="250" placeholder="ej. L. 200.00, o Gratuito" />
             </div>
         </div>
 
         <div class="field">
             <label asp-for="Form.CostoEsGratuito">¿Es gratuito?</label>
-            <select asp-for="Form.CostoEsGratuito">
+            <select asp-for="Form.CostoEsGratuito" disabled="@bloq">
                 <option value="">— No especificado —</option>
                 <option value="true">Sí, es gratuito</option>
                 <option value="false">No, tiene costo</option>
@@ -189,7 +225,7 @@
 
         <div class="field">
             <label class="chk-label">
-                <input asp-for="Form.EstaEnSol" type="checkbox" id="chk-en-sol" /> Se puede hacer desde SOL
+                <input asp-for="Form.EstaEnSol" disabled="@bloq" type="checkbox" id="chk-en-sol" /> Se puede hacer desde SOL
             </label>
         </div>
         <div class="field">
@@ -199,7 +235,7 @@
                escribe tiene que ver la dirección completa que va a producir, no imaginarla. *@
             <div style="display:flex;align-items:stretch;flex-wrap:wrap">
                 <span style="display:inline-flex;align-items:center;padding:0 10px;background:#f1f5f9;border:1px solid #cbd5e1;border-right:none;border-radius:6px 0 0 6px;font-family:monospace;font-size:13px;color:#475569;white-space:nowrap">@Model.PrefijoSol</span>
-                <input asp-for="Form.SolTramo" maxlength="300" placeholder="tramo-final"
+                <input asp-for="Form.SolTramo" disabled="@bloq" maxlength="300" placeholder="tramo-final"
                        style="flex:1 1 180px;min-width:140px;border-radius:0 6px 6px 0;font-family:monospace" />
             </div>
             <span asp-validation-for="Form.SolTramo" class="field-error"></span>
@@ -219,7 +255,7 @@
                         manda el tramo.
                     </p>
                     <label class="chk-label" style="font-size:13px">
-                        <input asp-for="Form.QuitarSolHeredada" type="checkbox" /> Quitar este enlace heredado
+                        <input asp-for="Form.QuitarSolHeredada" disabled="@bloq" type="checkbox" /> Quitar este enlace heredado
                     </label>
                 </div>
             }
@@ -235,7 +271,7 @@
         <div class="form-grid">
             <div class="field">
                 <label asp-for="Form.EnlacePrincipal">Enlace principal</label>
-                <input asp-for="Form.EnlacePrincipal" type="url" maxlength="600" />
+                <input asp-for="Form.EnlacePrincipal" disabled="@bloq" type="url" maxlength="600" />
             </div>
             <div class="field">
                 <label asp-for="Form.DiagramaUrl">URL del diagrama</label>
@@ -250,7 +286,7 @@
 
         <div class="field">
             <label asp-for="Form.ObservacionesDiger">Observaciones DIGER</label>
-            <textarea asp-for="Form.ObservacionesDiger" rows="3"></textarea>
+            <textarea asp-for="Form.ObservacionesDiger" disabled="@bloq" rows="3"></textarea>
         </div>
 
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
