@@ -29,7 +29,7 @@ public class ImportarFichaTests : IDisposable
         var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _ctx = new AppDbContext(opts, new Publico.FakeGlobalCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
+        _ctx = new AppDbContext(opts, new FakeGlobalCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -285,7 +285,7 @@ public class ImportarFichaTests : IDisposable
     // ── Armado ────────────────────────────────────────────────────────────────
 
     private Task<ResultadoImportacion> Importar(int fichaId, int? expedienteId = null) =>
-        new ImportarFichaCommandHandler(_ctx, new Publico.FakeGlobalCurrentUser())
+        new ImportarFichaCommandHandler(_ctx, new FakeGlobalCurrentUser())
             .Handle(new ImportarFichaCommand(fichaId, expedienteId), CancellationToken.None);
 
     private async Task<TramiteSiger> FichaAsync(string codigo = "400-001")

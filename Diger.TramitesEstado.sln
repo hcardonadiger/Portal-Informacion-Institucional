@@ -13,7 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Applic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Infrastructure", "src\Infrastructure\Diger.TramitesEstado.Infrastructure.csproj", "{A1B2C3D4-1003-1003-1003-000000000030}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Presentation", "src\Presentation\Diger.TramitesEstado.Presentation.csproj", "{A1B2C3D4-1004-1004-1004-000000000040}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Api", "src\Api\Diger.TramitesEstado.Api.csproj", "{A1B2C3D4-1004-1004-1004-000000000040}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Web", "src\Web\Diger.TramitesEstado.Web.csproj", "{A1B2C3D4-1005-1005-1005-000000000050}"
 EndProject
@@ -27,11 +27,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Web.Te
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Web", "Web", "{7A9DC31B-48DE-C68F-0375-757225B93DB9}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Presentation.Tests", "Presentation.Tests", "{59F4A196-1936-D7BC-DA11-66C63955AA2F}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Api.Tests", "Api.Tests", "{59F4A196-1936-D7BC-DA11-66C63955AA2F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Presentation.Tests", "tests\Presentation.Tests\Diger.TramitesEstado.Presentation.Tests.csproj", "{379854F6-2136-4ECE-9A26-4C0F4B177877}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Diger.TramitesEstado.Api.Tests", "tests\Api.Tests\Diger.TramitesEstado.Api.Tests.csproj", "{379854F6-2136-4ECE-9A26-4C0F4B177877}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Presentation", "Presentation", "{AB8439CA-CBB3-1386-BEDD-C0F8099D4DE9}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Api", "Api", "{AB8439CA-CBB3-1386-BEDD-C0F8099D4DE9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

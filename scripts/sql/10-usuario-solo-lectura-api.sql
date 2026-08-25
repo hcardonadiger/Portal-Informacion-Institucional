@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Usuario de SOLO LECTURA para la API pública (Presentation)
+   Usuario de SOLO LECTURA para la API pública (src/Api)
    ───────────────────────────────────────────────────────────────────────────
    ── Por qué existe ─────────────────────────────────────────────────────────
    La API pública es la única cara del sistema expuesta a la red, y hasta ahora

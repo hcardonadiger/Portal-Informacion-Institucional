@@ -28,7 +28,7 @@ public class PasarASigerTests : IDisposable
         var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _ctx = new AppDbContext(opts, new Publico.FakeGlobalCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
+        _ctx = new AppDbContext(opts, new FakeGlobalCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
     }
 
     public void Dispose() => _ctx.Dispose();

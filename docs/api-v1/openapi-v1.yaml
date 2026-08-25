@@ -1,14 +1,14 @@
 # =============================================================================
 # ESTE ARCHIVO SE GENERA. No lo edite a mano: la próxima regeneración lo pisa.
 #
-# Lo produce el código de src/Presentation — las rutas, los tipos de respuesta y los
+# Lo produce el código de src/Api — las rutas, los tipos de respuesta y los
 # comentarios XML de los controladores — y lo vigila
-# tests/Presentation.Tests/EspecificacionPublicadaTests.cs, que falla si este archivo
+# tests/Api.Tests/EspecificacionPublicadaTests.cs, que falla si este archivo
 # y el código dejan de coincidir.
 #
 # Para regenerarlo después de cambiar la API:
 #
-#     ACTUALIZAR_SPEC=1 dotnet test tests/Presentation.Tests
+#     ACTUALIZAR_SPEC=1 dotnet test tests/Api.Tests
 #
 # Lo que una especificación no sabe decir —cómo integrarse, las dos cadencias de
 # sincronización, qué significa fichaCompleta, dónde vive cada ambiente— está en

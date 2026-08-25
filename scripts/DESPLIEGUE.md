@@ -7,7 +7,7 @@ no debe compartir proceso con ella. Si uno se recicla o se cae, los otros dos si
 | Sistema | Proyecto | Marco | Sitio | Grupo de aplicaciones |
 |---|---|---|---|---|
 | PortalDigital (interno) | `src/Web` | .NET 9 | `DIGER - PortalDigital` | `DIGER_PortalDigital` |
-| API pública v1 | `src/Presentation` | .NET 9 | `DIGER - API v1` | `DIGER_ApiPublica` |
+| API pública v1 | `src/Api` | .NET 9 | `DIGER - API v1` | `DIGER_ApiPublica` |
 | HondurasÁgil (ciudadano) | `src/Web` de `VentanillaDigital.Net` | .NET 10 | `DIGER - HondurasAgil` | `DIGER_HondurasAgil` |
 
 ---

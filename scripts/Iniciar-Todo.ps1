@@ -39,27 +39,27 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$sistemas = @(
-    @{ Nombre = 'Portal interno'
+$sistemas = \(
+    \{ Nombre = 'Portal interno'
        Proyecto = (Join-Path $RepoPortal 'src\Web\Diger.TramitesEstado.Web.csproj')
        Url = 'https://localhost:49175'
        Puerto = 49175
        Perfil = $null }
 
-    @{ Nombre = 'API publica'
-       Proyecto = (Join-Path $RepoPortal 'src\Presentation\Diger.TramitesEstado.Presentation.csproj')
+    \{ Nombre = 'API publica'
+       Proyecto = (Join-Path $RepoPortal 'src\Api\Diger.TramitesEstado.Api.csproj')
        Url = 'https://localhost:7199/swagger'
        Puerto = 7199
-       Perfil = 'Diger.TramitesEstado.Presentation' }
+       Perfil = 'Diger.TramitesEstado.Api' }
 
-    @{ Nombre = 'HondurasAgil'
+    \{ Nombre = 'HondurasAgil'
        Proyecto = (Join-Path $RepoVentanilla 'src\Web\Diger.VentanillaDigital.Web.csproj')
        Url = 'https://localhost:7180'
        Puerto = 7180
        Perfil = 'https' }
 )
 
-$mapa = @{ 'Portal' = 'Portal interno'; 'Api' = 'API publica'; 'HondurasAgil' = 'HondurasAgil' }
+$mapa = \{ 'Portal' = 'Portal interno'; 'Api' = 'API publica'; 'HondurasAgil' = 'HondurasAgil' }
 if ($Solo -ne 'Todos') { $sistemas = $sistemas | Where-Object { $_.Nombre -eq $mapa[$Solo] } }
 
 function Puerto-Ocupado {
@@ -86,8 +86,8 @@ foreach ($s in $sistemas) {
 
     Write-Host "[arrancando] $($s.Nombre)..." -ForegroundColor Cyan
 
-    $argumentos = @('run', '--project', $s.Proyecto)
-    if ($s.Perfil) { $argumentos += @('--launch-profile', $s.Perfil) }
+    $argumentos = \('run', '--project', $s.Proyecto)
+    if ($s.Perfil) { $argumentos += \('--launch-profile', $s.Perfil) }
 
     Start-Process -FilePath 'dotnet' -ArgumentList $argumentos -WindowStyle Minimized
 }

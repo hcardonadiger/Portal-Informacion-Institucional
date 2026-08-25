@@ -11,7 +11,7 @@ The solution (`Diger.TramitesEstado.sln`) contains two runnable hosts and four s
 | Project | Role |
 |---|---|
 | `src/Web` | Razor Pages web app — the primary UI used in production |
-| `src/Presentation` | Minimal API / Swagger host — alternative API surface |
+| `src/Api` | Public API v1 (Swagger). **Standalone: references no other project.** |
 | `src/Application` | CQRS handlers (MediatR), FluentValidation, pipeline behaviors |
 | `src/Domain` | Entities, enums, domain events, `DomainException` |
 | `src/Infrastructure` | EF Core (SQL Server), repositories, `IPasswordHasher`, `ICurrentUserService` |
@@ -28,7 +28,7 @@ dotnet build Portal-Informacion-Institucional\Diger.TramitesEstado.sln
 dotnet run --project Portal-Informacion-Institucional\src\Web
 
 # Run the API host
-dotnet run --project Portal-Informacion-Institucional\src\Presentation
+dotnet run --project Portal-Informacion-Institucional\src\Api
 
 # Run all tests
 dotnet test Portal-Informacion-Institucional\Diger.TramitesEstado.sln
@@ -47,7 +47,8 @@ In development the web app auto-migrates and seeds seed usuarios on startup (`Pr
 ### Clean Architecture layers
 
 ```
-Web / Presentation  →  Application  →  Domain
+Web  →  Application  →  Domain     (PortalDigital)
+Api  →  su propio modelo de lectura      (independiente)
                     →  Infrastructure (registered via DI)
 ```
 

@@ -11,7 +11,7 @@ The solution (`Diger.TramitesEstado.sln`) contains two runnable hosts and four s
 | Project | Role |
 |---|---|
 | `src/Web` | Razor Pages web app — the primary UI used in production |
-| `src/Presentation` | Minimal API / Swagger host — alternative API surface |
+| `src/Api` | Public API v1 (Swagger). **Standalone: references no other project.** |
 | `src/Application` | CQRS handlers (MediatR), FluentValidation, pipeline behaviors |
 | `src/Domain` | Entities, enums, domain events, `DomainException` |
 | `src/Infrastructure` | EF Core (SQL Server), repositories, `IPasswordHasher`, `ICurrentUserService` |
@@ -30,7 +30,7 @@ dotnet build Diger.TramitesEstado.sln
 dotnet run --project src\Web
 
 # Run the API host
-dotnet run --project src\Presentation
+dotnet run --project src\Api
 
 # Run all tests
 dotnet test Diger.TramitesEstado.sln
@@ -47,8 +47,8 @@ dotnet ef migrations add <NombreMigracion> --project src\Infrastructure --startu
 
 ## Local development
 
-- **Database**: SQL Server LocalDB. The dev connection string (`src/Web/appsettings.Development.json`) targets `(localdb)\MSSQLLocalDB`. On startup, in Development, the app auto-migrates and calls `DbSeeder.SeedUsuariosAsync` (`Program.cs`) **only if** `Datos:AplicarMigracionesAlArrancar` is `true` — off by default, on purpose: a `Development` connection string that happens to point at a shared/production-named database must not silently migrate it just because someone pressed F5. Enable it per machine, never in a committed appsettings file — e.g. `dotnet user-secrets set "Datos:AplicarMigracionesAlArrancar" true --project src\Web` (and the same for `src\Presentation` if you run that host), or the `Datos__AplicarMigracionesAlArrancar=true` environment variable. Tests never touch this — they use EF In-Memory.
-- **Seeded logins** (from `DbSeeder`, all password-hashed): `admin@diger.gob.hn` / `Admin#2026` (Administrador), plus `jefe.inst@`, `jefe.area@`, `jefe.uni@`, `empleado@`, `consultor@` with passwords `JefeInst#2026`, `JefeArea#2026`, `JefeUni#2026`, `Empleado#2026`, `Consultor#2026`.
+- **Database**: SQL Server LocalDB. The dev connection string (`src/Web/appsettings.Development.json`) targets `(localdb)\MSSQLLocalDB`. On startup, in Development, the app auto-migrates and calls `DbSeeder.SeedUsuariosAsync` (`Program.cs`) **only if** `Datos:AplicarMigracionesAlArrancar` is `true` — off by default, on purpose: a `Development` connection string that happens to point at a shared/production-named database must not silently migrate it just because someone pressed F5. Enable it per machine, never in a committed appsettings file — e.g. `dotnet user-secrets set "Datos:AplicarMigracionesAlArrancar" true --project src\Web` or the `Datos__AplicarMigracionesAlArrancar=true` environment variable. Tests never touch this — they use EF In-Memory.
+- **Seeded logins** (from `DbSeeder`, all password-hashed): `admin\diger.gob.hn` / `Admin#2026` (Administrador), plus `jefe.inst\`, `jefe.area\`, `jefe.uni\`, `empleado\`, `consultor\` with passwords `JefeInst#2026`, `JefeArea#2026`, `JefeUni#2026`, `Empleado#2026`, `Consultor#2026`.
 - **Ports**: `launchSettings.json` binds https `49175`/`49176` + http `49177`; `.claude/launch.json` ("web") runs http `5011`. The certificate-login flow hard-codes `https://localhost:49176/Cuenta/LoginCertificado` in Development, so keep 49176 free when testing cert login.
 - **Secrets**: Supabase import credentials live in User Secrets (UserSecretsId `diger-tramites-estado-web`) under `Supabase:Url` / `Supabase:AnonKey` — not in appsettings.
 - **LocalDB gotcha**: the instance sleeps on inactivity and occasionally leaves a stuck `sqlservr` process, so app startup can fail on `MigrateAsync()` with "SQL Server process failed to start". Fix: `sqllocaldb start MSSQLLocalDB` (or kill the zombie `sqlservr` and restart). The DbContext registration uses `EnableRetryOnFailure`, so avoid explicit EF transactions (they are incompatible with the retry strategy).
@@ -59,7 +59,8 @@ dotnet ef migrations add <NombreMigracion> --project src\Infrastructure --startu
 ### Clean Architecture layers
 
 ```
-Web / Presentation  →  Application  →  Domain
+Web  →  Application  →  Domain     (PortalDigital)
+Api  →  su propio modelo de lectura      (independiente)
                     →  Infrastructure (registered via DI)
 ```
 

@@ -61,7 +61,7 @@ debería tener que custodiar un secreto para comprobar que el servicio está en 
 La clave **nunca va en `appsettings.json`**, que se versiona. En desarrollo vive en user-secrets:
 
 ```
-dotnet user-secrets set "PortalDigitalApi:ApiKey" "<clave>" --project src/Presentation
+dotnet user-secrets set "PortalDigitalApi:ApiKey" "<clave>" --project src/Api
 ```
 
 Dónde vive en producción sigue **sin decidirse** (P-03 en [`decisiones-fase0.md`](./decisiones-fase0.md)).
@@ -130,6 +130,12 @@ tiene el enlace a SOL.
 
 Cada ficha del catálogo trae `fichaCompleta` como dato informativo. El filtrado real lo hace el
 servidor con **`?soloFichasCompletas=true`**.
+
+**Quién lo decide.** Esa regla es de PortalDigital, no de esta API. La API no la evalúa: lee una
+columna que PortalDigital mantiene calculada en la base y la sirve tal cual. Para un consumidor no
+cambia nada —el campo y el filtro son los mismos de siempre—, pero significa que **el día que
+DIGER agregue un campo obligatorio, esta API no cambia ni se redespliega**: el catálogo empieza a
+reportar menos fichas completas y ya está.
 
 **Un portal de cara al ciudadano debería mandar siempre ese filtro.** Sin él pueden salir fichas
 sin plazo y sin costo, que al ciudadano le sirven de poco: le dicen que el trámite existe pero no
@@ -245,12 +251,12 @@ Cuando existan y toquen la superficie pública, entrarán acá y en la especific
 comentarios XML de los controladores:
 
 ```
-ACTUALIZAR_SPEC=1 dotnet test tests/Presentation.Tests
+ACTUALIZAR_SPEC=1 dotnet test tests/Api.Tests
 ```
 
 y revise el diff de `openapi-v1.yaml` como parte del cambio.
 
-`tests/Presentation.Tests` falla si el archivo comprometido y el código dejan de coincidir. Falla
+`tests/Api.Tests` falla si el archivo comprometido y el código dejan de coincidir. Falla
 también si aparece o desaparece una ruta: las siete están enumeradas a mano en
 `EspecificacionPublicadaTests`, para que una ruta nueva tenga que pasar por una decisión y no se
 cuele sola en la v1.

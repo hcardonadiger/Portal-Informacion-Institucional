@@ -59,7 +59,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'
 
-$script:Fallos = @()
+$script:Fallos = \()
 
 function Escribir-Paso  { param($t) Write-Host ""; Write-Host "-- $t" -ForegroundColor Cyan }
 function Escribir-Ok    { param($t) Write-Host "   [ok]    $t" -ForegroundColor Green }
@@ -98,7 +98,7 @@ function Verificar-Requisitos {
     # Es el error mas facil de cometer en este despliegue.
     if (Get-Command dotnet -ErrorAction SilentlyContinue) {
         $sdks = & dotnet --list-sdks
-        foreach ($v in @('9', '10')) {
+        foreach ($v in \('9', '10')) {
             if ($sdks -match "^$v\.") { Escribir-Ok "SDK de .NET $v presente" }
             else { Escribir-Mal "Falta el SDK de .NET $v - no se podra publicar uno de los tres proyectos." }
         }
@@ -107,8 +107,8 @@ function Verificar-Requisitos {
     }
 
     # Sin el Hosting Bundle, IIS devuelve 500.30 y el navegador no dice que falta.
-    $runtimes = if (Get-Command dotnet -ErrorAction SilentlyContinue) { & dotnet --list-runtimes } else { @() }
-    foreach ($v in @('9', '10')) {
+    $runtimes = if (Get-Command dotnet -ErrorAction SilentlyContinue) { & dotnet --list-runtimes } else { \() }
+    foreach ($v in \('9', '10')) {
         if ($runtimes -match "^Microsoft\.AspNetCore\.App $v\.") {
             Escribir-Ok "Runtime de ASP.NET Core $v presente"
         } else {
@@ -127,19 +127,19 @@ function Verificar-Requisitos {
         Escribir-Mal 'No se puede comprobar AspNetCoreModuleV2: IIS no esta instalado en esta maquina.'
     }
 
-    foreach ($r in @(@{n='PortalDigital'; p=$RepoPortal}, @{n='HondurasAgil'; p=$RepoVentanilla})) {
+    foreach ($r in \(\{n='PortalDigital'; p=$RepoPortal}, \{n='HondurasAgil'; p=$RepoVentanilla})) {
         if (Test-Path $r.p) { Escribir-Ok "Repositorio de $($r.n): $($r.p)" }
         else { Escribir-Mal "No existe el repositorio de $($r.n) en $($r.p)." }
     }
 
-    foreach ($b in @($BasePortal, $BaseVentanilla)) {
+    foreach ($b in \($BasePortal, $BaseVentanilla)) {
         $cs = "Server=$ServidorSql;Database=master;Trusted_Connection=True;TrustServerCertificate=True;Connect Timeout=10;"
         try {
             $cn = New-Object System.Data.SqlClient.SqlConnection $cs
             $cn.Open()
             $cmd = $cn.CreateCommand()
-            $cmd.CommandText = "SELECT COUNT(*) FROM sys.databases WHERE name = @n"
-            [void]$cmd.Parameters.AddWithValue('@n', $b)
+            $cmd.CommandText = "SELECT COUNT(*) FROM sys.databases WHERE name = \n"
+            [void]$cmd.Parameters.AddWithValue('\n', $b)
             $existe = [int]$cmd.ExecuteScalar()
             $cn.Close()
             if ($existe -gt 0) { Escribir-Ok "Base '$b' accesible en $ServidorSql" }
@@ -276,17 +276,17 @@ function Asegurar-VariableDeEntorno {
 
     # Aqui viven los secretos (P-03). No es un archivo de la carpeta de publicacion,
     # asi que no se va en un despliegue ni acaba en el repositorio.
-    $filtro = "system.applicationHost/applicationPools/add[@name='$Pool']/environmentVariables"
+    $filtro = "system.applicationHost/applicationPools/add[\name='$Pool']/environmentVariables"
 
     # Idempotencia: quitar antes de poner. Anadir dos veces la misma variable deja la
     # configuracion de IIS invalida.
     try {
         Remove-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' `
-            -filter $filtro -name '.' -AtElement @{name=$Nombre} -ErrorAction SilentlyContinue
+            -filter $filtro -name '.' -AtElement \{name=$Nombre} -ErrorAction SilentlyContinue
     } catch { }
 
     Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' `
-        -filter $filtro -name '.' -value @{name=$Nombre; value=$Valor}
+        -filter $filtro -name '.' -value \{name=$Nombre; value=$Valor}
 
     Escribir-Ok "Variable '$Nombre' fijada en '$Pool'"
 }
@@ -328,7 +328,7 @@ function Asegurar-Sitio {
 # =============================================================================
 
 function Probar-Humo {
-    param([string]$Url, [string]$Nombre, [int]$Min = 200, [int]$Max = 399, [hashtable]$Cabeceras = @{})
+    param([string]$Url, [string]$Nombre, [int]$Min = 200, [int]$Max = 399, [hashtable]$Cabeceras = \{})
 
     try {
         $r = Invoke-WebRequest -Uri $Url -Headers $Cabeceras -UseBasicParsing `
@@ -375,14 +375,14 @@ $csVentanilla = "Server=$ServidorSql;Database=$BaseVentanilla;Trusted_Connection
 # Publicar los tres ANTES de tocar IIS: si uno no compila, mejor enterarse ahora que
 # con dos sitios ya parados.
 $tmpPortal     = Publicar-Aplicacion (Join-Path $RepoPortal     'src\Web\Diger.TramitesEstado.Web.csproj') 'PortalDigital'
-$tmpApi        = Publicar-Aplicacion (Join-Path $RepoPortal     'src\Presentation\Diger.TramitesEstado.Presentation.csproj') 'ApiPublica'
+$tmpApi        = Publicar-Aplicacion (Join-Path $RepoPortal     'src\Api\Diger.TramitesEstado.Api.csproj') 'ApiPublica'
 $tmpVentanilla = Publicar-Aplicacion (Join-Path $RepoVentanilla 'src\Web\Diger.VentanillaDigital.Web.csproj') 'HondurasAgil'
 
 Migrar-Base $RepoPortal     'src\Infrastructure' 'src\Web' $BasePortal     'PortalDigital'
 Migrar-Base $RepoVentanilla 'src\Infrastructure' 'src\Web' $BaseVentanilla 'HondurasAgil'
 
 Escribir-Paso 'Grupos de aplicaciones'
-foreach ($p in @($poolPortal, $poolApi, $poolVentanilla)) { Asegurar-GrupoDeAplicaciones $p }
+foreach ($p in \($poolPortal, $poolApi, $poolVentanilla)) { Asegurar-GrupoDeAplicaciones $p }
 
 Escribir-Paso 'Variables de entorno (aqui viven los secretos)'
 Asegurar-VariableDeEntorno $poolPortal     'ASPNETCORE_ENVIRONMENT' 'Production'
@@ -411,7 +411,7 @@ Asegurar-Sitio 'DIGER - API v1'        $poolApi        $destinoApi        $Puert
 Asegurar-Sitio 'DIGER - HondurasAgil'  $poolVentanilla $destinoVentanilla $PuertoVentanilla $HostVentanilla
 
 Escribir-Paso 'Arrancando'
-foreach ($p in @($poolPortal, $poolApi, $poolVentanilla)) {
+foreach ($p in \($poolPortal, $poolApi, $poolVentanilla)) {
     if ((Get-WebAppPoolState -Name $p).Value -ne 'Started') { Start-WebAppPool -Name $p }
     Escribir-Ok "Grupo '$p' en marcha"
 }
@@ -426,7 +426,7 @@ $baseVentanilla = if ($HostVentanilla) { "http://$HostVentanilla" } else { "http
 Probar-Humo "$baseApi/api/v1/salud" 'API - salud' 200 200
 # Sin clave debe ser 401. Si contesta 200, la autenticacion NO esta puesta.
 Probar-Humo "$baseApi/api/v1/tramites" 'API - rechaza sin clave' 401 401
-Probar-Humo "$baseApi/api/v1/tramites?tamano=1" 'API - catalogo con clave' 200 200 @{ 'X-Api-Key' = $claveTexto }
+Probar-Humo "$baseApi/api/v1/tramites?tamano=1" 'API - catalogo con clave' 200 200 \{ 'X-Api-Key' = $claveTexto }
 # Swagger NO debe estar publicado en produccion.
 Probar-Humo "$baseApi/swagger/v1/swagger.json" 'API - Swagger cerrado' 404 404
 Probar-Humo $basePortal     'PortalDigital' 200 399
