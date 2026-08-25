@@ -311,6 +311,138 @@ function categoriaOptions(){
   cats.forEach(function(c){ opts += '<option value="'+c.id+'">'+escHtml(c.nombre)+'</option>'; });
   return opts;
 }
+
+// ── PASAR A SIGER (Fase 9) ───────────────────────────────────
+// Escribe el trámite del expediente hacia su ficha del inventario: la primera vez creándola, las
+// siguientes sobrescribiéndola.
+//
+// Trabaja sobre lo GUARDADO, no sobre lo que hay en pantalla. El editor vive en el navegador y no
+// manda nada hasta que alguien guarda; el diálogo lo dice con todas sus letras en vez de pasar
+// datos viejos sin avisar.
+var _paseTramite = null;
+
+function puedePasarASiger(){
+  var m = window.__EXPMETA__ || {};
+  return !!(m.id && m.puedeSiger);
+}
+
+async function abrirModalPase(i){
+  if(!puedePasarASiger()) return;
+  _paseTramite = i;
+
+  var m = document.getElementById('pase-modal');
+  m.style.display = 'flex';
+  document.getElementById('pase-confirmar').disabled = true;
+  document.getElementById('pase-titulo').textContent = 'Pasar a SIGER';
+  document.getElementById('pase-cuerpo').innerHTML =
+    '<div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Calculando qué cambiaría…</div>';
+
+  try{
+    var url = __EXPMETA__.vistaPreviaPaseUrl + '&id=' + __EXPMETA__.id + '&tramiteIndex=' + i;
+    var resp = await fetch(url, { headers: { 'Accept':'application/json' } });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    pintarVistaPreviaPase(await resp.json());
+  }catch(err){
+    document.getElementById('pase-cuerpo').innerHTML =
+      '<div class="alert-error">No se pudo calcular la vista previa: ' + escHtml(err.message) + '</div>';
+  }
+}
+
+function cerrarModalPase(){
+  document.getElementById('pase-modal').style.display = 'none';
+  _paseTramite = null;
+}
+
+function pintarVistaPreviaPase(p){
+  document.getElementById('pase-titulo').textContent =
+    (p.esNueva ? 'Crear la ficha ' : 'Actualizar la ficha ') + p.codigo;
+
+  var h = '';
+
+  h += '<p style="font-size:13px;color:#4a5568;margin:0 0 .9rem;padding:.6rem .7rem;background:#f8fafc;border-radius:6px">'
+     + '<strong>Se pasa lo que está guardado</strong>, no lo que hay en pantalla. Si acaba de editar algo, guarde antes.'
+     + '</p>';
+
+  if(p.esNueva){
+    h += '<div style="padding:.6rem .7rem;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:6px;margin-bottom:.9rem;font-size:13px;color:#065f46">'
+       + 'La ficha todavía no existe. Se va a crear con el código <strong>' + escHtml(p.codigo) + '</strong>, '
+       + '<strong>sin publicar</strong>: publicarla en el portal ciudadano es una decisión aparte.'
+       + '</div>';
+  }
+
+  if(!p.cambios.length && !p.colecciones.some(function(c){ return c.antes !== c.despues; })){
+    h += '<div style="padding:1rem;background:#f8fafc;border-radius:8px;font-size:13px;color:#64748b;text-align:center">'
+       + 'La ficha ya dice exactamente esto. No hay nada que pasar.'
+       + '</div>';
+    document.getElementById('pase-cuerpo').innerHTML = h;
+    document.getElementById('pase-confirmar').disabled = true;
+    return;
+  }
+
+  if(p.cambios.length){
+    h += '<table class="dtbl"><thead><tr><th>Campo</th><th>Dice ahora</th><th>Va a decir</th></tr></thead><tbody>';
+    p.cambios.forEach(function(c){
+      h += '<tr>'
+         + '<td style="font-weight:600">' + escHtml(c.campo) + '</td>'
+         + '<td style="color:#9f1239">' + (c.antes ? escHtml(c.antes) : '<em style="color:#94a3b8">sin capturar</em>') + '</td>'
+         + '<td style="color:#065f46">' + (c.despues ? escHtml(c.despues) : '<em style="color:#94a3b8">sin capturar</em>') + '</td>'
+         + '</tr>';
+    });
+    h += '</tbody></table>';
+  }
+
+  var colsCambiadas = p.colecciones.filter(function(c){ return c.antes !== c.despues; });
+  if(colsCambiadas.length){
+    h += '<h3 class="sec-h" style="margin-top:1rem">Listas</h3><ul style="font-size:13px;color:#4a5568;margin:0;padding-left:1.2rem">';
+    colsCambiadas.forEach(function(c){
+      h += '<li>' + escHtml(c.coleccion) + ': <strong>' + c.antes + '</strong> → <strong>' + c.despues + '</strong></li>';
+    });
+    h += '</ul>';
+  }
+
+  h += '<p style="font-size:12px;color:#64748b;margin:1rem 0 0;line-height:1.5">'
+     + 'No se tocan el código, el estado de SIGER, los pasos del proceso, ni si la ficha está publicada o marcada como popular. '
+     + (p.esNueva ? '' : 'Antes de sobrescribir queda archivada una versión con lo que dice hoy.')
+     + '</p>';
+
+  document.getElementById('pase-cuerpo').innerHTML = h;
+  document.getElementById('pase-confirmar').disabled = false;
+}
+
+async function confirmarPase(){
+  if(_paseTramite === null) return;
+  var btn = document.getElementById('pase-confirmar');
+  btn.disabled = true;
+  btn.textContent = 'Pasando…';
+
+  try{
+    var fd = new FormData();
+    fd.append('id', __EXPMETA__.id);
+    fd.append('tramiteIndex', _paseTramite);
+    fd.append('__RequestVerificationToken', __EXPMETA__.token);
+
+    var resp = await fetch(__EXPMETA__.pasarASigerUrl, { method:'POST', body: fd });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    var r = await resp.json();
+    if(!r.ok && r.error) throw new Error(r.error);
+
+    // El enlace recién creado se guarda del lado del cliente para que la insignia SIGER aparezca
+    // sin recargar; el servidor ya lo escribió.
+    _sigerIds[_paseTramite] = r.tramiteSigerId;
+    actualizarTabsTramite();
+
+    cerrarModalPase();
+    mostrarToast(r.fueCreada
+      ? 'Ficha ' + r.codigo + ' creada en SIGER (sin publicar).'
+      : 'Ficha ' + r.codigo + ' actualizada. Versión ' + r.versionArchivada + ' archivada.');
+  }catch(err){
+    document.getElementById('pase-cuerpo').innerHTML =
+      '<div class="alert-error">No se pudo pasar: ' + escHtml(err.message) + '</div>';
+  }finally{
+    btn.textContent = 'Confirmar';
+    btn.disabled = false;
+  }
+}
 // ── INFRAESTRUCTURA SOL (una vez por expediente) ─────────────
 var PERFILES = [
   'Administrador/a de redes','Administrador/a de base de datos',
@@ -873,7 +1005,9 @@ async function seleccionarSiger(it){
     var det = await resp.json();
 
     setTimeout(function(){
-      if(det.disponibleEnLinea) sv('modalidad_'+newIdx, 'En línea (total)');
+      // Valor del catálogo cerrado. Antes decía 'En línea (total)', que desde la Fase 8 ya no
+      // existe en el desplegable: escribirlo dejaba la modalidad en blanco sin avisar.
+      if(det.disponibleEnLinea){ sv('modalidad_'+newIdx, 'Virtual'); sv('modalidad_detalle_'+newIdx, 'Importado de SIGER como disponible en línea'); }
       if(det.enlacePrincipal) sv('sitio_web_'+newIdx, det.enlacePrincipal);
       if(det.vigenciaDocumento) sv('plazo_legal_'+newIdx, det.vigenciaDocumento);
 
@@ -1161,6 +1295,14 @@ function fichaHTML(i, nombre, show){
     // ficha porque D-17 invierte quién manda: una vez enlazada, la ficha queda de solo lectura.
     + '<div class="card"><div class="ct">Ficha pública (lo que verá el ciudadano)</div>'
       + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Estos datos son los que se publican en el portal ciudadano. Un campo vacío deja la ficha incompleta y el portal puede ocultarla.</p>'
+      // El botón solo aparece si el expediente está guardado y quien mira puede escribir en
+      // SIGER. Ofrecerlo cuando el servidor lo va a rechazar solo produce un error inexplicable.
+      + (puedePasarASiger()
+          ? '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:.9rem">'
+            + '<button type="button" class="btnp" onclick="abrirModalPase('+i+')">Pasar a SIGER →</button>'
+            + '<span class="res-meta">Crea o actualiza la ficha del inventario. No la publica.</span>'
+          + '</div>'
+          : '')
       + '<div class="g3">'
         + '<div class="f"><label>Categoría</label><select id="categoria_id_'+i+'">'+categoriaOptions()+'</select></div>'
         + '<div class="f"><label>¿Es gratuito?</label><select id="es_gratuito_'+i+'"><option value="">— No especificado —</option><option value="true">Sí, es gratuito</option><option value="false">No, tiene costo</option></select></div>'

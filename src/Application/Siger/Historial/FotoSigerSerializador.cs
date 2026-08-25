@@ -45,14 +45,25 @@ public static class FotoSigerSerializador
 
     public static string Serializar(FichaFoto foto) => JsonSerializer.Serialize(foto, Opciones);
 
-    /// <summary>Lee un documento del archivo. Devuelve null si está corrupto o vacío: el archivo
-    /// se consulta desde pantallas, y una foto ilegible no debe tumbar la página que la muestra.</summary>
+    /// <summary>
+    /// Lee un documento archivado, o null si no se puede interpretar.
+    /// </summary>
+    /// <remarks>
+    /// Un documento que <b>parsea</b> no es lo mismo que un documento <b>utilizable</b>. Un JSON
+    /// como <c>{}</c> produce un <see cref="FichaFoto"/> con todo en nulo —incluidas las seis
+    /// colecciones, que la pantalla recorre— y eso reventaba el visor con un error 500 en vez de
+    /// enseñar la tarjeta de «no se pudo interpretar», que existe justo para esto.
+    ///
+    /// Por eso no basta con atrapar la excepción del parser: se exige además que el documento
+    /// traiga código, que es lo mínimo que tiene toda foto de verdad.
+    /// </remarks>
     public static FichaFoto? Leer(string? contenido)
     {
         if (string.IsNullOrWhiteSpace(contenido)) return null;
         try
         {
-            return JsonSerializer.Deserialize<FichaFoto>(contenido, Opciones);
+            var foto = JsonSerializer.Deserialize<FichaFoto>(contenido, Opciones);
+            return string.IsNullOrWhiteSpace(foto?.Codigo) ? null : foto;
         }
         catch (JsonException)
         {

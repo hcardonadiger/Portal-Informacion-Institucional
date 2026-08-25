@@ -1,22 +1,59 @@
 @page "{id:int}"
 @model Diger.TramitesEstado.Web.Pages.Siger.OriginalModel
 @{
-    ViewData["Title"] = "Original de SIGER";
+    var esOriginal = Model.Version == Diger.TramitesEstado.Domain.Entities.OrigenFoto.VersionOriginal;
+    ViewData["Title"] = esOriginal ? "Original de SIGER" : $"Versión {Model.Version}";
     var f = Model.Foto;
 }
 
 <div class="container" style="max-width:900px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap">
         <a class="btns" asp-page="/Siger/Detalle" asp-route-id="@Model.Id" style="font-size:13px">← Volver a la ficha</a>
-        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Cómo llegó esta ficha desde SIGER</h2>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">
+            @(esOriginal ? "Cómo llegó esta ficha desde SIGER" : $"Cómo estaba esta ficha antes del pase #{Model.Version}")
+        </h2>
     </div>
+
+    @* ── Historial (Fase 9) ──────────────────────────────────────────
+       Cada foto guarda el estado que un pase REEMPLAZÓ, no el que dejó. Por eso la lista se lee
+       hacia atrás: la versión más alta es lo que había justo antes del último pase. *@
+    @if (Model.Versiones.Count > 1)
+    {
+        <div class="card" style="margin-bottom:1rem">
+            <h3 class="sec-h">Versiones archivadas</h3>
+            <p style="font-size:13px;color:#4a5568;margin:0 0 .7rem">
+                Cada fila es el estado que un pase desde el expediente reemplazó. La versión 0 es
+                el inventario tal como llegó de SIGER, antes de que este portal escribiera nada.
+            </p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                @foreach (var v in Model.Versiones)
+                {
+                    var activa = v.Version == Model.Version;
+                    <a asp-page="/Siger/Original" asp-route-id="@Model.Id" asp-route-version="@v.Version"
+                       style="padding:6px 12px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;border:1.5px solid @(activa ? "#1455a4" : "#e2e8f0");background:@(activa ? "#dbeafe" : "#fff");color:@(activa ? "#1455a4" : "#475569")">
+                        @(v.EsOriginal ? "Original (0)" : $"Pase #{v.Version}")
+                        <span style="display:block;font-weight:400;font-size:11px;opacity:.8">@v.CapturadaEl.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
 
     @if (f is null)
     {
         <div class="card">
             <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
-                Esta ficha no tiene foto original guardada. Si el inventario aún no se ha
-                archivado, se toma desde <a asp-page="/Siger/Archivo">Archivo del SIGER original</a>.
+                @if (esOriginal)
+                {
+                    <text>
+                        Esta ficha no tiene foto original guardada. Si el inventario aún no se ha
+                        archivado, se toma desde <a asp-page="/Siger/Archivo">Archivo del SIGER original</a>.
+                    </text>
+                }
+                else
+                {
+                    <text>No hay ninguna versión archivada con ese número para esta ficha.</text>
+                }
             </p>
         </div>
     }

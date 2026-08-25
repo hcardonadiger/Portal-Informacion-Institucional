@@ -56,7 +56,7 @@ Tres lecturas:
 | **D-04** | La institución gana una URL base de SOL. El trámite solo guarda el tramo final. *(Hecho — ver Fase 7.)* |
 | **D-05** | Editar un trámite que ya está en PD se hace **siempre en el expediente**. |
 | **D-06** | Al importar, el usuario elige el expediente destino, **o** el bucket «Trámites Importados de SIGER» de esa institución. |
-| **D-07** | «Pasar a SIGER» crea una **versión nueva**. La anterior no se borra. Se muestra la más nueva. |
+| **D-07** | «Pasar a SIGER» crea una **versión nueva**. La anterior no se borra. Se muestra la más nueva. *(Hecho — ver Fase 9.)* |
 | **D-08** | Quién controla PD **selecciona manualmente** qué trámites se publican en HA. |
 | **D-09** | PD tiene una pantalla que lista todo lo publicado en HA, para administrarlo. |
 | **D-10** | La publicación es **manual pura y no bloquea**. La regla de estado queda como *advertencia*. |
@@ -64,7 +64,7 @@ Tres lecturas:
 | **D-12** | El contenido se edita en el expediente. `EstadoSiger` es lo único que se sigue editando **solo** en la ficha. *(Hecho — ver Fase 8.)* |
 | **D-13** | El trámite captura solo el tramo final de la URL SOL, con `sol.pdihonduras.gob.hn/<URL de la institución>/` como prefijo fijo en pantalla. *(Hecho. El prefijo va pegado al campo, no como texto de ayuda.)* |
 | **D-14** | Las URLs SOL completas ya cargadas **no se tocan**, y solo las usan los trámites que nunca pasaron por PD. *(Hecho. Medido: la única que hay apunta a google.com y está publicada — ver Fase 7.)* |
-| **D-15** | El historial es una **tabla de fotos** de la ficha y sus hijos. La fila viva es la última versión. |
+| **D-15** | El historial es una **tabla de fotos** de la ficha y sus hijos. La fila viva es la última versión. *(Hecho. La versión 0 quedó de la Fase 2; los pases escriben de la 1 en adelante.)* |
 | **D-16** | «Quitar de HA» **despublica**, no borra. |
 | **D-17** | **Bloqueo condicional.** Si la ficha ya está en PD, sus campos de contenido quedan bloqueados en la ficha y solo se editan en el expediente. Si no está en PD, se editan en la ficha. Nunca en los dos lugares a la vez. |
 | **D-18** | Antes de tocar nada se guarda una **foto del inventario SIGER original**, completa y permanente. |
@@ -583,18 +583,79 @@ sobrevive —el `Down` de la migración lo devuelve—.
 
 ---
 
-### Fase 9 — De PD a SIGER: promover, actualizar y versionar (~6 tareas)
+### Fase 9 — De PD a SIGER: promover, actualizar y versionar — HECHA
 
-**Entrega:** D-07, D-15, más las tareas 10–15 de `plan.md`.
+**Entrega:** D-07, D-15.
 
-**Por qué van juntos:** promover y actualizar son la misma operación —escribir del expediente
-hacia la ficha— una creando y otra actualizando. Si el versionado aterriza después de los
-primeros pases, esos quedan como agujeros sin historial.
+**Promover y actualizar resultaron ser la misma operación**, y por eso van en un solo comando:
+escribir del expediente hacia la ficha, una vez creando y las siguientes sobrescribiendo.
+Separarlas habría dejado dos caminos que escriben lo mismo y que acabarían discrepando.
 
-1. Historial como tabla de fotos, con la foto de la Fase 2 como versión cero.
-2. Promover: expediente → ficha nueva.
-3. «Pasar a SIGER»: diff contra lo publicado, confirmación, escritura y versión nueva.
-4. Ver el historial y una versión anterior.
+**Lo que ya estaba, y no hubo que rehacer.** La Fase 2 dejó el archivo de fotos con las **1 057
+fichas ya retratadas** en la versión 0, la entidad con su número de versión, y hasta el valor
+`PaseDesdeExpediente` reservado esperando esta fase. El historial no se construyó: se llenó.
+
+**Lo construido:**
+
+1. **`PromocionMapeo`** — el reparto de propiedad, que es el corazón de la fase:
+
+| Manda | Campos |
+|---|---|
+| **El expediente** | nombre, descripción, objetivo, dirigido a, dependencia, enlace principal, categoría, modalidad, tiempo, costo, vigencia, temporalidad, observaciones DIGER, si está en SOL, tramo del enlace, y las tres colecciones de contenido |
+| **SIGER** | `Codigo`, `IdSiger`, `EstadoSiger` y los **pasos del proceso** (D-11) |
+| **La curaduría** | `Publicado` y `EsPopular` |
+
+2. **El pase**, con su código propio: una ficha promovida hereda el prefijo de su institución y
+   lleva la marca `-P` —`400-P01`— que delata a simple vista que no vino del inventario. Nace
+   **sin publicar**: promover y publicar son actos distintos (D-10).
+3. **La vista previa**, que dice campo por campo de qué a qué cambia antes de confirmar.
+4. **El historial**: la pantalla del archivo pasó de enseñar solo la versión 0 a enseñar
+   cualquiera, con la lista de versiones y su fecha.
+
+**La decisión de diseño que más se va a agradecer: el diff se calcula con el mismo mapeo que
+escribe.** No hay una lista de campos para comparar y otra para copiar — se crea una ficha de
+mentira, se le aplica el mapeo real y se compara. Dos listas paralelas discreparían el día que
+alguien agregue un campo a una y olvide la otra, y entonces el diálogo diría «no cambia nada»
+mientras el pase sobrescribe algo. Hay una prueba que corre los dos y contrasta.
+
+**Qué archiva y cuándo.** La foto guarda **el estado que se reemplaza**, no el nuevo: es lo que
+permite responder «qué decía esta ficha antes del pase del martes». La versión 0 sigue reservada
+para el inventario original, así que las de los pases empiezan en 1. **No archiva al crear**, y no
+es un olvido: no había ficha que retratar.
+
+**Desviación del plan original.** Allí `EstaEnSol` y el enlace a SOL figuraban del lado de SIGER.
+Las fases 7 y 8 los movieron al expediente —D-17 los pone en el grupo de contenido y la Fase 8 le
+dio al expediente dónde guardarlos—, así que ahora los manda el expediente. La `SolUrl` heredada
+sí se queda en SIGER: es de antes de que las direcciones se compusieran y no tiene equivalente
+del otro lado (D-14).
+
+**Un permiso que el plan no pedía.** Pasar un trámite crea o sobrescribe una ficha del catálogo
+que ve el ciudadano, así que los dos manejadores exigen además permiso de edición sobre SIGER.
+Poder modelar un expediente no es lo mismo que poder escribir en el portal público; sin esa
+separación, cualquiera con permiso de expedientes podría reescribirlo.
+
+**Dos defectos encontrados de paso:**
+
+- **El visor del archivo reventaba con un error 500** ante un documento ilegible —justo el caso
+  que su tarjeta de «no se pudo interpretar» existía para cubrir—. Un JSON que *parsea* no es un
+  JSON *utilizable*: `{}` producía una foto con las seis colecciones en nulo y la pantalla las
+  recorría. Ahora se exige que el documento traiga código, que es lo mínimo que tiene toda foto
+  de verdad.
+- **La importación desde SIGER escribía «En línea (total)»** en el desplegable de modalidad, valor
+  que la Fase 8 retiró del catálogo: escribirlo dejaba la modalidad en blanco sin avisar. Ahora
+  escribe `Virtual` y deja constancia en el detalle.
+
+**El diálogo dice que trabaja sobre lo guardado**, no sobre lo que hay en pantalla. El editor vive
+en el navegador y no manda nada hasta que alguien guarda; leer de la base es lo único honesto, y
+decirlo con todas sus letras evita que alguien pase datos viejos creyendo que pasa los nuevos.
+
+**Pruebas:** 30 nuevas, **387 en total**. Las que sostienen la fase: que volver a pasar **no
+despublique** una ficha, que antes de sobrescribir quede la foto, que las colecciones se
+reemplacen y no se acumulen, y que los pasos del proceso sobrevivan al pase.
+
+**Despliegue: ninguno.** Esta fase no toca el esquema —el archivo de fotos y el enlace al
+expediente ya existían desde las fases 2 y 3—. No hay script que llevar al Producción real.
+
 
 ---
 

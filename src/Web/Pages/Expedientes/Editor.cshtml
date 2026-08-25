@@ -11,6 +11,8 @@
     var plantillaUrl = Url.Page("/Expedientes/Editor", "Plantilla");
     var sigerUrl = Url.Page("/Expedientes/Editor", "BuscarSiger");
     var sigerDetalleUrl = Url.Page("/Expedientes/Editor", "DetalleSiger");
+    var vistaPreviaPaseUrl = Url.Page("/Expedientes/Editor", "VistaPreviaPase");
+    var pasarASigerUrl = Url.Page("/Expedientes/Editor", "PasarASiger");
 }
 <link rel="stylesheet" href="~/css/expediente.css" asp-append-version="true" />
 
@@ -578,6 +580,25 @@
      style="display:none;position:fixed;z-index:1001;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 12px 32px rgba(10,45,110,.18);padding:5px;min-width:140px"></div>
 
 @* ── Modal buscar e importar trámite SIGER ── *@
+<div id="pase-modal" onclick="cerrarModalPase()"
+     style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+  <div onclick="event.stopPropagation()"
+       style="background:#fff;border-radius:16px;max-width:760px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid #eef1f7">
+      <span style="font-size:18px">📤</span>
+      <div style="flex:1"><div id="pase-titulo" style="font-size:15px;font-weight:700;color:#0a2d6e">Pasar a SIGER</div></div>
+      <button type="button" onclick="cerrarModalPase()" aria-label="Cerrar"
+              style="flex:none;border:0;background:#f0f4fa;color:#64748b;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
+    </div>
+    <div id="pase-cuerpo" style="flex:1;overflow-y:auto;padding:1rem 1.3rem;min-height:160px;max-height:55vh">
+      <div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Calculando qué cambiaría…</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;padding:1rem 1.3rem;border-top:1px solid #eef1f7">
+      <button type="button" class="btns" onclick="cerrarModalPase()">Cancelar</button>
+      <button type="button" class="btnp" id="pase-confirmar" onclick="confirmarPase()" disabled>Confirmar</button>
+    </div>
+  </div>
+</div>
 <div id="siger-modal" onclick="cerrarModalSiger()"
      style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
   <div onclick="event.stopPropagation()"
@@ -613,6 +634,9 @@
             plantillaUrl: '@plantillaUrl',
             sigerUrl: '@sigerUrl',
             sigerDetalleUrl: '@sigerDetalleUrl',
+            vistaPreviaPaseUrl: '@vistaPreviaPaseUrl',
+            pasarASigerUrl: '@pasarASigerUrl',
+            puedeSiger: @(Model.PuedeSiger ? "true" : "false"),
             plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
             esAdmin: @(Model.EsAdmin ? "true" : "false"),
             usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
