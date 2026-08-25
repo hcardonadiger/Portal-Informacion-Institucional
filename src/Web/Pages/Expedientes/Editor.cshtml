@@ -637,6 +637,9 @@
             vistaPreviaPaseUrl: '@vistaPreviaPaseUrl',
             pasarASigerUrl: '@pasarASigerUrl',
             puedeSiger: @(Model.PuedeSiger ? "true" : "false"),
+            fichasEnlazadas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.FichasEnlazadas.ToDictionary(k => k.Key, v => new { codigo = v.Value.Codigo, promovida = v.Value.EsPromovida }))),
+            fichaUrlBase: '@(Url.Page("/Siger/Detalle", new { id = 0 })!.TrimEnd('0'))',
             plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
             esAdmin: @(Model.EsAdmin ? "true" : "false"),
             usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(

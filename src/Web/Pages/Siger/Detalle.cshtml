@@ -26,6 +26,30 @@
         </div>
     </div>
 
+    @* ── Ficha promovida (Fase 11) ──────────────────────────────────────
+       Sin este aviso, alguien que busque este trámite en el inventario de SIGER no lo encuentra y
+       concluye que falta un dato. No falta: nunca estuvo ahí. *@
+    @if (t.IdSiger is null)
+    {
+        <div class="card" style="border-left:4px solid #166534;background:#f0fdf4;margin-bottom:1rem">
+            <h3 class="sec-h" style="color:#166534">Ficha creada desde un expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+                Este trámite <strong>no existe en el inventario de SIGER</strong>: lo levantó DIGER y
+                se promovió desde
+                @if (Model.ExpedientesVinculados.Count > 0)
+                {
+                    var v = Model.ExpedientesVinculados[0];
+                    <a asp-page="/Expedientes/Editor" asp-route-id="@v.Id">el expediente @v.Codigo</a>
+                }
+                else
+                {
+                    <text>un expediente</text>
+                }.
+                Por eso su código lleva la marca <strong>-P</strong> y no tiene Id de SIGER.
+            </p>
+        </div>
+    }
+
     @* ── De SIGER a un expediente (D-06, D-17) ──────────────────────────
        El enlace es lo que bloquea la ficha, así que la tarjeta lo dice antes de que alguien lo
        haga: no es «copiar datos», es «mudar dónde se editan». *@

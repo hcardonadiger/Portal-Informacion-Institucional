@@ -27,6 +27,11 @@ public sealed class IndexModel(IApplicationDbContext ctx) : PageModel
     /// de trabajo: sin él, el técnico tiene que ir fila por fila buscando el aviso.</summary>
     [BindProperty(SupportsGet = true)] public string? Completa { get; set; }
 
+    /// <summary>Origen de la ficha: «Siger» = vino del inventario, «Promovida» = nació en este
+    /// portal (D-07). La diferencia la da IdSiger, y sin poder filtrarla no hay forma de ver de
+    /// un vistazo cuánto ha crecido el catálogo por trabajo propio.</summary>
+    [BindProperty(SupportsGet = true)] public string? Origen { get; set; }
+
     public IReadOnlyList<string> Instituciones { get; private set; } = [];
     public IReadOnlyList<string> Estados { get; private set; } = [];
 
@@ -51,6 +56,9 @@ public sealed class IndexModel(IApplicationDbContext ctx) : PageModel
 
         // El criterio se repite en SQL porque FichaPublicaCompletitud no se puede traducir; es la
         // misma condición, campo por campo, que CamposFaltantes evalúa en memoria.
+        if (Origen == "Promovida") q = q.Where(t => t.IdSiger == null);
+        else if (Origen == "Siger") q = q.Where(t => t.IdSiger != null);
+
         if (Completa == "No") q = q.Where(FichaIncompleta);
         else if (Completa == "Si") q = q.Where(FichaCompleta);
 

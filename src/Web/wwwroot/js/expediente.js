@@ -429,7 +429,11 @@ async function confirmarPase(){
     // El enlace recién creado se guarda del lado del cliente para que la insignia SIGER aparezca
     // sin recargar; el servidor ya lo escribió.
     _sigerIds[_paseTramite] = r.tramiteSigerId;
+    // Solo al CREAR: una ficha que ya existía no cambia de origen porque la actualicemos, y
+    // pisar el dato la volvería azul aunque hubiera nacido acá.
+    if(r.fueCreada) registrarFichaEnlazada(r.tramiteSigerId, r.codigo, true);
     actualizarTabsTramite();
+    actualizarBadgesSiger();
 
     cerrarModalPase();
     mostrarToast(r.fueCreada
@@ -807,7 +811,7 @@ function tramRowHTML(i){
   if(window.__EXPMETA__ && window.__EXPMETA__.plantillas){
     window.__EXPMETA__.plantillas.forEach(function(p){ opts += '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; });
   }
-  var sigerBadge = (_sigerIds[i]) ? ' <span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1455a4;padding:1px 6px;border-radius:4px;vertical-align:middle">SIGER</span>' : '';
+  var sigerBadge = badgeSigerHTML(_sigerIds[i]);
   return '<div class="tram-row" style="flex-direction:row;align-items:flex-start;gap:10px;flex-wrap:wrap">'
     + '<div class="f" style="flex:1;min-width:250px"><label>Trámite ' + (i+1) + ' <span class="star">*</span>'
     + sigerBadge + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
@@ -900,22 +904,74 @@ var _sigerIds = [];
 // cuando alguien quita otro del medio o reordena. Vacía = trámite nuevo, el servidor la crea.
 var _claves = [];
 
+
+// ── INSIGNIA DE ORIGEN (Fase 11) ─────────────────────────────
+// Un trámite enlazado puede venir de dos sitios opuestos y la pantalla los pintaba iguales:
+//
+//   Azul  — se trajo del inventario de SIGER. DIGER está modelando algo que ya existía.
+//   Verde — la ficha nació acá y se promovió. DIGER está publicando algo que no existía.
+//
+// Confundirlos lleva a buscar en SIGER una ficha que nunca estuvo ahí. La diferencia la da
+// IdSiger, que el servidor ya resolvió y dejó en __EXPMETA__.fichasEnlazadas.
+/// Deja constancia en el cliente de una ficha recién enlazada, para que su insignia diga la
+/// verdad sin recargar la página. Sin esto, una ficha promovida hace un segundo se pintaría de
+/// azul —«traída de SIGER»— que es justo lo contrario de lo que pasó.
+function registrarFichaEnlazada(sigerId, codigo, promovida){
+  var m = window.__EXPMETA__ || (window.__EXPMETA__ = {});
+  if(!m.fichasEnlazadas) m.fichasEnlazadas = {};
+  m.fichasEnlazadas[String(sigerId)] = { codigo: codigo || '', promovida: !!promovida };
+}
+
+function fichaEnlazada(sigerId){
+  var m = window.__EXPMETA__ || {};
+  return (m.fichasEnlazadas && m.fichasEnlazadas[String(sigerId)]) || null;
+}
+
+function badgeSigerHTML(sigerId){
+  if(!sigerId) return '';
+
+  var f = fichaEnlazada(sigerId);
+  var promovida = !!(f && f.promovida);
+  var codigo = (f && f.codigo) ? f.codigo : '';
+
+  var estilo = promovida
+    ? 'background:#dcfce7;color:#166534'
+    : 'background:#dbeafe;color:#1455a4';
+
+  var texto  = promovida ? 'Promovida' : 'SIGER';
+  var titulo = promovida
+    ? 'Esta ficha nació en el portal y no existe en el inventario de SIGER' + (codigo ? ' — ' + codigo : '')
+    : 'Ficha traída del inventario de SIGER' + (codigo ? ' — ' + codigo : '');
+
+  var base = (window.__EXPMETA__ && __EXPMETA__.fichaUrlBase) || '';
+  var abre = base ? '<a href="'+escHtml(base + sigerId)+'" target="_blank" rel="noopener" style="text-decoration:none">' : '';
+  var cierra = base ? '</a>' : '';
+
+  return ' ' + abre
+    + '<span class="siger-badge" title="'+escHtml(titulo)+'" style="font-size:10px;font-weight:700;'
+    + estilo + ';padding:1px 6px;border-radius:4px;vertical-align:middle">'+texto+'</span>'
+    + cierra;
+}
 function actualizarBadgesSiger(){
   for(var i=0; i<tramiteCount; i++){
     var label = document.querySelector('#tramites-nombres-wrap .tram-row:nth-child('+(i+1)+') label');
     if(!label) continue;
+
+    // Se rehace en vez de conservarse: el origen puede haber cambiado —un trámite recién pasado
+    // a SIGER estrena insignia sin recargar— y una insignia vieja diria lo contrario de la verdad.
     var existing = label.querySelector('.siger-badge');
-    if(_sigerIds[i]){
-      if(!existing){
-        var badge = document.createElement('span');
-        badge.className = 'siger-badge';
-        badge.style.cssText = 'font-size:10px;font-weight:700;background:#dbeafe;color:#1455a4;padding:1px 6px;border-radius:4px;vertical-align:middle;margin-left:4px';
-        badge.textContent = 'SIGER';
-        var star = label.querySelector('.star');
-        if(star) star.after(badge);
-        else label.appendChild(badge);
-      }
-    } else if(existing) existing.remove();
+    var envoltura = existing && existing.parentElement && existing.parentElement.tagName === 'A'
+      ? existing.parentElement : existing;
+    if(envoltura) envoltura.remove();
+
+    if(!_sigerIds[i]) continue;
+
+    var html = badgeSigerHTML(_sigerIds[i]);
+    if(!html) continue;
+
+    var star = label.querySelector('.star');
+    if(star) star.insertAdjacentHTML('afterend', html);
+    else label.insertAdjacentHTML('beforeend', html);
   }
 }
 
@@ -979,10 +1035,12 @@ async function seleccionarSiger(it){
   while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
   while(_claves.length < tramiteCount) _claves.push(null);
   _sigerIds[newIdx] = it.id;
+  registrarFichaEnlazada(it.id, it.codigo, false);
 
   actualizarNumTramites();
   restoreTramites(snap);
   _sigerIds[newIdx] = it.id;
+  registrarFichaEnlazada(it.id, it.codigo, false);
 
   sv('tnam-'+newIdx, it.nombre||'');
   sv('area_resp-'+newIdx, it.dependencia||'');

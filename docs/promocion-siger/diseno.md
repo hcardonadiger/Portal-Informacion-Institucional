@@ -1,7 +1,43 @@
 # Promover un trámite del expediente a SIGER
 
-Diseño validado el 2026-08-21. Sustituye la captura manual de fichas para los
-trámites que DIGER levanta en un expediente y que SIGER no tiene.
+> ## Estado: construido, con cambios
+>
+> **Diseño validado el 21 de agosto de 2026 y construido entre el 24 y el 25.** El documento
+> vigente es [`plan-revisado.md`](./plan-revisado.md): allí está el estado de cada una de las once
+> fases, lo que se midió antes de construirla, y las desviaciones con su motivo.
+>
+> Este diseño se conserva porque **explica el porqué** de cada pieza, y ese razonamiento sigue
+> valiendo. Lo que cambió al construirlo:
+>
+> **Se amplió mucho más allá de «promover».** El diseño cubría una sola dirección —del expediente
+> hacia la ficha—. Al construirlo aparecieron las otras tres piezas que la hacen viable: traer
+> fichas **de SIGER al expediente**, el **bloqueo** que decide dónde se edita cada campo, y el
+> **historial de versiones** que permite responder qué decía una ficha antes de un pase.
+>
+> **El expediente terminó guardando bastante más de lo que este diseño lista.** Además de
+> categoría, modalidad, detalle de modalidad y gratuidad, guarda vigencia del documento,
+> temporalidad, observaciones DIGER, si el trámite está en SOL y el tramo de su enlace. La razón
+> es D-17: en cuanto una ficha queda enlazada, sus campos de contenido solo se editan en el
+> expediente, y un campo que el expediente no supiera guardar sería un campo que nadie podría
+> editar en ninguna parte.
+>
+> **`ModalidadDetalle` quedó en 200 caracteres**, no 60: los textos reales no cabían.
+>
+> **El CHECK de modalidad no va con las columnas** sino en la migración que convierte los 202
+> valores de texto libre. Puesto antes, fallaría contra cualquier base con datos.
+>
+> **El enlace a SOL ya no se captura completo.** Se captura el tramo final y la dirección se
+> compone con la ruta de la institución; el host vive en configuración. Un host equivocado no
+> rompe un enlace: rompe mil.
+>
+> **Lo que este diseño llamaba «promover» y «actualizar» resultó ser una sola operación** —escribir
+> del expediente hacia la ficha, una vez creando y las siguientes sobrescribiendo— y se construyó
+> como un solo comando.
+>
+> **Dos cosas que no estaban y hicieron falta:** que el bloqueo sea del servidor y no solo de la
+> pantalla —un campo deshabilitado no impide nada— y que pasar un trámite exija permiso de edición
+> sobre SIGER, porque poder modelar un expediente no es lo mismo que poder escribir en el catálogo
+> que ve el ciudadano.
 
 ## El problema
 

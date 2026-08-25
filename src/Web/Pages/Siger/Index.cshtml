@@ -105,6 +105,14 @@
                 <option value="Si">Completas</option>
             </select>
         </div>
+        <div class="field" style="min-width:150px">
+            <label>Origen <span class="help-tip tip-down" data-tip="«Del inventario» son las fichas que llegaron de SIGER. «Promovidas» nacieron en este portal desde un expediente y no existen en SIGER; su código lleva la marca -P.">?</span></label>
+            <select asp-for="Origen">
+                <option value="">Todos</option>
+                <option value="Siger">Del inventario SIGER</option>
+                <option value="Promovida">Promovidas desde un expediente</option>
+            </select>
+        </div>
         <button class="btnp" type="submit">Filtrar</button>
         <a class="btns" asp-page="/Siger/Index">Limpiar</a>
     </form>
@@ -139,7 +147,16 @@
                     @foreach (var t in Model.Resultado.Items)
                     {
                         <tr>
-                            <td style="white-space:nowrap;font-weight:600">@t.Codigo</td>
+                            @* La marca -P ya distingue el código, pero solo si uno sabe qué
+                               significa. La insignia lo dice sin que haga falta saberlo. *@
+                            <td style="white-space:nowrap;font-weight:600">
+                                @t.Codigo
+                                @if (t.IdSiger is null)
+                                {
+                                    <span title="Nació en este portal; no existe en el inventario de SIGER"
+                                          style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;vertical-align:middle">P</span>
+                                }
+                            </td>
                             <td>
                                 <a asp-page="/Siger/Detalle" asp-route-id="@t.Id" style="color:var(--diger-text);text-decoration:none">
                                     @(t.Nombre.Length > 80 ? t.Nombre[..80] + "..." : t.Nombre)

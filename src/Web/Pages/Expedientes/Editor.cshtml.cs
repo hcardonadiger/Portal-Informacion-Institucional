@@ -33,6 +33,10 @@ public sealed class EditorModel(
     /// <summary>Si quien mira puede además escribir en el inventario SIGER. Sin esto el botón de
     /// «Pasar a SIGER» se ofrecería a quien el servidor va a rechazar.</summary>
     public bool PuedeSiger { get; private set; }
+
+    /// <summary>Cada ficha enlazada al expediente, con su código y si nació acá o vino de SIGER.
+    /// La clave es el id como texto porque viaja a JavaScript como objeto.</summary>
+    public Dictionary<string, FichaEnlazadaVm> FichasEnlazadas { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
     public bool EsContraparte { get; private set; }
@@ -75,6 +79,29 @@ public sealed class EditorModel(
 
             if (!EsAdmin && !EsContraparte)
                 return Forbid();
+
+            // ── De dónde salió cada ficha enlazada (Fase 11) ──────────────
+            //
+            // Un trámite enlazado puede venir de dos sitios opuestos: se trajo del inventario de
+            // SIGER, o la ficha nació acá y se promovió. La pantalla los pintaba iguales, y no lo
+            // son: en el primero DIGER está modelando algo que ya existía; en el segundo está
+            // publicando algo que no existía. Confundirlos lleva a buscar en SIGER una ficha que
+            // nunca estuvo ahí.
+            //
+            // La diferencia la da IdSiger: vacío significa que la ficha no existe en SIGER.
+            var enlazados = detalle.Datos.Tramites
+                .Where(t => t.TramiteSigerId is not null)
+                .Select(t => t.TramiteSigerId!.Value)
+                .Distinct().ToList();
+
+            if (enlazados.Count > 0)
+            {
+                FichasEnlazadas = await db.TramitesSiger.AsNoTracking()
+                    .Where(f => enlazados.Contains(f.Id))
+                    .Select(f => new { f.Id, f.Codigo, EsPromovida = f.IdSiger == null })
+                    .ToDictionaryAsync(f => f.Id.ToString(),
+                                       f => new FichaEnlazadaVm(f.Codigo, f.EsPromovida), ct);
+            }
 
             var original = OriginalShapeMapper.FromInput(detalle.Datos);
             ExpJson = JsonSerializer.Serialize(original, JsonOpts);
@@ -302,3 +329,8 @@ public sealed class EditorModel(
         }
     }
 }
+
+/// <summary>Lo que la pantalla necesita saber de una ficha SIGER enlazada a un trámite.</summary>
+/// <param name="EsPromovida">Cierto si la ficha nació en este portal y no existe en el inventario
+/// de SIGER. Es lo que distingue las dos insignias.</param>
+public sealed record FichaEnlazadaVm(string Codigo, bool EsPromovida);

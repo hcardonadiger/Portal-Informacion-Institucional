@@ -726,10 +726,61 @@ Producción real.
 ---
 
 
-### Fase 11 — Visibilidad y cierre (~3 tareas)
+### Fase 11 — Visibilidad y cierre — HECHA
 
-Tareas 16–17 de `plan.md`: insignia en el expediente, aviso en el detalle, filtro en el
-inventario. Más actualizar `diseno.md` y `plan.md` a lo acordado aquí.
+**El catálogo mezcla dos cosas que se parecen y no lo son:** fichas que llegaron del inventario de
+SIGER y fichas que nacieron en este portal desde un expediente. Hasta ahora se pintaban iguales.
+Quien buscara una promovida en SIGER no la encontraría y concluiría que falta un dato; no falta,
+**nunca estuvo ahí**.
+
+La diferencia la da `IdSiger` vacío, y esta fase hace que las pantallas la digan.
+
+**Lo construido:**
+
+1. **Dos insignias en el expediente en vez de una.** Azul «SIGER» cuando el trámite se trajo del
+   inventario —DIGER está modelando algo que ya existía—; verde «Promovida» cuando la ficha nació
+   acá —DIGER está publicando algo que no existía—. Las dos enlazan a la ficha, y llevan el código
+   en el título. Se actualizan **sin recargar** al pasar un trámite o al importar uno.
+2. **Aviso en el detalle de la ficha** cuando es promovida, diciendo de qué expediente salió y por
+   qué su código lleva la marca `-P`.
+3. **Marca y filtro de origen en el inventario**: una insignia `P` junto al código, y un filtro
+   para quedarse solo con las promovidas o solo con las del inventario. Sin él no hay forma de ver
+   de un vistazo cuánto ha crecido el catálogo por trabajo propio.
+
+**Un matiz que cuesta ver y se probó:** al **actualizar** una ficha que ya existía, su origen no
+cambia. Registrar el resultado del pase sin distinguir crear de actualizar volvería azul una ficha
+que había nacido acá.
+
+**Medido hoy:** de 1 057 fichas, **0 promovidas** — todas vinieron de SIGER. Esta fase no cambia
+nada de lo que se ve hoy; es la maquinaria para que el día que se promueva la primera, se
+distinga. Construirla después habría significado que las primeras fichas promovidas pasaran un
+tiempo indistinguibles del inventario, que es justo cuando la confusión cuesta más.
+
+**Los dos documentos que quedaban desfasados quedaron marcados, no reescritos.** `diseno.md` y
+`plan.md` llevan ahora una cabecera que dice qué son —un diseño y un registro de ejecución—, que
+el documento vigente es éste, y **en qué difieren de lo construido**, punto por punto.
+
+Reescribirlos tarea por tarea habría producido una segunda fuente de verdad que empezaría a
+desfasarse el mismo día. Es exactamente el problema que la Fase 6 cerró en la documentación del
+API, y no tenía sentido reabrirlo acá.
+
+**Pruebas:** 5 nuevas, **405 en total**.
+
+**Despliegue: ninguno.** No toca el esquema.
+
+---
+
+## Estado del plan
+
+**Las once fases están hechas.** Lo que queda no es trabajo de este plan sino decisiones y
+operación:
+
+| Pendiente | De quién depende |
+|---|---|
+| Aplicar los scripts 12, 13 y 14 al Producción real | Operación. Los tres están probados y son idempotentes. |
+| Revisar las 2 811 propuestas del llenado asistido | Trabajo humano continuo, en SIGER › Llenado asistido. |
+| La ficha `400-002` de Producción apunta a `https://google.com` y está publicada | Decisión de DIGER: el editor ya permite quitar ese enlace. |
+| Dónde viven los secretos del API en producción (P-03) | Infraestructura. |
 
 ---
 

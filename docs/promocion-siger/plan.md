@@ -1,8 +1,35 @@
 # Plan de implementación — Promover un trámite del expediente a SIGER
 
-> **Para quien ejecute esto con agentes:** usar `superpowers:subagent-driven-development`
-> (recomendado) o `superpowers:executing-plans`, tarea por tarea. Los pasos llevan
-> casilla (`- [ ]`) para ir marcándolos.
+> ## ⚠️ Este documento es un registro, no instrucciones
+>
+> **Escrito el 21 de agosto de 2026 y ejecutado entre el 24 y el 25.** Sus diecisiete tareas se
+> llevaron a cabo repartidas en las once fases de
+> [`plan-revisado.md`](./plan-revisado.md), que es **el documento vigente**: allí están el estado
+> de cada fase, lo que se midió antes de construirla y las desviaciones que se tomaron con su
+> motivo.
+>
+> **No se actualizó tarea por tarea a lo que finalmente se construyó**, y es deliberado. Reescribir
+> 113 KB de pasos ya ejecutados produciría una segunda fuente de verdad que empezaría a desfasarse
+> el mismo día — el problema que la Fase 6 acabó de cerrar en la documentación del API. Se conserva
+> tal como se escribió porque explica **por qué** cada pieza se diseñó así, y ese razonamiento
+> sigue valiendo aunque algunos detalles cambiaran al medir los datos reales.
+>
+> **Dónde difiere de lo construido** (el detalle completo está en cada fase de `plan-revisado.md`):
+>
+> | Lo que este plan decía | Lo que se construyó | Fase |
+> |---|---|---|
+> | El llenado asistido escribe en las fichas | Deja todo en **cola de revisión**; nada se escribe sin que alguien apruebe | 5 |
+> | La procedencia va en una columna `Autollenado` | Vive en la fila de la propuesta; se resuelve comparando | 5 |
+> | `ModalidadDetalle` de 60 caracteres | 200: los textos reales no cabían | 8 |
+> | El CHECK de modalidad va con las columnas | Va **después** de convertir los 202 valores de texto libre | 8 |
+> | `EstaEnSol` y el enlace a SOL los manda SIGER | Los manda el expediente (D-17 los pone en el grupo de contenido) | 7 y 9 |
+> | El enlace a SOL se captura completo | Se captura el **tramo** y la dirección se compone | 7 |
+> | Promover y actualizar son dos operaciones | Son la misma, en un solo comando | 9 |
+>
+> Y tres cosas que este plan no contemplaba y hicieron falta: el **bloqueo del lado del servidor**
+> (un campo deshabilitado no impide nada), el **permiso de edición sobre SIGER** para pasar un
+> trámite, y una **comprobación que falle si la especificación del API se desfasa** del código.
+
 
 **Objetivo:** un botón que crea una ficha SIGER a partir de un trámite del
 expediente, y otro que la actualiza cuando el expediente cambia, sin tocar lo que
