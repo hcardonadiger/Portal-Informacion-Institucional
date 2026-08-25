@@ -91,6 +91,7 @@
         var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
         var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
         var puedeSoporte     = await Acceso.EsSoporteAsync();   // atiende el chat de soporte
+        var puedeProyectos   = await Acceso.PuedeAsync(ModulosPortal.Proyectos);
 
         var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
         List<AsignacionAuthDto>? asignaciones = null;
@@ -139,10 +140,12 @@
 
                     <nav class="main-nav" id="mainNav" aria-label="Menú principal">
                         @*
-                            Seis grupos, uno por pregunta que se hace el usuario: qué trabajo tengo,
-                            qué hay en SIGER, cómo vamos, qué tengo agendado, qué me están pidiendo,
-                            y qué administro. Ningún menú pasa de seis entradas a propósito: el grupo
-                            "Digitalización" anterior acumulaba nueve y mezclaba las tres primeras.
+                            Un grupo por pregunta que se hace el usuario: qué trabajo tengo, qué hay
+                            en SIGER, qué estamos ejecutando, cómo vamos, qué tengo agendado, qué me
+                            están pidiendo, y qué administro. Ningún menú pasa de seis entradas a
+                            propósito: el grupo "Digitalización" anterior acumulaba nueve y mezclaba
+                            las tres primeras. Por eso Proyectos abre su propio grupo en vez de
+                            sumarse a Expedientes, que trata de racionalización de trámites.
                         *@
                         @if (puedeExpedientes)
                         {
@@ -168,6 +171,14 @@
                                         <a class="nav-item @(EsRuta("/Siger/Conciliacion") ? "on" : "")" asp-page="/Siger/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
                                     }
                                 </div>
+                            </div>
+                        }
+                        @if (puedeProyectos)
+                        {
+                            @* Un solo destino: se pinta como los demás encabezados de grupo, pero
+                               enlaza directo en vez de desplegar un menú con una sola entrada. *@
+                            <div class="nav-group @(EsRuta("/Proyectos") ? "on" : "")">
+                                <a class="nav-group-btn" asp-page="/Proyectos/Index">Proyectos</a>
                             </div>
                         }
                         @if (puedeTableros || puedeExpedientes)
