@@ -314,6 +314,12 @@ public sealed class InstitucionConfiguration : IEntityTypeConfiguration<Instituc
         b.ToTable(t => t.HasCheckConstraint("CK_Instituciones_SitioWeb",
             "[SitioWeb] IS NULL OR [SitioWeb] LIKE 'http://%' OR [SitioWeb] LIKE 'https://%'"));
 
+        // ── Ruta en SOL (plan Fase 7, D-20) ────────────────────────────────
+        // Anulable, y nula es lo normal: significa «vale la llave». No se le pone valor por
+        // omisión en la base a propósito — un DEFAULT copiaría el Id y volvería indistinguible
+        // «nadie la corrigió» de «alguien la puso igual a la llave».
+        b.Property(x => x.RutaSol).HasMaxLength(300);
+
         b.HasData(Seed.Instituciones);
     }
 }
@@ -1379,6 +1385,7 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
 
         // ── Campos para la ficha pública (Ventanilla Digital / plan Fase 1, script A) ──
         b.Property(x => x.SolUrl).HasMaxLength(500);
+        b.Property(x => x.SolTramo).HasMaxLength(300);
         b.Property(x => x.CostoTexto).HasMaxLength(250);
         b.Property(x => x.TiempoTexto).HasMaxLength(120);
         b.Property(x => x.Modalidad).HasMaxLength(20);
@@ -1394,9 +1401,14 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
             // literal N'...' (T-SQL) no lo entiende SQLite, que usan los Web.Tests vía EnsureCreated.
             t.HasCheckConstraint("CK_TramitesSiger_Modalidad",
                 "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')");
-            // La regla de D-01 (plan), protegida en la base y no solo en el formulario.
+            // La regla de D-01, protegida en la base y no solo en el formulario. Desde la Fase 7
+            // el enlace puede venir de dos sitios: el tramo que se captura hoy, o la URL completa
+            // heredada de antes (D-14). Basta cualquiera de los dos.
+            //
+            // Sin la rama del tramo, guardar una ficha capturada como manda D-13 fallaría contra
+            // esta restricción: es lo primero que rompe al pasar de URL completa a tramo.
             t.HasCheckConstraint("CK_TramitesSiger_Sol",
-                "[EstaEnSol] = 0 OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
+                "[EstaEnSol] = 0 OR [SolTramo] IS NOT NULL OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
         });
 
         // Filtrado a propósito: SQL Server solo admite UN nulo en un índice único sin filtro, y
@@ -1415,7 +1427,7 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
         // un índice completo sobre 1000+ filas casi todas nulas no ayuda a nadie.
         b.HasIndex(x => x.CategoriaId).HasFilter("[CategoriaId] IS NOT NULL");
         b.HasIndex(x => x.Modalidad).HasFilter("[Modalidad] IS NOT NULL");
-        b.HasIndex(x => x.EstaEnSol).IncludeProperties(x => x.SolUrl).HasFilter("[EstaEnSol] = 1");
+        b.HasIndex(x => x.EstaEnSol).IncludeProperties(x => new { x.SolUrl, x.SolTramo }).HasFilter("[EstaEnSol] = 1");
 
         // El índice de la consulta que la API hace todo el día: el catálogo paginado.
         b.HasIndex(x => new { x.Publicado, x.CategoriaId, x.InstitucionId })

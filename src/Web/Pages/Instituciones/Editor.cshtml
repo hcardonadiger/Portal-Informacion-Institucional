@@ -82,6 +82,19 @@
                 <label>Descripción</label>
                 <textarea asp-for="Descripcion" rows="2" placeholder="Descripción corta de la institución (opcional)"></textarea>
             </div>
+            <div class="field">
+                <label asp-for="RutaSol">Ruta en SOL</label>
+                <div style="display:flex;align-items:stretch;flex-wrap:wrap">
+                    <span style="display:inline-flex;align-items:center;padding:0 10px;background:#f1f5f9;border:1.5px solid var(--diger-border);border-right:none;border-radius:6px 0 0 6px;font-family:monospace;font-size:13px;color:#475569;white-space:nowrap">@Model.HostSol/</span>
+                    <input asp-for="RutaSol" maxlength="300" placeholder="@(Model.InstId ?? "SIGLA")"
+                           style="flex:1 1 160px;min-width:120px;border-radius:0 6px 6px 0;font-family:monospace" />
+                </div>
+                <span class="hint">
+                    Déjelo vacío y se usa la llave de la institución —<strong>@(Model.InstId ?? "su sigla")</strong>—,
+                    que es lo correcto casi siempre. Llénelo solo si la ruta real de SOL no coincide
+                    con ella. De acá sale el prefijo que ve quien captura un trámite.
+                </span>
+            </div>
         </div>
 
         <div class="nav">

@@ -27,7 +27,7 @@ public sealed class DetalleModel(IApplicationDbContext ctx) : PageModel
         Tramite = t;
 
         Faltantes = FichaPublicaCompletitud.CamposFaltantes(
-            t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
+            t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo);
 
         var raw = await ctx.Tramites.AsNoTracking()
             .Where(et => et.TramiteSigerId == id)
@@ -50,7 +50,7 @@ public sealed class DetalleModel(IApplicationDbContext ctx) : PageModel
         ctx.TramitesSiger.Remove(t);
 
         Faltantes = FichaPublicaCompletitud.CamposFaltantes(
-            t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
+            t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo);
         await ctx.SaveChangesAsync(ct);
         TempData["SuccessMsg"] = "Tramite eliminado.";
         return RedirectToPage("/Siger/Index");

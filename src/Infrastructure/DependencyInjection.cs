@@ -71,6 +71,10 @@ public static class DependencyInjection
         // Identidad institucional (nombre, logo, contacto — usados en layout/login)
         services.Configure<InstitucionOptions>(configuration.GetSection("Institucion"));
 
+        // Dónde vive SOL. Va por configuración y no en código porque desde la Fase 7 la
+        // dirección de cada trámite se compone: un host equivocado no rompe un enlace, rompe mil.
+        services.Configure<SolOptions>(configuration.GetSection("Sol"));
+
         // Chat de soporte
         services.AddScoped<IChatService, ChatService>();
 

@@ -73,14 +73,14 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
             q = q.Where(t => t.InstitucionId == InstitucionId);
 
         var filas = await q.OrderBy(t => t.Nombre)
-            .Select(t => new { t.Id, t.Codigo, t.Nombre, t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl })
+            .Select(t => new { t.Id, t.Codigo, t.Nombre, t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo })
             .ToListAsync(ct);
 
         var todas = filas.Select(f => new FilaLoteDto(
             f.Id, f.Codigo, f.Nombre,
             f.CategoriaId is { } cid && categoriaNombres.TryGetValue(cid, out var n) ? n : null,
             f.Modalidad, f.TiempoTexto, f.CostoTexto, f.CostoEsGratuito, f.EstaEnSol,
-            FichaPublicaCompletitud.Evaluar(f.CategoriaId, f.Modalidad, f.TiempoTexto, f.CostoEsGratuito, f.EstaEnSol, f.SolUrl)));
+            FichaPublicaCompletitud.Evaluar(f.CategoriaId, f.Modalidad, f.TiempoTexto, f.CostoEsGratuito, f.EstaEnSol, f.SolUrl, f.SolTramo)));
 
         Filas = (SoloIncompletas ? todas.Where(f => !f.FichaCompleta) : todas).ToList();
     }

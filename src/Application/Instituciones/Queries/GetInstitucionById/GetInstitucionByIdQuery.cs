@@ -5,7 +5,8 @@ namespace Diger.TramitesEstado.Application.Instituciones.Queries.GetInstitucionB
 public sealed record InstitucionDetailDto(
     string Id, string Nombre, bool Activo, int NumTramites,
     int Expedientes, int Tickets, int TicketsAbiertos, int Reuniones, int Contactos, int UsuariosAsignados,
-    string? LogoUrl = null, string? NombreCorto = null, string? Color = null, string? Descripcion = null);
+    string? LogoUrl = null, string? NombreCorto = null, string? Color = null, string? Descripcion = null,
+    string? RutaSol = null, string RutaSolEfectiva = "");
 
 public sealed record GetInstitucionByIdQuery(string Id) : IRequest<InstitucionDetailDto>;
 
@@ -31,6 +32,7 @@ public sealed class GetInstitucionByIdQueryHandler(IInstitucionRepository repo, 
         return new InstitucionDetailDto(
             inst.Id, inst.Nombre, inst.Activo, numTramites,
             expedientes, tickets, ticketsAbiertos, reuniones, contactos, usuarios,
-            inst.LogoUrl, inst.NombreCorto, inst.Color, inst.Descripcion);
+            inst.LogoUrl, inst.NombreCorto, inst.Color, inst.Descripcion,
+            inst.RutaSol, inst.RutaSolEfectiva);
     }
 }

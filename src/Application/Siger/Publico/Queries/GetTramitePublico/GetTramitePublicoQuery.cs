@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Options;
+
 namespace Diger.TramitesEstado.Application.Siger.Publico.Queries.GetTramitePublico;
 
 /// <summary>Ficha completa de un trámite público — GET /api/v1/tramites/{codigo}.
 /// Null si no existe o no está publicado: una API pública no distingue las dos cosas.</summary>
 public sealed record GetTramitePublicoQuery(string Codigo) : IRequest<TramiteDetallePublicoDto?>;
 
-public sealed class GetTramitePublicoQueryHandler(IApplicationDbContext ctx)
+public sealed class GetTramitePublicoQueryHandler(IApplicationDbContext ctx, IOptions<SolOptions> sol)
     : IRequestHandler<GetTramitePublicoQuery, TramiteDetallePublicoDto?>
 {
     public async Task<TramiteDetallePublicoDto?> Handle(GetTramitePublicoQuery q, CancellationToken ct)
@@ -80,13 +82,31 @@ public sealed class GetTramitePublicoQueryHandler(IApplicationDbContext ctx)
         // campo editable del formulario (UltimaModificacion).
         var ultimaRevision = t.UpdatedAt ?? t.UltimaModificacion ?? t.CreatedAt;
 
+        // ── La dirección en SOL (D-13, D-14, D-20) ────────────────────────────
+        //
+        // Se consulta la institución SOLO cuando hay tramo que componer. Hoy ninguna ficha lo
+        // tiene, así que en la práctica no se paga nada; y esta es la ruta que HondurasÁgil llama
+        // una vez por trámite al sincronizar, donde una séptima consulta por ficha se nota.
+        //
+        // RutaSol ?? Id en vez de RutaSolEfectiva porque esa propiedad es calculada y no existe
+        // en SQL; COALESCE hace lo mismo del lado del servidor.
+        string? rutaInstitucion = null;
+        if (t.SolTramo is not null && t.InstitucionId is not null)
+            rutaInstitucion = await ctx.Instituciones.AsNoTracking()
+                .Where(i => i.Id == t.InstitucionId)
+                .Select(i => i.RutaSol ?? i.Id)
+                .FirstOrDefaultAsync(ct);
+
+        // Absoluta siempre: es lo que HondurasÁgil ya consume y lo que la Fase 6 dejó por escrito.
+        var solUrl = DireccionSol.Componer(sol.Value.UrlBase, rutaInstitucion, t.SolTramo, t.SolUrl);
+
         return new TramiteDetallePublicoDto(
             t.Codigo, t.Nombre, t.InstitucionId ?? "", t.Institucion,
             t.CategoriaId, categoriaNombre, t.Modalidad, t.EsPopular,
             t.CostoEsGratuito, t.CostoTexto, t.TiempoTexto, t.EstaEnSol,
-            FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl),
+            FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo),
             t.Descripcion, t.Objetivo, t.DirigidoA, t.VigenciaDocumento, t.Temporalidad,
-            t.SolUrl, t.SolVerificadoEl, ultimaRevision, t.EnlacePrincipal,
+            solUrl, t.SolVerificadoEl, ultimaRevision, t.EnlacePrincipal,
             pasos, requisitos, entregables, lugares, enlaces);
     }
 }

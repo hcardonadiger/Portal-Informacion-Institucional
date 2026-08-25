@@ -56,7 +56,7 @@ public sealed class GetCatalogoPublicoQueryHandler(IApplicationDbContext ctx)
         if (q.SoloFichasCompletas)
             query = query.Where(t =>
                 t.CategoriaId != null && t.Modalidad != null && t.TiempoTexto != null &&
-                t.CostoEsGratuito != null && (!t.EstaEnSol || t.SolUrl != null));
+                t.CostoEsGratuito != null && (!t.EstaEnSol || t.SolUrl != null || t.SolTramo != null));
 
         var total = await query.CountAsync(ct);
 
@@ -73,7 +73,7 @@ public sealed class GetCatalogoPublicoQueryHandler(IApplicationDbContext ctx)
             {
                 t.Codigo, t.Nombre, t.InstitucionId, t.Institucion,
                 t.CategoriaId, t.Modalidad, t.EsPopular,
-                t.CostoEsGratuito, t.CostoTexto, t.TiempoTexto, t.EstaEnSol, t.SolUrl
+                t.CostoEsGratuito, t.CostoTexto, t.TiempoTexto, t.EstaEnSol, t.SolUrl, t.SolTramo
             })
             .ToListAsync(ct);
 
@@ -87,7 +87,7 @@ public sealed class GetCatalogoPublicoQueryHandler(IApplicationDbContext ctx)
             f.CategoriaId,
             f.CategoriaId is { } cid && categoriaNombres.TryGetValue(cid, out var nombre) ? nombre : null,
             f.Modalidad, f.EsPopular, f.CostoEsGratuito, f.CostoTexto, f.TiempoTexto, f.EstaEnSol,
-            FichaPublicaCompletitud.Evaluar(f.CategoriaId, f.Modalidad, f.TiempoTexto, f.CostoEsGratuito, f.EstaEnSol, f.SolUrl)))
+            FichaPublicaCompletitud.Evaluar(f.CategoriaId, f.Modalidad, f.TiempoTexto, f.CostoEsGratuito, f.EstaEnSol, f.SolUrl, f.SolTramo)))
             .ToList();
 
         return new CatalogoPublicoDto(items, total, pagina, tamano);

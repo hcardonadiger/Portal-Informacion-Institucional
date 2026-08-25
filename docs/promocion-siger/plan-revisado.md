@@ -53,7 +53,7 @@ Tres lecturas:
 | **D-01** | PortalDigital es la fuente principal de información para HondurasÁgil. |
 | **D-02** | «Pasar a SIGER» escribe en la tabla `TramitesSiger` **local de PD**. No hay integración con un sistema SIGER externo. |
 | **D-03** | HA lee de PD salvo que el trámite solo exista en SIGER. Si existe en ambos, manda PD. Todo sale en **una sola lista**. |
-| **D-04** | La institución gana una URL base de SOL. El trámite solo guarda el tramo final. |
+| **D-04** | La institución gana una URL base de SOL. El trámite solo guarda el tramo final. *(Hecho — ver Fase 7.)* |
 | **D-05** | Editar un trámite que ya está en PD se hace **siempre en el expediente**. |
 | **D-06** | Al importar, el usuario elige el expediente destino, **o** el bucket «Trámites Importados de SIGER» de esa institución. |
 | **D-07** | «Pasar a SIGER» crea una **versión nueva**. La anterior no se borra. Se muestra la más nueva. |
@@ -62,14 +62,14 @@ Tres lecturas:
 | **D-10** | La publicación es **manual pura y no bloquea**. La regla de estado queda como *advertencia*. |
 | **D-11** | Los pasos del proceso siguen siendo propiedad de SIGER. **No** se mapean con el flujo del expediente. |
 | **D-12** | El contenido se edita en el expediente. `EstadoSiger` es lo único que se sigue editando **solo** en la ficha. |
-| **D-13** | El trámite captura solo el tramo final de la URL SOL, con `sol.gob.hn/<URL de la institución>/` como prefijo fijo en pantalla. |
-| **D-14** | Las URLs SOL completas ya cargadas **no se tocan**, y solo las usan los trámites que nunca pasaron por PD. |
+| **D-13** | El trámite captura solo el tramo final de la URL SOL, con `sol.gob.hn/<URL de la institución>/` como prefijo fijo en pantalla. *(Hecho. El prefijo va pegado al campo, no como texto de ayuda.)* |
+| **D-14** | Las URLs SOL completas ya cargadas **no se tocan**, y solo las usan los trámites que nunca pasaron por PD. *(Hecho. Medido: la única que hay apunta a google.com y está publicada — ver Fase 7.)* |
 | **D-15** | El historial es una **tabla de fotos** de la ficha y sus hijos. La fila viva es la última versión. |
 | **D-16** | «Quitar de HA» **despublica**, no borra. |
 | **D-17** | **Bloqueo condicional.** Si la ficha ya está en PD, sus campos de contenido quedan bloqueados en la ficha y solo se editan en el expediente. Si no está en PD, se editan en la ficha. Nunca en los dos lugares a la vez. |
 | **D-18** | Antes de tocar nada se guarda una **foto del inventario SIGER original**, completa y permanente. |
 | **D-19** | Hay una fase de **llenado asistido** de los campos que falten, adelantada para aprovechar que casi todo el inventario está libre. |
-| **D-20** | La URL base de la institución **sale por defecto de su llave primaria** (`CONSUCOOP`, `IHADFA`), y se puede corregir a mano cuando la ruta real de SOL difiera. |
+| **D-20** | La URL base de la institución **sale por defecto de su llave primaria** (`CONSUCOOP`, `IHADFA`), y se puede corregir a mano cuando la ruta real de SOL difiera. *(Hecho. La columna es anulable y nula significa «vale la llave»: no se copia el Id.)* |
 | **D-21** | Los buckets de importación se marcan con `OrigenExternoId` y se **excluyen** de los listados, conteos y tableros del módulo de expedientes. |
 | **D-22** | Desenlazar una ficha la **desbloquea**, con advertencia explícita de que vuelve a editarse por su lado. |
 | **D-23** | La captura en lote **se queda como está**. Solo debe excluir las fichas bloqueadas. |
@@ -128,6 +128,17 @@ Con D-20 desaparece el caso «institución sin base», porque toda institución 
 
 *Pendiente menor de confirmar al implementar: si la ruta de SOL distingue mayúsculas. El
 ejemplo acordado es `sol.gob.hn/CONSUCOOP/…`, en mayúsculas como la llave.*
+
+*Al implementar (Fase 7): la ruta se emite tal como esté escrita —la llave en mayúsculas, o lo que
+alguien haya corregido a mano—. No se fuerza a minúsculas ni al revés, porque forzarlo sin saber
+qué espera SOL sería elegir al azar entre dos direcciones y una de las dos da 404. Lo que sí quedó
+resuelto es que **cualquier llave sirve como ruta**: las 45 son solo letras, números, guion y
+guion bajo, y la factoría de `Institucion` no admite otra cosa.*
+
+*Y apareció un pendiente mayor: **cuál es el host de SOL.** El plan dice `sol.gob.hn`; el editor
+de fichas llevaba desde el 14 de agosto un marcador que decía `sol.pdihonduras.gob.hn`. Se dejó en
+configuración (`Sol:UrlBase`) con el valor del plan. Confirmarlo es requisito antes de publicar el
+primer enlace compuesto.*
 
 ---
 
@@ -414,23 +425,81 @@ más segura de que la documentación empiece a mentir el primer día.
 
 ---
 
-### Fase 7 — URL SOL compuesta (~3 tareas)
+### Fase 7 — URL SOL compuesta — HECHA
 
 **Entrega:** D-04, D-13, D-14, D-20.
 
-**Ya no está bloqueada.** Antes esperaba a que alguien reuniera 45 direcciones; con D-20 la base
-sale de la llave primaria y toda institución tiene una.
+**Lo que se midió antes de diseñar, y lo que cambió.**
 
-1. URL base de SOL en `Institucion`, con la llave como valor por defecto y posibilidad de
-   corregirla. Ojo: setters privados y factoría validadora; `RegistrarContacto` ya valida URL
-   absoluta con la misma regla. Es cambio de dominio, no solo una columna.
-2. Tramo final en la ficha, y composición en un solo lugar. Normalizar barras ahí, no en cada
-   uso.
-3. La pantalla muestra el prefijo fijo `sol.gob.hn/<URL institución>/` junto al textbox (D-13).
+| Señal | Realidad |
+|---|---|
+| Fichas con `SolUrl` | **1 de 1 057**, y en las dos bases (Ensayo y la copia de Producción) |
+| Qué dice esa dirección | **`https://google.com`** en ambas — un valor de prueba, no una dirección de SOL |
+| Estado de esas fichas | **`Publicado = 1` y `EstaEnSol = 1`** |
+| Llaves de institución con caracteres que no van en una URL | **0** de 45 |
+| Host de SOL según el plan | `sol.gob.hn` |
+| Host de SOL según el editor de fichas | `sol.pdihonduras.gob.hn` |
 
-**Riesgo:** `SolUrl` hoy se expone en el catálogo público como URL absoluta y
-`SoloFichasCompletas` la evalúa. Si pasa a guardar solo el tramo sin componer en la salida, se
-rompen los enlaces SOL de HA.
+Dos consecuencias.
+
+**La primera es un defecto vivo, no una hipótesis.** La única ficha con enlace a SOL de todo el
+inventario está publicada y marcada como disponible en línea, así que la API pública viene
+emitiendo `solUrl: "https://google.com"` y HondurasÁgil pintaría un botón de «hacer el trámite en
+línea» que lleva a Google. No se corrigió el dato —no es una decisión técnica— pero **sí se hizo
+corregible**: el editor gana una casilla para quitar el enlace heredado, que antes no existía.
+
+**La segunda desmonta el riesgo que el plan le atribuía a esta fase.** Decía que pasar a guardar
+el tramo rompería los enlaces SOL de HondurasÁgil. Enlaces reales que romper hay **cero**: el
+único es un marcador de posición. Y el riesgo quedó además cerrado por construcción, porque la
+API sigue emitiendo la URL absoluta.
+
+**El host quedó en configuración, no en código.** El plan acordó `sol.gob.hn` y el editor llevaba
+desde agosto un marcador que decía `sol.pdihonduras.gob.hn`; son hosts distintos y ninguno está
+verificado contra SOL. Componer con el equivocado no rompe un enlace: rompe **mil**, todos con
+apariencia correcta. Se toma el del plan por ser la decisión acordada y más reciente, en la
+sección `Sol:UrlBase`, para que corregirlo sea una línea y no un despliegue. **Confirmarlo con
+quien opere SOL es requisito antes de publicar el primer enlace compuesto.**
+
+**Lo construido:**
+
+1. **`Institucion.RutaSol`**, anulable, con setter privado y factoría validadora. **Nula significa
+   «nadie la ha corregido»** y entonces vale la llave (`RutaSolEfectiva`). No se copia el Id a la
+   columna al crear la institución, por la misma razón que en la Fase 5 no se guardó la bandera de
+   autollenado: un valor copiado se vuelve mentira en cuanto cambia el original, y borra la
+   diferencia entre «nadie lo tocó» y «alguien lo puso igual a la llave». Vaciar el campo la
+   devuelve al valor por defecto en vez de dejar la institución sin ruta.
+2. **`TramiteSiger.SolTramo`** y **`DireccionSol`** (en Domain), el único lugar donde una dirección
+   se arma. Normaliza barras ahí y no en cada uso: repartido entre la API, el editor, el detalle y
+   la captura en lote, bastaría con que uno de los cuatro olvidara recortar para producir `//`.
+   Rechaza espacios y tildes en vez de escaparlos —un enlace escapado existe, se ve bien y lleva a
+   un 404 que nadie reporta—.
+3. **Las pantallas.** El editor de fichas enseña el prefijo **pegado al campo**, no como texto de
+   ayuda: quien captura tiene que ver la dirección que va a producir, no imaginarla. El editor de
+   instituciones permite corregir la ruta, diciendo cuál es el valor por defecto.
+4. **El `CHECK` de la base**, que era lo primero que rompía. `CK_TramitesSiger_Sol` exigía una
+   `SolUrl` absoluta; con él intacto, guardar una ficha capturada como manda D-13 habría fallado
+   contra la restricción. Ahora vale el tramo **o** la heredada.
+
+**La trampa que se cerró a propósito.** El enlace heredado dejó de ser editable —se enseña pero no
+se escribe—, y ese es justo el momento en que un formulario lo borra en silencio: el POST no trae
+el valor y el código lo cree vacío. Se lee de la base y no del formulario, y hay una prueba que
+falla si alguien lo cambia. Nadie se habría enterado hasta que un enlace del portal ciudadano
+dejara de funcionar, y para entonces el dato ya no estaría.
+
+**El contrato público no se movió, y está comprobado.** `solUrl` sigue siendo una URL absoluta.
+La comprobación de desfase que dejó la Fase 6 pasó sin regenerar nada: la especificación generada
+hoy es idéntica byte a byte a la comprometida. Es la primera vez que ese guardián sirve para algo.
+
+**Pruebas:** 41 nuevas, 337 en total. Las de `DireccionSol` cubren las barras de sobra en todas
+sus combinaciones, la precedencia del tramo sobre la heredada, y que la llave de una institución
+siempre sirva como ruta —si algún día se aflojara la validación de la llave, esa prueba lo diría—.
+
+**Despliegue:** `scripts/sql/13-url-sol-compuesta.sql`, idempotente, probado contra una base
+llevada al estado **exacto** de la copia de Producción (que va una migración por detrás de
+Ensayo). Dos corridas seguidas, ambas limpias. Se comprobó además, con inserciones dentro de una
+transacción revertida, que el `CHECK` nuevo acepta una ficha en SOL con solo tramo y sigue
+rechazando una que diga estar en SOL sin ningún enlace. **No toca datos existentes:** las dos
+columnas nacen en NULL. Es independiente del script 12, así que puede aplicarse antes o después.
 
 ---
 

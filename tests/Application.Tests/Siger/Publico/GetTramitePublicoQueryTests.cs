@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Common.Models;
 using Diger.TramitesEstado.Application.Siger.Publico.Queries.GetTramitePublico;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Infrastructure.Persistence;
@@ -10,6 +11,11 @@ namespace Diger.TramitesEstado.Application.Tests.Siger.Publico;
 public class GetTramitePublicoQueryTests : IDisposable
 {
     private readonly AppDbContext _ctx;
+
+    /// <summary>Host fijo y conocido para que las direcciones compuestas se puedan afirmar
+    /// letra por letra. En producción sale de la sección «Sol» de appsettings.</summary>
+    private static readonly Microsoft.Extensions.Options.IOptions<SolOptions> Sol =
+        Microsoft.Extensions.Options.Options.Create(new SolOptions { UrlBase = "https://sol.gob.hn" });
 
     public GetTramitePublicoQueryTests()
     {
@@ -24,7 +30,7 @@ public class GetTramitePublicoQueryTests : IDisposable
     [Fact]
     public async Task Handle_CodigoInexistente_DevuelveNull()
     {
-        var handler = new GetTramitePublicoQueryHandler(_ctx);
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
         var resultado = await handler.Handle(new GetTramitePublicoQuery("NO-EXISTE"), CancellationToken.None);
 
         resultado.Should().BeNull();
@@ -36,7 +42,7 @@ public class GetTramitePublicoQueryTests : IDisposable
         _ctx.TramitesSiger.Add(new TramiteSiger { Codigo = "100-001", Nombre = "Sin publicar", Institucion = "INPREMA", Publicado = false });
         await _ctx.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new GetTramitePublicoQueryHandler(_ctx);
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
         var resultado = await handler.Handle(new GetTramitePublicoQuery("100-001"), CancellationToken.None);
 
         resultado.Should().BeNull("una API pública no distingue 'no existe' de 'no publicado'");
@@ -54,7 +60,7 @@ public class GetTramitePublicoQueryTests : IDisposable
         _ctx.TramitesSiger.Add(t);
         await _ctx.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new GetTramitePublicoQueryHandler(_ctx);
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
         var resultado = await handler.Handle(new GetTramitePublicoQuery("100-001"), CancellationToken.None);
 
         resultado.Should().NotBeNull();
@@ -79,7 +85,7 @@ public class GetTramitePublicoQueryTests : IDisposable
         _ctx.TramitesSiger.Add(t);
         await _ctx.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new GetTramitePublicoQueryHandler(_ctx);
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
         var resultado = await handler.Handle(new GetTramitePublicoQuery("100-001"), CancellationToken.None);
 
         resultado!.UltimaRevision.Should().Be(actualizado, "M-05: UpdatedAt manda sobre el campo editable del formulario");
@@ -99,9 +105,74 @@ public class GetTramitePublicoQueryTests : IDisposable
         _ctx.TramitesSiger.Add(t);
         await _ctx.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new GetTramitePublicoQueryHandler(_ctx);
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
         var resultado = await handler.Handle(new GetTramitePublicoQuery("100-001"), CancellationToken.None);
 
         resultado!.UltimaRevision.Should().Be(legado);
+    }
+
+    // ── La dirección en SOL (Fase 7) ──────────────────────────────────────────
+
+    /// <summary>
+    /// El campo <c>solUrl</c> de la API <b>sigue siendo una URL absoluta</b> aunque la ficha ya
+    /// solo guarde el tramo. Es el riesgo que el plan marcó para esta fase: si la API pasara a
+    /// emitir el tramo suelto, HondurasÁgil pintaría enlaces relativos contra su propio dominio y
+    /// los botones de «hacer el trámite en línea» llevarían a ninguna parte, sin error en ningún
+    /// registro.
+    /// </summary>
+    [Fact]
+    public async Task Handle_ConTramo_ComponeLaDireccionAbsolutaConLaRutaDeLaInstitucion()
+    {
+        _ctx.Instituciones.Add(Institucion.Crear("CONSUCOOP", "Consejo Supervisor de Cooperativas"));
+        _ctx.TramitesSiger.Add(new TramiteSiger
+        {
+            Codigo = "506-010", Nombre = "Licencia", Institucion = "CONSUCOOP", InstitucionId = "CONSUCOOP",
+            Publicado = true, EstaEnSol = true, SolTramo = "licencia-de-operacion"
+        });
+        await _ctx.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
+        var resultado = await handler.Handle(new GetTramitePublicoQuery("506-010"), CancellationToken.None);
+
+        resultado!.SolUrl.Should().Be("https://sol.gob.hn/CONSUCOOP/licencia-de-operacion");
+    }
+
+    /// <summary>Corregir la ruta de la institución cambia la dirección de todos sus trámites a la
+    /// vez, que es justo para lo que existe D-20.</summary>
+    [Fact]
+    public async Task Handle_ConRutaCorregida_LaUsaEnLugarDeLaLlave()
+    {
+        var inst = Institucion.Crear("CANATURHIHT", "CANATURH / IHT");
+        inst.FijarRutaSol("canaturh");
+        _ctx.Instituciones.Add(inst);
+        _ctx.TramitesSiger.Add(new TramiteSiger
+        {
+            Codigo = "700-001", Nombre = "Registro", Institucion = "CANATURH / IHT", InstitucionId = "CANATURHIHT",
+            Publicado = true, EstaEnSol = true, SolTramo = "registro"
+        });
+        await _ctx.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
+        var resultado = await handler.Handle(new GetTramitePublicoQuery("700-001"), CancellationToken.None);
+
+        resultado!.SolUrl.Should().Be("https://sol.gob.hn/canaturh/registro",
+            "la llave dice CANATURHIHT, pero la ruta real de SOL es otra");
+    }
+
+    /// <summary>Sin tramo se emite la dirección heredada tal cual (D-14).</summary>
+    [Fact]
+    public async Task Handle_SinTramo_EmiteLaDireccionHeredadaSinTocarla()
+    {
+        _ctx.TramitesSiger.Add(new TramiteSiger
+        {
+            Codigo = "400-002", Nombre = "Viejo", Institucion = "ADUANAS", InstitucionId = "ADUANAS",
+            Publicado = true, EstaEnSol = true, SolUrl = "https://otro.sitio.hn/x?y=1"
+        });
+        await _ctx.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
+        var resultado = await handler.Handle(new GetTramitePublicoQuery("400-002"), CancellationToken.None);
+
+        resultado!.SolUrl.Should().Be("https://otro.sitio.hn/x?y=1");
     }
 }

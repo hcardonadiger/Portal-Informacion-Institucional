@@ -33,7 +33,24 @@ public sealed class TramiteSiger : BaseAuditableEntity
     /// <summary>Si el trámite se puede hacer desde SOL. No confundir con Modalidad
     /// (cómo es el trámite) ni con DisponibleEnLinea (legado, sin usar — ver M-04 del plan).</summary>
     public bool EstaEnSol { get; set; }
+    /// <summary>
+    /// La URL completa heredada, de antes de que la dirección se compusiera (D-14).
+    ///
+    /// <b>No se captura más por acá.</b> Desde la Fase 7 lo que se escribe es
+    /// <see cref="SolTramo"/> y la dirección se arma; este campo solo sigue vivo para no tocar
+    /// lo que ya estaba cargado. Nunca lo lea directo para pintar un enlace: use
+    /// <c>DireccionSol.Componer</c>, que decide entre las dos.
+    /// </summary>
     public string? SolUrl { get; set; }
+
+    /// <summary>
+    /// El tramo final de la dirección en SOL — lo único que captura el trámite (D-13). Lo que va
+    /// delante lo pone la institución.
+    ///
+    /// Se guarda ya normalizado (sin barras al principio ni al final); de eso se encarga
+    /// <c>DireccionSol.Normalizar</c> en el único punto donde se escribe.
+    /// </summary>
+    public string? SolTramo { get; set; }
     public DateTime? SolVerificadoEl { get; set; }
     public int? CategoriaId { get; set; }
     public string? CostoTexto { get; set; }

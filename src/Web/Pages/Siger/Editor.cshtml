@@ -193,9 +193,36 @@
             </label>
         </div>
         <div class="field">
-            <label asp-for="Form.SolUrl">Enlace a SOL (URL completa)</label>
-            <input asp-for="Form.SolUrl" type="url" maxlength="500" placeholder="https://sol.pdihonduras.gob.hn/..." />
-            <span asp-validation-for="Form.SolUrl" class="field-error"></span>
+            <label asp-for="Form.SolTramo">Enlace a SOL</label>
+
+            @* El prefijo va pegado al campo y no en un texto de ayuda debajo (D-13): quien
+               escribe tiene que ver la dirección completa que va a producir, no imaginarla. *@
+            <div style="display:flex;align-items:stretch;flex-wrap:wrap">
+                <span style="display:inline-flex;align-items:center;padding:0 10px;background:#f1f5f9;border:1px solid #cbd5e1;border-right:none;border-radius:6px 0 0 6px;font-family:monospace;font-size:13px;color:#475569;white-space:nowrap">@Model.PrefijoSol</span>
+                <input asp-for="Form.SolTramo" maxlength="300" placeholder="tramo-final"
+                       style="flex:1 1 180px;min-width:140px;border-radius:0 6px 6px 0;font-family:monospace" />
+            </div>
+            <span asp-validation-for="Form.SolTramo" class="field-error"></span>
+            <span class="res-meta">
+                Escriba solo el tramo final. Lo de delante lo pone la institución, y se corrige
+                en su ficha si la ruta real de SOL no coincide con su sigla.
+            </span>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Form.SolUrl))
+            {
+                <div style="margin-top:.6rem;padding:.6rem .7rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px">
+                    <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:.25rem">Enlace heredado</div>
+                    <div style="font-family:monospace;font-size:12px;word-break:break-all;color:#4a5568">@Model.Form.SolUrl</div>
+                    <p style="font-size:12px;color:#78350f;margin:.4rem 0 .3rem">
+                        Esta ficha arrastra una dirección completa de antes de que se compusieran.
+                        Se respeta tal cual mientras no haya tramo; en cuanto capture uno arriba,
+                        manda el tramo.
+                    </p>
+                    <label class="chk-label" style="font-size:13px">
+                        <input asp-for="Form.QuitarSolHeredada" type="checkbox" /> Quitar este enlace heredado
+                    </label>
+                </div>
+            }
         </div>
 
         <div class="field">

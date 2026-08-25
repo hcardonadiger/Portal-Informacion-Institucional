@@ -25,7 +25,7 @@ public static class FotoSigerSerializador
         t.Descripcion, t.Objetivo, t.DirigidoA, t.EstadoSiger, t.Publicado,
         t.DisponibleEnLinea, t.EnPlanDigitalizacion, t.VigenciaDocumento, t.Temporalidad,
         t.DiagramaUrl, t.EnlacePrincipal, t.ObservacionesDiger, t.FechaIngreso,
-        t.UltimaModificacion, t.InstitucionId, t.EstaEnSol, t.SolUrl, t.SolVerificadoEl,
+        t.UltimaModificacion, t.InstitucionId, t.EstaEnSol, t.SolUrl, t.SolTramo, t.SolVerificadoEl,
         t.CategoriaId, t.CostoTexto, t.CostoEsGratuito, t.TiempoTexto, t.Modalidad, t.EsPopular,
         [.. t.Pasos.OrderBy(p => p.NumeroPaso)
                    .Select(p => new PasoFoto(p.NumeroPaso, p.Descripcion, p.LugarDependencia,

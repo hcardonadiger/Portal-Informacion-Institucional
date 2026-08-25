@@ -35,6 +35,9 @@ public sealed record FichaFoto(
     string?   InstitucionId,
     bool      EstaEnSol,
     string?   SolUrl,
+    /// <summary>Agregado en la Fase 7. Las fotos anteriores lo traen vacío, que es correcto:
+    /// cuando se tomaron, el tramo no existía.</summary>
+    string?   SolTramo,
     DateTime? SolVerificadoEl,
     int?      CategoriaId,
     string?   CostoTexto,

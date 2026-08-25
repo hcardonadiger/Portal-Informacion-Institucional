@@ -76,7 +76,7 @@ public sealed class IndexModel(IApplicationDbContext ctx) : PageModel
                 Entregables = t.Entregables.Count, t.DiagramaUrl, t.InstitucionId,
                 Expedientes = ctx.Tramites.Count(et => et.TramiteSigerId == t.Id),
                 // Los seis campos de la ficha pública viajan solo para calcular qué le falta.
-                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl
+                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo
             })
             .ToListAsync(ct);
         var items = rawItems.Select(t => new TramiteSigerRow(
@@ -85,7 +85,7 @@ public sealed class IndexModel(IApplicationDbContext ctx) : PageModel
             t.Pasos, t.Requisitos, t.Entregables, t.DiagramaUrl,
             t.InstitucionId, t.Expedientes,
             FichaPublicaCompletitud.CamposFaltantes(
-                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl))).ToList();
+                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo))).ToList();
 
         Resultado = new PagedResult<TramiteSigerRow>(items, total, page, size);
     }

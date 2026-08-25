@@ -1,10 +1,11 @@
 using Diger.TramitesEstado.Web.Common;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Web.Pages.Instituciones;
 
 [Permission("Instituciones", AccionModulo.Editar, "Crear y editar instituciones")]
 [Authorize(Policy = "Instituciones.Editar")]
-public sealed class EditorModel(ISender sender, IInstitucionBrandingService branding) : PageModel
+public sealed class EditorModel(ISender sender, IInstitucionBrandingService branding, IOptions<SolOptions> sol) : PageModel
 {
     public string? InstId { get; private set; }
     public InstitucionDetailDto? Detalle { get; private set; }
@@ -17,6 +18,12 @@ public sealed class EditorModel(ISender sender, IInstitucionBrandingService bran
     [BindProperty] public string? Descripcion  { get; set; }
     [BindProperty] public string? LogoUrl      { get; set; }
     [BindProperty] public string? Color        { get; set; }
+
+    /// <summary>Ruta de esta institución en SOL. Vacío = usar la llave (D-20).</summary>
+    [BindProperty] public string? RutaSol      { get; set; }
+
+    /// <summary>El host de SOL, para enseñar la dirección completa que va a producir la ruta.</summary>
+    public string HostSol => sol.Value.UrlBase.TrimEnd('/');
 
     public string? Error { get; set; }
 
@@ -36,6 +43,7 @@ public sealed class EditorModel(ISender sender, IInstitucionBrandingService bran
             Descripcion  = d.Descripcion;
             LogoUrl      = d.LogoUrl;
             Color        = d.Color;
+            RutaSol      = d.RutaSol;
             return Page();
         }
         catch (NotFoundException)
@@ -56,7 +64,7 @@ public sealed class EditorModel(ISender sender, IInstitucionBrandingService bran
             else
             {
                 await sender.Send(new ActualizarInstitucionCommand(
-                    id, Nombre, Activo, LogoUrl, NombreCorto, Color, Descripcion), ct);
+                    id, Nombre, Activo, LogoUrl, NombreCorto, Color, Descripcion, RutaSol), ct);
                 branding.InvalidarCache(id);
             }
 

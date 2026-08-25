@@ -104,9 +104,16 @@ public static class FichaPublicaCompletitud
     /// y tiene que decidir exactamente lo mismo. Si acá se apretara el criterio, el catálogo
     /// público mostraría fichas que esta alerta declara incompletas.
     /// </para>
+    /// <para>
+    /// <b>El gemelo en SQL vive en <c>GetCatalogoPublicoQuery</c></b>, en la rama de
+    /// <c>SoloFichasCompletas</c>. Desde la Fase 7 el enlace a SOL puede venir del tramo o de la
+    /// URL heredada, así que la condición es «alguna de las dos»: si alguien toca una y no la
+    /// otra, el filtro y esta alerta empiezan a discrepar en silencio y nadie lo nota hasta que
+    /// una ficha incompleta aparece publicada.
+    /// </para>
     /// </remarks>
     public static IReadOnlyList<string> CamposFaltantes(int? categoriaId, string? modalidad,
-        string? tiempoTexto, bool? costoEsGratuito, bool estaEnSol, string? solUrl)
+        string? tiempoTexto, bool? costoEsGratuito, bool estaEnSol, string? solUrl, string? solTramo)
     {
         var faltantes = new List<string>(5);
 
@@ -114,7 +121,7 @@ public static class FichaPublicaCompletitud
         if (modalidad is null)           faltantes.Add("modalidad");
         if (tiempoTexto is null)         faltantes.Add("tiempo");
         if (costoEsGratuito is null)     faltantes.Add("costo");
-        if (estaEnSol && solUrl is null) faltantes.Add("enlace a SOL");
+        if (estaEnSol && solUrl is null && solTramo is null) faltantes.Add("enlace a SOL");
 
         return faltantes;
     }
@@ -123,8 +130,8 @@ public static class FichaPublicaCompletitud
     /// <see cref="CamposFaltantes"/> a propósito: el día que se agregue un campo obligatorio, la
     /// alerta que ve el técnico y el filtro que ve el ciudadano no pueden decir cosas distintas.</summary>
     public static bool Evaluar(int? categoriaId, string? modalidad, string? tiempoTexto,
-        bool? costoEsGratuito, bool estaEnSol, string? solUrl) =>
-        CamposFaltantes(categoriaId, modalidad, tiempoTexto, costoEsGratuito, estaEnSol, solUrl).Count == 0;
+        bool? costoEsGratuito, bool estaEnSol, string? solUrl, string? solTramo) =>
+        CamposFaltantes(categoriaId, modalidad, tiempoTexto, costoEsGratuito, estaEnSol, solUrl, solTramo).Count == 0;
 
     /// <summary>Cómo se le dice al técnico qué falta. Vive junto a la regla y no en cada página
     /// para que el inventario, el detalle y el editor no acaben con tres redacciones distintas

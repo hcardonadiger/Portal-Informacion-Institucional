@@ -140,7 +140,7 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
             .Select(t => new
             {
                 t.Id, t.Codigo, t.Nombre, t.Institucion, t.Sigla, t.EstadoSiger, t.Publicado,
-                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl
+                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo
             })
             .ToListAsync(ct);
 
@@ -148,7 +148,7 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
             t.Id, t.Codigo, t.Nombre, t.Institucion, t.Sigla, t.EstadoSiger, t.Publicado,
             ReglaPublicacion.EstadoListoParaPublicar(t.EstadoSiger),
             FichaPublicaCompletitud.CamposFaltantes(
-                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl)))
+                t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo)))
             .ToList();
 
         Resultado = new PagedResult<FilaVm>(vm, total, page, size);
