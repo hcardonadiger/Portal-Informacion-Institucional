@@ -1,0 +1,300 @@
+@page
+@using Diger.TramitesEstado.Application.Proyectos.Common
+@using Diger.TramitesEstado.Application.Proyectos.Queries
+@model Diger.TramitesEstado.Web.Pages.Proyectos.IndexModel
+@{
+    ViewData["Title"] = "Proyectos";
+
+    // Los nombres del enum de señales no se leen solos en un selector.
+    string SenalTxt(SenalProyecto s) => s switch
+    {
+        SenalProyecto.Atrasado       => "Atrasados",
+        SenalProyecto.SinLineaBase   => "Sin línea base",
+        SenalProyecto.SinReportar    => "Sin reportar 30+ días",
+        SenalProyecto.SinResponsable => "Sin responsable",
+        SenalProyecto.Divergente     => "Avance sin respaldo",
+        _                            => s.ToString()
+    };
+
+    string EstadoCls(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.EnEjecucion => "status-badge abierto",
+        EstadoProyecto.Suspendido  => "status-badge enproceso",
+        EstadoProyecto.Cerrado     => "status-badge resuelto",
+        EstadoProyecto.Cancelado   => "status-badge vencido",
+        _                          => "status-badge default"
+    };
+    string EstadoTxt(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.EnEjecucion => "En ejecución",
+        _                          => e.ToString()
+    };
+    string PrioCls(PrioridadProyecto p) => p switch
+    {
+        PrioridadProyecto.Alta  => "prio-badge alta",
+        PrioridadProyecto.Media => "prio-badge media",
+        _                       => "prio-badge default"
+    };
+    string BarraCls(int pct) => pct >= 80 ? "bg-success" : pct >= 40 ? "bg-primary" : "bg-warning";
+    string Fecha(DateOnly? d) => d?.ToString("dd/MM/yyyy") ?? "—";
+}
+
+<div class="container" style="max-width:1180px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Proyectos</h2>
+            <p>Seguimiento de la ejecución de los proyectos internos de la DIGER: hitos, avance reportado y bitácora con evidencia.</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            @* Arrastra los filtros puestos: se exporta lo que se está viendo, no todo. *@
+            <a class="btns" asp-page="/Proyectos/Index" asp-page-handler="Export"
+               asp-route-Estado="@Model.Estado" asp-route-ResponsableId="@Model.ResponsableId"
+               asp-route-Anio="@Model.Anio" asp-route-Q="@Model.Q"
+               title="Descarga el portafolio filtrado en CSV, listo para abrir en Excel">Exportar CSV</a>
+            <a class="btns" asp-page="/Tableros/Proyectos">Tablero gerencial →</a>
+            @if (Model.PuedeCrear)
+            {
+                <button type="button" class="btnp" onclick="document.getElementById('modal-nuevo').style.display='flex'">+ Nuevo proyecto</button>
+            }
+        </div>
+    </div>
+
+    <form method="get" class="seg-filters">
+        <div class="field">
+            <label for="f-estado">Estado</label>
+            <select id="f-estado" name="Estado">
+                <option value="">— Todos —</option>
+                @foreach (var e in Enum.GetValues<EstadoProyecto>())
+                {
+                    <option value="@((int)e)" selected="@(Model.Estado == e)">@EstadoTxt(e)</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label for="f-resp">Responsable</label>
+            <select id="f-resp" name="ResponsableId">
+                <option value="">— Todos —</option>
+                @foreach (var u in Model.Usuarios)
+                {
+                    <option value="@u.Id" selected="@(Model.ResponsableId == u.Id)">@u.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="min-width:120px">
+            <label for="f-anio">Año</label>
+            <select id="f-anio" name="Anio">
+                <option value="">— Todos —</option>
+                @for (var y = DateTime.UtcNow.Year + 1; y >= DateTime.UtcNow.Year - 3; y--)
+                {
+                    <option value="@y" selected="@(Model.Anio == y)">@y</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="min-width:130px">
+            <label for="f-prio">Prioridad</label>
+            <select id="f-prio" name="Prioridad">
+                <option value="">— Todas —</option>
+                @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                {
+                    <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
+                }
+            </select>
+        </div>
+        @* Las señales son las mismas que cuenta el tablero: desde allá se llega acá con una
+           puesta, y desde acá se pueden combinar con el resto de los filtros. *@
+        <div class="field" style="min-width:175px">
+            <label for="f-senal">Señal</label>
+            <select id="f-senal" name="Senal">
+                <option value="">— Todas —</option>
+                @foreach (var s in Enum.GetValues<SenalProyecto>())
+                {
+                    <option value="@((int)s)" selected="@(Model.Senal == s)">@SenalTxt(s)</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="flex:1;min-width:200px">
+            <label for="f-q">Buscar</label>
+            <input id="f-q" type="search" name="Q" value="@Model.Q" placeholder="Código, nombre u objetivo" />
+        </div>
+        <button class="btns" type="submit">Filtrar</button>
+        @if (Model.Estado is not null || Model.ResponsableId is not null || Model.Anio is not null
+             || !string.IsNullOrWhiteSpace(Model.Q) || Model.Prioridad is not null || Model.Senal is not null)
+        {
+            <a class="btns" asp-page="/Proyectos/Index">Limpiar</a>
+        }
+    </form>
+
+    @if (Model.Senal is { } senalActiva)
+    {
+        <p class="res-meta" style="margin:-.4rem 0 .9rem">
+            Mostrando solo: <strong>@SenalTxt(senalActiva)</strong> · @Model.Proyectos.Count proyecto@(Model.Proyectos.Count == 1 ? "" : "s")
+        </p>
+    }
+
+    @if (!Model.Proyectos.Any())
+    {
+        <div class="hist-empty">
+            <div class="ico">📋</div>
+            <p>No hay proyectos que coincidan con el filtro.</p>
+        </div>
+    }
+    else
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th>Proyecto</th>
+                    <th style="width:150px">Responsable</th>
+                    <th style="width:110px">Estado</th>
+                    <th style="width:170px">Avance</th>
+                    <th style="width:120px">Hitos</th>
+                    <th style="width:120px">Cierre plan.</th>
+                    <th style="width:80px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Proyectos)
+                {
+                    <tr>
+                        <td>
+                            <div style="font-weight:600">@p.Nombre</div>
+                            <div class="res-meta">
+                                @p.Codigo
+                                <span class="@PrioCls(p.Prioridad)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
+                                @if (p.SinReportar)
+                                {
+                                    @* El síntoma que más interesa en seguimiento: no es que vaya tarde,
+                                       es que hace un mes que nadie informa. *@
+                                    <span class="badge badge-warning" style="margin-left:6px">Sin reportar hace 30+ días</span>
+                                }
+                            </div>
+                        </td>
+                        <td class="res-meta">@(string.IsNullOrWhiteSpace(p.Responsable) ? "—" : p.Responsable)</td>
+                        <td><span class="@EstadoCls(p.Estado)" style="padding:3px 10px;font-size:var(--diger-fs-xs)">@EstadoTxt(p.Estado)</span></td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <div class="progress" style="flex:1;height:6px">
+                                    <div class="progress-bar @BarraCls(p.AvancePct)" style="width:@(p.AvancePct)%"></div>
+                                </div>
+                                <span style="width:34px;text-align:right;font-size:var(--diger-fs-xs);font-weight:700">@(p.AvancePct)%</span>
+                            </div>
+                            <div class="res-meta">
+                                @if (p.UltimoAvance is { } ua)
+                                {
+                                    <text>último reporte @ua.ToLocalTime().ToString("dd/MM/yyyy")</text>
+                                }
+                                else
+                                {
+                                    <text>sin reportes</text>
+                                }
+                            </div>
+                        </td>
+                        <td class="res-meta">
+                            @p.HitosCompletados / @p.TotalHitos
+                            @if (p.Divergente)
+                            {
+                                <div>
+                                    <span class="badge badge-warning" title="Declarado @(p.AvancePct)% contra @(p.AvanceFisico)% de hitos cerrados">
+                                        @(p.Brecha > 0 ? $"declara +{p.Brecha} pts" : $"reporta {p.Brecha} pts de menos")
+                                    </span>
+                                </div>
+                            }
+                            @if (p.HitosAtrasados > 0)
+                            {
+                                <span class="badge badge-danger" style="margin-left:6px">@p.HitosAtrasados atrasado@(p.HitosAtrasados == 1 ? "" : "s")</span>
+                            }
+                        </td>
+                        <td class="res-meta">
+                            @Fecha(p.FechaFinPlan)
+                            @if (p.EstaAtrasado)
+                            {
+                                <div><span class="badge badge-danger">Vencido</span></div>
+                            }
+                            else if (p.SinLineaBase)
+                            {
+                                <div><span class="badge badge-warning">sin comprometer</span></div>
+                            }
+                        </td>
+                        <td style="text-align:right">
+                            <a class="btns" asp-page="/Proyectos/Editor" asp-route-id="@p.Id" style="font-size:12.5px;padding:6px 12px">Abrir</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (Model.PuedeCrear)
+{
+    <div id="modal-nuevo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+        <div class="card" style="width:520px;max-width:95vw">
+            <h3 class="sec-h">Nuevo proyecto</h3>
+            <form method="post" asp-page-handler="Crear">
+                <div class="field">
+                    <label for="n-nombre">Nombre <span style="color:var(--diger-danger)">*</span></label>
+                    <input id="n-nombre" name="NuevoNombre" maxlength="300" required placeholder="p. ej. Digitalización de trámites — fase 2" />
+                </div>
+                <div class="field">
+                    <label for="n-obj">Objetivo</label>
+                    <textarea id="n-obj" name="NuevoObjetivo" rows="2" maxlength="2000" placeholder="Qué se busca lograr"></textarea>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:190px">
+                        <label for="n-resp">Responsable</label>
+                        <select id="n-resp" name="NuevoResponsable">
+                            <option value="">— Sin asignar —</option>
+                            @foreach (var u in Model.Usuarios)
+                            {
+                                <option value="@u.Id">@u.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" style="width:140px">
+                        <label for="n-prio">Prioridad</label>
+                        <select id="n-prio" name="NuevaPrioridad">
+                            @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                            {
+                                <option value="@((int)pr)" selected="@(pr == PrioridadProyecto.Media)">@pr</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:160px">
+                        <label for="n-ini">Inicio planificado</label>
+                        <input id="n-ini" type="date" name="NuevaFechaInicio" />
+                    </div>
+                    <div class="field" style="flex:1;min-width:160px">
+                        <label for="n-fin">Cierre planificado</label>
+                        <input id="n-fin" type="date" name="NuevaFechaFin" />
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">
+                    <button type="button" class="btns" onclick="document.getElementById('modal-nuevo').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btnp">Crear proyecto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+}
+
+@* Las secciones no pueden declararse dentro de un bloque condicional: se define siempre y el
+   script se protege por la existencia del modal. *@
+@section Scripts {
+<script>
+    (function () {
+        var m = document.getElementById('modal-nuevo');
+        if (!m) return;
+        m.addEventListener('click', function (e) { if (e.target === this) this.style.display = 'none'; });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.style.display = 'none'; });
+    })();
+</script>
+}

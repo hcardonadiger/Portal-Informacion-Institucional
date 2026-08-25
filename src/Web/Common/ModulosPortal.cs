@@ -17,4 +17,5 @@ public static class ModulosPortal
     public const string Reuniones   = "Reuniones";
     public const string Tickets     = "Tickets";
     public const string Contactos   = "Contactos";
+    public const string Proyectos   = "Proyectos";
 }

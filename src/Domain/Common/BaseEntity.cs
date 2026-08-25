@@ -41,6 +41,7 @@ public record ReunionUpdatedEvent(int ReunionId)                                
 public record TicketCreatedEvent(int TicketId, string Numero, string Titulo)               : INotification;
 public record TicketEstadoCambiadoEvent(int TicketId, string Numero, string Estado)        : INotification;
 public record ExpedienteEstadoCambiadoEvent(int ExpedienteId, string Codigo, string EstadoAnterior, string EstadoNuevo, string Actor) : INotification;
+public record ProyectoEstadoCambiadoEvent(int ProyectoId, string Codigo, string EstadoAnterior, string EstadoNuevo, string Actor)     : INotification;
 
 // ── Domain exception ──────────────────────────────────────────────────────
 public sealed class DomainException(string message) : Exception(message);
