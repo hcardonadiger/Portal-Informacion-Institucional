@@ -70,6 +70,7 @@
                     <option value="">— Seleccione —</option>
                     <option value="Registrado">Registrado</option>
                     <option value="Aprobado">Aprobado</option>
+                    <option value="Completo">Completo</option>
                     <option value="Borrador">Borrador</option>
                 </select>
             </div>
@@ -83,15 +84,10 @@
             </div>
         </div>
 
-        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
             <div class="field">
                 <label class="chk-label">
-                    <input asp-for="Form.Publicado" type="checkbox" /> Publicado en portal
-                </label>
-            </div>
-            <div class="field">
-                <label class="chk-label">
-                    <input asp-for="Form.DisponibleEnLinea" type="checkbox" /> Disponible en linea
+                    <input asp-for="Form.DisponibleEnLinea" type="checkbox" /> Disponible en linea (legado, sin usar)
                 </label>
             </div>
             <div class="field">
@@ -101,6 +97,86 @@
             </div>
         </div>
 
+        <div class="field" style="background:var(--diger-blue-pale, #eef3fb);padding:12px 16px;border-radius:8px;margin-bottom:1rem">
+            <strong>Publicado en el portal ciudadano:</strong>
+            @if (Model.PublicadoActual)
+            {
+                <span class="wf-badge wf-completada">Sí</span>
+            }
+            else
+            {
+                <span class="wf-badge wf-registrada">No</span>
+                <span class="res-meta">— se publica solo cuando el estado es Aprobado/Completo y la ficha está completa (categoría, modalidad, tiempo, costo, y enlace a SOL si aplica)</span>
+            }
+            @if (!Model.EsNuevo)
+            {
+                <div class="res-meta" style="margin-top:4px">
+                    Última revisión: @(Model.UltimaRevision?.ToString("dd/MM/yyyy") ?? "—")
+                </div>
+            }
+        </div>
+
+        <h3 style="margin-top:1.5rem">Ficha pública (Ventanilla Digital)</h3>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+            <div class="field">
+                <label asp-for="Form.CategoriaId">Categoría</label>
+                <select asp-for="Form.CategoriaId">
+                    <option value="">— Sin categoría —</option>
+                    @foreach (var c in Model.Categorias)
+                    {
+                        <option value="@c.Id">@c.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label asp-for="Form.Modalidad">Modalidad</label>
+                <select asp-for="Form.Modalidad">
+                    <option value="">— Sin definir —</option>
+                    <option value="Virtual">Virtual</option>
+                    <option value="Presencial">Presencial</option>
+                    <option value="Hibrido">Híbrido</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+            <div class="field">
+                <label asp-for="Form.TiempoTexto">Tiempo estimado (texto libre)</label>
+                <input asp-for="Form.TiempoTexto" maxlength="120" placeholder="ej. 5 días hábiles" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.CostoTexto">Costo (texto libre)</label>
+                <input asp-for="Form.CostoTexto" maxlength="250" placeholder="ej. L. 200.00, o Gratuito" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.CostoEsGratuito">¿Es gratuito?</label>
+            <select asp-for="Form.CostoEsGratuito">
+                <option value="">— No especificado —</option>
+                <option value="true">Sí, es gratuito</option>
+                <option value="false">No, tiene costo</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label class="chk-label">
+                <input asp-for="Form.EstaEnSol" type="checkbox" id="chk-en-sol" /> Se puede hacer desde SOL
+            </label>
+        </div>
+        <div class="field">
+            <label asp-for="Form.SolUrl">Enlace a SOL (URL completa)</label>
+            <input asp-for="Form.SolUrl" type="url" maxlength="500" placeholder="https://sol.pdihonduras.gob.hn/..." />
+            <span asp-validation-for="Form.SolUrl" class="field-error"></span>
+        </div>
+
+        <div class="field">
+            <label class="chk-label">
+                <input asp-for="Form.EsPopular" type="checkbox" /> Marcar como trámite popular
+            </label>
+        </div>
+
+        <h3 style="margin-top:1.5rem">Otros datos</h3>
         <div class="form-grid">
             <div class="field">
                 <label asp-for="Form.EnlacePrincipal">Enlace principal</label>
@@ -112,15 +188,9 @@
             </div>
         </div>
 
-        <div class="form-grid">
-            <div class="field">
-                <label asp-for="Form.FechaIngreso">Fecha de ingreso</label>
-                <input asp-for="Form.FechaIngreso" type="date" />
-            </div>
-            <div class="field">
-                <label asp-for="Form.UltimaModificacion">Ultima modificacion</label>
-                <input asp-for="Form.UltimaModificacion" type="date" />
-            </div>
+        <div class="field">
+            <label asp-for="Form.FechaIngreso">Fecha de ingreso</label>
+            <input asp-for="Form.FechaIngreso" type="date" />
         </div>
 
         <div class="field">

@@ -40,12 +40,14 @@ dotnet test tests\Application.Tests
 dotnet test tests\Application.Tests --filter "FullyQualifiedName~PersonasCapacitadas"
 
 # Add a new EF migration (startup-project is Web, which owns the design-time DbContext)
-dotnet ef migrations add <NombreMigracion> --project src\Infrastructure --startup-project src\Web
+dotnet ef migrations add <NombreMigracion> --project src\Infrastructure --startup-project src\Web --output-dir Persistence\Migrations
 ```
+
+**Two migrations folders, one history**: `src/Infrastructure/Migrations/` (holds `AppDbContextModelSnapshot.cs`, migrations up to 2026-07-31) and `src/Infrastructure/Persistence/Migrations/` (every migration since 2026-08-05, SIGER and otherwise) both feed the same `__EFMigrationsHistory` table. Current convention: pass `--output-dir Persistence\Migrations` explicitly — `dotnet ef migrations add` with no `--output-dir` writes to the first folder instead (where the snapshot lives), which is now the stale location.
 
 ## Local development
 
-- **Database**: SQL Server LocalDB. The dev connection string (`src/Web/appsettings.Development.json`) targets `(localdb)\MSSQLLocalDB`, database `DigerTramitesEstado_Nueva`. On startup the app **auto-migrates** and calls `DbSeeder.SeedUsuariosAsync` (`Program.cs`). Tests never touch this — they use EF In-Memory.
+- **Database**: SQL Server LocalDB. The dev connection string (`src/Web/appsettings.Development.json`) targets `(localdb)\MSSQLLocalDB`. On startup, in Development, the app auto-migrates and calls `DbSeeder.SeedUsuariosAsync` (`Program.cs`) **only if** `Datos:AplicarMigracionesAlArrancar` is `true` — off by default, on purpose: a `Development` connection string that happens to point at a shared/production-named database must not silently migrate it just because someone pressed F5. Enable it per machine, never in a committed appsettings file — e.g. `dotnet user-secrets set "Datos:AplicarMigracionesAlArrancar" true --project src\Web` (and the same for `src\Presentation` if you run that host), or the `Datos__AplicarMigracionesAlArrancar=true` environment variable. Tests never touch this — they use EF In-Memory.
 - **Seeded logins** (from `DbSeeder`, all password-hashed): `admin@diger.gob.hn` / `Admin#2026` (Administrador), plus `jefe.inst@`, `jefe.area@`, `jefe.uni@`, `empleado@`, `consultor@` with passwords `JefeInst#2026`, `JefeArea#2026`, `JefeUni#2026`, `Empleado#2026`, `Consultor#2026`.
 - **Ports**: `launchSettings.json` binds https `49175`/`49176` + http `49177`; `.claude/launch.json` ("web") runs http `5011`. The certificate-login flow hard-codes `https://localhost:49176/Cuenta/LoginCertificado` in Development, so keep 49176 free when testing cert login.
 - **Secrets**: Supabase import credentials live in User Secrets (UserSecretsId `diger-tramites-estado-web`) under `Supabase:Url` / `Supabase:AnonKey` — not in appsettings.

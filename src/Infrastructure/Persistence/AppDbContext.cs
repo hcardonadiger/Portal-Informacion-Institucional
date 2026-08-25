@@ -62,6 +62,7 @@ public sealed class AppDbContext(
     public DbSet<Recurso>                   Recursos              { get; init; } = default!;
     public DbSet<TramiteSiger>              TramitesSiger         { get; init; } = default!;
     public DbSet<PasoSiger>                 PasosSiger            { get; init; } = default!;
+    public DbSet<CategoriaTramite>          CategoriasTramite     { get; init; } = default!;
     public DbSet<RequisitoSiger>            RequisitosSiger       { get; init; } = default!;
     public DbSet<EntregableSiger>           EntregablesSiger      { get; init; } = default!;
     public DbSet<LugarAtencionSiger>        LugaresAtencionSiger  { get; init; } = default!;
@@ -89,6 +90,19 @@ public sealed class AppDbContext(
     protected override void OnModelCreating(ModelBuilder mb)
     {
         mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // ── Colación insensible a tildes (Script F del plan de la Ventanilla Digital) ──
+        // Solo aplica en SQL Server: es un nombre de colación propio del motor y SQLite
+        // (que usan los Web.Tests vía EnsureCreated) no lo reconoce — "no such collation
+        // sequence". Las columnas sobre las que busca ?busqueda= (decisión P-07, Fase 0).
+        if (Database.IsSqlServer())
+        {
+            mb.Entity<TramiteSiger>().Property(x => x.Nombre).UseCollation("Modern_Spanish_CI_AI");
+            mb.Entity<TramiteSiger>().Property(x => x.Institucion).UseCollation("Modern_Spanish_CI_AI");
+            mb.Entity<TramiteSiger>().Property(x => x.Descripcion).UseCollation("Modern_Spanish_CI_AI");
+            mb.Entity<TramiteSiger>().Property(x => x.Objetivo).UseCollation("Modern_Spanish_CI_AI");
+            mb.Entity<Institucion>().Property(x => x.Nombre).UseCollation("Modern_Spanish_CI_AI");
+        }
 
         // ── Filtros Globales RLS (Row-Level Security) ───────────────────────
         // El alcance lo determina NivelAlcance del rol (tabla Roles), no su nombre:
@@ -319,9 +333,20 @@ public sealed class InstitucionConfiguration : IEntityTypeConfiguration<Instituc
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasMaxLength(120).ValueGeneratedNever();
         b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
+        b.Property(x => x.NombreCorto).HasMaxLength(30);
         b.HasIndex(x => x.Nombre).IsUnique();
         b.HasMany(x => x.Tramites).WithOne()
             .HasForeignKey(t => t.InstitucionId).OnDelete(DeleteBehavior.Cascade);
+
+        // ── Contacto institucional (plan Fase 1, script D) ─────────────────
+        b.Property(x => x.Telefono).HasMaxLength(60);
+        b.Property(x => x.SitioWeb).HasMaxLength(300);
+        b.Property(x => x.Direccion).HasMaxLength(300);
+        b.Property(x => x.Horario).HasMaxLength(200);
+        b.Property(x => x.Tipo).HasMaxLength(60);
+        b.ToTable(t => t.HasCheckConstraint("CK_Instituciones_SitioWeb",
+            "[SitioWeb] IS NULL OR [SitioWeb] LIKE 'http://%' OR [SitioWeb] LIKE 'https://%'"));
+
         b.HasData(Seed.Instituciones);
     }
 }
@@ -1388,6 +1413,20 @@ internal static class Seed
     ];
 
     internal static readonly object[] TramitesDefinicion = [];
+
+    // Mismas ocho categorías, íconos y orden que ya usa el sistema consumidor (HondurasÁgil),
+    // para que el catálogo público no se contradiga con lo que el ciudadano ya conoce.
+    internal static readonly object[] Categorias =
+    [
+        new { Id = 1, Nombre = "Salud y Seguridad Social", Icono = "HeartPulse",    Orden = 10, Activo = true, CreatedAt = SeedDate },
+        new { Id = 2, Nombre = "Educación y Cultura",       Icono = "GraduationCap", Orden = 20, Activo = true, CreatedAt = SeedDate },
+        new { Id = 3, Nombre = "Impuestos y Finanzas",      Icono = "CreditCard",   Orden = 30, Activo = true, CreatedAt = SeedDate },
+        new { Id = 4, Nombre = "Identidad y Ciudadanía",    Icono = "Contact",      Orden = 40, Activo = true, CreatedAt = SeedDate },
+        new { Id = 5, Nombre = "Empresas y Negocios",       Icono = "Building2",    Orden = 50, Activo = true, CreatedAt = SeedDate },
+        new { Id = 6, Nombre = "Vivienda y Propiedad",      Icono = "Home",         Orden = 60, Activo = true, CreatedAt = SeedDate },
+        new { Id = 7, Nombre = "Transporte y Vehículos",    Icono = "Car",          Orden = 70, Activo = true, CreatedAt = SeedDate },
+        new { Id = 8, Nombre = "Medio Ambiente",            Icono = "Leaf",         Orden = 80, Activo = true, CreatedAt = SeedDate },
+    ];
 }
 
 // ── Plan de Trabajo ───────────────────────────────────────────────────────
@@ -1444,6 +1483,28 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
         b.Property(x => x.EnlacePrincipal).HasMaxLength(600);
         b.Property(x => x.ObservacionesDiger).HasMaxLength(4000);
 
+        // ── Campos para la ficha pública (Ventanilla Digital / plan Fase 1, script A) ──
+        b.Property(x => x.SolUrl).HasMaxLength(500);
+        b.Property(x => x.CostoTexto).HasMaxLength(250);
+        b.Property(x => x.TiempoTexto).HasMaxLength(120);
+        b.Property(x => x.Modalidad).HasMaxLength(20);
+        b.Property(x => x.EstaEnSol).HasDefaultValue(false);
+        b.Property(x => x.EsPopular).HasDefaultValue(false);
+
+        b.HasOne<CategoriaTramite>().WithMany()
+            .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.SetNull);
+
+        b.ToTable(t =>
+        {
+            // Catálogo cerrado de modalidad. Sin prefijo N': los valores son ASCII y el
+            // literal N'...' (T-SQL) no lo entiende SQLite, que usan los Web.Tests vía EnsureCreated.
+            t.HasCheckConstraint("CK_TramitesSiger_Modalidad",
+                "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')");
+            // La regla de D-01 (plan), protegida en la base y no solo en el formulario.
+            t.HasCheckConstraint("CK_TramitesSiger_Sol",
+                "[EstaEnSol] = 0 OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
+        });
+
         b.HasIndex(x => x.IdSiger).IsUnique();
         b.HasIndex(x => x.Codigo).IsUnique();
         b.HasIndex(x => x.Institucion);
@@ -1452,6 +1513,17 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
         b.HasIndex(x => x.Publicado);
         b.HasIndex(x => x.DisponibleEnLinea);
         b.HasIndex(x => x.EnPlanDigitalizacion);
+
+        // Filtrados: estas columnas van a estar mayormente en NULL/0 durante meses;
+        // un índice completo sobre 1000+ filas casi todas nulas no ayuda a nadie.
+        b.HasIndex(x => x.CategoriaId).HasFilter("[CategoriaId] IS NOT NULL");
+        b.HasIndex(x => x.Modalidad).HasFilter("[Modalidad] IS NOT NULL");
+        b.HasIndex(x => x.EstaEnSol).IncludeProperties(x => x.SolUrl).HasFilter("[EstaEnSol] = 1");
+
+        // El índice de la consulta que la API hace todo el día: el catálogo paginado.
+        b.HasIndex(x => new { x.Publicado, x.CategoriaId, x.InstitucionId })
+            .HasDatabaseName("IX_TramitesSiger_Catalogo")
+            .IncludeProperties(x => new { x.Codigo, x.Nombre, x.Modalidad, x.EsPopular, x.CostoEsGratuito });
 
         b.Property(x => x.InstitucionId).HasMaxLength(120);
         b.HasOne<Institucion>().WithMany()
@@ -1467,6 +1539,20 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
     }
 }
 
+public sealed class CategoriaTramiteConfiguration : IEntityTypeConfiguration<CategoriaTramite>
+{
+    public void Configure(EntityTypeBuilder<CategoriaTramite> b)
+    {
+        b.ToTable("CategoriasTramite");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Icono).HasMaxLength(60);
+        b.HasIndex(x => x.Nombre).IsUnique();
+        b.HasData(Seed.Categorias);
+    }
+}
+
 public sealed class PasoSigerConfiguration : IEntityTypeConfiguration<PasoSiger>
 {
     public void Configure(EntityTypeBuilder<PasoSiger> b)
@@ -1478,6 +1564,10 @@ public sealed class PasoSigerConfiguration : IEntityTypeConfiguration<PasoSiger>
         b.Property(x => x.LugarDependencia).HasMaxLength(400);
         b.Property(x => x.SalidaResultado).HasMaxLength(2000);
         b.Property(x => x.TiempoRegistrado).HasMaxLength(60);
+        b.Property(x => x.Titulo).HasMaxLength(200);
+        b.Property(x => x.Modalidad).HasMaxLength(20);
+        b.ToTable(t => t.HasCheckConstraint("CK_PasosSiger_Modalidad",
+            "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido', 'Interno')"));
         b.HasIndex(x => new { x.TramiteSigerId, x.NumeroPaso });
     }
 }
