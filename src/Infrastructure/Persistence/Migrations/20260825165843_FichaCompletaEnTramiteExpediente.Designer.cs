@@ -4,16 +4,19 @@ using Diger.TramitesEstado.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Diger.TramitesEstado.Infrastructure.Migrations
+namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825165843_FichaCompletaEnTramiteExpediente")]
+    partial class FichaCompletaEnTramiteExpediente
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1408,10 +1411,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasIndex("ExpedienteId", "TramiteIndex");
 
-                    b.ToTable("ExpedienteTramites", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_ExpedienteTramites_Modalidad", "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')");
-                        });
+                    b.ToTable("ExpedienteTramites", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteTramiteEntregable", b =>

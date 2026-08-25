@@ -27,6 +27,8 @@ public sealed class AppDbContext(
     public DbSet<Expediente>               Expedientes        { get; init; } = default!;
     public DbSet<ExpedienteTramite>        Tramites           { get; init; } = default!;
     public DbSet<TramiteRequisito>         Requisitos         { get; init; } = default!;
+    public DbSet<ExpedienteTramiteEntregable> EntregablesTramite { get; init; } = default!;
+    public DbSet<ExpedienteTramiteLugar>     LugaresTramite     { get; init; } = default!;
     public DbSet<FlujoNodo>                Flujos             { get; init; } = default!;
     public DbSet<FundamentoLegal>          Legal              { get; init; } = default!;
     public DbSet<DocumentoSolicitado>      DocsSolicitados    { get; init; } = default!;
@@ -629,6 +631,30 @@ public sealed class ExpedienteTramiteConfiguration : IEntityTypeConfiguration<Ex
         b.HasOne<TramiteSiger>().WithMany()
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => x.TramiteSigerId);
+
+        // ── Campos de la ficha pública (Fase 8) ────────────────────────────
+        b.Property(x => x.ModalidadDetalle).HasMaxLength(200);
+        b.Property(x => x.VigenciaDocumento).HasMaxLength(120);
+        b.Property(x => x.Temporalidad).HasMaxLength(60);
+        b.Property(x => x.ObservacionesDiger).HasMaxLength(4000);
+        b.Property(x => x.SolTramo).HasMaxLength(300);
+        b.Property(x => x.EstaEnSol).HasDefaultValue(false);
+        b.HasOne<CategoriaTramite>().WithMany()
+            .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => x.CategoriaId).HasFilter("[CategoriaId] IS NOT NULL");
+
+        // Catálogo cerrado de modalidad, igual que en la ficha SIGER. Sin prefijo N': los
+        // valores son ASCII y el literal N'...' (T-SQL) no lo entiende SQLite, que usan los
+        // Web.Tests vía EnsureCreated.
+        //
+        // Se declara acá para que el modelo y la base digan lo mismo, pero **se crea en la
+        // migración que convierte los valores de texto libre**, no en la que agrega las
+        // columnas. Puesto antes, la migración fallaría al aplicarse sobre cualquier base con
+        // datos: en Ensayo hay 202 trámites con modalidad escrita a mano.
+        b.ToTable(t => t.HasCheckConstraint("CK_ExpedienteTramites_Modalidad",
+            "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')"));
+
+
         b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
 
         // Identidad estable del trámite: única para que la conciliación pueda buscar por ella
@@ -654,6 +680,42 @@ public sealed class TramiteRequisitoConfiguration : IEntityTypeConfiguration<Tra
     }
 }
 
+
+/// <summary>
+/// Entregables y lugares del trámite del expediente (Fase 8).
+///
+/// Se identifican por <c>ExpedienteId</c> + <c>TramiteIndex</c> y no por una llave foránea al
+/// trámite, igual que <c>TramiteRequisitos</c>: guardar un expediente borra y reinserta todos
+/// sus hijos, así que el <c>Id</c> del trámite cambia en cada guardado y no sirve de referencia.
+/// </summary>
+public sealed class ExpedienteTramiteEntregableConfiguration : IEntityTypeConfiguration<ExpedienteTramiteEntregable>
+{
+    public void Configure(EntityTypeBuilder<ExpedienteTramiteEntregable> b)
+    {
+        b.ToTable("ExpedienteTramiteEntregables");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Entregable).HasMaxLength(500).IsRequired();
+        b.Property(x => x.Formato).HasMaxLength(120);
+        b.Property(x => x.Presentacion).HasMaxLength(120);
+        b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
+    }
+}
+
+public sealed class ExpedienteTramiteLugarConfiguration : IEntityTypeConfiguration<ExpedienteTramiteLugar>
+{
+    public void Configure(EntityTypeBuilder<ExpedienteTramiteLugar> b)
+    {
+        b.ToTable("ExpedienteTramiteLugares");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Lugar).HasMaxLength(400).IsRequired();
+        b.Property(x => x.Ciudad).HasMaxLength(120);
+        b.Property(x => x.Direccion).HasMaxLength(500);
+        b.Property(x => x.Telefonos).HasMaxLength(200);
+        b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
+    }
+}
 public sealed class FlujoNodoConfiguration : IEntityTypeConfiguration<FlujoNodo>
 {
     public void Configure(EntityTypeBuilder<FlujoNodo> b)

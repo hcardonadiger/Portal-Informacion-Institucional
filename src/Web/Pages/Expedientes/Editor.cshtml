@@ -616,7 +616,9 @@
             plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
             esAdmin: @(Model.EsAdmin ? "true" : "false"),
             usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre })))
+                Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre }))),
+            categorias: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.Categorias.Select(c => new { id = c.Id, nombre = c.Nombre })))
         };
         @if (Model.ExpJson is not null)
         {

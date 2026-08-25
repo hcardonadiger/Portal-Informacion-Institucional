@@ -34,6 +34,11 @@ public sealed class ExpedienteTramite : BaseEntity
     public EstadoTramite EstadoTramite { get; set; } = EstadoTramite.Pendiente;
 
     // Ficha
+    /// <summary>
+    /// Modalidad del <b>catálogo cerrado</b> de la ficha pública: Virtual, Presencial o Hibrido.
+    /// Antes de la Fase 8 era texto libre; el texto original de cada trámite se conservó en
+    /// <see cref="ModalidadDetalle"/>. Lo protege un CHECK en la base.
+    /// </summary>
     public string? Modalidad   { get; set; }
     public string? PlazoLegal  { get; set; }
     public string? Tercero     { get; set; }
@@ -55,6 +60,46 @@ public sealed class ExpedienteTramite : BaseEntity
     public string? EmailTramite { get; set; }
     public string? SitioWeb    { get; set; }
 
+
+    // ── Campos de la ficha pública (plan Fase 8, D-12 y D-17) ───────────────
+    //
+    // Están acá y no solo en TramiteSiger porque D-17 invierte quién manda: en cuanto una
+    // ficha queda enlazada a un expediente, sus campos de contenido se vuelven de solo lectura
+    // en la ficha y solo se editan por acá. Un campo que el expediente no sepa guardar es un
+    // campo que, a partir de ese momento, nadie puede editar en ninguna parte.
+
+    /// <summary>Categoría del catálogo público. Es la misma tabla que usa la ficha.</summary>
+    public int? CategoriaId { get; set; }
+
+    /// <summary>
+    /// El texto libre de modalidad tal como lo escribió el analista, antes de normalizarlo.
+    ///
+    /// Existe porque el catálogo cerrado pierde matiz: «En línea (total)» y «En línea» acaban
+    /// las dos en <c>Virtual</c>, y ese «(total)» lo escribió alguien queriendo decir algo. Se
+    /// conserva aparte en vez de descartarlo, porque después de convertir no hay forma de
+    /// recuperarlo.
+    /// </summary>
+    public string? ModalidadDetalle { get; set; }
+
+    /// <summary>Tres estados: null = no capturado, false = tiene costo, true = gratuito. Nunca
+    /// se infiere de que no haya monto escrito.</summary>
+    public bool? EsGratuito { get; set; }
+
+    /// <summary>Cuánto vale el documento que entrega el trámite.</summary>
+    public string? VigenciaDocumento { get; set; }
+
+    /// <summary>Si el trámite es permanente, estacional, de una sola vez…</summary>
+    public string? Temporalidad { get; set; }
+
+    /// <summary>Notas de DIGER sobre la ficha. No las ve el ciudadano.</summary>
+    public string? ObservacionesDiger { get; set; }
+
+    /// <summary>Si el trámite se puede hacer desde SOL.</summary>
+    public bool EstaEnSol { get; set; }
+
+    /// <summary>El tramo final de la dirección en SOL (D-13). Lo que va delante lo pone la
+    /// institución; ver <c>DireccionSol</c>.</summary>
+    public string? SolTramo { get; set; }
     public int? TramiteSigerId { get; set; }
 }
 

@@ -30,6 +30,8 @@ public sealed class OriginalExpedienteDto
     [JsonPropertyName("tramites")]           public List<Dictionary<string, string?>> Tramites { get; set; } = [];
     [JsonPropertyName("reqs_tram")]          public List<List<ReqOrig>> ReqsTram { get; set; } = [];
     [JsonPropertyName("acciones_tram")]      public List<List<AccionOrig>> AccionesTram { get; set; } = [];
+    [JsonPropertyName("entregables_tram")] public List<List<EntregableOrig>> EntregablesTram { get; set; } = [];
+    [JsonPropertyName("lugares_tram")]     public List<List<LugarOrig>>      LugaresTram     { get; set; } = [];
     [JsonPropertyName("infra")]              public InfraOrig? Infra { get; set; }
     [JsonPropertyName("legal")]              public List<LegalOrig> Legal { get; set; } = [];
     [JsonPropertyName("docs")]               public List<DocOrig> Docs { get; set; } = [];
@@ -62,6 +64,8 @@ public sealed class OriginalExpedienteDto
 
     public sealed class ReqOrig    { [JsonPropertyName("requisito")] public string? Requisito { get; set; } [JsonPropertyName("obs")] public string? Obs { get; set; } [JsonPropertyName("plantilla_origen_id")] public int? PlantillaOrigenId { get; set; } [JsonPropertyName("es_personalizado")] public bool EsPersonalizado { get; set; } }
     public sealed class AccionOrig { [JsonPropertyName("accion")] public string? Accion { get; set; } [JsonPropertyName("justificacion")] public string? Justificacion { get; set; } }
+    public sealed class EntregableOrig { [JsonPropertyName("entregable")] public string? Entregable { get; set; } [JsonPropertyName("formato")] public string? Formato { get; set; } [JsonPropertyName("presentacion")] public string? Presentacion { get; set; } }
+    public sealed class LugarOrig      { [JsonPropertyName("lugar")] public string? Lugar { get; set; } [JsonPropertyName("ciudad")] public string? Ciudad { get; set; } [JsonPropertyName("direccion")] public string? Direccion { get; set; } [JsonPropertyName("telefonos")] public string? Telefonos { get; set; } }
     public sealed class LegalOrig  { [JsonPropertyName("instrumento")] public string? Instrumento { get; set; } [JsonPropertyName("articulos")] public string? Articulos { get; set; } [JsonPropertyName("obs")] public string? Obs { get; set; } [JsonPropertyName("plantilla_origen_id")] public int? PlantillaOrigenId { get; set; } [JsonPropertyName("es_personalizado")] public bool EsPersonalizado { get; set; } }
     public sealed class DocOrig    { [JsonPropertyName("nombre")] public string? Nombre { get; set; } [JsonPropertyName("tipo")] public string? Tipo { get; set; } [JsonPropertyName("recibido")] public string? Recibido { get; set; } [JsonPropertyName("fecha")] public string? Fecha { get; set; } [JsonPropertyName("url")] public string? Url { get; set; } }
     public sealed class DocIntOrig { [JsonPropertyName("documento")] public string? Documento { get; set; } [JsonPropertyName("area")] public string? Area { get; set; } [JsonPropertyName("obs")] public string? Obs { get; set; } }

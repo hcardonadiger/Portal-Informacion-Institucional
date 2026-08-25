@@ -22,6 +22,11 @@ public sealed class EditorModel(
     public string  Codigo  { get; private set; } = "";
     public string? ExpJson { get; private set; }   // OriginalExpedienteDto serializado (edición)
     public List<string> Plantillas { get; private set; } = [];
+
+    /// <summary>El catálogo de categorías, para el desplegable de la ficha pública (Fase 8).
+    /// Es la misma tabla que usa la ficha SIGER: dos catálogos distintos harían que promover un
+    /// trámite cambiara su categoría.</summary>
+    public List<CategoriaTramite> Categorias { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
     public bool EsContraparte { get; private set; }
@@ -40,6 +45,7 @@ public sealed class EditorModel(
         EsAdmin    = await acceso.PuedeEditarAsync("Expedientes", ct);
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
         Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
+        Categorias = await db.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
         if (id is null && !EsAdmin)
             return Forbid();
 

@@ -258,6 +258,59 @@ function addReqFicha(i){ if(!reqsTram[i]) reqsTram[i]=[]; reqsTram[i].push({requ
 function updateReqFicha(i,idx,field,val){ if(reqsTram[i]&&reqsTram[i][idx]){ reqsTram[i][idx][field]=val; if(field==='requisito') actualizarNumReq(); } }
 function removeReqFicha(i,idx){ if(reqsTram[i]){ reqsTram[i].splice(idx,1); renderReqFichaRows(i); actualizarNumReq(); } }
 
+
+// ── ENTREGABLES Y LUGARES POR TRÁMITE (Fase 8) ───────────────
+// Mismo patrón que los requisitos de arriba: un arreglo por trámite, reemplazo en bloque al
+// guardar. Existen porque D-17 deja estos campos editables SOLO desde el expediente en cuanto
+// la ficha queda enlazada; si la pantalla no los pintara, el primer guardado borraría lo que
+// la migración sembró y nadie lo notaría hasta ver la ficha publicada sin entregables.
+var entregablesTram = [[]];
+var lugaresTram     = [[]];
+
+function renderEntregableRows(i){
+  var tbody = document.getElementById('entregable-tbody-'+i);
+  if(!tbody) return;
+  var rows = entregablesTram[i] || (entregablesTram[i]=[]);
+  tbody.innerHTML = rows.map(function(r, idx){
+    return '<tr>'
+      + '<td class="nc">'+(idx+1)+'</td>'
+      + '<td><input type="text" placeholder="Ej: Constancia, licencia, certificado" value="'+escHtml(r.entregable||'')+'" onchange="updateEntregable('+i+','+idx+',\'entregable\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Físico / Digital" value="'+escHtml(r.formato||'')+'" onchange="updateEntregable('+i+','+idx+',\'formato\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Ventanilla / Descarga / Correo" value="'+escHtml(r.presentacion||'')+'" onchange="updateEntregable('+i+','+idx+',\'presentacion\',this.value)"></td>'
+      + '<td style="text-align:center;padding:6px"><button class="btn-rm" onclick="removeEntregable('+i+','+idx+')">✕</button></td>'
+    + '</tr>';
+  }).join('');
+}
+function addEntregable(i){ if(!entregablesTram[i]) entregablesTram[i]=[]; entregablesTram[i].push({entregable:'',formato:'',presentacion:''}); renderEntregableRows(i); }
+function updateEntregable(i,idx,field,val){ if(entregablesTram[i]&&entregablesTram[i][idx]) entregablesTram[i][idx][field]=val; }
+function removeEntregable(i,idx){ if(entregablesTram[i]){ entregablesTram[i].splice(idx,1); renderEntregableRows(i); } }
+
+function renderLugarRows(i){
+  var tbody = document.getElementById('lugar-tbody-'+i);
+  if(!tbody) return;
+  var rows = lugaresTram[i] || (lugaresTram[i]=[]);
+  tbody.innerHTML = rows.map(function(r, idx){
+    return '<tr>'
+      + '<td class="nc">'+(idx+1)+'</td>'
+      + '<td><input type="text" placeholder="Nombre de la sede u oficina" value="'+escHtml(r.lugar||'')+'" onchange="updateLugar('+i+','+idx+',\'lugar\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Ciudad" value="'+escHtml(r.ciudad||'')+'" onchange="updateLugar('+i+','+idx+',\'ciudad\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Dirección" value="'+escHtml(r.direccion||'')+'" onchange="updateLugar('+i+','+idx+',\'direccion\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Teléfonos" value="'+escHtml(r.telefonos||'')+'" onchange="updateLugar('+i+','+idx+',\'telefonos\',this.value)"></td>'
+      + '<td style="text-align:center;padding:6px"><button class="btn-rm" onclick="removeLugar('+i+','+idx+')">✕</button></td>'
+    + '</tr>';
+  }).join('');
+}
+function addLugar(i){ if(!lugaresTram[i]) lugaresTram[i]=[]; lugaresTram[i].push({lugar:'',ciudad:'',direccion:'',telefonos:''}); renderLugarRows(i); }
+function updateLugar(i,idx,field,val){ if(lugaresTram[i]&&lugaresTram[i][idx]) lugaresTram[i][idx][field]=val; }
+function removeLugar(i,idx){ if(lugaresTram[i]){ lugaresTram[i].splice(idx,1); renderLugarRows(i); } }
+
+/// Opciones del catálogo de categorías, que el servidor inyecta en __EXPMETA__.
+function categoriaOptions(){
+  var opts = '<option value="">— Sin categoría —</option>';
+  var cats = (window.__EXPMETA__ && window.__EXPMETA__.categorias) || [];
+  cats.forEach(function(c){ opts += '<option value="'+c.id+'">'+escHtml(c.nombre)+'</option>'; });
+  return opts;
+}
 // ── INFRAESTRUCTURA SOL (una vez por expediente) ─────────────
 var PERFILES = [
   'Administrador/a de redes','Administrador/a de base de datos',
@@ -610,7 +663,8 @@ function seleccionarContacto(sel){
 // Campos de la ficha que viven en el DOM (para snapshot al agregar/quitar trámites)
 var FICHA_FIELDS = ['nombre_corto','modalidad','plazo_legal','tercero','tiempo_real','metodo_pago',
   'pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto','doc_entregado','objetivo',
-  'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web'];
+  'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web',
+  'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
 
 // Construye el HTML de una fila de trámite en la Apertura. Muestra ✕ solo si hay más de un trámite.
 function tramRowHTML(i){
@@ -642,9 +696,12 @@ function actualizarNumTramites(){
   while(flujosActual.length < n) flujosActual.push([]);
   while(flujosPropuesto.length < n) flujosPropuesto.push([]);
   while(reqsTram.length < n) reqsTram.push([]);
+  while(entregablesTram.length < n) entregablesTram.push([]);
+  while(lugaresTram.length < n) lugaresTram.push([]);
   while(accionesTram.length < n) accionesTram.push([]);
   flujosActual.length = n; flujosPropuesto.length = n;
   reqsTram.length = n; accionesTram.length = n;
+  entregablesTram.length = n; lugaresTram.length = n;
 
   var wrap = document.getElementById('tramites-nombres-wrap');
   if(wrap){ wrap.innerHTML = ''; for(var i=0; i<n; i++) wrap.innerHTML += tramRowHTML(i); }
@@ -887,6 +944,7 @@ function quitarTramiteApertura(i){
   snap.splice(i, 1);
   flujosActual.splice(i, 1); flujosPropuesto.splice(i, 1);
   reqsTram.splice(i, 1); accionesTram.splice(i, 1);
+  entregablesTram.splice(i, 1); lugaresTram.splice(i, 1);
   tramiteCount--;
   if(activeTram >= tramiteCount) activeTram = tramiteCount - 1;
   actualizarNumTramites();
@@ -928,7 +986,8 @@ function migrarDatosTramite(i){
   var fieldsToMigrar = ['nombre_corto','modalidad','plazo_legal','tercero',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
-    'horario','telefono','email_tramite','sitio_web'];
+    'horario','telefono','email_tramite','sitio_web',
+    'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
   fieldsToMigrar.forEach(function(f){ sv(f+'_'+i, gv(f+'_'+j)); });
 
   // TGR rubros dependen de la institución — cargar primero, luego asignar rubro
@@ -948,7 +1007,11 @@ function migrarDatosTramite(i){
 
   // Requisitos (copia profunda)
   reqsTram[i] = (reqsTram[j]||[]).map(function(r){ return {requisito:r.requisito||'',obs:r.obs||''}; });
+  entregablesTram[i] = (entregablesTram[j]||[]).map(function(g){ return {entregable:g.entregable||'',formato:g.formato||'',presentacion:g.presentacion||''}; });
+  lugaresTram[i] = (lugaresTram[j]||[]).map(function(l){ return {lugar:l.lugar||'',ciudad:l.ciudad||'',direccion:l.direccion||'',telefonos:l.telefonos||''}; });
   renderReqFichaRows(i);
+  renderEntregableRows(i);
+  renderLugarRows(i);
   actualizarNumReq();
 
   // Acciones modelo propuesto (copia profunda)
@@ -1008,7 +1071,7 @@ function renderFichasPanels(){
     var show = (i === activeTram);
     wrap.innerHTML += fichaHTML(i, names[i], show);
   }
-  for(var k=0; k<tramiteCount; k++){ renderReqFichaRows(k); togglePago(k); }
+  for(var k=0; k<tramiteCount; k++){ renderReqFichaRows(k); renderEntregableRows(k); renderLugarRows(k); togglePago(k); }
   syncAllNombreTramites();
 }
 
@@ -1041,7 +1104,11 @@ function fichaHTML(i, nombre, show){
         + '<div class="f"><label>Nombre corto / abreviatura</label><input type="text" id="nombre_corto_'+i+'" placeholder="Nombre común"></div>'
       + '</div>'
       + '<div class="g3">'
-        + '<div class="f"><label>Modalidad actual</label><select id="modalidad_'+i+'"><option value="">— Seleccione —</option><option>Presencial</option><option>En línea (parcial)</option><option>En línea (total)</option><option>Mixto</option></select></div>'
+        // Catálogo cerrado, igual que la ficha pública. Antes ofrecía «Mixto» y «En línea
+        // (parcial)»: «Mixto» no contiene ni «linea» ni «presencial», así que al normalizar
+        // se convertía en nada y el trámite se quedaba sin modalidad sin avisar.
+        + '<div class="f"><label>Modalidad actual</label><select id="modalidad_'+i+'"><option value="">— Seleccione —</option><option value="Presencial">Presencial</option><option value="Virtual">En línea</option><option value="Hibrido">En línea y presencial</option></select></div>'
+        + '<div class="f"><label>Detalle de la modalidad</label><input type="text" id="modalidad_detalle_'+i+'" placeholder="Ej: en línea total, solo la solicitud"></div>'
         + '<div class="f"><label>Plazo máximo legal</label><input type="text" id="plazo_legal_'+i+'" placeholder="Ej: 15 días hábiles"></div>'
       + '</div>'
       + '<div class="g2">'
@@ -1088,6 +1155,35 @@ function fichaHTML(i, nombre, show){
       + '<table class="dtbl"><thead><tr><th>#</th><th>Requisito / descripción</th><th>Observación</th><th style="width:36px"></th></tr></thead>'
         + '<tbody id="req-ficha-tbody-'+i+'"></tbody></table>'
       + '<button class="btn-add" onclick="addReqFicha('+i+')">+ Agregar requisito</button>'
+    + '</div>'
+    // ── Ficha pública (Fase 8) ────────────────────────────────────────────
+    // Todo lo de esta tarjeta viaja a la ficha SIGER que ve el ciudadano. Está acá y no en la
+    // ficha porque D-17 invierte quién manda: una vez enlazada, la ficha queda de solo lectura.
+    + '<div class="card"><div class="ct">Ficha pública (lo que verá el ciudadano)</div>'
+      + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Estos datos son los que se publican en el portal ciudadano. Un campo vacío deja la ficha incompleta y el portal puede ocultarla.</p>'
+      + '<div class="g3">'
+        + '<div class="f"><label>Categoría</label><select id="categoria_id_'+i+'">'+categoriaOptions()+'</select></div>'
+        + '<div class="f"><label>¿Es gratuito?</label><select id="es_gratuito_'+i+'"><option value="">— No especificado —</option><option value="true">Sí, es gratuito</option><option value="false">No, tiene costo</option></select></div>'
+        + '<div class="f"><label>Temporalidad</label><input type="text" id="temporalidad_'+i+'" placeholder="Ej: Permanente, estacional"></div>'
+      + '</div>'
+      + '<div class="g3">'
+        + '<div class="f"><label>Vigencia del documento</label><input type="text" id="vigencia_documento_'+i+'" placeholder="Ej: 2 años"></div>'
+        + '<div class="f"><label>¿Se puede hacer desde SOL?</label><select id="esta_en_sol_'+i+'"><option value="false">No</option><option value="true">Sí</option></select></div>'
+        + '<div class="f"><label>Tramo del enlace en SOL</label><input type="text" id="sol_tramo_'+i+'" placeholder="tramo-final"></div>'
+      + '</div>'
+      + '<div class="f"><label>Observaciones DIGER</label><textarea id="observaciones_diger_'+i+'" rows="2" placeholder="Notas internas. No las ve el ciudadano."></textarea></div>'
+    + '</div>'
+    + '<div class="card"><div class="ct">Entregables del trámite</div>'
+      + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Qué recibe el ciudadano cuando el trámite termina.</p>'
+      + '<table class="dtbl"><thead><tr><th>#</th><th>Entregable</th><th>Formato</th><th>Presentación</th><th style="width:36px"></th></tr></thead>'
+        + '<tbody id="entregable-tbody-'+i+'"></tbody></table>'
+      + '<button class="btn-add" onclick="addEntregable('+i+')">+ Agregar entregable</button>'
+    + '</div>'
+    + '<div class="card"><div class="ct">Lugares de atención</div>'
+      + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Dónde se atiende el trámite. Si es solo en línea, puede quedar vacío.</p>'
+      + '<table class="dtbl"><thead><tr><th>#</th><th>Lugar</th><th>Ciudad</th><th>Dirección</th><th>Teléfonos</th><th style="width:36px"></th></tr></thead>'
+        + '<tbody id="lugar-tbody-'+i+'"></tbody></table>'
+      + '<button class="btn-add" onclick="addLugar('+i+')">+ Agregar lugar</button>'
     + '</div>'
     + '<div class="card"><div class="ct">Descripción y contacto</div>'
       + '<div class="f"><label>Descripción del servicio</label><textarea id="descripcion_'+i+'" rows="3" placeholder="¿Qué hace este trámite? ¿A quién sirve?"></textarea></div>'
@@ -1635,7 +1731,8 @@ function recolectar(){
   var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
-    'horario','telefono','email_tramite','sitio_web'];
+    'horario','telefono','email_tramite','sitio_web',
+    'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
   for(var t=0;t<tramiteCount;t++){
     var ft = {};
     fichaFields.forEach(function(f){ ft[f] = gv(f+'_'+t); });
@@ -1650,6 +1747,8 @@ function recolectar(){
 
   // Requisitos por trámite + acciones del modelo
   d.reqs_tram = reqsTram.slice(0, tramiteCount);
+  d.entregables_tram = entregablesTram.slice(0, tramiteCount);
+  d.lugares_tram = lugaresTram.slice(0, tramiteCount);
   d.acciones_tram = accionesTram.slice(0, tramiteCount);
 
   // Infraestructura SOL (una vez por expediente)
@@ -1913,6 +2012,8 @@ function poblarFormulario(d){
 
   // Requisitos/acciones por trámite (antes de render para que aparezcan)
   reqsTram = d.reqs_tram ? d.reqs_tram.map(function(r){ return r||[]; }) : [[]];
+  entregablesTram = d.entregables_tram ? d.entregables_tram.map(function(x){ return x||[]; }) : [[]];
+  lugaresTram = d.lugares_tram ? d.lugares_tram.map(function(x){ return x||[]; }) : [[]];
   accionesTram = d.acciones_tram ? d.acciones_tram.map(function(a){ return a||[]; }) : [[]];
 
   // Tramites count + nombres + áreas
@@ -1923,6 +2024,8 @@ function poblarFormulario(d){
   if(d.tramite_nombres) d.tramite_nombres.forEach(function(nm,i){ sv('tnam-'+i, nm||''); });
   if(d.tramite_areas) d.tramite_areas.forEach(function(ar,i){ sv('area_resp-'+i, ar||''); });
   while(reqsTram.length < tramiteCount) reqsTram.push([]);
+  while(entregablesTram.length < tramiteCount) entregablesTram.push([]);
+  while(lugaresTram.length < tramiteCount) lugaresTram.push([]);
   while(accionesTram.length < tramiteCount) accionesTram.push([]);
   actualizarTabsTramite();
   renderFichasPanels();
@@ -1931,7 +2034,8 @@ function poblarFormulario(d){
   var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
-    'horario','telefono','email_tramite','sitio_web'];
+    'horario','telefono','email_tramite','sitio_web',
+    'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
   _sigerIds = []; _claves = [];
   if(d.tramites) d.tramites.forEach(function(ft,t){
     fichaFields.forEach(function(f){
@@ -2106,6 +2210,7 @@ function nuevoExp(){
   currentIdx=null; tramiteCount=1; activeTram=0;
   flujosActual=[[]]; flujosPropuesto=[[]];
   reqsTram=[[]]; accionesTram=[[]];
+  entregablesTram=[[]]; lugaresTram=[[]];
   document.querySelectorAll('input:not([type=radio]):not([type=checkbox]),select,textarea').forEach(function(el){ if(el.id&&!el.readOnly) el.value=''; });
   document.querySelectorAll('input[type=checkbox]').forEach(function(el){ el.checked=false; });
   document.querySelectorAll('input[type=radio]').forEach(function(el){ el.checked=false; });

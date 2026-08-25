@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger.Promocion;
 namespace Diger.TramitesEstado.Application.Expedientes.Common;
 
 /// <summary>Aplica un <see cref="ExpedienteInputDto"/> sobre un <see cref="Expediente"/>
@@ -78,13 +79,46 @@ public static class ExpedienteMapper
                 NombreCorto = t.NombreCorto, AreaResponsable = t.AreaResponsable,
                 FechaCreacion = t.FechaCreacion ?? DateOnly.FromDateTime(DateTime.Now),
                 EstadoTramite = t.EstadoTramite ?? EstadoTramite.Pendiente,
-                Modalidad = t.Modalidad, PlazoLegal = t.PlazoLegal, Tercero = t.Tercero,
+                PlazoLegal = t.PlazoLegal, Tercero = t.Tercero,
                 TiempoReal = t.TiempoReal, MetodoPago = t.MetodoPago, PagoBanco = t.PagoBanco,
                 PagoCuenta = t.PagoCuenta, TgrInst = t.TgrInst, TgrRubro = t.TgrRubro, TgrMonto = t.TgrMonto,
                 DocEntregado = t.DocEntregado, Objetivo = t.Objetivo, Alcance = t.Alcance,
                 AlcanceObs = t.AlcanceObs, Descripcion = t.Descripcion, Dirigido = t.Dirigido,
                 Horario = t.Horario, Telefono = t.Telefono, EmailTramite = t.EmailTramite, SitioWeb = t.SitioWeb,
-                TramiteSigerId = t.TramiteSigerId
+                TramiteSigerId = t.TramiteSigerId,
+
+                // ── Ficha pública (Fase 8) ──────────────────────────────────
+                // La modalidad se normaliza al entrar, en un solo punto: así da igual que venga
+                // del formulario, de una importación o de una carga antigua. Se guarda además
+                // el texto tal cual llegó, porque el catálogo cerrado pierde matiz y después no
+                // hay forma de recuperarlo.
+                Modalidad = ModalidadNormalizador.Normalizar(t.Modalidad),
+                ModalidadDetalle = string.IsNullOrWhiteSpace(t.ModalidadDetalle)
+                    ? (string.IsNullOrWhiteSpace(t.Modalidad) ? null : t.Modalidad.Trim())
+                    : t.ModalidadDetalle.Trim(),
+                CategoriaId = t.CategoriaId,
+                EsGratuito = t.EsGratuito,
+                VigenciaDocumento = t.VigenciaDocumento,
+                Temporalidad = t.Temporalidad,
+                ObservacionesDiger = t.ObservacionesDiger,
+                EstaEnSol = t.EstaEnSol,
+                SolTramo = DireccionSol.Normalizar(t.SolTramo)
+            });
+
+        // Entregables y lugares (Fase 8). Se filtran los vacíos igual que los requisitos: una
+        // fila en blanco en el formulario es una fila que alguien empezó y no llenó, no un dato.
+        foreach (var g in (d.Entregables ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Entregable)))
+            e.Agregar(new ExpedienteTramiteEntregable
+            {
+                TramiteIndex = g.TramiteIndex, Orden = g.Orden, Entregable = g.Entregable.Trim(),
+                Formato = g.Formato, Presentacion = g.Presentacion
+            });
+
+        foreach (var l in (d.Lugares ?? []).Where(x => !string.IsNullOrWhiteSpace(x.Lugar)))
+            e.Agregar(new ExpedienteTramiteLugar
+            {
+                TramiteIndex = l.TramiteIndex, Orden = l.Orden, Lugar = l.Lugar.Trim(),
+                Ciudad = l.Ciudad, Direccion = l.Direccion, Telefonos = l.Telefonos
             });
 
         foreach (var r in d.Requisitos.Where(x => !string.IsNullOrWhiteSpace(x.Requisito)))
@@ -145,6 +179,8 @@ public static class ExpedienteMapper
     {
         ["Trámites"] = e.Tramites.Count,
         ["Requisitos"] = e.Requisitos.Count,
+        ["Entregables"] = e.Entregables.Count,
+        ["Lugares"] = e.Lugares.Count,
         ["Flujos"] = e.Flujos.Count,
         ["Legal"] = e.Legal.Count,
         ["Docs solicitados"] = e.DocsSolicitados.Count,
@@ -184,7 +220,9 @@ public static class ExpedienteMapper
             t.Tercero, t.TiempoReal, t.MetodoPago, t.PagoBanco, t.PagoCuenta, t.TgrInst, t.TgrRubro,
             t.TgrMonto, t.DocEntregado, t.Objetivo, t.Alcance, t.AlcanceObs, t.Descripcion, t.Dirigido,
             t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb, t.TramiteSigerId,
-            t.FechaCreacion, t.EstadoTramite, t.ClaveEstable)).ToList(),
+            t.FechaCreacion, t.EstadoTramite, t.ClaveEstable,
+            t.CategoriaId, t.ModalidadDetalle, t.EsGratuito, t.VigenciaDocumento, t.Temporalidad,
+            t.ObservacionesDiger, t.EstaEnSol, t.SolTramo)).ToList(),
         e.Requisitos.OrderBy(r => r.TramiteIndex).ThenBy(r => r.Orden).Select(r => new RequisitoInput(
             r.TramiteIndex, r.Orden, r.Requisito, r.Obs, r.Accion, r.Justificacion,
             r.PlantillaOrigenId, r.EsPersonalizado)).ToList(),
@@ -204,5 +242,9 @@ public static class ExpedienteMapper
         e.ContraparteUsuarioNombre,
         e.FechaLimiteEntrega,
         e.ValidadoDigerUsuarioId,
-        e.ValidadoInstUsuarioId);
+        e.ValidadoInstUsuarioId,
+        e.Entregables.OrderBy(g => g.TramiteIndex).ThenBy(g => g.Orden).Select(g => new EntregableInput(
+            g.TramiteIndex, g.Orden, g.Entregable, g.Formato, g.Presentacion)).ToList(),
+        e.Lugares.OrderBy(l => l.TramiteIndex).ThenBy(l => l.Orden).Select(l => new LugarInput(
+            l.TramiteIndex, l.Orden, l.Lugar, l.Ciudad, l.Direccion, l.Telefonos)).ToList());
 }

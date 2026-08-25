@@ -61,7 +61,7 @@ Tres lecturas:
 | **D-09** | PD tiene una pantalla que lista todo lo publicado en HA, para administrarlo. |
 | **D-10** | La publicación es **manual pura y no bloquea**. La regla de estado queda como *advertencia*. |
 | **D-11** | Los pasos del proceso siguen siendo propiedad de SIGER. **No** se mapean con el flujo del expediente. |
-| **D-12** | El contenido se edita en el expediente. `EstadoSiger` es lo único que se sigue editando **solo** en la ficha. |
+| **D-12** | El contenido se edita en el expediente. `EstadoSiger` es lo único que se sigue editando **solo** en la ficha. *(Hecho — ver Fase 8.)* |
 | **D-13** | El trámite captura solo el tramo final de la URL SOL, con `sol.pdihonduras.gob.hn/<URL de la institución>/` como prefijo fijo en pantalla. *(Hecho. El prefijo va pegado al campo, no como texto de ayuda.)* |
 | **D-14** | Las URLs SOL completas ya cargadas **no se tocan**, y solo las usan los trámites que nunca pasaron por PD. *(Hecho. Medido: la única que hay apunta a google.com y está publicada — ver Fase 7.)* |
 | **D-15** | El historial es una **tabla de fotos** de la ficha y sus hijos. La fila viva es la última versión. |
@@ -503,17 +503,83 @@ columnas nacen en NULL. Es independiente del script 12, así que puede aplicarse
 
 ---
 
-### Fase 8 — El expediente aprende a guardar todo lo que SIGER guarda (~8 tareas)
+### Fase 8 — El expediente aprende a guardar todo lo que SIGER guarda — HECHA
 
-Si el expediente no puede guardar un campo, ese campo no se puede editar una vez la ficha queda
-bloqueada por D-17.
+**Entrega:** D-12, y lo que D-17 necesita para poder aplicarse.
 
-Tareas 5–9 de `plan.md`: categoría, modalidad de catálogo cerrado, gratuidad, las dos tablas
-hijas (entregables y lugares), su siembra desde `DocEntregado`/`Horario`/`Telefono`/`DirSede`,
-la conversión de las 240 modalidades y la UI. **Más lo que D-12 agrega:** vigencia,
-temporalidad, observaciones DIGER, si está en SOL y el tramo de la dirección.
+**Por qué esta fase existe.** D-17 invierte quién manda: en cuanto una ficha SIGER queda enlazada
+a un expediente, sus campos de contenido se vuelven de solo lectura en la ficha y solo se editan
+desde el expediente. **Un campo que el expediente no sepa guardar es un campo que, a partir de ese
+momento, nadie puede editar en ninguna parte** — y nada avisaría: el formulario lo aceptaría y lo
+descartaría en silencio.
 
-**Riesgo:** la conversión de las 240 modalidades debe correr **antes** de aplicar el CHECK.
+**Lo que se midió antes de tocar nada** (Ensayo, 25-08-2026, 240 trámites de expediente):
+
+| Señal | Realidad |
+|---|---|
+| Modalidad escrita a mano | 202 de 240, en **ocho** variantes distintas |
+| La variante dominante | «En línea» (166), y una sin tilde: «En linea» (1) |
+| `DocEntregado` | 202 trámites |
+| `Telefono` | 197 trámites · `DirSede` en 6 de 36 expedientes |
+| Trámites ya enlazados a una ficha | **1** — el bloqueo de D-17 hoy no afecta a nadie |
+
+Las ocho variantes caen en el catálogo sin ambigüedad, así que la conversión es revisable de un
+vistazo en vez de ser un salto de fe.
+
+**Lo construido:**
+
+1. **Ocho campos nuevos en el trámite del expediente:** categoría, detalle de la modalidad,
+   gratuidad, vigencia del documento, temporalidad, observaciones DIGER, si está en SOL y el tramo
+   del enlace. Más **dos tablas hijas**: entregables y lugares de atención, con la misma regla de
+   reemplazo en bloque que las diez colecciones que ya existían.
+2. **La modalidad pasa a catálogo cerrado**, protegida por un CHECK, y **el texto original se
+   conserva** en un campo aparte. «En línea (total)» y «En línea» acaban las dos en `Virtual`, y
+   ese «(total)» lo escribió alguien queriendo decir algo; después de convertir no hay forma de
+   recuperarlo.
+3. **La conversión de los 202 y el CHECK van en la misma migración, en ese orden.** El CHECK no se
+   crea junto con las columnas a propósito: puesto antes, la migración fallaría contra cualquier
+   base con datos.
+4. **Siembra**: `DocEntregado` pasa a ser el primer entregable, y el teléfono del trámite más la
+   dirección de sede del expediente pasan a ser su primer lugar de atención. Nadie tiene que
+   volver a teclear 202 documentos y 197 teléfonos.
+5. **La pantalla del expediente** gana la tarjeta «Ficha pública» y las dos tablas repetidoras.
+
+**Resultado de la conversión, medido:** 183 Virtual · 16 Hibrido · 3 Presencial · 38 sin modalidad.
+**Cero fuera del catálogo**, y las 202 conservan su texto original. Siembra: 202 entregables y
+236 lugares, ninguno vacío.
+
+**Un desplegable que perdía datos en silencio.** El editor ofrecía «Mixto» y «En línea (parcial)».
+«Mixto» no contiene ni «linea» ni «presencial», así que al normalizar se convertía en nada: quien
+eligiera esa opción se quedaba sin modalidad y nada se lo decía. El desplegable pasa a ofrecer el
+catálogo real, y el matiz se escribe aparte.
+
+**La pantalla y la siembra tenían que ir juntas, y esa es la parte que más fácil se rompe.**
+Guardar un expediente borra y reinserta todos sus hijos desde el formulario. Si lo sembrado no se
+pintara, el primer guardado de cada expediente lo borraría — 202 entregables y 236 lugares— sin
+error, sin aviso y sin forma de notarlo hasta ver la ficha publicada vacía.
+
+**El script de despliegue encontró un fallo que las migraciones no pueden encontrar.** En el
+`.sql` de producción todas las migraciones viajan en un solo lote, y SQL Server analiza el lote
+entero antes de ejecutar nada: el `UPDATE` que copia el texto de la modalidad se refería a una
+columna que la misma migración crea tres instrucciones más arriba, y fallaba con *Msg 207, Invalid
+column name*. `dotnet ef database update` no lo ve, porque manda cada migración por separado. Se
+resolvió metiendo esa instrucción en `EXEC`, que se compila al ejecutarse.
+
+**Lo que no se sembró, a propósito:** el `Horario` del trámite. Un lugar de atención de SIGER no
+tiene dónde guardarlo —sus campos son lugar, ciudad, dirección y teléfonos— y meterlo en la
+dirección la corrompería. Se queda en el trámite del expediente. **Es un pendiente para la Fase 9**
+decidir si el horario viaja a alguna parte o se queda como dato interno.
+
+**Pruebas:** 20 nuevas, 357 en total. Cubren el viaje completo por los **dos** mapeadores —el de la
+forma JSON del editor y el de la aplicación—, porque un campo que se pierda en cualquiera de los
+dos no da error: el guardado responde bien y el dato simplemente no está.
+
+**Despliegue:** `scripts/sql/14-ficha-completa-en-expediente.sql`. **Es el primero de la serie que
+toca datos**, y por eso se probó con datos sucios de verdad: una base de rasguño con las siete
+formas de modalidad que hay en el inventario, incluida la que no se reconoce. Dos corridas
+seguidas, la segunda sin efecto. Se comprobó también que el CHECK rechaza un valor fuera del
+catálogo y acepta los tres válidos. Ninguna fila se borra, y el texto original de la modalidad
+sobrevive —el `Down` de la migración lo devuelve—.
 
 ---
 

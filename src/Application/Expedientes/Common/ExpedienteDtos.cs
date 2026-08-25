@@ -31,7 +31,29 @@ public sealed record TramiteInput(
     EstadoTramite? EstadoTramite = null,
     /// <summary>Identidad estable del trámite. Viaja en la fila del formulario para que se
     /// mueva con su trámite cuando alguien reordena o quita otro. Null solo la primera vez.</summary>
-    Guid?   ClaveEstable = null);
+    Guid?   ClaveEstable = null,
+
+    // ── Campos de la ficha pública (Fase 8) ─────────────────────────────────
+    // Van al final y con valor por omisión para no romper las llamadas existentes; el record
+    // tiene treinta campos y reordenarlo por estética costaría más de lo que vale.
+    int?    CategoriaId = null,
+    /// <summary>El texto libre de modalidad tal como lo escribió el analista, antes de
+    /// normalizarlo al catálogo cerrado.</summary>
+    string? ModalidadDetalle = null,
+    bool?   EsGratuito = null,
+    string? VigenciaDocumento = null,
+    string? Temporalidad = null,
+    string? ObservacionesDiger = null,
+    bool    EstaEnSol = false,
+    string? SolTramo = null);
+
+/// <summary>Un entregable del trámite. Misma forma que la tabla hija.</summary>
+public sealed record EntregableInput(
+    int TramiteIndex, int Orden, string Entregable, string? Formato, string? Presentacion);
+
+/// <summary>Un lugar de atención del trámite. Misma forma que la tabla hija.</summary>
+public sealed record LugarInput(
+    int TramiteIndex, int Orden, string Lugar, string? Ciudad, string? Direccion, string? Telefonos);
 
 public sealed record RequisitoInput(
     int TramiteIndex, int Orden, string Requisito, string? Obs,
@@ -114,4 +136,9 @@ public sealed record ExpedienteInputDto(
     string?  ContraparteUsuarioNombre = null,
     DateOnly? FechaLimiteEntrega = null,
     Guid?    ValidadoDigerUsuarioId = null,
-    Guid?    ValidadoInstUsuarioId = null);
+    Guid?    ValidadoInstUsuarioId = null,
+
+    // Hijos del trámite agregados en la Fase 8. Anulables para no romper las llamadas que ya
+    // existen; el mapeador los trata como lista vacía.
+    List<EntregableInput>? Entregables = null,
+    List<LugarInput>?      Lugares     = null);

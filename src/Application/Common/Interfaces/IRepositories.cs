@@ -165,6 +165,8 @@ public interface IApplicationDbContext
     DbSet<Expediente>               Expedientes   { get; }
     DbSet<ExpedienteTramite>        Tramites      { get; }
     DbSet<TramiteRequisito>         Requisitos    { get; }
+    DbSet<ExpedienteTramiteEntregable> EntregablesTramite { get; }
+    DbSet<ExpedienteTramiteLugar>     LugaresTramite     { get; }
     DbSet<FlujoNodo>                Flujos        { get; }
     DbSet<FundamentoLegal>          Legal         { get; }
     DbSet<DocumentoSolicitado>      DocsSolicitados { get; }
