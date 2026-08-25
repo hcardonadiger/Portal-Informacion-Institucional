@@ -15,7 +15,7 @@ namespace Diger.TramitesEstado.Domain.Tests;
 /// </summary>
 public sealed class DireccionSolTests
 {
-    private const string Host = "https://sol.gob.hn";
+    private const string Host = "https://sol.pdihonduras.gob.hn";
 
     // ── Composición ───────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ public sealed class DireccionSolTests
     public void Con_tramo_la_direccion_se_arma_con_la_ruta_de_la_institucion()
     {
         DireccionSol.Componer(Host, "CONSUCOOP", "licencia-de-operacion", urlHeredada: null)
-            .Should().Be("https://sol.gob.hn/CONSUCOOP/licencia-de-operacion");
+            .Should().Be("https://sol.pdihonduras.gob.hn/CONSUCOOP/licencia-de-operacion");
     }
 
     /// <summary>
@@ -32,22 +32,22 @@ public sealed class DireccionSolTests
     /// pantallas, bastaría con que una olvidara recortar para producir <c>//</c>.
     /// </summary>
     [Theory]
-    [InlineData("https://sol.gob.hn/", "CONSUCOOP",  "licencia")]
-    [InlineData("https://sol.gob.hn",  "/CONSUCOOP", "licencia")]
-    [InlineData("https://sol.gob.hn",  "CONSUCOOP/", "/licencia")]
-    [InlineData("https://sol.gob.hn/", "/CONSUCOOP/", "/licencia/")]
-    [InlineData("https://sol.gob.hn",  "CONSUCOOP",  "  licencia  ")]
+    [InlineData("https://sol.pdihonduras.gob.hn/", "CONSUCOOP",  "licencia")]
+    [InlineData("https://sol.pdihonduras.gob.hn",  "/CONSUCOOP", "licencia")]
+    [InlineData("https://sol.pdihonduras.gob.hn",  "CONSUCOOP/", "/licencia")]
+    [InlineData("https://sol.pdihonduras.gob.hn/", "/CONSUCOOP/", "/licencia/")]
+    [InlineData("https://sol.pdihonduras.gob.hn",  "CONSUCOOP",  "  licencia  ")]
     public void Las_barras_de_sobra_dan_igual(string host, string ruta, string tramo)
     {
         DireccionSol.Componer(host, ruta, tramo, urlHeredada: null)
-            .Should().Be("https://sol.gob.hn/CONSUCOOP/licencia");
+            .Should().Be("https://sol.pdihonduras.gob.hn/CONSUCOOP/licencia");
     }
 
     [Fact]
     public void Un_tramo_de_varios_niveles_se_respeta()
     {
         DireccionSol.Componer(Host, "IHTT", "permisos/explotacion", urlHeredada: null)
-            .Should().Be("https://sol.gob.hn/IHTT/permisos/explotacion");
+            .Should().Be("https://sol.pdihonduras.gob.hn/IHTT/permisos/explotacion");
     }
 
     // ── La URL heredada (D-14) ────────────────────────────────────────────────
@@ -69,7 +69,7 @@ public sealed class DireccionSolTests
     public void Con_las_dos_manda_el_tramo()
     {
         DireccionSol.Componer(Host, "CONSUCOOP", "nuevo", urlHeredada: "https://google.com")
-            .Should().Be("https://sol.gob.hn/CONSUCOOP/nuevo");
+            .Should().Be("https://sol.pdihonduras.gob.hn/CONSUCOOP/nuevo");
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class DireccionSolTests
     [Theory]
     [InlineData("licencia de operacion")]
     [InlineData("licencía")]
-    [InlineData("https://sol.gob.hn/CONSUCOOP/licencia")]
+    [InlineData("https://sol.pdihonduras.gob.hn/CONSUCOOP/licencia")]
     [InlineData("licencia?id=3")]
     [InlineData("licencia#ancla")]
     public void Un_tramo_que_no_puede_ir_en_una_direccion_se_rechaza(string valor) =>
@@ -125,7 +125,7 @@ public sealed class DireccionSolTests
     [Fact]
     public void El_prefijo_es_lo_que_va_delante_de_lo_que_la_persona_escribe()
     {
-        DireccionSol.Prefijo(Host, "CONSUCOOP").Should().Be("https://sol.gob.hn/CONSUCOOP/");
+        DireccionSol.Prefijo(Host, "CONSUCOOP").Should().Be("https://sol.pdihonduras.gob.hn/CONSUCOOP/");
     }
 
     /// <summary>El prefijo tiene que ser exactamente lo que se va a componer. Si enseñara una

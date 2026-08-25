@@ -94,7 +94,7 @@ public sealed class FichaPublicaCompletitudTests
 
         FichaPublicaCompletitud.CamposFaltantes(
             Categoria, Modalidad, Tiempo, true, estaEnSol: true,
-            solUrl: "https://sol.gob.hn/CONSUCOOP/algo", solTramo: null)
+            solUrl: "https://sol.pdihonduras.gob.hn/CONSUCOOP/algo", solTramo: null)
             .Should().BeEmpty("la dirección heredada sigue valiendo (D-14)");
     }
 

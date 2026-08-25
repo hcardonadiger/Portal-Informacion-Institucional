@@ -15,7 +15,7 @@ public class GetTramitePublicoQueryTests : IDisposable
     /// <summary>Host fijo y conocido para que las direcciones compuestas se puedan afirmar
     /// letra por letra. En producción sale de la sección «Sol» de appsettings.</summary>
     private static readonly Microsoft.Extensions.Options.IOptions<SolOptions> Sol =
-        Microsoft.Extensions.Options.Options.Create(new SolOptions { UrlBase = "https://sol.gob.hn" });
+        Microsoft.Extensions.Options.Options.Create(new SolOptions { UrlBase = "https://sol.pdihonduras.gob.hn" });
 
     public GetTramitePublicoQueryTests()
     {
@@ -134,7 +134,7 @@ public class GetTramitePublicoQueryTests : IDisposable
         var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
         var resultado = await handler.Handle(new GetTramitePublicoQuery("506-010"), CancellationToken.None);
 
-        resultado!.SolUrl.Should().Be("https://sol.gob.hn/CONSUCOOP/licencia-de-operacion");
+        resultado!.SolUrl.Should().Be("https://sol.pdihonduras.gob.hn/CONSUCOOP/licencia-de-operacion");
     }
 
     /// <summary>Corregir la ruta de la institución cambia la dirección de todos sus trámites a la
@@ -155,7 +155,7 @@ public class GetTramitePublicoQueryTests : IDisposable
         var handler = new GetTramitePublicoQueryHandler(_ctx, Sol);
         var resultado = await handler.Handle(new GetTramitePublicoQuery("700-001"), CancellationToken.None);
 
-        resultado!.SolUrl.Should().Be("https://sol.gob.hn/canaturh/registro",
+        resultado!.SolUrl.Should().Be("https://sol.pdihonduras.gob.hn/canaturh/registro",
             "la llave dice CANATURHIHT, pero la ruta real de SOL es otra");
     }
 

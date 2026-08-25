@@ -62,7 +62,7 @@ Tres lecturas:
 | **D-10** | La publicación es **manual pura y no bloquea**. La regla de estado queda como *advertencia*. |
 | **D-11** | Los pasos del proceso siguen siendo propiedad de SIGER. **No** se mapean con el flujo del expediente. |
 | **D-12** | El contenido se edita en el expediente. `EstadoSiger` es lo único que se sigue editando **solo** en la ficha. |
-| **D-13** | El trámite captura solo el tramo final de la URL SOL, con `sol.gob.hn/<URL de la institución>/` como prefijo fijo en pantalla. *(Hecho. El prefijo va pegado al campo, no como texto de ayuda.)* |
+| **D-13** | El trámite captura solo el tramo final de la URL SOL, con `sol.pdihonduras.gob.hn/<URL de la institución>/` como prefijo fijo en pantalla. *(Hecho. El prefijo va pegado al campo, no como texto de ayuda.)* |
 | **D-14** | Las URLs SOL completas ya cargadas **no se tocan**, y solo las usan los trámites que nunca pasaron por PD. *(Hecho. Medido: la única que hay apunta a google.com y está publicada — ver Fase 7.)* |
 | **D-15** | El historial es una **tabla de fotos** de la ficha y sus hijos. La fila viva es la última versión. |
 | **D-16** | «Quitar de HA» **despublica**, no borra. |
@@ -127,7 +127,7 @@ La API pública sigue emitiendo la **URL absoluta** en todos los casos, para que
 Con D-20 desaparece el caso «institución sin base», porque toda institución tiene llave.
 
 *Pendiente menor de confirmar al implementar: si la ruta de SOL distingue mayúsculas. El
-ejemplo acordado es `sol.gob.hn/CONSUCOOP/…`, en mayúsculas como la llave.*
+ejemplo acordado es `sol.pdihonduras.gob.hn/CONSUCOOP/…`, en mayúsculas como la llave.*
 
 *Al implementar (Fase 7): la ruta se emite tal como esté escrita —la llave en mayúsculas, o lo que
 alguien haya corregido a mano—. No se fuerza a minúsculas ni al revés, porque forzarlo sin saber
@@ -135,10 +135,11 @@ qué espera SOL sería elegir al azar entre dos direcciones y una de las dos da 
 resuelto es que **cualquier llave sirve como ruta**: las 45 son solo letras, números, guion y
 guion bajo, y la factoría de `Institucion` no admite otra cosa.*
 
-*Y apareció un pendiente mayor: **cuál es el host de SOL.** El plan dice `sol.gob.hn`; el editor
-de fichas llevaba desde el 14 de agosto un marcador que decía `sol.pdihonduras.gob.hn`. Se dejó en
-configuración (`Sol:UrlBase`) con el valor del plan. Confirmarlo es requisito antes de publicar el
-primer enlace compuesto.*
+*El pendiente mayor que apareció al implementar —**cuál es el host de SOL**— quedó **RESUELTO el
+25 de agosto de 2026**: es `sol.pdihonduras.gob.hn`, confirmado por DIGER. Convivían dos, porque
+este plan escribía `sol.gob.hn` y el editor de fichas llevaba desde el 14 de agosto un marcador de
+posición con el otro. Ganó el del editor. Vive en `Sol:UrlBase`, así que si algún día cambia es
+una línea de configuración y no un despliegue.*
 
 ---
 
@@ -437,7 +438,7 @@ más segura de que la documentación empiece a mentir el primer día.
 | Qué dice esa dirección | **`https://google.com`** en ambas — un valor de prueba, no una dirección de SOL |
 | Estado de esas fichas | **`Publicado = 1` y `EstaEnSol = 1`** |
 | Llaves de institución con caracteres que no van en una URL | **0** de 45 |
-| Host de SOL según el plan | `sol.gob.hn` |
+| Host de SOL según el plan | `sol.gob.hn` — **descartado**, ver abajo |
 | Host de SOL según el editor de fichas | `sol.pdihonduras.gob.hn` |
 
 Dos consecuencias.
@@ -453,12 +454,11 @@ el tramo rompería los enlaces SOL de HondurasÁgil. Enlaces reales que romper h
 único es un marcador de posición. Y el riesgo quedó además cerrado por construcción, porque la
 API sigue emitiendo la URL absoluta.
 
-**El host quedó en configuración, no en código.** El plan acordó `sol.gob.hn` y el editor llevaba
-desde agosto un marcador que decía `sol.pdihonduras.gob.hn`; son hosts distintos y ninguno está
-verificado contra SOL. Componer con el equivocado no rompe un enlace: rompe **mil**, todos con
-apariencia correcta. Se toma el del plan por ser la decisión acordada y más reciente, en la
-sección `Sol:UrlBase`, para que corregirlo sea una línea y no un despliegue. **Confirmarlo con
-quien opere SOL es requisito antes de publicar el primer enlace compuesto.**
+**El host quedó en configuración, no en código, y ya está confirmado.** Al implementar convivían
+dos: este plan escribía `sol.gob.hn` y el editor de fichas llevaba desde el 14 de agosto un
+marcador de posición con `sol.pdihonduras.gob.hn`. Se dejó en `Sol:UrlBase` justamente porque
+componer con el equivocado no rompe un enlace sino **mil**, todos con apariencia correcta.
+**DIGER confirmó el 25 de agosto que es `sol.pdihonduras.gob.hn`**, y ese es el valor vigente.
 
 **Lo construido:**
 

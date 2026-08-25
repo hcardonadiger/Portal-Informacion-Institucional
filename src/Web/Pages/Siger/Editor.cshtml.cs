@@ -22,7 +22,7 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
 
     /// <summary>
     /// El prefijo fijo que se enseña pegado al campo del tramo (D-13):
-    /// <c>https://sol.gob.hn/CONSUCOOP/</c>. Sin esto la persona escribe a ciegas y no tiene
+    /// <c>https://sol.pdihonduras.gob.hn/CONSUCOOP/</c>. Sin esto la persona escribe a ciegas y no tiene
     /// forma de saber qué dirección va a producir lo que teclea.
     /// </summary>
     public string PrefijoSol { get; private set; } = string.Empty;

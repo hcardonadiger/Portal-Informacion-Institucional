@@ -84,7 +84,7 @@ public sealed class DireccionSolEnElEditorTests : IAsyncLifetime
     public async Task Pegar_la_direccion_completa_se_rechaza_diciendo_por_que()
     {
         var html = await GuardarEsperandoRechazoAsync(_limpia,
-            [new("Form.SolTramo", "https://sol.gob.hn/IDP/licencia")]);
+            [new("Form.SolTramo", "https://sol.pdihonduras.gob.hn/IDP/licencia")]);
 
         html.Should().Contain("solo el tramo final");
         (await FichaAsync(_limpia)).SolTramo.Should().BeNull("nada se guardó");
