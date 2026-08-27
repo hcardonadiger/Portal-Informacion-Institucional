@@ -83,17 +83,17 @@ INSERT INTO @hm VALUES
 UPDATE hp
 SET hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @hm h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @mesa;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @mesa,
-       (SELECT ISNULL(MAX(Orden), 0) FROM ProyectoHitos WHERE ProyectoId = @mesa)
+       (SELECT ISNULL(MAX(Orden), 0) FROM ProyectoEntregables WHERE ProyectoId = @mesa)
          + ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
        h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @hm h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @mesa AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @mesa AND x.Nombre = h.Nombre);
 
 -- ════════ 2. Portal Nacional de Datos Abiertos ══════════════════════════════
 DECLARE @nombreDA nvarchar(300) = N'Portal Nacional de Datos Abiertos';
@@ -155,14 +155,14 @@ UPDATE hp
 SET hp.Orden       = h.Orden,
     hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @hd h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @da;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @da, h.Orden, h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @hd h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @da AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @da AND x.Nombre = h.Nombre);
 
 -- ════════ 3. Bitácora ═══════════════════════════════════════════════════════
 DECLARE @a TABLE (
@@ -187,10 +187,10 @@ INSERT INTO @a VALUES
  N'Ayuda_Memoria_Datos_Abiertos_13-mar-2026.pdf', N'/uploads/proyectos/f7dc7a665690cf948af3aa9a5fa33f92.pdf', 164703);
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT a.Proy,
-       (SELECT TOP 1 h.Id FROM ProyectoHitos h WHERE h.ProyectoId = a.Proy AND h.Nombre = a.HitoNombre),
+       (SELECT TOP 1 h.Id FROM ProyectoEntregables h WHERE h.ProyectoId = a.Proy AND h.Nombre = a.HitoNombre),
        a.Fecha, @actor, a.Descripcion, a.Pct, a.Bloqueo,
        a.ArchivoNombre, a.ArchivoUrl, a.ArchivoTamano
 FROM @a a
@@ -215,6 +215,6 @@ SELECT p.Codigo, LEFT(p.Nombre, 36) AS Proyecto, p.Estado, p.AvancePct AS Pct,
        SUM(CASE WHEN h.Estado = N'Completado' THEN 1 ELSE 0 END) AS Cumplidos,
        (SELECT COUNT(*) FROM ProyectoAvances a WHERE a.ProyectoId = p.Id) AS Reportes
 FROM Proyectos p
-LEFT JOIN ProyectoHitos h ON h.ProyectoId = p.Id
+LEFT JOIN ProyectoEntregables h ON h.ProyectoId = p.Id
 WHERE p.Id IN (@mesa, @da)
 GROUP BY p.Id, p.Codigo, p.Nombre, p.Estado, p.AvancePct;

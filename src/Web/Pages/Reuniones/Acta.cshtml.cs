@@ -2,7 +2,11 @@ namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
 [Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
-public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoModulosService acceso) : PageModel
+public sealed class ActaModel(
+    ISender sender,
+    IActaPdfService actaPdf,
+    IWebHostEnvironment env,
+    AccesoModulosService acceso) : PageModel
 {
     public bool EsAdmin { get; private set; }
     public int ReunionId { get; private set; }
@@ -56,6 +60,34 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoMod
         {
             return NotFound();
         }
+    }
+
+    /// <summary>
+    /// Sirve una de las dos fotos de evidencia de la reunión.
+    ///
+    /// <para>Es el único archivo del portal que se pinta en un <c>&lt;img&gt;</c> y no se descarga,
+    /// así que sale con su tipo real; el resto va como binario. Lo consumen el acta y la vista
+    /// previa del editor, que apuntan las dos a este handler para no duplicarlo.</para>
+    ///
+    /// <para>Como los demás, resuelve la reunión con la consulta normal antes de tocar el disco:
+    /// quien no puede ver la reunión tampoco ve su evidencia. Antes la imagen se pedía a
+    /// <c>/uploads/reuniones/…</c>, que se servía sin sesión — ver <see cref="ArchivosProtegidos"/>.</para>
+    /// </summary>
+    /// <param name="n">1 o 2. Cualquier otro valor es 404: no hay una tercera foto.</param>
+    public async Task<IActionResult> OnGetFotoAsync(int id, int n, CancellationToken ct)
+    {
+        if (n is not (1 or 2)) return NotFound();
+
+        ReunionFormDto datos;
+        try { datos = (await sender.Send(new GetReunionByIdQuery(id), ct)).Datos; }
+        catch (NotFoundException) { return NotFound(); }
+
+        var url = n == 1 ? datos.Foto1Url : datos.Foto2Url;
+
+        var ruta = ArchivosProtegidos.Resolver(env, url);
+        if (ruta is null) return NotFound();
+
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(ruta));
     }
 
     public async Task<IActionResult> OnGetPdfAsync(int id, CancellationToken ct)

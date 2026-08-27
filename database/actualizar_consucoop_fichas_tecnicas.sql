@@ -60,26 +60,26 @@ INSERT INTO @h VALUES
 UPDATE hp
 SET hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @p;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @p,
-       (SELECT ISNULL(MAX(Orden), 0) FROM ProyectoHitos WHERE ProyectoId = @p)
+       (SELECT ISNULL(MAX(Orden), 0) FROM ProyectoEntregables WHERE ProyectoId = @p)
          + ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
        h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @h h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
 
 -- ── Bitácora ────────────────────────────────────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'Cierre de la fase de pruebas de los cuatro trámites configurados y apertura del frente de los nuevos. CONSUCOOP confirmó el 17 de agosto que ya ejecutó todas las pruebas de los cuatro trámites, tanto en el ambiente de pruebas como en el productivo; los resultados y las observaciones se revisan en la reunión de seguimiento acordada para el jueves 20 de agosto a las 2:00 p. m. en las instalaciones de la institución. En esa misma sesión se abre la mesa técnica para modelar los nuevos trámites a partir de las fichas técnicas que la institución remitió el 6 de julio, revisando requisitos, flujo de atención, actores, documentos, fases y oportunidades de mejora antes de configurarlos. DIGER planteó además que CONSUCOOP designe un equipo interno que reciba la transferencia de capacidades para el modelado y la administración de la plataforma, y que se acuerde la continuidad de la capacitación para los equipos regionales. Sobre las jornadas de capacitación, el 9 de julio se propusieron cinco fechas —14, 16, 21, 24 y 27 de julio— con los equipos divididos en tandas de dos a tres sesiones según su rol.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @p,
-       (SELECT TOP 1 Id FROM ProyectoHitos
+       (SELECT TOP 1 Id FROM ProyectoEntregables
         WHERE ProyectoId = @p AND Nombre = N'Modelado de los nuevos trámites y mesa técnica'),
        '2026-08-17T08:35:00', @actor, @desc, @pct,
        N'El avance del frente nuevo depende de que CONSUCOOP designe su equipo interno para el modelado y la administración: sin ese equipo el proceso sigue atado al acompañamiento de DIGER. La habilitación de los cuatro trámites al público queda sujeta a lo que arroje la revisión de resultados del 20 de agosto.',
@@ -101,7 +101,7 @@ SELECT Codigo, Estado, AvancePct AS Pct, Responsable FROM Proyectos WHERE Id = @
 
 SELECT h.Orden, LEFT(h.Nombre, 52) AS Hito, h.Estado,
        CASE WHEN h.Descripcion IS NULL THEN 'sin desc' ELSE 'ok' END AS Desc_
-FROM ProyectoHitos h WHERE h.ProyectoId = @p ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @p ORDER BY h.Orden;
 
 SELECT CONVERT(varchar(10), a.Fecha, 103) AS Fecha, a.PorcentajeReportado AS Pct,
        ISNULL(a.ArchivoNombre, '—') AS Evidencia

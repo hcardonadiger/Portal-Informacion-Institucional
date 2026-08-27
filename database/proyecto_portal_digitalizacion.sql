@@ -122,25 +122,25 @@ SET hp.Orden       = h.Orden,
     hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado,
     hp.FechaReal   = h.FechaReal
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @proy;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @proy, h.Orden, h.Nombre, h.Descripcion, NULL, h.FechaReal, h.Estado, NULL, NULL
 FROM @h h
 WHERE NOT EXISTS (
-    SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre
+    SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre
 );
 
 -- ── Bitácora: el estado al momento del alta ─────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'El portal está publicado para validación interna, con trece entregas cumplidas entre el 26 de junio y el 22 de agosto: expedientes y su metodología, reuniones y compromisos, mesa de ayuda, autenticación con certificado digital, inventario SIGER y su conciliación, trazabilidad con bitácora, identidad de producto con modo oscuro, y el modelo de seguridad de roles administrables con permisos por acción. En esta última entrega se incorporó el módulo de seguimiento de proyectos, con su tablero gerencial, y se cargó el portafolio derivado de las reuniones. Quedan dos pasos: la aprobación de la coordinación y la puesta en producción.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @proy,
-       (SELECT TOP 1 Id FROM ProyectoHitos WHERE ProyectoId = @proy AND Nombre = N'Validación interna del portal'),
+       (SELECT TOP 1 Id FROM ProyectoEntregables WHERE ProyectoId = @proy AND Nombre = N'Validación interna del portal'),
        @hoy, @actor, @desc, @avancePct, NULL, NULL, NULL, NULL
 WHERE NOT EXISTS (SELECT 1 FROM ProyectoAvances WHERE ProyectoId = @proy AND Descripcion = @desc);
 
@@ -153,4 +153,4 @@ FROM Proyectos WHERE Id = @proy;
 
 SELECT h.Orden, LEFT(h.Nombre, 54) AS Hito, h.Estado,
        CONVERT(varchar(10), h.FechaReal, 103) AS Cumplido
-FROM ProyectoHitos h WHERE h.ProyectoId = @proy ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @proy ORDER BY h.Orden;

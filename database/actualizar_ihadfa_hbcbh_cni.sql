@@ -126,15 +126,15 @@ INSERT INTO @h VALUES
 UPDATE hp
 SET hp.Descripcion = h.Descripcion, hp.Estado = h.Estado,
     hp.FechaPlan = h.FechaPlan, hp.FechaReal = h.FechaReal
-FROM ProyectoHitos hp JOIN @h h ON h.Proy = hp.ProyectoId AND h.Nombre = hp.Nombre;
+FROM ProyectoEntregables hp JOIN @h h ON h.Proy = hp.ProyectoId AND h.Nombre = hp.Nombre;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT h.Proy,
-       (SELECT ISNULL(MAX(x.Orden),0) FROM ProyectoHitos x WHERE x.ProyectoId = h.Proy)
+       (SELECT ISNULL(MAX(x.Orden),0) FROM ProyectoEntregables x WHERE x.ProyectoId = h.Proy)
          + ROW_NUMBER() OVER (PARTITION BY h.Proy ORDER BY (SELECT NULL)),
        h.Nombre, h.Descripcion, h.FechaPlan, h.FechaReal, h.Estado, NULL, NULL
 FROM @h h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = h.Proy AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = h.Proy AND x.Nombre = h.Nombre);
 
 -- ════════ 4. Bitácora ═══════════════════════════════════════════════════════
 DECLARE @a TABLE (Proy int, Fecha datetime2, Pct int, HitoNombre nvarchar(300),
@@ -160,10 +160,10 @@ INSERT INTO @a VALUES
  NULL, N'Registro_CNI_2026-08-07.pdf', N'/uploads/proyectos/24d7ae42f74320a5066710329359106e.pdf', 145006);
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT a.Proy,
-       (SELECT TOP 1 h.Id FROM ProyectoHitos h WHERE h.ProyectoId = a.Proy AND h.Nombre = a.HitoNombre),
+       (SELECT TOP 1 h.Id FROM ProyectoEntregables h WHERE h.ProyectoId = a.Proy AND h.Nombre = a.HitoNombre),
        a.Fecha, @actor, a.Descripcion, a.Pct, a.Bloqueo,
        a.ArchivoNombre, a.ArchivoUrl, a.ArchivoTamano
 FROM @a a
@@ -182,7 +182,7 @@ COMMIT;
 SELECT p.Codigo, LEFT(p.Nombre, 42) AS Proyecto, p.Estado, p.AvancePct AS Pct,
        COUNT(h.Id) AS Hitos, SUM(CASE WHEN h.Estado = N'Completado' THEN 1 ELSE 0 END) AS Cumplidos,
        (SELECT COUNT(*) FROM ProyectoAvances a WHERE a.ProyectoId = p.Id) AS Reportes
-FROM Proyectos p LEFT JOIN ProyectoHitos h ON h.ProyectoId = p.Id
+FROM Proyectos p LEFT JOIN ProyectoEntregables h ON h.ProyectoId = p.Id
 WHERE p.Id IN (@ihadfa, @hbcbh, @cni)
 GROUP BY p.Id, p.Codigo, p.Nombre, p.Estado, p.AvancePct
 ORDER BY p.Codigo;

@@ -96,98 +96,302 @@ public class ProyectosTests : IDisposable
         await act.Should().ThrowAsync<DomainException>();
     }
 
-    // ── Bitácora de ejecución ─────────────────────────────────────
+    // ── Avance calculado: actividad → entregable → proyecto ───────
     [Fact]
-    public async Task RegistrarAvance_MueveElPorcentajeYDejaLaEntradaEnLaBitacora()
+    public async Task Avance_ElPorcentajeDelProyectoEsElPromedioDeSusActividades()
     {
-        var id = await CrearAsync();
+        var id = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
 
-        await new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Se cerró el levantamiento", 40, Bloqueo: "Falta firma"),
+        // Primer entregable con dos actividades al 100 y 50; los otros dos sin desglosar y
+        // pendientes, así que valen 0 por la regla 0/50/100.
+        await ConActividadesAsync(id, ids[0], (100, "Levantamiento"), (50, "Diseño"));
+
+        // (75 + 0 + 0) / 3 = 25
+        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(25);
+    }
+
+    [Fact]
+    public async Task Avance_UnEntregableSinActividadesValePorSuEstado()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+
+        var entrada = (await EntregablesActualesAsync(id)).Select(e =>
+            e.Id == ids[0] ? e with { Estado = EstadoEntregable.Completado }
+          : e.Id == ids[1] ? e with { Estado = EstadoEntregable.EnProceso }
+          : e).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        // 100 + 50 + 0 = 150 / 3 = 50. Es la regla de valor fijo del PMI, la que sostiene a los
+        // entregables que vienen de la carga inicial y todavía no se desglosaron.
+        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(50);
+    }
+
+    [Fact]
+    public async Task Avance_LoCanceladoSaleDelPromedioEnVezDeContarComoCero()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+
+        var entrada = (await EntregablesActualesAsync(id)).Select(e =>
+            e.Id == ids[0] ? e with { Estado = EstadoEntregable.Completado }
+          : e with { Estado = EstadoEntregable.Cancelado }).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(100,
+            "los cancelados no cuentan ni a favor ni en contra: queda un solo entregable vigente y está cumplido");
+    }
+
+    [Fact]
+    public async Task Avance_UnaActividadCanceladaTampocoArrastraElPromedioDelEntregable()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (100, "Hecha"), (0, "Descartada"));
+
+        var entrada = (await EntregablesActualesAsync(id)).Select(e => e.Id != ids[0] ? e : e with
+        {
+            Actividades = e.Actividades
+                .Select(a => a.Nombre == "Descartada" ? a with { Cancelada = true } : a).ToList()
+        }).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        var entregable = await _ctx.ProyectoEntregables.Include(e => e.Actividades)
+            .SingleAsync(e => e.Id == ids[0]);
+        entregable.AvanceCalculado.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task Avance_SinNingunEntregableVigenteElProyectoQuedaEnCero()
+    {
+        var id = await ConDuenioYEntregablesAsync();
+
+        await GuardarFichaAsync(id, []);   // el editor los quitó todos
+
+        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(0,
+            "sin estructura no hay contra qué medir, y ese cero es la señal de que falta cargarla");
+    }
+
+    // ── Actividades ───────────────────────────────────────────────
+    [Fact]
+    public async Task Actividad_ElPorcentajeFijaElEstadoYLasFechasReales()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (60, "En curso"), (100, "Terminada"));
+
+        var actividades = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).ToListAsync();
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        actividades[0].Estado.Should().Be(EstadoActividad.EnProceso);
+        actividades[0].FechaInicioReal.Should().Be(hoy, "pasar de cero sella el arranque");
+        actividades[0].FechaFinReal.Should().BeNull();
+
+        actividades[1].Estado.Should().Be(EstadoActividad.Completada);
+        actividades[1].FechaFinReal.Should().Be(hoy);
+    }
+
+    [Fact]
+    public async Task Actividad_BajarDelCienSueltaLaFechaDeCierre()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (100, "Se creía terminada"));
+
+        var entrada = (await EntregablesActualesAsync(id)).Select(e => e.Id != ids[0] ? e : e with
+        {
+            Actividades = e.Actividades.Select(a => a with { AvancePct = 70 }).ToList()
+        }).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        var a = await _ctx.ProyectoActividades.SingleAsync();
+        a.Estado.Should().Be(EstadoActividad.EnProceso);
+        a.FechaFinReal.Should().BeNull("si volvió a estar abierta, no terminó");
+    }
+
+    [Fact]
+    public async Task Actividad_RechazaUnaVentanaQueTerminaAntesDeEmpezar()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+
+        var entrada = (await EntregablesActualesAsync(id)).Select(e => e.Id != ids[0] ? e : e with
+        {
+            Actividades = [new ActividadInput(0, "Imposible", null,
+                new DateOnly(2026, 9, 1), new DateOnly(2026, 8, 1), 0, false, null, null)]
+        }).ToList();
+
+        var act = () => GuardarFichaAsync(id, entrada);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*anterior a la de inicio*");
+    }
+
+    [Fact]
+    public async Task Actividad_ElEntregableSeCierraSoloCuandoTodasLleganAlCien()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (100, "Una"), (40, "Otra"));
+
+        var pendiente = await _ctx.ProyectoActividades.SingleAsync(a => a.Nombre == "Otra");
+        (await _ctx.ProyectoEntregables.FindAsync(ids[0]))!.Estado
+            .Should().Be(EstadoEntregable.Pendiente, "todavía falta una");
+
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Cerramos la última", ids[0], pendiente.Id, 100),
             CancellationToken.None);
 
-        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(40);
+        var entregable = await _ctx.ProyectoEntregables.FindAsync(ids[0]);
+        entregable!.Estado.Should().Be(EstadoEntregable.Completado,
+            "esperar a que alguien lo marque a mano es lo que dejaba el cronograma quieto");
+        entregable.FechaReal.Should().Be(DateOnly.FromDateTime(DateTime.UtcNow));
+
+        var detalle = await _ctx.BitacorasProyecto
+            .Where(b => b.Tipo == TipoEventoProyecto.ModificacionEstructura)
+            .OrderByDescending(b => b.Id).Select(b => b.Detalle).FirstAsync();
+        detalle.Should().Contain("100 %");
+    }
+
+    // ── Bitácora de ejecución ─────────────────────────────────────
+    [Fact]
+    public async Task RegistrarAvance_ReportarSobreUnaActividadMueveElAvanceDelProyecto()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Levantamiento"));
+
+        var actividad = await _ctx.ProyectoActividades.SingleAsync();
+
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Se cerró el levantamiento", ids[0], actividad.Id, 60,
+                Bloqueo: "Falta firma"),
+            CancellationToken.None);
+
+        (await _ctx.ProyectoActividades.SingleAsync()).AvancePct.Should().Be(60);
+        // (60 + 0 + 0) / 3 = 20
+        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(20);
 
         var avance = await _ctx.ProyectoAvances.SingleAsync();
-        avance.PorcentajeReportado.Should().Be(40);
+        avance.PorcentajeReportado.Should().Be(60);
+        avance.ActividadId.Should().Be(actividad.Id);
+        avance.EntregableId.Should().Be(ids[0], "la actividad viaja siempre con su entregable");
         avance.Autor.Should().Be("Henry Cardona");
         avance.Bloqueo.Should().Be("Falta firma");
     }
 
-    // ── Cerrar el hito desde el reporte de avance ─────────────────
     [Fact]
-    public async Task RegistrarAvance_PuedeDarPorCumplidoElHitoAlQueSeImputa()
+    public async Task RegistrarAvance_UnaNotaSinActividadNoMueveNingunNumero()
     {
-        var id   = await ConDuenioYHitosAsync();
-        var hito = await _ctx.ProyectoHitos.OrderBy(h => h.Orden).FirstAsync(h => h.ProyectoId == id);
+        var id = await ConDuenioYEntregablesAsync();
 
-        await new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Entregado y validado", 30, HitoId: hito.Id, CompletarHito: true),
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Se sostuvo la reunión de arranque"), CancellationToken.None);
+
+        var avance = await _ctx.ProyectoAvances.SingleAsync();
+        avance.PorcentajeReportado.Should().BeNull();
+        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RegistrarAvance_UnPorcentajeSinActividadEsError()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+
+        var act = () => new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Avance general", ids[0], null, 40), CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*actividad*");
+    }
+
+    [Fact]
+    public async Task RegistrarAvance_RechazaUnaActividadQueNoEsDeEseEntregable()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "De otro entregable"));
+        var actividad = await _ctx.ProyectoActividades.SingleAsync();
+
+        var act = () => new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Cruzada", ids[1], actividad.Id, 10), CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*no pertenece*");
+    }
+
+    // ── Cerrar el entregable desde el reporte de avance ───────────
+    [Fact]
+    public async Task RegistrarAvance_PuedeDarPorCumplidoElEntregableAlQueSeImputa()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Entregado y validado", ids[0], CompletarEntregable: true),
             CancellationToken.None);
 
-        var actualizado = await _ctx.ProyectoHitos.SingleAsync(h => h.Id == hito.Id);
-        actualizado.Estado.Should().Be(EstadoHito.Completado);
+        var actualizado = await _ctx.ProyectoEntregables.SingleAsync(e => e.Id == ids[0]);
+        actualizado.Estado.Should().Be(EstadoEntregable.Completado);
         actualizado.FechaReal.Should().Be(DateOnly.FromDateTime(DateTime.UtcNow),
-            "cerrar el hito sin fecha real dejaría el cronograma a medias");
+            "cerrar el entregable sin fecha real dejaría el cronograma a medias");
     }
 
     [Fact]
-    public async Task RegistrarAvance_SinMarcarNoTocaElHito()
+    public async Task RegistrarAvance_SinMarcarNoTocaElEntregable()
     {
-        var id   = await ConDuenioYHitosAsync();
-        var hito = await _ctx.ProyectoHitos.OrderBy(h => h.Orden).FirstAsync(h => h.ProyectoId == id);
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
 
-        await new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Sigue en curso", 30, HitoId: hito.Id),
-            CancellationToken.None);
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Sigue en curso", ids[0]), CancellationToken.None);
 
-        (await _ctx.ProyectoHitos.SingleAsync(h => h.Id == hito.Id)).Estado
-            .Should().Be(EstadoHito.Pendiente);
+        (await _ctx.ProyectoEntregables.SingleAsync(e => e.Id == ids[0])).Estado
+            .Should().Be(EstadoEntregable.Pendiente);
     }
 
     [Fact]
-    public async Task RegistrarAvance_NoSePuedeCerrarUnHitoSinImputarleElReporte()
+    public async Task RegistrarAvance_NoSePuedeCerrarUnEntregableSinImputarleElReporte()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
 
-        var act = () => new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Avance general", 30, CompletarHito: true),
+        var act = () => new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Avance general", CompletarEntregable: true),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
     }
 
     [Fact]
-    public async Task RegistrarAvance_CerrarElHitoQuedaEnLaAuditoria()
+    public async Task RegistrarAvance_CerrarElEntregableQuedaEnLaAuditoria()
     {
-        var id   = await ConDuenioYHitosAsync();
-        var hito = await _ctx.ProyectoHitos.OrderBy(h => h.Orden).FirstAsync(h => h.ProyectoId == id);
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
         await LimpiarAuditoriaAsync();
 
-        await new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Entregado", 30, HitoId: hito.Id, CompletarHito: true),
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Entregado", ids[0], CompletarEntregable: true),
             CancellationToken.None);
 
         var detalle = await _ctx.BitacorasProyecto
-            .Where(b => b.Tipo == TipoEventoProyecto.ModificacionHitos)
+            .Where(b => b.Tipo == TipoEventoProyecto.ModificacionEstructura)
             .Select(b => b.Detalle).SingleAsync();
 
         detalle.Should().Contain("Primero").And.Contain("cumplido");
     }
 
     [Fact]
-    public async Task RegistrarAvance_VolverACerrarUnHitoYaCumplidoNoDuplicaLaAuditoria()
+    public async Task RegistrarAvance_VolverACerrarUnEntregableYaCumplidoNoDuplicaLaAuditoria()
     {
-        var id   = await ConDuenioYHitosAsync();
-        var hito = await _ctx.ProyectoHitos.OrderBy(h => h.Orden).FirstAsync(h => h.ProyectoId == id);
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
 
-        var handler = new RegistrarAvanceCommandHandler(_ctx, _usuario);
-        await handler.Handle(new RegistrarAvanceCommand(id, "Entregado", 30, HitoId: hito.Id, CompletarHito: true), CancellationToken.None);
+        var handler = new RegistrarAvanceCommandHandler(_ctx, Como(Duenio));
+        await handler.Handle(new RegistrarAvanceCommand(id, "Entregado", ids[0], CompletarEntregable: true), CancellationToken.None);
         await LimpiarAuditoriaAsync();
-        await handler.Handle(new RegistrarAvanceCommand(id, "Ajuste posterior", 35, HitoId: hito.Id, CompletarHito: true), CancellationToken.None);
+        await handler.Handle(new RegistrarAvanceCommand(id, "Ajuste posterior", ids[0], CompletarEntregable: true), CancellationToken.None);
 
-        (await _ctx.BitacorasProyecto.CountAsync(b => b.Tipo == TipoEventoProyecto.ModificacionHitos))
-            .Should().Be(0, "el hito ya estaba cumplido: no hubo cambio que registrar");
+        (await _ctx.BitacorasProyecto.CountAsync(b => b.Tipo == TipoEventoProyecto.ModificacionEstructura))
+            .Should().Be(0, "el entregable ya estaba cumplido: no hubo cambio que registrar");
     }
 
     // ── Bloqueo que materializa un riesgo ─────────────────────────
@@ -203,11 +407,11 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task RegistrarAvance_VincularUnRiesgoLoPasaAMaterializado()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var rid = await RiesgoAsync(id);
 
-        await new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Avance parcial", 30,
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Avance parcial",
                 Bloqueo: "La contraparte sigue sin designarse", RiesgoId: rid),
             CancellationToken.None);
 
@@ -221,11 +425,11 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task RegistrarAvance_VincularRiesgoSinBloqueoEsError()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var rid = await RiesgoAsync(id);
 
-        var act = () => new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Avance", 30, RiesgoId: rid), CancellationToken.None);
+        var act = () => new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Avance", RiesgoId: rid), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>(
             "lo que materializa el riesgo es el bloqueo, no la referencia suelta");
@@ -234,12 +438,12 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task RegistrarAvance_NoSePuedeVincularUnRiesgoDeOtroProyecto()
     {
-        var id    = await ConDuenioYHitosAsync();
+        var id    = await ConDuenioYEntregablesAsync();
         var otro  = await CrearAsync("Otro proyecto");
         var ajeno = await RiesgoAsync(otro);
 
-        var act = () => new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Avance", 30, Bloqueo: "Trabado", RiesgoId: ajeno),
+        var act = () => new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Avance", Bloqueo: "Trabado", RiesgoId: ajeno),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
@@ -248,13 +452,13 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task RegistrarAvance_UnRiesgoYaCerradoNoSeReabreSolo()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var rid = await RiesgoAsync(id);
         await new CambiarEstadoRiesgoCommandHandler(_ctx, _usuario).Handle(
             new CambiarEstadoRiesgoCommand(rid, EstadoRiesgo.Cerrado), CancellationToken.None);
 
-        await new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Avance", 30, Bloqueo: "Volvió a trabarse", RiesgoId: rid),
+        await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Avance", Bloqueo: "Volvió a trabarse", RiesgoId: rid),
             CancellationToken.None);
 
         (await _ctx.ProyectoRiesgos.SingleAsync(r => r.Id == rid)).Estado
@@ -264,10 +468,10 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task CorregirElAvance_BorrarElBloqueoSueltaElVinculoConElRiesgo()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var rid = await RiesgoAsync(id);
-        var aid = await new RegistrarAvanceCommandHandler(_ctx, _usuario).Handle(
-            new RegistrarAvanceCommand(id, "Avance", 30, Bloqueo: "Trabado", RiesgoId: rid),
+        var aid = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
+            new RegistrarAvanceCommand(id, "Avance", Bloqueo: "Trabado", RiesgoId: rid),
             CancellationToken.None);
 
         await new ActualizarAvanceCommandHandler(_ctx, Como(Duenio)).Handle(
@@ -341,15 +545,18 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task RegistrarAvance_ConservaElHistoricoAunqueElPorcentajeBaje()
     {
-        var id = await CrearAsync();
-        var handler = new RegistrarAvanceCommandHandler(_ctx, _usuario);
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Única"));
+        var actividad = await _ctx.ProyectoActividades.SingleAsync();
 
-        await handler.Handle(new RegistrarAvanceCommand(id, "Primer corte", 60), CancellationToken.None);
-        // Un replanteo puede bajar el porcentaje: el snapshot sigue al último reporte,
-        // pero los reportes anteriores no se tocan.
-        await handler.Handle(new RegistrarAvanceCommand(id, "Se replanteó el alcance", 25), CancellationToken.None);
+        var handler = new RegistrarAvanceCommandHandler(_ctx, Como(Duenio));
+        await handler.Handle(new RegistrarAvanceCommand(id, "Primer corte", ids[0], actividad.Id, 60), CancellationToken.None);
+        // Un replanteo puede bajar el porcentaje: la actividad sigue al último reporte, pero los
+        // reportes anteriores no se tocan.
+        await handler.Handle(new RegistrarAvanceCommand(id, "Se replanteó el alcance", ids[0], actividad.Id, 25), CancellationToken.None);
 
-        (await _ctx.Proyectos.FindAsync(id))!.AvancePct.Should().Be(25);
+        (await _ctx.ProyectoActividades.SingleAsync()).AvancePct.Should().Be(25);
         (await _ctx.ProyectoAvances.CountAsync()).Should().Be(2);
         (await _ctx.ProyectoAvances.OrderBy(a => a.Id).Select(a => a.PorcentajeReportado).ToListAsync())
             .Should().Equal(60, 25);
@@ -363,26 +570,26 @@ public class ProyectosTests : IDisposable
             .Handle(new CambiarEstadoProyectoCommand(id, EstadoProyecto.Cancelado), CancellationToken.None);
 
         var act = () => new RegistrarAvanceCommandHandler(_ctx, _usuario)
-            .Handle(new RegistrarAvanceCommand(id, "Tarde", 10), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(id, "Tarde"), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
     }
 
     [Fact]
-    public async Task RegistrarAvance_RechazaUnHitoDeOtroProyecto()
+    public async Task RegistrarAvance_RechazaUnEntregableDeOtroProyecto()
     {
         var idA = await CrearAsync("A");
         var idB = await CrearAsync("B");
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
             idB, "B", null, null, null, null, null, PrioridadProyecto.Media, null, null,
-            [new HitoInput(0, "Hito de B", null, null, null, EstadoHito.Pendiente, null, null)]),
+            [new EntregableInput(0, "Entregable de B", null, null, EstadoEntregable.Pendiente, null, null, [])]),
             CancellationToken.None);
 
-        var hitoDeB = await _ctx.ProyectoHitos.SingleAsync();
+        var ajeno = await _ctx.ProyectoEntregables.SingleAsync();
 
         var act = () => new RegistrarAvanceCommandHandler(_ctx, _usuario)
-            .Handle(new RegistrarAvanceCommand(idA, "Imputación cruzada", 10, HitoId: hitoDeB.Id), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(idA, "Imputación cruzada", ajeno.Id), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
     }
@@ -390,141 +597,272 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task RegistrarAvance_RechazaUnPorcentajeFueraDeRango()
     {
-        var id = await CrearAsync();
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Única"));
+        var actividad = await _ctx.ProyectoActividades.SingleAsync();
 
-        var act = () => new RegistrarAvanceCommandHandler(_ctx, _usuario)
-            .Handle(new RegistrarAvanceCommand(id, "Imposible", 140), CancellationToken.None);
+        var act = () => new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
+            .Handle(new RegistrarAvanceCommand(id, "Imposible", ids[0], actividad.Id, 140), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
     }
 
-    // ── Hitos ─────────────────────────────────────────────────────
+    // ── Estructura ────────────────────────────────────────────────
     [Fact]
-    public async Task Actualizar_NumeraLosHitosNuevosYDescartaLosVacios()
+    public async Task Actualizar_NumeraLosEntregablesNuevosYDescartaLosVacios()
     {
         var id = await CrearAsync();
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null, null, null, PrioridadProyecto.Alta, null, null,
             [
-                new HitoInput(0, "Segundo",  null, null, null, EstadoHito.Pendiente,  null, null),
-                new HitoInput(0, "   ",      null, null, null, EstadoHito.Pendiente,  null, null), // fila vacía del editor
-                new HitoInput(0, "Tercero",  null, null, null, EstadoHito.Completado, null, null)
+                new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente,  null, null, []),
+                new EntregableInput(0, "   ",     null, null, EstadoEntregable.Pendiente,  null, null, []), // fila vacía del editor
+                new EntregableInput(0, "Tercero", null, null, EstadoEntregable.Completado, null, null, [])
             ]), CancellationToken.None);
 
-        var hitos = await _ctx.ProyectoHitos.OrderBy(h => h.Orden).ToListAsync();
-        hitos.Select(h => h.Nombre).Should().Equal("Segundo", "Tercero");
-        hitos.Select(h => h.Orden).Should().Equal(1, 2);
+        var entregables = await _ctx.ProyectoEntregables.OrderBy(e => e.Orden).ToListAsync();
+        entregables.Select(e => e.Nombre).Should().Equal("Segundo", "Tercero");
+        entregables.Select(e => e.Orden).Should().Equal(1, 2);
     }
 
-    // ── Reconciliación de hitos: la imputación de la bitácora no se pierde ──
+    [Fact]
+    public async Task Actualizar_NumeraLasActividadesNuevasYDescartaLasVacias()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+
+        var entrada = (await EntregablesActualesAsync(id)).Select(e => e.Id != ids[0] ? e : e with
+        {
+            Actividades =
+            [
+                new ActividadInput(0, "Primera", null, null, null, 0, false, null, null),
+                new ActividadInput(0, "  ",      null, null, null, 0, false, null, null),
+                new ActividadInput(0, "Segunda", null, null, null, 0, false, null, null)
+            ]
+        }).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        var actividades = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).ToListAsync();
+        actividades.Select(a => a.Nombre).Should().Equal("Primera", "Segunda");
+        actividades.Select(a => a.Orden).Should().Equal(1, 2);
+    }
+
+    // ── Reconciliación: la imputación de la bitácora no se pierde ──
     /// <summary>
-    /// La que habría atrapado el bug: antes el guardado hacía LimpiarHitos() + Agregar(), los
-    /// hitos renacían con Id nuevo y la FK en SetNull dejaba el avance sin imputar.
+    /// La que habría atrapado el bug: antes el guardado hacía LimpiarHitos() + Agregar(), las filas
+    /// renacían con Id nuevo y la FK en SetNull dejaba el avance sin imputar.
     /// </summary>
     [Fact]
     public async Task Actualizar_ConservaLaImputacionDelAvanceAlGuardarLaFicha()
     {
-        var id = await ConDuenioYHitosAsync();
-        var hitoId = (await IdsPorOrdenAsync(id))[1];               // "Segundo"
+        var id = await ConDuenioYEntregablesAsync();
+        var entregableId = (await IdsPorOrdenAsync(id))[1];               // "Segundo"
 
         var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new RegistrarAvanceCommand(id, "Avance imputado", 20, hitoId), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(id, "Avance imputado", entregableId), CancellationToken.None);
 
-        await GuardarFichaAsync(id, await HitosActualesAsync(id));
+        await GuardarFichaAsync(id, await EntregablesActualesAsync(id));
 
         var avance = await _ctx.ProyectoAvances.FindAsync(avanceId);
-        avance!.HitoId.Should().Be(hitoId, "el hito conserva su identidad al guardar la ficha");
-        (await _ctx.ProyectoHitos.FindAsync(hitoId)).Should().NotBeNull();
+        avance!.EntregableId.Should().Be(entregableId, "el entregable conserva su identidad al guardar la ficha");
+        (await _ctx.ProyectoEntregables.FindAsync(entregableId)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Actualizar_QuitarUnaActividadDesimputaSuAvanceEnVezDeReventar()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (30, "La que se va"));
+        var actividad = await _ctx.ProyectoActividades.SingleAsync();
+
+        var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
+            .Handle(new RegistrarAvanceCommand(id, "Imputado a la que se va", ids[0], actividad.Id, 50),
+                    CancellationToken.None);
+
+        var entrada = (await EntregablesActualesAsync(id))
+            .Select(e => e.Id != ids[0] ? e : e with { Actividades = [] }).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        var avance = await _ctx.ProyectoAvances.FindAsync(avanceId);
+        avance!.ActividadId.Should().BeNull(
+            "su FK es NoAction: sin soltarla a mano el borrado fallaría con la entrada apuntándola");
+        avance.EntregableId.Should().Be(ids[0], "la imputación al entregable sí sobrevive");
+        avance.PorcentajeReportado.Should().Be(50, "lo que se reportó ese día no cambia");
+        (await _ctx.ProyectoActividades.CountAsync()).Should().Be(0);
     }
 
     /// <summary>
-    /// La tabla de hitos del editor no muestra la descripción, así que si el formulario no la
-    /// devuelve llega null y el comando la interpreta como «vaciar». Cada guardado de la ficha
-    /// borraba las descripciones de todos los hitos, en silencio. La vista ahora las manda en un
-    /// campo oculto; esta prueba fija que lo que viaja de vuelta se conserva.
+    /// La tabla del editor no muestra la descripción, así que si el formulario no la devuelve llega
+    /// null y el comando la interpreta como «vaciar». Cada guardado de la ficha borraba las
+    /// descripciones, en silencio. La vista las manda en un campo oculto; esta prueba fija que lo
+    /// que viaja de vuelta se conserva.
     /// </summary>
     [Fact]
     public async Task Actualizar_ConservaLaDescripcionQueElFormularioDevuelve()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
 
         // Un script cargó descripciones ricas que el editor no muestra.
-        foreach (var h in await _ctx.ProyectoHitos.Where(x => x.ProyectoId == id).ToListAsync())
-            h.Descripcion = $"Descripción larga de {h.Nombre}";
+        foreach (var e in await _ctx.ProyectoEntregables.Where(x => x.ProyectoId == id).ToListAsync())
+            e.Definir(e.Nombre, $"Descripción larga de {e.Nombre}", e.FechaPlan, e.ResponsableId, e.Responsable);
         await _ctx.SaveChangesAsync(CancellationToken.None);
 
-        await GuardarFichaAsync(id, await HitosActualesAsync(id));
+        await GuardarFichaAsync(id, await EntregablesActualesAsync(id));
 
-        var descripciones = await _ctx.ProyectoHitos.Where(x => x.ProyectoId == id)
+        var descripciones = await _ctx.ProyectoEntregables.Where(x => x.ProyectoId == id)
             .OrderBy(x => x.Orden).Select(x => x.Descripcion).ToArrayAsync();
         descripciones.Should().AllSatisfy(d => d.Should().StartWith("Descripción larga de"));
         ids.Should().HaveCount(3);
     }
 
     [Fact]
-    public async Task Actualizar_EditaElHitoEnSuLugarSinCambiarleElId()
+    public async Task Actualizar_EditaElEntregableEnSuLugarSinCambiarleElId()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
 
-        var entrada = (await HitosActualesAsync(id))
-            .Select(h => h.Id == ids[0] ? h with { Nombre = "Primero renombrado" } : h).ToList();
+        var entrada = (await EntregablesActualesAsync(id))
+            .Select(e => e.Id == ids[0] ? e with { Nombre = "Primero renombrado" } : e).ToList();
         await GuardarFichaAsync(id, entrada);
 
         (await IdsPorOrdenAsync(id)).Should().Equal(ids, "no se recrea ninguno");
-        (await _ctx.ProyectoHitos.FindAsync(ids[0]))!.Nombre.Should().Be("Primero renombrado");
+        (await _ctx.ProyectoEntregables.FindAsync(ids[0]))!.Nombre.Should().Be("Primero renombrado");
     }
 
     [Fact]
-    public async Task Actualizar_QuitaSoloElHitoAusenteYDesimputaSuAvance()
+    public async Task Actualizar_QuitaSoloElEntregableAusenteYDesimputaSuAvance()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
 
         var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new RegistrarAvanceCommand(id, "Imputado al que se va", 20, ids[2]), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(id, "Imputado al que se va", ids[2]), CancellationToken.None);
 
-        var entrada = (await HitosActualesAsync(id)).Where(h => h.Id != ids[2]).ToList();
+        var entrada = (await EntregablesActualesAsync(id)).Where(e => e.Id != ids[2]).ToList();
         await GuardarFichaAsync(id, entrada);
 
         (await IdsPorOrdenAsync(id)).Should().Equal(ids[0], ids[1]);
-        (await _ctx.ProyectoAvances.FindAsync(avanceId))!.HitoId.Should().BeNull(
-            "quitar un hito sí desimputa: la entrada queda, deja de estar imputada");
+        (await _ctx.ProyectoAvances.FindAsync(avanceId))!.EntregableId.Should().BeNull(
+            "quitar un entregable sí desimputa: la entrada queda, deja de estar imputada");
     }
 
     [Fact]
     public async Task Actualizar_NoAlteraElOrdenExistenteYMandaLosNuevosAlFinal()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
 
         // El responsable reordena; después alguien guarda la ficha.
-        await new ReordenarHitosCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarHitosCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        await new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
+            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
 
-        var entrada = (await HitosActualesAsync(id)).ToList();
-        entrada.Add(new HitoInput(0, "Cuarto", null, null, null, EstadoHito.Pendiente, null, null));
+        var entrada = (await EntregablesActualesAsync(id)).ToList();
+        entrada.Add(new EntregableInput(0, "Cuarto", null, null, EstadoEntregable.Pendiente, null, null, []));
         await GuardarFichaAsync(id, entrada);
 
-        var final = await _ctx.ProyectoHitos.Where(h => h.ProyectoId == id)
-            .OrderBy(h => h.Orden).Select(h => h.Nombre).ToArrayAsync();
+        var final = await _ctx.ProyectoEntregables.Where(e => e.ProyectoId == id)
+            .OrderBy(e => e.Orden).Select(e => e.Nombre).ToArrayAsync();
         // Guardar la ficha respeta el orden que fijó el responsable y agrega al final.
         final.Should().Equal("Tercero", "Primero", "Segundo", "Cuarto");
     }
 
-    /// <summary>Los hitos vigentes como los mandaría el editor: con su Id.</summary>
-    private async Task<List<HitoInput>> HitosActualesAsync(int proyectoId) =>
-        await _ctx.ProyectoHitos.Where(h => h.ProyectoId == proyectoId).OrderBy(h => h.Orden)
-            .Select(h => new HitoInput(h.Id, h.Nombre, h.Descripcion, h.FechaPlan, h.FechaReal,
-                                       h.Estado, h.ResponsableId, h.Responsable))
+    // ── Responsables: salen de los interesados ────────────────────
+    [Fact]
+    public async Task Responsable_UnEntregableSoloSeAsignaAUnInteresadoDelProyecto()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        var ajeno = await UsuarioAsync("Alguien de otra mesa");
+
+        var entrada = (await EntregablesActualesAsync(id))
+            .Select(e => e.Id == ids[0] ? e with { ResponsableId = ajeno, Responsable = "Alguien de otra mesa" } : e)
+            .ToList();
+
+        var act = () => GuardarFichaAsync(id, entrada);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*interesado*");
+    }
+
+    [Fact]
+    public async Task Responsable_AlRegistrarloComoInteresadoLaAsignacionPasa()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        var uid = await UsuarioAsync("Brizzio Zelaya");
+        await InteresadoAsync(id, uid, RolInteresado.Ejecutor);
+
+        var entrada = (await EntregablesActualesAsync(id)).Select(e => e.Id != ids[0] ? e : e with
+        {
+            ResponsableId = uid,
+            Responsable   = "Brizzio Zelaya",
+            Actividades   = [new ActividadInput(0, "Con dueño", null, null, null, 0, false, uid, "Brizzio Zelaya")]
+        }).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        (await _ctx.ProyectoEntregables.FindAsync(ids[0]))!.ResponsableId.Should().Be(uid);
+        (await _ctx.ProyectoActividades.SingleAsync()).ResponsableId.Should().Be(uid);
+    }
+
+    /// <summary>
+    /// Los entregables que vienen de la carga inicial tienen responsables que nunca se registraron
+    /// como interesados. Exigirles la regla al guardar convertiría cada edición de la ficha en un
+    /// error que el usuario no provocó.
+    /// </summary>
+    [Fact]
+    public async Task Responsable_ElQueYaEstabaYNoEsInteresadoNoBloqueaElGuardado()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        var heredado = await UsuarioAsync("Responsable heredado");
+
+        // Como lo dejó un script: asignado sin pasar por el registro de interesados.
+        var entregable = await _ctx.ProyectoEntregables.FindAsync(ids[0]);
+        entregable!.Definir(entregable.Nombre, entregable.Descripcion, entregable.FechaPlan,
+                            heredado, "Responsable heredado");
+        await _ctx.SaveChangesAsync(CancellationToken.None);
+
+        var entrada = (await EntregablesActualesAsync(id))
+            .Select(e => e.Id == ids[0] ? e with { Nombre = "Primero, con otro nombre" } : e).ToList();
+        await GuardarFichaAsync(id, entrada);
+
+        (await _ctx.ProyectoEntregables.FindAsync(ids[0]))!.ResponsableId.Should().Be(heredado);
+    }
+
+    /// <summary>Los entregables vigentes como los mandaría el editor: con su Id y sus actividades.</summary>
+    private async Task<List<EntregableInput>> EntregablesActualesAsync(int proyectoId) =>
+        await _ctx.ProyectoEntregables.Where(e => e.ProyectoId == proyectoId).OrderBy(e => e.Orden)
+            .Select(e => new EntregableInput(e.Id, e.Nombre, e.Descripcion, e.FechaPlan,
+                                             e.Estado, e.ResponsableId, e.Responsable,
+                e.Actividades.OrderBy(a => a.Orden)
+                    .Select(a => new ActividadInput(a.Id, a.Nombre, a.Descripcion,
+                                                    a.FechaInicioPlan, a.FechaFinPlan, a.AvancePct,
+                                                    a.Estado == EstadoActividad.Cancelada,
+                                                    a.ResponsableId, a.Responsable,
+                                                    // El editor real también las postea: sin esto el helper simularía un
+                                                    // formulario que borra las dependencias en cada guardado.
+                                                    a.Predecesoras.Select(d => d.PredecesoraId).ToList())).ToList()))
             .ToListAsync();
 
-    private Task GuardarFichaAsync(int id, IReadOnlyList<HitoInput> hitos) =>
+    private Task GuardarFichaAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
         new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null, Duenio, "Dueño del proyecto",
-            PrioridadProyecto.Media, null, null, hitos), CancellationToken.None);
+            PrioridadProyecto.Media, null, null, entregables), CancellationToken.None);
+
+    /// <summary>Le cuelga actividades a un entregable, con su porcentaje ya reportado.</summary>
+    private async Task ConActividadesAsync(int proyectoId, int entregableId, params (int Pct, string Nombre)[] actividades)
+    {
+        var entrada = (await EntregablesActualesAsync(proyectoId)).Select(e => e.Id != entregableId ? e : e with
+        {
+            Actividades = actividades
+                .Select(a => new ActividadInput(0, a.Nombre, null, null, null, a.Pct, false, null, null))
+                .ToList()
+        }).ToList();
+        await GuardarFichaAsync(proyectoId, entrada);
+    }
 
     // ── Listado ───────────────────────────────────────────────────
     [Fact]
@@ -538,27 +876,43 @@ public class ProyectosTests : IDisposable
             .Handle(new GetProyectosQuery(), CancellationToken.None)).Single();
 
         enEjecucionSinReportes.SinReportar.Should().BeTrue();
+        enEjecucionSinReportes.SinDesglose.Should().BeTrue("no tiene ni un entregable cargado");
 
         await new RegistrarAvanceCommandHandler(_ctx, _usuario)
-            .Handle(new RegistrarAvanceCommand(id, "Reporte de hoy", 20), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(id, "Reporte de hoy"), CancellationToken.None);
 
         var conReporteReciente = (await new GetProyectosQueryHandler(_ctx)
             .Handle(new GetProyectosQuery(), CancellationToken.None)).Single();
 
         conReporteReciente.SinReportar.Should().BeFalse();
-        conReporteReciente.AvancePct.Should().Be(20);
     }
 
-    // ── Reordenar hitos y corregir bitácora (solo el propietario) ──
+    [Fact]
+    public async Task Listado_CuentaLosDosNivelesDelArbol()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (100, "Una"), (0, "Otra"));
+
+        var fila = (await new GetProyectosQueryHandler(_ctx)
+            .Handle(new GetProyectosQuery(), CancellationToken.None)).Single();
+
+        fila.TotalEntregables.Should().Be(3);
+        fila.TotalActividades.Should().Be(2);
+        fila.AvancePct.Should().Be(17, "(50 + 0 + 0) / 3, redondeado");
+        fila.SinDesglose.Should().BeFalse();
+    }
+
+    // ── Reordenar y corregir bitácora (solo el propietario) ───────
     private static readonly Guid Duenio = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Ajeno  = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-    /// <summary>Proyecto con responsable y tres hitos, que es el escenario de estas acciones.</summary>
-    private Task<int> ConDuenioYHitosAsync() => ConHitosAsync(Duenio);
+    /// <summary>Proyecto con responsable y tres entregables, que es el escenario de estas acciones.</summary>
+    private Task<int> ConDuenioYEntregablesAsync() => ConEntregablesAsync(Duenio);
 
     /// <summary>Igual, pero permite dejar el proyecto sin responsable — el caso en que la guarda
     /// de propiedad no tiene contra quién comparar.</summary>
-    private async Task<int> ConHitosAsync(Guid? responsable)
+    private async Task<int> ConEntregablesAsync(Guid? responsable)
     {
         var id = await CrearAsync();
         await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
@@ -566,9 +920,9 @@ public class ProyectosTests : IDisposable
             responsable, responsable is null ? null : "Dueño del proyecto",
             PrioridadProyecto.Media, null, null,
             [
-                new HitoInput(0, "Primero",  null, null, null, EstadoHito.Pendiente, null, null),
-                new HitoInput(0, "Segundo",  null, null, null, EstadoHito.Pendiente, null, null),
-                new HitoInput(0, "Tercero",  null, null, null, EstadoHito.Pendiente, null, null)
+                new EntregableInput(0, "Primero", null, null, EstadoEntregable.Pendiente, null, null, []),
+                new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente, null, null, []),
+                new EntregableInput(0, "Tercero", null, null, EstadoEntregable.Pendiente, null, null, [])
             ]), CancellationToken.None);
         return id;
     }
@@ -582,32 +936,32 @@ public class ProyectosTests : IDisposable
     }
 
     private Task<int[]> IdsPorOrdenAsync(int proyectoId) =>
-        _ctx.ProyectoHitos.Where(h => h.ProyectoId == proyectoId)
-            .OrderBy(h => h.Orden).Select(h => h.Id).ToArrayAsync();
+        _ctx.ProyectoEntregables.Where(e => e.ProyectoId == proyectoId)
+            .OrderBy(e => e.Orden).Select(e => e.Id).ToArrayAsync();
 
     [Fact]
-    public async Task Reordenar_ElPropietarioMueveElUltimoHitoAlPrincipio()
+    public async Task Reordenar_ElPropietarioMueveElUltimoEntregableAlPrincipio()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
         int[] nuevo = [ids[2], ids[0], ids[1]];
 
-        await new ReordenarHitosCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarHitosCommand(id, nuevo), CancellationToken.None);
+        await new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
+            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
 
         (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
-        _ctx.ProyectoHitos.Where(h => h.ProyectoId == id).OrderBy(h => h.Orden)
-            .Select(h => h.Orden).Should().Equal(1, 2, 3);
+        _ctx.ProyectoEntregables.Where(e => e.ProyectoId == id).OrderBy(e => e.Orden)
+            .Select(e => e.Orden).Should().Equal(1, 2, 3);
     }
 
     [Fact]
     public async Task Reordenar_LoRechazaAQuienNoEsElResponsable()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
 
-        var act = () => new ReordenarHitosCommandHandler(_ctx, Como(Ajeno))
-            .Handle(new ReordenarHitosCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        var act = () => new ReordenarEntregablesCommandHandler(_ctx, Como(Ajeno))
+            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>()
             .WithMessage("*responsable del proyecto*");
@@ -618,37 +972,73 @@ public class ProyectosTests : IDisposable
     public async Task Reordenar_UnProyectoSinResponsableNoAdmiteLaAccion()
     {
         // Sin bypass de administrador: si nadie es dueño, nadie reordena.
-        var id  = await ConHitosAsync(responsable: null);
+        var id  = await ConEntregablesAsync(responsable: null);
         var ids = await IdsPorOrdenAsync(id);
 
-        var act = () => new ReordenarHitosCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarHitosCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        var act = () => new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
+            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>().WithMessage("*no tiene responsable*");
     }
 
     [Fact]
-    public async Task Reordenar_ExigeLaListaCompletaDeHitos()
+    public async Task Reordenar_ExigeLaListaCompletaDeEntregables()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
 
-        var act = () => new ReordenarHitosCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarHitosCommand(id, [ids[1], ids[0]]), CancellationToken.None);
+        var act = () => new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
+            .Handle(new ReordenarEntregablesCommand(id, [ids[1], ids[0]]), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>().WithMessage("*no corresponde*");
         (await IdsPorOrdenAsync(id)).Should().Equal(ids);
     }
 
     [Fact]
+    public async Task ReordenarActividades_ElPropietarioLasMueveDentroDeSuEntregable()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"), (0, "Tercera"));
+
+        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
+
+        await new ReordenarActividadesCommandHandler(_ctx, Como(Duenio)).Handle(
+            new ReordenarActividadesCommand(id, ids[0], [actuales[2], actuales[0], actuales[1]]),
+            CancellationToken.None);
+
+        (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
+            .Should().Equal("Tercera", "Una", "Otra");
+    }
+
+    [Fact]
+    public async Task ReordenarActividades_RechazaUnEntregableDeOtroProyecto()
+    {
+        var id    = await ConDuenioYEntregablesAsync();
+        var otro  = await ConDuenioYEntregablesAsync();
+        var ajeno = (await IdsPorOrdenAsync(otro))[0];
+
+        var act = () => new ReordenarActividadesCommandHandler(_ctx, Como(Duenio))
+            .Handle(new ReordenarActividadesCommand(id, ajeno, [1]), CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*no pertenece*");
+    }
+
+    [Fact]
     public async Task CorregirAvance_GuardaElCambioYSellaQuienLoEdito()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Única"));
+        var actividad = await _ctx.ProyectoActividades.SingleAsync();
+
         var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new RegistrarAvanceCommand(id, "Texto con herror", 30, Bloqueo: "algo traba"), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(id, "Texto con herror", ids[0], actividad.Id, 30,
+                Bloqueo: "algo traba"), CancellationToken.None);
 
         await new ActualizarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ActualizarAvanceCommand(avanceId, "Texto corregido", null), CancellationToken.None);
+            .Handle(new ActualizarAvanceCommand(avanceId, "Texto corregido", null, ids[0], actividad.Id),
+                    CancellationToken.None);
 
         var a = await _ctx.ProyectoAvances.FindAsync(avanceId);
         a!.Descripcion.Should().Be("Texto corregido");
@@ -660,11 +1050,28 @@ public class ProyectosTests : IDisposable
     }
 
     [Fact]
+    public async Task CorregirAvance_UnaEntradaQueFijoUnPorcentajeNoSePuedeReimputar()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Única"));
+        var actividad = await _ctx.ProyectoActividades.SingleAsync();
+
+        var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
+            .Handle(new RegistrarAvanceCommand(id, "Original", ids[0], actividad.Id, 40), CancellationToken.None);
+
+        var act = () => new ActualizarAvanceCommandHandler(_ctx, Como(Duenio))
+            .Handle(new ActualizarAvanceCommand(avanceId, "Reimputado", null, ids[1]), CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*reporte nuevo*");
+    }
+
+    [Fact]
     public async Task CorregirAvance_LoRechazaAQuienNoEsElResponsable()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new RegistrarAvanceCommand(id, "Original", 30), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(id, "Original"), CancellationToken.None);
 
         var act = () => new ActualizarAvanceCommandHandler(_ctx, Como(Ajeno))
             .Handle(new ActualizarAvanceCommand(avanceId, "Intento ajeno", null), CancellationToken.None);
@@ -674,17 +1081,17 @@ public class ProyectosTests : IDisposable
     }
 
     [Fact]
-    public async Task CorregirAvance_NoAceptaUnHitoDeOtroProyecto()
+    public async Task CorregirAvance_NoAceptaUnEntregableDeOtroProyecto()
     {
-        var propio = await ConDuenioYHitosAsync();
-        var otro   = await ConDuenioYHitosAsync();
-        var hitoAjeno = (await IdsPorOrdenAsync(otro))[0];
+        var propio = await ConDuenioYEntregablesAsync();
+        var otro   = await ConDuenioYEntregablesAsync();
+        var ajeno  = (await IdsPorOrdenAsync(otro))[0];
 
         var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new RegistrarAvanceCommand(propio, "Original", 30), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(propio, "Original"), CancellationToken.None);
 
         var act = () => new ActualizarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ActualizarAvanceCommand(avanceId, "Reimputado", null, hitoAjeno), CancellationToken.None);
+            .Handle(new ActualizarAvanceCommand(avanceId, "Reimputado", null, ajeno), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>().WithMessage("*no pertenece*");
     }
@@ -702,7 +1109,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Auditoria_RegistraElCambioDeEstadoYAvisaAlResponsable()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await LimpiarAuditoriaAsync();
         var e  = new ProyectoEstadoCambiadoEvent(id, "PRY-2026-01", "Planificado", "EnEjecucion", "Otra persona");
 
@@ -721,7 +1128,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Auditoria_NoLeAvisaAlResponsableDeSuPropioCambio()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await LimpiarAuditoriaAsync();
         var e  = new ProyectoEstadoCambiadoEvent(id, "PRY-2026-01", "Planificado", "EnEjecucion", "Dueño del proyecto");
 
@@ -732,16 +1139,16 @@ public class ProyectosTests : IDisposable
     }
 
     [Fact]
-    public async Task Auditoria_ResumeQueCambioEnLaFichaYEnLosHitos()
+    public async Task Auditoria_ResumeQueCambioEnLaFichaYEnLaEstructura()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
         await LimpiarAuditoriaAsync();
 
-        var entrada = (await HitosActualesAsync(id))
-            .Where(h => h.Id != ids[2])                                     // quita "Tercero"
-            .Select(h => h.Id == ids[0] ? h with { Nombre = "Renombrado" } : h)
-            .Append(new HitoInput(0, "Nuevo", null, null, null, EstadoHito.Pendiente, null, null))
+        var entrada = (await EntregablesActualesAsync(id))
+            .Where(e => e.Id != ids[2])                                     // quita "Tercero"
+            .Select(e => e.Id == ids[0] ? e with { Nombre = "Renombrado" } : e)
+            .Append(new EntregableInput(0, "Nuevo", null, null, EstadoEntregable.Pendiente, null, null, []))
             .ToList();
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
@@ -754,17 +1161,33 @@ public class ProyectosTests : IDisposable
         ficha.Detalle.Should().Contain("nombre").And.Contain("prioridad");
         ficha.Actor.Should().Be("Henry Cardona");
 
-        var hitos = auditoria.Single(b => b.Tipo == TipoEventoProyecto.ModificacionHitos);
-        hitos.Detalle.Should().Contain("«Nuevo»").And.Contain("«Tercero»").And.Contain("1 hito modificado");
+        var estructura = auditoria.Single(b => b.Tipo == TipoEventoProyecto.ModificacionEstructura);
+        estructura.Detalle.Should().Contain("«Nuevo»").And.Contain("«Tercero»").And.Contain("1 entregable modificado");
+    }
+
+    [Fact]
+    public async Task Auditoria_ResumeElMovimientoDeActividades()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await LimpiarAuditoriaAsync();
+
+        await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"));
+
+        var detalle = await _ctx.BitacorasProyecto
+            .Where(b => b.Tipo == TipoEventoProyecto.ModificacionEstructura)
+            .Select(b => b.Detalle).SingleAsync();
+
+        detalle.Should().Contain("«Primero»").And.Contain("2 actividades agregadas");
     }
 
     [Fact]
     public async Task Auditoria_UnGuardadoSinCambiosNoEnsuciaElHistorial()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await LimpiarAuditoriaAsync();
 
-        await GuardarFichaAsync(id, await HitosActualesAsync(id));
+        await GuardarFichaAsync(id, await EntregablesActualesAsync(id));
 
         (await _ctx.BitacorasProyecto.CountAsync()).Should().Be(0);
     }
@@ -772,19 +1195,19 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Auditoria_DejaRastroDelReordenamientoYDeLaCorreccion()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
         var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
-            .Handle(new RegistrarAvanceCommand(id, "Original", 20), CancellationToken.None);
+            .Handle(new RegistrarAvanceCommand(id, "Original"), CancellationToken.None);
         await LimpiarAuditoriaAsync();
 
-        await new ReordenarHitosCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarHitosCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        await new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
+            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
         await new ActualizarAvanceCommandHandler(_ctx, Como(Duenio))
             .Handle(new ActualizarAvanceCommand(avanceId, "Corregido", null), CancellationToken.None);
 
         var tipos = await _ctx.BitacorasProyecto.OrderBy(b => b.Id).Select(b => b.Tipo).ToListAsync();
-        tipos.Should().Equal(TipoEventoProyecto.ModificacionHitos, TipoEventoProyecto.CorreccionBitacora);
+        tipos.Should().Equal(TipoEventoProyecto.ModificacionEstructura, TipoEventoProyecto.CorreccionBitacora);
     }
 
     // ── Riesgos ───────────────────────────────────────────────────
@@ -798,7 +1221,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_LaSeveridadEsElProductoYClasificaElSemaforo()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
 
         var alto  = await RiesgoAsync(id, NivelCualitativo.Alta, NivelCualitativo.Alta);   // 9
         var medio = await RiesgoAsync(id, NivelCualitativo.Alta, NivelCualitativo.Baja);   // 3
@@ -814,7 +1237,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_ElListadoOrdenaPorSeveridadYMandaLosCerradosAlFinal()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await RiesgoAsync(id, NivelCualitativo.Baja, NivelCualitativo.Baja);              // 1
         var grave = await RiesgoAsync(id, NivelCualitativo.Alta, NivelCualitativo.Alta);  // 9
         var medio = await RiesgoAsync(id, NivelCualitativo.Media, NivelCualitativo.Media);// 4
@@ -833,7 +1256,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_CerrarloFijaLaFechaDeCierreYReabrirloLaBorra()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         var rid = await RiesgoAsync(id, NivelCualitativo.Media, NivelCualitativo.Alta);
         var handler = new CambiarEstadoRiesgoCommandHandler(_ctx, _usuario);
 
@@ -847,7 +1270,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_UnCerradoNoSeModificaSinReabrirlo()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         var rid = await RiesgoAsync(id, NivelCualitativo.Media, NivelCualitativo.Media);
         await new CambiarEstadoRiesgoCommandHandler(_ctx, _usuario)
             .Handle(new CambiarEstadoRiesgoCommand(rid, EstadoRiesgo.Cerrado), CancellationToken.None);
@@ -862,7 +1285,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_MarcaLaRevisionVencidaYLaFaltaDePlan()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var rid = await RiesgoAsync(id, NivelCualitativo.Alta, NivelCualitativo.Alta);
 
         // La fecha de revisión no admite pasado al crear, así que se atrasa después.
@@ -881,7 +1304,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_UnRiesgoAceptadoNoCuentaComoSinPlan()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await RiesgoAsync(id, NivelCualitativo.Baja, NivelCualitativo.Baja, EstrategiaRiesgo.Aceptar);
 
         var dto = (await new GetRiesgosProyectoQueryHandler(_ctx)
@@ -893,7 +1316,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_RechazaUnaFechaDeRevisionEnElPasado()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
 
         var act = () => RiesgoAsync(id, NivelCualitativo.Media, NivelCualitativo.Media,
             revision: DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1));
@@ -904,7 +1327,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Riesgo_QuedaRegistradoEnLaAuditoria()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await LimpiarAuditoriaAsync();
 
         var rid = await RiesgoAsync(id, NivelCualitativo.Baja, NivelCualitativo.Baja);
@@ -941,7 +1364,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Interesado_MarcaComoClaveAlDeAltaInfluenciaQueDecide()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await InteresadoAsync(id, await UsuarioAsync("Patrocinador fuerte"), RolInteresado.Patrocinador, NivelCualitativo.Alta);
         await InteresadoAsync(id, await UsuarioAsync("Beneficiario amplio"), RolInteresado.Beneficiario, NivelCualitativo.Alta);
         await InteresadoAsync(id, await UsuarioAsync("Contraparte media"),   RolInteresado.ContraparteTecnica, NivelCualitativo.Media);
@@ -958,7 +1381,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Interesado_SeOrdenaPorInfluenciaDescendente()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         await InteresadoAsync(id, await UsuarioAsync("Baja"),  RolInteresado.Beneficiario, NivelCualitativo.Baja);
         await InteresadoAsync(id, await UsuarioAsync("Alta"),  RolInteresado.Patrocinador, NivelCualitativo.Alta);
         await InteresadoAsync(id, await UsuarioAsync("Media"), RolInteresado.Ejecutor,     NivelCualitativo.Media);
@@ -972,7 +1395,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Interesado_TomaNombreYCorreoDelUsuarioNoDeQuienLoRegistra()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var uid = await UsuarioAsync("Homero Funez", "  HFunez@INPREMA.GOB.HN  ".Trim());
 
         await new AgregarInteresadoCommandHandler(_ctx, _usuario).Handle(new AgregarInteresadoCommand(
@@ -989,7 +1412,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Interesado_RechazaAlQueNoEsUsuarioDelPortal()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
 
         var act = () => InteresadoAsync(id, Guid.NewGuid(), RolInteresado.Ejecutor);
 
@@ -1000,7 +1423,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Interesado_RechazaAlUsuarioInactivo()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var uid = await UsuarioAsync("Baja del portal", activo: false);
 
         var act = () => InteresadoAsync(id, uid, RolInteresado.Ejecutor);
@@ -1011,7 +1434,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Interesado_NoSePuedeRepetirLaMismaPersonaEnUnProyecto()
     {
-        var id  = await ConDuenioYHitosAsync();
+        var id  = await ConDuenioYEntregablesAsync();
         var uid = await UsuarioAsync("Repetido");
         await InteresadoAsync(id, uid, RolInteresado.Ejecutor);
 
@@ -1025,7 +1448,7 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Interesado_AgregarYQuitarQuedanEnLaAuditoria()
     {
-        var id = await ConDuenioYHitosAsync();
+        var id = await ConDuenioYEntregablesAsync();
         var uid = await UsuarioAsync("Christhian Quintanilla");
         await LimpiarAuditoriaAsync();
 

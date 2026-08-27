@@ -127,23 +127,23 @@ UPDATE hp
 SET hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado,
     hp.FechaReal   = h.FechaReal
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Proy = hp.ProyectoId AND h.Nombre = hp.Nombre;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT h.Proy,
        /* Los hitos nuevos van al final, después del mayor orden que ya tenga el proyecto. */
-       (SELECT ISNULL(MAX(x.Orden), 0) FROM ProyectoHitos x WHERE x.ProyectoId = h.Proy) + h.Orden,
+       (SELECT ISNULL(MAX(x.Orden), 0) FROM ProyectoEntregables x WHERE x.ProyectoId = h.Proy) + h.Orden,
        h.Nombre, h.Descripcion, NULL, h.FechaReal, h.Estado, NULL, NULL
 FROM @h h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = h.Proy AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = h.Proy AND x.Nombre = h.Nombre);
 
 /* «Reunión de seguimiento» no es un entregable: entró en la carga inicial derivada de un
    acuerdo suelto y ahora el proyecto tiene hitos de verdad. Se retira solo si nadie le imputó
    un avance. */
-DELETE FROM ProyectoHitos
+DELETE FROM ProyectoEntregables
 WHERE ProyectoId = @ip AND Nombre = N'Reunión de seguimiento'
-  AND NOT EXISTS (SELECT 1 FROM ProyectoAvances a WHERE a.HitoId = ProyectoHitos.Id);
+  AND NOT EXISTS (SELECT 1 FROM ProyectoAvances a WHERE a.EntregableId = ProyectoEntregables.Id);
 
 -- ════════ 3. Bitácora ═══════════════════════════════════════════════════════
 DECLARE @a TABLE (
@@ -175,10 +175,10 @@ INSERT INTO @a VALUES
  NULL, N'Registro_SRECI_2026-07-08.pdf', N'/uploads/proyectos/2efdf6030e83e5fe5e7564ff79d8a0f1.pdf', 155711);
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT a.Proy,
-       (SELECT TOP 1 h.Id FROM ProyectoHitos h WHERE h.ProyectoId = a.Proy AND h.Nombre = a.HitoNombre),
+       (SELECT TOP 1 h.Id FROM ProyectoEntregables h WHERE h.ProyectoId = a.Proy AND h.Nombre = a.HitoNombre),
        ISNULL(a.Fecha, @hoy), @actor, a.Descripcion, a.Pct, a.Bloqueo,
        a.ArchivoNombre, a.ArchivoUrl, a.ArchivoTamano
 FROM @a a
@@ -205,7 +205,7 @@ SELECT p.Codigo, LEFT(p.Nombre, 34) AS Proyecto, p.Estado, p.AvancePct AS Pct,
        SUM(CASE WHEN h.Estado = N'Completado' THEN 1 ELSE 0 END) AS Cumplidos,
        (SELECT COUNT(*) FROM ProyectoAvances a WHERE a.ProyectoId = p.Id) AS Reportes
 FROM Proyectos p
-LEFT JOIN ProyectoHitos h ON h.ProyectoId = p.Id
+LEFT JOIN ProyectoEntregables h ON h.ProyectoId = p.Id
 WHERE p.Id IN (@ip, @senasa, @gexf, @sreci)
 GROUP BY p.Id, p.Codigo, p.Nombre, p.Estado, p.AvancePct
 ORDER BY p.Codigo;

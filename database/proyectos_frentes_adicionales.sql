@@ -205,19 +205,19 @@ SET hp.Orden       = h.Orden,
     hp.Estado      = h.Estado,
     hp.FechaPlan   = h.FechaPlan,
     hp.FechaReal   = h.FechaReal
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN Proyectos pr ON pr.Id     = hp.ProyectoId AND pr.IsDeleted = 0
 JOIN @p p         ON p.Nombre  = pr.Nombre
 JOIN @h h         ON h.ProyOrd = p.Ord AND h.Nombre = hp.Nombre;
 
-INSERT INTO ProyectoHitos
+INSERT INTO ProyectoEntregables
     (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT pr.Id, h.Orden, h.Nombre, h.Descripcion, h.FechaPlan, h.FechaReal, h.Estado, NULL, NULL
 FROM @h h
 JOIN @p p         ON p.Ord     = h.ProyOrd
 JOIN Proyectos pr ON pr.Nombre = p.Nombre AND pr.IsDeleted = 0
 WHERE NOT EXISTS (
-    SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = pr.Id AND x.Nombre = h.Nombre
+    SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = pr.Id AND x.Nombre = h.Nombre
 );
 
 -- ── Bitácora inicial de los tres frentes que ya están en marcha ─────────────
@@ -229,7 +229,7 @@ INSERT INTO @a VALUES
 (4, 25, N'En la sesión del Comité Técnico Asesor del 5 de mayo se expusieron los contenidos de la 4.ª edición del índice: 20 países participantes y 33 subindicadores nuevos. Honduras solicitó formalmente apoyo técnico al Comité para alcanzar los estándares exigidos, y quedó pendiente definir la hoja de ruta sobre los factores habilitantes detectados como críticos. El lanzamiento de la edición es el 29 de septiembre, fecha que fija el índice.');
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT pr.Id, NULL, @hoy, @actor, a.Descripcion, a.Pct, NULL, NULL, NULL, NULL
 FROM @a a
@@ -247,7 +247,7 @@ SELECT p.Codigo, LEFT(p.Nombre, 48) AS Proyecto, p.Estado, p.AvancePct AS Pct,
        COUNT(h.Id) AS Hitos,
        SUM(CASE WHEN h.Estado = N'Completado' THEN 1 ELSE 0 END) AS Cumplidos
 FROM Proyectos p
-LEFT JOIN ProyectoHitos h ON h.ProyectoId = p.Id
+LEFT JOIN ProyectoEntregables h ON h.ProyectoId = p.Id
 WHERE p.IsDeleted = 0 AND p.Nombre IN (SELECT Nombre FROM @p)
 GROUP BY p.Id, p.Codigo, p.Nombre, p.Estado, p.AvancePct, p.FechaFinPlan
 ORDER BY p.Codigo;

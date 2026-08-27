@@ -16,23 +16,23 @@ SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 
 DELETE h
-FROM ProyectoHitos h
+FROM ProyectoEntregables h
 JOIN Proyectos p ON p.Id = h.ProyectoId
 WHERE p.Codigo = N'PRY-2026-12'
   AND h.Nombre = N'Identificación de dos trámites digitalizables'
-  AND NOT EXISTS (SELECT 1 FROM ProyectoAvances a WHERE a.HitoId = h.Id);
+  AND NOT EXISTS (SELECT 1 FROM ProyectoAvances a WHERE a.EntregableId = h.Id);
 
 WITH ordenados AS (
     SELECT h.Id, ROW_NUMBER() OVER (PARTITION BY h.ProyectoId ORDER BY h.Orden, h.Id) AS Nuevo
-    FROM ProyectoHitos h
+    FROM ProyectoEntregables h
     JOIN Proyectos p ON p.Id = h.ProyectoId
     WHERE p.Codigo IN (N'PRY-2026-06', N'PRY-2026-09', N'PRY-2026-12', N'PRY-2026-14')
 )
 UPDATE h SET h.Orden = o.Nuevo
-FROM ProyectoHitos h JOIN ordenados o ON o.Id = h.Id;
+FROM ProyectoEntregables h JOIN ordenados o ON o.Id = h.Id;
 
 COMMIT;
 
 SELECT p.Codigo, h.Orden, LEFT(h.Nombre, 52) AS Hito, h.Estado
-FROM ProyectoHitos h JOIN Proyectos p ON p.Id = h.ProyectoId
+FROM ProyectoEntregables h JOIN Proyectos p ON p.Id = h.ProyectoId
 WHERE p.Codigo = N'PRY-2026-12' ORDER BY h.Orden;

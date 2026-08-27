@@ -73,26 +73,26 @@ INSERT INTO @h VALUES
 UPDATE hp
 SET hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @p;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @p,
-       (SELECT ISNULL(MAX(Orden), 0) FROM ProyectoHitos WHERE ProyectoId = @p)
+       (SELECT ISNULL(MAX(Orden), 0) FROM ProyectoEntregables WHERE ProyectoId = @p)
          + ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
        h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @h h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
 
 -- ── Bitácora ────────────────────────────────────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'Seguimiento del incidente de notificaciones entre el 10 y el 17 de agosto, a partir de la ayuda memoria de la reunión técnica del 7 de agosto sobre Microsoft 365, Exchange y SMTP. La semana se fue en deslindar responsabilidades técnicas y no dejó avance de producto. Quedó establecido que el error al verificar el correo no proviene de la Plataforma SOL sino del sitio POWWEB anterior —evidencia remitida al Ing. Mario Cruz— y que el sistema de envío de notificaciones arrastra una configuración incorrecta o perdida desde el periodo de la Ing. Daniela Zavala. Sobre el reclamo de que no se generan la copia de la resolución ni la certificación, se aclaró que tampoco es falla de la plataforma sino configuración y carga de los moldes, que corresponde a IHADFA ajustar, cargar y probar; ya hubo sesión con el digitador delegado Brayan Mazariegos y se remitió la grabación. Una reunión con el Ing. Mario Cruz se canceló a última hora el 11 de agosto. IHADFA sumó la petición de mostrar el nombre del establecimiento y el lugar en las solicitudes, que debe escalarse a Naciones Unidas. Se convocó reunión presencial para el miércoles 19 de agosto a las 2:00 p. m., pendiente de confirmación, para validar el incidente, revisar los moldes y el flujo, y acordar fechas.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @p,
-       (SELECT TOP 1 Id FROM ProyectoHitos WHERE ProyectoId = @p AND Nombre = N'Notificaciones desde una cuenta institucional Microsoft 365'),
+       (SELECT TOP 1 Id FROM ProyectoEntregables WHERE ProyectoId = @p AND Nombre = N'Notificaciones desde una cuenta institucional Microsoft 365'),
        '2026-08-17T15:05:00', @actor, @desc, @pct,
        N'El envío de notificaciones sigue detenido a la espera de que el responsable de las licencias las entregue a Infotecnología del IHADFA y se complete la migración del dominio institucional; sin eso no se puede cerrar la configuración ni activar los seis trámites reestructurados. La visualización del establecimiento y el lugar en las solicitudes depende del equipo de Naciones Unidas y no tiene fecha.',
        N'IHADFA_historia.pdf', N'/uploads/proyectos/f21f9165e98f19517f69f37607f7eda7.pdf', 5727465
@@ -112,7 +112,7 @@ SELECT Codigo, Estado, AvancePct AS Pct, Responsable FROM Proyectos WHERE Id = @
 
 SELECT h.Orden, LEFT(h.Nombre, 52) AS Hito, h.Estado,
        CASE WHEN h.Descripcion IS NULL THEN 'sin desc' ELSE 'ok' END AS Desc_
-FROM ProyectoHitos h WHERE h.ProyectoId = @p ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @p ORDER BY h.Orden;
 
 SELECT CONVERT(varchar(10), a.Fecha, 103) AS Fecha, a.PorcentajeReportado AS Pct,
        ISNULL(a.ArchivoNombre, '—') AS Evidencia

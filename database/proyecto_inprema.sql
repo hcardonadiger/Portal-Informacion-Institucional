@@ -120,23 +120,23 @@ UPDATE hp
 SET hp.Orden       = h.Orden,
     hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @proy;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @proy, h.Orden, h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @h h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre);
 
 -- ── Bitácora ────────────────────────────────────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'Informe de situación institucional del 24 de agosto, que cubre del 29 de junio al 24 de agosto. Los seis trámites están digitalizados y en producción, pero en la práctica la institución opera cinco: el de atención de denuncias está detenido porque el Departamento de Derechos Humanos no tiene personal, y está en proceso de contratación. El diagnóstico es que la plataforma funciona y el beneficio de la digitalización se diluye por tres causas: inconsistencias entre lo que muestra la plataforma y lo que sale impreso —el colegio magisterial y la fotografía del docente no aparecen en el formulario—, un retorno sistemático al papel por exigencias de firma, huella y resguardo documental, y comprensión limitada del alcance del preanálisis de préstamos, que cuatro de los seis trámites comparten. En lo técnico, infraestructura aplicó dos correcciones —excepción para /sigob y regla para la carga por POST en /wsapi/api/— y quedaron sin cerrar desde el 2 de julio los cuatro escenarios de validación: acceso nacional, acceso internacional, integración PDI–SOLPDI y carga de archivos. La reunión de levantamiento se acordó para el 4 de agosto y se ejecutó el 18, con dos semanas de desfase. De ella salieron tres compromisos de DIGER con plazo al 26 de agosto: verificar la vigencia de instructivos y videos, trasladar a revisión interna las mejoras de actualización de datos, y revisar las posibilidades de integración y automatización.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @proy,
-       (SELECT TOP 1 Id FROM ProyectoHitos
+       (SELECT TOP 1 Id FROM ProyectoEntregables
         WHERE ProyectoId = @proy AND Nombre = N'Validación de los cuatro escenarios de acceso'),
        '2026-08-24T09:00:00', @actor, @desc, @avancePct,
        N'Dos frentes quedan fuera del control de DIGER: la reactivación del trámite de denuncias depende de las contrataciones del INPREMA, y la plataforma no está migrada a la institución, así que los tiempos de atención de incidencias los fija un tercero. Además, la rotación dejó a la institución sin parte de los administradores originales, y las jornadas de transferencia de capacidades dependen de que designe equipos permanentes.',
@@ -168,4 +168,4 @@ SELECT Codigo, Estado, Prioridad, AvancePct AS Pct, Responsable,
 FROM Proyectos WHERE Id = @proy;
 
 SELECT h.Orden, LEFT(h.Nombre, 56) AS Hito, h.Estado
-FROM ProyectoHitos h WHERE h.ProyectoId = @proy ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @proy ORDER BY h.Orden;

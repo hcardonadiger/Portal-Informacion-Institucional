@@ -11,7 +11,12 @@ public enum SenalProyecto
     SinLineaBase,
     SinReportar,
     SinResponsable,
-    Divergente
+    Divergente,
+
+    /// <summary>En ejecución y sin una sola actividad cargada. Desde que el avance se calcula desde
+    /// el árbol, estos proyectos no pueden reportar nada: su porcentaje depende solo del estado de
+    /// sus entregables.</summary>
+    SinDesglose
 }
 
 public sealed record GetProyectosQuery(
@@ -54,7 +59,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
 
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        // Los conteos de hitos y la fecha del último avance salen en la misma consulta: el listado
+        // Los conteos del árbol y la fecha del último avance salen en la misma consulta: el listado
         // pinta el semáforo con ellos y no queremos una consulta por fila.
         var filas = await q
             .OrderBy(p => p.Estado == EstadoProyecto.Cerrado || p.Estado == EstadoProyecto.Cancelado)
@@ -71,17 +76,20 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
                 p.FechaFinPlan,
                 p.FechaFinReal,
                 p.AvancePct,
-                p.Hitos.Count,
-                p.Hitos.Count(h => h.Estado == EstadoHito.Completado),
-                p.Hitos.Count(h => h.FechaPlan.HasValue && h.FechaPlan < hoy
-                                   && (h.Estado == EstadoHito.Pendiente || h.Estado == EstadoHito.EnProceso)),
+                p.Entregables.Count,
+                p.Entregables.Count(e => e.Estado == EstadoEntregable.Completado),
+                p.Entregables.Count(e => e.FechaPlan.HasValue && e.FechaPlan < hoy
+                                   && (e.Estado == EstadoEntregable.Pendiente || e.Estado == EstadoEntregable.EnProceso)),
+                p.Entregables.Sum(e => e.Actividades.Count),
+                p.Entregables.Sum(e => e.Actividades.Count(a => a.FechaFinPlan.HasValue && a.FechaFinPlan < hoy
+                                   && (a.Estado == EstadoActividad.Pendiente || a.Estado == EstadoActividad.EnProceso))),
                 ctx.ProyectoAvances.Where(a => a.ProyectoId == p.Id)
                                    .Max(a => (DateTime?)a.Fecha)
             ))
             .ToListAsync(ct);
 
         // El filtro por señal se aplica en memoria porque las señales son propiedades calculadas
-        // del DTO —dependen de conteos de hitos y de la fecha del último reporte— y SQL no las
+        // del DTO —dependen de conteos del árbol y de la fecha del último reporte— y SQL no las
         // conoce. El portafolio es de decenas de proyectos; si algún día son miles, hay que
         // bajarlas a la consulta.
         return query.Senal switch
@@ -91,6 +99,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
             SenalProyecto.SinReportar    => filas.Where(p => p.SinReportar).ToList(),
             SenalProyecto.SinResponsable => filas.Where(p => string.IsNullOrWhiteSpace(p.Responsable)).ToList(),
             SenalProyecto.Divergente     => filas.Where(p => p.Divergente).ToList(),
+            SenalProyecto.SinDesglose    => filas.Where(p => p.SinDesglose).ToList(),
             _                            => filas
         };
     }
@@ -104,8 +113,12 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
 {
     public async Task<ProyectoDetailDto?> Handle(GetProyectoQuery query, CancellationToken ct)
     {
+        // El árbol entero, y sin proyección en SQL: el avance del entregable lo resuelve el dominio
+        // (AvanceCalculado) y su regla no se traduce a una consulta. Traerlo cargado es también lo
+        // que evita tener esa regla escrita una segunda vez acá.
         var p = await ctx.Proyectos.AsNoTracking()
-            .Include(x => x.Hitos)
+            .Include(x => x.Entregables).ThenInclude(e => e.Actividades)
+                                        .ThenInclude(a => a.Predecesoras)
             .FirstOrDefaultAsync(x => x.Id == query.Id, ct);
 
         if (p is null) return null;
@@ -114,16 +127,46 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
         // del editor nunca ofrece una transición que el comando va a rechazar.
         var posibles = Enum.GetValues<EstadoProyecto>().Where(p.PuedePasarA).ToList();
 
+        // Catálogo plano de las actividades del proyecto, para resolver las predecesoras por Id.
+        // Una dependencia puede cruzar entregables, así que no alcanza con mirar las hermanas.
+        var catalogo = p.Entregables
+            .SelectMany(e => e.Actividades.Select(a => new { Actividad = a, Entregable = e.Nombre }))
+            .ToDictionary(x => x.Actividad.Id);
+
+        // Una dependencia huérfana no debería existir —la FK lo impide— pero la consulta no es el
+        // lugar para reventar por eso: se omite y la ficha muestra el resto.
+        IReadOnlyList<PredecesoraDto> Predecesoras(ActividadProyecto a) =>
+            a.PredecesoraIds
+             .Where(catalogo.ContainsKey)
+             .Select(id => catalogo[id])
+             .Select(x => new PredecesoraDto(
+                 x.Actividad.Id, x.Actividad.Nombre, x.Entregable,
+                 x.Actividad.Estado, x.Actividad.FechaFinPlan))
+             .OrderBy(d => d.Entregable).ThenBy(d => d.Nombre)
+             .ToList();
+
         return new ProyectoDetailDto(
             p.Id, p.Codigo, p.Nombre, p.Objetivo, p.InstitucionId, p.AreaId, p.UnidadId,
             p.ResponsableId, p.Responsable, p.Prioridad, p.Estado,
             p.FechaInicioPlan, p.FechaFinPlan, p.FechaInicioReal, p.FechaFinReal,
             p.AvancePct, p.CreatedAt, p.CreatedBy,
-            p.Hitos.OrderBy(h => h.Orden)
-                   .Select(h => new HitoProyectoDto(
-                       h.Id, h.Orden, h.Nombre, h.Descripcion,
-                       h.FechaPlan, h.FechaReal, h.Estado, h.ResponsableId, h.Responsable))
-                   .ToList(),
+            p.Entregables.OrderBy(e => e.Orden)
+                         .Select(e => new EntregableProyectoDto(
+                             e.Id, e.Orden, e.Nombre, e.Descripcion,
+                             e.FechaPlan, e.FechaReal, e.Estado, e.ResponsableId, e.Responsable,
+                             e.AvanceCalculado,
+                             e.Actividades.OrderBy(a => a.Orden)
+                                          .Select(a => new ActividadProyectoDto(
+                                              a.Id, a.Orden, a.Nombre, a.Descripcion,
+                                              a.FechaInicioPlan, a.FechaFinPlan,
+                                              a.FechaInicioReal, a.FechaFinReal,
+                                              a.AvancePct, a.Estado, a.ResponsableId, a.Responsable,
+                                              Predecesoras(a),
+                                              // default = la fila es anterior a que la entidad llevara auditoría.
+                                              a.CreatedAt == default ? null : a.CreatedAt, a.CreatedBy))
+                                          .ToList(),
+                             e.CreatedAt == default ? null : e.CreatedAt, e.CreatedBy))
+                         .ToList(),
             posibles);
     }
 }
@@ -141,8 +184,10 @@ public sealed class GetAvancesProyectoQueryHandler(IApplicationDbContext ctx)
             .OrderByDescending(a => a.Fecha)
             .Select(a => new AvanceProyectoDto(
                 a.Id,
-                a.HitoId,
-                ctx.ProyectoHitos.Where(h => h.Id == a.HitoId).Select(h => h.Nombre).FirstOrDefault(),
+                a.EntregableId,
+                ctx.ProyectoEntregables.Where(e => e.Id == a.EntregableId).Select(e => e.Nombre).FirstOrDefault(),
+                a.ActividadId,
+                ctx.ProyectoActividades.Where(x => x.Id == a.ActividadId).Select(x => x.Nombre).FirstOrDefault(),
                 a.Fecha,
                 a.Autor,
                 a.Descripcion,

@@ -109,25 +109,25 @@ SET hp.Orden       = h.Orden,
     hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado,
     hp.FechaReal   = h.FechaReal
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @proy;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @proy, h.Orden, h.Nombre, h.Descripcion, NULL, h.FechaReal, h.Estado, NULL, NULL
 FROM @h h
 WHERE NOT EXISTS (
-    SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre
+    SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre
 );
 
 -- ── Bitácora: el estado al momento del alta ─────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'El instrumento de Evaluación de Madurez de Gobierno Digital Institucional está cargado y operando en el portal de encuestas: 10 dimensiones, 41 subdimensiones y 96 preguntas, con el motor de ponderación en tres niveles, el tablero que traduce el resultado a la escala de madurez 1–5, la constancia de respuesta firmada digitalmente y la exportación de resultados por subsección, pregunta y persona. Se sumaron los campos de capacidad de cómputo que pide el BID 4942/BL-HO y se generó un juego de datos de prueba para revisar resultados sin ensuciar la base. La plataforma está ahora en validación conjunta DIGER-CONSULTIA; siguen la aprobación del instrumento y el lanzamiento a las instituciones.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @proy,
-       (SELECT TOP 1 Id FROM ProyectoHitos WHERE ProyectoId = @proy AND Nombre = N'Validación DIGER — CONSULTIA'),
+       (SELECT TOP 1 Id FROM ProyectoEntregables WHERE ProyectoId = @proy AND Nombre = N'Validación DIGER — CONSULTIA'),
        @hoy, @actor, @desc, @avancePct, NULL, NULL, NULL, NULL
 WHERE NOT EXISTS (SELECT 1 FROM ProyectoAvances WHERE ProyectoId = @proy AND Descripcion = @desc);
 
@@ -140,4 +140,4 @@ FROM Proyectos WHERE Id = @proy;
 
 SELECT h.Orden, LEFT(h.Nombre, 52) AS Hito, h.Estado,
        CONVERT(varchar(10), h.FechaReal, 103) AS Cumplido
-FROM ProyectoHitos h WHERE h.ProyectoId = @proy ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @proy ORDER BY h.Orden;

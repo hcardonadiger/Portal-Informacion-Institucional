@@ -300,8 +300,8 @@
             @if (Hay(d.Foto1Url) || Hay(d.Foto2Url))
             {
                 <div class="acta-fotos">
-                    @if (Hay(d.Foto1Url)) { <figure><img src="@d.Foto1Url" alt="Evidencia 1" /><figcaption>@d.Foto1Desc</figcaption></figure> }
-                    @if (Hay(d.Foto2Url)) { <figure><img src="@d.Foto2Url" alt="Evidencia 2" /><figcaption>@d.Foto2Desc</figcaption></figure> }
+                    @if (Hay(d.Foto1Url)) { <figure><img src="@Url.Page(null, "Foto", new { id = Model.ReunionId, n = 1 })" alt="Evidencia 1" /><figcaption>@d.Foto1Desc</figcaption></figure> }
+                    @if (Hay(d.Foto2Url)) { <figure><img src="@Url.Page(null, "Foto", new { id = Model.ReunionId, n = 2 })" alt="Evidencia 2" /><figcaption>@d.Foto2Desc</figcaption></figure> }
                 </div>
             }
         </section>

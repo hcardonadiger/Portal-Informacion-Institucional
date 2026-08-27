@@ -12,7 +12,8 @@
         SenalProyecto.SinLineaBase   => "Sin línea base",
         SenalProyecto.SinReportar    => "Sin reportar 30+ días",
         SenalProyecto.SinResponsable => "Sin responsable",
-        SenalProyecto.Divergente     => "Avance sin respaldo",
+        SenalProyecto.Divergente     => "Avance sin entregables cerrados",
+        SenalProyecto.SinDesglose    => "Sin actividades cargadas",
         _                            => s.ToString()
     };
 
@@ -49,7 +50,7 @@
     <div class="hist-header">
         <div>
             <h2>Proyectos</h2>
-            <p>Seguimiento de la ejecución de los proyectos internos de la DIGER: hitos, avance reportado y bitácora con evidencia.</p>
+            <p>Seguimiento de la ejecución de los proyectos internos de la DIGER: entregables, actividades con su avance y bitácora con evidencia.</p>
         </div>
         <div style="display:flex;gap:8px">
             @* Arrastra los filtros puestos: se exporta lo que se está viendo, no todo. *@
@@ -153,7 +154,7 @@
                     <th style="width:150px">Responsable</th>
                     <th style="width:110px">Estado</th>
                     <th style="width:170px">Avance</th>
-                    <th style="width:120px">Hitos</th>
+                    <th style="width:130px">Estructura</th>
                     <th style="width:120px">Cierre plan.</th>
                     <th style="width:80px"></th>
                 </tr>
@@ -196,18 +197,26 @@
                             </div>
                         </td>
                         <td class="res-meta">
-                            @p.HitosCompletados / @p.TotalHitos
+                            @p.EntregablesCompletados / @p.TotalEntregables
+                            @if (p.TotalActividades > 0)
+                            {
+                                <div>@p.TotalActividades actividad@(p.TotalActividades == 1 ? "" : "es")</div>
+                            }
                             @if (p.Divergente)
                             {
                                 <div>
-                                    <span class="badge badge-warning" title="Declarado @(p.AvancePct)% contra @(p.AvanceFisico)% de hitos cerrados">
-                                        @(p.Brecha > 0 ? $"declara +{p.Brecha} pts" : $"reporta {p.Brecha} pts de menos")
+                                    <span class="badge badge-warning" title="@(p.AvancePct)% de trabajo reportado contra @(p.AvanceFisico)% de entregables cerrados">
+                                        @(p.Brecha > 0 ? $"+{p.Brecha} pts sin cerrar" : $"{p.Brecha} pts sin reportar")
                                     </span>
                                 </div>
                             }
-                            @if (p.HitosAtrasados > 0)
+                            @if (p.EntregablesAtrasados > 0)
                             {
-                                <span class="badge badge-danger" style="margin-left:6px">@p.HitosAtrasados atrasado@(p.HitosAtrasados == 1 ? "" : "s")</span>
+                                <span class="badge badge-danger" style="margin-left:6px">@p.EntregablesAtrasados atrasado@(p.EntregablesAtrasados == 1 ? "" : "s")</span>
+                            }
+                            @if (p.ActividadesAtrasadas > 0)
+                            {
+                                <span class="badge badge-danger" style="margin-left:6px">@p.ActividadesAtrasadas actividad@(p.ActividadesAtrasadas == 1 ? "" : "es") vencida@(p.ActividadesAtrasadas == 1 ? "" : "s")</span>
                             }
                         </td>
                         <td class="res-meta">
