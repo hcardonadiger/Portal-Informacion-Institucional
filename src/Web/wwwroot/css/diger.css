@@ -565,10 +565,10 @@ select.field-input:focus {
     color: var(--diger-danger);
 }
 
-/* Reordenar hitos: mismo lenguaje que .hist-del, pero van DOS en una celda estrecha de una
+/* Reordenar entregables y actividades: mismo lenguaje que .hist-del, pero van DOS en una celda estrecha de una
    tabla con table-layout:fixed, así que no pueden heredar de .btns (padding 11px 28px, que
    desbordaba la columna y empujaba la ✕ fuera del borde). */
-.hito-mov {
+.orden-mov {
     padding: 5px 7px;
     background: var(--diger-surface);
     border: 1.5px solid var(--diger-border);
@@ -581,9 +581,9 @@ select.field-input:focus {
     transition: all .2s;
 }
 
-.hito-mov + .hito-mov { margin-left: 3px; }
+.orden-mov + .orden-mov { margin-left: 3px; }
 
-.hito-mov:hover {
+.orden-mov:hover {
     border-color: var(--diger-blue);
     color: var(--diger-blue);
 }
@@ -2374,6 +2374,304 @@ tr.contacto-inactivo td {
 
 .seg-inst:hover {
     text-decoration: underline;
+}
+
+/* ── FICHA DE PROYECTO: ESTRUCTURA DE DESGLOSE (EDT) ─────────── */
+/* La tabla mezcla dos clases de fila —entregables y sus actividades— y sin señal visual la
+   jerarquía había que deducirla de la sangría del nombre. El grupo se pinta como una unidad:
+   cabecera tintada arriba, actividades colgando de una guía vertical. */
+
+.edt-grupo {
+    border-bottom: 8px solid var(--diger-bg);
+}
+
+.edt-ent > td {
+    background: var(--diger-bg-blue);
+    border-top: 1.5px solid var(--diger-border);
+    vertical-align: top;
+}
+
+.edt-grupo.plegado .edt-act,
+.edt-grupo.plegado .edt-add {
+    display: none;
+}
+
+/* La guía vertical va en la primera celda de la actividad y la ata a su entregable.
+   :first-of-type y NO :first-child: los input hidden del binder son hijos directos del <tr> y
+   ocupan las primeras posiciones, así que `td:first-child` no encuentra nunca la celda. */
+.edt-act > td:first-of-type {
+    position: relative;
+    padding-left: 30px;
+}
+
+.edt-act > td:first-of-type::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--diger-border);
+}
+
+/* La última actividad corta la guía a la mitad: así se ve dónde termina el grupo. */
+.edt-act:last-of-type > td:first-of-type::before {
+    bottom: 50%;
+}
+
+.edt-act > td:first-of-type::after {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    width: 9px;
+    height: 2px;
+    background: var(--diger-border);
+}
+
+/* !important porque .edit-grid fija el padding de las celdas y esta va sangrada con las
+   actividades: la acción pertenece al grupo, no a la tabla. */
+.edt-add > td {
+    padding-left: 30px !important;
+    background: var(--diger-bg-blue-alt);
+}
+
+/* Plegar el grupo. Mismo lenguaje que .orden-mov, pero cuadrado y sin borde: es un control
+   de la fila, no una acción sobre el dato. */
+.edt-toggle {
+    background: none;
+    border: 0;
+    color: var(--diger-text-muted);
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    line-height: 1;
+    padding: 4px 5px;
+    border-radius: var(--diger-radius-sm);
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.edt-toggle:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-title);
+}
+
+.edt-toggle .caret {
+    display: inline-block;
+    transition: transform var(--diger-transition);
+}
+
+.edt-grupo.plegado .edt-toggle .caret {
+    transform: rotate(-90deg);
+}
+
+/* Rótulo dentro de una celda: la fecha del entregable significa otra cosa que las de la
+   actividad, y con los encabezados compartidos no había forma de decirlo. */
+.cel-lbl {
+    display: block;
+    font-size: var(--diger-fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--diger-text-muted);
+    margin-bottom: 3px;
+}
+
+/* Campo calculado: se ve como un dato, no como algo que se pueda escribir. */
+.cel-calc {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-secondary);
+}
+
+/* ── AYUDAS EN CONTEXTO ─────────────────────────────────────── */
+/* Aviso informativo dentro de una sección. No usa .alert-error ni los fondos de estado:
+   esos son para lo que pasó, esto es para lo que conviene saber antes de actuar. */
+.hint {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 14px;
+    background: var(--diger-bg-blue);
+    border-left: 3px solid var(--diger-blue-mid);
+    border-radius: 0 var(--diger-radius-sm) var(--diger-radius-sm) 0;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    line-height: 1.5;
+}
+
+.hint.warn {
+    background: var(--diger-warning-bg);
+    border-left-color: var(--diger-warning);
+    color: var(--diger-warning-strong);
+}
+
+.hint .ico {
+    flex-shrink: 0;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.hint a {
+    color: var(--diger-blue-mid);
+    font-weight: 600;
+}
+
+/* Panel de ayuda plegable. Cerrado por defecto: quien ya sabe cómo funciona no lo abre nunca,
+   y quien no, lo encuentra donde le hace falta. */
+.ayuda {
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-bg-soft);
+    margin-bottom: var(--diger-space-4);
+}
+
+.ayuda > summary {
+    cursor: pointer;
+    padding: 9px 14px;
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-blue-title);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.ayuda > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ayuda > summary::before {
+    content: "▸";
+    font-size: var(--diger-fs-xs);
+    transition: transform var(--diger-transition);
+}
+
+.ayuda[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.ayuda .cuerpo {
+    padding: 0 14px 12px 30px;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    line-height: 1.6;
+}
+
+.ayuda .cuerpo p {
+    margin-bottom: .5rem;
+}
+
+.ayuda .cuerpo strong {
+    color: var(--diger-text-strong);
+}
+
+/* ── PESTAÑAS DE LA FICHA ───────────────────────────────────── */
+/* Reemplazan al índice de anclas (.ficha-nav): eran las mismas píldoras, pero saltaban dentro de
+   un scroll de varias pantallas en vez de cambiar lo que se ve. El vocabulario visual se conserva
+   entero — lo que cambia es que ahora hay una activa. */
+.ficha-tabs {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-bottom: var(--diger-space-4);
+}
+
+.ficha-tabs [role="tab"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 13px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    font-family: inherit;
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    cursor: pointer;
+    transition: all var(--diger-transition);
+}
+
+.ficha-tabs [role="tab"]:hover {
+    border-color: var(--diger-blue-mid);
+    color: var(--diger-blue-title);
+    box-shadow: var(--diger-shadow-sm);
+}
+
+/* La activa va en azul lleno y no en un tinte suave: no existe un token de fondo azul claro que
+   cambie con el tema —solo hay success/warning/danger— y --diger-blue-mid se lee bien en ambos.
+   Va después de :hover a propósito: misma especificidad, así que gana la de más abajo. */
+.ficha-tabs [role="tab"][aria-selected="true"] {
+    border-color: var(--diger-blue-mid);
+    background: var(--diger-blue-mid);
+    color: #fff;
+    box-shadow: var(--diger-shadow-sm);
+}
+
+/* Sobre el azul lleno el chip de conteo no puede seguir usando el fondo de la página. */
+.ficha-tabs [role="tab"][aria-selected="true"] .n {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
+}
+
+.ficha-tabs [role="tab"]:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+
+.ficha-tabs .n {
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    color: var(--diger-text-muted);
+    background: var(--diger-bg);
+    border-radius: var(--diger-radius-pill);
+    padding: 1px 7px;
+}
+
+/* El panel oculto NO se saca del DOM: dos pestañas viven dentro del mismo formulario y sus campos
+   tienen que seguir posteándose. La regla existe para que ningún display de más pise a [hidden]. */
+.tab-panel[hidden] { display: none; }
+
+/* El ancla queda debajo del encabezado si se salta desde otra pantalla. */
+.ficha-sec {
+    scroll-margin-top: 16px;
+}
+
+/* ── BARRA DE GUARDADO ──────────────────────────────────────── */
+/* La estructura puede tener decenas de filas: el botón de guardar no puede vivir solo al final
+   de un scroll de tres pantallas. */
+/* Gana por especificidad sobre el display:flex de la regla siguiente. Sin esto, ocultar la barra
+   con [hidden] no haría nada: la barra seguiría a la vista en las pestañas que no guardan. */
+.guardar-barra[hidden] { display: none; }
+
+.guardar-barra {
+    position: sticky;
+    bottom: 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding: 12px 16px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-lg);
+    box-shadow: var(--diger-shadow-md);
+    z-index: 2;
+}
+
+.guardar-barra .nota {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+}
+
+/* ── ZONA DE PELIGRO ────────────────────────────────────────── */
+.zona-peligro {
+    border-color: var(--diger-danger-bg);
+}
+
+.zona-peligro .sec-h {
+    color: var(--diger-danger-text);
 }
 
 /* ── TABLET ─────────────────────────────────────────────────── */
@@ -5291,3 +5589,478 @@ textarea.form-control { resize: vertical; }
     .dg-confirm-cancel:hover { background: var(--diger-text-slate-dark); }
 }
 
+
+/* ── Dependencias entre actividades (editor de proyectos) ──────────────────
+   Van bajo el nombre de la actividad, no en una columna: la tabla ya lleva ocho y la mayoría de
+   las actividades no depende de nada, así que una novena columna estaría vacía casi siempre.
+   Todos los colores salen de tokens que sí cambian con el tema — --diger-blue-pale y compañía no
+   lo hacen y dejarían líneas claras sobre fondo oscuro. */
+.dep-lista {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.dep-rot {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    text-transform: lowercase;
+    letter-spacing: .01em;
+}
+
+.dep-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 100%;
+    padding: 1px 4px 1px 7px;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    background: var(--diger-border-soft);
+    font-size: var(--diger-fs-xs);
+    line-height: 1.5;
+    color: var(--diger-text-secondary);
+}
+
+/* La predecesora que sigue abierta es la que bloquea: se distingue de la que ya terminó, que se
+   deja a la vista porque explica de dónde salió la fecha aunque ya no frene nada. */
+.dep-chip.abierta {
+    border-color: var(--diger-warning-strong);
+    background: var(--diger-warning-bg);
+    color: var(--diger-warning-strong);
+}
+
+.dep-chip.lista .dep-nom { text-decoration: line-through; opacity: .75; }
+
+.dep-nom {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 22ch;
+}
+
+.dep-x,
+.dep-mas {
+    border: 0;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+}
+
+.dep-x {
+    line-height: 1;
+    padding: 0 2px;
+    opacity: .6;
+}
+.dep-x:hover { opacity: 1; color: var(--diger-danger-text); }
+
+.dep-mas {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    border: 1px dashed var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    padding: 1px 8px;
+}
+.dep-mas:hover { color: var(--diger-text); border-color: var(--diger-text-muted); }
+
+.dep-x:focus-visible,
+.dep-mas:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 1px;
+}
+
+/* Un solo diálogo para toda la tabla; ver la nota de la vista. */
+.dep-dialog {
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-surface);
+    color: var(--diger-text);
+    padding: 1.1rem 1.25rem;
+    min-width: min(420px, 90vw);
+    max-width: 92vw;
+    box-shadow: var(--diger-shadow-lg);
+}
+.dep-dialog::backdrop { background: rgba(15, 23, 42, .45); }
+.dep-dialog h3 { margin: 0 0 .35rem; }
+.dep-dialog select { width: 100%; }
+
+.dep-dialog-pie {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin-top: 1rem;
+}
+/* ── Repositorio documental (pestaña Documentos y biblioteca) ──────────────
+   Prefijo repo-doc- y no doc-: `.doc-item` YA EXISTE desde la línea 721, para los documentos de
+   expedientes, y trae su propio display:flex. Reusar el nombre puso el encabezado y las acciones
+   en dos columnas —el título quedaba en 168 px y se partía en cuatro líneas— sin que nada fallara
+   ni avisara. Antes de nombrar una clase en este archivo, buscarla.
+
+   La tarjeta es una lista, no una tabla: cada documento lleva su historial plegado y su formulario
+   de versión, y eso no entra en una celda. */
+.repo-doc-cat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 1.5rem 0 .6rem;
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--diger-text-muted);
+}
+.repo-doc-cat:first-of-type { margin-top: .4rem; }
+.repo-doc-cat .n {
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    color: var(--diger-text-muted);
+    background: var(--diger-bg);
+    border-radius: var(--diger-radius-pill);
+    padding: 1px 7px;
+    letter-spacing: 0;
+}
+
+.repo-doc {
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-surface);
+    padding: .9rem 1.05rem;
+    margin-bottom: .7rem;
+}
+
+.repo-doc-cab { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+
+/* min-width:0 es lo que permite que el nombre de archivo largo se recorte en vez de estirar la
+   columna y empujar la acción fuera de la tarjeta. */
+.repo-doc-id { flex: 1 1 320px; min-width: 0; }
+
+.repo-doc-tit {
+    font-weight: 600;
+    font-size: var(--diger-fs-base);
+    line-height: 1.35;
+    color: var(--diger-text-strong);
+    overflow-wrap: anywhere;
+}
+
+.repo-doc-desc {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+}
+
+/* El nombre del archivo: identidad del documento, no metadato de esquina. Se recorta con puntos
+   suspensivos porque los reales son largos y el título es lo que tiene que leerse primero. */
+.repo-doc-archivo {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    min-width: 0;
+}
+.repo-doc-nom {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: "Cascadia Mono", Consolas, monospace;
+    color: var(--diger-text-secondary);
+}
+.repo-doc-sep { flex: 0 0 auto; opacity: .6; }
+.repo-doc-archivo > span:last-child { flex: 0 0 auto; }
+
+.repo-doc-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.repo-doc-badges:empty { display: none; }
+
+/* La acción va a la derecha y no se estira: es lo que se viene a hacer con el documento. */
+.repo-doc-vig {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+.repo-doc-bajar { font-size: var(--diger-fs-sm); padding: 6px 16px; white-space: nowrap; }
+.repo-doc-quien {
+    text-align: right;
+    font-size: var(--diger-fs-2xs);
+    line-height: 1.45;
+    color: var(--diger-text-muted);
+}
+
+.repo-doc-hist { margin-top: .8rem; }
+.repo-doc-hist > summary {
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    padding: .25rem 0;
+}
+.repo-doc-hist > summary:hover { color: var(--diger-blue-title); }
+.repo-doc-hist > table { margin-top: .5rem; }
+
+/* La huella se compara de un vistazo entre filas: monoespaciada o no sirve para nada. */
+.repo-doc-huella {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: var(--diger-fs-2xs);
+}
+
+/* Las acciones son una fila de enlaces discretos; al abrir una, ocupa el ancho entero debajo en
+   vez de empujar a las otras a otra columna. */
+.repo-doc-acciones {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-top: .85rem;
+    padding-top: .7rem;
+    border-top: 1px solid var(--diger-border-soft);
+}
+.repo-doc-acciones > details > summary {
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    font-weight: 600;
+    color: var(--diger-blue-title);
+    padding: .2rem 0;
+}
+.repo-doc-acciones > details[open] { flex: 1 1 100%; }
+.repo-doc-acciones > details > form { margin-top: .6rem; }
+
+.repo-doc-archivar {
+    color: var(--diger-danger-text);
+    border-color: var(--diger-danger-text);
+    font-size: var(--diger-fs-xs);
+    padding: 4px 12px;
+}
+
+/* En pantalla angosta la acción deja de colgar a la derecha y se alinea con el texto: apilada
+   contra el borde derecho de una tarjeta de 320 px se lee como si fuera de otro documento. */
+@media (max-width: 620px) {
+    .repo-doc-vig { align-items: flex-start; flex-direction: row; align-self: stretch; }
+    .repo-doc-quien { text-align: left; }
+}
+
+/* ── Bandeja «Mis actividades» ─────────────────────────────────────────────
+   Tarjeta por actividad y no una tabla: cada fila lleva su formulario de reporte plegado, y eso no
+   entra en una celda. La franja de la izquierda codifica urgencia — es lo que se lee de un vistazo
+   al bajar por la lista. */
+.act-card {
+    border: 1px solid var(--diger-border);
+    border-left: 3px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-surface);
+    padding: .85rem 1rem;
+    margin-bottom: .7rem;
+}
+.act-card.vencida   { border-left-color: var(--diger-danger-text); }
+.act-card.bloqueada { border-left-color: var(--diger-warning-strong); }
+
+.act-cab { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+
+.act-pry {
+    display: inline-block;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--diger-text-muted);
+    text-decoration: none;
+    margin-bottom: 2px;
+}
+.act-pry:hover { color: var(--diger-blue-title); }
+
+.act-tit {
+    font-weight: 600;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-strong);
+    overflow-wrap: anywhere;
+}
+
+.act-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.act-badges:empty { display: none; }
+
+.act-avance { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
+.act-pct {
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: var(--diger-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.act-reportar { margin-top: .75rem; padding-top: .65rem; border-top: 1px solid var(--diger-border-soft); }
+.act-reportar > summary {
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    font-weight: 600;
+    color: var(--diger-blue-title);
+    padding: .2rem 0;
+}
+.act-reportar > form { margin-top: .6rem; }
+
+/* Datos rotulados de la tarjeta de actividad. Van siempre, incluso cuando el valor falta: un campo
+   que desaparece al no tener dato parece que no existe — pasó con la fecha de creación, que está
+   vacía en las 191 actividades anteriores al 26-08-2026. */
+.act-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; }
+.act-meta-i { font-size: var(--diger-fs-xs); color: var(--diger-text-secondary); }
+.act-meta-i b {
+    font-weight: 600;
+    color: var(--diger-text-muted);
+    text-transform: uppercase;
+    font-size: var(--diger-fs-2xs);
+    letter-spacing: .04em;
+    margin-right: 4px;
+}
+
+/* ── Cronograma (Gantt del proyecto) ───────────────────────────────────────
+   Dos columnas: los nombres quedan fijos y las barras se desplazan. La altura de fila es una
+   variable usada por las DOS columnas — es lo único que las mantiene alineadas, sin JavaScript.
+   Prefijo gantt- verificado como libre antes de usarlo. */
+.gantt {
+    --gantt-fila: 30px;
+    --gantt-cab: 34px;
+    display: flex;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    overflow: hidden;
+    background: var(--diger-surface);
+}
+
+.gantt-nombres {
+    flex: 0 0 clamp(190px, 30%, 300px);
+    border-right: 1px solid var(--diger-border);
+    background: var(--diger-surface);
+}
+
+.gantt-cab {
+    height: var(--gantt-cab);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--diger-text-muted);
+    background: var(--diger-bg);
+    border-bottom: 1px solid var(--diger-border);
+}
+
+.gantt-nom {
+    height: var(--gantt-fila);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: var(--diger-fs-xs);
+    border-bottom: 1px solid var(--diger-border-soft);
+    color: var(--diger-text-secondary);
+}
+.gantt-nom:last-child { border-bottom: 0; }
+.gantt-nom span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-nom.n0 { font-weight: 700; color: var(--diger-text-strong); }
+.gantt-nom.n1 { padding-left: 22px; }
+
+.gantt-scroll { flex: 1; overflow-x: auto; }
+.gantt-lienzo { position: relative; }
+
+.gantt-eje { position: relative; padding: 0; }
+.gantt-mes {
+    position: absolute;
+    top: 0;
+    height: var(--gantt-cab);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-left: 1px solid var(--diger-border);
+    font-size: var(--diger-fs-2xs);
+    color: var(--diger-text-muted);
+    overflow: hidden;
+}
+.gantt-mes:first-child { border-left: 0; }
+.gantt-mes i { font-style: normal; opacity: .55; font-size: .9em; }
+
+.gantt-pistas { position: relative; }
+
+/* Divisiones de mes detrás de las barras: sin ellas no se sabe en qué mes cae una barra del medio. */
+.gantt-div {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: var(--diger-border-soft);
+}
+
+.gantt-hoy {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--diger-danger);
+    opacity: .65;
+    z-index: 3;
+}
+
+.gantt-pista {
+    position: relative;
+    height: var(--gantt-fila);
+    border-bottom: 1px solid var(--diger-border-soft);
+}
+.gantt-pista:last-child { border-bottom: 0; }
+
+.gantt-barra {
+    position: absolute;
+    top: 7px;
+    height: 16px;
+    border-radius: 3px;
+    z-index: 2;
+    overflow: hidden;
+    min-width: 3px;
+}
+/* El entregable es una barra resumen: más fina y sin relleno de avance, para que no compita
+   visualmente con sus propias actividades. */
+.gantt-barra.n0 { top: 11px; height: 8px; border-radius: 2px; opacity: .85; }
+
+.gantt-barra.pendiente  { background: var(--diger-border); }
+.gantt-barra.enproceso  { background: var(--diger-blue-mid); }
+.gantt-barra.completada { background: var(--diger-success, #16a34a); }
+.gantt-barra.vencida    { background: var(--diger-danger); }
+.gantt-barra.cancelada  { background: var(--diger-border); opacity: .5; }
+
+/* La bloqueada se marca con un borde a rayas al inicio: es donde está la traba. */
+.gantt-barra.bloq {
+    box-shadow: inset 3px 0 0 var(--diger-warning-strong);
+}
+
+.gantt-relleno {
+    display: block;
+    height: 100%;
+    background: rgba(0, 0, 0, .28);
+}
+
+/* El compromiso del entregable es una fecha, no un intervalo: rombo, no barra. */
+.gantt-hito {
+    position: absolute;
+    top: 9px;
+    width: 11px; height: 11px;
+    margin-left: -5px;
+    transform: rotate(45deg);
+    background: var(--diger-surface);
+    border: 2px solid var(--diger-blue-title);
+    z-index: 4;
+}
+
+.gantt-leyenda {
+    display: flex; flex-wrap: wrap; gap: 6px 16px;
+    margin: .8rem 0 .7rem;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+}
+.gantt-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.g-m { width: 14px; height: 9px; border-radius: 2px; display: inline-block; }
+.g-m.pendiente  { background: var(--diger-border); }
+.g-m.enproceso  { background: var(--diger-blue-mid); }
+.g-m.completada { background: var(--diger-success, #16a34a); }
+.g-m.vencida    { background: var(--diger-danger); }
+.g-m.bloq       { background: var(--diger-border); box-shadow: inset 3px 0 0 var(--diger-warning-strong); }
+.g-m.hito {
+    width: 10px; height: 10px; border-radius: 0; transform: rotate(45deg);
+    background: var(--diger-surface); border: 2px solid var(--diger-blue-title);
+}

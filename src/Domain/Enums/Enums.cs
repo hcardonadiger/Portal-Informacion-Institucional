@@ -248,11 +248,43 @@ public enum PrioridadProyecto
     Baja  = 3
 }
 
-// ── Estado de un hito (entregable) dentro de un proyecto ───────────────────
-public enum EstadoHito
+// ── Estado de un entregable dentro de un proyecto ──────────────────────────
+// Los miembros conservan sus nombres aunque el tipo se llamara antes EstadoHito: se guardan como
+// texto (HasConversion<string>), así que renombrarlos obligaría a reescribir la columna entera.
+public enum EstadoEntregable
 {
     Pendiente  = 1,
     EnProceso  = 2,
     Completado = 3,
     Cancelado  = 4
+}
+
+// ── Estado de una actividad dentro de un entregable ────────────────────────
+// No reusa EstadoEntregable por concordancia: leer «Actividad: Completado» en una tabla parece
+// un error de tipeo, no un enum compartido.
+//
+// El estado no se teclea: lo deriva el porcentaje reportado —0 → Pendiente, 1-99 → EnProceso,
+// 100 → Completada—. La excepción es Cancelada, que sí es una decisión, y por eso además saca a
+// la actividad del promedio del entregable en vez de arrastrarlo contando como cero.
+public enum EstadoActividad
+{
+    Pendiente  = 1,
+    EnProceso  = 2,
+    Completada = 3,
+    Cancelada  = 4
+}
+
+// ── Tipo de dependencia entre actividades ──────────────────────────────────
+// Hoy el portal solo modela Fin → Comienzo, que es la dependencia del PMI que cubre casi todos
+// los casos: la sucesora no arranca hasta que la predecesora termina. Los otros tres tipos
+// (Comienzo-Comienzo, Fin-Fin y Comienzo-Fin) obligarían a explicar cuatro conceptos en la ficha
+// para ganar poco, así que quedaron fuera.
+//
+// La columna existe igual —y guarda el tipo— para que agregarlos después sea un miembro más del
+// enum y no una migración de datos. Se guarda como texto (HasConversion<string>): renombrar un
+// miembro obliga a reescribir la columna, como ya pasó con TipoEventoProyecto.
+public enum TipoDependencia
+{
+    /// <summary>La sucesora no puede arrancar hasta que la predecesora esté completada.</summary>
+    FinComienzo = 1
 }

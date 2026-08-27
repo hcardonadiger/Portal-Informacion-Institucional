@@ -67,15 +67,15 @@ SET h.Orden     = n.Orden,
     h.Estado    = n.Estado,
     h.FechaPlan = n.FechaPlan,
     h.FechaReal = n.FechaReal
-FROM ProyectoHitos h
+FROM ProyectoEntregables h
 JOIN @nuevos n ON n.Nombre = h.Nombre
 WHERE h.ProyectoId = @proy;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @proy, n.Orden, n.Nombre, NULL, n.FechaPlan, n.FechaReal, n.Estado, NULL, NULL
 FROM @nuevos n
 WHERE NOT EXISTS (
-    SELECT 1 FROM ProyectoHitos h WHERE h.ProyectoId = @proy AND h.Nombre = n.Nombre
+    SELECT 1 FROM ProyectoEntregables h WHERE h.ProyectoId = @proy AND h.Nombre = n.Nombre
 );
 
 -- ── 3. Bitácora de ejecución ────────────────────────────────────────────────
@@ -102,10 +102,10 @@ INSERT INTO @a VALUES
  N'Registro_SRECI_2026-08-19.pdf', N'/uploads/proyectos/dfe8c1c6b8e10eed1cdc4306dcd038d3.pdf', 155871);
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @proy,
-       (SELECT TOP 1 h.Id FROM ProyectoHitos h WHERE h.ProyectoId = @proy AND h.Nombre = a.HitoNombre),
+       (SELECT TOP 1 h.Id FROM ProyectoEntregables h WHERE h.ProyectoId = @proy AND h.Nombre = a.HitoNombre),
        a.Fecha, @actor, a.Descripcion, a.Pct, a.Bloqueo,
        a.ArchivoNombre, a.ArchivoUrl, a.ArchivoTamano
 FROM @a a
@@ -130,7 +130,7 @@ SELECT p.Codigo, p.Estado, p.AvancePct, p.Responsable FROM Proyectos p WHERE p.I
 SELECT h.Orden, LEFT(h.Nombre, 52) AS Hito, h.Estado,
        CONVERT(varchar(10), h.FechaPlan, 103) AS Planificada,
        CONVERT(varchar(10), h.FechaReal, 103) AS Cumplida
-FROM ProyectoHitos h WHERE h.ProyectoId = @proy ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @proy ORDER BY h.Orden;
 
 SELECT CONVERT(varchar(16), a.Fecha, 120) AS Fecha, a.PorcentajeReportado AS Pct,
        a.ArchivoNombre AS Evidencia,

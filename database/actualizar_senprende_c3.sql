@@ -63,25 +63,25 @@ INSERT INTO @h VALUES
 
 UPDATE hp
 SET hp.Descripcion = h.Descripcion, hp.Estado = h.Estado
-FROM ProyectoHitos hp JOIN @h h ON h.Nombre = hp.Nombre
+FROM ProyectoEntregables hp JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @p;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @p,
-       (SELECT ISNULL(MAX(Orden),0) FROM ProyectoHitos WHERE ProyectoId = @p)
+       (SELECT ISNULL(MAX(Orden),0) FROM ProyectoEntregables WHERE ProyectoId = @p)
          + ROW_NUMBER() OVER (ORDER BY (SELECT NULL)),
        h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @h h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
 
 -- ── Bitácora ────────────────────────────────────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'Reunión legal e interinstitucional entre DIGER, el Instituto de la Propiedad y SENPRENDE para definir y validar el flujo legal-operativo que digitalice el 100 % del registro mercantil y societario. Se repasaron los componentes interconectados de la Billetera Electrónica Nacional y el RNP —escaneo, sello de tiempo para la inviolabilidad de fechas y validación de vigencia de los certificados— y se planteó restringir el sistema a firmas emitidas bajo la autoridad certificadora de la DIGER. Sobre el flujo de Mi Empresa en Línea se estableció que el 80 % de los registros actuales son unipersonales, lo que permite arrancar por ahí, mientras el 20 % restante requiere facilitador; el registrador valida la homonimia del nombre apoyado en la unidad de Registradores Itinerantes. Quedaron cinco compromisos, todos abiertos: redactar los convenios que formalicen la cadena de confianza digital con costo cero entre entidades del Estado; adecuar los reglamentos internos que exigen firma manuscrita; formalizar el marco legal ante la Dirección de Registro y la Superintendencia de Recursos del IP; relevar en San Pedro Sula las tasas registrales y la interoperabilidad de sus sistemas; y extraer las estructuras de cobro de las Cámaras de Comercio de Tegucigalpa, San Pedro Sula y Choluteca para integrarlas a la pasarela de pagos.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @p,
-       (SELECT TOP 1 Id FROM ProyectoHitos WHERE ProyectoId = @p AND Nombre = N'Flujo legal-operativo de Mi Empresa en Línea'),
+       (SELECT TOP 1 Id FROM ProyectoEntregables WHERE ProyectoId = @p AND Nombre = N'Flujo legal-operativo de Mi Empresa en Línea'),
        '2026-07-16T20:00:00', @actor, @desc, 20,
        N'Los reglamentos internos del IP y de SENPRENDE todavía exigen firma manuscrita. Hasta adecuarlos no hay sustento normativo para el flujo con firma digital avanzada, aunque la ley ya equipare sus efectos a los del papel.',
        N'Acta_Mi_Empresa_en_Linea_16-jul-2026.pdf', N'/uploads/proyectos/07936590d38ef3745d6fec6f8905c193.pdf', 266469
@@ -99,4 +99,4 @@ COMMIT;
 -- ── Resultado ───────────────────────────────────────────────────────────────
 SELECT Codigo, Estado, AvancePct AS Pct FROM Proyectos WHERE Id = @p;
 SELECT h.Orden, LEFT(h.Nombre, 54) AS Hito, h.Estado
-FROM ProyectoHitos h WHERE h.ProyectoId = @p ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @p ORDER BY h.Orden;

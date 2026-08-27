@@ -7,8 +7,9 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries;
 ///
 /// <para>La pregunta que responde no es «cuánto llevamos» sino <b>a qué hay que ponerle
 /// atención</b>: qué proyectos vencieron su fecha, cuáles llevan semanas sin que nadie
-/// reporte, qué hitos están vencidos y qué bloqueos siguen abiertos. El porcentaje de
-/// avance acompaña, no manda — lo declara el responsable y puede estar desactualizado,
+/// reporte, qué entregables y actividades están vencidos y qué bloqueos siguen abiertos.
+/// El porcentaje de avance acompaña, no manda — desde que se calcula desde el árbol, un
+/// proyecto puede tener un número creíble y aun así llevar un mes sin que nadie lo toque,
 /// que es justamente lo que mide el indicador de «sin reportar».</para>
 /// </summary>
 public sealed record GetProyectosDashboardQuery(
@@ -24,7 +25,7 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
     /// distintas sobre el mismo proyecto.</summary>
     private const int DiasSinReporte = 30;
 
-    /// <summary>Ventana de «lo que viene» para los hitos por vencer.</summary>
+    /// <summary>Ventana de «lo que viene» para entregables y actividades por vencer.</summary>
     private const int DiasProximos = 30;
 
     public async Task<ProyectosDashboardDto> Handle(GetProyectosDashboardQuery q, CancellationToken ct)
@@ -44,10 +45,13 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             {
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.ResponsableId,
                 p.Estado, p.Prioridad, p.AvancePct, p.FechaFinPlan,
-                TotalHitos       = p.Hitos.Count,
-                HitosCompletados = p.Hitos.Count(h => h.Estado == EstadoHito.Completado),
-                HitosVencidos    = p.Hitos.Count(h => h.FechaPlan.HasValue && h.FechaPlan < hoy
-                                                      && (h.Estado == EstadoHito.Pendiente || h.Estado == EstadoHito.EnProceso)),
+                TotalEntregables       = p.Entregables.Count,
+                EntregablesCompletados = p.Entregables.Count(x => x.Estado == EstadoEntregable.Completado),
+                EntregablesVencidos    = p.Entregables.Count(x => x.FechaPlan.HasValue && x.FechaPlan < hoy
+                                            && (x.Estado == EstadoEntregable.Pendiente || x.Estado == EstadoEntregable.EnProceso)),
+                TotalActividades       = p.Entregables.Sum(x => x.Actividades.Count),
+                ActividadesVencidas    = p.Entregables.Sum(x => x.Actividades.Count(a => a.FechaFinPlan.HasValue && a.FechaFinPlan < hoy
+                                            && (a.Estado == EstadoActividad.Pendiente || a.Estado == EstadoActividad.EnProceso))),
                 UltimoAvance     = ctx.ProyectoAvances.Where(a => a.ProyectoId == p.Id).Max(a => (DateTime?)a.Fecha),
                 Reportes         = ctx.ProyectoAvances.Count(a => a.ProyectoId == p.Id)
             })
@@ -71,7 +75,8 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         var semaforo = filas
             .Select(p => new ProyectoSemaforoDto(
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.Estado, p.Prioridad, p.AvancePct,
-                p.TotalHitos, p.HitosCompletados, p.HitosVencidos,
+                p.TotalEntregables, p.EntregablesCompletados, p.EntregablesVencidos,
+                p.TotalActividades, p.ActividadesVencidas,
                 p.FechaFinPlan, p.UltimoAvance,
                 p.UltimoAvance is null ? null : (int)(DateTime.UtcNow - p.UltimoAvance.Value).TotalDays,
                 Atrasado(p.FechaFinPlan, p.Estado),
@@ -84,25 +89,123 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             .ThenBy(p => p.Nombre)
             .ToList();
 
-        // ── Hitos vencidos y próximos ────────────────────────────────────────
         var idsFiltrados = filas.Select(f => f.Id).ToHashSet();
         var limite = hoy.AddDays(DiasProximos);
 
-        var hitos = await ctx.ProyectoHitos.AsNoTracking()
-            .Where(h => h.FechaPlan.HasValue
-                        && (h.Estado == EstadoHito.Pendiente || h.Estado == EstadoHito.EnProceso)
-                        && h.FechaPlan <= limite)
-            .Join(ctx.Proyectos.AsNoTracking(), h => h.ProyectoId, p => p.Id, (h, p) => new { h, p })
-            .Where(x => x.p.Estado != EstadoProyecto.Cerrado && x.p.Estado != EstadoProyecto.Cancelado)
-            .Select(x => new HitoAtencionDto(
-                x.p.Id, x.p.Codigo, x.p.Nombre, x.h.Nombre,
-                x.h.Responsable ?? x.p.Responsable,
-                x.h.FechaPlan!.Value, x.h.Estado))
+        // ── Entregables vencidos y próximos ──────────────────────────────────
+        // Se trae la entidad con sus actividades, no una proyección: el avance del entregable lo
+        // resuelve el dominio (AvanceCalculado) y su regla no se traduce a SQL. El cruce con el
+        // proyecto se hace en memoria contra `filas`, que ya viene acotada por el alcance — un
+        // Join en la consulta descartaría el Include.
+        var entregables = await ctx.ProyectoEntregables.AsNoTracking()
+            .Where(x => x.FechaPlan.HasValue
+                        && (x.Estado == EstadoEntregable.Pendiente || x.Estado == EstadoEntregable.EnProceso)
+                        && x.FechaPlan <= limite)
+            .Where(x => ctx.Proyectos.Any(p => p.Id == x.ProyectoId
+                        && p.Estado != EstadoProyecto.Cerrado && p.Estado != EstadoProyecto.Cancelado))
+            .Include(x => x.Actividades)
             .ToListAsync(ct);
 
-        hitos = hitos.Where(h => idsFiltrados.Contains(h.ProyectoId))
-                     .OrderBy(h => h.FechaPlan)
-                     .ToList();
+        var porProyecto = filas.ToDictionary(f => f.Id);
+        var entregablesAtencion = entregables
+            .Where(x => porProyecto.ContainsKey(x.ProyectoId))
+            .Select(x =>
+            {
+                var p = porProyecto[x.ProyectoId];
+                return new EntregableAtencionDto(
+                    p.Id, p.Codigo, p.Nombre, x.Nombre,
+                    x.Responsable ?? p.Responsable,
+                    x.FechaPlan!.Value, x.Estado, x.AvanceCalculado);
+            })
+            .OrderBy(x => x.FechaPlan)
+            .ToList();
+
+        // ── Actividades vencidas y próximas ──────────────────────────────────
+        // El nivel donde el atraso se ve primero. Se consulta aparte y no desde los entregables de
+        // arriba: una actividad puede estar vencida dentro de un entregable cuya fecha todavía no
+        // llega, y esa es justamente la que interesa ver.
+        var actividadesAtencion = await ctx.ProyectoActividades.AsNoTracking()
+            .Where(a => a.FechaFinPlan.HasValue
+                        && (a.Estado == EstadoActividad.Pendiente || a.Estado == EstadoActividad.EnProceso)
+                        && a.FechaFinPlan <= limite)
+            .Join(ctx.ProyectoEntregables.AsNoTracking(), a => a.EntregableId, x => x.Id, (a, x) => new { a, x })
+            .Join(ctx.Proyectos.AsNoTracking(), z => z.x.ProyectoId, p => p.Id, (z, p) => new { z.a, z.x, p })
+            .Where(z => z.p.Estado != EstadoProyecto.Cerrado && z.p.Estado != EstadoProyecto.Cancelado)
+            .Select(z => new ActividadAtencionDto(
+                z.p.Id, z.p.Codigo, z.p.Nombre, z.x.Nombre, z.a.Nombre,
+                z.a.Responsable ?? z.x.Responsable ?? z.p.Responsable,
+                z.a.FechaInicioPlan, z.a.FechaFinPlan!.Value, z.a.AvancePct, z.a.Estado,
+                z.a.CreatedAt == default ? null : z.a.CreatedAt))
+            .ToListAsync(ct);
+
+        actividadesAtencion = actividadesAtencion
+            .Where(a => idsFiltrados.Contains(a.ProyectoId))
+            .OrderBy(a => a.FechaFinPlan)
+            .ToList();
+
+        // ── Actividades bloqueadas por una dependencia ───────────────────────
+        // No las encuentra ninguna consulta por fecha: una actividad puede tener su ventana entera
+        // por delante y estar trancada igual porque otra no termina. Se resuelve en memoria — la
+        // tabla de dependencias es chica y la regla («la predecesora sigue abierta») ya vive en el
+        // dominio, no en SQL.
+        var dependencias = await ctx.ProyectoDependencias.AsNoTracking()
+            .Select(d => new { d.SucesoraId, d.PredecesoraId })
+            .ToListAsync(ct);
+
+        var bloqueadas = new List<ActividadBloqueadaDto>();
+        if (dependencias.Count > 0)
+        {
+            var involucradas = dependencias
+                .SelectMany(d => new[] { d.SucesoraId, d.PredecesoraId })
+                .ToHashSet();
+
+            // El cruce con Proyectos es lo que aplica el filtro de alcance: ProyectoActividades no
+            // lo lleva, su ancla es el proyecto del que cuelga.
+            var actividades = await ctx.ProyectoActividades.AsNoTracking()
+                .Where(a => involucradas.Contains(a.Id))
+                .Join(ctx.ProyectoEntregables.AsNoTracking(), a => a.EntregableId, x => x.Id, (a, x) => new { a, x })
+                .Join(ctx.Proyectos.AsNoTracking(), z => z.x.ProyectoId, p => p.Id, (z, p) => new { z.a, z.x, p })
+                .Where(z => z.p.Estado != EstadoProyecto.Cerrado && z.p.Estado != EstadoProyecto.Cancelado)
+                .Select(z => new
+                {
+                    z.a.Id, z.a.Nombre, z.a.Estado, z.a.AvancePct, z.a.FechaInicioPlan,
+                    CreadoEn    = z.a.CreatedAt == default ? (DateTime?)null : z.a.CreatedAt,
+                    Entregable  = z.x.Nombre,
+                    ProyectoId  = z.p.Id,
+                    z.p.Codigo,
+                    Proyecto    = z.p.Nombre,
+                    Responsable = z.a.Responsable ?? z.x.Responsable ?? z.p.Responsable
+                })
+                .ToListAsync(ct);
+
+            var porIdAct = actividades.ToDictionary(a => a.Id);
+
+            bloqueadas = dependencias
+                // Una dependencia con alguna punta fuera del alcance —o en un proyecto cerrado— no
+                // se puede evaluar sin mostrar datos que el usuario no debería ver: se descarta.
+                .Where(d => porIdAct.ContainsKey(d.SucesoraId) && porIdAct.ContainsKey(d.PredecesoraId))
+                // Solo bloquea la predecesora que sigue abierta. La cancelada dejó de ser parte del
+                // plan y la completada ya liberó a su sucesora.
+                .Where(d => porIdAct[d.PredecesoraId].Estado is EstadoActividad.Pendiente
+                                                             or EstadoActividad.EnProceso)
+                .GroupBy(d => d.SucesoraId)
+                .Select(g => new { Sucesora = porIdAct[g.Key], Espera = g.Select(d => porIdAct[d.PredecesoraId]).ToList() })
+                .Where(x => x.Sucesora.Estado != EstadoActividad.Cancelada)
+                .Where(x => idsFiltrados.Contains(x.Sucesora.ProyectoId))
+                .Select(x => new ActividadBloqueadaDto(
+                    x.Sucesora.ProyectoId, x.Sucesora.Codigo, x.Sucesora.Proyecto,
+                    x.Sucesora.Entregable, x.Sucesora.Nombre, x.Sucesora.Responsable,
+                    x.Sucesora.FechaInicioPlan, x.Sucesora.AvancePct, x.Sucesora.Estado,
+                    x.Espera.OrderBy(e => e.Nombre).Select(e => e.Nombre).ToList(),
+                    x.Sucesora.CreadoEn))
+                // Primero la que se está trabajando pese al bloqueo, después la que ya debía haber
+                // empezado: ese es el orden en que hay que decidir algo.
+                .OrderByDescending(b => b.Arrancada)
+                .ThenByDescending(b => b.DebioArrancar)
+                .ThenBy(b => b.Proyecto)
+                .ThenBy(b => b.Actividad)
+                .ToList();
+        }
 
         // ── Bloqueos vigentes ────────────────────────────────────────────────
         // Solo el último reporte de cada proyecto: un bloqueo que ya no se menciona en el
@@ -158,15 +261,22 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                                                                           or EstadoProyecto.Suspendido),
             SinReportar:      semaforo.Count(p => p.SinReportar),
             SinResponsable:   abiertos.Count(p => p.ResponsableId is null),
-            HitosVencidos:    hitos.Count(h => h.FechaPlan < hoy),
-            HitosProximos:    hitos.Count(h => h.FechaPlan >= hoy),
+            EntregablesVencidos: entregablesAtencion.Count(x => x.FechaPlan < hoy),
+            EntregablesProximos: entregablesAtencion.Count(x => x.FechaPlan >= hoy),
+            ActividadesVencidas: actividadesAtencion.Count(a => a.FechaFinPlan < hoy),
+            ActividadesProximas: actividadesAtencion.Count(a => a.FechaFinPlan >= hoy),
+            SinDesglose:      semaforo.Count(p => p.SinDesglose),
+            ActividadesBloqueadas: bloqueadas.Count,
+            ArrancaronBloqueadas:  bloqueadas.Count(b => b.Arrancada),
             ReportesTotal:    filas.Sum(p => p.Reportes),
             PorEstado:        porEstado,
             PorResponsable:   porResponsable,
             ReportesPorMes:   serie,
             Semaforo:         semaforo,
-            Hitos:            hitos,
-            Bloqueos:         bloqueos);
+            Entregables:      entregablesAtencion,
+            Actividades:      actividadesAtencion,
+            Bloqueos:         bloqueos,
+            Bloqueadas:       bloqueadas);
     }
 }
 
@@ -180,10 +290,15 @@ public static class Etiquetas
         _                          => e.ToString()
     };
 
-    public static string Hito(EstadoHito e) => e switch
+    public static string Entregable(EstadoEntregable e) => e switch
     {
-        EstadoHito.EnProceso => "En proceso",
-        _                    => e.ToString()
+        EstadoEntregable.EnProceso => "En proceso",
+        _                          => e.ToString()
     };
 
+    public static string Actividad(EstadoActividad e) => e switch
+    {
+        EstadoActividad.EnProceso => "En proceso",
+        _                         => e.ToString()
+    };
 }

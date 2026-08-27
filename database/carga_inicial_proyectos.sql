@@ -222,14 +222,14 @@ SELECT
 FROM @p p
 WHERE NOT EXISTS (SELECT 1 FROM Proyectos x WHERE x.Nombre = p.Nombre AND x.IsDeleted = 0);
 
-INSERT INTO ProyectoHitos
+INSERT INTO ProyectoEntregables
     (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT pr.Id, h.Orden, h.Nombre, NULL, NULL, h.FechaReal, h.Estado, NULL, NULL
 FROM @h h
 JOIN @p p         ON p.Ord    = h.ProyOrd
 JOIN Proyectos pr ON pr.Nombre = p.Nombre AND pr.IsDeleted = 0
 WHERE NOT EXISTS (
-    SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = pr.Id AND x.Orden = h.Orden
+    SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = pr.Id AND x.Orden = h.Orden
 );
 
 /* El proyecto de prueba que dejó la verificación del módulo no pertenece al catálogo. */
@@ -245,7 +245,7 @@ SELECT p.Codigo, LEFT(p.Nombre, 46) AS Proyecto, p.Estado, p.Prioridad,
        CONVERT(varchar(10), p.FechaInicioPlan, 103) AS Inicio,
        COUNT(h.Id) AS Hitos
 FROM Proyectos p
-LEFT JOIN ProyectoHitos h ON h.ProyectoId = p.Id
+LEFT JOIN ProyectoEntregables h ON h.ProyectoId = p.Id
 WHERE p.IsDeleted = 0
 GROUP BY p.Id, p.Codigo, p.Nombre, p.Estado, p.Prioridad, p.Responsable, p.FechaInicioPlan
 ORDER BY p.Codigo;

@@ -98,25 +98,25 @@ UPDATE hp
 SET hp.Orden       = h.Orden,
     hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @proy;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @proy, h.Orden, h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @h h
 WHERE NOT EXISTS (
-    SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre
+    SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @proy AND x.Nombre = h.Nombre
 );
 
 -- ── Bitácora: el estado al momento del alta ─────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'Alta del proyecto en el portafolio. La ventanilla única Honduras Ágil ya tiene cerrados el análisis de requerimientos, la definición del flujo y la identificación del origen de datos, que quedó establecido en el Portal de Digitalización de Trámites; el proyecto base también está establecido. El trabajo en curso es el desarrollo del API que servirá de intermediario entre la ventanilla y el portal de digitalización. La ejecución técnica está a cargo de Henry Cardona y Jamil García.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @proy,
-       (SELECT TOP 1 Id FROM ProyectoHitos
+       (SELECT TOP 1 Id FROM ProyectoEntregables
         WHERE ProyectoId = @proy AND Nombre = N'API intermediario con el portal de digitalización'),
        @hoy, @actor, @desc, @avancePct, NULL, NULL, NULL, NULL
 WHERE NOT EXISTS (SELECT 1 FROM ProyectoAvances WHERE ProyectoId = @proy AND Descripcion = @desc);
@@ -135,4 +135,4 @@ SELECT Codigo, Estado, Prioridad, AvancePct AS Pct, Responsable
 FROM Proyectos WHERE Id = @proy;
 
 SELECT h.Orden, LEFT(h.Nombre, 54) AS Hito, h.Estado
-FROM ProyectoHitos h WHERE h.ProyectoId = @proy ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @proy ORDER BY h.Orden;

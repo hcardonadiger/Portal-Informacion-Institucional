@@ -47,6 +47,12 @@
                     📊 Mi Tablero Personal
                 </button>
 
+                @if (Model.PuedeProyectos)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-proyectos', this)">
+                        🗂️ Proyectos y seguimiento
+                    </button>
+                }
                 @if (Model.PuedeTableros)
                 {
                     <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-tableros', this)">
@@ -191,6 +197,193 @@
                     <div class="ayuda-box notice">
                         🔔 <strong>Envío de Recordatorio:</strong> En el editor de expediente puede hacer clic en <code>🔔 Recordar</code> para enviar una notificación automática y correo electrónico de seguimiento al analista y al contacto.
                     </div>
+                </div>
+            }
+
+            @* PROYECTOS *@
+            @if (Model.PuedeProyectos)
+            {
+                <div id="ayuda-proyectos" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">🗂️ Proyectos: portafolio, seguimiento y documentación</h2>
+                    <p>Ubicación en el menú: <code>Proyectos &gt; Portafolio</code>, <code>Mis actividades</code> y <code>Biblioteca</code></p>
+
+                    <div class="ayuda-box info">
+                        💡 <strong>Para verlo funcionando:</strong> abra el proyecto <code>PRY-2026-99 — DEMO</code>.
+                        Es un proyecto de ejemplo, completo de principio a fin, con estructura, fechas,
+                        dependencias, riesgos, bitácora y documentos. Sirve para reconocer cómo se ve un
+                        proyecto bien llevado antes de armar el suyo.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">1. Lo primero: entregable no es lo mismo que actividad</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Un proyecto se descompone en <strong>entregables</strong>, y cada entregable en
+                        <strong>actividades</strong>. Es la distinción que más cuesta al principio:
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Entregable = QUÉ se entrega.</strong> Un producto que se puede señalar y dar por recibido:
+                            «el convenio firmado», «los 6 trámites en producción», «el personal capacitado».</li>
+                        <li><strong>Actividad = QUÉ HAY QUE HACER</strong> para llegar a ese producto:
+                            «redactar el borrador», «configurar en el ambiente de pruebas», «impartir la capacitación».</li>
+                    </ul>
+                    <div class="ayuda-box notice">
+                        ✅ <strong>Prueba rápida:</strong> si no puede decir «esto ya está entregado y alguien lo recibió»,
+                        entonces no es un entregable, es una actividad. Un entregable con el mismo nombre del
+                        proyecto es señal de que todavía falta desglosarlo.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">2. El orden correcto para empezar</h3>
+                    <ol class="ayuda-lista">
+                        <li><strong>Cree el proyecto</strong> desde <code>Proyectos &gt; Portafolio &gt; + Nuevo proyecto</code>.
+                            Nombre, objetivo, prioridad y responsable.</li>
+                        <li><strong>Registre a los interesados ANTES de armar la estructura.</strong> Pestaña
+                            <code>Equipo y riesgos</code>. Esto no es opcional: el responsable de un entregable o de
+                            una actividad <strong>solo puede ser alguien registrado como interesado</strong>. Si se
+                            salta este paso, más adelante el selector de responsable aparece vacío y parece un error
+                            del sistema — no lo es.</li>
+                        <li><strong>Arme la estructura</strong> en la pestaña <code>Estructura</code>: primero los
+                            entregables, y dentro de cada uno sus actividades.</li>
+                        <li><strong>Ponga fechas y responsables</strong> a cada actividad. Sin fechas no hay
+                            cronograma ni forma de saber si algo está atrasado; sin responsable, nadie ve la
+                            actividad en su bandeja personal.</li>
+                    </ol>
+
+                    <h3 class="ayuda-subtitulo">3. El avance no se escribe: se calcula</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>El único número que se teclea es el de la actividad.</strong> De ahí sube solo:
+                            el entregable promedia sus actividades y el proyecto promedia sus entregables. Por eso
+                            el porcentaje del proyecto no se puede editar a mano.</li>
+                        <li><strong>Un entregable sin actividades vale por su estado:</strong> pendiente 0 %,
+                            en proceso 50 %, cumplido 100 %.</li>
+                        <li><strong>Lo cancelado sale del promedio</strong>, ni suma ni resta.</li>
+                        <li><strong>Las fechas reales no se escriben.</strong> Cuando una actividad pasa de 0 % queda
+                            sellada su fecha de inicio, y al llegar a 100 % la de cierre.</li>
+                    </ul>
+
+                    <h3 class="ayuda-subtitulo">4. Cómo reportar un avance</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">Hay dos caminos y llegan al mismo lugar:</p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Desde <code>Proyectos &gt; Mis actividades</code> (lo más cómodo):</strong> ahí están
+                            todas sus actividades de todos sus proyectos, ordenadas por urgencia. Despliegue
+                            <code>Reportar avance</code>, escriba qué se hizo, mueva el porcentaje y adjunte la
+                            evidencia si la tiene. No hace falta entrar proyecto por proyecto.</li>
+                        <li><strong>Desde la ficha del proyecto:</strong> pestaña <code>Bitácora</code>, eligiendo a qué
+                            actividad se imputa el reporte.</li>
+                    </ul>
+                    <div class="ayuda-box info">
+                        📝 <strong>Escriba qué se hizo, no solo el número.</strong> El porcentaje dice cuánto; la
+                        descripción dice qué. Dentro de seis meses, un «60 %» sin explicación no le sirve a nadie.
+                        Si algo está trabando la actividad, anótelo en <code>¿Algo la está trabando?</code>: ese
+                        bloqueo aparece en el tablero mientras siga siendo el último reporte, y se da por superado
+                        solo cuando usted reporta de nuevo sin mencionarlo.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">5. Las pestañas de la ficha</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>🗂️ Estructura:</strong> el desglose en entregables y actividades. Es donde se
+                            cargan fechas, responsables y dependencias.</li>
+                        <li><strong>📅 Cronograma:</strong> la misma estructura vista en el tiempo. Las barras son las
+                            fechas planificadas y el relleno es el avance reportado; la línea roja es hoy y el
+                            rombo, la fecha comprometida del entregable.</li>
+                        <li><strong>📝 Bitácora:</strong> el histórico de reportes con su evidencia. No se borra nada;
+                            el responsable del proyecto puede corregir una entrada y la corrección queda marcada.</li>
+                        <li><strong>📁 Documentos:</strong> el repositorio del proyecto, con versiones.</li>
+                        <li><strong>👥 Equipo y riesgos:</strong> interesados y registro de riesgos.</li>
+                        <li><strong>📋 Datos del proyecto:</strong> nombre, objetivo, fechas y alcance.</li>
+                        <li><strong>🔎 Auditoría:</strong> quién tocó qué y cuándo. Se escribe sola.</li>
+                    </ul>
+
+                    <h3 class="ayuda-subtitulo">6. Dependencias entre actividades</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Bajo el nombre de cada actividad puede declarar <strong>de qué otras depende</strong>: las que
+                        tienen que terminar antes de que esta arranque. Pueden estar en otro entregable del mismo proyecto.
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Avisan, no bloquean.</strong> Si una actividad espera a otra que sigue abierta, se
+                            marca <em>Bloqueada</em> y aparece en el tablero, pero usted puede reportar avance igual.</li>
+                        <li>Solo se puede depender de una actividad <strong>ya guardada</strong>. Para encadenar dos
+                            actividades nuevas, guarde primero y vuelva a entrar.</li>
+                    </ul>
+
+                    <h3 class="ayuda-subtitulo">7. Documentos: repositorio y biblioteca</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Documentos del proyecto</strong> (pestaña <code>Documentos</code>): convenios, actas,
+                            informes. Se clasifican por categoría y <strong>se versionan</strong>: si un acta se corrige,
+                            suba una versión nueva y la anterior queda en el historial. Ninguna versión se pisa.</li>
+                        <li><strong>Biblioteca</strong> (<code>Proyectos &gt; Biblioteca</code>): la consulta transversal.
+                            Toda la documentación de todos los proyectos que usted puede ver, con filtros por
+                            categoría, proyecto, texto y fechas.</li>
+                    </ul>
+                    <div class="ayuda-box notice">
+                        📎 <strong>No confunda documento con evidencia.</strong> La <em>evidencia</em> de la bitácora
+                        respalda un reporte concreto y queda atada a esa fecha. El <em>documento</em> es
+                        documentación del proyecto, existe por sí misma y se versiona.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">Preguntas frecuentes del módulo</h3>
+
+                    <details class="faq-item">
+                        <summary>El selector de responsable aparece vacío</summary>
+                        <div class="faq-body">
+                            No es un error: los responsables se eligen <strong>entre los interesados del proyecto</strong>,
+                            y todavía no hay ninguno registrado. Vaya a la pestaña <code>Equipo y riesgos</code>,
+                            registre a las personas y vuelva a la estructura. Registrar a alguien como interesado
+                            además le da acceso al proyecto.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>Mi proyecto marca 0 % aunque vamos avanzando</summary>
+                        <div class="faq-body">
+                            El avance sale de las actividades. Si el proyecto no está desglosado —o su único
+                            entregable repite el nombre del proyecto—, no hay de dónde calcularlo. Desglose el
+                            entregable en actividades y reporte sobre ellas.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>El cronograma dice que no hay fechas</summary>
+                        <div class="faq-body">
+                            El Gantt se dibuja con la fecha de inicio y de fin de cada actividad. Cárguelas en la
+                            pestaña <code>Estructura</code>. Las actividades a las que les falte alguna de las dos
+                            se listan aparte, debajo del cronograma.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>Mis actividades me sale vacío</summary>
+                        <div class="faq-body">
+                            Esa bandeja muestra las actividades <strong>a su nombre</strong>. Si está vacía, todavía
+                            no le han asignado ninguna: pídale al responsable del proyecto que lo registre como
+                            interesado y le asigne sus actividades.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>No puedo reordenar los entregables ni corregir la bitácora</summary>
+                        <div class="faq-body">
+                            Esas dos acciones están reservadas al <strong>responsable del proyecto</strong>, incluso
+                            para los administradores. Si el proyecto no tiene responsable asignado, no las permite
+                            nadie: asígnelo primero en <code>Datos del proyecto</code>.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>El proyecto está cerrado y no me deja editar nada</summary>
+                        <div class="faq-body">
+                            Es correcto: un proyecto cerrado o cancelado queda en solo lectura. Para retomarlo use
+                            <code>Reabrir</code> en el encabezado de la ficha; le pedirá un motivo, que queda
+                            registrado en la bitácora.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>¿Por qué el tablero muestra pocos proyectos atrasados?</summary>
+                        <div class="faq-body">
+                            Un proyecto solo puede figurar como atrasado si tiene <strong>fecha de cierre
+                            comprometida</strong>. Los que no la tienen se cuentan aparte, en el indicador
+                            <em>«sin línea base»</em>: no están a tiempo, es que no hay contra qué medirlos.
+                        </div>
+                    </details>
                 </div>
             }
 

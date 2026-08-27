@@ -212,8 +212,13 @@ public interface IApplicationDbContext
     DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
     DbSet<Proyecto>                Proyectos              { get; }
-    DbSet<HitoProyecto>            ProyectoHitos          { get; }
+    DbSet<EntregableProyecto>      ProyectoEntregables    { get; }
+    DbSet<ActividadProyecto>       ProyectoActividades    { get; }
     DbSet<AvanceProyecto>          ProyectoAvances        { get; }
+    DbSet<DependenciaActividad>    ProyectoDependencias   { get; }
+    DbSet<CategoriaDocumento>      CategoriasDocumento    { get; }
+    DbSet<DocumentoProyecto>       ProyectoDocumentos     { get; }
+    DbSet<VersionDocumento>        ProyectoDocumentoVersiones { get; }
     DbSet<BitacoraProyecto>        BitacorasProyecto      { get; }
     DbSet<RiesgoProyecto>          ProyectoRiesgos        { get; }
     DbSet<InteresadoProyecto>      ProyectoInteresados    { get; }

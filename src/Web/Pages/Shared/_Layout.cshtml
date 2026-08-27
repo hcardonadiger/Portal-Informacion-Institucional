@@ -175,10 +175,18 @@
                         }
                         @if (puedeProyectos)
                         {
-                            @* Un solo destino: se pinta como los demás encabezados de grupo, pero
-                               enlaza directo en vez de desplegar un menú con una sola entrada. *@
+                            @* Dejó de ser un destino único: la biblioteca es la consulta
+                               transversal de la documentación, y no cuelga de ningún proyecto. *@
                             <div class="nav-group @(EsRuta("/Proyectos") ? "on" : "")">
-                                <a class="nav-group-btn" asp-page="/Proyectos/Index">Proyectos</a>
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Proyectos<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    <a class="nav-item @(EsRuta("/Proyectos") && !EsRuta("/Proyectos/Biblioteca") && !EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/Index">Portafolio</a>
+                                    <a class="nav-item @(EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/MisActividades">Mis actividades</a>
+                                    @if (await Acceso.PuedeClaveAsync("Proyectos.Documentos.Ver"))
+                                    {
+                                        <a class="nav-item @(EsRuta("/Proyectos/Biblioteca") ? "on" : "")" asp-page="/Proyectos/Biblioteca">Biblioteca</a>
+                                    }
+                                </div>
                             </div>
                         }
                         @if (puedeTableros || puedeExpedientes)
@@ -265,6 +273,15 @@
                                 </div>
                             </div>
                         }
+
+                        @* La ayuda va al final del menú y SIN condición de permiso: documenta cómo
+                           se usa el portal, no expone datos de nadie —es la misma razón por la que
+                           la página lleva [PermisoNoRequerido]—. Hasta ahora solo estaba dentro del
+                           panel de usuario, donde no la encontraba quien no supiera que existía.
+                           Un solo destino, así que enlaza directo en vez de desplegar un menú. *@
+                        <div class="nav-group @(EsRuta("/Ayuda") ? "on" : "")">
+                            <a class="nav-group-btn" asp-page="/Ayuda/Index" title="Manual de usuario del portal">Ayuda</a>
+                        </div>
                     </nav>
 
                     @{

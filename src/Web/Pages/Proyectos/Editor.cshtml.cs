@@ -26,34 +26,87 @@ public sealed class EditorModel(
     public AlcanceOpcionesDto Alcance { get; private set; } = new([], []);
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
+    /// <summary>El cronograma dibujable del proyecto. Se arma en la capa de aplicación —la
+    /// aritmética de porcentajes tiene pruebas— y la vista solo aplica left y width.</summary>
+    public CronogramaDto Cronograma { get; private set; } = new(null, null, [], [], [], null);
+
+    /// <summary>El repositorio documental del proyecto, agrupado por categoría en la vista.</summary>
+    public IReadOnlyList<DocumentoProyectoDto> Documentos { get; private set; } = [];
+
+    /// <summary>Solo las activas: una categoría desactivada no se ofrece para clasificar algo
+    /// nuevo, pero los documentos que ya la tienen la conservan y la muestran.</summary>
+    public IReadOnlyList<CategoriaDocumentoDto> Categorias { get; private set; } = [];
+
     public bool PuedeEditar         { get; private set; }
     public bool PuedeReabrir        { get; private set; }
     public bool PuedeEliminar       { get; private set; }
     public bool PuedeReportarAvance { get; private set; }
+
+    /// <summary>Claves propias del submódulo de documentos: se puede consultar la documentación
+    /// sin poder subirla, y subirla sin poder archivarla.</summary>
+    public bool PuedeVerDocumentos      { get; private set; }
+    public bool PuedeSubirDocumentos    { get; private set; }
+    public bool PuedeEditarDocumentos   { get; private set; }
+    public bool PuedeArchivarDocumentos { get; private set; }
 
     /// <summary>El usuario en sesión es el responsable del proyecto. Sin bypass de administrador:
     /// ver <c>PropiedadProyecto</c> en la capa de aplicación, que es quien realmente lo exige.
     /// Acá solo decide si se pintan los controles, para no ofrecer lo que el comando va a rechazar.</summary>
     public bool EsPropietario { get; private set; }
 
-    /// <summary>Reordenar toca el cronograma: exige el permiso de edición y además ser el dueño.</summary>
+    /// <summary>Reordenar toca el cronograma: exige el permiso de edición y además ser el dueño.
+    /// Solo tiene sentido con más de un entregable que mover.</summary>
     public bool PuedeReordenar { get; private set; }
+
+    /// <summary>Misma atribución, un nivel más abajo. Va aparte de <see cref="PuedeReordenar"/>
+    /// porque un proyecto con un solo entregable puede tener diez actividades que ordenar.</summary>
+    public bool PuedeReordenarActividades { get; private set; }
 
     /// <summary>Corregir la bitácora tiene clave propia — se puede reportar sin poder enmendar.</summary>
     public bool PuedeCorregirBitacora { get; private set; }
 
-    /// <summary>Una fila de la tabla de hitos tal como viaja en el formulario.</summary>
-    public sealed class HitoForm
+    /// <summary>
+    /// Días desde el último reporte de avance; null si nunca se reportó. Se calcula acá y no en el
+    /// DTO del proyecto porque depende de la bitácora, que es otra consulta.
+    /// </summary>
+    public int? DiasSinReportar { get; private set; }
+
+    /// <summary>En ejecución y sin reportes en más de 30 días. Mismo umbral que el listado y el
+    /// tablero, para que las tres pantallas no digan cosas distintas del mismo proyecto.</summary>
+    public bool SinReportar =>
+        Proyecto.Estado == EstadoProyecto.EnEjecucion && (DiasSinReportar is null || DiasSinReportar > 30);
+
+    /// <summary>Una fila de la tabla de entregables tal como viaja en el formulario.</summary>
+    public sealed class EntregableForm
     {
-        /// <summary>Id del hito existente; 0 en una fila recién agregada. Sin esto el comando
+        /// <summary>Id del entregable existente; 0 en una fila recién agregada. Sin esto el comando
         /// tendría que borrar y recrear, y eso desimputa los avances de la bitácora.</summary>
-        public int        Id            { get; set; }
-        public string?    Nombre        { get; set; }
-        public string?    Descripcion   { get; set; }
-        public DateOnly?  FechaPlan     { get; set; }
-        public DateOnly?  FechaReal     { get; set; }
-        public EstadoHito Estado        { get; set; } = EstadoHito.Pendiente;
-        public Guid?      ResponsableId { get; set; }
+        public int              Id            { get; set; }
+        public string?          Nombre        { get; set; }
+        public string?          Descripcion   { get; set; }
+        public DateOnly?        FechaPlan     { get; set; }
+        public EstadoEntregable Estado        { get; set; } = EstadoEntregable.Pendiente;
+        public Guid?            ResponsableId { get; set; }
+
+        public List<ActividadForm> Actividades { get; set; } = [];
+    }
+
+    /// <summary>Una fila de actividad, anidada bajo su entregable en el mismo formulario.</summary>
+    public sealed class ActividadForm
+    {
+        public int       Id              { get; set; }
+        public string?   Nombre          { get; set; }
+        public string?   Descripcion     { get; set; }
+        public DateOnly? FechaInicioPlan { get; set; }
+        public DateOnly? FechaFinPlan    { get; set; }
+        public int       AvancePct       { get; set; }
+        public bool      Cancelada       { get; set; }
+        public Guid?     ResponsableId   { get; set; }
+
+        /// <summary>Ids de las actividades de las que depende esta. Viajan como campos repetidos
+        /// con el mismo nombre —sin índice— porque son enteros sueltos: el binder los junta en la
+        /// lista igual, y así quitar un chip en el navegador no obliga a renumerar nada.</summary>
+        public List<int> Predecesoras { get; set; } = [];
     }
 
     // ── Ficha ───────────────────────────────────────────────────────────────
@@ -65,17 +118,54 @@ public sealed class EditorModel(
     [BindProperty] public PrioridadProyecto Prioridad       { get; set; }
     [BindProperty] public DateOnly?         FechaInicioPlan { get; set; }
     [BindProperty] public DateOnly?         FechaFinPlan    { get; set; }
-    [BindProperty] public List<HitoForm>    Hitos           { get; set; } = [];
+    [BindProperty] public List<EntregableForm> Entregables  { get; set; } = [];
+
+    // ── Documentos ──────────────────────────────────────────────────────────
+    /// <summary>El archivo del documento nuevo o de la versión nueva: los dos formularios usan
+    /// el mismo campo porque nunca se envían a la vez.</summary>
+    [BindProperty] public IFormFile? DocArchivo     { get; set; }
+    [BindProperty] public int        DocCategoriaId { get; set; }
+    [BindProperty] public string?    DocTitulo      { get; set; }
+    [BindProperty] public string?    DocDescripcion { get; set; }
+
+    /// <summary>Qué cambió respecto de la versión anterior. Se pide porque un historial sin
+    /// motivo no explica nada seis meses después.</summary>
+    [BindProperty] public string?    DocNotas       { get; set; }
 
     // ── Avance ──────────────────────────────────────────────────────────────
+    /// <summary>
+    /// A qué se imputa el reporte, en un solo selector: <c>""</c> avance general,
+    /// <c>e:12</c> el entregable 12, <c>a:45</c> la actividad 45.
+    ///
+    /// <para>Un selector y no dos porque la actividad ya sabe de qué entregable cuelga: pedir los
+    /// dos obligaría a mantenerlos coherentes en el navegador y el comando rechazaría la
+    /// combinación imposible después de que el usuario llenó todo el formulario.</para>
+    /// </summary>
+    [BindProperty] public string?    AvanceDestino     { get; set; }
     [BindProperty] public string?    AvanceDescripcion { get; set; }
-    [BindProperty] public int        AvancePorcentaje  { get; set; }
-    [BindProperty] public int?       AvanceHitoId      { get; set; }
+
+    /// <summary>Porcentaje de la actividad imputada. Null cuando el reporte no es de una actividad:
+    /// el proyecto ya no tiene un porcentaje que declarar, lo calcula su árbol.</summary>
+    [BindProperty] public int?       AvancePorcentaje  { get; set; }
     [BindProperty] public string?    AvanceBloqueo     { get; set; }
     [BindProperty] public IFormFile? AvanceArchivo     { get; set; }
-    [BindProperty] public bool       AvanceCompletarHito { get; set; }
+    [BindProperty] public bool       AvanceCompletarEntregable { get; set; }
     [BindProperty] public int?       AvanceRiesgoId      { get; set; }
     [BindProperty] public string?    MotivoReapertura    { get; set; }
+
+    /// <summary>
+    /// Vuelve a la ficha dejando abierta la pestaña donde el usuario estaba trabajando.
+    ///
+    /// <para>Desde que la ficha se organiza en pestañas, un redirect pelado aterriza siempre en la
+    /// primera: guardar un riesgo devolvía al usuario a la estructura, sin ver el resultado de lo
+    /// que acababa de hacer. El ancla lo resuelve del lado del servidor, así que no depende de que
+    /// el navegador recuerde nada ni de que el JS haya corrido.</para>
+    ///
+    /// <para>Sin ancla para lo que no pertenece a ninguna pestaña —cambiar de estado, reabrir—:
+    /// esas acciones viven en el encabezado y devolver a la ficha entera es lo correcto.</para>
+    /// </summary>
+    private IActionResult VolverA(int id, string? ancla = null) =>
+        RedirectToPage(pageName: null, pageHandler: null, routeValues: new { id }, fragment: ancla);
 
     /// <summary>
     /// Devuelve a ejecución un proyecto cerrado o cancelado.
@@ -96,19 +186,24 @@ public sealed class EditorModel(
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id);
     }
 
-    // ── Reordenar hitos ─────────────────────────────────────────────────────
-    /// <summary>Ids de los hitos en el orden en que quedaron en pantalla. Se manda la lista
-    /// completa: el dominio rechaza un subconjunto (ver Proyecto.ReordenarHitos).</summary>
-    [BindProperty] public List<int> OrdenHitos { get; set; } = [];
+    // ── Reordenar ───────────────────────────────────────────────────────────
+    /// <summary>Ids de los entregables en el orden en que quedaron en pantalla. Se manda la lista
+    /// completa: el dominio rechaza un subconjunto (ver Proyecto.ReordenarEntregables).</summary>
+    [BindProperty] public List<int> OrdenEntregables { get; set; } = [];
+
+    /// <summary>Entregable cuyas actividades se están reordenando, y sus Ids en orden. Viaja uno
+    /// por vez: se reordena dentro de un entregable, no el árbol entero.</summary>
+    [BindProperty] public int       OrdenActividadesDe { get; set; }
+    [BindProperty] public List<int> OrdenActividades   { get; set; } = [];
 
     // ── Corregir una entrada de la bitácora ─────────────────────────────────
     [BindProperty] public int     CorreccionAvanceId    { get; set; }
     [BindProperty] public string? CorreccionDescripcion { get; set; }
     [BindProperty] public string? CorreccionBloqueo     { get; set; }
-    [BindProperty] public int?    CorreccionHitoId      { get; set; }
+    [BindProperty] public string? CorreccionDestino     { get; set; }
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
     {
@@ -126,15 +221,51 @@ public sealed class EditorModel(
         return Page();
     }
 
-    // ── Guardar ficha + hitos ───────────────────────────────────────────────
+    // ── Guardar ficha + estructura ──────────────────────────────────────────
     [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
     public async Task<IActionResult> OnPostGuardarAsync(int id, CancellationToken ct)
     {
-        var usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
-        string? NombreDe(Guid? uid) => usuarios.FirstOrDefault(u => u.Id == uid)?.Nombre;
-
         try
         {
+            var usuarios    = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
+            var interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);
+            var actual      = await sender.Send(new GetProyectoQuery(id), ct)
+                              ?? throw new NotFoundException(nameof(Proyecto), id);
+
+            // El nombre del responsable se resuelve contra los interesados —que es de donde salen
+            // ahora— y contra el padrón de usuarios. Si no está en ninguno se conserva el que ya
+            // tenía la fila: es el caso de los responsables que vienen de la carga inicial, y
+            // perderles el nombre por no encontrarlo en una lista sería borrar un dato bueno.
+            string? NombreDe(Guid? uid, string? actualNombre) =>
+                uid is null ? null
+                : interesados.FirstOrDefault(i => i.UsuarioId == uid)?.Nombre
+                  ?? usuarios.FirstOrDefault(u => u.Id == uid)?.Nombre
+                  ?? actualNombre;
+
+            var porId    = actual.Entregables.ToDictionary(e => e.Id);
+            var actsPorId = actual.Entregables.SelectMany(e => e.Actividades).ToDictionary(a => a.Id);
+
+            var entregables = Entregables.Select(e => new EntregableInput(
+                e.Id,                        // 0 = fila nueva; con Id se actualiza en su lugar
+                e.Nombre ?? "",
+                e.Descripcion,
+                e.FechaPlan,
+                e.Estado,
+                e.ResponsableId,
+                NombreDe(e.ResponsableId, porId.TryGetValue(e.Id, out var prev) ? prev.Responsable : null),
+                (e.Actividades ?? []).Select(a => new ActividadInput(
+                    a.Id,
+                    a.Nombre ?? "",
+                    a.Descripcion,
+                    a.FechaInicioPlan,
+                    a.FechaFinPlan,
+                    a.AvancePct,
+                    a.Cancelada,
+                    a.ResponsableId,
+                    NombreDe(a.ResponsableId, actsPorId.TryGetValue(a.Id, out var pa) ? pa.Responsable : null),
+                    a.Predecesoras))
+                    .ToList())).ToList();
+
             await sender.Send(new ActualizarProyectoCommand(
                 id,
                 Nombre ?? "",
@@ -142,26 +273,18 @@ public sealed class EditorModel(
                 AreaId,
                 UnidadId,
                 ResponsableId,
-                NombreDe(ResponsableId),
+                usuarios.FirstOrDefault(u => u.Id == ResponsableId)?.Nombre ?? actual.Responsable,
                 Prioridad,
                 FechaInicioPlan,
                 FechaFinPlan,
-                Hitos.Select(h => new HitoInput(
-                    h.Id,                    // 0 = fila nueva; con Id se actualiza en su lugar
-                    h.Nombre ?? "",
-                    h.Descripcion,
-                    h.FechaPlan,
-                    h.FechaReal,
-                    h.Estado,
-                    h.ResponsableId,
-                    NombreDe(h.ResponsableId))).ToList()), ct);
+                entregables), ct);
 
             TempData["SuccessMsg"] = "Proyecto actualizado.";
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "estructura");
     }
 
     // ── Cambiar estado ──────────────────────────────────────────────────────
@@ -176,7 +299,27 @@ public sealed class EditorModel(
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id);
+    }
+
+    /// <summary>
+    /// Parte el valor del selector de imputación en sus dos Ids.
+    /// <c>e:12</c> → entregable 12; <c>a:45</c> → actividad 45; vacío → avance general.
+    /// El entregable de una actividad lo resuelve el comando contra el árbol, no la vista.
+    /// </summary>
+    private static (int? Entregable, int? Actividad) Destino(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return (null, null);
+
+        var partes = valor.Split(':', 2);
+        if (partes.Length != 2 || !int.TryParse(partes[1], out var id) || id <= 0) return (null, null);
+
+        return partes[0] switch
+        {
+            "e" => (id, null),
+            "a" => (null, id),
+            _   => (null, null)
+        };
     }
 
     // ── Registrar avance ────────────────────────────────────────────────────
@@ -201,38 +344,62 @@ public sealed class EditorModel(
                 }
             }
 
+            var (entregableId, actividadId) = Destino(AvanceDestino);
+
+            // El porcentaje solo viaja si hay actividad a la cual referirlo: sin ella el número no
+            // tiene dueño, y el comando lo rechazaría. Que el formulario lo descarte acá evita
+            // pedirle al usuario que corrija algo que la propia pantalla ya sabía.
+            var porcentaje = actividadId is null ? null : AvancePorcentaje;
+
             await sender.Send(new RegistrarAvanceCommand(
-                id, AvanceDescripcion ?? "", AvancePorcentaje,
-                AvanceHitoId, AvanceBloqueo, nombre, url, tamano,
-                CompletarHito: AvanceCompletarHito && AvanceHitoId is not null,
+                id, AvanceDescripcion ?? "",
+                entregableId, actividadId, porcentaje,
+                AvanceBloqueo, nombre, url, tamano,
+                CompletarEntregable: AvanceCompletarEntregable && entregableId is not null,
                 RiesgoId: AvanceRiesgoId), ct);
 
             TempData["SuccessMsg"] =
-                AvanceRiesgoId is not null       ? "Avance registrado. El riesgo vinculado quedó como materializado."
-                : AvanceCompletarHito && AvanceHitoId is not null ? "Avance registrado y hito dado por cumplido."
+                AvanceRiesgoId is not null ? "Avance registrado. El riesgo vinculado quedó como materializado."
+                : porcentaje is not null   ? "Avance registrado y actividad actualizada."
+                : AvanceCompletarEntregable && entregableId is not null ? "Avance registrado y entregable dado por cumplido."
                 : "Avance registrado.";
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "bitacora");
     }
 
-    // ── Reordenar hitos ─────────────────────────────────────────────────────
-    // Handler propio en vez de colgarse del guardado de la ficha: mover un hito es una acción
+    // ── Reordenar entregables ───────────────────────────────────────────────
+    // Handler propio en vez de colgarse del guardado de la ficha: mover un entregable es una acción
     // del dueño y no debería exigir que además tenga la ficha entera en un estado válido.
     [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
-    public async Task<IActionResult> OnPostReordenarHitosAsync(int id, CancellationToken ct)
+    public async Task<IActionResult> OnPostReordenarEntregablesAsync(int id, CancellationToken ct)
     {
         try
         {
-            await sender.Send(new ReordenarHitosCommand(id, OrdenHitos), ct);
-            TempData["SuccessMsg"] = "Orden de los hitos actualizado.";
+            await sender.Send(new ReordenarEntregablesCommand(id, OrdenEntregables), ct);
+            TempData["SuccessMsg"] = "Orden de los entregables actualizado.";
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "estructura");
+    }
+
+    // ── Reordenar actividades ───────────────────────────────────────────────
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostReordenarActividadesAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new ReordenarActividadesCommand(id, OrdenActividadesDe, OrdenActividades), ct);
+            TempData["SuccessMsg"] = "Orden de las actividades actualizado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "estructura");
     }
 
     // ── Corregir una entrada de la bitácora ─────────────────────────────────
@@ -243,18 +410,29 @@ public sealed class EditorModel(
     {
         try
         {
+            var (entregableId, actividadId) = Destino(CorreccionDestino);
+
+            // La actividad viaja con su entregable: el comando lo exige y la vista lo sabe, porque
+            // el selector se armó desde el árbol.
+            if (actividadId is { } act && entregableId is null)
+            {
+                var dto = await sender.Send(new GetProyectoQuery(id), ct);
+                entregableId = dto?.Entregables.FirstOrDefault(e => e.Actividades.Any(a => a.Id == act))?.Id;
+            }
+
             await sender.Send(new ActualizarAvanceCommand(
                 CorreccionAvanceId,
                 CorreccionDescripcion ?? "",
                 CorreccionBloqueo,
-                CorreccionHitoId), ct);
+                entregableId,
+                actividadId), ct);
 
             TempData["SuccessMsg"] = "Entrada de bitácora corregida.";
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "bitacora");
     }
 
     // ── Riesgos ─────────────────────────────────────────────────────────────
@@ -300,7 +478,7 @@ public sealed class EditorModel(
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "riesgos");
     }
 
     [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
@@ -314,7 +492,7 @@ public sealed class EditorModel(
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "riesgos");
     }
 
     [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
@@ -327,7 +505,7 @@ public sealed class EditorModel(
         }
         catch (NotFoundException) { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "riesgos");
     }
 
     // ── Interesados ─────────────────────────────────────────────────────────
@@ -361,13 +539,14 @@ public sealed class EditorModel(
             {
                 await sender.Send(new AgregarInteresadoCommand(
                     id, IntUsuarioId, IntRol, IntInfluencia, IntInstitucion, IntCargo, IntNotas), ct);
-                TempData["SuccessMsg"] = "Interesado agregado. Ya puede ver el proyecto.";
+                TempData["SuccessMsg"] =
+                    "Interesado agregado. Ya puede ver el proyecto y quedar a cargo de entregables y actividades.";
             }
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "interesados");
     }
 
     [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
@@ -380,7 +559,7 @@ public sealed class EditorModel(
         }
         catch (NotFoundException) { return NotFound(); }
 
-        return RedirectToPage(new { id });
+        return VolverA(id, "interesados");
     }
 
     // ── Eliminar ────────────────────────────────────────────────────────────
@@ -404,27 +583,124 @@ public sealed class EditorModel(
     /// entregaría el documento a cualquiera que lo tuviera. Acá pasa por [Authorize] y por
     /// Proyectos.Ver como cualquier otro handler de la página.
     /// </summary>
+
+    // ── Repositorio documental ──────────────────────────────────────────────
+    // Los cuatro POST comparten forma: guardar el archivo si lo hay, mandar el comando, y dejar
+    // el resultado en TempData. La autorización de fondo no la hacen ellos: la hace el comando al
+    // cargar el proyecto por su consulta filtrada. El atributo solo evita ofrecer lo que se va a
+    // rechazar y da la clave que la administración de roles muestra.
+
+    [Permission("Proyectos.Documentos", AccionModulo.Crear, "Subir documentos de proyecto")]
+    public async Task<IActionResult> OnPostSubirDocumentoAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            if (DocArchivo is null || DocArchivo.Length == 0)
+                throw new DomainException("Elija el archivo que quiere subir.");
+
+            var guardado = await DocumentosStorage.GuardarAsync(DocArchivo, env, ct);
+
+            await sender.Send(new SubirDocumentoCommand(
+                id, DocCategoriaId, DocTitulo ?? "", DocDescripcion,
+                guardado.Nombre, guardado.Url, guardado.Tamano, guardado.Sha256), ct);
+
+            TempData["SuccessMsg"] = "Documento agregado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "documentos");
+    }
+
+    [Permission("Proyectos.Documentos", AccionModulo.Crear, "Subir documentos de proyecto")]
+    public async Task<IActionResult> OnPostSubirVersionAsync(int id, int documentoId, CancellationToken ct)
+    {
+        try
+        {
+            if (DocArchivo is null || DocArchivo.Length == 0)
+                throw new DomainException("Elija el archivo de la versión nueva.");
+
+            var guardado = await DocumentosStorage.GuardarAsync(DocArchivo, env, ct);
+
+            var numero = await sender.Send(new SubirVersionDocumentoCommand(
+                id, documentoId, guardado.Nombre, guardado.Url,
+                guardado.Tamano, guardado.Sha256, DocNotas), ct);
+
+            TempData["SuccessMsg"] = $"Versión {numero} agregada. La anterior sigue en el historial.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "documentos");
+    }
+
+    [Permission("Proyectos.Documentos", AccionModulo.Editar, "Editar la ficha de un documento")]
+    public async Task<IActionResult> OnPostGuardarDocumentoAsync(int id, int documentoId, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new ActualizarDocumentoCommand(
+                id, documentoId, DocCategoriaId, DocTitulo ?? "", DocDescripcion), ct);
+
+            TempData["SuccessMsg"] = "Documento actualizado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "documentos");
+    }
+
+    [Permission("Proyectos.Documentos", AccionModulo.Eliminar, "Archivar documentos de proyecto")]
+    public async Task<IActionResult> OnPostArchivarDocumentoAsync(int id, int documentoId, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new EliminarDocumentoCommand(id, documentoId), ct);
+            TempData["SuccessMsg"] = "Documento archivado. Sigue en la base, deja de listarse.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "documentos");
+    }
+
+    /// <summary>
+    /// Sirve una versión del documento.
+    ///
+    /// <para>La consulta arranca en la tabla de versiones, que lleva su ancla al documento y por él
+    /// al proyecto: pedir la versión de un documento ajeno devuelve null y acá se convierte en 404,
+    /// sin comprobar nada a mano.</para>
+    /// </summary>
+    [Permission("Proyectos.Documentos", AccionModulo.Ver, "Ver y descargar documentos de proyecto")]
+    public async Task<IActionResult> OnGetDocumentoAsync(int versionId, CancellationToken ct)
+    {
+        var meta = await sender.Send(new GetDescargaDocumentoQuery(versionId), ct);
+        if (meta is null) return NotFound();
+
+        var ruta = ArchivosProtegidos.Resolver(env, meta.ArchivoUrl);
+        if (ruta is null)
+        {
+            TempData["ErrorMsg"] = "El archivo ya no está disponible en el servidor.";
+            return VolverA(meta.ProyectoId, "documentos");
+        }
+
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(meta.ArchivoNombre), meta.ArchivoNombre);
+    }
     public async Task<IActionResult> OnGetEvidenciaAsync(int avanceId, CancellationToken ct)
     {
         var ev = await sender.Send(new GetEvidenciaAvanceQuery(avanceId), ct);
         if (ev is null) return NotFound();
 
-        var raiz = Path.GetFullPath(Path.Combine(env.ContentRootPath, "App_Data", "uploads"));
-        var rel  = ev.ArchivoUrl.TrimStart('/');
-        if (rel.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase))
-            rel = rel["uploads/".Length..];
-
-        var ruta = Path.GetFullPath(Path.Combine(raiz, rel.Replace('/', Path.DirectorySeparatorChar)));
-
-        // Cinturón y tirantes: la ruta la generamos nosotros, pero si alguna vez entra por otro
-        // camino, que no se pueda salir de la carpeta de subidas.
-        if (!ruta.StartsWith(raiz, StringComparison.OrdinalIgnoreCase) || !System.IO.File.Exists(ruta))
+        // La resolución de la ruta y la guarda contra salirse de la carpeta viven en
+        // ArchivosProtegidos: este handler dejó de ser el único que sirve archivos con sesión.
+        var ruta = ArchivosProtegidos.Resolver(env, ev.ArchivoUrl);
+        if (ruta is null)
         {
             TempData["ErrorMsg"] = "El archivo de evidencia ya no está disponible en el servidor.";
             return RedirectToPage(new { id = ev.ProyectoId });
         }
 
-        return PhysicalFile(ruta, "application/octet-stream", ev.ArchivoNombre);
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(ev.ArchivoNombre), ev.ArchivoNombre);
     }
 
     private async Task<bool> CargarAsync(int id, CancellationToken ct)
@@ -434,6 +710,12 @@ public sealed class EditorModel(
 
         Proyecto  = dto;
         Avances   = await sender.Send(new GetAvancesProyectoQuery(id), ct);
+
+        DiasSinReportar = Avances.Count == 0
+            ? null
+            : (int)(DateTime.UtcNow - Avances.Max(a => a.Fecha)).TotalDays;
+
+        Cronograma  = CronogramaProyecto.Construir(dto, DateOnly.FromDateTime(DateTime.UtcNow));
         Auditoria   = await sender.Send(new GetBitacoraProyectoQuery(id), ct);
         Riesgos     = await sender.Send(new GetRiesgosProyectoQuery(id), ct);
         Interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);
@@ -449,7 +731,8 @@ public sealed class EditorModel(
         PuedeReportarAvance = mutable && await acceso.PuedeClaveAsync("Proyectos.Avance.Crear", ct);
 
         EsPropietario         = dto.ResponsableId is { } resp && currentUser.UserId == resp;
-        PuedeReordenar        = PuedeEditar && EsPropietario && dto.Hitos.Count > 1;
+        PuedeReordenar        = PuedeEditar && EsPropietario && dto.Entregables.Count > 1;
+        PuedeReordenarActividades = PuedeEditar && EsPropietario;
         PuedeCorregirBitacora = mutable && EsPropietario
                                 && await acceso.PuedeClaveAsync("Proyectos.Avance.Editar", ct);
 
@@ -458,6 +741,20 @@ public sealed class EditorModel(
 
         if (PuedeEditar || PuedeReportarAvance)
             Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
+
+        // Repositorio documental. Se consulta siempre que se pueda ver: la documentación de un
+        // proyecto cerrado se sigue leyendo, solo deja de poder tocarse.
+        PuedeVerDocumentos      = await acceso.PuedeClaveAsync("Proyectos.Documentos.Ver", ct);
+        PuedeSubirDocumentos    = mutable && await acceso.PuedeClaveAsync("Proyectos.Documentos.Crear", ct);
+        PuedeEditarDocumentos   = mutable && await acceso.PuedeClaveAsync("Proyectos.Documentos.Editar", ct);
+        PuedeArchivarDocumentos = mutable && await acceso.PuedeClaveAsync("Proyectos.Documentos.Eliminar", ct);
+
+        if (PuedeVerDocumentos)
+        {
+            Documentos = await sender.Send(new GetDocumentosProyectoQuery(id), ct);
+            if (PuedeSubirDocumentos || PuedeEditarDocumentos)
+                Categorias = await sender.Send(new GetCategoriasDocumentoQuery(), ct);
+        }
 
         return true;
     }

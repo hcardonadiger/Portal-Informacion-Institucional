@@ -250,7 +250,7 @@
                         @if (!string.IsNullOrWhiteSpace(item.ArchivoUrl))
                         {
                             <div style="margin-top:8px">
-                                <a href="@item.ArchivoUrl" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none">
+                                <a asp-page-handler="Adjunto" asp-route-id="@Model.Compromiso.Id" asp-route-comentarioId="@item.Id" style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none">
                                     <span>📎</span>
                                     <span>@(item.ArchivoNombre ?? "Archivo adjunto")</span>
                                     @if (item.ArchivoTamano is not null)

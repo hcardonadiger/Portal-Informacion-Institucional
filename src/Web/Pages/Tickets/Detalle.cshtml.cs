@@ -35,6 +35,26 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
         => await CargarAsync(id, ct) ? Page() : NotFound();
 
+    /// <summary>
+    /// Sirve un adjunto del ticket.
+    ///
+    /// <para>Pasa por <c>CargarAsync</c> a propósito: es la consulta que ya aplica el alcance, así
+    /// que quien no puede abrir el ticket tampoco baja su archivo. Antes el enlace apuntaba directo
+    /// a <c>/uploads/tickets/…</c>, que se servía sin sesión — ver <see cref="ArchivosProtegidos"/>.</para>
+    /// </summary>
+    public async Task<IActionResult> OnGetAdjuntoAsync(int id, int adjuntoId, CancellationToken ct)
+    {
+        if (!await CargarAsync(id, ct)) return NotFound();
+
+        var adjunto = Ticket.Adjuntos.FirstOrDefault(a => a.Id == adjuntoId);
+        if (adjunto is null) return NotFound();
+
+        var ruta = ArchivosProtegidos.Resolver(env, adjunto.Url);
+        if (ruta is null) return NotFound();
+
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(adjunto.Nombre), adjunto.Nombre);
+    }
+
     [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
     public async Task<IActionResult> OnPostCambiarEstadoAsync(int id, EstadoTicket estado, string? nota, CancellationToken ct)
     {
