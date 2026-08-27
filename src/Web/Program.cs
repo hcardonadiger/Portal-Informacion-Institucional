@@ -210,12 +210,19 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    // Apagado por defecto: una cadena de Development mal apuntada no debe poder migrar
+    // una base ajena solo por arrancar la app. Actívese por máquina (user-secrets o
+    // variable de entorno Datos__AplicarMigracionesAlArrancar=true), nunca en un
+    // appsettings versionado.
+    if (app.Configuration.GetValue("Datos:AplicarMigracionesAlArrancar", false))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
 
-    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    await DbSeeder.SeedUsuariosAsync(db, hasher);
+        var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        await DbSeeder.SeedUsuariosAsync(db, hasher);
+    }
 }
 else
 {
