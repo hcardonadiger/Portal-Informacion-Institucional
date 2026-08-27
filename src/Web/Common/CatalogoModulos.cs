@@ -27,7 +27,7 @@ public static class CatalogoModulos
 
     /// <summary>Áreas en el mismo orden en que aparecen los grupos del navbar.</summary>
     public static readonly IReadOnlyList<string> Areas =
-        ["Expedientes", "SIGER", "Tableros", "Agenda", "Soporte", "Administración", SinClasificar];
+        ["Expedientes", "SIGER", "Proyectos", "Tableros", "Agenda", "Soporte", "Administración", SinClasificar];
 
     private static readonly Dictionary<string, (string Etiqueta, string Area, int Orden)> Mapa =
         new(StringComparer.OrdinalIgnoreCase)
@@ -42,6 +42,13 @@ public static class CatalogoModulos
             ["Siger.Conciliacion"]      = ("Conciliación",             "SIGER", 11),
             ["Siger.Publicacion"]       = ("Publicado en HondurasÁgil", "SIGER", 12),
             ["Siger.Llenado"]           = ("Llenado asistido",        "SIGER", 13),
+
+            // ── Proyectos ────────────────────────────────────────────────
+            // Grupo propio y no bajo Expedientes: ahí viven los instrumentos de
+            // racionalización de trámites, y ese grupo ya se depuró una vez por acumular
+            // cosas que no van juntas (ver el comentario del navbar en _Layout.cshtml).
+            ["Proyectos"]               = ("Proyectos",                "Proyectos", 10),
+            ["Proyectos.Avance"]        = ("Registrar avances",        "Proyectos", 11),
 
             // ── Tableros ─────────────────────────────────────────────────
             ["Tableros"]                = ("Tableros",                 "Tableros", 10),

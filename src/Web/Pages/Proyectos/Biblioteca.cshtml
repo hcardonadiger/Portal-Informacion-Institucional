@@ -1,0 +1,166 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Proyectos.BibliotecaModel
+@{
+    ViewData["Title"] = "Biblioteca de documentación";
+    var d = Model.Datos;
+}
+
+<div class="container" style="max-width:1180px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Biblioteca de documentación</h2>
+            <p>
+                Toda la documentación de los proyectos que puede ver, en un solo lugar.
+                @if (Model.ConFiltros)
+                {
+                    <strong>@d.Documentos.Count</strong><text> de @d.TotalSinFiltrar documentos</text>
+                }
+                else
+                {
+                    <strong>@d.TotalSinFiltrar</strong><text> documentos</text>
+                }
+            </p>
+        </div>
+        <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
+    </div>
+
+    @* ── Filtros ─────────────────────────────────────────────────── *@
+    @* Los conteos van en cada opción para no ofrecer un filtro que deja la pantalla vacía. *@
+    <form method="get" class="card" style="margin-bottom:1rem">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="flex:2;min-width:220px;margin:0">
+                <label for="b-q">Buscar</label>
+                <input id="b-q" name="Q" value="@Model.Q" maxlength="200"
+                       placeholder="Título, descripción o nombre de archivo" />
+            </div>
+
+            <div class="field" style="flex:1;min-width:180px;margin:0">
+                <label for="b-cat">Categoría</label>
+                <select id="b-cat" name="CategoriaId">
+                    <option value="">Todas</option>
+                    @foreach (var c in d.Categorias)
+                    {
+                        <option value="@c.Id" selected="@(Model.CategoriaId == c.Id)">@c.Nombre (@c.Cantidad)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="field" style="flex:2;min-width:230px;margin:0">
+                <label for="b-pry">Proyecto</label>
+                <select id="b-pry" name="ProyectoId">
+                    <option value="">Todos</option>
+                    @foreach (var pr in d.Proyectos)
+                    {
+                        <option value="@pr.Id" selected="@(Model.ProyectoId == pr.Id)">@pr.Nombre (@pr.Cantidad)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="field" style="width:150px;margin:0">
+                <label for="b-desde">Desde</label>
+                <input id="b-desde" type="date" name="Desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="field" style="width:150px;margin:0">
+                <label for="b-hasta">Hasta</label>
+                <input id="b-hasta" type="date" name="Hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div style="display:flex;gap:8px">
+                <button type="submit" class="btnp">Filtrar</button>
+                @if (Model.ConFiltros)
+                {
+                    <a class="btns" asp-page="/Proyectos/Biblioteca">Limpiar</a>
+                }
+            </div>
+        </div>
+    </form>
+
+    @* ── Resultados ──────────────────────────────────────────────── *@
+    <div class="card">
+        @if (d.TotalSinFiltrar == 0)
+        {
+            <div class="hist-empty">
+                <div class="ico">📚</div>
+                <p>Todavía no hay documentación cargada en los proyectos que puede ver.</p>
+                <p class="res-meta">
+                    Se carga desde la pestaña <strong>Documentos</strong> de cada proyecto.
+                </p>
+            </div>
+        }
+        else if (!d.Documentos.Any())
+        {
+            @* Distinto del vacío de arriba a propósito: acá sí hay documentación, solo que ningún
+               filtro la alcanza. Decir «no hay nada» sería mentir. *@
+            <div class="hist-empty">
+                <div class="ico">🔍</div>
+                <p>Ningún documento cumple con estos filtros.</p>
+                <p class="res-meta">Hay @d.TotalSinFiltrar en total.</p>
+            </div>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th style="width:130px">Categoría</th>
+                            <th style="width:220px">Proyecto</th>
+                            <th style="width:170px">Última versión</th>
+                            <th style="width:64px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var doc in d.Documentos)
+                        {
+                            <tr>
+                                <td style="white-space:normal">
+                                    <div class="repo-doc-tit">@doc.Titulo</div>
+                                    @if (!string.IsNullOrWhiteSpace(doc.Descripcion))
+                                    {
+                                        <div class="res-meta">@doc.Descripcion</div>
+                                    }
+                                    <div class="res-meta" style="margin-top:3px">
+                                        @doc.ArchivoNombre · @doc.TamanoLegible
+                                        @if (doc.FueCorregido)
+                                        {
+                                            <span class="badge badge-secondary" style="margin-left:6px"
+                                                  title="Tiene historial: se corrigió al menos una vez. El historial completo está en la ficha del proyecto.">
+                                                v@(doc.Numero) de @doc.TotalVersiones
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="res-meta">@doc.Categoria</td>
+                                <td style="white-space:normal">
+                                    <a asp-page="/Proyectos/Editor" asp-route-id="@doc.ProyectoId"
+                                       asp-fragment="documentos" style="text-decoration:none">
+                                        <strong style="font-size:var(--diger-fs-xs)">@doc.ProyectoCodigo</strong>
+                                    </a>
+                                    <div class="res-meta">@doc.ProyectoNombre</div>
+                                    @if (!string.IsNullOrWhiteSpace(doc.ProyectoResponsable))
+                                    {
+                                        <div class="res-meta" style="font-size:var(--diger-fs-2xs)">@doc.ProyectoResponsable</div>
+                                    }
+                                </td>
+                                <td class="res-meta">
+                                    @doc.SubidoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")<br />@doc.SubidoPor
+                                </td>
+                                <td style="text-align:right">
+                                    <a class="btns" asp-page-handler="Descargar" asp-route-versionId="@doc.VersionId"
+                                       title="Descargar @doc.ArchivoNombre">📥</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

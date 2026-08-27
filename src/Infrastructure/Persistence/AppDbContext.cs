@@ -73,6 +73,17 @@ public sealed class AppDbContext(
     public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
     public DbSet<FotoTramiteSiger>         FotosTramiteSiger  { get; init; } = default!;
     public DbSet<PropuestaLlenado>          PropuestasLlenado  { get; init; } = default!;
+    public DbSet<Proyecto>                  Proyectos             { get; init; } = default!;
+    public DbSet<EntregableProyecto>        ProyectoEntregables   { get; init; } = default!;
+    public DbSet<ActividadProyecto>         ProyectoActividades   { get; init; } = default!;
+    public DbSet<AvanceProyecto>            ProyectoAvances       { get; init; } = default!;
+    public DbSet<DependenciaActividad>      ProyectoDependencias  { get; init; } = default!;
+    public DbSet<CategoriaDocumento>        CategoriasDocumento   { get; init; } = default!;
+    public DbSet<DocumentoProyecto>         ProyectoDocumentos    { get; init; } = default!;
+    public DbSet<VersionDocumento>          ProyectoDocumentoVersiones { get; init; } = default!;
+    public DbSet<BitacoraProyecto>          BitacorasProyecto     { get; init; } = default!;
+    public DbSet<RiesgoProyecto>            ProyectoRiesgos       { get; init; } = default!;
+    public DbSet<InteresadoProyecto>        ProyectoInteresados   { get; init; } = default!;
 
     // Alcance institucional del usuario actual (se evalúa una vez por request al crear el contexto).
     private readonly bool    _alcanceGlobal = currentUser.EsGlobal;
@@ -191,6 +202,54 @@ public sealed class AppDbContext(
             _alcanceGlobal || p.InstitucionId == _activeInst
         ));
         mb.Entity<Recurso>().HasQueryFilter(r => !r.IsDeleted);
+
+        // Proyectos: mismo anclaje en InstitucionId que Expediente y Contacto —incluida la razón
+        // de por qué el ancla envuelve todas las ramas— más una excepción propia: el responsable
+        // ve su proyecto aunque caiga fuera de su alcance. Sin ella alguien puede quedar como
+        // responsable de un proyecto que no puede abrir, y las acciones reservadas al propietario
+        // (reordenar la estructura, corregir bitácora) serían inalcanzables para el único autorizado.
+        //
+        // Hasta el 2026-08-23 esta entidad no tenía filtro: el portafolio completo quedaba a la
+        // vista de cualquiera con Proyectos.Ver, incluidos los usuarios de instituciones externas
+        // con rol Empleado.
+        //
+        // Segunda excepción, del 2026-08-24: los interesados también ven su proyecto fuera de su
+        // alcance. Es el motivo por el que InteresadoProyecto.UsuarioId pasó a ser obligatorio —
+        // un interesado sin cuenta no podría abrir nada. Se puede consultar ProyectoInteresados
+        // desde acá sin caer en recursión porque esa entidad no tiene filtro propio: hereda la
+        // protección de que sus consultas se unen contra Proyectos.
+        mb.Entity<Proyecto>().HasQueryFilter(p => !p.IsDeleted && (
+            _alcanceGlobal ||
+            (_usuarioId != null && p.ResponsableId == _usuarioId) ||
+            (_usuarioId != null && ProyectoInteresados.Any(i => i.ProyectoId == p.Id && i.UsuarioId == _usuarioId)) ||
+            (p.InstitucionId == _activeInst && (
+                (_nivel == NivelAlcance.Institucion &&
+                    (string.IsNullOrEmpty(_activeArea) || p.AreaId == _activeArea || p.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || p.UnidadId == _activeUnidad || p.UnidadId == null)) ||
+                (_nivel == NivelAlcance.Area      && (p.AreaId == _activeArea || p.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || p.UnidadId == _activeUnidad || p.UnidadId == null)) ||
+                (_nivel == NivelAlcance.Unidad    && (p.UnidadId == _activeUnidad || p.UnidadId == null))
+            ))
+        ));
+
+        // Repositorio documental: el documento NO reimplementa el alcance del proyecto, lo hereda.
+        // Al referenciar el DbSet Proyectos dentro del filtro, EF aplica también el filtro de esa
+        // entidad, así que un documento se ve exactamente cuando se ve su proyecto —incluidas las
+        // dos excepciones, el responsable y los interesados—. Copiar aquí las mismas ramas habría
+        // sido la forma segura de que las dos copias se separaran con el tiempo.
+        //
+        // No hay confidencialidad por documento: decisión explícita del 2026-08-26. Quien puede
+        // abrir el proyecto puede leer su documentación.
+        mb.Entity<DocumentoProyecto>().HasQueryFilter(d => !d.IsDeleted && Proyectos.Any(p => p.Id == d.ProyectoId));
+
+        // La versión se alcanza normalmente a través de su documento, pero una consulta directa a
+        // ProyectoDocumentoVersiones se saltaría todo. Se ancla igual, por el documento —que a su
+        // vez cuelga del proyecto—: es el mismo descuido que en SGSEC dejó escrituras sin alcance
+        // y que solo apareció auditando por reflexión en vez de confiar en la memoria.
+        mb.Entity<VersionDocumento>().HasQueryFilter(v => ProyectoDocumentos.Any(d => d.Id == v.DocumentoId));
+
+        // El catálogo de categorías es global y no lleva alcance: son etiquetas, no datos de
+        // ninguna institución.
 
         base.OnModelCreating(mb);
     }
@@ -920,6 +979,84 @@ public sealed class BitacoraExpedienteConfiguration : IEntityTypeConfiguration<B
         b.HasIndex(x => new { x.ExpedienteId, x.Fecha }).IsDescending(false, true);
         b.HasOne<Expediente>().WithMany()
             .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class BitacoraProyectoConfiguration : IEntityTypeConfiguration<BitacoraProyecto>
+{
+    public void Configure(EntityTypeBuilder<BitacoraProyecto> b)
+    {
+        b.ToTable("BitacoraProyecto");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30).IsRequired();
+        b.Property(x => x.Detalle).HasMaxLength(BitacoraProyecto.MaxDetalle).IsRequired();
+        b.Property(x => x.Actor).HasMaxLength(150).IsRequired();
+        // Se consulta como historial por proyecto, más reciente primero.
+        b.HasIndex(x => new { x.ProyectoId, x.Fecha }).IsDescending(false, true);
+        // Cascada: si el proyecto se borra de verdad, su auditoría se va con él. El borrado
+        // normal es lógico (IsDeleted), así que en la práctica no se dispara.
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class RiesgoProyectoConfiguration : IEntityTypeConfiguration<RiesgoProyecto>
+{
+    public void Configure(EntityTypeBuilder<RiesgoProyecto> b)
+    {
+        b.ToTable("ProyectoRiesgos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Descripcion).HasMaxLength(RiesgoProyecto.MaxDescripcion).IsRequired();
+        b.Property(x => x.Mitigacion).HasMaxLength(RiesgoProyecto.MaxMitigacion);
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        b.Property(x => x.RegistradoPor).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Categoria).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Probabilidad).HasConversion<string>().HasMaxLength(10).IsRequired();
+        b.Property(x => x.Impacto).HasConversion<string>().HasMaxLength(10).IsRequired();
+        b.Property(x => x.Estrategia).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20).IsRequired();
+
+        // La matriz se lee por proyecto y se ordena por lo que más pesa; el estado entra en el
+        // índice porque casi toda consulta filtra los cerrados.
+        b.HasIndex(x => new { x.ProyectoId, x.Estado });
+
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class InteresadoProyectoConfiguration : IEntityTypeConfiguration<InteresadoProyecto>
+{
+    public void Configure(EntityTypeBuilder<InteresadoProyecto> b)
+    {
+        b.ToTable("ProyectoInteresados");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(InteresadoProyecto.MaxNombre).IsRequired();
+        b.Property(x => x.Institucion).HasMaxLength(200);
+        b.Property(x => x.Cargo).HasMaxLength(200);
+        b.Property(x => x.Correo).HasMaxLength(200);
+        b.Property(x => x.Notas).HasMaxLength(InteresadoProyecto.MaxNotas);
+        b.Property(x => x.RegistradoPor).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Rol).HasConversion<string>().HasMaxLength(25).IsRequired();
+        b.Property(x => x.Influencia).HasConversion<string>().HasMaxLength(10).IsRequired();
+        b.Property(x => x.UsuarioId).IsRequired();
+
+        b.HasIndex(x => new { x.ProyectoId, x.Rol });
+
+        // La misma persona no puede figurar dos veces en un proyecto. Antes el nombre era texto
+        // libre y el duplicado era solo ruido; ahora cada fila otorga acceso, así que repetirla
+        // significaría dos permisos que hay que revocar por separado para sacar a alguien.
+        b.HasIndex(x => new { x.ProyectoId, x.UsuarioId }).IsUnique();
+
+        // Índice del lado del usuario: lo usa la rama del filtro de alcance que pregunta «¿de qué
+        // proyectos es interesado este usuario?», que corre en toda consulta de proyectos.
+        b.HasIndex(x => x.UsuarioId);
+
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -1699,5 +1836,244 @@ public sealed class PropuestaLlenadoConfiguration : IEntityTypeConfiguration<Pro
         // significa nada.
         b.HasOne<TramiteSiger>().WithMany()
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+// ── Seguimiento de proyectos internos ─────────────────────────────────────
+// El filtro de Proyecto (arriba, junto a los demás) solo excluye los borrados: a propósito no
+// lleva rama de alcance, porque son proyectos de DIGER y no hay InstitucionId del que colgarla.
+// Quién los ve lo decide el permiso Proyectos.Ver. Ver el XML doc de la entidad Proyecto.
+public sealed class ProyectoConfiguration : IEntityTypeConfiguration<Proyecto>
+{
+    public void Configure(EntityTypeBuilder<Proyecto> b)
+    {
+        b.ToTable("Proyectos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Codigo).HasMaxLength(30).IsRequired();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Objetivo).HasMaxLength(2000);
+        b.Property(x => x.InstitucionId).HasMaxLength(120);
+        b.Property(x => x.AreaId).HasMaxLength(120);
+        b.Property(x => x.UnidadId).HasMaxLength(120);
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        // El filtro de alcance entra por acá, así que conviene que el ancla esté indexada.
+        b.HasIndex(x => x.InstitucionId);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
+
+        // Filtrado: el índice único va sobre los vivos, porque el borrado es lógico y un código
+        // liberado por un borrado tiene que poder reutilizarse.
+        b.HasIndex(x => x.Codigo).IsUnique().HasFilter("[IsDeleted] = 0");
+        b.HasIndex(x => new { x.Estado, x.FechaFinPlan });
+
+        b.HasMany(x => x.Entregables)
+            .WithOne()
+            .HasForeignKey(e => e.ProyectoId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class EntregableProyectoConfiguration : IEntityTypeConfiguration<EntregableProyecto>
+{
+    public void Configure(EntityTypeBuilder<EntregableProyecto> b)
+    {
+        b.ToTable("ProyectoEntregables");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(EntregableProyecto.MaxNombre).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(EntregableProyecto.MaxDescripcion);
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+        b.HasIndex(x => new { x.ProyectoId, x.Orden });
+
+        b.HasMany(x => x.Actividades)
+            .WithOne()
+            .HasForeignKey(a => a.EntregableId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ActividadProyectoConfiguration : IEntityTypeConfiguration<ActividadProyecto>
+{
+    public void Configure(EntityTypeBuilder<ActividadProyecto> b)
+    {
+        b.ToTable("ProyectoActividades");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(ActividadProyecto.MaxNombre).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(ActividadProyecto.MaxDescripcion);
+        b.Property(x => x.Responsable).HasMaxLength(200);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
+
+        // El editor y la ficha siempre piden "las actividades de este entregable, en orden".
+        b.HasIndex(x => new { x.EntregableId, x.Orden });
+
+        // El tablero barre las actividades abiertas por fecha de cierre, sin filtrar por
+        // entregable: vencidas y próximas del portafolio entero.
+        b.HasIndex(x => x.FechaFinPlan);
+
+        // Las dependencias cuelgan de la sucesora y se van con ella.
+        b.HasMany(x => x.Predecesoras)
+            .WithOne()
+            .HasForeignKey(d => d.SucesoraId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class DependenciaActividadConfiguration : IEntityTypeConfiguration<DependenciaActividad>
+{
+    public void Configure(EntityTypeBuilder<DependenciaActividad> b)
+    {
+        b.ToTable("ProyectoDependenciasActividad");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(20);
+
+        // Que la misma pareja no se pueda registrar dos veces. El dominio ya deduplica al fijar
+        // las predecesoras; el índice es la red por si algún script carga dependencias por SQL.
+        b.HasIndex(x => new { x.SucesoraId, x.PredecesoraId }).IsUnique();
+
+        // El lado de la predecesora se consulta al revés —«¿a quién desbloquea esta actividad?»—
+        // y no lo cubre el índice de arriba, que arranca por la sucesora.
+        b.HasIndex(x => x.PredecesoraId);
+
+        // NoAction, no Cascade: ya hay una ruta de borrado desde Proyectos hacia esta tabla
+        // (Proyecto→Entregables→Actividades→Dependencias, por SucesoraId) y esta sería la segunda.
+        // SQL Server rechaza el modelo de plano con el error 1785, igual que pasó con
+        // ProyectoAvances. Las filas que apuntan a una actividad borrada las limpia a mano la
+        // reconciliación del editor, antes de que EF intente el DELETE.
+        b.HasOne<ActividadProyecto>().WithMany()
+            .HasForeignKey(x => x.PredecesoraId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+public sealed class CategoriaDocumentoConfiguration : IEntityTypeConfiguration<CategoriaDocumento>
+{
+    public void Configure(EntityTypeBuilder<CategoriaDocumento> b)
+    {
+        b.ToTable("CategoriasDocumento");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(CategoriaDocumento.MaxNombre).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(CategoriaDocumento.MaxDescripcion);
+
+        // Sin filtro por nombre repetido entre activas e inactivas: desactivar una y volver a
+        // crearla con el mismo nombre es una operación legítima del administrador.
+        b.HasIndex(x => x.Nombre).IsUnique();
+        b.HasIndex(x => x.Orden);
+    }
+}
+
+public sealed class DocumentoProyectoConfiguration : IEntityTypeConfiguration<DocumentoProyecto>
+{
+    public void Configure(EntityTypeBuilder<DocumentoProyecto> b)
+    {
+        b.ToTable("ProyectoDocumentos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Titulo).HasMaxLength(DocumentoProyecto.MaxTitulo).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(DocumentoProyecto.MaxDescripcion);
+
+        // La pantalla siempre pide "los documentos de este proyecto, agrupados por categoría".
+        b.HasIndex(x => new { x.ProyectoId, x.CategoriaId });
+
+        // La biblioteca cruza el portafolio filtrando por categoría, sin acotar proyecto.
+        b.HasIndex(x => x.CategoriaId);
+
+        // Cascada desde el proyecto: si el proyecto se borra de verdad, su documentación se va con
+        // él. Es la ÚNICA ruta de borrado que llega a las versiones —Proyecto → Documento →
+        // Version— y por eso la de categoría de abajo tiene que ser NoAction.
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+
+        // NoAction, no Cascade ni SetNull: borrar una categoría no puede llevarse documentos por
+        // delante, y una segunda ruta de borrado hacia esta tabla haría que SQL Server rechazara
+        // el modelo con el error 1785 —el mismo que ya apareció con los avances, los riesgos y las
+        // dependencias—. Por eso la categoría se desactiva en vez de borrarse.
+        b.HasOne<CategoriaDocumento>().WithMany()
+            .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.NoAction);
+
+        b.HasMany(x => x.Versiones)
+            .WithOne()
+            .HasForeignKey(v => v.DocumentoId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class VersionDocumentoConfiguration : IEntityTypeConfiguration<VersionDocumento>
+{
+    public void Configure(EntityTypeBuilder<VersionDocumento> b)
+    {
+        b.ToTable("ProyectoDocumentoVersiones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.ArchivoNombre).HasMaxLength(VersionDocumento.MaxNombre).IsRequired();
+        b.Property(x => x.ArchivoUrl).HasMaxLength(500).IsRequired();
+        b.Property(x => x.Notas).HasMaxLength(VersionDocumento.MaxNotas);
+        b.Property(x => x.SubidoPor).HasMaxLength(200).IsRequired();
+
+        // SHA-256 en hexadecimal: 64 caracteres exactos, y nunca acentos ni Unicode.
+        b.Property(x => x.Sha256).HasMaxLength(64).IsUnicode(false).IsRequired();
+
+        // La red de la numeración: el dominio calcula el número, pero si dos personas suben a la
+        // vez el índice es lo que impide que queden dos "versión 3" del mismo documento.
+        b.HasIndex(x => new { x.DocumentoId, x.Numero }).IsUnique();
+
+        // Para avisar "este archivo ya está subido" sin recorrer la tabla entera.
+        b.HasIndex(x => x.Sha256);
+    }
+}
+
+public sealed class AvanceProyectoConfiguration : IEntityTypeConfiguration<AvanceProyecto>
+{
+    public void Configure(EntityTypeBuilder<AvanceProyecto> b)
+    {
+        b.ToTable("ProyectoAvances");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Descripcion).HasMaxLength(AvanceProyecto.MaxDescripcion).IsRequired();
+        b.Property(x => x.Autor).HasMaxLength(200).IsRequired();
+        // Mismo largo que Autor: guarda un nombre de usuario, no texto libre.
+        b.Property(x => x.EditadoPor).HasMaxLength(200);
+        b.Property(x => x.Bloqueo).HasMaxLength(1000);
+        b.Property(x => x.ArchivoNombre).HasMaxLength(300);
+        b.Property(x => x.ArchivoUrl).HasMaxLength(500);
+
+        // El timeline siempre pide "los avances de este proyecto, del más nuevo al más viejo".
+        b.HasIndex(x => new { x.ProyectoId, x.Fecha });
+
+        // El timeline también agrupa por actividad al pintar la ficha del entregable.
+        b.HasIndex(x => x.ActividadId);
+
+        // El entregable puede desaparecer al reeditar la estructura; el avance no se pierde por
+        // eso, solo deja de estar imputado. Este SetNull es obligatorio: sin él, guardar el editor
+        // reventaría por violación de FK.
+        b.HasOne<EntregableProyecto>().WithMany()
+            .HasForeignKey(x => x.EntregableId).OnDelete(DeleteBehavior.SetNull);
+
+        // La actividad NO puede llevar SetNull aunque quisiéramos el mismo efecto: sería la
+        // segunda ruta de borrado desde Proyectos hacia esta tabla —una por
+        // Proyecto→Entregables→Avances y otra por Proyecto→Entregables→Actividades→Avances— y
+        // SQL Server rechaza el modelo de plano (Msg 1785). El desvínculo lo hace a mano la
+        // reconciliación del editor antes de borrar la actividad, con DesimputarActividad().
+        // Mismo arreglo que ya llevaba el riesgo, acá abajo.
+        b.HasOne<ActividadProyecto>().WithMany()
+            .HasForeignKey(x => x.ActividadId).OnDelete(DeleteBehavior.NoAction);
+
+        // NoAction, no SetNull, aunque el efecto buscado sea el mismo que con el entregable:
+        // borrar un proyecto ya cascadea a ProyectoRiesgos, y un SetNull acá abriría otra ruta de
+        // borrado hacia esta misma tabla — SQL Server lo rechaza de plano (Msg 1785). El desvínculo
+        // lo hace EliminarRiesgoCommand antes de borrar; ver el comentario allá.
+        b.HasOne<RiesgoProyecto>().WithMany()
+            .HasForeignKey(x => x.RiesgoId).OnDelete(DeleteBehavior.NoAction);
+
+        // Sin cascada desde Proyecto, a diferencia de los entregables. SQL Server rechaza el modelo
+        // con error 1785 ("multiple cascade paths") porque Proyecto→Entregables→Avances ya es un
+        // camino de borrado y Proyecto→Avances sería un segundo. No se pierde nada: el borrado
+        // de proyectos es lógico (IsDeleted), así que esta cascada nunca llegaría a dispararse,
+        // y para una bitácora append-only negarse a desaparecer en silencio es lo correcto.
+        b.HasOne<Proyecto>().WithMany()
+            .HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.NoAction);
     }
 }
