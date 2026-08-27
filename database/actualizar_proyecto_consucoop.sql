@@ -69,23 +69,23 @@ UPDATE hp
 SET hp.Orden       = h.Orden,
     hp.Descripcion = h.Descripcion,
     hp.Estado      = h.Estado
-FROM ProyectoHitos hp
+FROM ProyectoEntregables hp
 JOIN @h h ON h.Nombre = hp.Nombre
 WHERE hp.ProyectoId = @p;
 
-INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
+INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)
 SELECT @p, h.Orden, h.Nombre, h.Descripcion, NULL, NULL, h.Estado, NULL, NULL
 FROM @h h
-WHERE NOT EXISTS (SELECT 1 FROM ProyectoHitos x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
+WHERE NOT EXISTS (SELECT 1 FROM ProyectoEntregables x WHERE x.ProyectoId = @p AND x.Nombre = h.Nombre);
 
 -- ── Bitácora ────────────────────────────────────────────────────────────────
 DECLARE @desc nvarchar(2000) = N'Primera capacitación presencial a CONSUCOOP sobre la Plataforma SOL, con 6 convocados y 6 asistentes. Se recorrió la plataforma completa desde el perfil de funcionario: coordinador y administrador para delegar y reasignar trámites, gestión de estados en cierres y vacaciones con ventanas de mantenimiento y aviso a la ciudadanía, conteo automático de plazos según el horario hábil, bandejas de trámites, búsqueda por múltiples criterios y estadísticas por ubicación, estado y plazo. Se estableció que el canal oficial es la plataforma y que el correo solo notifica, y se detalló el uso de la firma electrónica avanzada y del certificado verificable por código QR. CONSUCOOP planteó su particularidad de operar con personas jurídicas y el asesor legal fijó el criterio para las solicitudes de quien no ejerce la representación legal. Quedaron seis compromisos con plazo al 20 de julio: revisar el tamaño de firma y sello, compartir el compendio de normativa, agregar fecha de inicio y vigencia a la constancia de solvencia, depurar los trámites de prueba en producción, consultar jornadas de capacitación para las cooperativas, y confirmar los ajustes para programar la próxima capacitación y la reunión de seguimiento. La sesión quedó grabada como respaldo ante rotación de personal.';
 
 INSERT INTO ProyectoAvances
-    (ProyectoId, HitoId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
+    (ProyectoId, EntregableId, Fecha, Autor, Descripcion, PorcentajeReportado, Bloqueo,
      ArchivoNombre, ArchivoUrl, ArchivoTamano)
 SELECT @p,
-       (SELECT TOP 1 Id FROM ProyectoHitos WHERE ProyectoId = @p AND Nombre = N'Capacitación del personal técnico y legal'),
+       (SELECT TOP 1 Id FROM ProyectoEntregables WHERE ProyectoId = @p AND Nombre = N'Capacitación del personal técnico y legal'),
        '2026-07-16T13:30:00', @actor, @desc, @pct,
        N'El gestor documental único por ciudadano y la validación de personas jurídicas están en desarrollo del lado de Naciones Unidas, propietario del desarrollo, así que las mejoras solicitadas dependen de su priorización. La conexión o API con las federaciones de cooperativas para la constancia de solvencia queda como opción a evaluar: son entidades privadas y eso la complica.',
        N'Registro_CONSUCOOP_2026-07-16.pdf', N'/uploads/proyectos/d1c2e43dec283a320bdbd22c036905ad.pdf', 449715
@@ -105,7 +105,7 @@ SELECT Codigo, Estado, AvancePct AS Pct, Responsable FROM Proyectos WHERE Id = @
 
 SELECT h.Orden, LEFT(h.Nombre, 50) AS Hito, h.Estado,
        CASE WHEN h.Descripcion IS NULL THEN 'sin desc' ELSE 'ok' END AS Desc_
-FROM ProyectoHitos h WHERE h.ProyectoId = @p ORDER BY h.Orden;
+FROM ProyectoEntregables h WHERE h.ProyectoId = @p ORDER BY h.Orden;
 
 SELECT CONVERT(varchar(10), a.Fecha, 103) AS Fecha, a.PorcentajeReportado AS Pct, a.ArchivoNombre
 FROM ProyectoAvances a WHERE a.ProyectoId = @p ORDER BY a.Fecha;

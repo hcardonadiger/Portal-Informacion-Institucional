@@ -10,14 +10,20 @@ public enum TipoEventoProyecto
 {
     CambioEstado,
     ModificacionFicha,
-    ModificacionHitos,
+    ModificacionEstructura,
     CorreccionBitacora,
     Riesgo,
-    Interesado
+    Interesado,
+
+    /// <summary>Alta, corrección, versión nueva o archivado de un documento del repositorio.
+    /// <para>Agregar un miembro es seguro —la columna guarda texto—; renombrar uno obliga a
+    /// reescribirla, como ya pasó con ModificacionEstructura.</para></summary>
+    Documentacion
 }
 
 /// <summary>
-/// Bitácora de auditoría del proyecto: cambios de estado, de la ficha y de los hitos.
+/// Bitácora de auditoría del proyecto: cambios de estado, de la ficha y de la estructura de
+/// entregables y actividades.
 /// Registro acumulativo — cada entrada queda con su fecha y su autor, no se sobrescribe.
 ///
 /// <para>Tabla independiente, <b>no</b> navegación del agregado <see cref="Proyecto"/>, por la misma

@@ -15,6 +15,18 @@
     A diferencia de los scripts de carga anteriores, este sí escribe en BitacoraProyecto: una
     carga masiva que no deja rastro es indistinguible de una edición manual.
 
+    2026-08-25 — LO QUE CAMBIÓ CON LA EDT:
+    · La hoja «Hitos» de la plantilla carga lo que el portal ahora llama ENTREGABLES, en la tabla
+      ProyectoEntregables. La hoja conserva su nombre para no invalidar las plantillas ya
+      repartidas; los datos y las columnas son los mismos.
+    · La plantilla NO carga actividades. El nivel de actividad —con fechas de inicio y fin y su
+      porcentaje— se captura en la ficha del proyecto, en el portal.
+    · La columna «Avance» del Excel se escribe como valor inicial, pero ya no manda: el portal
+      calcula el avance del proyecto desde su estructura y lo recalcula en cuanto alguien toca un
+      entregable o reporta una actividad. Un entregable sin actividades vale por su estado
+      (pendiente 0 %, en proceso 50 %, cumplido 100 %), así que lo que se carga acá es coherente
+      con lo que el portal va a mostrar mientras nadie desglose el proyecto.
+
 .EXAMPLE
     .\Generar-SQL-Proyectos.ps1 -Archivo 'C:\temp\proyectos_gobdig.xlsx'
     .\Generar-SQL-Proyectos.ps1 -Archivo '.\llenada.xlsx' -Usuario sa -Clave '***' -Actor 'Henry Ortez'
@@ -437,11 +449,11 @@ foreach ($ref in $ordenRef) {
         $orden++
         $ordenReal = if ($null -ne $h.Orden) { $h.Orden } else { $orden }
         W "-- hito: $($h.Nombre)"
-        W "IF NOT EXISTS (SELECT 1 FROM ProyectoHitos WHERE ProyectoId = @pid AND Nombre = $(Q $h.Nombre))"
-        W '    INSERT INTO ProyectoHitos (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)'
+        W "IF NOT EXISTS (SELECT 1 FROM ProyectoEntregables WHERE ProyectoId = @pid AND Nombre = $(Q $h.Nombre))"
+        W '    INSERT INTO ProyectoEntregables (ProyectoId, Orden, Nombre, Descripcion, FechaPlan, FechaReal, Estado, ResponsableId, Responsable)'
         W "    VALUES (@pid, $ordenReal, $(Q $h.Nombre), $(Q $h.Descripcion), $(QF $h.FechaPlan), $(QF $h.FechaReal), $(Q $h.Estado), $(QG $h.Responsable), $(QN $h.Responsable));"
         W 'ELSE'
-        W '    UPDATE ProyectoHitos SET'
+        W '    UPDATE ProyectoEntregables SET'
         W "        Orden = $ordenReal, Descripcion = $(Q $h.Descripcion), FechaPlan = $(QF $h.FechaPlan),"
         W "        FechaReal = $(QF $h.FechaReal), Estado = $(Q $h.Estado),"
         W "        ResponsableId = $(QG $h.Responsable), Responsable = $(QN $h.Responsable)"
@@ -494,7 +506,7 @@ foreach ($ref in $ordenRef) {
 W '-- ── Verificación ────────────────────────────────────────────────────────────'
 W 'SELECT p.Codigo, p.Nombre, p.Estado, p.Prioridad, p.AvancePct,'
 W '       ISNULL(p.Responsable, N''— sin responsable —'') AS Responsable,'
-W '       (SELECT COUNT(*) FROM ProyectoHitos       h WHERE h.ProyectoId = p.Id) AS Hitos,'
+W '       (SELECT COUNT(*) FROM ProyectoEntregables       h WHERE h.ProyectoId = p.Id) AS Hitos,'
 W '       (SELECT COUNT(*) FROM ProyectoInteresados i WHERE i.ProyectoId = p.Id) AS Interesados,'
 W '       (SELECT COUNT(*) FROM ProyectoRiesgos     r WHERE r.ProyectoId = p.Id) AS Riesgos'
 W 'FROM Proyectos p'

@@ -63,7 +63,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
                 Prioridad: NuevaPrioridad,
                 FechaInicioPlan: NuevaFechaInicio, FechaFinPlan: NuevaFechaFin), ct);
 
-            TempData["SuccessMsg"] = "Proyecto creado. Agregá sus hitos y registrá el primer avance.";
+            TempData["SuccessMsg"] = "Proyecto creado. Cargue sus entregables y las actividades de cada uno.";
             return RedirectToPage("/Proyectos/Editor", new { id });
         }
         catch (DomainException ex)
@@ -100,10 +100,11 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
         sb.AppendLine(string.Join(",",
             "Código", "Nombre", "Estado", "Prioridad", "Responsable",
             "Inicio planificado", "Cierre planificado", "Cierre real",
-            "Avance % declarado", "Avance % por hitos", "Brecha (pts)",
+            "Avance % calculado", "Avance % por entregables cerrados", "Brecha (pts)",
             "Último reporte", "Días sin reporte",
-            "Hitos", "Hitos completados", "Hitos atrasados",
-            "Atrasado", "Sin línea base", "Sin reportar", "Avance sin respaldo"));
+            "Entregables", "Entregables completados", "Entregables atrasados",
+            "Actividades", "Actividades vencidas",
+            "Atrasado", "Sin línea base", "Sin reportar", "Divergente", "Sin desglosar"));
 
         foreach (var p in proyectos)
             sb.AppendLine(string.Join(",",
@@ -111,15 +112,17 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
                 Q_(p.Responsable ?? "sin asignar"),
                 Q_(F(p.FechaInicioPlan)), Q_(F(p.FechaFinPlan)), Q_(F(p.FechaFinReal)),
                 p.AvancePct.ToString(),
-                p.TotalHitos > 0 ? p.AvanceFisico.ToString() : "",
-                p.TotalHitos > 0 ? p.Brecha.ToString() : "",
+                p.TotalEntregables > 0 ? p.AvanceFisico.ToString() : "",
+                p.TotalEntregables > 0 ? p.Brecha.ToString() : "",
                 Q_(p.UltimoAvance?.ToLocalTime().ToString("yyyy-MM-dd") ?? "sin reportes"),
                 p.UltimoAvance is { } u ? ((int)(DateTime.UtcNow - u).TotalDays).ToString() : "",
-                p.TotalHitos.ToString(), p.HitosCompletados.ToString(), p.HitosAtrasados.ToString(),
+                p.TotalEntregables.ToString(), p.EntregablesCompletados.ToString(), p.EntregablesAtrasados.ToString(),
+                p.TotalActividades.ToString(), p.ActividadesAtrasadas.ToString(),
                 Q_(p.EstaAtrasado ? "sí" : "no"),
                 Q_(p.SinLineaBase ? "sí" : "no"),
                 Q_(p.SinReportar ? "sí" : "no"),
-                Q_(p.Divergente ? "sí" : "no")));
+                Q_(p.Divergente ? "sí" : "no"),
+                Q_(p.SinDesglose ? "sí" : "no")));
 
         // El preámbulo va porque Excel en Windows abre el CSV en ANSI si no encuentra el BOM, y
         // se come todos los acentos. Mismo motivo por el que los .sql del repo lo llevan.
