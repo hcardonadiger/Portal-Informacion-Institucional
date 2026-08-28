@@ -52,7 +52,7 @@
                     <div class="tk-adjuntos">
                         @foreach (var a in adjCreacion)
                         {
-                            <a class="tk-adj" href="@a.Url" target="_blank" rel="noopener" download="@a.Nombre" title="@a.Nombre">
+                            <a class="tk-adj" asp-page-handler="Adjunto" asp-route-id="@Model.Ticket.Id" asp-route-adjuntoId="@a.Id" title="@a.Nombre">
                                 <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
                             </a>
                         }
@@ -85,7 +85,7 @@
                                         <div class="tk-adjuntos">
                                             @foreach (var a in adjC)
                                             {
-                                                <a class="tk-adj" href="@a.Url" target="_blank" rel="noopener" download="@a.Nombre" title="@a.Nombre">
+                                                <a class="tk-adj" asp-page-handler="Adjunto" asp-route-id="@Model.Ticket.Id" asp-route-adjuntoId="@a.Id" title="@a.Nombre">
                                                     <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
                                                 </a>
                                             }

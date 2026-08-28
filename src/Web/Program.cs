@@ -210,12 +210,19 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    // Apagado por defecto: una cadena de Development mal apuntada no debe poder migrar
+    // una base ajena solo por arrancar la app. Actívese por máquina (user-secrets o
+    // variable de entorno Datos__AplicarMigracionesAlArrancar=true), nunca en un
+    // appsettings versionado.
+    if (app.Configuration.GetValue("Datos:AplicarMigracionesAlArrancar", false))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
 
-    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    await DbSeeder.SeedUsuariosAsync(db, hasher);
+        var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        await DbSeeder.SeedUsuariosAsync(db, hasher);
+    }
 }
 else
 {
@@ -244,13 +251,18 @@ app.Use(async (ctx, next) =>
 
 app.UseStaticFiles();
 
-var uploadsDir = Path.Combine(app.Environment.ContentRootPath, "App_Data", "uploads");
-Directory.CreateDirectory(uploadsDir);
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsDir),
-    RequestPath = "/uploads"
-});
+// App_Data/uploads NO se publica como archivos estáticos.
+//
+// Hasta el 2026-08-26 acá había un UseStaticFiles montado en /uploads, y estaba ANTES de
+// UseAuthentication: cualquiera con la URL bajaba el archivo sin sesión. Medido, no supuesto —
+// un fetch con credentials:'omit' devolvió 200 y el contenido. Los nombres son GUID, que es
+// oscuridad y no seguridad, y alcanzaba a los adjuntos de tickets, reuniones, compromisos y
+// expedientes por igual.
+//
+// Ahora cada módulo sirve lo suyo por un handler que resuelve la entidad con su consulta normal
+// —y por lo tanto pasa por el filtro de alcance— antes de tocar el disco. Ver ArchivosProtegidos.
+// La carpeta se sigue creando acá porque es donde se guardan las subidas.
+Directory.CreateDirectory(Path.Combine(app.Environment.ContentRootPath, "App_Data", "uploads"));
 
 app.UseRouting();
 

@@ -91,6 +91,7 @@
         var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
         var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
         var puedeSoporte     = await Acceso.EsSoporteAsync();   // atiende el chat de soporte
+        var puedeProyectos   = await Acceso.PuedeAsync(ModulosPortal.Proyectos);
 
         var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
         List<AsignacionAuthDto>? asignaciones = null;
@@ -139,10 +140,12 @@
 
                     <nav class="main-nav" id="mainNav" aria-label="Menú principal">
                         @*
-                            Seis grupos, uno por pregunta que se hace el usuario: qué trabajo tengo,
-                            qué hay en SIGER, cómo vamos, qué tengo agendado, qué me están pidiendo,
-                            y qué administro. Ningún menú pasa de seis entradas a propósito: el grupo
-                            "Digitalización" anterior acumulaba nueve y mezclaba las tres primeras.
+                            Un grupo por pregunta que se hace el usuario: qué trabajo tengo, qué hay
+                            en SIGER, qué estamos ejecutando, cómo vamos, qué tengo agendado, qué me
+                            están pidiendo, y qué administro. Ningún menú pasa de seis entradas a
+                            propósito: el grupo "Digitalización" anterior acumulaba nueve y mezclaba
+                            las tres primeras. Por eso Proyectos abre su propio grupo en vez de
+                            sumarse a Expedientes, que trata de racionalización de trámites.
                         *@
                         @if (puedeExpedientes)
                         {
@@ -166,6 +169,22 @@
                                     @if (await Acceso.PuedeClaveAsync("Siger.Conciliacion.Editar"))
                                     {
                                         <a class="nav-item @(EsRuta("/Siger/Conciliacion") ? "on" : "")" asp-page="/Siger/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (puedeProyectos)
+                        {
+                            @* Dejó de ser un destino único: la biblioteca es la consulta
+                               transversal de la documentación, y no cuelga de ningún proyecto. *@
+                            <div class="nav-group @(EsRuta("/Proyectos") ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Proyectos<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    <a class="nav-item @(EsRuta("/Proyectos") && !EsRuta("/Proyectos/Biblioteca") && !EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/Index">Portafolio</a>
+                                    <a class="nav-item @(EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/MisActividades">Mis actividades</a>
+                                    @if (await Acceso.PuedeClaveAsync("Proyectos.Documentos.Ver"))
+                                    {
+                                        <a class="nav-item @(EsRuta("/Proyectos/Biblioteca") ? "on" : "")" asp-page="/Proyectos/Biblioteca">Biblioteca</a>
                                     }
                                 </div>
                             </div>
@@ -254,6 +273,15 @@
                                 </div>
                             </div>
                         }
+
+                        @* La ayuda va al final del menú y SIN condición de permiso: documenta cómo
+                           se usa el portal, no expone datos de nadie —es la misma razón por la que
+                           la página lleva [PermisoNoRequerido]—. Hasta ahora solo estaba dentro del
+                           panel de usuario, donde no la encontraba quien no supiera que existía.
+                           Un solo destino, así que enlaza directo en vez de desplegar un menú. *@
+                        <div class="nav-group @(EsRuta("/Ayuda") ? "on" : "")">
+                            <a class="nav-group-btn" asp-page="/Ayuda/Index" title="Manual de usuario del portal">Ayuda</a>
+                        </div>
                     </nav>
 
                     @{

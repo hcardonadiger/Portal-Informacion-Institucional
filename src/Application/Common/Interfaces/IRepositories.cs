@@ -205,11 +205,23 @@ public interface IApplicationDbContext
     DbSet<Recurso>                 Recursos               { get; }
     DbSet<TramiteSiger>            TramitesSiger          { get; }
     DbSet<PasoSiger>               PasosSiger             { get; }
+    DbSet<CategoriaTramite>        CategoriasTramite      { get; }
     DbSet<RequisitoSiger>          RequisitosSiger        { get; }
     DbSet<EntregableSiger>         EntregablesSiger       { get; }
     DbSet<LugarAtencionSiger>      LugaresAtencionSiger   { get; }
     DbSet<EnlaceSiger>             EnlacesSiger           { get; }
     DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
+    DbSet<Proyecto>                Proyectos              { get; }
+    DbSet<EntregableProyecto>      ProyectoEntregables    { get; }
+    DbSet<ActividadProyecto>       ProyectoActividades    { get; }
+    DbSet<AvanceProyecto>          ProyectoAvances        { get; }
+    DbSet<DependenciaActividad>    ProyectoDependencias   { get; }
+    DbSet<CategoriaDocumento>      CategoriasDocumento    { get; }
+    DbSet<DocumentoProyecto>       ProyectoDocumentos     { get; }
+    DbSet<VersionDocumento>        ProyectoDocumentoVersiones { get; }
+    DbSet<BitacoraProyecto>        BitacorasProyecto      { get; }
+    DbSet<RiesgoProyecto>          ProyectoRiesgos        { get; }
+    DbSet<InteresadoProyecto>      ProyectoInteresados    { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

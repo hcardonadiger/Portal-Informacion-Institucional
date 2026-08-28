@@ -25,6 +25,22 @@ public sealed class TramiteSiger : BaseAuditableEntity
 
     public string? InstitucionId { get; set; }
 
+    // ── Campos para la ficha pública (Ventanilla Digital) ──────────────────
+    /// <summary>Si el trámite se puede hacer desde SOL. No confundir con Modalidad
+    /// (cómo es el trámite) ni con DisponibleEnLinea (legado, sin usar — ver M-04 del plan).</summary>
+    public bool EstaEnSol { get; set; }
+    public string? SolUrl { get; set; }
+    public DateTime? SolVerificadoEl { get; set; }
+    public int? CategoriaId { get; set; }
+    public string? CostoTexto { get; set; }
+    /// <summary>Tres estados: null = no capturado, false = tiene costo, true = gratuito.
+    /// Nunca se infiere de un CostoTexto vacío — ver Fase 0 / nota del script A.</summary>
+    public bool? CostoEsGratuito { get; set; }
+    public string? TiempoTexto { get; set; }
+    /// <summary>Catálogo cerrado: Virtual, Presencial o Hibrido (CHECK en la base).</summary>
+    public string? Modalidad { get; set; }
+    public bool EsPopular { get; set; }
+
     public List<PasoSiger> Pasos { get; set; } = [];
     public List<RequisitoSiger> Requisitos { get; set; } = [];
     public List<EntregableSiger> Entregables { get; set; } = [];
@@ -41,6 +57,12 @@ public sealed class PasoSiger : BaseEntity
     public string? LugarDependencia { get; set; }
     public string? SalidaResultado { get; set; }
     public string? TiempoRegistrado { get; set; }
+    /// <summary>Null si no se capturó — la ficha pública muestra «Paso N», nunca una
+    /// Descripcion truncada (produce títulos malos, ya probado).</summary>
+    public string? Titulo { get; set; }
+    /// <summary>Incluye "Interno" (a diferencia de Modalidad a nivel de trámite): un paso puede
+    /// ser un procesamiento donde el ciudadano no hace nada.</summary>
+    public string? Modalidad { get; set; }
 }
 
 public sealed class RequisitoSiger : BaseEntity
