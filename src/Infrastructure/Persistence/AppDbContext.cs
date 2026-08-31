@@ -77,6 +77,7 @@ public sealed class AppDbContext(
     public DbSet<CategoriaDocumento>        CategoriasDocumento   { get; init; } = default!;
     public DbSet<DocumentoProyecto>         ProyectoDocumentos    { get; init; } = default!;
     public DbSet<VersionDocumento>          ProyectoDocumentoVersiones { get; init; } = default!;
+    public DbSet<DescargaDocumento>         ProyectoDocumentoDescargas { get; init; } = default!;
     public DbSet<BitacoraProyecto>          BitacorasProyecto     { get; init; } = default!;
     public DbSet<RiesgoProyecto>            ProyectoRiesgos       { get; init; } = default!;
     public DbSet<InteresadoProyecto>        ProyectoInteresados   { get; init; } = default!;
@@ -243,6 +244,12 @@ public sealed class AppDbContext(
         // vez cuelga del proyecto—: es el mismo descuido que en SGSEC dejó escrituras sin alcance
         // y que solo apareció auditando por reflexión en vez de confiar en la memoria.
         mb.Entity<VersionDocumento>().HasQueryFilter(v => ProyectoDocumentos.Any(d => d.Id == v.DocumentoId));
+
+        // La bitácora de descargas se ancla por la versión —que a su vez cuelga del documento y
+        // este del proyecto—, por el mismo motivo que la versión: una consulta directa a
+        // ProyectoDocumentoDescargas se saltaría todo el alcance y diría quién descargó qué en
+        // proyectos que el usuario no puede ni abrir.
+        mb.Entity<DescargaDocumento>().HasQueryFilter(x => ProyectoDocumentoVersiones.Any(v => v.Id == x.VersionId));
 
         // El catálogo de categorías es global y no lleva alcance: son etiquetas, no datos de
         // ninguna institución.
@@ -1872,6 +1879,29 @@ public sealed class VersionDocumentoConfiguration : IEntityTypeConfiguration<Ver
 
         // Para avisar "este archivo ya está subido" sin recorrer la tabla entera.
         b.HasIndex(x => x.Sha256);
+    }
+}
+
+public sealed class DescargaDocumentoConfiguration : IEntityTypeConfiguration<DescargaDocumento>
+{
+    public void Configure(EntityTypeBuilder<DescargaDocumento> b)
+    {
+        b.ToTable("ProyectoDocumentoDescargas");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Usuario).HasMaxLength(DescargaDocumento.MaxUsuario).IsRequired();
+
+        // Borrar la versión se lleva su bitácora de descargas: sin el archivo, saber quién lo bajó
+        // no responde nada. La versión, a su vez, solo desaparece si desaparece el proyecto.
+        b.HasOne<VersionDocumento>()
+         .WithMany()
+         .HasForeignKey(x => x.VersionId)
+         .OnDelete(DeleteBehavior.Cascade);
+
+        // Las dos preguntas que se le hacen a esta tabla: «quién descargó este archivo» y
+        // «qué se llevó esta persona».
+        b.HasIndex(x => new { x.VersionId, x.FechaHora });
+        b.HasIndex(x => new { x.UsuarioId, x.FechaHora });
     }
 }
 

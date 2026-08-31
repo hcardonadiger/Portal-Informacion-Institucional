@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Proyectos.Commands.RegistrarDescargaDocumento;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
@@ -683,6 +684,10 @@ public sealed class EditorModel(
             TempData["ErrorMsg"] = "El archivo ya no está disponible en el servidor.";
             return VolverA(meta.ProyectoId, "documentos");
         }
+
+        // Después de resolver la ruta y antes de servir: no se anota una descarga que no ocurrió
+        // porque el archivo ya no estaba.
+        await sender.Send(new RegistrarDescargaDocumentoCommand(versionId), ct);
 
         return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(meta.ArchivoNombre), meta.ArchivoNombre);
     }

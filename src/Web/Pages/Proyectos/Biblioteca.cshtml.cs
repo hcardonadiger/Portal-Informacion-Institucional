@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Proyectos.Commands.RegistrarDescargaDocumento;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Infrastructure.Security;
@@ -50,6 +51,10 @@ public sealed class BibliotecaModel(ISender sender, IWebHostEnvironment env) : P
             TempData["ErrorMsg"] = $"«{meta.ArchivoNombre}» ya no está disponible en el servidor.";
             return RedirectToPage();
         }
+
+        // Después de resolver la ruta y antes de servir: no se anota una descarga que no ocurrió
+        // porque el archivo ya no estaba.
+        await sender.Send(new RegistrarDescargaDocumentoCommand(versionId), ct);
 
         return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(meta.ArchivoNombre), meta.ArchivoNombre);
     }
