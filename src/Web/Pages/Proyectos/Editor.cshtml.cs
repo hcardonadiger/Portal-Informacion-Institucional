@@ -122,9 +122,14 @@ public sealed class EditorModel(
     [BindProperty] public List<EntregableForm> Entregables  { get; set; } = [];
 
     // ── Documentos ──────────────────────────────────────────────────────────
-    /// <summary>El archivo del documento nuevo o de la versión nueva: los dos formularios usan
-    /// el mismo campo porque nunca se envían a la vez.</summary>
+    /// <summary>El archivo de la versión nueva. El alta de documentos usa
+    /// <see cref="DocArchivos"/>, que acepta varios.</summary>
     [BindProperty] public IFormFile? DocArchivo     { get; set; }
+
+    /// <summary>Los archivos del alta. <b>Cada uno da de alta su propio documento</b>, no varias
+    /// versiones del mismo: subir cinco actas es cinco documentos, y decidir lo contrario habría
+    /// convertido un lote en un historial de versiones que nadie pidió.</summary>
+    [BindProperty] public List<IFormFile> DocArchivos { get; set; } = [];
     [BindProperty] public int        DocCategoriaId { get; set; }
     [BindProperty] public string?    DocTitulo      { get; set; }
     [BindProperty] public string?    DocDescripcion { get; set; }
@@ -591,26 +596,78 @@ public sealed class EditorModel(
     // cargar el proyecto por su consulta filtrada. El atributo solo evita ofrecer lo que se va a
     // rechazar y da la clave que la administración de roles muestra.
 
+    /// <summary>
+    /// Da de alta uno o varios documentos en una sola pasada.
+    ///
+    /// <para><b>Cada archivo entra por su cuenta.</b> Un lote de diez donde el séptimo es un .exe
+    /// no puede perder los otros nueve, así que no hay transacción que los abarque: se procesan
+    /// uno a uno y al final se dice qué entró y qué no, nombrando cada archivo rechazado y su
+    /// motivo. Un lote que falla en silencio es peor que no poder subir en lote.</para>
+    ///
+    /// <para>El título se toma del campo solo cuando se sube UN archivo. Con varios, cada
+    /// documento toma el nombre de su archivo: repartir un título entre cinco documentos no
+    /// significa nada, y numerarlos habría inventado un orden que nadie pidió.</para>
+    /// </summary>
     [Permission("Proyectos.Documentos", AccionModulo.Crear, "Subir documentos de proyecto")]
     public async Task<IActionResult> OnPostSubirDocumentoAsync(int id, CancellationToken ct)
     {
-        try
+        var archivos = DocArchivos.Where(a => a is { Length: > 0 }).ToList();
+
+        if (archivos.Count == 0)
         {
-            if (DocArchivo is null || DocArchivo.Length == 0)
-                throw new DomainException("Elija el archivo que quiere subir.");
-
-            var guardado = await DocumentosStorage.GuardarAsync(DocArchivo, env, ct);
-
-            await sender.Send(new SubirDocumentoCommand(
-                id, DocCategoriaId, DocTitulo ?? "", DocDescripcion,
-                guardado.Nombre, guardado.Url, guardado.Tamano, guardado.Sha256), ct);
-
-            TempData["SuccessMsg"] = "Documento agregado.";
+            TempData["ErrorMsg"] = "Elija al menos un archivo para subir.";
+            return VolverA(id, "documentos");
         }
-        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
-        catch (NotFoundException)  { return NotFound(); }
+
+        var subidos  = 0;
+        var fallidos = new List<string>();
+        var unoSolo  = archivos.Count == 1;
+
+        foreach (var archivo in archivos)
+        {
+            try
+            {
+                var guardado = await DocumentosStorage.GuardarAsync(archivo, env, ct);
+
+                var titulo = unoSolo && !string.IsNullOrWhiteSpace(DocTitulo)
+                    ? DocTitulo!.Trim()
+                    : TituloDesdeArchivo(archivo.FileName);
+
+                await sender.Send(new SubirDocumentoCommand(
+                    id, DocCategoriaId, titulo, unoSolo ? DocDescripcion : null,
+                    guardado.Nombre, guardado.Url, guardado.Tamano, guardado.Sha256), ct);
+
+                subidos++;
+            }
+            // Se atrapa por archivo, no por lote: el rechazo de uno no arrastra a los demás.
+            catch (DomainException ex) { fallidos.Add($"«{archivo.FileName}»: {ex.Message}"); }
+            catch (NotFoundException)  { return NotFound(); }
+        }
+
+        if (subidos > 0)
+            TempData["SuccessMsg"] = subidos == 1
+                ? "Documento agregado."
+                : $"{subidos} documentos agregados.";
+
+        if (fallidos.Count > 0)
+            TempData["ErrorMsg"] = fallidos.Count == 1
+                ? $"No se subió {fallidos[0]}"
+                : $"No se subieron {fallidos.Count} archivos. " + string.Join(" ", fallidos);
 
         return VolverA(id, "documentos");
+    }
+
+    /// <summary>El nombre del archivo sin su extensión, recortado al largo que admite el título.
+    /// Si quedara vacío —un archivo llamado «.pdf»— se usa el nombre completo, porque el dominio
+    /// exige título y quedarse sin uno perdería el archivo por un detalle del nombre.</summary>
+    private static string TituloDesdeArchivo(string nombre)
+    {
+        var sinExt = Path.GetFileNameWithoutExtension(nombre).Trim();
+        if (sinExt.Length == 0) sinExt = nombre.Trim();
+
+        return sinExt.Length > DocumentoProyecto.MaxTitulo
+            ? sinExt[..DocumentoProyecto.MaxTitulo]
+            : sinExt;
     }
 
     [Permission("Proyectos.Documentos", AccionModulo.Crear, "Subir documentos de proyecto")]

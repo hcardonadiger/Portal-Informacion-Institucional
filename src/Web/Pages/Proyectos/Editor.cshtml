@@ -1290,10 +1290,16 @@
                     <form method="post" asp-page-handler="SubirDocumento" asp-route-id="@p.Id"
                           enctype="multipart/form-data" style="padding:0 1rem 1rem">
                         <div style="display:flex;gap:12px;flex-wrap:wrap">
+                            @* El título deja de ser obligatorio: con varios archivos cada documento
+                               toma el nombre del suyo, y exigir uno solo para el lote no tendría a
+                               qué documento aplicarse. *@
                             <div class="field" style="flex:2;min-width:240px">
-                                <label for="doc-titulo">Título <span style="color:var(--diger-danger)">*</span></label>
-                                <input id="doc-titulo" name="DocTitulo" maxlength="300" required
+                                <label for="doc-titulo">Título</label>
+                                <input id="doc-titulo" name="DocTitulo" maxlength="300"
                                        placeholder="Convenio marco DIGER–SRECI" />
+                                <small class="res-meta">
+                                    Opcional. Si sube varios archivos, cada documento toma el nombre del suyo.
+                                </small>
                             </div>
                             <div class="field" style="flex:1;min-width:170px">
                                 <label for="doc-cat">Categoría <span style="color:var(--diger-danger)">*</span></label>
@@ -1309,12 +1315,20 @@
                             <label for="doc-desc">Descripción</label>
                             <input id="doc-desc" name="DocDescripcion" maxlength="2000"
                                    placeholder="De qué se trata, para quien lo abra dentro de un año" />
+                            <small class="res-meta">
+                                Se aplica solo si sube un archivo; en un lote cada documento queda sin descripción.
+                            </small>
                         </div>
                         <div class="field">
-                            <label for="doc-file">Archivo <span style="color:var(--diger-danger)">*</span></label>
-                            <input id="doc-file" type="file" name="DocArchivo" required />
+                            <label for="doc-file">Archivos <span style="color:var(--diger-danger)">*</span></label>
+                            <input id="doc-file" type="file" name="DocArchivos" multiple required
+                                   onchange="docLote(this)" />
+                            <small class="res-meta" id="doc-file-info">
+                                Puede elegir varios a la vez. Cada archivo se da de alta como un documento
+                                aparte, todos en la misma categoría.
+                            </small>
                         </div>
-                        <button type="submit" class="btnp">Subir documento</button>
+                        <button type="submit" class="btnp">Subir documentos</button>
                     </form>
                 </details>
             }
@@ -2450,5 +2464,34 @@
         if (!aplica) document.getElementById('a-cerrar').checked = false;
     };
     alternarDestinoAvance();
+
+    /* Alta de documentos en lote: dice cuántos archivos van y avisa de las dos reglas que
+       cambian según sean uno o varios, para que no haya que descubrirlas al guardar. */
+    function docLote(input) {
+        var n    = input.files ? input.files.length : 0;
+        var info = document.getElementById("doc-file-info");
+        var tit  = document.getElementById("doc-titulo");
+        var desc = document.getElementById("doc-desc");
+        if (!info) return;
+
+        if (n === 0) {
+            info.textContent = "Puede elegir varios a la vez. Cada archivo se da de alta como un " +
+                               "documento aparte, todos en la misma categoría.";
+        } else if (n === 1) {
+            info.textContent = "1 archivo. El título y la descripción que escriba se aplican a él.";
+        } else {
+            info.textContent = n + " archivos: se crean " + n + " documentos, cada uno con el nombre " +
+                               "de su archivo. El título y la descripción se ignoran en un lote.";
+        }
+
+        /* Se atenúan en vez de deshabilitarse: deshabilitar borraría lo escrito si vuelve a
+           elegir un solo archivo. */
+        var enLote = n > 1;
+        [tit, desc].forEach(function (campo) {
+            if (!campo) return;
+            campo.style.opacity = enLote ? ".5" : "";
+            campo.title = enLote ? "No se usa cuando se suben varios archivos" : "";
+        });
+    }
 </script>
 }
