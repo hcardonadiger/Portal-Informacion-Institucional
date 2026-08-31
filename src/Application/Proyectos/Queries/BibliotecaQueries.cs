@@ -39,11 +39,31 @@ public sealed record DocumentoBibliotecaDto(
     };
 
     public bool FueCorregido => TotalVersiones > 1;
+
+    /// <summary>Extensión en minúsculas, sin punto. Se deriva del nombre y no se guarda: es lo que
+    /// permite filtrar «solo los PDF» sin una columna nueva.</summary>
+    public string Extension
+    {
+        get
+        {
+            var i = ArchivoNombre.LastIndexOf('.');
+            return i < 0 || i == ArchivoNombre.Length - 1
+                ? ""
+                : ArchivoNombre[(i + 1)..].ToLowerInvariant();
+        }
+    }
+
+    /// <summary>Días desde la última versión. El convenio que quedó en borrador hace ocho meses no
+    /// se distingue del que está al día si solo se mira la fecha.</summary>
+    public int DiasSinActualizar => (int)(DateTime.UtcNow - SubidoEn).TotalDays;
 }
 
 /// <summary>Una opción de filtro con su conteo. El número es lo que evita elegir un filtro que
 /// deja la pantalla vacía.</summary>
 public sealed record FacetaDto(int Id, string Nombre, int Cantidad);
+
+/// <summary>Lo mismo para lo que no tiene Id: personas y extensiones son texto, no catálogo.</summary>
+public sealed record FacetaTextoDto(string Valor, int Cantidad);
 
 public sealed record BibliotecaDto(
     IReadOnlyList<DocumentoBibliotecaDto> Documentos,
@@ -51,7 +71,16 @@ public sealed record BibliotecaDto(
     IReadOnlyList<FacetaDto>              Proyectos,
 
     /// <summary>Total sin filtrar, para poder decir «12 de 340».</summary>
-    int TotalSinFiltrar);
+    int TotalSinFiltrar,
+
+    /// <summary>Quiénes han cargado o actualizado documentación. Es la faceta que pidió
+    /// coordinación: «qué mantiene cada persona».</summary>
+    IReadOnlyList<FacetaTextoDto> Responsables = null!,
+    IReadOnlyList<FacetaTextoDto> Tipos        = null!)
+{
+    public IReadOnlyList<FacetaTextoDto> Responsables { get; init; } = Responsables ?? [];
+    public IReadOnlyList<FacetaTextoDto> Tipos        { get; init; } = Tipos        ?? [];
+}
 
 /// <summary>
 /// La biblioteca: la documentación de <b>todos los proyectos que la persona puede ver</b>.
@@ -71,7 +100,21 @@ public sealed record GetBibliotecaQuery(
     int?      ProyectoId  = null,
     string?   Buscar      = null,
     DateOnly? Desde       = null,
-    DateOnly? Hasta       = null) : IRequest<BibliotecaDto>;
+    DateOnly? Hasta       = null,
+
+    /// <summary>Quién subió la versión vigente. Coincide con el nombre guardado como copia, no con
+    /// el usuario: si la persona cambió de nombre, el histórico conserva el que tenía.</summary>
+    string?   SubidoPor   = null,
+
+    /// <summary>Extensión sin punto, en minúsculas.</summary>
+    string?   Tipo        = null,
+
+    /// <summary>Solo documentos con historial. Son los que se negocian, frente a los que se
+    /// archivan una vez y no se tocan más.</summary>
+    bool      SoloConHistorial = false,
+
+    /// <summary>Solo los que llevan sin actualizarse al menos estos días.</summary>
+    int?      SinActualizarDias = null) : IRequest<BibliotecaDto>;
 
 public sealed class GetBibliotecaQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetBibliotecaQuery, BibliotecaDto>
@@ -191,10 +234,35 @@ public sealed class GetBibliotecaQueryHandler(IApplicationDbContext ctx)
             .OrderBy(f => f.Nombre)
             .ToList();
 
+        var facetasResponsable = filas
+            .GroupBy(f => f.SubidoPor)
+            .Select(g => new FacetaTextoDto(g.Key, g.Count()))
+            .OrderBy(f => f.Valor)
+            .ToList();
+
+        var facetasTipo = filas
+            .Where(f => f.Extension.Length > 0)
+            .GroupBy(f => f.Extension)
+            .Select(g => new FacetaTextoDto(g.Key, g.Count()))
+            .OrderByDescending(f => f.Cantidad).ThenBy(f => f.Valor)
+            .ToList();
+
         var total = filas.Count;
 
         if (q.CategoriaId is { } cid) filas = filas.Where(f => f.CategoriaId == cid).ToList();
         if (q.ProyectoId  is { } pid) filas = filas.Where(f => f.ProyectoId == pid).ToList();
+
+        if (!string.IsNullOrWhiteSpace(q.SubidoPor))
+            filas = filas.Where(f => f.SubidoPor == q.SubidoPor).ToList();
+
+        if (!string.IsNullOrWhiteSpace(q.Tipo))
+            filas = filas.Where(f => f.Extension == q.Tipo.ToLowerInvariant()).ToList();
+
+        if (q.SoloConHistorial)
+            filas = filas.Where(f => f.FueCorregido).ToList();
+
+        if (q.SinActualizarDias is { } dias)
+            filas = filas.Where(f => f.DiasSinActualizar >= dias).ToList();
 
         if (!string.IsNullOrWhiteSpace(q.Buscar))
         {
@@ -219,6 +287,7 @@ public sealed class GetBibliotecaQueryHandler(IApplicationDbContext ctx)
             .ThenBy(f => f.Titulo)
             .ToList();
 
-        return new BibliotecaDto(filas, facetasCategoria, facetasProyecto, total);
+        return new BibliotecaDto(filas, facetasCategoria, facetasProyecto, total,
+                                 facetasResponsable, facetasTipo);
     }
 }

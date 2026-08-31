@@ -6064,3 +6064,33 @@ textarea.form-control { resize: vertical; }
     width: 10px; height: 10px; border-radius: 0; transform: rotate(45deg);
     background: var(--diger-surface); border: 2px solid var(--diger-blue-title);
 }
+
+/* ── Biblioteca: modos de vista ──────────────────────────────────────────
+   Carpetas, agrupado y lista son la misma documentación con tres formas de
+   entrar: por categoría («todos los convenios»), por proyecto («el expediente
+   de este») o por quién la mantiene. */
+.bib-segs { display: inline-flex; border: 1px solid var(--diger-borde);
+            border-radius: 6px; overflow: hidden; background: var(--diger-superficie); }
+.bib-seg  { padding: 6px 14px; font-size: 13px; color: var(--diger-texto-suave);
+            text-decoration: none; border-right: 1px solid var(--diger-borde); }
+.bib-seg:last-child { border-right: 0; }
+.bib-seg:hover { background: var(--diger-superficie-2); color: var(--diger-texto); }
+.bib-seg.on { background: var(--diger-primario); color: #fff; font-weight: 600; }
+
+.bib-carpetas { display: grid; gap: 12px;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.bib-carpeta  { display: flex; flex-direction: column; gap: 3px; padding: 14px;
+                border: 1px solid var(--diger-borde); border-radius: 8px;
+                background: var(--diger-superficie); text-decoration: none;
+                color: inherit; }
+.bib-carpeta:hover { border-color: var(--diger-primario); }
+.bib-carpeta-ico { font-size: 24px; line-height: 1; margin-bottom: 4px; }
+.bib-carpeta-nom { font-weight: 600; font-size: 14px; }
+
+.bib-ruta { display: flex; gap: 10px; align-items: center;
+            flex-wrap: wrap; margin-bottom: 1rem; }
+
+.bib-grupo { margin-bottom: 1.4rem; }
+.bib-grupo-h { display: flex; justify-content: space-between; align-items: baseline;
+               gap: 10px; padding-bottom: 6px; margin-bottom: .5rem;
+               border-bottom: 1px solid var(--diger-borde); }
