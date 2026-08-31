@@ -93,9 +93,18 @@ public sealed class AyudaTests : IAsyncLifetime
         // Hasta ahora el enlace vivía solo dentro del panel de usuario: quien no supiera que
         // existía, no lo encontraba. Va sin condición de permiso porque documentar el portal no
         // expone datos — la propia página lleva [PermisoNoRequerido] por la misma razón.
-        var html = await _portal.ClienteComo(rol).GetStringAsync("/Proyectos/Index");
+        //
+        // Se pide una página que CUALQUIER rol pueda abrir. La primera versión de esta prueba
+        // usaba /Proyectos/Index y fallaba con 403 para el Consultor: comprobaba el permiso de
+        // otro módulo en vez del menú.
+        var html = await _portal.ClienteComo(rol).GetStringAsync("/Ayuda/Index");
 
-        html.Should().Contain("/Ayuda/Index", "el enlace tiene que estar en el menú de todas las páginas");
+        // Se comprueba el enlace por su destino renderizado y su rótulo, no por la cadena
+        // "/Ayuda/Index": el tag helper emite la URL canónica de una página Index —«/Ayuda»— y
+        // solo devuelve la forma larga cuando la petición entró por ella. Afirmar sobre la forma
+        // larga hacía que la prueba pasara o fallara según por qué ruta llegó el cliente, que es
+        // justo lo que no se está probando acá.
+        html.Should().Contain("href=\"/Ayuda\"", "el enlace tiene que estar en el menú de todas las páginas");
         html.Should().Contain("Manual de usuario del portal");
     }
 
