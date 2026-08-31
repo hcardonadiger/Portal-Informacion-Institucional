@@ -115,6 +115,99 @@
     }
 </section>
 
+@* ── Proyectos vinculados ────────────────────────────────────────────────────
+   Se vincula desde acá y no solo desde la ficha del proyecto porque este es el
+   momento en que se sabe: quien acaba de documentar la reunión tiene presente de
+   qué trataba. La misma relación se gestiona desde los dos extremos. *@
+<section class="card hilo-panel" style="max-width:900px;margin:0 auto 1.25rem">
+    <h3 class="cuenta-card-title" style="margin:0 0 .9rem;border:0;padding:0">📁 Proyectos vinculados</h3>
+
+    @if (Model.Proyectos.Proyectos.Any())
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th style="width:130px">Código</th>
+                    <th>Proyecto</th>
+                    <th style="width:120px">Estado</th>
+                    <th style="width:90px">Avance</th>
+                    <th style="width:56px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var pr in Model.Proyectos.Proyectos)
+                {
+                    <tr>
+                        <td>
+                            <a asp-page="/Proyectos/Editor" asp-route-id="@pr.ProyectoId"
+                               style="font-weight:600;text-decoration:none">@pr.Codigo</a>
+                        </td>
+                        <td style="white-space:normal">
+                            @pr.Nombre
+                            @if (!string.IsNullOrWhiteSpace(pr.Nota))
+                            {
+                                <div class="res-meta">@pr.Nota</div>
+                            }
+                            <div class="res-meta">Vinculado por @pr.VinculadoPor el @pr.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                        </td>
+                        <td class="res-meta">@pr.Estado</td>
+                        <td class="res-meta">@pr.AvancePct %</td>
+                        <td style="text-align:right">
+                            @if (Model.PuedeVincular)
+                            {
+                                <form method="post" asp-page-handler="DesvincularProyecto"
+                                      asp-route-id="@Model.ReunionId" asp-route-proyectoId="@pr.ProyectoId"
+                                      style="display:inline">
+                                    <input type="hidden" name="VinculoId" value="@pr.VinculoId" />
+                                    <button type="submit" class="btns"
+                                            title="Quitar el vínculo (el proyecto no se toca)">✕</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="res-meta">Esta reunión no está vinculada a ningún proyecto.</p>
+    }
+
+    @if (Model.Proyectos.FueraDeAlcance > 0)
+    {
+        <p class="res-meta" style="margin-top:.6rem">
+            <strong>@Model.Proyectos.FueraDeAlcance</strong>
+            proyecto@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") más está@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "n")
+            vinculado@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+        </p>
+    }
+
+    @if (Model.PuedeVincular && Model.Proyectos.Vinculables.Any())
+    {
+        <form method="post" asp-page-handler="VincularProyecto" asp-route-id="@Model.ReunionId"
+              style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+            <div class="field" style="flex:2;min-width:260px;margin:0">
+                <label for="v-proy">Vincular a un proyecto</label>
+                <select id="v-proy" name="VinculoProyectoId" required>
+                    <option value="">— Elija un proyecto —</option>
+                    @foreach (var o in Model.Proyectos.Vinculables)
+                    {
+                        <option value="@o.Id">@o.Etiqueta</option>
+                    }
+                </select>
+            </div>
+            <div class="field" style="flex:2;min-width:200px;margin:0">
+                <label for="v-nota">Por qué (opcional)</label>
+                <input id="v-nota" name="VinculoNota" maxlength="400"
+                       placeholder="Se acordó el alcance del enlace de fibra" />
+            </div>
+            <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+        </form>
+    }
+</section>
+
+
 <article class="acta">
     <header class="acta-head">
         <div class="acta-brand"><span class="acta-logo">DG</span> DIGER</div>

@@ -190,6 +190,74 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
         ficha.Should().NotContain("Acta reservada de CONSUCOOP");
     }
 
+    [Fact]
+    public async Task La_pestana_de_vinculos_esta_cableada_al_conmutador()
+    {
+        // El panel se pinta con el HTML pero las pestañas de esta ficha se abren con un onclick
+        // explícito, no con un manejador delegado. Sin él, el botón se ve y no hace nada — que es
+        // exactamente como salió la primera vez, y ni la compilación ni las pruebas lo veían.
+        var ficha = await _portal.ClienteComo("JefeArea").GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+
+        ficha.Should().Contain("abrirPestana('vinculos')",
+            "el boton de la pestaña tiene que llamar al conmutador, como los otros siete");
+        ficha.Should().Contain("id=\"panel-vinculos\"");
+    }
+
+    // ── El mismo vínculo desde el otro extremo ────────────────────
+    [Fact]
+    public async Task Se_puede_vincular_desde_la_ficha_de_la_reunion()
+    {
+        var cliente = _portal.ClienteComo("JefeArea");
+        var html = await cliente.GetStringAsync($"/Reuniones/Acta/{_reunionPropia}");
+        var token = TokenRx.Match(html).Groups[1].Value;
+
+        var r = await cliente.PostAsync(
+            $"/Reuniones/Acta/{_reunionPropia}?handler=VincularProyecto",
+            Form(token, ("VinculoProyectoId", _proyectoId.ToString()),
+                        ("VinculoNota", "se trato el alcance del enlace")));
+
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        // Y se ve desde los dos lados: es la misma fila.
+        var acta = await cliente.GetStringAsync($"/Reuniones/Acta/{_reunionPropia}");
+        acta.Should().Contain("PRY-2026-80");
+
+        var ficha = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+        ficha.Should().Contain("Mesa de trabajo del nodo central");
+    }
+
+    [Fact]
+    public async Task Desde_la_reunion_tampoco_se_alcanza_un_proyecto_ajeno()
+    {
+        // El selector se alimenta del filtro de Proyectos; forzar un Id por el formulario no
+        // puede colgar la reunión de un proyecto que la persona no ve.
+        int ajeno;
+        using (var scope = _portal.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var p2 = Proyecto.Crear("PRY-2026-81", "Proyecto de otra institucion");
+            p2.InstitucionId = "CONSUCOOP";
+            db.Proyectos.Add(p2);
+            await db.SaveChangesAsync();
+            ajeno = p2.Id;
+        }
+
+        var cliente = _portal.ClienteComo("JefeArea");
+        var html = await cliente.GetStringAsync($"/Reuniones/Acta/{_reunionPropia}");
+        var token = TokenRx.Match(html).Groups[1].Value;
+
+        await cliente.PostAsync($"/Reuniones/Acta/{_reunionPropia}?handler=VincularProyecto",
+            Form(token, ("VinculoProyectoId", ajeno.ToString())));
+
+        using var scope2 = _portal.Services.CreateScope();
+        var db2 = scope2.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await db2.ProyectoReuniones.IgnoreQueryFilters()
+            .CountAsync(x => x.ProyectoId == ajeno)).Should().Be(0);
+
+        html.Should().NotContain("Proyecto de otra institucion",
+            "el selector no puede ofrecer proyectos ajenos");
+    }
+
     // ── Permisos ──────────────────────────────────────────────────
     [Fact]
     public async Task Sin_Proyectos_Editar_no_se_vincula()

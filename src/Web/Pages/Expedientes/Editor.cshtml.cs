@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Application.Proyectos.Commands;
+using Diger.TramitesEstado.Application.Proyectos.Queries;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -35,9 +37,24 @@ public sealed class EditorModel(
     /// ahora es la clave que el servidor exige en esta misma página.</summary>
     public bool EsAdmin { get; private set; }
 
+    /// <summary>Proyectos a los que está vinculado este expediente. Se gestiona desde los dos
+    /// extremos: acá y en la pestaña Vínculos de la ficha del proyecto.</summary>
+    public ProyectosVinculadosDto Proyectos { get; private set; } = new([], 0, []);
+
+    /// <summary>Vincular modifica la ficha del PROYECTO y escribe en su bitácora, así que exige su
+    /// clave y no la de expedientes.</summary>
+    public bool PuedeVincular { get; private set; }
+
+    [BindProperty] public int     VinculoProyectoId { get; set; }
+    [BindProperty] public string? VinculoNota       { get; set; }
+    [BindProperty] public int     VinculoId         { get; set; }
+
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
         EsAdmin    = await acceso.PuedeEditarAsync("Expedientes", ct);
+        PuedeVincular = await acceso.PuedeEditarAsync("Proyectos", ct);
+        if (id is int expId)
+            Proyectos = await sender.Send(new GetProyectosDeExpedienteQuery(expId), ct);
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
         Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         if (id is null && !EsAdmin)
@@ -71,6 +88,38 @@ public sealed class EditorModel(
         {
             return NotFound();
         }
+    }
+
+    // ── Vínculo con proyectos ─────────────────────────────────────
+    // Proyectos.Editar y no Expedientes.Editar: la acción modifica la ficha del proyecto y escribe
+    // en su bitácora. La misma acción exige el mismo permiso desde donde se haga.
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularProyectoAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularExpedienteCommand(VinculoProyectoId, id, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Expediente vinculado al proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { TempData["ErrorMsg"] = "Ese proyecto no existe o no está a su alcance."; }
+
+        return RedirectToPage(new { id });
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostDesvincularProyectoAsync(int id, int proyectoId, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoExpedienteCommand(proyectoId, VinculoId), ct);
+            TempData["SuccessMsg"] = "Expediente desvinculado del proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return RedirectToPage(new { id });
     }
 
     /// <summary>Autocompletado de contactos por institución (consumido por expediente.js).</summary>

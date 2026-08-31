@@ -28,6 +28,103 @@
     </div>
 </div>
 
+@* ── Proyectos vinculados ───────────────────────────────────────────────────
+   Se vincula desde acá además de desde la ficha del proyecto: la misma relación
+   se gestiona por los dos extremos, porque quien trabaja el expediente es quien
+   sabe a qué proyecto responde. *@
+@if (Model.ExpId is int vincExpId)
+{
+    <div style="max-width:1280px;margin:0 auto 1rem;padding:0 1rem">
+        <section class="card">
+            <h3 style="margin:0 0 .8rem;font-size:1rem">📁 Proyectos vinculados</h3>
+
+            @if (Model.Proyectos.Proyectos.Any())
+            {
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:130px">Código</th>
+                            <th>Proyecto</th>
+                            <th style="width:120px">Estado</th>
+                            <th style="width:80px">Avance</th>
+                            <th style="width:56px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pr in Model.Proyectos.Proyectos)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-page="/Proyectos/Editor" asp-route-id="@pr.ProyectoId"
+                                       style="font-weight:600;text-decoration:none">@pr.Codigo</a>
+                                </td>
+                                <td style="white-space:normal">
+                                    @pr.Nombre
+                                    @if (!string.IsNullOrWhiteSpace(pr.Nota))
+                                    {
+                                        <div class="res-meta">@pr.Nota</div>
+                                    }
+                                </td>
+                                <td class="res-meta">@pr.Estado</td>
+                                <td class="res-meta">@pr.AvancePct %</td>
+                                <td style="text-align:right">
+                                    @if (Model.PuedeVincular)
+                                    {
+                                        <form method="post" asp-page-handler="DesvincularProyecto"
+                                              asp-route-id="@vincExpId" asp-route-proyectoId="@pr.ProyectoId"
+                                              style="display:inline">
+                                            <input type="hidden" name="VinculoId" value="@pr.VinculoId" />
+                                            <button type="submit" class="btns"
+                                                    title="Quitar el vínculo (el proyecto no se toca)">✕</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="res-meta">Este expediente no está vinculado a ningún proyecto.</p>
+            }
+
+            @if (Model.Proyectos.FueraDeAlcance > 0)
+            {
+                <p class="res-meta" style="margin-top:.6rem">
+                    <strong>@Model.Proyectos.FueraDeAlcance</strong>
+                    proyecto@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") más está@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "n")
+                    vinculado@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                </p>
+            }
+
+            @if (Model.PuedeVincular && Model.Proyectos.Vinculables.Any())
+            {
+                <form method="post" asp-page-handler="VincularProyecto" asp-route-id="@vincExpId"
+                      style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                    <div class="field" style="flex:2;min-width:260px;margin:0">
+                        <label for="v-proy-exp">Vincular a un proyecto</label>
+                        <select id="v-proy-exp" name="VinculoProyectoId" required>
+                            <option value="">— Elija un proyecto —</option>
+                            @foreach (var o in Model.Proyectos.Vinculables)
+                            {
+                                <option value="@o.Id">@o.Etiqueta</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" style="flex:2;min-width:200px;margin:0">
+                        <label for="v-nota-exp">Por qué (opcional)</label>
+                        <input id="v-nota-exp" name="VinculoNota" maxlength="400"
+                               placeholder="El proyecto digitaliza este trámite" />
+                    </div>
+                    <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                </form>
+            }
+        </section>
+    </div>
+}
+
+
 <div class="wrap">
   <aside class="sidebar">
     <div class="sb-hdr">Generales del expediente</div>

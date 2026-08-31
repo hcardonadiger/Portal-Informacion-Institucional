@@ -166,3 +166,123 @@ public sealed class GetVinculablesQueryHandler(IApplicationDbContext ctx)
         return (reuniones, expedientes);
     }
 }
+
+// ── El mismo vínculo, visto desde el otro extremo ─────────────────────────
+/// <summary>Un proyecto al que está vinculada esta reunión o este expediente.</summary>
+public sealed record ProyectoVinculadoDto(
+    int      VinculoId,
+    int      ProyectoId,
+    string   Codigo,
+    string   Nombre,
+    string   Estado,
+    int      AvancePct,
+    string?  Responsable,
+    string?  Nota,
+    string   VinculadoPor,
+    DateTime VinculadoEn);
+
+/// <param name="FueraDeAlcance">Vínculos cuyo proyecto esta persona no puede abrir. Se cuentan,
+/// igual que en la ficha del proyecto y por el mismo motivo.</param>
+public sealed record ProyectosVinculadosDto(
+    IReadOnlyList<ProyectoVinculadoDto> Proyectos,
+    int FueraDeAlcance,
+    IReadOnlyList<OpcionVinculoDto> Vinculables);
+
+/// <summary>
+/// Los proyectos de una reunión, y los que se le podrían vincular.
+///
+/// <para>Es la misma relación de <see cref="GetVinculosProyectoQuery"/> leída al revés, y arrastra
+/// el mismo desajuste: el vínculo se ancla en el proyecto, así que desde acá solo se ven los
+/// proyectos que la persona alcanza. Los que no, se cuentan.</para>
+/// </summary>
+public sealed record GetProyectosDeReunionQuery(int ReunionId) : IRequest<ProyectosVinculadosDto>;
+
+public sealed class GetProyectosDeReunionQueryHandler(IApplicationDbContext ctx)
+    : IRequestHandler<GetProyectosDeReunionQuery, ProyectosVinculadosDto>
+{
+    public async Task<ProyectosVinculadosDto> Handle(GetProyectosDeReunionQuery q, CancellationToken ct)
+    {
+        // Sin filtro: hace falta el total para poder decir cuántos quedan fuera. No se expone
+        // ningún dato de ellos, solo el número.
+        var todos = await ctx.ProyectoReuniones.AsNoTracking().IgnoreQueryFilters()
+            .Where(x => x.ReunionId == q.ReunionId)
+            .Select(x => new { x.Id, x.ProyectoId, x.Nota, x.VinculadoPor, x.VinculadoEn })
+            .ToListAsync(ct);
+
+        var ids = todos.Select(x => x.ProyectoId).ToList();
+
+        var proyectos = await ctx.Proyectos.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .Select(p => new { p.Id, p.Codigo, p.Nombre, p.Estado, p.AvancePct, p.Responsable })
+            .ToDictionaryAsync(p => p.Id, ct);
+
+        var filas = todos
+            .Where(x => proyectos.ContainsKey(x.ProyectoId))
+            .Select(x =>
+            {
+                var p = proyectos[x.ProyectoId];
+                return new ProyectoVinculadoDto(
+                    x.Id, p.Id, p.Codigo, p.Nombre, p.Estado.ToString(), p.AvancePct,
+                    p.Responsable, x.Nota, x.VinculadoPor, x.VinculadoEn);
+            })
+            .OrderBy(p => p.Codigo)
+            .ToList();
+
+        // Vinculables: proyectos abiertos a su alcance que todavía no están.
+        var yaVinculados = filas.Select(f => f.ProyectoId).ToList();
+        var vinculables = await ctx.Proyectos.AsNoTracking()
+            .Where(p => !yaVinculados.Contains(p.Id)
+                     && p.Estado != EstadoProyecto.Cerrado
+                     && p.Estado != EstadoProyecto.Cancelado)
+            .OrderBy(p => p.Codigo)
+            .Select(p => new OpcionVinculoDto(p.Id, p.Codigo + " · " + p.Nombre))
+            .ToListAsync(ct);
+
+        return new ProyectosVinculadosDto(filas, todos.Count - filas.Count, vinculables);
+    }
+}
+
+/// <summary>Los proyectos de un expediente. Mismas reglas que la reunión.</summary>
+public sealed record GetProyectosDeExpedienteQuery(int ExpedienteId) : IRequest<ProyectosVinculadosDto>;
+
+public sealed class GetProyectosDeExpedienteQueryHandler(IApplicationDbContext ctx)
+    : IRequestHandler<GetProyectosDeExpedienteQuery, ProyectosVinculadosDto>
+{
+    public async Task<ProyectosVinculadosDto> Handle(GetProyectosDeExpedienteQuery q, CancellationToken ct)
+    {
+        var todos = await ctx.ProyectoExpedientes.AsNoTracking().IgnoreQueryFilters()
+            .Where(x => x.ExpedienteId == q.ExpedienteId)
+            .Select(x => new { x.Id, x.ProyectoId, x.Nota, x.VinculadoPor, x.VinculadoEn })
+            .ToListAsync(ct);
+
+        var ids = todos.Select(x => x.ProyectoId).ToList();
+
+        var proyectos = await ctx.Proyectos.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .Select(p => new { p.Id, p.Codigo, p.Nombre, p.Estado, p.AvancePct, p.Responsable })
+            .ToDictionaryAsync(p => p.Id, ct);
+
+        var filas = todos
+            .Where(x => proyectos.ContainsKey(x.ProyectoId))
+            .Select(x =>
+            {
+                var p = proyectos[x.ProyectoId];
+                return new ProyectoVinculadoDto(
+                    x.Id, p.Id, p.Codigo, p.Nombre, p.Estado.ToString(), p.AvancePct,
+                    p.Responsable, x.Nota, x.VinculadoPor, x.VinculadoEn);
+            })
+            .OrderBy(p => p.Codigo)
+            .ToList();
+
+        var yaVinculados = filas.Select(f => f.ProyectoId).ToList();
+        var vinculables = await ctx.Proyectos.AsNoTracking()
+            .Where(p => !yaVinculados.Contains(p.Id)
+                     && p.Estado != EstadoProyecto.Cerrado
+                     && p.Estado != EstadoProyecto.Cancelado)
+            .OrderBy(p => p.Codigo)
+            .Select(p => new OpcionVinculoDto(p.Id, p.Codigo + " · " + p.Nombre))
+            .ToListAsync(ct);
+
+        return new ProyectosVinculadosDto(filas, todos.Count - filas.Count, vinculables);
+    }
+}

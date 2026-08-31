@@ -214,7 +214,8 @@
         </button>
         @* Vínculos: lo que este proyecto toca fuera de su propia estructura. *@
         <button type="button" role="tab" id="tab-vinculos" data-tab="vinculos"
-                aria-controls="panel-vinculos" aria-selected="false" tabindex="-1">
+                aria-controls="panel-vinculos" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('vinculos')">
             <svg class="ico"><use href="#i-reunion"></use></svg>Vínculos
             @{
                 var nVinc = Model.Vinculos.Reuniones.Count + Model.Vinculos.Expedientes.Count;
