@@ -114,3 +114,50 @@ public sealed class ProyectoExpediente : BaseEntity
         return true;
     }
 }
+
+/// <summary>
+/// Une un proyecto con un ticket de soporte.
+///
+/// <para>Mismas reglas que sus dos hermanos. Lo que cambia es el uso: acá el vínculo suele nacer al
+/// revés —el ticket ya existe y alguien reconoce que lo que pide es trabajo del proyecto, no una
+/// incidencia— así que la pantalla del ticket es tan puerta de entrada como la ficha del proyecto.</para>
+///
+/// <para><b>No reemplaza a <see cref="Ticket.ExpedienteId"/>.</b> Aquella columna dice de qué
+/// expediente habla el ticket; esta dice a qué proyecto contribuye. Un ticket sobre el expediente
+/// de una institución puede alimentar el proyecto transversal sin que las dos cosas sean la misma.</para>
+/// </summary>
+public sealed class ProyectoTicket : BaseEntity
+{
+    public int ProyectoId { get; private set; }
+    public int TicketId   { get; private set; }
+
+    public string?  Nota         { get; private set; }
+    public string   VinculadoPor { get; private set; } = default!;
+    public DateTime VinculadoEn  { get; private set; }
+
+    private ProyectoTicket() { }   // EF
+
+    public static ProyectoTicket Crear(int proyectoId, int ticketId, string? actor, string? nota = null)
+    {
+        if (proyectoId <= 0) throw new DomainException("El vínculo necesita un proyecto.");
+        if (ticketId   <= 0) throw new DomainException("El vínculo necesita un ticket.");
+
+        return new ProyectoTicket
+        {
+            ProyectoId   = proyectoId,
+            TicketId     = ticketId,
+            Nota         = ProyectoReunion.Limpiar(nota),
+            VinculadoPor = string.IsNullOrWhiteSpace(actor) ? "—" : actor.Trim(),
+            VinculadoEn  = DateTime.UtcNow
+        };
+    }
+
+    /// <returns><c>true</c> si algo cambió.</returns>
+    public bool CambiarNota(string? nota)
+    {
+        var limpia = ProyectoReunion.Limpiar(nota);
+        if (Nota == limpia) return false;
+        Nota = limpia;
+        return true;
+    }
+}

@@ -25,13 +25,14 @@ public sealed class EditorModel(
     public IReadOnlyList<RiesgoProyectoDto> Riesgos { get; private set; } = [];
     public IReadOnlyList<InteresadoProyectoDto> Interesados { get; private set; } = [];
 
-    /// <summary>Reuniones y expedientes vinculados, más el conteo de los que existen pero quedan
+    /// <summary>Reuniones, expedientes y tickets vinculados, más el conteo de los que existen pero quedan
     /// fuera del alcance de quien mira. Ver la nota de GetVinculosProyectoQuery.</summary>
-    public VinculosProyectoDto Vinculos { get; private set; } = new([], [], 0, 0);
+    public VinculosProyectoDto Vinculos { get; private set; } = new([], [], [], 0, 0, 0);
 
     /// <summary>Lo que se puede vincular: dentro del alcance y no vinculado ya.</summary>
     public IReadOnlyList<OpcionVinculoDto> ReunionesVinculables   { get; private set; } = [];
     public IReadOnlyList<OpcionVinculoDto> ExpedientesVinculables { get; private set; } = [];
+    public IReadOnlyList<OpcionVinculoDto> TicketsVinculables     { get; private set; } = [];
     public AlcanceOpcionesDto Alcance { get; private set; } = new([], []);
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
@@ -132,6 +133,7 @@ public sealed class EditorModel(
     // ── Vínculos ────────────────────────────────────────────────────────────
     [BindProperty] public int     VinculoReunionId    { get; set; }
     [BindProperty] public int     VinculoExpedienteId { get; set; }
+    [BindProperty] public int     VinculoTicketId     { get; set; }
     [BindProperty] public string? VinculoNota         { get; set; }
     [BindProperty] public int     VinculoId           { get; set; }
 
@@ -643,6 +645,34 @@ public sealed class EditorModel(
         return VolverA(id, "vinculos");
     }
 
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularTicketAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularTicketCommand(id, VinculoTicketId, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Ticket vinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostQuitarVinculoTicketAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoTicketCommand(id, VinculoId), ct);
+            TempData["SuccessMsg"] = "Ticket desvinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
     // ── Eliminar ────────────────────────────────────────────────────────────
     [Permission("Proyectos", AccionModulo.Eliminar, "Eliminar proyectos")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
@@ -890,6 +920,7 @@ public sealed class EditorModel(
         var vinculables = await sender.Send(new GetVinculablesQuery(id), ct);
         ReunionesVinculables   = vinculables.Reuniones;
         ExpedientesVinculables = vinculables.Expedientes;
+        TicketsVinculables     = vinculables.Tickets;
 
         var mutable = HttpContext.CanMutate() && !dto.EstaCerrado;
         PuedeEditar         = mutable && await acceso.PuedeEditarAsync("Proyectos", ct);

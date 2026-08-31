@@ -155,3 +155,71 @@ public sealed class QuitarVinculoExpedienteCommandHandler(
         return Unit.Value;
     }
 }
+
+/// <summary>Vincula un ticket de soporte. Mismas reglas que la reunión y el expediente.</summary>
+public sealed record VincularTicketCommand(int ProyectoId, int TicketId, string? Nota) : IRequest<int>;
+
+public sealed class VincularTicketCommandHandler(
+    IApplicationDbContext ctx, ICurrentUserService currentUser)
+    : IRequestHandler<VincularTicketCommand, int>
+{
+    public async Task<int> Handle(VincularTicketCommand cmd, CancellationToken ct)
+    {
+        var proyecto = await ctx.Proyectos.FirstOrDefaultAsync(p => p.Id == cmd.ProyectoId, ct)
+            ?? throw new NotFoundException(nameof(Proyecto), cmd.ProyectoId);
+
+        if (proyecto.Estado is EstadoProyecto.Cerrado or EstadoProyecto.Cancelado)
+            throw new DomainException(
+                $"El proyecto está «{proyecto.Estado}»: sus vínculos quedan como están.");
+
+        var ticket = await ctx.Tickets.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == cmd.TicketId, ct)
+            ?? throw new DomainException("Ese ticket no existe o no está a su alcance.");
+
+        var yaEsta = await ctx.ProyectoTickets
+            .AnyAsync(x => x.ProyectoId == cmd.ProyectoId && x.TicketId == cmd.TicketId, ct);
+
+        if (yaEsta)
+            throw new DomainException($"El ticket {ticket.Numero} ya está vinculado a este proyecto.");
+
+        var actor   = currentUser.Nombre ?? "—";
+        var vinculo = ProyectoTicket.Crear(cmd.ProyectoId, cmd.TicketId, actor, cmd.Nota);
+        ctx.ProyectoTickets.Add(vinculo);
+
+        ctx.BitacorasProyecto.Add(BitacoraProyecto.Crear(
+            cmd.ProyectoId, TipoEventoProyecto.ModificacionFicha,
+            $"ticket vinculado: {ticket.Numero}", actor));
+
+        await ctx.SaveChangesAsync(ct);
+        return vinculo.Id;
+    }
+}
+
+/// <summary>Quita el vínculo de un ticket. Mismas reglas.</summary>
+public sealed record QuitarVinculoTicketCommand(int ProyectoId, int VinculoId) : IRequest<Unit>;
+
+public sealed class QuitarVinculoTicketCommandHandler(
+    IApplicationDbContext ctx, ICurrentUserService currentUser)
+    : IRequestHandler<QuitarVinculoTicketCommand, Unit>
+{
+    public async Task<Unit> Handle(QuitarVinculoTicketCommand cmd, CancellationToken ct)
+    {
+        var vinculo = await ctx.ProyectoTickets.FirstOrDefaultAsync(x => x.Id == cmd.VinculoId, ct)
+            ?? throw new NotFoundException(nameof(ProyectoTicket), cmd.VinculoId);
+
+        if (vinculo.ProyectoId != cmd.ProyectoId)
+            throw new DomainException("Ese vínculo no pertenece a este proyecto.");
+
+        var numero = await ctx.Tickets.AsNoTracking().IgnoreQueryFilters()
+            .Where(t => t.Id == vinculo.TicketId).Select(t => t.Numero).FirstOrDefaultAsync(ct);
+
+        ctx.ProyectoTickets.Remove(vinculo);
+
+        ctx.BitacorasProyecto.Add(BitacoraProyecto.Crear(
+            cmd.ProyectoId, TipoEventoProyecto.ModificacionFicha,
+            $"ticket desvinculado: {numero ?? "(eliminado)"}", currentUser.Nombre ?? "—"));
+
+        await ctx.SaveChangesAsync(ct);
+        return Unit.Value;
+    }
+}

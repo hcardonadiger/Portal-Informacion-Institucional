@@ -25,6 +25,20 @@ public sealed record ExpedienteVinculadoDto(
     string    VinculadoPor,
     DateTime  VinculadoEn);
 
+/// <summary>Un ticket de soporte vinculado.</summary>
+public sealed record TicketVinculadoDto(
+    int       VinculoId,
+    int       TicketId,
+    string    Numero,
+    string    Titulo,
+    string    Estado,
+    string    Prioridad,
+    string?   AsignadoA,
+    DateTime  Creado,
+    string?   Nota,
+    string    VinculadoPor,
+    DateTime  VinculadoEn);
+
 /// <summary>
 /// Lo que la ficha muestra en su pestaña de vínculos.
 /// </summary>
@@ -33,11 +47,14 @@ public sealed record ExpedienteVinculadoDto(
 public sealed record VinculosProyectoDto(
     IReadOnlyList<ReunionVinculadaDto>    Reuniones,
     IReadOnlyList<ExpedienteVinculadoDto> Expedientes,
+    IReadOnlyList<TicketVinculadoDto>     Tickets,
     int ReunionesFueraDeAlcance,
-    int ExpedientesFueraDeAlcance)
+    int ExpedientesFueraDeAlcance,
+    int TicketsFueraDeAlcance)
 {
-    public bool HayAlguno => Reuniones.Count > 0 || Expedientes.Count > 0
-                          || ReunionesFueraDeAlcance > 0 || ExpedientesFueraDeAlcance > 0;
+    public bool HayAlguno => Reuniones.Count > 0 || Expedientes.Count > 0 || Tickets.Count > 0
+                          || ReunionesFueraDeAlcance > 0 || ExpedientesFueraDeAlcance > 0
+                          || TicketsFueraDeAlcance > 0;
 }
 
 /// <summary>
@@ -86,11 +103,22 @@ public sealed class GetVinculosProyectoQueryHandler(IApplicationDbContext ctx)
             })
             .ToDictionaryAsync(r => r.Id, ct);
 
+        var vTickets = await ctx.ProyectoTickets.AsNoTracking()
+            .Where(x => x.ProyectoId == q.ProyectoId)
+            .Select(x => new { x.Id, x.TicketId, x.Nota, x.VinculadoPor, x.VinculadoEn })
+            .ToListAsync(ct);
+
         var expedienteIds = vExpedientes.Select(x => x.ExpedienteId).ToList();
         var expedientes = await ctx.Expedientes.AsNoTracking()
             .Where(e => expedienteIds.Contains(e.Id))
             .Select(e => new { e.Id, e.Codigo, e.Institucion, e.EstadoExpediente, e.FechaApertura })
             .ToDictionaryAsync(e => e.Id, ct);
+
+        var ticketIds = vTickets.Select(x => x.TicketId).ToList();
+        var tickets = await ctx.Tickets.AsNoTracking()
+            .Where(t => ticketIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad, t.AsignadoA, t.CreatedAt })
+            .ToDictionaryAsync(t => t.Id, ct);
 
         var filasReuniones = vReuniones
             .Where(v => reuniones.ContainsKey(v.ReunionId))
@@ -117,10 +145,26 @@ public sealed class GetVinculosProyectoQueryHandler(IApplicationDbContext ctx)
             .OrderBy(e => e.Codigo)
             .ToList();
 
+        var filasTickets = vTickets
+            .Where(v => tickets.ContainsKey(v.TicketId))
+            .Select(v =>
+            {
+                var t = tickets[v.TicketId];
+                return new TicketVinculadoDto(
+                    v.Id, t.Id, t.Numero, t.Titulo, t.Estado.ToString(), t.Prioridad.ToString(),
+                    t.AsignadoA, t.CreatedAt, v.Nota, v.VinculadoPor, v.VinculadoEn);
+            })
+            // Los abiertos primero: en un ticket cerrado ya no hay nada que hacer y su lugar es
+            // el histórico, no el encabezado de la lista.
+            .OrderByDescending(t => t.Estado != "Cerrado" && t.Estado != "Resuelto")
+            .ThenByDescending(t => t.Creado)
+            .ToList();
+
         return new VinculosProyectoDto(
-            filasReuniones, filasExpedientes,
+            filasReuniones, filasExpedientes, filasTickets,
             vReuniones.Count   - filasReuniones.Count,
-            vExpedientes.Count - filasExpedientes.Count);
+            vExpedientes.Count - filasExpedientes.Count,
+            vTickets.Count     - filasTickets.Count);
     }
 }
 
@@ -133,12 +177,16 @@ public sealed record OpcionVinculoDto(int Id, string Etiqueta);
 /// duplicado sería prometer una acción que no se puede hacer.
 /// </summary>
 public sealed record GetVinculablesQuery(int ProyectoId) : IRequest<(IReadOnlyList<OpcionVinculoDto> Reuniones,
-                                                                    IReadOnlyList<OpcionVinculoDto> Expedientes)>;
+                                                                    IReadOnlyList<OpcionVinculoDto> Expedientes,
+                                                                    IReadOnlyList<OpcionVinculoDto> Tickets)>;
 
 public sealed class GetVinculablesQueryHandler(IApplicationDbContext ctx)
-    : IRequestHandler<GetVinculablesQuery, (IReadOnlyList<OpcionVinculoDto>, IReadOnlyList<OpcionVinculoDto>)>
+    : IRequestHandler<GetVinculablesQuery, (IReadOnlyList<OpcionVinculoDto>,
+                                            IReadOnlyList<OpcionVinculoDto>,
+                                            IReadOnlyList<OpcionVinculoDto>)>
 {
-    public async Task<(IReadOnlyList<OpcionVinculoDto>, IReadOnlyList<OpcionVinculoDto>)> Handle(
+    public async Task<(IReadOnlyList<OpcionVinculoDto>, IReadOnlyList<OpcionVinculoDto>,
+                       IReadOnlyList<OpcionVinculoDto>)> Handle(
         GetVinculablesQuery q, CancellationToken ct)
     {
         var yaReuniones = await ctx.ProyectoReuniones.AsNoTracking()
@@ -163,7 +211,20 @@ public sealed class GetVinculablesQueryHandler(IApplicationDbContext ctx)
             .Select(e => new OpcionVinculoDto(e.Id, e.Codigo + " · " + e.Institucion))
             .ToListAsync(ct);
 
-        return (reuniones, expedientes);
+        var yaTickets = await ctx.ProyectoTickets.AsNoTracking()
+            .Where(x => x.ProyectoId == q.ProyectoId).Select(x => x.TicketId).ToListAsync(ct);
+
+        // Se ofrecen también los cerrados, a diferencia de lo que hace el selector de proyectos del
+        // otro extremo: un ticket ya resuelto es exactamente lo que alguien quiere adjuntar cuando
+        // documenta a posteriori de dónde salió un requerimiento del proyecto.
+        var tickets = await ctx.Tickets.AsNoTracking()
+            .Where(t => !yaTickets.Contains(t.Id))
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(300)
+            .Select(t => new OpcionVinculoDto(t.Id, t.Numero + " · " + t.Titulo))
+            .ToListAsync(ct);
+
+        return (reuniones, expedientes, tickets);
     }
 }
 
@@ -252,6 +313,51 @@ public sealed class GetProyectosDeExpedienteQueryHandler(IApplicationDbContext c
     {
         var todos = await ctx.ProyectoExpedientes.AsNoTracking().IgnoreQueryFilters()
             .Where(x => x.ExpedienteId == q.ExpedienteId)
+            .Select(x => new { x.Id, x.ProyectoId, x.Nota, x.VinculadoPor, x.VinculadoEn })
+            .ToListAsync(ct);
+
+        var ids = todos.Select(x => x.ProyectoId).ToList();
+
+        var proyectos = await ctx.Proyectos.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .Select(p => new { p.Id, p.Codigo, p.Nombre, p.Estado, p.AvancePct, p.Responsable })
+            .ToDictionaryAsync(p => p.Id, ct);
+
+        var filas = todos
+            .Where(x => proyectos.ContainsKey(x.ProyectoId))
+            .Select(x =>
+            {
+                var p = proyectos[x.ProyectoId];
+                return new ProyectoVinculadoDto(
+                    x.Id, p.Id, p.Codigo, p.Nombre, p.Estado.ToString(), p.AvancePct,
+                    p.Responsable, x.Nota, x.VinculadoPor, x.VinculadoEn);
+            })
+            .OrderBy(p => p.Codigo)
+            .ToList();
+
+        var yaVinculados = filas.Select(f => f.ProyectoId).ToList();
+        var vinculables = await ctx.Proyectos.AsNoTracking()
+            .Where(p => !yaVinculados.Contains(p.Id)
+                     && p.Estado != EstadoProyecto.Cerrado
+                     && p.Estado != EstadoProyecto.Cancelado)
+            .OrderBy(p => p.Codigo)
+            .Select(p => new OpcionVinculoDto(p.Id, p.Codigo + " · " + p.Nombre))
+            .ToListAsync(ct);
+
+        return new ProyectosVinculadosDto(filas, todos.Count - filas.Count, vinculables);
+    }
+}
+
+/// <summary>Los proyectos de un ticket. Mismas reglas que la reunión y el expediente.</summary>
+public sealed record GetProyectosDeTicketQuery(int TicketId) : IRequest<ProyectosVinculadosDto>;
+
+public sealed class GetProyectosDeTicketQueryHandler(IApplicationDbContext ctx)
+    : IRequestHandler<GetProyectosDeTicketQuery, ProyectosVinculadosDto>
+{
+    public async Task<ProyectosVinculadosDto> Handle(GetProyectosDeTicketQuery q, CancellationToken ct)
+    {
+        var todos = await ctx.ProyectoTickets.AsNoTracking().IgnoreQueryFilters()
+            .Where(x => x.TicketId == q.TicketId)
             .Select(x => new { x.Id, x.ProyectoId, x.Nota, x.VinculadoPor, x.VinculadoEn })
             .ToListAsync(ct);
 

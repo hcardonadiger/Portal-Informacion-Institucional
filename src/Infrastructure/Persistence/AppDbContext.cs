@@ -80,6 +80,7 @@ public sealed class AppDbContext(
     public DbSet<DescargaDocumento>         ProyectoDocumentoDescargas { get; init; } = default!;
     public DbSet<ProyectoReunion>           ProyectoReuniones     { get; init; } = default!;
     public DbSet<ProyectoExpediente>        ProyectoExpedientes   { get; init; } = default!;
+    public DbSet<ProyectoTicket>            ProyectoTickets       { get; init; } = default!;
     public DbSet<BitacoraProyecto>          BitacorasProyecto     { get; init; } = default!;
     public DbSet<RiesgoProyecto>            ProyectoRiesgos       { get; init; } = default!;
     public DbSet<InteresadoProyecto>        ProyectoInteresados   { get; init; } = default!;
@@ -265,6 +266,7 @@ public sealed class AppDbContext(
         // avisar o de saltarse el filtro.
         mb.Entity<ProyectoReunion>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
         mb.Entity<ProyectoExpediente>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
+        mb.Entity<ProyectoTicket>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
 
         // El catálogo de categorías es global y no lleva alcance: son etiquetas, no datos de
         // ninguna institución.
@@ -1934,6 +1936,27 @@ public sealed class ProyectoExpedienteConfiguration : IEntityTypeConfiguration<P
 
         b.HasOne<Proyecto>().WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<Expediente>().WithMany().HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ProyectoTicketConfiguration : IEntityTypeConfiguration<ProyectoTicket>
+{
+    public void Configure(EntityTypeBuilder<ProyectoTicket> b)
+    {
+        b.ToTable("ProyectoTickets");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nota).HasMaxLength(ProyectoReunion.MaxNota);
+        b.Property(x => x.VinculadoPor).HasMaxLength(200).IsRequired();
+
+        b.HasIndex(x => new { x.ProyectoId, x.TicketId }).IsUnique();
+        b.HasIndex(x => x.TicketId);
+
+        // Cascada desde el proyecto igual que sus hermanos. Desde el ticket también: Ticket es
+        // borrado lógico (IsDeleted), así que la cascada solo entra si alguien lo borra de verdad
+        // en la base, y en ese caso el vínculo colgando no sirve de nada.
+        b.HasOne<Proyecto>().WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Ticket>().WithMany().HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

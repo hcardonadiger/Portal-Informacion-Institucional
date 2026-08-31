@@ -237,7 +237,8 @@
                 onclick="abrirPestana('vinculos')">
             <svg class="ico"><use href="#i-reunion"></use></svg>Vínculos
             @{
-                var nVinc = Model.Vinculos.Reuniones.Count + Model.Vinculos.Expedientes.Count;
+                var nVinc = Model.Vinculos.Reuniones.Count + Model.Vinculos.Expedientes.Count
+                          + Model.Vinculos.Tickets.Count;
             }
             @if (nVinc > 0)
             {
@@ -895,6 +896,15 @@
                 // que plegado no equivale a esconder.
                 var hayReuniones   = vin.Reuniones.Count   > 0 || vin.ReunionesFueraDeAlcance   > 0;
                 var hayExpedientes = vin.Expedientes.Count > 0 || vin.ExpedientesFueraDeAlcance > 0;
+                var hayTickets     = vin.Tickets.Count     > 0 || vin.TicketsFueraDeAlcance     > 0;
+
+                string EstadoTicketCls(string e) => e switch
+                {
+                    "Abierto"    => "status-badge abierto",
+                    "EnProgreso" => "status-badge enproceso",
+                    "Resuelto"   => "status-badge resuelto",
+                    _            => "status-badge default"
+                };
             }
 
             <details class="card ficha-sec vinc-sec" open="@hayReuniones">
@@ -1101,6 +1111,113 @@
                             <label for="v-nota-e">Por qué (opcional)</label>
                             <input id="v-nota-e" name="VinculoNota" maxlength="400"
                                    placeholder="El proyecto digitaliza este trámite" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
+
+            <details class="card ficha-sec vinc-sec" open="@hayTickets">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Tickets vinculados</span>
+                    <span class="vinc-n">@(vin.Tickets.Count == 0 ? "ninguno" : vin.Tickets.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
+                    Tickets de soporte que este proyecto atiende: un requerimiento que entró por la
+                    mesa de ayuda y terminó siendo trabajo del proyecto. Los abiertos van primero.
+                </p>
+
+                @if (vin.Tickets.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px">Número</th>
+                                    <th>Título</th>
+                                    <th style="width:120px">Estado</th>
+                                    <th style="width:150px">Asignado a</th>
+                                    <th style="width:170px">Vinculado por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in vin.Tickets)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Tickets/Detalle" asp-route-id="@t.TicketId"
+                                               style="font-weight:600;text-decoration:none">@t.Numero</a>
+                                            <div class="res-meta">@t.Prioridad</div>
+                                        </td>
+                                        <td style="white-space:normal">
+                                            @t.Titulo
+                                            @if (!string.IsNullOrWhiteSpace(t.Nota))
+                                            {
+                                                <div class="res-meta">@t.Nota</div>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="@EstadoTicketCls(t.Estado)"
+                                                  style="padding:2px 9px;font-size:var(--diger-fs-xs)">@t.Estado</span>
+                                        </td>
+                                        <td class="res-meta">@(t.AsignadoA ?? "— sin asignar —")</td>
+                                        <td class="res-meta">
+                                            @t.VinculadoPor<br />
+                                            @t.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoTicket"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@t.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (el ticket no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">🎫</div>
+                        <p>No hay tickets vinculados a este proyecto.</p>
+                    </div>
+                }
+
+                @if (vin.TicketsFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.TicketsFueraDeAlcance</strong>
+                        ticket@(vin.TicketsFueraDeAlcance == 1 ? "" : "s") más está@(vin.TicketsFueraDeAlcance == 1 ? "" : "n")
+                        vinculado@(vin.TicketsFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularTicket" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-tck">Vincular un ticket</label>
+                            <select id="v-tck" name="VinculoTicketId" required>
+                                <option value="">— Elija un ticket —</option>
+                                @foreach (var o in Model.TicketsVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-t">Por qué (opcional)</label>
+                            <input id="v-nota-t" name="VinculoNota" maxlength="400"
+                                   placeholder="Lo pedido entra en el entregable de reportes" />
                         </div>
                         <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
                     </form>

@@ -10,7 +10,8 @@ using Xunit;
 namespace Diger.TramitesEstado.Web.Tests;
 
 /// <summary>
-/// La relación opcional entre un proyecto y sus reuniones y expedientes.
+/// La relación opcional entre un proyecto y sus reuniones y expedientes. La tercera pata —tickets—
+/// está en VinculosTicketProyectoTests.
 ///
 /// <para>Lo que hay que probar acá no es el alta —eso es una fila— sino <b>el desajuste de
 /// alcance</b>. El vínculo se ancla en el proyecto, pero la reunión y el expediente llevan su
@@ -272,10 +273,10 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
             "un open=False dejaría la sección abierta: HTML ignora el valor de los booleanos");
         vacio.Should().NotContain("open=\"open\"");
 
-        // Con las dos vacías, ninguna de las dos secciones lleva el atributo.
+        // Con las tres vacías, ninguna de las secciones lleva el atributo.
         System.Text.RegularExpressions.Regex
             .Matches(vacio, "class=\"card ficha-sec vinc-sec\" open")
-            .Count.Should().Be(0, "sin vínculos, las dos secciones van plegadas");
+            .Count.Should().Be(0, "sin vínculos, las tres secciones van plegadas");
 
         // Y al vincular una reunión, la suya se abre.
         var token = TokenRx.Match(vacio).Groups[1].Value;
@@ -285,7 +286,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
         var lleno = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
         System.Text.RegularExpressions.Regex
             .Matches(lleno, "class=\"card ficha-sec vinc-sec\" open")
-            .Count.Should().Be(1, "solo la de reuniones tiene contenido");
+            .Count.Should().Be(1, "solo la de reuniones tiene contenido; expedientes y tickets siguen plegadas");
     }
 
     // ── Barra de pestañas ─────────────────────────────────────────

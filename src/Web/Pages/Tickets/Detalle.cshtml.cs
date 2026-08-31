@@ -1,4 +1,6 @@
 using Diger.TramitesEstado.Application.Common.Exceptions;
+using Diger.TramitesEstado.Application.Proyectos.Commands;
+using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
@@ -24,11 +26,29 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
     public bool PuedeTomar => SinResponsable && EsAdmin;
     public bool PuedeLiberar => !SinResponsable && EsAdmin;
 
+    /// <summary>Los proyectos a los que contribuye este ticket, más los que se le pueden vincular.
+    /// Ver la nota de <c>GetProyectosDeTicketQuery</c> sobre los que quedan fuera de alcance.</summary>
+    public ProyectosVinculadosDto Proyectos { get; private set; } = new([], 0, []);
+
+    /// <summary>Vincular pide <b>Proyectos.Editar</b>, no Tickets.Editar: la acción escribe en la
+    /// ficha y en la bitácora del proyecto. Quien atiende tickets no necesariamente puede eso.</summary>
+    public bool PuedeVincular { get; private set; }
+
+    [BindProperty] public int     VinculoProyectoId { get; set; }
+    [BindProperty] public string? VinculoNota       { get; set; }
+    [BindProperty] public int     VinculoId         { get; set; }
+
     private async Task<bool> CargarAsync(int id, CancellationToken ct)
     {
         try { Ticket = await sender.Send(new GetTicketByIdQuery(id), ct); }
         catch (NotFoundException) { return false; }
         EsAdmin = await acceso.PuedeEditarAsync("Tickets", ct);
+
+        // Los vínculos se cargan acá y no solo en OnGetAsync porque los handlers de POST también
+        // devuelven Page() cuando fallan —comentar vacío, por ejemplo— y esa página tiene que
+        // mostrar los proyectos que el ticket ya tenía, no una lista vacía que parece un dato.
+        Proyectos     = await sender.Send(new GetProyectosDeTicketQuery(id), ct);
+        PuedeVincular = await acceso.PuedeEditarAsync("Proyectos", ct);
         return true;
     }
 
@@ -112,6 +132,40 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
             return RedirectToPage(new { id });
         }
         catch (DomainException ex) { Error = ex.Message; return Page(); }
+    }
+
+    // ── Vínculo con proyectos ─────────────────────────────────────
+    // Se vincula desde acá y no solo desde la ficha del proyecto porque este es el momento en que
+    // se sabe: quien atiende el ticket es quien reconoce que lo pedido es trabajo del proyecto.
+    // La misma relación se gestiona desde los dos extremos, y en los dos exige Proyectos.Editar:
+    // la acción escribe en la ficha y en la bitácora del proyecto, no en el ticket.
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularProyectoAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularTicketCommand(VinculoProyectoId, id, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Ticket vinculado al proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { TempData["ErrorMsg"] = "Ese proyecto no existe o no está a su alcance."; }
+
+        return RedirectToPage(new { id });
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostDesvincularProyectoAsync(int id, int proyectoId, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoTicketCommand(proyectoId, VinculoId), ct);
+            TempData["SuccessMsg"] = "Ticket desvinculado del proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return RedirectToPage(new { id });
     }
 
     [Permission("Tickets", AccionModulo.Editar, "Crear y editar tickets")]
