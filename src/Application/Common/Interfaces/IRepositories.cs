@@ -224,6 +224,10 @@ public interface IApplicationDbContext
     DbSet<CategoriaDocumento>      CategoriasDocumento    { get; }
     DbSet<DocumentoProyecto>       ProyectoDocumentos     { get; }
     DbSet<VersionDocumento>        ProyectoDocumentoVersiones { get; }
+    DbSet<DescargaDocumento>       ProyectoDocumentoDescargas { get; }
+    DbSet<ProyectoReunion>         ProyectoReuniones      { get; }
+    DbSet<ProyectoExpediente>      ProyectoExpedientes    { get; }
+    DbSet<ProyectoTicket>          ProyectoTickets        { get; }
     DbSet<BitacoraProyecto>        BitacorasProyecto      { get; }
     DbSet<RiesgoProyecto>          ProyectoRiesgos        { get; }
     DbSet<InteresadoProyecto>      ProyectoInteresados    { get; }

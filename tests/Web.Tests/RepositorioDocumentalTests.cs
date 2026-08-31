@@ -80,17 +80,31 @@ public sealed class RepositorioDocumentalTests : IAsyncLifetime
         return (cliente, token);
     }
 
+    /// <summary>El alta publica en DocArchivos —acepta varios— y la versión nueva en DocArchivo,
+    /// que sigue siendo de uno solo. Por eso el nombre del campo es un parámetro.</summary>
     private static MultipartFormDataContent Formulario(string token, string archivo, string contenido,
-        params (string Campo, string Valor)[] campos)
+        params (string Campo, string Valor)[] campos) =>
+        FormularioEn(token, "DocArchivos", campos, (archivo, contenido));
+
+    private static MultipartFormDataContent FormularioVersion(string token, string archivo,
+        string contenido, params (string Campo, string Valor)[] campos) =>
+        FormularioEn(token, "DocArchivo", campos, (archivo, contenido));
+
+    private static MultipartFormDataContent FormularioEn(
+        string token, string campoArchivo, (string Campo, string Valor)[] campos,
+        params (string Nombre, string Contenido)[] archivos)
     {
         var form = new MultipartFormDataContent { { new StringContent(token), "__RequestVerificationToken" } };
 
         foreach (var (campo, valor) in campos)
             form.Add(new StringContent(valor), campo);
 
-        var bytes = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(contenido));
-        bytes.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        form.Add(bytes, "DocArchivo", archivo);
+        foreach (var (nombre, contenido) in archivos)
+        {
+            var bytes = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(contenido));
+            bytes.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+            form.Add(bytes, campoArchivo, nombre);
+        }
 
         return form;
     }
@@ -184,7 +198,7 @@ public sealed class RepositorioDocumentalTests : IAsyncLifetime
 
         await cliente.PostAsync(
             $"/Proyectos/Editor/{_proyectoId}?handler=SubirVersion&documentoId={documentoId}",
-            Formulario(token, "v2.pdf", "segunda", ("DocNotas", "se corrigió la cláusula tercera")));
+            FormularioVersion(token, "v2.pdf", "segunda", ("DocNotas", "se corrigió la cláusula tercera")));
         RecordarArchivos();
 
         using var scope = _portal.Services.CreateScope();
@@ -237,7 +251,7 @@ public sealed class RepositorioDocumentalTests : IAsyncLifetime
         var documentoId = await IdDelUnicoDocumentoAsync();
         await cliente.PostAsync(
             $"/Proyectos/Editor/{_proyectoId}?handler=SubirVersion&documentoId={documentoId}",
-            Formulario(token, "v2.pdf", "segunda", ("DocNotas", "corrección")));
+            FormularioVersion(token, "v2.pdf", "segunda", ("DocNotas", "corrección")));
         RecordarArchivos();
 
         var ficha = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
@@ -274,5 +288,116 @@ public sealed class RepositorioDocumentalTests : IAsyncLifetime
                 ("DocTitulo", "Colado"), ("DocCategoriaId", "1")));
 
         respuesta.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+    // ── Alta en lote ──────────────────────────────────────────────
+    [Fact]
+    public async Task Subir_varios_archivos_da_de_alta_un_documento_por_cada_uno()
+    {
+        var (cliente, token) = await SesionAsync();
+
+        var alta = await cliente.PostAsync(
+            $"/Proyectos/Editor/{_proyectoId}?handler=SubirDocumento",
+            FormularioEn(token, "DocArchivos", [("DocCategoriaId", "1")],
+                ("acta-uno.pdf", "primero"), ("acta-dos.pdf", "segundo"), ("acta-tres.pdf", "tercero")));
+        RecordarArchivos();
+
+        alta.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var titulos = await db.ProyectoDocumentos.IgnoreQueryFilters()
+            .Where(d => d.ProyectoId == _proyectoId).Select(d => d.Titulo).ToListAsync();
+
+        // Tres documentos, no tres versiones de uno: cada archivo es una cosa distinta.
+        titulos.Should().BeEquivalentTo(["acta-uno", "acta-dos", "acta-tres"],
+            "sin título en el formulario, cada documento toma el nombre de su archivo sin extensión");
+    }
+
+    [Fact]
+    public async Task El_titulo_escrito_manda_tambien_en_un_lote()
+    {
+        // Regresión: la primera versión del lote descartaba el título cuando venían varios
+        // archivos. El formulario lo aceptaba y lo tiraba, y los documentos salían nombrados con
+        // el archivo. Si alguien escribe un título, se usa —sean uno o veinte—.
+        var (cliente, token) = await SesionAsync();
+
+        await cliente.PostAsync(
+            $"/Proyectos/Editor/{_proyectoId}?handler=SubirDocumento",
+            FormularioEn(token, "DocArchivos",
+                [("DocTitulo", "Registros CONSUCOOP"), ("DocCategoriaId", "1")],
+                ("Registro_CONSUCOOP_2026-07-16.pdf", "uno"), ("IHADFA_historia.pdf", "dos")));
+        RecordarArchivos();
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var titulos = await db.ProyectoDocumentos.IgnoreQueryFilters()
+            .Where(d => d.ProyectoId == _proyectoId).Select(d => d.Titulo).ToListAsync();
+
+        // Se usa lo escrito Y cada fila se distingue: ni descartar el título ni repetirlo tal cual.
+        titulos.Should().BeEquivalentTo(
+            ["Registros CONSUCOOP — Registro_CONSUCOOP_2026-07-16",
+             "Registros CONSUCOOP — IHADFA_historia"]);
+    }
+
+    [Fact]
+    public async Task Con_un_solo_archivo_el_titulo_escrito_manda()
+    {
+        var (cliente, token) = await SesionAsync();
+
+        await cliente.PostAsync(
+            $"/Proyectos/Editor/{_proyectoId}?handler=SubirDocumento",
+            Formulario(token, "adjunto-sin-nombre-util.pdf", "x",
+                ("DocTitulo", "Convenio marco DIGER–SRECI"), ("DocCategoriaId", "1")));
+        RecordarArchivos();
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var titulo = await db.ProyectoDocumentos.IgnoreQueryFilters()
+            .Where(d => d.ProyectoId == _proyectoId).Select(d => d.Titulo).SingleAsync();
+
+        titulo.Should().Be("Convenio marco DIGER–SRECI");
+    }
+
+    [Fact]
+    public async Task Un_archivo_rechazado_no_se_lleva_a_los_demas_del_lote()
+    {
+        // Es la razón de que no haya transacción por lote: el .exe del medio no puede costar
+        // los dos PDF que venían con él.
+        var (cliente, token) = await SesionAsync();
+
+        var alta = await cliente.PostAsync(
+            $"/Proyectos/Editor/{_proyectoId}?handler=SubirDocumento",
+            FormularioEn(token, "DocArchivos", [("DocCategoriaId", "1")],
+                ("bueno-uno.pdf", "sí"), ("malicioso.exe", "no"), ("bueno-dos.pdf", "sí")));
+        RecordarArchivos();
+
+        alta.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var titulos = await db.ProyectoDocumentos.IgnoreQueryFilters()
+            .Where(d => d.ProyectoId == _proyectoId).Select(d => d.Titulo).ToListAsync();
+
+        titulos.Should().BeEquivalentTo(["bueno-uno", "bueno-dos"]);
+
+        // Y el rechazo se dice, nombrando el archivo: un lote que falla en silencio es peor que
+        // no poder subir en lote.
+        var ficha = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+        ficha.Should().Contain("malicioso.exe");
+    }
+
+    [Fact]
+    public async Task Sin_ningun_archivo_lo_dice_y_no_crea_nada()
+    {
+        var (cliente, token) = await SesionAsync();
+
+        await cliente.PostAsync(
+            $"/Proyectos/Editor/{_proyectoId}?handler=SubirDocumento",
+            FormularioEn(token, "DocArchivos", [("DocCategoriaId", "1")]));
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await db.ProyectoDocumentos.IgnoreQueryFilters()
+            .CountAsync(d => d.ProyectoId == _proyectoId)).Should().Be(0);
     }
 }

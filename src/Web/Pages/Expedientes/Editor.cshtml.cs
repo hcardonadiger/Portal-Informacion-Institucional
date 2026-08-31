@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Application.Proyectos.Commands;
+using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Application.Siger.Promocion.Commands.PasarASiger;
 using Diger.TramitesEstado.Application.Siger.Promocion.Queries.GetVistaPreviaPase;
 using System.Globalization;
@@ -50,9 +52,24 @@ public sealed class EditorModel(
     /// ahora es la clave que el servidor exige en esta misma página.</summary>
     public bool EsAdmin { get; private set; }
 
+    /// <summary>Proyectos a los que está vinculado este expediente. Se gestiona desde los dos
+    /// extremos: acá y en la pestaña Vínculos de la ficha del proyecto.</summary>
+    public ProyectosVinculadosDto Proyectos { get; private set; } = new([], 0, []);
+
+    /// <summary>Vincular modifica la ficha del PROYECTO y escribe en su bitácora, así que exige su
+    /// clave y no la de expedientes.</summary>
+    public bool PuedeVincular { get; private set; }
+
+    [BindProperty] public int     VinculoProyectoId { get; set; }
+    [BindProperty] public string? VinculoNota       { get; set; }
+    [BindProperty] public int     VinculoId         { get; set; }
+
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
         EsAdmin    = await acceso.PuedeEditarAsync("Expedientes", ct);
+        PuedeVincular = await acceso.PuedeEditarAsync("Proyectos", ct);
+        if (id is int expId)
+            Proyectos = await sender.Send(new GetProyectosDeExpedienteQuery(expId), ct);
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
         Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         Categorias = await db.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
@@ -111,6 +128,38 @@ public sealed class EditorModel(
         {
             return NotFound();
         }
+    }
+
+    // ── Vínculo con proyectos ─────────────────────────────────────
+    // Proyectos.Editar y no Expedientes.Editar: la acción modifica la ficha del proyecto y escribe
+    // en su bitácora. La misma acción exige el mismo permiso desde donde se haga.
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularProyectoAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularExpedienteCommand(VinculoProyectoId, id, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Expediente vinculado al proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { TempData["ErrorMsg"] = "Ese proyecto no existe o no está a su alcance."; }
+
+        return RedirectToPage(new { id });
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostDesvincularProyectoAsync(int id, int proyectoId, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoExpedienteCommand(proyectoId, VinculoId), ct);
+            TempData["SuccessMsg"] = "Expediente desvinculado del proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return RedirectToPage(new { id });
     }
 
     /// <summary>Autocompletado de contactos por institución (consumido por expediente.js).</summary>
@@ -230,9 +279,8 @@ public sealed class EditorModel(
     /// <summary>Sube un documento de "Documentación solicitada" y devuelve su URL (consumido por expediente.js).</summary>
     public async Task<IActionResult> OnPostSubirDocumentoAsync(IFormFile archivo, CancellationToken ct)
     {
-        if (!EsAdmin)
-            return Forbid();
-
+        // La guarda por EsAdmin que había acá denegaba siempre: la propiedad solo se asigna en
+        // OnGetAsync. Autoriza el [Permission] de arriba, que comprueba lo mismo.
         var guardados = await AdjuntoStorage.GuardarAsync([archivo], env, ct, carpeta: "expedientes");
         return new JsonResult(new { url = guardados.FirstOrDefault()?.Url });
     }
@@ -252,7 +300,15 @@ public sealed class EditorModel(
             }
         }
 
-        if (!EsAdmin && !esContraparte)
+        // Se recalcula acá en vez de leer EsAdmin: esa propiedad solo se asigna en OnGetAsync y en
+        // un POST vale siempre false, con lo que esta guarda quedaba reducida a «solo la
+        // contraparte puede guardar» y dejaba fuera a quien sí tiene el permiso.
+        //
+        // A diferencia de las otras guardas del mismo fallo, esta NO se elimina: no duplica al
+        // [Permission] de la clase, sino que abre una segunda puerta —la contraparte designada,
+        // que guarda su propia ficha— y quitarla cerraría esa puerta.
+        var puedeEditar = await acceso.PuedeEditarAsync("Expedientes", ct);
+        if (!puedeEditar && !esContraparte)
             return Forbid();
 
         // Resolver la institución (el editor envía el nombre)

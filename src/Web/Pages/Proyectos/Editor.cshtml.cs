@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Proyectos.Commands.RegistrarDescargaDocumento;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
@@ -28,6 +29,15 @@ public sealed class EditorModel(
     public IReadOnlyList<BitacoraProyectoDto> Auditoria { get; private set; } = [];
     public IReadOnlyList<RiesgoProyectoDto> Riesgos { get; private set; } = [];
     public IReadOnlyList<InteresadoProyectoDto> Interesados { get; private set; } = [];
+
+    /// <summary>Reuniones, expedientes y tickets vinculados, más el conteo de los que existen pero quedan
+    /// fuera del alcance de quien mira. Ver la nota de GetVinculosProyectoQuery.</summary>
+    public VinculosProyectoDto Vinculos { get; private set; } = new([], [], [], 0, 0, 0);
+
+    /// <summary>Lo que se puede vincular: dentro del alcance y no vinculado ya.</summary>
+    public IReadOnlyList<OpcionVinculoDto> ReunionesVinculables   { get; private set; } = [];
+    public IReadOnlyList<OpcionVinculoDto> ExpedientesVinculables { get; private set; } = [];
+    public IReadOnlyList<OpcionVinculoDto> TicketsVinculables     { get; private set; } = [];
     public AlcanceOpcionesDto Alcance { get; private set; } = new([], []);
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
@@ -125,10 +135,22 @@ public sealed class EditorModel(
     [BindProperty] public DateOnly?         FechaFinPlan    { get; set; }
     [BindProperty] public List<EntregableForm> Entregables  { get; set; } = [];
 
+    // ── Vínculos ────────────────────────────────────────────────────────────
+    [BindProperty] public int     VinculoReunionId    { get; set; }
+    [BindProperty] public int     VinculoExpedienteId { get; set; }
+    [BindProperty] public int     VinculoTicketId     { get; set; }
+    [BindProperty] public string? VinculoNota         { get; set; }
+    [BindProperty] public int     VinculoId           { get; set; }
+
     // ── Documentos ──────────────────────────────────────────────────────────
-    /// <summary>El archivo del documento nuevo o de la versión nueva: los dos formularios usan
-    /// el mismo campo porque nunca se envían a la vez.</summary>
+    /// <summary>El archivo de la versión nueva. El alta de documentos usa
+    /// <see cref="DocArchivos"/>, que acepta varios.</summary>
     [BindProperty] public IFormFile? DocArchivo     { get; set; }
+
+    /// <summary>Los archivos del alta. <b>Cada uno da de alta su propio documento</b>, no varias
+    /// versiones del mismo: subir cinco actas es cinco documentos, y decidir lo contrario habría
+    /// convertido un lote en un historial de versiones que nadie pidió.</summary>
+    [BindProperty] public List<IFormFile> DocArchivos { get; set; } = [];
     [BindProperty] public int        DocCategoriaId { get; set; }
     [BindProperty] public string?    DocTitulo      { get; set; }
     [BindProperty] public string?    DocDescripcion { get; set; }
@@ -567,6 +589,95 @@ public sealed class EditorModel(
         return VolverA(id, "interesados");
     }
 
+    // ── Vínculos con reuniones y expedientes ────────────────────────────────
+    // Van con Proyectos.Editar y no con una clave propia: vincular no expone nada de la reunión
+    // ni del expediente —el destino sigue detrás de su propio filtro— y es una afirmación sobre
+    // el proyecto, igual que cambiarle el objetivo.
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularReunionAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularReunionCommand(id, VinculoReunionId, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Reunión vinculada.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularExpedienteAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularExpedienteCommand(id, VinculoExpedienteId, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Expediente vinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostQuitarVinculoReunionAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoReunionCommand(id, VinculoId), ct);
+            TempData["SuccessMsg"] = "Reunión desvinculada.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostQuitarVinculoExpedienteAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoExpedienteCommand(id, VinculoId), ct);
+            TempData["SuccessMsg"] = "Expediente desvinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularTicketAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularTicketCommand(id, VinculoTicketId, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Ticket vinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostQuitarVinculoTicketAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoTicketCommand(id, VinculoId), ct);
+            TempData["SuccessMsg"] = "Ticket desvinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
     // ── Eliminar ────────────────────────────────────────────────────────────
     [Permission("Proyectos", AccionModulo.Eliminar, "Eliminar proyectos")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
@@ -595,26 +706,107 @@ public sealed class EditorModel(
     // cargar el proyecto por su consulta filtrada. El atributo solo evita ofrecer lo que se va a
     // rechazar y da la clave que la administración de roles muestra.
 
+    /// <summary>
+    /// Da de alta uno o varios documentos en una sola pasada.
+    ///
+    /// <para><b>Cada archivo entra por su cuenta.</b> Un lote de diez donde el séptimo es un .exe
+    /// no puede perder los otros nueve, así que no hay transacción que los abarque: se procesan
+    /// uno a uno y al final se dice qué entró y qué no, nombrando cada archivo rechazado y su
+    /// motivo. Un lote que falla en silencio es peor que no poder subir en lote.</para>
+    ///
+    /// <para><b>El título se usa siempre que se escriba</b>, sean uno o veinte archivos; si se deja
+    /// vacío, cada documento toma el nombre del suyo. Una sola regla y ningún caso especial.</para>
+    ///
+    /// <para>La primera versión descartaba el título cuando el lote traía varios archivos, con el
+    /// argumento de que un título no se reparte entre cinco documentos. Era un mal cambio: el
+    /// formulario aceptaba el texto y lo tiraba, y quien lo escribió se enteraba al ver los
+    /// registros nombrados como sus archivos. Si el resultado son cinco documentos con el mismo
+    /// título, es lo que se pidió —y cada fila muestra su propio nombre de archivo debajo, así que
+    /// siguen distinguiéndose—.</para>
+    /// </summary>
     [Permission("Proyectos.Documentos", AccionModulo.Crear, "Subir documentos de proyecto")]
     public async Task<IActionResult> OnPostSubirDocumentoAsync(int id, CancellationToken ct)
     {
-        try
+        var archivos = DocArchivos.Where(a => a is { Length: > 0 }).ToList();
+
+        if (archivos.Count == 0)
         {
-            if (DocArchivo is null || DocArchivo.Length == 0)
-                throw new DomainException("Elija el archivo que quiere subir.");
-
-            var guardado = await DocumentosStorage.GuardarAsync(DocArchivo, env, ct);
-
-            await sender.Send(new SubirDocumentoCommand(
-                id, DocCategoriaId, DocTitulo ?? "", DocDescripcion,
-                guardado.Nombre, guardado.Url, guardado.Tamano, guardado.Sha256), ct);
-
-            TempData["SuccessMsg"] = "Documento agregado.";
+            TempData["ErrorMsg"] = "Elija al menos un archivo para subir.";
+            return VolverA(id, "documentos");
         }
-        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
-        catch (NotFoundException)  { return NotFound(); }
+
+        var subidos  = 0;
+        var fallidos = new List<string>();
+
+        var tituloComun = string.IsNullOrWhiteSpace(DocTitulo) ? null : DocTitulo.Trim();
+        var enLote      = archivos.Count > 1;
+
+        foreach (var archivo in archivos)
+        {
+            try
+            {
+                var guardado = await DocumentosStorage.GuardarAsync(archivo, env, ct);
+
+                var titulo = TituloDelDocumento(tituloComun, archivo.FileName, enLote);
+
+                await sender.Send(new SubirDocumentoCommand(
+                    id, DocCategoriaId, titulo, DocDescripcion,
+                    guardado.Nombre, guardado.Url, guardado.Tamano, guardado.Sha256), ct);
+
+                subidos++;
+            }
+            // Se atrapa por archivo, no por lote: el rechazo de uno no arrastra a los demás.
+            catch (DomainException ex) { fallidos.Add($"«{archivo.FileName}»: {ex.Message}"); }
+            catch (NotFoundException)  { return NotFound(); }
+        }
+
+        if (subidos > 0)
+            TempData["SuccessMsg"] = subidos == 1
+                ? "Documento agregado."
+                : $"{subidos} documentos agregados.";
+
+        if (fallidos.Count > 0)
+            TempData["ErrorMsg"] = fallidos.Count == 1
+                ? $"No se subió {fallidos[0]}"
+                : $"No se subieron {fallidos.Count} archivos. " + string.Join(" ", fallidos);
 
         return VolverA(id, "documentos");
+    }
+
+    /// <summary>
+    /// Cómo se llama cada documento del alta.
+    ///
+    /// <para>Un solo archivo: el título escrito, o el nombre del archivo si no se escribió ninguno.</para>
+    ///
+    /// <para>Varios: <c>«Título — nombre del archivo»</c>. Es la única forma que no pierde nada ni
+    /// deja el listado con N filas idénticas. Las dos alternativas se probaron y fallaron: descartar
+    /// el título hacía que el formulario aceptara texto y lo tirara, y repetirlo tal cual llenaba la
+    /// biblioteca de documentos indistinguibles por su nombre.</para>
+    /// </summary>
+    private static string TituloDelDocumento(string? titulo, string archivo, bool enLote)
+    {
+        var delArchivo = TituloDesdeArchivo(archivo);
+
+        if (titulo is null)   return delArchivo;
+        if (!enLote)          return titulo;
+
+        var compuesto = $"{titulo} — {delArchivo}";
+        return compuesto.Length > DocumentoProyecto.MaxTitulo
+            ? compuesto[..DocumentoProyecto.MaxTitulo]
+            : compuesto;
+    }
+
+    /// <summary>El nombre del archivo sin su extensión, recortado al largo que admite el título.
+    /// Si quedara vacío —un archivo llamado «.pdf»— se usa el nombre completo, porque el dominio
+    /// exige título y quedarse sin uno perdería el archivo por un detalle del nombre.</summary>
+    private static string TituloDesdeArchivo(string nombre)
+    {
+        var sinExt = Path.GetFileNameWithoutExtension(nombre).Trim();
+        if (sinExt.Length == 0) sinExt = nombre.Trim();
+
+        return sinExt.Length > DocumentoProyecto.MaxTitulo
+            ? sinExt[..DocumentoProyecto.MaxTitulo]
+            : sinExt;
     }
 
     [Permission("Proyectos.Documentos", AccionModulo.Crear, "Subir documentos de proyecto")]
@@ -689,6 +881,10 @@ public sealed class EditorModel(
             return VolverA(meta.ProyectoId, "documentos");
         }
 
+        // Después de resolver la ruta y antes de servir: no se anota una descarga que no ocurrió
+        // porque el archivo ya no estaba.
+        await sender.Send(new RegistrarDescargaDocumentoCommand(versionId), ct);
+
         return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(meta.ArchivoNombre), meta.ArchivoNombre);
     }
     public async Task<IActionResult> OnGetEvidenciaAsync(int avanceId, CancellationToken ct)
@@ -724,6 +920,12 @@ public sealed class EditorModel(
         Auditoria   = await sender.Send(new GetBitacoraProyectoQuery(id), ct);
         Riesgos     = await sender.Send(new GetRiesgosProyectoQuery(id), ct);
         Interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);
+        Vinculos    = await sender.Send(new GetVinculosProyectoQuery(id), ct);
+
+        var vinculables = await sender.Send(new GetVinculablesQuery(id), ct);
+        ReunionesVinculables   = vinculables.Reuniones;
+        ExpedientesVinculables = vinculables.Expedientes;
+        TicketsVinculables     = vinculables.Tickets;
 
         var mutable = HttpContext.CanMutate() && !dto.EstaCerrado;
         PuedeEditar         = mutable && await acceso.PuedeEditarAsync("Proyectos", ct);

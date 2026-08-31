@@ -183,4 +183,77 @@ public sealed class BibliotecaTests : IAsyncLifetime
 
         respuesta.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    // ── Modos de vista ────────────────────────────────────────────
+    [Fact]
+    public async Task El_modo_por_defecto_sigue_siendo_la_lista()
+    {
+        // Deliberado: no se le cambia la pantalla a quien ya usa la biblioteca, y el listado es lo
+        // único que muestra los títulos —de lo que dependen las pruebas de aislamiento de arriba—.
+        var html = await BibliotecaAsync("DIGER");
+
+        html.Should().Contain("Convenio marco DIGER");
+        html.Should().Contain("bib-seg on", "el selector de modo marca cuál está activo");
+    }
+
+    [Fact]
+    public async Task En_carpetas_se_ven_los_grupos_y_no_los_documentos()
+    {
+        var html = await BibliotecaAsync("DIGER", "Modo=Carpetas&Organizar=Categoria");
+
+        html.Should().Contain("bib-carpeta").And.Contain("Convenio");
+        html.Should().NotContain("Convenio marco DIGER",
+            "el mosaico muestra carpetas, no los documentos de dentro");
+    }
+
+    [Fact]
+    public async Task Al_abrir_una_carpeta_aparecen_sus_documentos_y_la_ruta_de_vuelta()
+    {
+        var html = await BibliotecaAsync("DIGER", "Modo=Carpetas&Organizar=Categoria&Carpeta=Convenio");
+
+        html.Should().Contain("Convenio marco DIGER");
+        html.Should().Contain("← Carpetas");
+    }
+
+    [Fact]
+    public async Task Las_carpetas_no_se_saltan_el_alcance()
+    {
+        // El agrupado es presentación: agrupar por proyecto no puede mostrar proyectos ajenos.
+        var html = await BibliotecaAsync("DIGER", "Modo=Carpetas&Organizar=Proyecto");
+
+        html.Should().Contain("PRY-2026-70");
+        html.Should().NotContain("PRY-2026-71", "sigue siendo la documentación que uno puede ver");
+    }
+
+    // ── Filtros nuevos ────────────────────────────────────────────
+    [Fact]
+    public async Task Se_puede_filtrar_por_quien_carga_la_documentacion()
+    {
+        var html = await BibliotecaAsync("DIGER", "SubidoPor=Quien%20sembr%C3%B3");
+        html.Should().Contain("Convenio marco DIGER");
+
+        var vacio = await BibliotecaAsync("DIGER", "SubidoPor=Alguien%20que%20no%20existe");
+        vacio.Should().NotContain("Convenio marco DIGER");
+        vacio.Should().Contain("Ningún documento cumple con estos filtros");
+    }
+
+    [Fact]
+    public async Task Se_puede_filtrar_por_tipo_de_archivo()
+    {
+        var pdf = await BibliotecaAsync("DIGER", "Tipo=pdf");
+        pdf.Should().Contain("Convenio marco DIGER");
+
+        var docx = await BibliotecaAsync("DIGER", "Tipo=docx");
+        docx.Should().NotContain("Convenio marco DIGER");
+    }
+
+    [Fact]
+    public async Task El_filtro_de_historial_deja_fuera_los_de_una_sola_version()
+    {
+        // El documento sembrado tiene una sola versión: no se negoció, se archivó.
+        var html = await BibliotecaAsync("DIGER", "ConHistorial=true");
+
+        html.Should().NotContain("Convenio marco DIGER");
+        html.Should().Contain("Ningún documento cumple con estos filtros");
+    }
 }

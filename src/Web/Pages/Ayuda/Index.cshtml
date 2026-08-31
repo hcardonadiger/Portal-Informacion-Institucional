@@ -278,7 +278,13 @@
                     </div>
 
                     <h3 class="ayuda-subtitulo">5. Las pestañas de la ficha</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Están ordenadas por lo que más se usa. La ficha <strong>abre en «Datos del proyecto»</strong>:
+                        es lo que identifica al proyecto y lo que se quiere ver al entrar, aunque se edite poco.
+                    </p>
                     <ul class="ayuda-lista">
+                        <li><strong>📋 Datos del proyecto:</strong> nombre, objetivo, responsable, prioridad, fechas
+                            y alcance. La pestaña que abre por defecto.</li>
                         <li><strong>🗂️ Estructura:</strong> el desglose en entregables y actividades. Es donde se
                             cargan fechas, responsables y dependencias.</li>
                         <li><strong>📅 Cronograma:</strong> la misma estructura vista en el tiempo. Las barras son las
@@ -286,11 +292,18 @@
                             rombo, la fecha comprometida del entregable.</li>
                         <li><strong>📝 Bitácora:</strong> el histórico de reportes con su evidencia. No se borra nada;
                             el responsable del proyecto puede corregir una entrada y la corrección queda marcada.</li>
-                        <li><strong>📁 Documentos:</strong> el repositorio del proyecto, con versiones.</li>
                         <li><strong>👥 Equipo y riesgos:</strong> interesados y registro de riesgos.</li>
-                        <li><strong>📋 Datos del proyecto:</strong> nombre, objetivo, fechas y alcance.</li>
+                        <li><strong>📁 Documentos:</strong> el repositorio del proyecto, con versiones.</li>
+                        <li><strong>🔗 Vínculos:</strong> las reuniones y los expedientes que tocan este proyecto.
+                            Ver el punto 8.</li>
                         <li><strong>🔎 Auditoría:</strong> quién tocó qué y cuándo. Se escribe sola.</li>
                     </ul>
+                    <div class="ayuda-box info">
+                        💾 <strong>El botón de guardar solo aparece en Estructura y en Datos.</strong> Son las dos
+                        pestañas que guarda el mismo formulario. En el resto, cada acción se guarda con su propio
+                        botón —reportar un avance, subir un documento, vincular una reunión— y tiene efecto
+                        inmediato.
+                    </div>
 
                     <h3 class="ayuda-subtitulo">6. Dependencias entre actividades</h3>
                     <p style="font-size:14px;color:#334155;line-height:1.6">
@@ -309,17 +322,112 @@
                         <li><strong>Documentos del proyecto</strong> (pestaña <code>Documentos</code>): convenios, actas,
                             informes. Se clasifican por categoría y <strong>se versionan</strong>: si un acta se corrige,
                             suba una versión nueva y la anterior queda en el historial. Ninguna versión se pisa.</li>
+                        <li><strong>Puede subir varios archivos a la vez.</strong> Cada uno da de alta
+                            <strong>su propio documento</strong> —no varias versiones del mismo—, todos en la
+                            categoría que elija. Si escribe un título, con un solo archivo se usa tal cual; con
+                            varios, cada documento se llama «Título — nombre del archivo». Si lo deja vacío, cada
+                            uno toma el nombre de su archivo.</li>
+                        <li><strong>Un archivo rechazado no arrastra a los demás.</strong> Si en un lote de diez uno
+                            no es de un tipo permitido, los otros nueve entran igual y el portal le dice cuál falló
+                            y por qué.</li>
                         <li><strong>Biblioteca</strong> (<code>Proyectos &gt; Biblioteca</code>): la consulta transversal.
-                            Toda la documentación de todos los proyectos que usted puede ver, con filtros por
-                            categoría, proyecto, texto y fechas.</li>
+                            Toda la documentación de todos los proyectos que usted puede ver.</li>
                     </ul>
+
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        La biblioteca se puede mirar de <strong>tres formas</strong>, con el selector de arriba:
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Carpetas:</strong> un mosaico navegable. Entra a una y ve lo que contiene.</li>
+                        <li><strong>Agrupado:</strong> todos los grupos abiertos a la vez, para barrer sin navegar.</li>
+                        <li><strong>Lista:</strong> la tabla plana. Es la vista por defecto.</li>
+                    </ul>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Y el <strong>criterio de agrupación se cambia</strong> con «Organizar por»: por categoría
+                        («todos los convenios»), por proyecto («el expediente documental de este») o por
+                        responsable de carga («qué mantiene cada persona»). Es la misma documentación con tres
+                        formas de entrar.
+                    </p>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Además de buscar por texto, categoría, proyecto y fechas, puede filtrar por
+                        <strong>quién cargó</strong> la versión vigente, por <strong>tipo de archivo</strong>, y con
+                        dos interruptores: <em>con más de una versión</em> —los documentos que se negocian, frente a
+                        los que se archivan y no se tocan— y <em>sin actualizar en 90+ días</em>.
+                    </p>
+
+                    <div class="ayuda-box info">
+                        ⬇️ <strong>Las descargas quedan registradas.</strong> Cada vez que alguien baja un archivo se
+                        anota quién y cuándo. La biblioteca muestra el total por documento y la última descarga; la
+                        pestaña <code>Documentos</code> de la ficha lo muestra <strong>por versión</strong>, que es lo
+                        que distingue si se llevaron la copia vieja o la corregida. Se registra desde el 31 de agosto
+                        de 2026: lo anterior figura sin descargas aunque se hubiera bajado.
+                    </div>
+
                     <div class="ayuda-box notice">
                         📎 <strong>No confunda documento con evidencia.</strong> La <em>evidencia</em> de la bitácora
                         respalda un reporte concreto y queda atada a esa fecha. El <em>documento</em> es
                         documentación del proyecto, existe por sí misma y se versiona.
                     </div>
 
+                    <h3 class="ayuda-subtitulo">8. Vínculos con reuniones y expedientes</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Un proyecto puede señalar qué <strong>reuniones</strong> lo trataron y qué
+                        <strong>expedientes</strong> atiende. El vínculo es <strong>opcional por los dos lados</strong>:
+                        una reunión puede no pertenecer a ningún proyecto —la mayoría no pertenece— y puede tocar a
+                        varios; un proyecto vive sin ninguno.
+                    </p>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        <strong>Se gestiona desde los tres sitios</strong>, y es la misma relación:
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li>Desde la ficha del proyecto, pestaña <code>Vínculos</code>.</li>
+                        <li>Desde el acta de la reunión, bloque <code>Proyectos vinculados</code>. <strong>Es el sitio
+                            natural:</strong> cuando acaba de documentar una reunión tiene presente de qué trataba.</li>
+                        <li>Desde el expediente, el mismo bloque.</li>
+                    </ul>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Puede anotar <strong>por qué</strong> se vinculó —«se acordó el alcance del enlace de fibra»—.
+                        Seis meses después, eso explica el vínculo que el título de la reunión no explica. Y la
+                        <strong>✕</strong> quita el vínculo <strong>sin tocar</strong> la reunión ni el expediente:
+                        solo deja de afirmarse que están relacionados.
+                    </p>
+                    <div class="ayuda-box notice">
+                        👁️ <strong>Puede ver un vínculo y no poder abrir su destino.</strong> No es un error. Los
+                        proyectos y las reuniones se ven con reglas distintas: el proyecto lo ve además su
+                        responsable y sus interesados aunque sean de otra institución, y la institución del proyecto
+                        es la que <em>ejecuta</em> mientras que la de la reunión es la <em>beneficiaria</em>. Cuando
+                        eso pasa, la ficha le dice <strong>cuántos vínculos quedan fuera de su alcance</strong> en
+                        vez de esconderlos: así una ficha con seis reuniones vinculadas no se lee como si tuviera dos.
+                    </div>
+                    <div class="ayuda-box info">
+                        📂 <strong>Las secciones vacías salen plegadas.</strong> Si el proyecto no tiene reuniones ni
+                        expedientes vinculados, las dos secciones aparecen cerradas para no hacerle bajar por dos
+                        vacíos. El resumen sigue diciendo cuántos hay.
+                    </div>
+
                     <h3 class="ayuda-subtitulo">Preguntas frecuentes del módulo</h3>
+
+                    <details class="faq-item">
+                        <summary>Subí varios archivos y todos quedaron con el mismo nombre</summary>
+                        <div class="faq-body">
+                            Revise si escribió un título. Con <strong>un</strong> archivo el título se usa tal cual;
+                            con <strong>varios</strong>, cada documento se llama «Título — nombre del archivo», así
+                            que se distinguen entre sí. Si prefiere que cada uno tome solo el nombre de su archivo,
+                            deje el título en blanco.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>La ficha dice que hay vínculos que no veo</summary>
+                        <div class="faq-body">
+                            Es deliberado. Los proyectos y las reuniones se ven con reglas distintas —un proyecto lo
+                            ve también su responsable y sus interesados aunque sean de otra institución— así que
+                            puede haber reuniones o expedientes vinculados que usted no alcanza. El portal
+                            <strong>le dice cuántos son</strong> en vez de esconderlos, para que no lea una ficha
+                            incompleta como si estuviera completa. No se muestra ni su título ni su institución.
+                            Si necesita verlos, pida el acceso correspondiente.
+                        </div>
+                    </details>
 
                     <details class="faq-item">
                         <summary>El selector de responsable aparece vacío</summary>

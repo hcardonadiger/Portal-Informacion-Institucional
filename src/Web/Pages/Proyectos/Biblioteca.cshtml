@@ -1,5 +1,6 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Proyectos.BibliotecaModel
+@using Diger.TramitesEstado.Application.Proyectos.Queries
 @{
     ViewData["Title"] = "Biblioteca de documentación";
     var d = Model.Datos;
@@ -71,15 +72,99 @@
                 <input id="b-hasta" type="date" name="Hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" />
             </div>
 
+            @* Quién mantiene el documento: es la pregunta de coordinación que no se podía hacer. *@
+            <div class="field" style="min-width:190px;margin:0">
+                <label for="b-resp">Cargado o actualizado por</label>
+                <select id="b-resp" name="SubidoPor">
+                    <option value="">— Cualquiera —</option>
+                    @foreach (var r in d.Responsables)
+                    {
+                        <option value="@r.Valor" selected="@(Model.SubidoPor == r.Valor)">@r.Valor (@r.Cantidad)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="field" style="width:130px;margin:0">
+                <label for="b-tipo">Tipo</label>
+                <select id="b-tipo" name="Tipo">
+                    <option value="">— Todos —</option>
+                    @foreach (var t in d.Tipos)
+                    {
+                        <option value="@t.Valor" selected="@(Model.Tipo == t.Valor)">@t.Valor.ToUpperInvariant() (@t.Cantidad)</option>
+                    }
+                </select>
+            </div>
+
+            @* El modo de vista y el criterio viajan en el formulario para no perderse al filtrar. *@
+            <input type="hidden" name="Modo" value="@Model.Modo" />
+            <input type="hidden" name="Organizar" value="@Model.Organizar" />
+
             <div style="display:flex;gap:8px">
                 <button type="submit" class="btnp">Filtrar</button>
                 @if (Model.ConFiltros)
                 {
-                    <a class="btns" asp-page="/Proyectos/Biblioteca">Limpiar</a>
+                    <a class="btns" asp-page="/Proyectos/Biblioteca"
+                       asp-route-Modo="@Model.Modo" asp-route-Organizar="@Model.Organizar">Limpiar</a>
                 }
             </div>
         </div>
+
+        @* Dos preguntas frecuentes de seguimiento, como interruptores en vez de filtros con
+           formulario: los documentos que se negocian, y los que quedaron parados. *@
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
+            <label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:0">
+                <input type="checkbox" name="ConHistorial" value="true" checked="@Model.ConHistorial"
+                       onchange="this.form.submit()" />
+                Con más de una versión
+            </label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:0"
+                   title="Su última versión tiene @BibliotecaModel.DiasEstancado días o más">
+                <input type="checkbox" name="Estancados" value="true" checked="@Model.Estancados"
+                       onchange="this.form.submit()" />
+                Sin actualizar en @BibliotecaModel.DiasEstancado+ días
+            </label>
+        </div>
     </form>
+
+    @* ── Modo de vista ───────────────────────────────────────────── *@
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
+        <div class="bib-segs" role="group" aria-label="Modo de vista">
+            @foreach (var (modo, etiqueta) in new[]
+            {
+                (BibliotecaModel.ModoVista.Carpetas, "Carpetas"),
+                (BibliotecaModel.ModoVista.Agrupado, "Agrupado"),
+                (BibliotecaModel.ModoVista.Lista,    "Lista")
+            })
+            {
+                <a class="bib-seg @(Model.Modo == modo ? "on" : "")"
+                   asp-page="/Proyectos/Biblioteca" asp-route-Modo="@modo"
+                   asp-route-Organizar="@Model.Organizar"
+                   asp-route-CategoriaId="@Model.CategoriaId" asp-route-ProyectoId="@Model.ProyectoId"
+                   asp-route-Q="@Model.Q" asp-route-Desde="@(Model.Desde?.ToString("yyyy-MM-dd"))"
+                   asp-route-Hasta="@(Model.Hasta?.ToString("yyyy-MM-dd"))"
+                   asp-route-SubidoPor="@Model.SubidoPor" asp-route-Tipo="@Model.Tipo"
+                   asp-route-ConHistorial="@Model.ConHistorial" asp-route-Estancados="@Model.Estancados">@etiqueta</a>
+            }
+        </div>
+
+        @if (Model.Modo != BibliotecaModel.ModoVista.Lista)
+        {
+            <form method="get" style="display:flex;gap:8px;align-items:center;margin:0">
+                <input type="hidden" name="Modo" value="@Model.Modo" />
+                <input type="hidden" name="CategoriaId" value="@Model.CategoriaId" />
+                <input type="hidden" name="ProyectoId" value="@Model.ProyectoId" />
+                <input type="hidden" name="Q" value="@Model.Q" />
+                <input type="hidden" name="SubidoPor" value="@Model.SubidoPor" />
+                <input type="hidden" name="Tipo" value="@Model.Tipo" />
+                <label for="b-org" style="font-size:13px;margin:0">Organizar por</label>
+                <select id="b-org" name="Organizar" onchange="this.form.submit()" style="width:auto">
+                    <option value="Categoria"   selected="@(Model.Organizar == BibliotecaModel.CriterioCarpeta.Categoria)">Categoría</option>
+                    <option value="Proyecto"    selected="@(Model.Organizar == BibliotecaModel.CriterioCarpeta.Proyecto)">Proyecto</option>
+                    <option value="Responsable" selected="@(Model.Organizar == BibliotecaModel.CriterioCarpeta.Responsable)">Responsable de carga</option>
+                </select>
+            </form>
+        }
+    </div>
 
     @* ── Resultados ──────────────────────────────────────────────── *@
     <div class="card">
@@ -105,6 +190,10 @@
         }
         else
         {
+            @* La tabla se declara una vez y la usan los tres modos: en lista sobre todo el
+               resultado, en agrupado y en carpetas sobre el subconjunto de cada grupo. *@
+            async Task Tabla(IEnumerable<DocumentoBibliotecaDto> docs)
+            {
             <div style="overflow-x:auto">
                 <table class="seg-table">
                     <thead>
@@ -113,11 +202,14 @@
                             <th style="width:130px">Categoría</th>
                             <th style="width:220px">Proyecto</th>
                             <th style="width:170px">Última versión</th>
+                            @* Responde «¿esta documentación la está usando alguien?». Cuenta el
+                               documento entero, todas sus versiones sumadas. *@
+                            <th style="width:110px">Descargas</th>
                             <th style="width:64px"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var doc in d.Documentos)
+                        @foreach (var doc in docs)
                         {
                             <tr>
                                 <td style="white-space:normal">
@@ -152,6 +244,24 @@
                                 <td class="res-meta">
                                     @doc.SubidoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")<br />@doc.SubidoPor
                                 </td>
+                                <td class="res-meta">
+                                    @if (doc.Descargas == 0)
+                                    {
+                                        <span title="Nadie la ha descargado desde que se registra (31/08/2026). Las descargas anteriores a esa fecha no constan.">—</span>
+                                    }
+                                    else
+                                    {
+                                        <strong>@doc.Descargas</strong><text> </text>
+                                        <span>@(doc.Descargas == 1 ? "descarga" : "descargas")</span>
+                                        @if (doc.UltimaDescargaEn is { } cuando)
+                                        {
+                                            <div style="font-size:var(--diger-fs-2xs)"
+                                                 title="Última descarga registrada">
+                                                @cuando.ToLocalTime().ToString("dd/MM/yyyy HH:mm")<br />@doc.UltimaDescargaPor
+                                            </div>
+                                        }
+                                    }
+                                </td>
                                 <td style="text-align:right">
                                     <a class="btns" asp-page-handler="Descargar" asp-route-versionId="@doc.VersionId"
                                        title="Descargar @doc.ArchivoNombre">📥</a>
@@ -161,6 +271,87 @@
                     </tbody>
                 </table>
             </div>
+            }
+
+            @if (Model.Modo == BibliotecaModel.ModoVista.Lista)
+            {
+                await Tabla(d.Documentos);
+            }
+            else
+            {
+                var grupos = d.Documentos
+                    .GroupBy(Model.ClaveCarpeta)
+                    .OrderBy(g => g.Key)
+                    .ToList();
+
+                if (Model.Modo == BibliotecaModel.ModoVista.Agrupado)
+                {
+                    foreach (var g in grupos)
+                    {
+                        <div class="bib-grupo">
+                            <div class="bib-grupo-h">
+                                <strong>@g.Key</strong>
+                                <span class="res-meta">@g.Count() documento@(g.Count() == 1 ? "" : "s")</span>
+                            </div>
+                            @{ await Tabla(g); }
+                        </div>
+                    }
+                }
+                else if (Model.Carpeta is { Length: > 0 } abierta)
+                {
+                    var dentro = grupos.FirstOrDefault(g => g.Key == abierta);
+                    <div class="bib-ruta">
+                        <a class="btns" asp-page="/Proyectos/Biblioteca"
+                           asp-route-Modo="Carpetas" asp-route-Organizar="@Model.Organizar"
+                           asp-route-CategoriaId="@Model.CategoriaId" asp-route-ProyectoId="@Model.ProyectoId"
+                           asp-route-Q="@Model.Q" asp-route-SubidoPor="@Model.SubidoPor"
+                           asp-route-Tipo="@Model.Tipo" asp-route-ConHistorial="@Model.ConHistorial"
+                           asp-route-Estancados="@Model.Estancados">← Carpetas</a>
+                        <span class="res-meta">/</span>
+                        <strong>@abierta</strong>
+                        <span class="res-meta">@(dentro?.Count() ?? 0) documento@((dentro?.Count() ?? 0) == 1 ? "" : "s")</span>
+                    </div>
+
+                    if (dentro is null)
+                    {
+                        @* La carpeta existe en la URL pero ningún documento cae en ella con los
+                           filtros puestos. Se dice, en vez de mostrar una tabla vacía sin explicar. *@
+                        <div class="hist-empty">
+                            <div class="ico">📂</div>
+                            <p>Esta carpeta no tiene documentos con los filtros puestos.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        await Tabla(dentro);
+                    }
+                }
+                else
+                {
+                    <div class="bib-carpetas">
+                        @foreach (var g in grupos)
+                        {
+                            var archivos = g.Sum(x => x.TotalVersiones);
+                            var ultima   = g.Max(x => x.SubidoEn);
+                            <a class="bib-carpeta"
+                               asp-page="/Proyectos/Biblioteca" asp-route-Modo="Carpetas"
+                               asp-route-Organizar="@Model.Organizar" asp-route-Carpeta="@g.Key"
+                               asp-route-CategoriaId="@Model.CategoriaId" asp-route-ProyectoId="@Model.ProyectoId"
+                               asp-route-Q="@Model.Q" asp-route-SubidoPor="@Model.SubidoPor"
+                               asp-route-Tipo="@Model.Tipo" asp-route-ConHistorial="@Model.ConHistorial"
+                               asp-route-Estancados="@Model.Estancados">
+                                <span class="bib-carpeta-ico" aria-hidden="true">📁</span>
+                                <span class="bib-carpeta-nom">@g.Key</span>
+                                <span class="res-meta">
+                                    @g.Count() documento@(g.Count() == 1 ? "" : "s") ·
+                                    @archivos archivo@(archivos == 1 ? "" : "s")
+                                </span>
+                                <span class="res-meta">al @ultima.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                            </a>
+                        }
+                    </div>
+                }
+            }
         }
     </div>
 </div>

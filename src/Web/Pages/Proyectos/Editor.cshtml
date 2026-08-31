@@ -70,7 +70,13 @@
                 }
             </div>
         </div>
-        <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+            @* La ficha es para editar; el tablero, para leer cómo va. Se separan porque el segundo
+               calcula cosas que la ficha no muestra —esperado a la fecha, carga por persona— y
+               mezclarlas alargaría una pantalla que ya tiene ocho pestañas. *@
+            <a class="btns" asp-page="/Tableros/Proyecto" asp-route-id="@p.Id" style="font-size:13px">Tablero →</a>
+            <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
+        </div>
     </div>
 
     @* ── Resumen de ejecución ────────────────────────────────────── *@
@@ -175,35 +181,41 @@
     @* Antes eran ocho secciones apiladas con un índice de anclas que solo saltaba dentro de un
        scroll de varias pantallas. Ahora el índice ES la navegación: se pinta una sección a la vez.
 
-       El orden de la barra sigue el uso —la estructura primero, los datos del proyecto casi al
-       final— y NO coincide con el orden del DOM: «Datos» tiene que vivir dentro del mismo <form>
-       que la estructura porque las guarda el mismo comando. aria-controls es lo que ata cada
-       botón con su panel, así que la diferencia no le importa a nadie salvo al lector del HTML. *@
+       El orden de la barra sigue la probabilidad de uso y NO coincide con el orden del DOM:
+       «Datos» tiene que vivir dentro del mismo <form> que la estructura porque las guarda el mismo
+       comando. aria-controls es lo que ata cada botón con su panel, así que la diferencia no le
+       importa a nadie salvo al lector del HTML.
+
+       Datos va primero y es la que abre por defecto: es la pestaña de aterrizaje. Lo que identifica
+       al proyecto —nombre, responsable, fechas, estado— es lo que se quiere ver al abrir la ficha,
+       aunque se edite poco.
+
+       El resto sigue el volumen real del portafolio: 214 actividades y 33 entregables en la
+       estructura, 44 reportes en la bitácora, 8 entre interesados y riesgos, 4 documentos y ningún
+       vínculo todavía. La auditoría cierra: solo se abre para investigar algo. *@
     <nav class="ficha-tabs" role="tablist" aria-label="Secciones de la ficha">
+        <button type="button" role="tab" id="tab-datos" data-tab="datos"
+                aria-controls="panel-datos" aria-selected="true"
+                onclick="abrirPestana('datos')">
+            <span aria-hidden="true">📋</span> Datos del proyecto
+        </button>
         <button type="button" role="tab" id="tab-estructura" data-tab="estructura"
-                aria-controls="panel-estructura" aria-selected="true"
+                aria-controls="panel-estructura" aria-selected="false" tabindex="-1"
                 onclick="abrirPestana('estructura')">
             <span aria-hidden="true">🗂️</span> Estructura
             <span class="n">@p.TotalEntregables · @p.TotalActividades</span>
+        </button>
         <button type="button" role="tab" id="tab-cronograma" data-tab="cronograma"
                 aria-controls="panel-cronograma" aria-selected="false" tabindex="-1"
                 onclick="abrirPestana('cronograma')"
                 title="La estructura vista en el tiempo, con el avance sobre cada barra">
             <span aria-hidden="true">📅</span> Cronograma
         </button>
-        </button>
         <button type="button" role="tab" id="tab-bitacora" data-tab="bitacora"
                 aria-controls="panel-bitacora" aria-selected="false" tabindex="-1"
                 onclick="abrirPestana('bitacora')">
             <span aria-hidden="true">📝</span> Bitácora
             <span class="n">@Model.Avances.Count</span>
-        <button type="button" role="tab" id="tab-documentos" data-tab="documentos"
-                aria-controls="panel-documentos" aria-selected="false" tabindex="-1"
-                onclick="abrirPestana('documentos')"
-                title="Convenios, actas e informes del proyecto, con su historial de versiones">
-            <span aria-hidden="true">📁</span> Documentos
-            <span class="n">@Model.Documentos.Count</span>
-        </button>
         </button>
         <button type="button" role="tab" id="tab-equipo" data-tab="equipo"
                 aria-controls="panel-equipo" aria-selected="false" tabindex="-1"
@@ -212,10 +224,26 @@
             <span aria-hidden="true">👥</span> Equipo y riesgos
             <span class="n">@Model.Interesados.Count · @Model.Riesgos.Count(r => r.EstaAbierto)</span>
         </button>
-        <button type="button" role="tab" id="tab-datos" data-tab="datos"
-                aria-controls="panel-datos" aria-selected="false" tabindex="-1"
-                onclick="abrirPestana('datos')">
-            <span aria-hidden="true">📋</span> Datos del proyecto
+        <button type="button" role="tab" id="tab-documentos" data-tab="documentos"
+                aria-controls="panel-documentos" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('documentos')"
+                title="Convenios, actas e informes del proyecto, con su historial de versiones">
+            <span aria-hidden="true">📁</span> Documentos
+            <span class="n">@Model.Documentos.Count</span>
+        </button>
+        @* Vínculos: lo que este proyecto toca fuera de su propia estructura. *@
+        <button type="button" role="tab" id="tab-vinculos" data-tab="vinculos"
+                aria-controls="panel-vinculos" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('vinculos')">
+            <svg class="ico"><use href="#i-reunion"></use></svg>Vínculos
+            @{
+                var nVinc = Model.Vinculos.Reuniones.Count + Model.Vinculos.Expedientes.Count
+                          + Model.Vinculos.Tickets.Count;
+            }
+            @if (nVinc > 0)
+            {
+                <span class="n">@nVinc</span>
+            }
         </button>
         <button type="button" role="tab" id="tab-auditoria" data-tab="auditoria"
                 aria-controls="panel-auditoria" aria-selected="false" tabindex="-1"
@@ -234,7 +262,7 @@
            dejaría de mandar sus campos. Es el mismo criterio con que se pliegan los grupos de la
            tabla. *@
         <section class="tab-panel" id="panel-estructura" data-tab="estructura"
-                 role="tabpanel" aria-labelledby="tab-estructura">
+                 role="tabpanel" aria-labelledby="tab-estructura" hidden>
         <div class="card ficha-sec" id="estructura">
             <h3 class="sec-h">Estructura de desglose</h3>
             <p class="res-meta" style="margin-top:-.35rem">
@@ -741,8 +769,9 @@
         @* ── Datos del proyecto ──────────────────────────────────── *@
         @* Ya no va plegada: la pestaña hace ese trabajo, y un <details> dentro de un panel que
            además se oculta eran dos capas para esconder lo mismo. *@
+
         <section class="tab-panel" id="panel-datos" data-tab="datos"
-                 role="tabpanel" aria-labelledby="tab-datos" hidden>
+                 role="tabpanel" aria-labelledby="tab-datos">
             <div class="card ficha-sec" id="ficha">
                 <h3 class="sec-h" style="display:inline-flex;align-items:center;gap:8px;margin:0">
                     <span aria-hidden="true">📋</span> Datos del proyecto
@@ -853,6 +882,348 @@
             </div>
         }
     </form>
+
+        @* ── Vínculos ───────────────────────────────────────────────────── *@
+        <section class="tab-panel" id="panel-vinculos" data-tab="vinculos"
+                 role="tabpanel" aria-labelledby="tab-vinculos" hidden>
+
+            @{
+                var vin = Model.Vinculos;
+
+                // Las secciones se pliegan solas cuando no hay nada que enseñar. Un proyecto sin
+                // reuniones ni expedientes —que es la mayoría— no debería obligar a bajar por dos
+                // vacíos para llegar a los formularios. El resumen sigue diciendo cuántos hay, así
+                // que plegado no equivale a esconder.
+                var hayReuniones   = vin.Reuniones.Count   > 0 || vin.ReunionesFueraDeAlcance   > 0;
+                var hayExpedientes = vin.Expedientes.Count > 0 || vin.ExpedientesFueraDeAlcance > 0;
+                var hayTickets     = vin.Tickets.Count     > 0 || vin.TicketsFueraDeAlcance     > 0;
+
+                string EstadoTicketCls(string e) => e switch
+                {
+                    "Abierto"    => "status-badge abierto",
+                    "EnProgreso" => "status-badge enproceso",
+                    "Resuelto"   => "status-badge resuelto",
+                    _            => "status-badge default"
+                };
+            }
+
+            <details class="card ficha-sec vinc-sec" open="@hayReuniones">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Reuniones vinculadas</span>
+                    <span class="vinc-n">@(vin.Reuniones.Count == 0 ? "ninguna" : vin.Reuniones.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
+                    Reuniones donde se trató este proyecto. El vínculo es opcional por los dos lados:
+                    una reunión puede no pertenecer a ninguno, o tocar a varios.
+                </p>
+
+                @if (vin.Reuniones.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th>Reunión</th>
+                                    <th style="width:110px">Fecha</th>
+                                    <th style="width:170px">Institución</th>
+                                    <th style="width:90px">Asistentes</th>
+                                    <th style="width:170px">Vinculada por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in vin.Reuniones)
+                                {
+                                    <tr>
+                                        <td style="white-space:normal">
+                                            <a asp-page="/Reuniones/Acta" asp-route-id="@r.ReunionId"
+                                               style="font-weight:600;text-decoration:none">@r.Titulo</a>
+                                            @if (!string.IsNullOrWhiteSpace(r.Tipo))
+                                            {
+                                                <span class="badge badge-secondary" style="margin-left:6px">@r.Tipo</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(r.Nota))
+                                            {
+                                                <div class="res-meta">@r.Nota</div>
+                                            }
+                                        </td>
+                                        <td class="res-meta">@(r.Fecha?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td class="res-meta" style="white-space:normal">@(r.Institucion ?? "—")</td>
+                                        <td class="res-meta">@r.Asistentes</td>
+                                        <td class="res-meta">
+                                            @r.VinculadoPor<br />
+                                            @r.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoReunion"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@r.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (la reunión no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">🗓️</div>
+                        <p>No hay reuniones vinculadas a este proyecto.</p>
+                    </div>
+                }
+
+                @* El conteo de lo que queda fuera de alcance: no se esconde, se dice. Sin esto una
+                   ficha con seis reuniones vinculadas se leería como si tuviera dos. *@
+                @if (vin.ReunionesFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.ReunionesFueraDeAlcance</strong>
+                        reunión@(vin.ReunionesFueraDeAlcance == 1 ? "" : "es") más está@(vin.ReunionesFueraDeAlcance == 1 ? "" : "n")
+                        vinculada@(vin.ReunionesFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularReunion" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-reunion">Vincular una reunión</label>
+                            <select id="v-reunion" name="VinculoReunionId" required>
+                                <option value="">— Elija una reunión —</option>
+                                @foreach (var o in Model.ReunionesVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-r">Por qué (opcional)</label>
+                            <input id="v-nota-r" name="VinculoNota" maxlength="400"
+                                   placeholder="Se acordó el alcance del enlace de fibra" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
+
+            <details class="card ficha-sec vinc-sec" open="@hayExpedientes">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Expedientes vinculados</span>
+                    <span class="vinc-n">@(vin.Expedientes.Count == 0 ? "ninguno" : vin.Expedientes.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
+                    Expedientes de digitalización que este proyecto atiende. Un expediente puede
+                    alimentar a varios proyectos.
+                </p>
+
+                @if (vin.Expedientes.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px">Código</th>
+                                    <th>Institución</th>
+                                    <th style="width:140px">Estado</th>
+                                    <th style="width:110px">Apertura</th>
+                                    <th style="width:170px">Vinculado por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var e in vin.Expedientes)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Expedientes/Editor" asp-route-id="@e.ExpedienteId"
+                                               style="font-weight:600;text-decoration:none">@e.Codigo</a>
+                                        </td>
+                                        <td style="white-space:normal">
+                                            @e.Institucion
+                                            @if (!string.IsNullOrWhiteSpace(e.Nota))
+                                            {
+                                                <div class="res-meta">@e.Nota</div>
+                                            }
+                                        </td>
+                                        <td class="res-meta">@e.Estado</td>
+                                        <td class="res-meta">@(e.FechaApertura?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td class="res-meta">
+                                            @e.VinculadoPor<br />
+                                            @e.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoExpediente"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@e.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (el expediente no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">📁</div>
+                        <p>No hay expedientes vinculados a este proyecto.</p>
+                    </div>
+                }
+
+                @if (vin.ExpedientesFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.ExpedientesFueraDeAlcance</strong>
+                        expediente@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "s") más está@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "n")
+                        vinculado@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularExpediente" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-exp">Vincular un expediente</label>
+                            <select id="v-exp" name="VinculoExpedienteId" required>
+                                <option value="">— Elija un expediente —</option>
+                                @foreach (var o in Model.ExpedientesVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-e">Por qué (opcional)</label>
+                            <input id="v-nota-e" name="VinculoNota" maxlength="400"
+                                   placeholder="El proyecto digitaliza este trámite" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
+
+            <details class="card ficha-sec vinc-sec" open="@hayTickets">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Tickets vinculados</span>
+                    <span class="vinc-n">@(vin.Tickets.Count == 0 ? "ninguno" : vin.Tickets.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
+                    Tickets de soporte que este proyecto atiende: un requerimiento que entró por la
+                    mesa de ayuda y terminó siendo trabajo del proyecto. Los abiertos van primero.
+                </p>
+
+                @if (vin.Tickets.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px">Número</th>
+                                    <th>Título</th>
+                                    <th style="width:120px">Estado</th>
+                                    <th style="width:150px">Asignado a</th>
+                                    <th style="width:170px">Vinculado por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in vin.Tickets)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Tickets/Detalle" asp-route-id="@t.TicketId"
+                                               style="font-weight:600;text-decoration:none">@t.Numero</a>
+                                            <div class="res-meta">@t.Prioridad</div>
+                                        </td>
+                                        <td style="white-space:normal">
+                                            @t.Titulo
+                                            @if (!string.IsNullOrWhiteSpace(t.Nota))
+                                            {
+                                                <div class="res-meta">@t.Nota</div>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="@EstadoTicketCls(t.Estado)"
+                                                  style="padding:2px 9px;font-size:var(--diger-fs-xs)">@t.Estado</span>
+                                        </td>
+                                        <td class="res-meta">@(t.AsignadoA ?? "— sin asignar —")</td>
+                                        <td class="res-meta">
+                                            @t.VinculadoPor<br />
+                                            @t.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoTicket"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@t.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (el ticket no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">🎫</div>
+                        <p>No hay tickets vinculados a este proyecto.</p>
+                    </div>
+                }
+
+                @if (vin.TicketsFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.TicketsFueraDeAlcance</strong>
+                        ticket@(vin.TicketsFueraDeAlcance == 1 ? "" : "s") más está@(vin.TicketsFueraDeAlcance == 1 ? "" : "n")
+                        vinculado@(vin.TicketsFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularTicket" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-tck">Vincular un ticket</label>
+                            <select id="v-tck" name="VinculoTicketId" required>
+                                <option value="">— Elija un ticket —</option>
+                                @foreach (var o in Model.TicketsVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-t">Por qué (opcional)</label>
+                            <input id="v-nota-t" name="VinculoNota" maxlength="400"
+                                   placeholder="Lo pedido entra en el entregable de reportes" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
+        </section>
 
     <section class="tab-panel" id="panel-bitacora" data-tab="bitacora"
              role="tabpanel" aria-labelledby="tab-bitacora" hidden>
@@ -1290,10 +1661,15 @@
                     <form method="post" asp-page-handler="SubirDocumento" asp-route-id="@p.Id"
                           enctype="multipart/form-data" style="padding:0 1rem 1rem">
                         <div style="display:flex;gap:12px;flex-wrap:wrap">
+                            @* Opcional, no descartable: lo que se escriba se usa, sea un archivo o
+                               veinte. Vacío, cada documento toma el nombre del suyo. *@
                             <div class="field" style="flex:2;min-width:240px">
-                                <label for="doc-titulo">Título <span style="color:var(--diger-danger)">*</span></label>
-                                <input id="doc-titulo" name="DocTitulo" maxlength="300" required
+                                <label for="doc-titulo">Título</label>
+                                <input id="doc-titulo" name="DocTitulo" maxlength="300"
                                        placeholder="Convenio marco DIGER–SRECI" />
+                                <small class="res-meta">
+                                    Opcional. Con varios archivos, cada documento se llama «Título — nombre del archivo».
+                                </small>
                             </div>
                             <div class="field" style="flex:1;min-width:170px">
                                 <label for="doc-cat">Categoría <span style="color:var(--diger-danger)">*</span></label>
@@ -1311,10 +1687,15 @@
                                    placeholder="De qué se trata, para quien lo abra dentro de un año" />
                         </div>
                         <div class="field">
-                            <label for="doc-file">Archivo <span style="color:var(--diger-danger)">*</span></label>
-                            <input id="doc-file" type="file" name="DocArchivo" required />
+                            <label for="doc-file">Archivos <span style="color:var(--diger-danger)">*</span></label>
+                            <input id="doc-file" type="file" name="DocArchivos" multiple required
+                                   onchange="docLote(this)" />
+                            <small class="res-meta" id="doc-file-info">
+                                Puede elegir varios a la vez. Cada archivo se da de alta como un documento
+                                aparte, todos en la misma categoría.
+                            </small>
                         </div>
-                        <button type="submit" class="btnp">Subir documento</button>
+                        <button type="submit" class="btnp">Subir documentos</button>
                     </form>
                 </details>
             }
@@ -1385,6 +1766,15 @@
                                         <div class="repo-doc-quien">
                                             @v.SubidoPor<br />
                                             @v.SubidoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            @* Descargas de ESTA versión, no del documento: es lo que
+                                               distingue que se bajó la copia vieja y no la corregida. *@
+                                            @if (v.Descargas > 0)
+                                            {
+                                                <br />
+                                                <span title="Última: @v.UltimaDescargaPor, @(v.UltimaDescargaEn?.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))">
+                                                    ↓ @v.Descargas @(v.Descargas == 1 ? "descarga" : "descargas")
+                                                </span>
+                                            }
                                         </div>
                                     </div>
                                 }
@@ -1401,6 +1791,7 @@
                                                 <th>Archivo</th>
                                                 <th style="width:150px">Qué cambió</th>
                                                 <th style="width:150px">Quién y cuándo</th>
+                                                <th style="width:96px" title="Descargas registradas de esta versión concreta">Descargas</th>
                                                 <th style="width:110px" title="Huella del contenido: dos versiones con la misma huella son el mismo archivo">Huella</th>
                                                 <th style="width:52px"></th>
                                             </tr>
@@ -1419,6 +1810,20 @@
                                                     <td style="white-space:normal">@ver.ArchivoNombre <span class="res-meta">· @ver.TamanoLegible</span></td>
                                                     <td class="res-meta" style="white-space:normal">@(ver.Notas ?? "—")</td>
                                                     <td class="res-meta">@ver.SubidoPor<br />@ver.SubidoEn.ToLocalTime().ToString("dd/MM/yy HH:mm")</td>
+                                                    <td class="res-meta">
+                                                        @if (ver.Descargas == 0)
+                                                        {
+                                                            <span title="Sin descargas registradas">—</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <strong>@ver.Descargas</strong>
+                                                            <div style="font-size:var(--diger-fs-2xs)">
+                                                                @ver.UltimaDescargaPor<br />
+                                                                @ver.UltimaDescargaEn?.ToLocalTime().ToString("dd/MM/yy HH:mm")
+                                                            </div>
+                                                        }
+                                                    </td>
                                                     <td class="res-meta repo-doc-huella">@ver.HuellaCorta</td>
                                                     <td style="text-align:right">
                                                         <a class="btns" style="padding:3px 8px;font-size:12px"
@@ -2310,6 +2715,7 @@
             documentos:  'documentos',
             interesados: 'equipo',
             riesgos:     'equipo',
+            vinculos:    'vinculos',
             auditoria:   'auditoria'
         };
 
@@ -2346,7 +2752,8 @@
             var ancla   = (location.hash || '').replace('#', '');
             var destino = deAncla[ancla];
 
-            abrirPestana(destino || 'estructura');
+            // Sin ancla se abre Datos, que es la pestaña de aterrizaje de la ficha.
+            abrirPestana(destino || 'datos');
 
             if (!destino) return;
             var el = document.getElementById(ancla);
@@ -2426,5 +2833,29 @@
         if (!aplica) document.getElementById('a-cerrar').checked = false;
     };
     alternarDestinoAvance();
+
+    /* Alta de documentos en lote: dice cuántos archivos van y avisa de las dos reglas que
+       cambian según sean uno o varios, para que no haya que descubrirlas al guardar. */
+    function docLote(input) {
+        var n    = input.files ? input.files.length : 0;
+        var info = document.getElementById("doc-file-info");
+        var tit  = document.getElementById("doc-titulo");
+        var desc = document.getElementById("doc-desc");
+        if (!info) return;
+
+        if (n === 0) {
+            info.textContent = "Puede elegir varios a la vez. Cada archivo se da de alta como un " +
+                               "documento aparte, todos en la misma categoría.";
+        } else if (n === 1) {
+            info.textContent = "1 archivo.";
+        } else {
+            info.textContent = n + " archivos: se crean " + n + " documentos en la misma categoría. " +
+                               "Si escribe un título, cada uno se llamará «Título — nombre del archivo».";
+        }
+
+        if (tit) tit.placeholder = n > 1
+            ? "Prefijo común; vacío, cada documento toma el nombre de su archivo"
+            : "Convenio marco DIGER–SRECI";
+    }
 </script>
 }

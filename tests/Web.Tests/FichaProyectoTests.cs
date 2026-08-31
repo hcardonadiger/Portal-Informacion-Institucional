@@ -59,21 +59,23 @@ public sealed class FichaProyectoTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Sirve_las_siete_pestanas_con_un_solo_panel_visible()
+    public async Task Sirve_las_ocho_pestanas_con_un_solo_panel_visible()
     {
         var html = await FichaAsync();
 
         html.Should().Contain("role=\"tablist\"");
 
-        foreach (var panel in new[] { "panel-estructura", "panel-cronograma", "panel-bitacora",
-                                      "panel-documentos", "panel-equipo", "panel-datos",
-                                      "panel-auditoria" })
+        foreach (var panel in new[] { "panel-datos", "panel-estructura", "panel-cronograma",
+                                      "panel-bitacora", "panel-equipo", "panel-documentos",
+                                      "panel-vinculos", "panel-auditoria" })
             html.Should().Contain($"id=\"{panel}\"", $"la pestaña {panel} tiene que existir en el DOM");
 
-        // La estructura es la que abre; el resto llega oculto. Se mira el atributo pegado al id
-        // para no depender del orden en que se serialicen los demás.
-        html.Should().Contain("id=\"panel-estructura\" data-tab=\"estructura\"");
-        html.Should().Contain("aria-labelledby=\"tab-datos\" hidden");
+        // Datos es la que abre: es la pestaña de aterrizaje, lo que identifica al proyecto. Antes
+        // abría Estructura; se cambió por orden de uso. El resto llega oculto.
+        html.Should().Contain("id=\"panel-datos\" data-tab=\"datos\"");
+        html.Should().Contain("aria-labelledby=\"tab-estructura\" hidden");
+        html.Should().NotContain("aria-labelledby=\"tab-datos\" hidden",
+            "el panel que abre no puede llegar oculto");
     }
 
     [Fact]
