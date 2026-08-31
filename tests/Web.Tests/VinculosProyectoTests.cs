@@ -258,6 +258,36 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
             "el selector no puede ofrecer proyectos ajenos");
     }
 
+    // ── Secciones plegables ───────────────────────────────────────
+    [Fact]
+    public async Task Las_secciones_vacias_salen_plegadas_y_las_llenas_abiertas()
+    {
+        // Lo delicado es que Razor OMITA el atributo cuando el bool es false. Si escribiera
+        // open="False" el navegador lo leería como presente —los atributos booleanos de HTML no
+        // miran su valor— y la sección saldría abierta igual, que es justo lo contrario.
+        var cliente = _portal.ClienteComo("JefeArea");
+
+        var vacio = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+        vacio.Should().NotContain("open=\"False\"",
+            "un open=False dejaría la sección abierta: HTML ignora el valor de los booleanos");
+        vacio.Should().NotContain("open=\"open\"");
+
+        // Con las dos vacías, ninguna de las dos secciones lleva el atributo.
+        System.Text.RegularExpressions.Regex
+            .Matches(vacio, "class=\"card ficha-sec vinc-sec\" open")
+            .Count.Should().Be(0, "sin vínculos, las dos secciones van plegadas");
+
+        // Y al vincular una reunión, la suya se abre.
+        var token = TokenRx.Match(vacio).Groups[1].Value;
+        await cliente.PostAsync($"/Proyectos/Editor/{_proyectoId}?handler=VincularReunion",
+            Form(token, ("VinculoReunionId", _reunionPropia.ToString())));
+
+        var lleno = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+        System.Text.RegularExpressions.Regex
+            .Matches(lleno, "class=\"card ficha-sec vinc-sec\" open")
+            .Count.Should().Be(1, "solo la de reuniones tiene contenido");
+    }
+
     // ── Permisos ──────────────────────────────────────────────────
     [Fact]
     public async Task Sin_Proyectos_Editar_no_se_vincula()

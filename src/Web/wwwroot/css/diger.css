@@ -6162,3 +6162,26 @@ textarea.form-control { resize: vertical; }
     border-bottom: 1px solid var(--diger-border);
     color: var(--diger-blue-title);
 }
+
+/* ── Secciones plegables de vínculos ─────────────────────────────────────
+   Se pliegan solas cuando están vacías: un proyecto sin reuniones ni
+   expedientes —la mayoría— no debería obligar a bajar por dos vacíos para
+   llegar a los formularios. El resumen sigue diciendo cuántos hay, así que
+   plegado no equivale a esconder. */
+.vinc-sec { padding: var(--diger-space-4); }
+.vinc-sum {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--diger-space-3); cursor: pointer; list-style: none;
+}
+.vinc-sum::-webkit-details-marker { display: none; }
+.vinc-sum::before {
+    content: "▸"; color: var(--diger-text-muted);
+    margin-right: 6px; font-size: .85em;
+}
+.vinc-sec[open] > .vinc-sum::before { content: "▾"; }
+.vinc-sum .sec-h { border: 0; padding: 0; margin: 0; }
+.vinc-n {
+    font-size: var(--diger-fs-xs); color: var(--diger-text-muted);
+    font-family: inherit; white-space: nowrap;
+}
+.vinc-sum:focus-visible { outline: 2px solid var(--diger-blue, #1d4ed8); outline-offset: 2px; }

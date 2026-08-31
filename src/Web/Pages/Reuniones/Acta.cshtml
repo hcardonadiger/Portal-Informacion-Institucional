@@ -119,8 +119,17 @@
    Se vincula desde acá y no solo desde la ficha del proyecto porque este es el
    momento en que se sabe: quien acaba de documentar la reunión tiene presente de
    qué trataba. La misma relación se gestiona desde los dos extremos. *@
-<section class="card hilo-panel" style="max-width:900px;margin:0 auto 1.25rem">
-    <h3 class="cuenta-card-title" style="margin:0 0 .9rem;border:0;padding:0">📁 Proyectos vinculados</h3>
+@{
+    // Plegada cuando no hay nada: la mayoría de las reuniones no pertenece a ningún proyecto, y el
+    // acta no debería empujarse hacia abajo por un bloque vacío. El resumen dice cuántos hay, así
+    // que plegado no equivale a esconder.
+    var hayProyectos = Model.Proyectos.Proyectos.Count > 0 || Model.Proyectos.FueraDeAlcance > 0;
+}
+<details class="card hilo-panel vinc-sec" style="max-width:900px;margin:0 auto 1.25rem" open="@hayProyectos">
+    <summary class="vinc-sum">
+        <span class="cuenta-card-title" style="margin:0;border:0;padding:0">📁 Proyectos vinculados</span>
+        <span class="vinc-n">@(Model.Proyectos.Proyectos.Count == 0 ? "ninguno" : Model.Proyectos.Proyectos.Count.ToString())</span>
+    </summary>
 
     @if (Model.Proyectos.Proyectos.Any())
     {
@@ -205,7 +214,7 @@
             <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
         </form>
     }
-</section>
+</details>
 
 
 <article class="acta">

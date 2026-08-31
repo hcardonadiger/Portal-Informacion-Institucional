@@ -872,11 +872,23 @@
         <section class="tab-panel" id="panel-vinculos" data-tab="vinculos"
                  role="tabpanel" aria-labelledby="tab-vinculos" hidden>
 
-            @{ var vin = Model.Vinculos; }
+            @{
+                var vin = Model.Vinculos;
 
-            <div class="card ficha-sec">
-                <h3 class="sec-h">Reuniones vinculadas</h3>
-                <p class="res-meta" style="margin-top:-.35rem">
+                // Las secciones se pliegan solas cuando no hay nada que enseñar. Un proyecto sin
+                // reuniones ni expedientes —que es la mayoría— no debería obligar a bajar por dos
+                // vacíos para llegar a los formularios. El resumen sigue diciendo cuántos hay, así
+                // que plegado no equivale a esconder.
+                var hayReuniones   = vin.Reuniones.Count   > 0 || vin.ReunionesFueraDeAlcance   > 0;
+                var hayExpedientes = vin.Expedientes.Count > 0 || vin.ExpedientesFueraDeAlcance > 0;
+            }
+
+            <details class="card ficha-sec vinc-sec" open="@hayReuniones">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Reuniones vinculadas</span>
+                    <span class="vinc-n">@(vin.Reuniones.Count == 0 ? "ninguna" : vin.Reuniones.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
                     Reuniones donde se trató este proyecto. El vínculo es opcional por los dos lados:
                     una reunión puede no pertenecer a ninguno, o tocar a varios.
                 </p>
@@ -976,11 +988,14 @@
                         <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
                     </form>
                 }
-            </div>
+            </details>
 
-            <div class="card ficha-sec">
-                <h3 class="sec-h">Expedientes vinculados</h3>
-                <p class="res-meta" style="margin-top:-.35rem">
+            <details class="card ficha-sec vinc-sec" open="@hayExpedientes">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Expedientes vinculados</span>
+                    <span class="vinc-n">@(vin.Expedientes.Count == 0 ? "ninguno" : vin.Expedientes.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
                     Expedientes de digitalización que este proyecto atiende. Un expediente puede
                     alimentar a varios proyectos.
                 </p>
@@ -1076,7 +1091,7 @@
                         <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
                     </form>
                 }
-            </div>
+            </details>
         </section>
 
     <section class="tab-panel" id="panel-bitacora" data-tab="bitacora"

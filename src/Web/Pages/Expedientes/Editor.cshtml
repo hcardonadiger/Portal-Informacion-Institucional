@@ -35,8 +35,14 @@
 @if (Model.ExpId is int vincExpId)
 {
     <div style="max-width:1280px;margin:0 auto 1rem;padding:0 1rem">
-        <section class="card">
-            <h3 style="margin:0 0 .8rem;font-size:1rem">📁 Proyectos vinculados</h3>
+        @{
+            var hayProyectosExp = Model.Proyectos.Proyectos.Count > 0 || Model.Proyectos.FueraDeAlcance > 0;
+        }
+        <details class="card vinc-sec" open="@hayProyectosExp">
+            <summary class="vinc-sum">
+                <span style="font-size:1rem;font-weight:600">📁 Proyectos vinculados</span>
+                <span class="vinc-n">@(Model.Proyectos.Proyectos.Count == 0 ? "ninguno" : Model.Proyectos.Proyectos.Count.ToString())</span>
+            </summary>
 
             @if (Model.Proyectos.Proyectos.Any())
             {
@@ -120,7 +126,7 @@
                     <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
                 </form>
             }
-        </section>
+        </details>
     </div>
 }
 
