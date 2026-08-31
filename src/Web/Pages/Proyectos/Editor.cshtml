@@ -175,35 +175,41 @@
     @* Antes eran ocho secciones apiladas con un índice de anclas que solo saltaba dentro de un
        scroll de varias pantallas. Ahora el índice ES la navegación: se pinta una sección a la vez.
 
-       El orden de la barra sigue el uso —la estructura primero, los datos del proyecto casi al
-       final— y NO coincide con el orden del DOM: «Datos» tiene que vivir dentro del mismo <form>
-       que la estructura porque las guarda el mismo comando. aria-controls es lo que ata cada
-       botón con su panel, así que la diferencia no le importa a nadie salvo al lector del HTML. *@
+       El orden de la barra sigue la probabilidad de uso y NO coincide con el orden del DOM:
+       «Datos» tiene que vivir dentro del mismo <form> que la estructura porque las guarda el mismo
+       comando. aria-controls es lo que ata cada botón con su panel, así que la diferencia no le
+       importa a nadie salvo al lector del HTML.
+
+       Datos va primero y es la que abre por defecto: es la pestaña de aterrizaje. Lo que identifica
+       al proyecto —nombre, responsable, fechas, estado— es lo que se quiere ver al abrir la ficha,
+       aunque se edite poco.
+
+       El resto sigue el volumen real del portafolio: 214 actividades y 33 entregables en la
+       estructura, 44 reportes en la bitácora, 8 entre interesados y riesgos, 4 documentos y ningún
+       vínculo todavía. La auditoría cierra: solo se abre para investigar algo. *@
     <nav class="ficha-tabs" role="tablist" aria-label="Secciones de la ficha">
+        <button type="button" role="tab" id="tab-datos" data-tab="datos"
+                aria-controls="panel-datos" aria-selected="true"
+                onclick="abrirPestana('datos')">
+            <span aria-hidden="true">📋</span> Datos del proyecto
+        </button>
         <button type="button" role="tab" id="tab-estructura" data-tab="estructura"
-                aria-controls="panel-estructura" aria-selected="true"
+                aria-controls="panel-estructura" aria-selected="false" tabindex="-1"
                 onclick="abrirPestana('estructura')">
             <span aria-hidden="true">🗂️</span> Estructura
             <span class="n">@p.TotalEntregables · @p.TotalActividades</span>
+        </button>
         <button type="button" role="tab" id="tab-cronograma" data-tab="cronograma"
                 aria-controls="panel-cronograma" aria-selected="false" tabindex="-1"
                 onclick="abrirPestana('cronograma')"
                 title="La estructura vista en el tiempo, con el avance sobre cada barra">
             <span aria-hidden="true">📅</span> Cronograma
         </button>
-        </button>
         <button type="button" role="tab" id="tab-bitacora" data-tab="bitacora"
                 aria-controls="panel-bitacora" aria-selected="false" tabindex="-1"
                 onclick="abrirPestana('bitacora')">
             <span aria-hidden="true">📝</span> Bitácora
             <span class="n">@Model.Avances.Count</span>
-        <button type="button" role="tab" id="tab-documentos" data-tab="documentos"
-                aria-controls="panel-documentos" aria-selected="false" tabindex="-1"
-                onclick="abrirPestana('documentos')"
-                title="Convenios, actas e informes del proyecto, con su historial de versiones">
-            <span aria-hidden="true">📁</span> Documentos
-            <span class="n">@Model.Documentos.Count</span>
-        </button>
         </button>
         <button type="button" role="tab" id="tab-equipo" data-tab="equipo"
                 aria-controls="panel-equipo" aria-selected="false" tabindex="-1"
@@ -211,6 +217,13 @@
                 title="Quién responde por el proyecto y qué puede salir mal: se consultan juntos">
             <span aria-hidden="true">👥</span> Equipo y riesgos
             <span class="n">@Model.Interesados.Count · @Model.Riesgos.Count(r => r.EstaAbierto)</span>
+        </button>
+        <button type="button" role="tab" id="tab-documentos" data-tab="documentos"
+                aria-controls="panel-documentos" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('documentos')"
+                title="Convenios, actas e informes del proyecto, con su historial de versiones">
+            <span aria-hidden="true">📁</span> Documentos
+            <span class="n">@Model.Documentos.Count</span>
         </button>
         @* Vínculos: lo que este proyecto toca fuera de su propia estructura. *@
         <button type="button" role="tab" id="tab-vinculos" data-tab="vinculos"
@@ -224,11 +237,6 @@
             {
                 <span class="n">@nVinc</span>
             }
-        </button>
-        <button type="button" role="tab" id="tab-datos" data-tab="datos"
-                aria-controls="panel-datos" aria-selected="false" tabindex="-1"
-                onclick="abrirPestana('datos')">
-            <span aria-hidden="true">📋</span> Datos del proyecto
         </button>
         <button type="button" role="tab" id="tab-auditoria" data-tab="auditoria"
                 aria-controls="panel-auditoria" aria-selected="false" tabindex="-1"
@@ -247,7 +255,7 @@
            dejaría de mandar sus campos. Es el mismo criterio con que se pliegan los grupos de la
            tabla. *@
         <section class="tab-panel" id="panel-estructura" data-tab="estructura"
-                 role="tabpanel" aria-labelledby="tab-estructura">
+                 role="tabpanel" aria-labelledby="tab-estructura" hidden>
         <div class="card ficha-sec" id="estructura">
             <h3 class="sec-h">Estructura de desglose</h3>
             <p class="res-meta" style="margin-top:-.35rem">
@@ -756,7 +764,7 @@
            además se oculta eran dos capas para esconder lo mismo. *@
 
         <section class="tab-panel" id="panel-datos" data-tab="datos"
-                 role="tabpanel" aria-labelledby="tab-datos" hidden>
+                 role="tabpanel" aria-labelledby="tab-datos">
             <div class="card ficha-sec" id="ficha">
                 <h3 class="sec-h" style="display:inline-flex;align-items:center;gap:8px;margin:0">
                     <span aria-hidden="true">📋</span> Datos del proyecto
@@ -2584,6 +2592,7 @@
             documentos:  'documentos',
             interesados: 'equipo',
             riesgos:     'equipo',
+            vinculos:    'vinculos',
             auditoria:   'auditoria'
         };
 
@@ -2620,7 +2629,8 @@
             var ancla   = (location.hash || '').replace('#', '');
             var destino = deAncla[ancla];
 
-            abrirPestana(destino || 'estructura');
+            // Sin ancla se abre Datos, que es la pestaña de aterrizaje de la ficha.
+            abrirPestana(destino || 'datos');
 
             if (!destino) return;
             var el = document.getElementById(ancla);

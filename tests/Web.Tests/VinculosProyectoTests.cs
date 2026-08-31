@@ -288,6 +288,28 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
             .Count.Should().Be(1, "solo la de reuniones tiene contenido");
     }
 
+    // ── Barra de pestañas ─────────────────────────────────────────
+    [Fact]
+    public async Task Datos_es_la_primera_pestana_y_la_que_abre()
+    {
+        var ficha = await _portal.ClienteComo("JefeArea").GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+
+        // Primera en el DOM de la barra.
+        var barra = ficha.Substring(ficha.IndexOf("ficha-tabs"));
+        barra.IndexOf("tab-datos").Should().BeLessThan(barra.IndexOf("tab-estructura"),
+            "Datos va primero en la barra");
+
+        // Y es la seleccionada: su panel no lleva hidden y el de estructura sí.
+        ficha.Should().Contain("aria-controls=\"panel-datos\" aria-selected=\"true\"");
+        ficha.Should().Contain("aria-labelledby=\"tab-estructura\" hidden");
+
+        // Los ocho botones cierran donde deben: estaban anidados unos dentro de otros.
+        var abiertos = System.Text.RegularExpressions.Regex.Matches(barra.Substring(0, barra.IndexOf("</nav>")), "<button").Count;
+        var cerrados = System.Text.RegularExpressions.Regex.Matches(barra.Substring(0, barra.IndexOf("</nav>")), "</button>").Count;
+        abiertos.Should().Be(8);
+        cerrados.Should().Be(abiertos, "button dentro de button es HTML invalido");
+    }
+
     // ── Permisos ──────────────────────────────────────────────────
     [Fact]
     public async Task Sin_Proyectos_Editar_no_se_vincula()
