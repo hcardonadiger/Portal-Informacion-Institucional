@@ -156,6 +156,10 @@
                                 <div class="res-meta">
                                     @p.Codigo
                                     <span class="@PrioCls(p.Prioridad)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
+                                    @* El nombre lleva a la ficha —que es donde se trabaja— y este a los
+                                       indicadores del proyecto solo, que es el zoom de esta misma tabla. *@
+                                    <a asp-page="/Tableros/Proyecto" asp-route-id="@p.ProyectoId"
+                                       style="margin-left:6px" title="Indicadores de este proyecto">tablero →</a>
                                 </div>
                             </td>
                             <td class="res-meta">@(p.Responsable ?? "— sin asignar —")</td>

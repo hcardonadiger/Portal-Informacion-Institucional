@@ -1035,6 +1035,18 @@ tr.contacto-inactivo td {
     font-size: var(--diger-fs-sm);
 }
 
+/* Faltaba el tercer caso: «esto no está mal, pero léalo antes de creerle al número de al lado».
+   Se usa donde un indicador sale de una muestra parcial. A diferencia de sus dos hermanos, va
+   sobre tokens y no sobre literales, así que sí acompaña al modo oscuro. */
+.alert-warn {
+    background: var(--diger-warning-bg);
+    border: 1px solid var(--diger-warning);
+    border-radius: var(--diger-radius-sm);
+    padding: var(--diger-space-3) var(--diger-space-4);
+    color: var(--diger-warning-strong);
+    font-size: var(--diger-fs-sm);
+}
+
 .hint {
     font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
