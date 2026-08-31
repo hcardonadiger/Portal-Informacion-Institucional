@@ -314,6 +314,30 @@ public sealed class RepositorioDocumentalTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task El_titulo_escrito_manda_tambien_en_un_lote()
+    {
+        // Regresión: la primera versión del lote descartaba el título cuando venían varios
+        // archivos. El formulario lo aceptaba y lo tiraba, y los documentos salían nombrados con
+        // el archivo. Si alguien escribe un título, se usa —sean uno o veinte—.
+        var (cliente, token) = await SesionAsync();
+
+        await cliente.PostAsync(
+            $"/Proyectos/Editor/{_proyectoId}?handler=SubirDocumento",
+            FormularioEn(token, "DocArchivos",
+                [("DocTitulo", "Registros CONSUCOOP"), ("DocCategoriaId", "1")],
+                ("Registro_CONSUCOOP_2026-07-16.pdf", "uno"), ("IHADFA_historia.pdf", "dos")));
+        RecordarArchivos();
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var titulos = await db.ProyectoDocumentos.IgnoreQueryFilters()
+            .Where(d => d.ProyectoId == _proyectoId).Select(d => d.Titulo).ToListAsync();
+
+        titulos.Should().BeEquivalentTo(["Registros CONSUCOOP", "Registros CONSUCOOP"],
+            "el título se aplica a todo el lote; cada fila muestra su archivo debajo para distinguirlas");
+    }
+
+    [Fact]
     public async Task Con_un_solo_archivo_el_titulo_escrito_manda()
     {
         var (cliente, token) = await SesionAsync();

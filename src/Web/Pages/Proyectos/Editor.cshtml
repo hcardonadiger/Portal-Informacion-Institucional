@@ -1290,15 +1290,14 @@
                     <form method="post" asp-page-handler="SubirDocumento" asp-route-id="@p.Id"
                           enctype="multipart/form-data" style="padding:0 1rem 1rem">
                         <div style="display:flex;gap:12px;flex-wrap:wrap">
-                            @* El título deja de ser obligatorio: con varios archivos cada documento
-                               toma el nombre del suyo, y exigir uno solo para el lote no tendría a
-                               qué documento aplicarse. *@
+                            @* Opcional, no descartable: lo que se escriba se usa, sea un archivo o
+                               veinte. Vacío, cada documento toma el nombre del suyo. *@
                             <div class="field" style="flex:2;min-width:240px">
                                 <label for="doc-titulo">Título</label>
                                 <input id="doc-titulo" name="DocTitulo" maxlength="300"
                                        placeholder="Convenio marco DIGER–SRECI" />
                                 <small class="res-meta">
-                                    Opcional. Si sube varios archivos, cada documento toma el nombre del suyo.
+                                    Si lo deja vacío, cada documento toma el nombre de su archivo.
                                 </small>
                             </div>
                             <div class="field" style="flex:1;min-width:170px">
@@ -1315,9 +1314,6 @@
                             <label for="doc-desc">Descripción</label>
                             <input id="doc-desc" name="DocDescripcion" maxlength="2000"
                                    placeholder="De qué se trata, para quien lo abra dentro de un año" />
-                            <small class="res-meta">
-                                Se aplica solo si sube un archivo; en un lote cada documento queda sin descripción.
-                            </small>
                         </div>
                         <div class="field">
                             <label for="doc-file">Archivos <span style="color:var(--diger-danger)">*</span></label>
@@ -2478,20 +2474,16 @@
             info.textContent = "Puede elegir varios a la vez. Cada archivo se da de alta como un " +
                                "documento aparte, todos en la misma categoría.";
         } else if (n === 1) {
-            info.textContent = "1 archivo. El título y la descripción que escriba se aplican a él.";
+            info.textContent = "1 archivo.";
         } else {
-            info.textContent = n + " archivos: se crean " + n + " documentos, cada uno con el nombre " +
-                               "de su archivo. El título y la descripción se ignoran en un lote.";
+            info.textContent = n + " archivos: se crean " + n + " documentos, todos en la misma " +
+                               "categoría. El título y la descripción que escriba se aplican a los " + n + ".";
         }
 
-        /* Se atenúan en vez de deshabilitarse: deshabilitar borraría lo escrito si vuelve a
-           elegir un solo archivo. */
-        var enLote = n > 1;
-        [tit, desc].forEach(function (campo) {
-            if (!campo) return;
-            campo.style.opacity = enLote ? ".5" : "";
-            campo.title = enLote ? "No se usa cuando se suben varios archivos" : "";
-        });
+        if (tit) tit.placeholder = n > 1
+            ? "Común a los " + n + " documentos; vacío, cada uno toma el nombre de su archivo"
+            : "Convenio marco DIGER–SRECI";
+        if (desc) { /* la descripción se aplica igual en lote que en uno solo */ }
     }
 </script>
 }

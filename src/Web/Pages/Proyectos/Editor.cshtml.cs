@@ -604,9 +604,15 @@ public sealed class EditorModel(
     /// uno a uno y al final se dice qué entró y qué no, nombrando cada archivo rechazado y su
     /// motivo. Un lote que falla en silencio es peor que no poder subir en lote.</para>
     ///
-    /// <para>El título se toma del campo solo cuando se sube UN archivo. Con varios, cada
-    /// documento toma el nombre de su archivo: repartir un título entre cinco documentos no
-    /// significa nada, y numerarlos habría inventado un orden que nadie pidió.</para>
+    /// <para><b>El título se usa siempre que se escriba</b>, sean uno o veinte archivos; si se deja
+    /// vacío, cada documento toma el nombre del suyo. Una sola regla y ningún caso especial.</para>
+    ///
+    /// <para>La primera versión descartaba el título cuando el lote traía varios archivos, con el
+    /// argumento de que un título no se reparte entre cinco documentos. Era un mal cambio: el
+    /// formulario aceptaba el texto y lo tiraba, y quien lo escribió se enteraba al ver los
+    /// registros nombrados como sus archivos. Si el resultado son cinco documentos con el mismo
+    /// título, es lo que se pidió —y cada fila muestra su propio nombre de archivo debajo, así que
+    /// siguen distinguiéndose—.</para>
     /// </summary>
     [Permission("Proyectos.Documentos", AccionModulo.Crear, "Subir documentos de proyecto")]
     public async Task<IActionResult> OnPostSubirDocumentoAsync(int id, CancellationToken ct)
@@ -621,7 +627,9 @@ public sealed class EditorModel(
 
         var subidos  = 0;
         var fallidos = new List<string>();
-        var unoSolo  = archivos.Count == 1;
+
+        // Lo que se escribió manda, haya un archivo o veinte. Vacío = el nombre de cada archivo.
+        var tituloComun = string.IsNullOrWhiteSpace(DocTitulo) ? null : DocTitulo.Trim();
 
         foreach (var archivo in archivos)
         {
@@ -629,12 +637,10 @@ public sealed class EditorModel(
             {
                 var guardado = await DocumentosStorage.GuardarAsync(archivo, env, ct);
 
-                var titulo = unoSolo && !string.IsNullOrWhiteSpace(DocTitulo)
-                    ? DocTitulo!.Trim()
-                    : TituloDesdeArchivo(archivo.FileName);
+                var titulo = tituloComun ?? TituloDesdeArchivo(archivo.FileName);
 
                 await sender.Send(new SubirDocumentoCommand(
-                    id, DocCategoriaId, titulo, unoSolo ? DocDescripcion : null,
+                    id, DocCategoriaId, titulo, DocDescripcion,
                     guardado.Nombre, guardado.Url, guardado.Tamano, guardado.Sha256), ct);
 
                 subidos++;
