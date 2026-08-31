@@ -24,6 +24,14 @@ public sealed class EditorModel(
     public IReadOnlyList<BitacoraProyectoDto> Auditoria { get; private set; } = [];
     public IReadOnlyList<RiesgoProyectoDto> Riesgos { get; private set; } = [];
     public IReadOnlyList<InteresadoProyectoDto> Interesados { get; private set; } = [];
+
+    /// <summary>Reuniones y expedientes vinculados, más el conteo de los que existen pero quedan
+    /// fuera del alcance de quien mira. Ver la nota de GetVinculosProyectoQuery.</summary>
+    public VinculosProyectoDto Vinculos { get; private set; } = new([], [], 0, 0);
+
+    /// <summary>Lo que se puede vincular: dentro del alcance y no vinculado ya.</summary>
+    public IReadOnlyList<OpcionVinculoDto> ReunionesVinculables   { get; private set; } = [];
+    public IReadOnlyList<OpcionVinculoDto> ExpedientesVinculables { get; private set; } = [];
     public AlcanceOpcionesDto Alcance { get; private set; } = new([], []);
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
@@ -120,6 +128,12 @@ public sealed class EditorModel(
     [BindProperty] public DateOnly?         FechaInicioPlan { get; set; }
     [BindProperty] public DateOnly?         FechaFinPlan    { get; set; }
     [BindProperty] public List<EntregableForm> Entregables  { get; set; } = [];
+
+    // ── Vínculos ────────────────────────────────────────────────────────────
+    [BindProperty] public int     VinculoReunionId    { get; set; }
+    [BindProperty] public int     VinculoExpedienteId { get; set; }
+    [BindProperty] public string? VinculoNota         { get; set; }
+    [BindProperty] public int     VinculoId           { get; set; }
 
     // ── Documentos ──────────────────────────────────────────────────────────
     /// <summary>El archivo de la versión nueva. El alta de documentos usa
@@ -568,6 +582,67 @@ public sealed class EditorModel(
         return VolverA(id, "interesados");
     }
 
+    // ── Vínculos con reuniones y expedientes ────────────────────────────────
+    // Van con Proyectos.Editar y no con una clave propia: vincular no expone nada de la reunión
+    // ni del expediente —el destino sigue detrás de su propio filtro— y es una afirmación sobre
+    // el proyecto, igual que cambiarle el objetivo.
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularReunionAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularReunionCommand(id, VinculoReunionId, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Reunión vinculada.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularExpedienteAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularExpedienteCommand(id, VinculoExpedienteId, VinculoNota), ct);
+            TempData["SuccessMsg"] = "Expediente vinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostQuitarVinculoReunionAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoReunionCommand(id, VinculoId), ct);
+            TempData["SuccessMsg"] = "Reunión desvinculada.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostQuitarVinculoExpedienteAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoExpedienteCommand(id, VinculoId), ct);
+            TempData["SuccessMsg"] = "Expediente desvinculado.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "vinculos");
+    }
+
     // ── Eliminar ────────────────────────────────────────────────────────────
     [Permission("Proyectos", AccionModulo.Eliminar, "Eliminar proyectos")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
@@ -810,6 +885,11 @@ public sealed class EditorModel(
         Auditoria   = await sender.Send(new GetBitacoraProyectoQuery(id), ct);
         Riesgos     = await sender.Send(new GetRiesgosProyectoQuery(id), ct);
         Interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);
+        Vinculos    = await sender.Send(new GetVinculosProyectoQuery(id), ct);
+
+        var vinculables = await sender.Send(new GetVinculablesQuery(id), ct);
+        ReunionesVinculables   = vinculables.Reuniones;
+        ExpedientesVinculables = vinculables.Expedientes;
 
         var mutable = HttpContext.CanMutate() && !dto.EstaCerrado;
         PuedeEditar         = mutable && await acceso.PuedeEditarAsync("Proyectos", ct);

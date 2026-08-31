@@ -212,6 +212,18 @@
             <span aria-hidden="true">👥</span> Equipo y riesgos
             <span class="n">@Model.Interesados.Count · @Model.Riesgos.Count(r => r.EstaAbierto)</span>
         </button>
+        @* Vínculos: lo que este proyecto toca fuera de su propia estructura. *@
+        <button type="button" role="tab" id="tab-vinculos" data-tab="vinculos"
+                aria-controls="panel-vinculos" aria-selected="false" tabindex="-1">
+            <svg class="ico"><use href="#i-reunion"></use></svg>Vínculos
+            @{
+                var nVinc = Model.Vinculos.Reuniones.Count + Model.Vinculos.Expedientes.Count;
+            }
+            @if (nVinc > 0)
+            {
+                <span class="n">@nVinc</span>
+            }
+        </button>
         <button type="button" role="tab" id="tab-datos" data-tab="datos"
                 aria-controls="panel-datos" aria-selected="false" tabindex="-1"
                 onclick="abrirPestana('datos')">
@@ -741,6 +753,7 @@
         @* ── Datos del proyecto ──────────────────────────────────── *@
         @* Ya no va plegada: la pestaña hace ese trabajo, y un <details> dentro de un panel que
            además se oculta eran dos capas para esconder lo mismo. *@
+
         <section class="tab-panel" id="panel-datos" data-tab="datos"
                  role="tabpanel" aria-labelledby="tab-datos" hidden>
             <div class="card ficha-sec" id="ficha">
@@ -853,6 +866,217 @@
             </div>
         }
     </form>
+
+        @* ── Vínculos ───────────────────────────────────────────────────── *@
+        <section class="tab-panel" id="panel-vinculos" data-tab="vinculos"
+                 role="tabpanel" aria-labelledby="tab-vinculos" hidden>
+
+            @{ var vin = Model.Vinculos; }
+
+            <div class="card ficha-sec">
+                <h3 class="sec-h">Reuniones vinculadas</h3>
+                <p class="res-meta" style="margin-top:-.35rem">
+                    Reuniones donde se trató este proyecto. El vínculo es opcional por los dos lados:
+                    una reunión puede no pertenecer a ninguno, o tocar a varios.
+                </p>
+
+                @if (vin.Reuniones.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th>Reunión</th>
+                                    <th style="width:110px">Fecha</th>
+                                    <th style="width:170px">Institución</th>
+                                    <th style="width:90px">Asistentes</th>
+                                    <th style="width:170px">Vinculada por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in vin.Reuniones)
+                                {
+                                    <tr>
+                                        <td style="white-space:normal">
+                                            <a asp-page="/Reuniones/Acta" asp-route-id="@r.ReunionId"
+                                               style="font-weight:600;text-decoration:none">@r.Titulo</a>
+                                            @if (!string.IsNullOrWhiteSpace(r.Tipo))
+                                            {
+                                                <span class="badge badge-secondary" style="margin-left:6px">@r.Tipo</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(r.Nota))
+                                            {
+                                                <div class="res-meta">@r.Nota</div>
+                                            }
+                                        </td>
+                                        <td class="res-meta">@(r.Fecha?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td class="res-meta" style="white-space:normal">@(r.Institucion ?? "—")</td>
+                                        <td class="res-meta">@r.Asistentes</td>
+                                        <td class="res-meta">
+                                            @r.VinculadoPor<br />
+                                            @r.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoReunion"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@r.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (la reunión no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">🗓️</div>
+                        <p>No hay reuniones vinculadas a este proyecto.</p>
+                    </div>
+                }
+
+                @* El conteo de lo que queda fuera de alcance: no se esconde, se dice. Sin esto una
+                   ficha con seis reuniones vinculadas se leería como si tuviera dos. *@
+                @if (vin.ReunionesFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.ReunionesFueraDeAlcance</strong>
+                        reunión@(vin.ReunionesFueraDeAlcance == 1 ? "" : "es") más está@(vin.ReunionesFueraDeAlcance == 1 ? "" : "n")
+                        vinculada@(vin.ReunionesFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularReunion" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-reunion">Vincular una reunión</label>
+                            <select id="v-reunion" name="VinculoReunionId" required>
+                                <option value="">— Elija una reunión —</option>
+                                @foreach (var o in Model.ReunionesVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-r">Por qué (opcional)</label>
+                            <input id="v-nota-r" name="VinculoNota" maxlength="400"
+                                   placeholder="Se acordó el alcance del enlace de fibra" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </div>
+
+            <div class="card ficha-sec">
+                <h3 class="sec-h">Expedientes vinculados</h3>
+                <p class="res-meta" style="margin-top:-.35rem">
+                    Expedientes de digitalización que este proyecto atiende. Un expediente puede
+                    alimentar a varios proyectos.
+                </p>
+
+                @if (vin.Expedientes.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px">Código</th>
+                                    <th>Institución</th>
+                                    <th style="width:140px">Estado</th>
+                                    <th style="width:110px">Apertura</th>
+                                    <th style="width:170px">Vinculado por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var e in vin.Expedientes)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Expedientes/Editor" asp-route-id="@e.ExpedienteId"
+                                               style="font-weight:600;text-decoration:none">@e.Codigo</a>
+                                        </td>
+                                        <td style="white-space:normal">
+                                            @e.Institucion
+                                            @if (!string.IsNullOrWhiteSpace(e.Nota))
+                                            {
+                                                <div class="res-meta">@e.Nota</div>
+                                            }
+                                        </td>
+                                        <td class="res-meta">@e.Estado</td>
+                                        <td class="res-meta">@(e.FechaApertura?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td class="res-meta">
+                                            @e.VinculadoPor<br />
+                                            @e.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoExpediente"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@e.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (el expediente no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">📁</div>
+                        <p>No hay expedientes vinculados a este proyecto.</p>
+                    </div>
+                }
+
+                @if (vin.ExpedientesFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.ExpedientesFueraDeAlcance</strong>
+                        expediente@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "s") más está@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "n")
+                        vinculado@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularExpediente" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-exp">Vincular un expediente</label>
+                            <select id="v-exp" name="VinculoExpedienteId" required>
+                                <option value="">— Elija un expediente —</option>
+                                @foreach (var o in Model.ExpedientesVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-e">Por qué (opcional)</label>
+                            <input id="v-nota-e" name="VinculoNota" maxlength="400"
+                                   placeholder="El proyecto digitaliza este trámite" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </div>
+        </section>
 
     <section class="tab-panel" id="panel-bitacora" data-tab="bitacora"
              role="tabpanel" aria-labelledby="tab-bitacora" hidden>

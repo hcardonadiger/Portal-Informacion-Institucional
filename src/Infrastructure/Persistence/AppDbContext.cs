@@ -78,6 +78,8 @@ public sealed class AppDbContext(
     public DbSet<DocumentoProyecto>         ProyectoDocumentos    { get; init; } = default!;
     public DbSet<VersionDocumento>          ProyectoDocumentoVersiones { get; init; } = default!;
     public DbSet<DescargaDocumento>         ProyectoDocumentoDescargas { get; init; } = default!;
+    public DbSet<ProyectoReunion>           ProyectoReuniones     { get; init; } = default!;
+    public DbSet<ProyectoExpediente>        ProyectoExpedientes   { get; init; } = default!;
     public DbSet<BitacoraProyecto>          BitacorasProyecto     { get; init; } = default!;
     public DbSet<RiesgoProyecto>            ProyectoRiesgos       { get; init; } = default!;
     public DbSet<InteresadoProyecto>        ProyectoInteresados   { get; init; } = default!;
@@ -250,6 +252,19 @@ public sealed class AppDbContext(
         // ProyectoDocumentoDescargas se saltaría todo el alcance y diría quién descargó qué en
         // proyectos que el usuario no puede ni abrir.
         mb.Entity<DescargaDocumento>().HasQueryFilter(x => ProyectoDocumentoVersiones.Any(v => v.Id == x.VersionId));
+
+        // Los vínculos se anclan en el PROYECTO, no en la reunión ni en el expediente: quien puede
+        // abrir el proyecto ve con qué está relacionado.
+        //
+        // Tiene una consecuencia que hay que conocer y que no es un descuido: el ancla del proyecto
+        // es su institución EJECUTORA —siempre DIGER en el portafolio interno— mientras que la de la
+        // reunión o el expediente es la beneficiaria. El vínculo cruza instituciones por
+        // construcción, así que ver el vínculo no implica poder abrir la reunión: eso lo sigue
+        // decidiendo el filtro de Reunion cuando se navega hacia ella. La consulta que los lista
+        // resuelve el desajuste diciendo cuántos quedan fuera de alcance, en vez de esconderlos sin
+        // avisar o de saltarse el filtro.
+        mb.Entity<ProyectoReunion>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
+        mb.Entity<ProyectoExpediente>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
 
         // El catálogo de categorías es global y no lleva alcance: son etiquetas, no datos de
         // ninguna institución.
@@ -1879,6 +1894,46 @@ public sealed class VersionDocumentoConfiguration : IEntityTypeConfiguration<Ver
 
         // Para avisar "este archivo ya está subido" sin recorrer la tabla entera.
         b.HasIndex(x => x.Sha256);
+    }
+}
+
+public sealed class ProyectoReunionConfiguration : IEntityTypeConfiguration<ProyectoReunion>
+{
+    public void Configure(EntityTypeBuilder<ProyectoReunion> b)
+    {
+        b.ToTable("ProyectoReuniones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nota).HasMaxLength(ProyectoReunion.MaxNota);
+        b.Property(x => x.VinculadoPor).HasMaxLength(200).IsRequired();
+
+        // El mismo par no se vincula dos veces. La comprobación también está en el comando —para
+        // poder dar un mensaje legible— pero el índice es lo que aguanta dos clics simultáneos.
+        b.HasIndex(x => new { x.ProyectoId, x.ReunionId }).IsUnique();
+        b.HasIndex(x => x.ReunionId);
+
+        // Sin navegación declarada a Reunion ni a Proyecto: el vínculo se consulta por Id desde
+        // ambos lados y colgarlo del agregado lo arrastraría en sus operaciones de colección.
+        b.HasOne<Proyecto>().WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Reunion>().WithMany().HasForeignKey(x => x.ReunionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ProyectoExpedienteConfiguration : IEntityTypeConfiguration<ProyectoExpediente>
+{
+    public void Configure(EntityTypeBuilder<ProyectoExpediente> b)
+    {
+        b.ToTable("ProyectoExpedientes");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nota).HasMaxLength(ProyectoReunion.MaxNota);
+        b.Property(x => x.VinculadoPor).HasMaxLength(200).IsRequired();
+
+        b.HasIndex(x => new { x.ProyectoId, x.ExpedienteId }).IsUnique();
+        b.HasIndex(x => x.ExpedienteId);
+
+        b.HasOne<Proyecto>().WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Expediente>().WithMany().HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 
