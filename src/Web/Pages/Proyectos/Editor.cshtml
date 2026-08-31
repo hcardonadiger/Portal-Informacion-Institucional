@@ -1297,7 +1297,7 @@
                                 <input id="doc-titulo" name="DocTitulo" maxlength="300"
                                        placeholder="Convenio marco DIGER–SRECI" />
                                 <small class="res-meta">
-                                    Si lo deja vacío, cada documento toma el nombre de su archivo.
+                                    Opcional. Con varios archivos, cada documento se llama «Título — nombre del archivo».
                                 </small>
                             </div>
                             <div class="field" style="flex:1;min-width:170px">
@@ -2476,14 +2476,13 @@
         } else if (n === 1) {
             info.textContent = "1 archivo.";
         } else {
-            info.textContent = n + " archivos: se crean " + n + " documentos, todos en la misma " +
-                               "categoría. El título y la descripción que escriba se aplican a los " + n + ".";
+            info.textContent = n + " archivos: se crean " + n + " documentos en la misma categoría. " +
+                               "Si escribe un título, cada uno se llamará «Título — nombre del archivo».";
         }
 
         if (tit) tit.placeholder = n > 1
-            ? "Común a los " + n + " documentos; vacío, cada uno toma el nombre de su archivo"
+            ? "Prefijo común; vacío, cada documento toma el nombre de su archivo"
             : "Convenio marco DIGER–SRECI";
-        if (desc) { /* la descripción se aplica igual en lote que en uno solo */ }
     }
 </script>
 }

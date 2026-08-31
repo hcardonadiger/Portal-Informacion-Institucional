@@ -333,8 +333,10 @@ public sealed class RepositorioDocumentalTests : IAsyncLifetime
         var titulos = await db.ProyectoDocumentos.IgnoreQueryFilters()
             .Where(d => d.ProyectoId == _proyectoId).Select(d => d.Titulo).ToListAsync();
 
-        titulos.Should().BeEquivalentTo(["Registros CONSUCOOP", "Registros CONSUCOOP"],
-            "el título se aplica a todo el lote; cada fila muestra su archivo debajo para distinguirlas");
+        // Se usa lo escrito Y cada fila se distingue: ni descartar el título ni repetirlo tal cual.
+        titulos.Should().BeEquivalentTo(
+            ["Registros CONSUCOOP — Registro_CONSUCOOP_2026-07-16",
+             "Registros CONSUCOOP — IHADFA_historia"]);
     }
 
     [Fact]

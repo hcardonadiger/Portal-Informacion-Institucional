@@ -628,8 +628,8 @@ public sealed class EditorModel(
         var subidos  = 0;
         var fallidos = new List<string>();
 
-        // Lo que se escribió manda, haya un archivo o veinte. Vacío = el nombre de cada archivo.
         var tituloComun = string.IsNullOrWhiteSpace(DocTitulo) ? null : DocTitulo.Trim();
+        var enLote      = archivos.Count > 1;
 
         foreach (var archivo in archivos)
         {
@@ -637,7 +637,7 @@ public sealed class EditorModel(
             {
                 var guardado = await DocumentosStorage.GuardarAsync(archivo, env, ct);
 
-                var titulo = tituloComun ?? TituloDesdeArchivo(archivo.FileName);
+                var titulo = TituloDelDocumento(tituloComun, archivo.FileName, enLote);
 
                 await sender.Send(new SubirDocumentoCommand(
                     id, DocCategoriaId, titulo, DocDescripcion,
@@ -661,6 +661,29 @@ public sealed class EditorModel(
                 : $"No se subieron {fallidos.Count} archivos. " + string.Join(" ", fallidos);
 
         return VolverA(id, "documentos");
+    }
+
+    /// <summary>
+    /// Cómo se llama cada documento del alta.
+    ///
+    /// <para>Un solo archivo: el título escrito, o el nombre del archivo si no se escribió ninguno.</para>
+    ///
+    /// <para>Varios: <c>«Título — nombre del archivo»</c>. Es la única forma que no pierde nada ni
+    /// deja el listado con N filas idénticas. Las dos alternativas se probaron y fallaron: descartar
+    /// el título hacía que el formulario aceptara texto y lo tirara, y repetirlo tal cual llenaba la
+    /// biblioteca de documentos indistinguibles por su nombre.</para>
+    /// </summary>
+    private static string TituloDelDocumento(string? titulo, string archivo, bool enLote)
+    {
+        var delArchivo = TituloDesdeArchivo(archivo);
+
+        if (titulo is null)   return delArchivo;
+        if (!enLote)          return titulo;
+
+        var compuesto = $"{titulo} — {delArchivo}";
+        return compuesto.Length > DocumentoProyecto.MaxTitulo
+            ? compuesto[..DocumentoProyecto.MaxTitulo]
+            : compuesto;
     }
 
     /// <summary>El nombre del archivo sin su extensión, recortado al largo que admite el título.
