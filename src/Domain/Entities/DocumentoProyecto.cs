@@ -247,3 +247,65 @@ public sealed class VersionDocumento : BaseEntity
     public const int MaxNombre = 300;
     public const int MaxNotas  = 1000;
 }
+
+/// <summary>
+/// Una descarga de una versión de documento: quién la bajó y cuándo.
+///
+/// <para><b>Es una bitácora, no un contador.</b> <see cref="Recurso.DescargasCount"/> resuelve el
+/// caso de la biblioteca pública con un entero que se incrementa, y ahí alcanza: interesa cuánto se
+/// usa una plantilla, no quién la usó. Acá la pregunta es otra —«quién se llevó el convenio antes
+/// de que se firmara»— y esa no se responde con un número.</para>
+///
+/// <para><b>Apunta a la versión, no al documento.</b> Un documento vive; sus versiones son lo que
+/// efectivamente se entrega. Saber que alguien descargó «Convenio marco» no dice nada si no consta
+/// que descargó la v1 y no la v2 ya corregida.</para>
+///
+/// <para>Se guarda el <see cref="UsuarioId"/> y además el <see cref="Usuario"/> como copia del
+/// nombre, mismo criterio que el resto del portal: el registro tiene que seguir siendo legible
+/// dentro de tres años, cuando la persona ya no esté o se llame distinto.</para>
+///
+/// <para><b>No se registra la dirección IP.</b> El portal no la guarda en ninguna otra parte y
+/// añadirla acá convertiría una traza de uso en un rastro de ubicación, que es otra decisión y
+/// tendría que tomarse aparte.</para>
+///
+/// <para>Tabla independiente, como el resto de los hijos de <see cref="Proyecto"/>: lo que cuelga
+/// del agregado se arrastra en sus operaciones de colección, y una bitácora que crece sin techo no
+/// tiene por qué cargarse cada vez que se abre un documento.</para>
+///
+/// <para><b>Nunca se edita ni se borra.</b> Un registro de acceso que se puede corregir no sirve
+/// para lo único que sirve un registro de acceso.</para>
+/// </summary>
+public sealed class DescargaDocumento : BaseEntity
+{
+    /// <summary>Versión concreta que se descargó.</summary>
+    public int VersionId { get; private set; }
+
+    /// <summary>Usuario que la descargó. Toda descarga pasa por un handler autenticado, así que
+    /// nunca es anónima.</summary>
+    public Guid UsuarioId { get; private set; }
+
+    /// <summary>Copia del nombre al momento de la descarga.</summary>
+    public string Usuario { get; private set; } = default!;
+
+    public DateTime FechaHora { get; private set; }
+
+    private DescargaDocumento() { }   // EF
+
+    public static DescargaDocumento Registrar(int versionId, Guid usuarioId, string? usuario)
+    {
+        if (versionId <= 0)
+            throw new DomainException("La descarga tiene que apuntar a una versión.");
+        if (usuarioId == Guid.Empty)
+            throw new DomainException("La descarga tiene que quedar imputada a un usuario.");
+
+        return new DescargaDocumento
+        {
+            VersionId = versionId,
+            UsuarioId = usuarioId,
+            Usuario   = string.IsNullOrWhiteSpace(usuario) ? "—" : usuario.Trim(),
+            FechaHora = DateTime.UtcNow
+        };
+    }
+
+    public const int MaxUsuario = 200;
+}

@@ -205,7 +205,9 @@ public static class CronogramaProyecto
 
     /// <summary>Los meses en español, sin depender de la cultura del servidor — que en este
     /// entorno no siempre es es-HN.</summary>
-    private static class Cultura
+    /// <remarks>internal, no private: la usa también el tablero del proyecto. Duplicar los
+    /// nombres de los meses en dos archivos es exactamente lo que se desincroniza.</remarks>
+    internal static class Cultura
     {
         private static readonly string[] Meses =
             ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];

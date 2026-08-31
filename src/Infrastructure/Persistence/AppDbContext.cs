@@ -77,6 +77,10 @@ public sealed class AppDbContext(
     public DbSet<CategoriaDocumento>        CategoriasDocumento   { get; init; } = default!;
     public DbSet<DocumentoProyecto>         ProyectoDocumentos    { get; init; } = default!;
     public DbSet<VersionDocumento>          ProyectoDocumentoVersiones { get; init; } = default!;
+    public DbSet<DescargaDocumento>         ProyectoDocumentoDescargas { get; init; } = default!;
+    public DbSet<ProyectoReunion>           ProyectoReuniones     { get; init; } = default!;
+    public DbSet<ProyectoExpediente>        ProyectoExpedientes   { get; init; } = default!;
+    public DbSet<ProyectoTicket>            ProyectoTickets       { get; init; } = default!;
     public DbSet<BitacoraProyecto>          BitacorasProyecto     { get; init; } = default!;
     public DbSet<RiesgoProyecto>            ProyectoRiesgos       { get; init; } = default!;
     public DbSet<InteresadoProyecto>        ProyectoInteresados   { get; init; } = default!;
@@ -243,6 +247,26 @@ public sealed class AppDbContext(
         // vez cuelga del proyecto—: es el mismo descuido que en SGSEC dejó escrituras sin alcance
         // y que solo apareció auditando por reflexión en vez de confiar en la memoria.
         mb.Entity<VersionDocumento>().HasQueryFilter(v => ProyectoDocumentos.Any(d => d.Id == v.DocumentoId));
+
+        // La bitácora de descargas se ancla por la versión —que a su vez cuelga del documento y
+        // este del proyecto—, por el mismo motivo que la versión: una consulta directa a
+        // ProyectoDocumentoDescargas se saltaría todo el alcance y diría quién descargó qué en
+        // proyectos que el usuario no puede ni abrir.
+        mb.Entity<DescargaDocumento>().HasQueryFilter(x => ProyectoDocumentoVersiones.Any(v => v.Id == x.VersionId));
+
+        // Los vínculos se anclan en el PROYECTO, no en la reunión ni en el expediente: quien puede
+        // abrir el proyecto ve con qué está relacionado.
+        //
+        // Tiene una consecuencia que hay que conocer y que no es un descuido: el ancla del proyecto
+        // es su institución EJECUTORA —siempre DIGER en el portafolio interno— mientras que la de la
+        // reunión o el expediente es la beneficiaria. El vínculo cruza instituciones por
+        // construcción, así que ver el vínculo no implica poder abrir la reunión: eso lo sigue
+        // decidiendo el filtro de Reunion cuando se navega hacia ella. La consulta que los lista
+        // resuelve el desajuste diciendo cuántos quedan fuera de alcance, en vez de esconderlos sin
+        // avisar o de saltarse el filtro.
+        mb.Entity<ProyectoReunion>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
+        mb.Entity<ProyectoExpediente>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
+        mb.Entity<ProyectoTicket>().HasQueryFilter(x => Proyectos.Any(p => p.Id == x.ProyectoId));
 
         // El catálogo de categorías es global y no lleva alcance: son etiquetas, no datos de
         // ninguna institución.
@@ -1872,6 +1896,90 @@ public sealed class VersionDocumentoConfiguration : IEntityTypeConfiguration<Ver
 
         // Para avisar "este archivo ya está subido" sin recorrer la tabla entera.
         b.HasIndex(x => x.Sha256);
+    }
+}
+
+public sealed class ProyectoReunionConfiguration : IEntityTypeConfiguration<ProyectoReunion>
+{
+    public void Configure(EntityTypeBuilder<ProyectoReunion> b)
+    {
+        b.ToTable("ProyectoReuniones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nota).HasMaxLength(ProyectoReunion.MaxNota);
+        b.Property(x => x.VinculadoPor).HasMaxLength(200).IsRequired();
+
+        // El mismo par no se vincula dos veces. La comprobación también está en el comando —para
+        // poder dar un mensaje legible— pero el índice es lo que aguanta dos clics simultáneos.
+        b.HasIndex(x => new { x.ProyectoId, x.ReunionId }).IsUnique();
+        b.HasIndex(x => x.ReunionId);
+
+        // Sin navegación declarada a Reunion ni a Proyecto: el vínculo se consulta por Id desde
+        // ambos lados y colgarlo del agregado lo arrastraría en sus operaciones de colección.
+        b.HasOne<Proyecto>().WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Reunion>().WithMany().HasForeignKey(x => x.ReunionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ProyectoExpedienteConfiguration : IEntityTypeConfiguration<ProyectoExpediente>
+{
+    public void Configure(EntityTypeBuilder<ProyectoExpediente> b)
+    {
+        b.ToTable("ProyectoExpedientes");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nota).HasMaxLength(ProyectoReunion.MaxNota);
+        b.Property(x => x.VinculadoPor).HasMaxLength(200).IsRequired();
+
+        b.HasIndex(x => new { x.ProyectoId, x.ExpedienteId }).IsUnique();
+        b.HasIndex(x => x.ExpedienteId);
+
+        b.HasOne<Proyecto>().WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Expediente>().WithMany().HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ProyectoTicketConfiguration : IEntityTypeConfiguration<ProyectoTicket>
+{
+    public void Configure(EntityTypeBuilder<ProyectoTicket> b)
+    {
+        b.ToTable("ProyectoTickets");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nota).HasMaxLength(ProyectoReunion.MaxNota);
+        b.Property(x => x.VinculadoPor).HasMaxLength(200).IsRequired();
+
+        b.HasIndex(x => new { x.ProyectoId, x.TicketId }).IsUnique();
+        b.HasIndex(x => x.TicketId);
+
+        // Cascada desde el proyecto igual que sus hermanos. Desde el ticket también: Ticket es
+        // borrado lógico (IsDeleted), así que la cascada solo entra si alguien lo borra de verdad
+        // en la base, y en ese caso el vínculo colgando no sirve de nada.
+        b.HasOne<Proyecto>().WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Ticket>().WithMany().HasForeignKey(x => x.TicketId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class DescargaDocumentoConfiguration : IEntityTypeConfiguration<DescargaDocumento>
+{
+    public void Configure(EntityTypeBuilder<DescargaDocumento> b)
+    {
+        b.ToTable("ProyectoDocumentoDescargas");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Usuario).HasMaxLength(DescargaDocumento.MaxUsuario).IsRequired();
+
+        // Borrar la versión se lleva su bitácora de descargas: sin el archivo, saber quién lo bajó
+        // no responde nada. La versión, a su vez, solo desaparece si desaparece el proyecto.
+        b.HasOne<VersionDocumento>()
+         .WithMany()
+         .HasForeignKey(x => x.VersionId)
+         .OnDelete(DeleteBehavior.Cascade);
+
+        // Las dos preguntas que se le hacen a esta tabla: «quién descargó este archivo» y
+        // «qué se llevó esta persona».
+        b.HasIndex(x => new { x.VersionId, x.FechaHora });
+        b.HasIndex(x => new { x.UsuarioId, x.FechaHora });
     }
 }
 

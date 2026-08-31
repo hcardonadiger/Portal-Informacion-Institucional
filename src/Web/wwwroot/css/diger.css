@@ -1035,6 +1035,18 @@ tr.contacto-inactivo td {
     font-size: var(--diger-fs-sm);
 }
 
+/* Faltaba el tercer caso: «esto no está mal, pero léalo antes de creerle al número de al lado».
+   Se usa donde un indicador sale de una muestra parcial. A diferencia de sus dos hermanos, va
+   sobre tokens y no sobre literales, así que sí acompaña al modo oscuro. */
+.alert-warn {
+    background: var(--diger-warning-bg);
+    border: 1px solid var(--diger-warning);
+    border-radius: var(--diger-radius-sm);
+    padding: var(--diger-space-3) var(--diger-space-4);
+    color: var(--diger-warning-strong);
+    font-size: var(--diger-fs-sm);
+}
+
 .hint {
     font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
@@ -6064,3 +6076,124 @@ textarea.form-control { resize: vertical; }
     width: 10px; height: 10px; border-radius: 0; transform: rotate(45deg);
     background: var(--diger-surface); border: 2px solid var(--diger-blue-title);
 }
+
+/* ── Biblioteca: modos de vista ──────────────────────────────────────────
+   Carpetas, agrupado y lista son la misma documentación con tres formas de
+   entrar: por categoría («todos los convenios»), por proyecto («el expediente
+   de este») o por quién la mantiene.
+
+   Reusa el idioma de .ficha-tabs —píldora, activa en azul lleno— en vez de
+   inventar un control nuevo: es el mismo gesto de «cambiar de vista» que ya
+   hace la ficha del proyecto, y conviene que se vea igual. */
+.bib-segs { display: flex; gap: 7px; flex-wrap: wrap; }
+
+.bib-seg {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 13px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    transition: all var(--diger-transition);
+}
+
+.bib-seg:hover {
+    border-color: var(--diger-blue-mid);
+    color: var(--diger-blue-title);
+    box-shadow: var(--diger-shadow-sm);
+}
+
+/* Después de :hover a propósito: misma especificidad, gana la de más abajo. */
+.bib-seg.on {
+    border-color: var(--diger-blue-mid);
+    background: var(--diger-blue-mid);
+    color: #fff;
+    box-shadow: var(--diger-shadow-sm);
+}
+
+.bib-seg:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+
+/* ── Mosaico de carpetas ─────────────────────────────────────────────── */
+.bib-carpetas {
+    display: grid;
+    gap: var(--diger-space-3);
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+
+.bib-carpeta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: var(--diger-space-4);
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    text-decoration: none;
+    color: var(--diger-text);
+    transition: all var(--diger-transition);
+}
+
+.bib-carpeta:hover {
+    border-color: var(--diger-blue-mid);
+    box-shadow: var(--diger-shadow-sm);
+}
+
+.bib-carpeta-ico { font-size: 24px; line-height: 1; margin-bottom: 4px; }
+
+.bib-carpeta-nom {
+    font-weight: 600;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-blue-title);
+}
+
+/* ── Dentro de una carpeta, y grupos ─────────────────────────────────── */
+.bib-ruta {
+    display: flex;
+    gap: var(--diger-space-3);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: var(--diger-space-4);
+}
+
+.bib-grupo { margin-bottom: var(--diger-space-6); }
+
+.bib-grupo-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--diger-space-3);
+    padding-bottom: 6px;
+    margin-bottom: var(--diger-space-2);
+    border-bottom: 1px solid var(--diger-border);
+    color: var(--diger-blue-title);
+}
+
+/* ── Secciones plegables de vínculos ─────────────────────────────────────
+   Se pliegan solas cuando están vacías: un proyecto sin reuniones ni
+   expedientes —la mayoría— no debería obligar a bajar por dos vacíos para
+   llegar a los formularios. El resumen sigue diciendo cuántos hay, así que
+   plegado no equivale a esconder. */
+.vinc-sec { padding: var(--diger-space-4); }
+.vinc-sum {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--diger-space-3); cursor: pointer; list-style: none;
+}
+.vinc-sum::-webkit-details-marker { display: none; }
+.vinc-sum::before {
+    content: "▸"; color: var(--diger-text-muted);
+    margin-right: 6px; font-size: .85em;
+}
+.vinc-sec[open] > .vinc-sum::before { content: "▾"; }
+.vinc-sum .sec-h { border: 0; padding: 0; margin: 0; }
+.vinc-n {
+    font-size: var(--diger-fs-xs); color: var(--diger-text-muted);
+    font-family: inherit; white-space: nowrap;
+}
+.vinc-sum:focus-visible { outline: 2px solid var(--diger-blue, #1d4ed8); outline-offset: 2px; }

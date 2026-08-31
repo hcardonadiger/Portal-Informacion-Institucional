@@ -24,7 +24,6 @@ public sealed class SeguimientoModel(ISender sender, AccesoModulosService acceso
     [Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
     public async Task<IActionResult> OnPostSubAsync(int id, int tramite, string subId, int estado, CancellationToken ct)
     {
-        if (!PuedeGestionar) return Forbid();
         try
         {
             await sender.Send(new ActualizarSubEtapaCommand(id, tramite, subId, estado), ct);
@@ -39,7 +38,6 @@ public sealed class SeguimientoModel(ISender sender, AccesoModulosService acceso
     [Permission("Expedientes", AccionModulo.Editar, "Crear y editar expedientes")]
     public async Task<IActionResult> OnPostAplicaAsync(int id, int tramite, string etapa, bool aplica, CancellationToken ct)
     {
-        if (!PuedeGestionar) return Forbid();
         try
         {
             await sender.Send(new CambiarAplicaEtapaCommand(id, tramite, etapa, aplica), ct);

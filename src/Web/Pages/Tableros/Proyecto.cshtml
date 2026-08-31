@@ -1,0 +1,411 @@
+@page "{id:int}"
+@using System.Text.Json
+@using Diger.TramitesEstado.Application.Dashboards.Queries
+@using Diger.TramitesEstado.Application.Proyectos.Queries
+@model Diger.TramitesEstado.Web.Pages.Tableros.ProyectoModel
+@{
+    var d = Model.Data;
+    ViewData["Title"] = $"Tablero · {d.Codigo}";
+    var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
+    var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+    string Fecha(DateOnly? f) => f?.ToString("dd/MM/yyyy") ?? "—";
+
+    string EstadoCls(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.EnEjecucion => "status-badge abierto",
+        EstadoProyecto.Suspendido  => "status-badge enproceso",
+        EstadoProyecto.Cerrado     => "status-badge resuelto",
+        EstadoProyecto.Cancelado   => "status-badge vencido",
+        _                          => "status-badge default"
+    };
+}
+
+<div class="container" style="max-width:1180px">
+    <div class="hist-header">
+        <div>
+            <h2>@d.Nombre</h2>
+            <p>
+                @d.Codigo ·
+                <span class="@EstadoCls(d.Estado)" style="padding:2px 9px;font-size:var(--diger-fs-xs)">@Etiquetas.Estado(d.Estado)</span>
+                · @(d.Responsable ?? "sin responsable")
+            </p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a class="btnp" asp-page="/Proyectos/Editor" asp-route-id="@d.ProyectoId">Abrir ficha →</a>
+            <a class="btns" asp-page="/Tableros/Proyectos">← Portafolio</a>
+        </div>
+    </div>
+
+    @* ── Cobertura del plan ──────────────────────────────────────────
+       Va ANTES que cualquier número de cronograma, a propósito. En este portafolio el 89 % de las
+       actividades no tiene fechas planificadas: sin decir sobre cuántas se está midiendo, un
+       «0 vencidas» se lee como «vamos bien» cuando significa «no hay contra qué medir». *@
+    @if (!d.HayPlan)
+    {
+        <div class="alert-warn" style="margin-bottom:14px">
+            <strong>No hay línea base.</strong>
+            Ninguna de las @d.TotalActividades actividades tiene fecha de inicio y fin planificadas, así que
+            el avance esperado, las vencidas y la proyección de cierre <em>no se calculan</em>.
+            Lo que sigue mide ejecución y registro, no cumplimiento.
+            <a asp-page="/Proyectos/Editor" asp-route-id="@d.ProyectoId" asp-fragment="cronograma">Cargar el cronograma →</a>
+        </div>
+    }
+    else if (d.PlanIncompleto)
+    {
+        <div class="alert-warn" style="margin-bottom:14px">
+            <strong>Línea base parcial.</strong>
+            Los indicadores contra plan salen de @d.ConFechas de @d.TotalActividades actividades (@d.PctConFechas %):
+            son una muestra, no el proyecto. Las @(d.TotalActividades - d.ConFechas) sin fechas nunca cuentan
+            como vencidas.
+        </div>
+    }
+
+    @* ── Cumplimiento: lo real contra lo esperado ─────────────────────
+       Las dos barras comparten escala y van una sobre otra en vez de en dos gráficos: es la misma
+       unidad —puntos de avance— y lo que se lee es la distancia entre ellas. *@
+    <div class="dash-card">
+        <h3>Cumplimiento a la fecha</h3>
+        <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+            <div style="flex:1 1 340px;min-width:300px">
+                <div class="bar-row" style="margin-bottom:10px">
+                    <span class="bar-lbl">Avance real</span>
+                    <div class="bar-track" style="height:18px"><div class="bar-fill" style="width:@(d.AvanceReal)%"></div></div>
+                    <span class="bar-val">@(d.AvanceReal)%</span>
+                </div>
+                @if (d.HayPlan)
+                {
+                    <div class="bar-row" style="margin-bottom:10px">
+                        <span class="bar-lbl">Esperado hoy</span>
+                        <div class="bar-track" style="height:18px"><div class="bar-fill c-gray" style="width:@(d.AvanceEsperado)%"></div></div>
+                        <span class="bar-val">@(d.AvanceEsperado)%</span>
+                    </div>
+                }
+                <div class="bar-row">
+                    <span class="bar-lbl" title="Entregables cerrados sobre el total. Es la otra medida del mismo avance: si se separa mucho de la reportada, una de las dos dejó de mantenerse.">Entregables</span>
+                    <div class="bar-track" style="height:18px"><div class="bar-fill c-teal" style="width:@(d.AvanceFisico)%"></div></div>
+                    <span class="bar-val">@(d.AvanceFisico)%</span>
+                </div>
+                <p class="res-meta" style="margin-top:.6rem">
+                    @d.EntCumplidos de @d.EntTotal entregables cerrados
+                    @* Sin fechas comprometidas la línea se corta acá: «plan — → —» ocupa el mismo
+                       espacio que un dato y no dice nada. *@
+                    @if (d.FechaInicioPlan is not null || d.FechaFinPlan is not null)
+                    {
+                        <text> · plan @Fecha(d.FechaInicioPlan) → @Fecha(d.FechaFinPlan)</text>
+                    }
+                    else
+                    {
+                        <text> · el proyecto no tiene fechas comprometidas</text>
+                    }
+                </p>
+            </div>
+
+            @if (d.HayPlan)
+            {
+                @* El titular del bloque es la desviación, no el avance: «84 %» solo no dice si está
+                   bien; «14 puntos por detrás» sí. *@
+                var atras = d.Desviacion < 0;
+                <div style="flex:0 0 210px;text-align:center;padding:6px 0">
+                    <div style="font-size:2.6rem;font-weight:800;line-height:1.05;color:@(atras ? "var(--diger-danger-text)" : "var(--diger-success-strong)")">
+                        @(d.Desviacion > 0 ? "+" : "")@d.Desviacion
+                    </div>
+                    <div class="kpi-lbl">puntos @(atras ? "por detrás del plan" : d.Desviacion == 0 ? "— en el plan" : "por delante del plan")</div>
+                    <p class="res-meta" style="margin-top:.5rem">
+                        Sobre @d.ConFechas actividad@(d.ConFechas == 1 ? "" : "es") con fechas.
+                    </p>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ── Indicadores ─────────────────────────────────────────────── *@
+    <div class="kpi-grid" style="margin-top:16px">
+        <div class="kpi-card @(d.ActVencidas > 0 ? "alert" : "ok")"
+             title="Actividades abiertas cuya fecha de fin ya pasó.">
+            <div class="kpi-num">@d.ActVencidas</div><div class="kpi-lbl">Actividades vencidas</div>
+        </div>
+        <div class="kpi-card @(d.ActProximas > 0 ? "warn" : "ok")"
+             title="Actividades abiertas que vencen dentro de los próximos 15 días.">
+            <div class="kpi-num">@d.ActProximas</div><div class="kpi-lbl">Vencen en 15 días</div>
+        </div>
+        @* Bloqueadas no es atraso de fecha: la actividad puede tener su ventana entera por delante y
+           estar trancada igual. Por eso va con su propio indicador. *@
+        <div class="kpi-card @(d.ActBloqueadas > 0 ? "warn" : "ok")"
+             title="Actividades abiertas que esperan a otra que todavía no termina.">
+            <div class="kpi-num">@d.ActBloqueadas</div><div class="kpi-lbl">Bloqueadas</div>
+        </div>
+        <div class="kpi-card @(d.EntVencidos > 0 ? "alert" : "ok")">
+            <div class="kpi-num">@d.EntVencidos</div><div class="kpi-lbl">Entregables vencidos</div>
+        </div>
+        <div class="kpi-card @(d.RiesgosAltos > 0 ? "alert" : d.RiesgosAbiertos > 0 ? "warn" : "ok")"
+             title="Riesgos abiertos o en tratamiento. Entre paréntesis, los de severidad alta (probabilidad × impacto ≥ 6).">
+            <div class="kpi-num">
+                @d.RiesgosAbiertos@if (d.RiesgosAltos > 0) { <text> </text><span style="font-size:.62em">(@d.RiesgosAltos)</span> }
+            </div>
+            <div class="kpi-lbl">Riesgos abiertos</div>
+        </div>
+        <div class="kpi-card @(d.RiesgosRevisionVencida > 0 ? "warn" : "ok")"
+             title="Riesgos abiertos cuya fecha de revisión ya pasó: nadie volvió a mirarlos.">
+            <div class="kpi-num">@d.RiesgosRevisionVencida</div><div class="kpi-lbl">Riesgos sin revisar</div>
+        </div>
+        <div class="kpi-card @(d.DiasSinReportar is null or > 30 ? "warn" : "ok")"
+             title="Días desde el último reporte de avance.">
+            <div class="kpi-num">@(d.DiasSinReportar?.ToString() ?? "—")</div>
+            <div class="kpi-lbl">Días sin reportar</div>
+        </div>
+        @* Los dos de calidad del registro cierran la fila: explican por qué los de arriba pueden
+           estar bajos sin que el proyecto esté bien. *@
+        <div class="kpi-card @(d.ActSinResponsable > 0 ? "warn" : "ok")"
+             title="Actividades sin nadie asignado: no entran en la carga por responsable.">
+            <div class="kpi-num">@d.ActSinResponsable</div><div class="kpi-lbl">Sin responsable</div>
+        </div>
+        <div class="kpi-card @(d.EntSinDesglosar > 0 ? "warn" : "ok")"
+             title="Entregables sin una sola actividad: su avance no se puede medir por debajo.">
+            <div class="kpi-num">@d.EntSinDesglosar</div><div class="kpi-lbl">Entregables sin desglosar</div>
+        </div>
+    </div>
+
+    <div class="dash-grid" style="margin-top:16px">
+        @* ── Estado de las actividades ────────────────────────────────
+           Una sola barra partida en tres: son partes de un mismo total y lo que se lee es la
+           proporción. Cada tramo lleva su número encima —el color solo no alcanza para el tramo
+           gris contra el azul en visión tritán— y hay 2 px de fondo entre tramos. *@
+        <div class="dash-card">
+            <h3>Estado de las actividades</h3>
+            @if (d.TotalActividades == 0)
+            {
+                <p class="res-meta">El proyecto no tiene actividades cargadas.</p>
+            }
+            else
+            {
+                <div style="display:flex;gap:2px;height:26px;margin:.8rem 0 .9rem;border-radius:var(--diger-radius-sm);overflow:hidden">
+                    @if (d.ActTerminadas > 0)
+                    {
+                        <div style="flex:@d.ActTerminadas;background:#2f7d32" title="@d.ActTerminadas terminadas"></div>
+                    }
+                    @if (d.ActEnProceso > 0)
+                    {
+                        <div style="flex:@d.ActEnProceso;background:#1455a4" title="@d.ActEnProceso en proceso"></div>
+                    }
+                    @if (d.ActPendientes > 0)
+                    {
+                        <div style="flex:@d.ActPendientes;background:#888780" title="@d.ActPendientes pendientes"></div>
+                    }
+                </div>
+                <div style="display:flex;gap:18px;flex-wrap:wrap">
+                    <span class="res-meta"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2f7d32;margin-right:5px"></span><strong>@d.ActTerminadas</strong> terminadas</span>
+                    <span class="res-meta"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#1455a4;margin-right:5px"></span><strong>@d.ActEnProceso</strong> en proceso</span>
+                    <span class="res-meta"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#888780;margin-right:5px"></span><strong>@d.ActPendientes</strong> pendientes</span>
+                </div>
+                <p class="res-meta" style="margin-top:.7rem">
+                    @d.TotalActividades actividades vigentes (las canceladas no cuentan) ·
+                    @d.PctConResponsable % con responsable · @d.PctConFechas % con fechas.
+                </p>
+            }
+        </div>
+
+        @* ── Ritmo ────────────────────────────────────────────────────
+           Cuenta REPORTES, no puntos: mide si el proyecto se está documentando. Los puntos ganados
+           van como texto, no como segunda escala en el mismo gráfico. *@
+        <div class="dash-card">
+            <h3>Ritmo de reporte</h3>
+            <p class="res-meta" style="margin-top:-.4rem">Reportes de avance por mes en los últimos seis.</p>
+            @if (d.TotalReportes == 0)
+            {
+                <p class="res-meta" style="margin-top:1rem">El proyecto no tiene ningún reporte de avance.</p>
+            }
+            else
+            {
+                <div style="position:relative;height:190px"><canvas id="chRitmo"></canvas></div>
+                <p class="res-meta" style="margin-top:.6rem">
+                    @d.TotalReportes reporte@(d.TotalReportes == 1 ? "" : "s") en total ·
+                    @d.PuntosPorMes puntos/mes en los últimos tres.
+                    @if (d.CierreProyectado is { } cp)
+                    {
+                        <text>
+                            <br />A ese ritmo cerraría hacia <strong>@Fecha(cp)</strong>@if (d.FechaFinPlan is { } fp)
+                            {
+                                <text>, contra @Fecha(fp) comprometido@(cp > fp ? $" ({cp.DayNumber - fp.DayNumber} días después)" : "")</text>
+                            }.
+                            Es una recta sobre el pasado reciente, no una promesa.
+                        </text>
+                    }
+                </p>
+            }
+        </div>
+    </div>
+
+    @* ── Carga por responsable ───────────────────────────────────────
+       Lo que interesa no es cuántas tiene cada uno, sino cuántas de esas están vencidas: el
+       cuello de botella es una persona antes que una fecha. Por eso ordena por vencidas. *@
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Carga por responsable</h3>
+        @if (!d.Carga.Any())
+        {
+            <p class="res-meta">Ninguna actividad tiene responsable asignado.</p>
+        }
+        else
+        {
+            var maxC = Math.Max(1, d.Carga.Max(c => c.Total));
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Responsable</th>
+                        <th style="width:200px">Actividades</th>
+                        <th style="width:90px;text-align:right">Abiertas</th>
+                        <th style="width:90px;text-align:right">Vencidas</th>
+                        <th style="width:100px;text-align:right">Bloqueadas</th>
+                        <th style="width:110px;text-align:right">Terminado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in d.Carga)
+                    {
+                        <tr>
+                            <td style="font-size:var(--diger-fs-sm)">@c.Responsable</td>
+                            <td>
+                                <div class="bar-track" style="height:12px">
+                                    <div class="bar-fill @(c.Vencidas > 0 ? "c-red" : c.Bloqueadas > 0 ? "c-amber" : "")"
+                                         style="width:@(c.Total * 100 / maxC)%"></div>
+                                </div>
+                                <div class="res-meta">@c.Total en total</div>
+                            </td>
+                            <td class="res-meta" style="text-align:right">@c.Abiertas</td>
+                            <td style="text-align:right">
+                                @if (c.Vencidas > 0)
+                                {
+                                    <span class="badge badge-danger">@c.Vencidas</span>
+                                }
+                                else
+                                {
+                                    <span class="res-meta">—</span>
+                                }
+                            </td>
+                            <td style="text-align:right">
+                                @if (c.Bloqueadas > 0)
+                                {
+                                    <span class="badge badge-warning">@c.Bloqueadas</span>
+                                }
+                                else
+                                {
+                                    <span class="res-meta">—</span>
+                                }
+                            </td>
+                            <td class="res-meta" style="text-align:right">@c.Terminadas / @c.Total · @(c.PctTerminado)%</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (d.ActSinResponsable > 0)
+            {
+                <p class="res-meta" style="margin-top:.6rem">
+                    @(d.ActSinResponsable == 1
+                        ? "Fuera de este cuadro queda 1 actividad sin asignar."
+                        : $"Fuera de este cuadro quedan {d.ActSinResponsable} actividades sin asignar.")
+                </p>
+            }
+        }
+    </div>
+
+    @* ── Lo que exige atención hoy ───────────────────────────────── *@
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Exige atención (@d.Atencion.Count)</h3>
+        @if (!d.Atencion.Any())
+        {
+            <p class="res-meta">
+                @(d.HayPlan
+                    ? "Ninguna actividad abierta está vencida ni bloqueada."
+                    : "Sin fechas planificadas no hay actividades vencidas que detectar; las bloqueadas sí se revisaron y no hay ninguna.")
+            </p>
+        }
+        else
+        {
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Actividad</th>
+                        <th style="width:190px">Entregable</th>
+                        <th style="width:140px">Responsable</th>
+                        <th style="width:75px;text-align:right">Avance</th>
+                        <th style="width:135px;text-align:right">Fin plan.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in d.Atencion)
+                    {
+                        <tr>
+                            <td style="font-size:var(--diger-fs-sm)">
+                                @a.Nombre
+                                @if (a.Motivo == "vencida")
+                                {
+                                    <span class="badge badge-danger" style="margin-left:6px">Vencida</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-warning" style="margin-left:6px">Bloqueada</span>
+                                    <div class="res-meta">espera a: @string.Join(" · ", a.Espera)</div>
+                                }
+                            </td>
+                            <td class="res-meta">@a.Entregable</td>
+                            <td class="res-meta">@(a.Responsable ?? "—")</td>
+                            <td class="res-meta" style="text-align:right">@(a.AvancePct)%</td>
+                            <td style="text-align:right;white-space:nowrap">
+                                @if (a.FechaFinPlan is { } f)
+                                {
+                                    var dias = Math.Abs(f.DayNumber - hoy.DayNumber);
+                                    <span style="font-weight:700;color:@(f < hoy ? "var(--diger-danger-text)" : "var(--diger-blue-title)")">@Fecha(f)</span>
+                                    <div class="res-meta">@(f < hoy ? $"hace {dias} d" : dias == 0 ? "hoy" : $"en {dias} d")</div>
+                                }
+                                else
+                                {
+                                    <span class="res-meta">sin fecha</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* ── Bloqueo vigente ─────────────────────────────────────────────
+       Solo el del último reporte: uno que el reporte siguiente ya no menciona se da por superado.
+       La tarjeta se omite si no hay — una vacía permanente enseña a ignorarla. *@
+    @if (d.BloqueoVigente is { } bloqueo)
+    {
+        <div class="dash-card" style="margin-top:16px">
+            <h3>Bloqueo reportado</h3>
+            <p class="res-meta" style="margin-top:-.4rem">Del último reporte de avance.</p>
+            <p style="margin:.4rem 0 0;font-size:var(--diger-fs-sm)">@bloqueo</p>
+        </div>
+    }
+
+    <p class="res-meta" style="margin:14px 0 2rem">
+        Calculado al @DateTime.UtcNow.ToLocalTime().ToString("dd/MM/yyyy HH:mm").
+        Los indicadores contra plan salen de @d.ConFechas de @d.TotalActividades actividades.
+    </p>
+</div>
+
+@* La sección va al tope del archivo, no dentro del @@if: Razor no admite declararla condicionalmente.
+   Lo condicional es su contenido — sin reportes no se sirve Chart.js ni se busca un canvas ausente. *@
+@section Scripts {
+    @if (d.TotalReportes > 0)
+    {
+        <script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>
+        <script>
+          Chart.defaults.font.family = 'system-ui, sans-serif';
+          new Chart(document.getElementById('chRitmo'), {
+            type: 'bar',
+            data: {
+              labels: @J(d.Ritmo.Select(r => r.Etiqueta)),
+              datasets: [{ label: 'Reportes', data: @J(d.Ritmo.Select(r => r.Reportes)), backgroundColor: '#1455a4', borderRadius: 4 }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+          });
+        </script>
+    }
+}
