@@ -29,7 +29,17 @@ public sealed record VersionDocumentoDto(
     string   Sha256,
     string?  Notas,
     string   SubidoPor,
-    DateTime SubidoEn)
+    DateTime SubidoEn,
+
+    /// <summary>Cuántas veces se descargó <b>esta versión</b>, no el documento. Es lo que permite
+    /// distinguir que el convenio se bajó cuatro veces en su v1 y ninguna desde que se corrigió.</summary>
+    int      Descargas = 0,
+
+    /// <summary>Quién la descargó por última vez y cuándo. Null si nadie la ha bajado — que es
+    /// distinto de cero descargas por no estar registrando: la tabla existe desde el 31-08-2026,
+    /// así que todo lo anterior a esa fecha figura sin descargas aunque se hubiera bajado.</summary>
+    string?  UltimaDescargaPor = null,
+    DateTime? UltimaDescargaEn = null)
 {
     /// <summary>Tamaño legible. La vista no debería estar dividiendo entre 1024.</summary>
     public string TamanoLegible => ArchivoTamano switch
@@ -66,6 +76,10 @@ public sealed record DocumentoProyectoDto(
     public bool FueCorregido => Versiones.Count > 1;
 
     public DateTime? ActualizadoEn => Vigente?.SubidoEn;
+
+    /// <summary>Descargas de todas las versiones sumadas: cuánto se ha usado el documento a lo
+    /// largo de su vida, frente al conteo por versión que lleva cada una.</summary>
+    public int TotalDescargas => Versiones.Sum(v => v.Descargas);
 
     /// <summary>Alguien volvió a subir un archivo idéntico al anterior: mismo contenido, versión
     /// nueva. No es un error —puede ser un renombrado deliberado— pero conviene que se vea.</summary>

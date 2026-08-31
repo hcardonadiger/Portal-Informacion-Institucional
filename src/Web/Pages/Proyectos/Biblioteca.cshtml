@@ -113,6 +113,9 @@
                             <th style="width:130px">Categoría</th>
                             <th style="width:220px">Proyecto</th>
                             <th style="width:170px">Última versión</th>
+                            @* Responde «¿esta documentación la está usando alguien?». Cuenta el
+                               documento entero, todas sus versiones sumadas. *@
+                            <th style="width:110px">Descargas</th>
                             <th style="width:64px"></th>
                         </tr>
                     </thead>
@@ -151,6 +154,24 @@
                                 </td>
                                 <td class="res-meta">
                                     @doc.SubidoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")<br />@doc.SubidoPor
+                                </td>
+                                <td class="res-meta">
+                                    @if (doc.Descargas == 0)
+                                    {
+                                        <span title="Nadie la ha descargado desde que se registra (31/08/2026). Las descargas anteriores a esa fecha no constan.">—</span>
+                                    }
+                                    else
+                                    {
+                                        <strong>@doc.Descargas</strong><text> </text>
+                                        <span>@(doc.Descargas == 1 ? "descarga" : "descargas")</span>
+                                        @if (doc.UltimaDescargaEn is { } cuando)
+                                        {
+                                            <div style="font-size:var(--diger-fs-2xs)"
+                                                 title="Última descarga registrada">
+                                                @cuando.ToLocalTime().ToString("dd/MM/yyyy HH:mm")<br />@doc.UltimaDescargaPor
+                                            </div>
+                                        }
+                                    }
                                 </td>
                                 <td style="text-align:right">
                                     <a class="btns" asp-page-handler="Descargar" asp-route-versionId="@doc.VersionId"

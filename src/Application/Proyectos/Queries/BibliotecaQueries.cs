@@ -20,7 +20,16 @@ public sealed record DocumentoBibliotecaDto(
     int      Numero,
     int      TotalVersiones,
     string   SubidoPor,
-    DateTime SubidoEn)
+    DateTime SubidoEn,
+
+    /// <summary>Descargas del documento entero, todas sus versiones sumadas. Acá se cuenta por
+    /// documento y no por versión —al revés que en la ficha— porque la pregunta que responde esta
+    /// pantalla es «¿esta documentación la está usando alguien?», no cuál de las copias se bajó.</summary>
+    int      Descargas = 0,
+
+    /// <summary>Quién se llevó la última copia y cuándo. Null si nadie la ha descargado.</summary>
+    string?  UltimaDescargaPor = null,
+    DateTime? UltimaDescargaEn = null)
 {
     public string TamanoLegible => ArchivoTamano switch
     {
@@ -90,6 +99,60 @@ public sealed class GetBibliotecaQueryHandler(IApplicationDbContext ctx)
 
         var categorias = await ctx.CategoriasDocumento.AsNoTracking().ToDictionaryAsync(c => c.Id, ct);
 
+        // ── Descargas por documento ────────────────────────────────────────────
+        // Dos consultas planas contra el índice (VersionId, FechaHora). Ni JOIN ni subconsultas
+        // correlacionadas: el mapa versión → documento ya está en memoria por el Include de arriba,
+        // así que la suma por documento se hace acá y no en SQL.
+        //
+        // La primera versión proyectaba tres subconsultas por fila, cada una reevaluando la cadena
+        // de EXISTS versión → documento → proyecto con el filtro de alcance entero: 180–300 ms con
+        // cuatro documentos. Sobre la biblioteca, que barre TODO el portafolio, eso no aguanta.
+        //
+        // `IgnoreQueryFilters` es seguro acá: `versionPorDocumento` sale de `documentos`, que ya
+        // vino filtrado por alcance. Los ids son de documentos que esta persona puede ver.
+        var versionPorDocumento = documentos
+            .SelectMany(d => d.Versiones.Select(v => (VersionId: v.Id, DocumentoId: d.Id)))
+            .ToDictionary(x => x.VersionId, x => x.DocumentoId);
+
+        var versionIds = versionPorDocumento.Keys.ToList();
+
+        var porVersion = await ctx.ProyectoDocumentoDescargas.AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(x => versionIds.Contains(x.VersionId))
+            .GroupBy(x => x.VersionId)
+            .Select(g => new
+            {
+                VersionId = g.Key,
+                Total     = g.Count(),
+                UltimaEn  = g.Max(x => x.FechaHora)
+            })
+            .ToListAsync(ct);
+
+        var marcas = porVersion.Select(a => a.UltimaEn).ToList();
+
+        var ultimos = marcas.Count == 0
+            ? []
+            : await ctx.ProyectoDocumentoDescargas.AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(x => versionIds.Contains(x.VersionId) && marcas.Contains(x.FechaHora))
+                .Select(x => new { x.VersionId, x.Usuario, x.FechaHora })
+                .ToListAsync(ct);
+
+        // Roll-up a documento: sus versiones sumadas, y la última de todas ellas.
+        var descargas = porVersion
+            .GroupBy(a => versionPorDocumento[a.VersionId])
+            .ToDictionary(g => g.Key, g =>
+            {
+                var ultima = g.MaxBy(a => a.UltimaEn)!;
+                return new
+                {
+                    Total     = g.Sum(a => a.Total),
+                    UltimaEn  = (DateTime?)ultima.UltimaEn,
+                    UltimaPor = ultimos.FirstOrDefault(u =>
+                        u.VersionId == ultima.VersionId && u.FechaHora == ultima.UltimaEn)?.Usuario
+                };
+            });
+
         var filas = documentos
             // Un documento cuyo proyecto no se pudo traer quedó fuera del alcance por el camino:
             // se descarta en vez de mostrarse sin proyecto.
@@ -106,7 +169,10 @@ public sealed class GetBibliotecaQueryHandler(IApplicationDbContext ctx)
                     d.Titulo, d.Descripcion,
                     vigente.ArchivoNombre, vigente.ArchivoTamano,
                     vigente.Numero, d.Versiones.Count,
-                    vigente.SubidoPor, vigente.SubidoEn);
+                    vigente.SubidoPor, vigente.SubidoEn,
+                    descargas.TryGetValue(d.Id, out var dsc) ? dsc.Total : 0,
+                    descargas.TryGetValue(d.Id, out var dsc2) ? dsc2.UltimaPor : null,
+                    descargas.TryGetValue(d.Id, out var dsc3) ? dsc3.UltimaEn : null);
             })
             .Where(x => x is not null)
             .Select(x => x!)

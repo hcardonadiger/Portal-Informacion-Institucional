@@ -1385,6 +1385,15 @@
                                         <div class="repo-doc-quien">
                                             @v.SubidoPor<br />
                                             @v.SubidoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            @* Descargas de ESTA versión, no del documento: es lo que
+                                               distingue que se bajó la copia vieja y no la corregida. *@
+                                            @if (v.Descargas > 0)
+                                            {
+                                                <br />
+                                                <span title="Última: @v.UltimaDescargaPor, @(v.UltimaDescargaEn?.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))">
+                                                    ↓ @v.Descargas @(v.Descargas == 1 ? "descarga" : "descargas")
+                                                </span>
+                                            }
                                         </div>
                                     </div>
                                 }
@@ -1401,6 +1410,7 @@
                                                 <th>Archivo</th>
                                                 <th style="width:150px">Qué cambió</th>
                                                 <th style="width:150px">Quién y cuándo</th>
+                                                <th style="width:96px" title="Descargas registradas de esta versión concreta">Descargas</th>
                                                 <th style="width:110px" title="Huella del contenido: dos versiones con la misma huella son el mismo archivo">Huella</th>
                                                 <th style="width:52px"></th>
                                             </tr>
@@ -1419,6 +1429,20 @@
                                                     <td style="white-space:normal">@ver.ArchivoNombre <span class="res-meta">· @ver.TamanoLegible</span></td>
                                                     <td class="res-meta" style="white-space:normal">@(ver.Notas ?? "—")</td>
                                                     <td class="res-meta">@ver.SubidoPor<br />@ver.SubidoEn.ToLocalTime().ToString("dd/MM/yy HH:mm")</td>
+                                                    <td class="res-meta">
+                                                        @if (ver.Descargas == 0)
+                                                        {
+                                                            <span title="Sin descargas registradas">—</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <strong>@ver.Descargas</strong>
+                                                            <div style="font-size:var(--diger-fs-2xs)">
+                                                                @ver.UltimaDescargaPor<br />
+                                                                @ver.UltimaDescargaEn?.ToLocalTime().ToString("dd/MM/yy HH:mm")
+                                                            </div>
+                                                        }
+                                                    </td>
                                                     <td class="res-meta repo-doc-huella">@ver.HuellaCorta</td>
                                                     <td style="text-align:right">
                                                         <a class="btns" style="padding:3px 8px;font-size:12px"
