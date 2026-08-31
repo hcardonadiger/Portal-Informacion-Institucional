@@ -80,7 +80,6 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostToggleAsync(int id, bool abrir, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
         await sender.Send(new CambiarRegistroAsistenciaCommand(id, abrir), ct);
         TempData["SuccessMsg"] = abrir ? "Registro abierto." : "Registro cerrado.";
         return RedirectToPage(new { id });
@@ -89,7 +88,6 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostRegenerarAsync(int id, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
         await sender.Send(new RegenerarTokenAsistenciaCommand(id), ct);
         TempData["SuccessMsg"] = "Se generó un nuevo enlace. El anterior dejó de funcionar.";
         return RedirectToPage(new { id });
@@ -98,7 +96,6 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, int asistenteId, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
         await sender.Send(new EliminarAsistenteCommand(id, asistenteId), ct);
         TempData["SuccessMsg"] = "Registro eliminado.";
         return RedirectToPage(new { id });
@@ -107,7 +104,6 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostAgregarDirectorioAsync(int id, List<int> contactoIds, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
         var n = await sender.Send(new AgregarAsistentesDirectorioCommand(id, contactoIds ?? []), ct);
         TempData["SuccessMsg"] = n == 0
             ? "No se agregaron contactos (¿ya estaban en la lista?)."
@@ -118,7 +114,6 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostPreregistrarAsync(int id, List<int> contactoIds, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
         var n = await sender.Send(new PreregistrarAsistentesCommand(id, contactoIds ?? []), ct);
         TempData["SuccessMsg"] = n == 0
             ? "No se pre-registraron contactos (¿ya estaban en la lista?)."
@@ -129,7 +124,6 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostConfirmarAsync(int id, int asistenteId, bool asistio, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
         await sender.Send(new ConfirmarAsistenciaCommand(id, asistenteId, asistio), ct);
         TempData["SuccessMsg"] = asistio ? "Asistencia confirmada." : "Marcado como ausente.";
         return RedirectToPage(new { id });

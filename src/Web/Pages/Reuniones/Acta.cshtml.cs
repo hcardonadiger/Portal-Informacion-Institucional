@@ -143,7 +143,12 @@ public sealed class ActaModel(
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEnlazarAsync(int id, int otraReunionId, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
+        // Acá había un `if (!EsAdmin) return Forbid();` que denegaba SIEMPRE, a todos los roles.
+        // EsAdmin solo se asigna dentro de OnGetAsync, y en un POST ASP.NET construye un PageModel
+        // nuevo y ejecuta únicamente el handler: la propiedad conservaba su valor por defecto.
+        // Quien autoriza es el [Permission] de arriba, que además es donde el portal centraliza
+        // esa decisión; la guarda era una segunda copia de la misma regla —y la copia es lo que se
+        // desincroniza—. EsAdmin se queda para la vista, que es para lo que sirve.
         if (otraReunionId <= 0)
         {
             TempData["ErrorMessage"] = "Seleccione una reunión para enlazar.";
@@ -164,7 +169,7 @@ public sealed class ActaModel(
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostDesenlazarAsync(int id, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
+        // Mismo caso que Enlazar: la guarda por EsAdmin denegaba siempre. Ver la nota de arriba.
         try
         {
             await sender.Send(new DesenlazarReunionCommand(id), ct);

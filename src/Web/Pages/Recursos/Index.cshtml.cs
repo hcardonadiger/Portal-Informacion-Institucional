@@ -70,7 +70,6 @@ public sealed class IndexModel(
         IFormFile archivo,
         CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
 
         if (archivo is null || archivo.Length == 0)
         {
@@ -119,7 +118,6 @@ public sealed class IndexModel(
         IFormFile? archivo,
         CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
 
         try
         {
@@ -162,7 +160,6 @@ public sealed class IndexModel(
     [Permission("Recursos", AccionModulo.Eliminar, "Eliminar recursos")]
     public async Task<IActionResult> OnPostEliminarAsync([FromForm] int id, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
 
         try
         {

@@ -146,9 +146,8 @@ public sealed class EditorModel(
     /// <summary>Sube un documento de "Documentación solicitada" y devuelve su URL (consumido por expediente.js).</summary>
     public async Task<IActionResult> OnPostSubirDocumentoAsync(IFormFile archivo, CancellationToken ct)
     {
-        if (!EsAdmin)
-            return Forbid();
-
+        // La guarda por EsAdmin que había acá denegaba siempre: la propiedad solo se asigna en
+        // OnGetAsync. Autoriza el [Permission] de arriba, que comprueba lo mismo.
         var guardados = await AdjuntoStorage.GuardarAsync([archivo], env, ct, carpeta: "expedientes");
         return new JsonResult(new { url = guardados.FirstOrDefault()?.Url });
     }
@@ -168,7 +167,15 @@ public sealed class EditorModel(
             }
         }
 
-        if (!EsAdmin && !esContraparte)
+        // Se recalcula acá en vez de leer EsAdmin: esa propiedad solo se asigna en OnGetAsync y en
+        // un POST vale siempre false, con lo que esta guarda quedaba reducida a «solo la
+        // contraparte puede guardar» y dejaba fuera a quien sí tiene el permiso.
+        //
+        // A diferencia de las otras guardas del mismo fallo, esta NO se elimina: no duplica al
+        // [Permission] de la clase, sino que abre una segunda puerta —la contraparte designada,
+        // que guarda su propia ficha— y quitarla cerraría esa puerta.
+        var puedeEditar = await acceso.PuedeEditarAsync("Expedientes", ct);
+        if (!puedeEditar && !esContraparte)
             return Forbid();
 
         // Resolver la institución (el editor envía el nombre)
