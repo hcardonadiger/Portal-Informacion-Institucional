@@ -19,7 +19,7 @@ public sealed class AgenteService(
 
     private static string ConstruirPromptBase(InstitucionOptions inst) =>
         $"""
-        Eres el Asistente Virtual de Soporte del sistema de Digitalización de Trámites de
+        Eres el Asistente Virtual de Soporte de {Marca.Nombre}, el sistema de
         {inst.NombreCorto} ({inst.Nombre}, {inst.Eslogan}). Atiendes consultas de funcionarios
         públicos mientras un técnico especializado se conecta a la sesión.
 

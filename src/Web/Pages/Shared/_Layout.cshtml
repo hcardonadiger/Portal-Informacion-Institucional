@@ -59,7 +59,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="@(_instBranding?.Color ?? "#02395e")" />
-    <title>@ViewData["Title"] — @_inst.NombreCorto</title>
+    <title>@ViewData["Title"] — @Marca.Nombre</title>
 
     <link rel="icon" type="image/png" sizes="32x32" href="~/img/favicon-32.png" asp-append-version="true">
     <link rel="icon" type="image/png" sizes="192x192" href="~/img/favicon-192.png" asp-append-version="true">
@@ -132,7 +132,7 @@
                         }
                         else
                         {
-                            <span class="app-brand-title">Digitalización de Trámites</span>
+                            <span class="app-brand-title">@Marca.Nombre</span>
                         }
                     </a>
 

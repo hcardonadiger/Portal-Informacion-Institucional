@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Application.Common.Models;
+
 namespace Diger.TramitesEstado.Infrastructure.Email;
 
 public sealed class SmtpSettings
@@ -10,5 +12,5 @@ public sealed class SmtpSettings
     public string Username { get; set; } = "";
     public string Password { get; set; } = "";
     public string FromEmail { get; set; } = "noreply@diger.gob.hn";
-    public string FromName { get; set; } = "Portal DIGER Trámites";
+    public string FromName { get; set; } = Marca.Nombre;
 }

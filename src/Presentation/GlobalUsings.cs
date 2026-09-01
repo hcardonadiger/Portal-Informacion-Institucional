@@ -1,3 +1,4 @@
+global using Diger.TramitesEstado.Application.Common.Models;
 global using Diger.TramitesEstado.Domain.Common;
 global using Diger.TramitesEstado.Application.Common.Interfaces;
 global using Diger.TramitesEstado.Application.Common.Exceptions;
