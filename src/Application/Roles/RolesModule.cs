@@ -4,7 +4,8 @@ public sealed record RolListItemDto(
     string Codigo, string Nombre, string? Descripcion, string? Color,
     NivelAlcance NivelAlcance,
     bool EsAdministrador, bool EsSoloLectura, bool EsSupervisor, bool EsTecnicoSoporte,
-    bool Activo, bool EsSistema, int UsuariosAsignados);
+    bool Activo, bool EsSistema, int UsuariosAsignados,
+    bool EsJefeDeArea = false, bool EsPmo = false);
 
 // ── Query: listado de roles ────────────────────────────────────────────────
 public sealed record GetRolesQuery(bool SoloActivos = false) : IRequest<IReadOnlyList<RolListItemDto>>;
@@ -28,14 +29,16 @@ public sealed class GetRolesQueryHandler(IApplicationDbContext ctx)
             r.Id, r.Nombre, r.Descripcion, r.Color, r.NivelAlcance,
             r.EsAdministrador, r.EsSoloLectura, r.EsSupervisor, r.EsTecnicoSoporte,
             r.Activo, r.EsSistema,
-            conteos.TryGetValue(r.Id, out var n) ? n : 0)).ToList();
+            conteos.TryGetValue(r.Id, out var n) ? n : 0,
+            r.EsJefeDeArea, r.EsPmo)).ToList();
     }
 }
 
 // ── Command: crear ─────────────────────────────────────────────────────────
 public sealed record CrearRolCommand(
     string Codigo, string Nombre, NivelAlcance NivelAlcance, string? Descripcion, string? Color,
-    bool EsAdministrador, bool EsSoloLectura, bool EsSupervisor, bool EsTecnicoSoporte) : IRequest<string>;
+    bool EsAdministrador, bool EsSoloLectura, bool EsSupervisor, bool EsTecnicoSoporte,
+    bool EsJefeDeArea = false, bool EsPmo = false) : IRequest<string>;
 
 public sealed class CrearRolCommandHandler(IApplicationDbContext ctx, IRolCatalogo catalogo)
     : IRequestHandler<CrearRolCommand, string>
@@ -48,7 +51,8 @@ public sealed class CrearRolCommandHandler(IApplicationDbContext ctx, IRolCatalo
 
         var rol = Rol.Crear(
             codigo, cmd.Nombre, cmd.NivelAlcance, cmd.Descripcion, cmd.Color,
-            cmd.EsAdministrador, cmd.EsSoloLectura, cmd.EsSupervisor, cmd.EsTecnicoSoporte);
+            cmd.EsAdministrador, cmd.EsSoloLectura, cmd.EsSupervisor, cmd.EsTecnicoSoporte,
+            esJefeDeArea: cmd.EsJefeDeArea, esPmo: cmd.EsPmo);
 
         ctx.Roles.Add(rol);
         await ctx.SaveChangesAsync(ct);
@@ -61,7 +65,7 @@ public sealed class CrearRolCommandHandler(IApplicationDbContext ctx, IRolCatalo
 public sealed record ActualizarRolCommand(
     string Codigo, string Nombre, NivelAlcance NivelAlcance, string? Descripcion, string? Color,
     bool EsAdministrador, bool EsSoloLectura, bool EsSupervisor, bool EsTecnicoSoporte,
-    bool Activo) : IRequest<Unit>;
+    bool Activo, bool EsJefeDeArea = false, bool EsPmo = false) : IRequest<Unit>;
 
 public sealed class ActualizarRolCommandHandler(IApplicationDbContext ctx, IRolCatalogo catalogo)
     : IRequestHandler<ActualizarRolCommand, Unit>
@@ -83,9 +87,7 @@ public sealed class ActualizarRolCommandHandler(IApplicationDbContext ctx, IRolC
         rol.Actualizar(
             cmd.Nombre, cmd.NivelAlcance, cmd.Descripcion, cmd.Color,
             cmd.EsAdministrador, cmd.EsSoloLectura, cmd.EsSupervisor, cmd.EsTecnicoSoporte,
-            // EsJefeDeArea/EsPmo aún no se exponen en la matriz de administración de roles;
-            // se preservan sin cambios hasta que un task posterior los agregue al comando.
-            rol.EsJefeDeArea, rol.EsPmo);
+            cmd.EsJefeDeArea, cmd.EsPmo);
 
         if (cmd.Activo) rol.Activar(); else rol.Desactivar();
 

@@ -69,6 +69,21 @@ public class RolesModuleTests : IDisposable
         await _catalogo.Received(1).RecargarAsync(Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Crear_RolConJefeDeAreaYPmo_LasPersiste()
+    {
+        var handler = new CrearRolCommandHandler(_ctx, _catalogo);
+
+        await handler.Handle(
+            new CrearRolCommand("JefeGobDigital", "Jefe Gobierno Digital", NivelAlcance.Area, null, null,
+                false, false, false, false, EsJefeDeArea: true, EsPmo: false),
+            CancellationToken.None);
+
+        var guardado = await _ctx.Roles.SingleAsync(r => r.Id == "JefeGobDigital");
+        guardado.EsJefeDeArea.Should().BeTrue();
+        guardado.EsPmo.Should().BeFalse();
+    }
+
     // ── Actualizar ────────────────────────────────────────────────────────
     [Fact]
     public async Task Actualizar_QuitarAdministradorAlUltimo_LanzaDomainException()
