@@ -82,7 +82,10 @@ public sealed class ActualizarRolCommandHandler(IApplicationDbContext ctx, IRolC
 
         rol.Actualizar(
             cmd.Nombre, cmd.NivelAlcance, cmd.Descripcion, cmd.Color,
-            cmd.EsAdministrador, cmd.EsSoloLectura, cmd.EsSupervisor, cmd.EsTecnicoSoporte);
+            cmd.EsAdministrador, cmd.EsSoloLectura, cmd.EsSupervisor, cmd.EsTecnicoSoporte,
+            // EsJefeDeArea/EsPmo aún no se exponen en la matriz de administración de roles;
+            // se preservan sin cambios hasta que un task posterior los agregue al comando.
+            rol.EsJefeDeArea, rol.EsPmo);
 
         if (cmd.Activo) rol.Activar(); else rol.Desactivar();
 

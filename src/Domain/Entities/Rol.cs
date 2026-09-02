@@ -23,6 +23,8 @@ public sealed class Rol : BaseAuditableEntity<string>
     public bool         EsSoloLectura    { get; private set; }
     public bool         EsSupervisor     { get; private set; }
     public bool         EsTecnicoSoporte { get; private set; }
+    public bool         EsJefeDeArea     { get; private set; }
+    public bool         EsPmo            { get; private set; }
     public bool         Activo           { get; private set; } = true;
 
     /// <summary>Rol base del sistema: no se puede eliminar (sí ajustar capacidades).</summary>
@@ -40,7 +42,9 @@ public sealed class Rol : BaseAuditableEntity<string>
         bool esSoloLectura = false,
         bool esSupervisor = false,
         bool esTecnicoSoporte = false,
-        bool esSistema = false)
+        bool esSistema = false,
+        bool esJefeDeArea = false,
+        bool esPmo = false)
     {
         ValidarCodigo(codigo);
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
@@ -59,6 +63,8 @@ public sealed class Rol : BaseAuditableEntity<string>
             EsSoloLectura = esSoloLectura,
             EsSupervisor = esSupervisor,
             EsTecnicoSoporte = esTecnicoSoporte,
+            EsJefeDeArea = esJefeDeArea,
+            EsPmo = esPmo,
             EsSistema = esSistema,
             Activo = true
         };
@@ -86,7 +92,9 @@ public sealed class Rol : BaseAuditableEntity<string>
         bool esAdministrador,
         bool esSoloLectura,
         bool esSupervisor,
-        bool esTecnicoSoporte)
+        bool esTecnicoSoporte,
+        bool esJefeDeArea,
+        bool esPmo)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
 
@@ -101,6 +109,8 @@ public sealed class Rol : BaseAuditableEntity<string>
         EsSoloLectura = esSoloLectura;
         EsSupervisor = esSupervisor;
         EsTecnicoSoporte = esTecnicoSoporte;
+        EsJefeDeArea = esJefeDeArea;
+        EsPmo = esPmo;
     }
 
     public void Activar()    => Activo = true;

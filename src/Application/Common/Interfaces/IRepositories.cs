@@ -127,6 +127,10 @@ public interface ICurrentUserService
     bool EsSupervisor { get; }
     /// <summary>El rol activo atiende el chat de soporte.</summary>
     bool EsTecnicoSoporte { get; }
+    /// <summary>El rol activo es jefe de área.</summary>
+    bool EsJefeDeArea { get; }
+    /// <summary>El rol activo es PMO.</summary>
+    bool EsPmo { get; }
 
     /// <summary>Contexto activo: Institución.</summary>
     string? ActiveInstitucionId { get; }
