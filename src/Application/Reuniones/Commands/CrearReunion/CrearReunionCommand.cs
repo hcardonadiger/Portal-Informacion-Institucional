@@ -31,6 +31,8 @@ public sealed class CrearReunionCommandHandler(
         var r = Reunion.Crear(cmd.Datos.Titulo);
         ReunionMapper.Aplicar(r, cmd.Datos, cmd.Asistentes, cmd.Acuerdos);
         r.CreadoPorId = currentUser.UserId;   // dueño (relevante para reuniones privadas)
+        r.AreaId      = currentUser.ActiveAreaId;
+        r.UnidadId    = currentUser.ActiveUnidadId;
 
         var principalId = cmd.Datos.InstitucionesIds.FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(principalId))
@@ -43,6 +45,18 @@ public sealed class CrearReunionCommandHandler(
         {
             r.InstitucionId = null;
             r.Institucion   = null;
+        }
+
+        if (cmd.Datos.ExpedienteId.HasValue)
+        {
+            var exp = await ctx.Expedientes.IgnoreQueryFilters().FirstOrDefaultAsync(e => e.Id == cmd.Datos.ExpedienteId.Value, ct);
+            r.ExpedienteId = exp?.Id;
+            r.ExpedienteCodigo = exp?.Codigo;
+        }
+        else
+        {
+            r.ExpedienteId = null;
+            r.ExpedienteCodigo = null;
         }
 
         await repo.AddAsync(r, ct);

@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
+[Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
 public sealed class IndexModel(ISender sender) : PageModel
 {
     public PagedResult<ReunionListItemDto> Resultado { get; private set; } = PagedResult<ReunionListItemDto>.Empty(Paginacion.TamanoDefecto);
@@ -14,10 +15,10 @@ public sealed class IndexModel(ISender sender) : PageModel
         Todas = (await sender.Send(new GetReunionesQuery(q, Page: 1, Size: 100), ct)).Items;
     }
 
+    [Permission("Reuniones", AccionModulo.Eliminar, "Eliminar reuniones")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        if (User.IsInRole(nameof(RolUsuario.Empleado)) || User.IsInRole(nameof(RolUsuario.Consultor)))
-            return Forbid();
+        // El chequeo de rol por nombre que había acá lo sustituye el [Permission] de arriba.
         await sender.Send(new EliminarReunionCommand(id), ct);
         TempData["SuccessMsg"] = "Reunión eliminada.";
         return RedirectToPage();

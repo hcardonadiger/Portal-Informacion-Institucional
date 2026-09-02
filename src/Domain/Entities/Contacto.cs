@@ -9,6 +9,7 @@ public sealed class Contacto : BaseAuditableEntity, ISoftDeletable
     public string?        AreaId        { get; private set; }
     public string?        UnidadId      { get; private set; }
     public string         Institucion   { get; private set; } = default!; // snapshot del nombre
+    public string?        Area          { get; private set; } // snapshot del nombre del área o "Otros"
     public string         Nombre        { get; private set; } = default!;
     public string?        Cargo         { get; private set; }
     public string?        Correo        { get; private set; }
@@ -24,7 +25,7 @@ public sealed class Contacto : BaseAuditableEntity, ISoftDeletable
 
     public static Contacto Crear(
         string nombre, string institucionId, string institucionNombre, string? areaId, string? unidadId, string? cargo, string? correo,
-        string? telefono, string? notas, OrigenContacto origen = OrigenContacto.Manual)
+        string? telefono, string? notas, OrigenContacto origen = OrigenContacto.Manual, string? area = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         ArgumentException.ThrowIfNullOrWhiteSpace(institucionId);
@@ -36,6 +37,7 @@ public sealed class Contacto : BaseAuditableEntity, ISoftDeletable
             AreaId        = areaId,
             UnidadId      = unidadId,
             Institucion   = institucionNombre.Trim(),
+            Area          = area?.Trim(),
             Nombre        = nombre.Trim(),
             Cargo         = cargo?.Trim(),
             Correo        = correo?.Trim().ToLowerInvariant(),
@@ -47,7 +49,7 @@ public sealed class Contacto : BaseAuditableEntity, ISoftDeletable
 
     public void Actualizar(
         string nombre, string institucionId, string institucionNombre, string? areaId, string? unidadId,
-        string? cargo, string? correo, string? telefono, string? notas)
+        string? cargo, string? correo, string? telefono, string? notas, string? area = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         ArgumentException.ThrowIfNullOrWhiteSpace(institucionId);
@@ -57,6 +59,7 @@ public sealed class Contacto : BaseAuditableEntity, ISoftDeletable
         AreaId        = areaId;
         UnidadId      = unidadId;
         Institucion   = institucionNombre.Trim();
+        Area          = area?.Trim();
         Nombre        = nombre.Trim();
         Cargo         = cargo?.Trim();
         Correo        = correo?.Trim().ToLowerInvariant();

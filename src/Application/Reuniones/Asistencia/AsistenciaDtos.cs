@@ -27,4 +27,5 @@ public sealed record AsistenciaAdminDto(
 
 public sealed record AsistenteVm(
     int Id, string Nombre, string? Cargo, string? Institucion, string? Departamento,
-    string? Correo, string? Telefono, bool AutoRegistro, DateTime? RegistradoEl);
+    string? Correo, string? Telefono, bool AutoRegistro, DateTime? RegistradoEl,
+    bool EsPreregistro = false, bool? Confirmado = null);

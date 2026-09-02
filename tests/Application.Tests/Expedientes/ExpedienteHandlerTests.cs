@@ -19,6 +19,10 @@ internal sealed class FakeCurrentUser : ICurrentUserService
     public string?     Rol                  => "Coordinador";
     public bool        IsAuthenticated       => true;
     public bool        EsGlobal             => true;
+    public NivelAlcance NivelAlcance         => NivelAlcance.Global;
+    public bool        EsSoloLectura         => false;
+    public bool        EsSupervisor          => true;
+    public bool        EsTecnicoSoporte      => true;
     public string?     ActiveInstitucionId   => null;
     public string?     ActiveAreaId          => null;
     public string?     ActiveUnidadId        => null;
@@ -36,7 +40,7 @@ public class ExpedienteHandlerTests : IDisposable
         var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _ctx = new AppDbContext(opts, new FakeCurrentUser());
+        _ctx = new AppDbContext(opts, new FakeCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
         _repo = new ExpedienteRepository(_ctx);
     }
 
@@ -61,7 +65,7 @@ public class ExpedienteHandlerTests : IDisposable
     [Fact]
     public async Task Crear_GeneraCodigoYPersisteAgregado()
     {
-        var handler = new CrearExpedienteCommandHandler(_repo, new FakeCurrentUser(), _ctx);
+        var handler = new CrearExpedienteCommandHandler(_repo, _ctx, new FakeCurrentUser(), _ctx);
 
         var id = await handler.Handle(new CrearExpedienteCommand(BuildInput()), CancellationToken.None);
 
@@ -79,7 +83,7 @@ public class ExpedienteHandlerTests : IDisposable
     [Fact]
     public async Task Crear_DosExpedientes_GeneraCodigosSecuenciales()
     {
-        var handler = new CrearExpedienteCommandHandler(_repo, new FakeCurrentUser(), _ctx);
+        var handler = new CrearExpedienteCommandHandler(_repo, _ctx, new FakeCurrentUser(), _ctx);
         await handler.Handle(new CrearExpedienteCommand(BuildInput()), CancellationToken.None);
         await handler.Handle(new CrearExpedienteCommand(BuildInput()), CancellationToken.None);
 
@@ -91,7 +95,7 @@ public class ExpedienteHandlerTests : IDisposable
     [Fact]
     public async Task GetExpedientes_RetornaListaConTramites()
     {
-        var handler = new CrearExpedienteCommandHandler(_repo, new FakeCurrentUser(), _ctx);
+        var handler = new CrearExpedienteCommandHandler(_repo, _ctx, new FakeCurrentUser(), _ctx);
         await handler.Handle(new CrearExpedienteCommand(BuildInput("SAG", "14")), CancellationToken.None);
 
         var listHandler = new GetExpedientesQueryHandler(_ctx);

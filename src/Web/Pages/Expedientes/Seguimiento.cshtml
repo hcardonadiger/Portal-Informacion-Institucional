@@ -19,11 +19,25 @@
     @Html.AntiForgeryToken()
     <div class="hist-header">
         <div>
-            <h2>Seguimiento de digitalización</h2>
+            <h2>Seguimiento de digitalización <span class="help-tip tip-down" data-tip="Monitoree el avance de cada trámite por etapas: Exploración, Levantamiento, Modelado, Desarrollo, Pruebas y Operación.">?</span></h2>
             <p><strong>@d.Codigo</strong> · @d.Institucion</p>
         </div>
-        <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@d.ExpedienteId">← Expediente</a>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <a class="btns" asp-page="/Expedientes/Cronograma" asp-route-id="@d.ExpedienteId">Cronograma</a>
+            <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@d.ExpedienteId">← Expediente</a>
+        </div>
     </div>
+
+    @if (!Model.EsAdmin)
+    {
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 18px;border-radius:12px;margin-bottom:1rem;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13.5px">
+            <span style="font-size:18px">👁️</span>
+            <div>
+                <strong>Modo Visualización de Seguimiento</strong>
+                <div style="font-size:12px;font-weight:400;color:#3b82f6;margin-top:2px">Solo los administradores pueden modificar las fases y sub-etapas del proyecto.</div>
+            </div>
+        </div>
+    }
 
 @if (!d.Tramites.Any())
 {
@@ -185,6 +199,24 @@ else
     document.getElementById('tb-checklist').classList.toggle('on', t==='checklist');
   }
 
-  document.addEventListener('DOMContentLoaded', function(){ if (document.getElementById('g-bar')) pintar(); });
+  // Llegada desde el tablero de trámites: /Seguimiento/{id}?t={tramite}#et-card-III
+  // El ancla nativa no sirve sola — las etapas viven en una pestaña que puede estar
+  // oculta, y el encabezado fijo se come el destino del salto.
+  function irAEtapaDelHash(){
+    var m = (location.hash || '').match(/^#et-card-(.+)$/);
+    if (!m) return;
+    var card = document.getElementById('et-card-' + m[1]);
+    if (!card) return;
+    tab('etapas');
+    card.scrollIntoView({ behavior:'smooth', block:'center' });
+    card.classList.add('seg-etapa-destacada');
+    setTimeout(function(){ card.classList.remove('seg-etapa-destacada'); }, 2400);
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    if (document.getElementById('g-bar')) pintar();
+    irAEtapaDelHash();
+  });
+  window.addEventListener('hashchange', irAEtapaDelHash);
 </script>
 }

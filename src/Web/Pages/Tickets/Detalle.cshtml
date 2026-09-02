@@ -32,6 +32,9 @@
         <a class="btns" asp-page="/Tickets/Index" style="font-size:13px">← Volver</a>
         <span class="res-meta" style="font-variant-numeric:tabular-nums;font-weight:700">@t.Numero</span>
         <h2 style="margin:0;font-size:18px;color:#0a2d6e;flex:1;min-width:200px">@t.Titulo</h2>
+        <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@t.Id" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio a las personas asignadas o vinculadas a este ticket?');">
+            <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Recordar</button>
+        </form>
         @if (Model.PuedeGestionar)
         {
             <a class="btns" asp-page="/Tickets/Editor" asp-route-id="@t.Id">Editar</a>
@@ -49,7 +52,7 @@
                     <div class="tk-adjuntos">
                         @foreach (var a in adjCreacion)
                         {
-                            <a class="tk-adj" href="@a.Url" target="_blank" rel="noopener" download="@a.Nombre" title="@a.Nombre">
+                            <a class="tk-adj" asp-page-handler="Adjunto" asp-route-id="@Model.Ticket.Id" asp-route-adjuntoId="@a.Id" title="@a.Nombre">
                                 <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
                             </a>
                         }
@@ -82,7 +85,7 @@
                                         <div class="tk-adjuntos">
                                             @foreach (var a in adjC)
                                             {
-                                                <a class="tk-adj" href="@a.Url" target="_blank" rel="noopener" download="@a.Nombre" title="@a.Nombre">
+                                                <a class="tk-adj" asp-page-handler="Adjunto" asp-route-id="@Model.Ticket.Id" asp-route-adjuntoId="@a.Id" title="@a.Nombre">
                                                     <span class="tk-adj-n">@a.Nombre</span> <span class="tk-adj-t">@Tam(a.Tamano)</span>
                                                 </a>
                                             }
@@ -103,7 +106,7 @@
                     </div>
                 }
 
-                @if (User.CanMutate())
+                @if (ViewContext.HttpContext.CanMutate())
                 {
                     <form method="post" asp-page-handler="Comentar" asp-route-id="@t.Id" enctype="multipart/form-data" style="margin-top:1rem">
                     <div class="field" style="margin-bottom:.5rem">
@@ -124,6 +127,111 @@
                 </form>
                 }
             </div>
+
+            @* ── Proyectos vinculados ────────────────────────────────────
+               Se vincula desde acá y no solo desde la ficha del proyecto porque este es el momento
+               en que se sabe: quien atiende el ticket es quien reconoce que lo pedido es trabajo
+               del proyecto y no una incidencia. La misma relación se gestiona desde los dos extremos.
+
+               Es distinto del campo «Expediente» de la barra lateral: aquel dice de qué expediente
+               habla el ticket; esto, a qué proyecto contribuye. *@
+            @{
+                // Plegado cuando no hay nada: la mayoría de los tickets no pertenece a ningún
+                // proyecto. El resumen dice cuántos hay, así que plegado no equivale a esconder.
+                var hayProyectos = Model.Proyectos.Proyectos.Count > 0 || Model.Proyectos.FueraDeAlcance > 0;
+            }
+            <details class="card vinc-sec" open="@hayProyectos">
+                <summary class="vinc-sum">
+                    <span class="sec-h">📁 Proyectos vinculados</span>
+                    <span class="vinc-n">@(Model.Proyectos.Proyectos.Count == 0 ? "ninguno" : Model.Proyectos.Proyectos.Count.ToString())</span>
+                </summary>
+
+                @if (Model.Proyectos.Proyectos.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px">Código</th>
+                                    <th>Proyecto</th>
+                                    <th style="width:120px">Estado</th>
+                                    <th style="width:90px">Avance</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pr in Model.Proyectos.Proyectos)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Proyectos/Editor" asp-route-id="@pr.ProyectoId"
+                                               style="font-weight:600;text-decoration:none">@pr.Codigo</a>
+                                        </td>
+                                        <td style="white-space:normal">
+                                            @pr.Nombre
+                                            @if (!string.IsNullOrWhiteSpace(pr.Nota))
+                                            {
+                                                <div class="res-meta">@pr.Nota</div>
+                                            }
+                                            <div class="res-meta">Vinculado por @pr.VinculadoPor el @pr.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                                        </td>
+                                        <td class="res-meta">@pr.Estado</td>
+                                        <td class="res-meta">@pr.AvancePct %</td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeVincular)
+                                            {
+                                                <form method="post" asp-page-handler="DesvincularProyecto"
+                                                      asp-route-id="@t.Id" asp-route-proyectoId="@pr.ProyectoId"
+                                                      style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@pr.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (el proyecto no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="res-meta">Este ticket no está vinculado a ningún proyecto.</p>
+                }
+
+                @if (Model.Proyectos.FueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@Model.Proyectos.FueraDeAlcance</strong>
+                        proyecto@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") más está@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "n")
+                        vinculado@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeVincular && Model.Proyectos.Vinculables.Any())
+                {
+                    <form method="post" asp-page-handler="VincularProyecto" asp-route-id="@t.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:240px;margin:0">
+                            <label for="v-proy">Vincular a un proyecto</label>
+                            <select id="v-proy" name="VinculoProyectoId" required>
+                                <option value="">— Elija un proyecto —</option>
+                                @foreach (var o in Model.Proyectos.Vinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:200px;margin:0">
+                            <label for="v-nota">Por qué (opcional)</label>
+                            <input id="v-nota" name="VinculoNota" maxlength="400"
+                                   placeholder="Lo pedido entra en el entregable de reportes" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
         </main>
 
         <aside style="width:300px;flex:none">
@@ -167,7 +275,7 @@
                     }
                     else
                     {
-                        <p class="hint" style="margin:0">Un técnico debe tomarlo para iniciar el seguimiento.</p>
+                        <p class="hint" style="margin:0">Un administrador debe tomarlo para iniciar el seguimiento.</p>
                     }
                 }
                 else

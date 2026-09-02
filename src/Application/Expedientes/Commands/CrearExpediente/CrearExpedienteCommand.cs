@@ -9,6 +9,7 @@ public sealed record CrearExpedienteCommand(ExpedienteInputDto Datos, string? Or
 
 public sealed class CrearExpedienteCommandHandler(
     IExpedienteRepository repo,
+    IApplicationDbContext ctx,
     ICurrentUserService currentUser,
     IUnitOfWork uow)
     : IRequestHandler<CrearExpedienteCommand, int>
@@ -18,9 +19,24 @@ public sealed class CrearExpedienteCommandHandler(
         var d = cmd.Datos;
         if (!currentUser.PuedeAccederInstitucion(d.InstitucionId))
             throw new DomainException("Debe seleccionar una institución dentro de su alcance asignado.");
+
+        // Si viene un usuario del sistema, el snapshot del nombre se toma de su registro
+        if (d.AnalistaId.HasValue)
+        {
+            var nombre = await ctx.Usuarios
+                .Where(u => u.Id == d.AnalistaId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct)
+                ?? throw new NotFoundException(nameof(Usuario), d.AnalistaId.Value);
+            d = d with { Analista = nombre };
+        }
+
         var codigo = await GenerarCodigoAsync(d.Institucion, ct);
 
-        var exp = Expediente.Crear(codigo, d.InstitucionId, null, null, d.Institucion, d.Analista);
+        var areaId = currentUser.ActiveAreaId;
+        var unidadId = currentUser.ActiveUnidadId;
+
+        var exp = Expediente.Crear(codigo, d.InstitucionId, areaId, unidadId, d.Institucion, d.Analista);
         ExpedienteMapper.Aplicar(exp, d);
         exp.OrigenExternoId = cmd.OrigenExternoId;
 

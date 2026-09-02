@@ -7,6 +7,7 @@ public static class ReunionMapper
         r.EstablecerTitulo(d.Titulo);
         r.Fecha = d.Fecha; r.Hora = d.Hora?.Trim(); r.Duracion = d.Duracion?.Trim();
         r.Modalidad = d.Modalidad?.Trim(); r.Lugar = d.Lugar?.Trim();
+        r.ExpedienteId = d.ExpedienteId; r.ExpedienteCodigo = d.ExpedienteCodigo?.Trim();
         r.Tipo = d.Tipo?.Trim(); r.EsCapacitacionPlataforma = d.EsCapacitacionPlataforma;
         r.Visibilidad = d.Visibilidad;
         r.ObjetivoAgenda = d.ObjetivoAgenda; r.Desarrollo = d.Desarrollo;
@@ -30,7 +31,9 @@ public static class ReunionMapper
         foreach (var a in asistentes.Where(x => !string.IsNullOrWhiteSpace(x.Nombre)))
             r.Agregar(new Asistente
             {
-                Nombre = a.Nombre.Trim(), Cargo = a.Cargo?.Trim(), Institucion = a.Institucion?.Trim(),
+                Nombre = a.Nombre.Trim(), Cargo = a.Cargo?.Trim(),
+                InstitucionId = string.IsNullOrWhiteSpace(a.InstitucionId) ? null : a.InstitucionId.Trim(),
+                Institucion = a.Institucion?.Trim(),
                 Departamento = a.Departamento?.Trim(),
                 Correo = a.Correo?.Trim().ToLowerInvariant(), Telefono = a.Telefono?.Trim(),
                 AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl
@@ -41,7 +44,9 @@ public static class ReunionMapper
             r.Agregar(new AcuerdoReunion
             {
                 Orden = orden++, Compromiso = ac.Compromiso.Trim(),
+                ResponsableContactoId = ac.ResponsableContactoId > 0 ? ac.ResponsableContactoId : null,
                 Responsable = ac.Responsable?.Trim(), Plazo = ac.Plazo,
+                ExpedienteId = ac.ExpedienteId, TramiteIndex = ac.TramiteIndex, TramiteNombre = ac.TramiteNombre?.Trim(),
                 Estado = ac.Estado,
                 FechaCumplimiento = ac.Estado == EstadoCompromiso.Cumplido
                     ? (ac.FechaCumplimiento ?? DateOnly.FromDateTime(DateTime.Today))
@@ -58,7 +63,7 @@ public static class ReunionMapper
         var datos = new ReunionFormDto
         {
             Titulo = r.Titulo, Fecha = r.Fecha, Hora = r.Hora, Duracion = r.Duracion,
-            Modalidad = r.Modalidad, Lugar = r.Lugar,
+            Modalidad = r.Modalidad, Lugar = r.Lugar, ExpedienteId = r.ExpedienteId, ExpedienteCodigo = r.ExpedienteCodigo,
             InstitucionesIds = r.InstitucionesParticipantes.OrderBy(x => x.Orden).Select(x => x.InstitucionId).ToList(),
             Tipo = r.Tipo,
             EsCapacitacionPlataforma = r.EsCapacitacionPlataforma, Visibilidad = r.Visibilidad,
@@ -73,12 +78,15 @@ public static class ReunionMapper
         };
         var asistentes = r.Asistentes.Select(a => new AsistenteInput
         {
-            Nombre = a.Nombre, Cargo = a.Cargo, Institucion = a.Institucion, Departamento = a.Departamento,
+            Nombre = a.Nombre, Cargo = a.Cargo,
+            InstitucionId = a.InstitucionId, Institucion = a.Institucion, Departamento = a.Departamento,
             Correo = a.Correo, Telefono = a.Telefono, AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl
         }).ToList();
         var acuerdos = r.Acuerdos.OrderBy(a => a.Orden).Select(a => new AcuerdoInput
         {
-            Compromiso = a.Compromiso, Responsable = a.Responsable, Plazo = a.Plazo,
+            Compromiso = a.Compromiso, ResponsableContactoId = a.ResponsableContactoId,
+            Responsable = a.Responsable, Plazo = a.Plazo,
+            ExpedienteId = a.ExpedienteId, TramiteIndex = a.TramiteIndex, TramiteNombre = a.TramiteNombre,
             Estado = a.Estado, FechaCumplimiento = a.FechaCumplimiento, NotaSeguimiento = a.NotaSeguimiento
         }).ToList();
         return (datos, asistentes, acuerdos);

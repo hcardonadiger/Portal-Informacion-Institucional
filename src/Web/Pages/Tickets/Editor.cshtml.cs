@@ -2,8 +2,14 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
-[Authorize(Policy = "PuedeGestionarTickets")]
-public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
+// Levantar un ticket propio y modificar uno ya existente eran dos permisos distintos: antes
+// la diferencia estaba escrita como "si trae id y no sos Administrador, Forbid". Ahora la
+// clase pide Tickets.Crear (el caso base) y los handlers exigen Tickets.Editar en vivo cuando
+// llega un id — la distinción no se puede expresar con un atributo porque depende del request.
+[Permission("Tickets", AccionModulo.Crear, "Levantar tickets")]
+public sealed class EditorModel(
+    ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser,
+    IWebHostEnvironment env, AccesoModulosService acceso) : PageModel
 {
     public int? TicketId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
@@ -44,6 +50,9 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        if (id is not null && !await acceso.PuedeEditarAsync("Tickets", ct))
+            return Forbid();
+
         await CargarCatalogosAsync(ct);
         if (id is null) return Page();
 
@@ -65,6 +74,9 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     public async Task<IActionResult> OnPostAsync(int? id, CancellationToken ct)
     {
+        if (id is not null && !await acceso.PuedeEditarAsync("Tickets", ct))
+            return Forbid();
+
         TicketId = id;
         await CargarCatalogosAsync(ct);
 

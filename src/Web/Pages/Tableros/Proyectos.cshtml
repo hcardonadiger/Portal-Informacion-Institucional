@@ -1,0 +1,491 @@
+@page
+@using System.Text.Json
+@using Diger.TramitesEstado.Application.Dashboards.Queries
+@using Diger.TramitesEstado.Application.Proyectos.Queries
+@model Diger.TramitesEstado.Web.Pages.Tableros.ProyectosModel
+@{
+    ViewData["Title"] = "Tablero de Proyectos";
+    var d = Model.Data;
+    var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
+    var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    string EstadoCls(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.EnEjecucion => "status-badge abierto",
+        EstadoProyecto.Suspendido  => "status-badge enproceso",
+        EstadoProyecto.Cerrado     => "status-badge resuelto",
+        EstadoProyecto.Cancelado   => "status-badge vencido",
+        _                          => "status-badge default"
+    };
+    string PrioCls(PrioridadProyecto p) => p switch
+    {
+        PrioridadProyecto.Alta  => "prio-badge alta",
+        PrioridadProyecto.Media => "prio-badge media",
+        _                       => "prio-badge default"
+    };
+    // El color de la barra sigue el semáforo del proyecto, no el tamaño del número:
+    // un 80 % en un proyecto vencido no es una buena noticia.
+    string BarraCls(ProyectoSemaforoDto p) =>
+        p.Atrasado ? "c-red" : p.SinReportar ? "c-amber" : "";
+    string Fecha(DateOnly? f) => f?.ToString("dd/MM/yyyy") ?? "—";
+}
+
+<div class="container" style="max-width:1180px">
+    <div class="hist-header">
+        <div>
+            <h2>Tablero de Proyectos</h2>
+            <p>Portafolio de proyectos internos: qué exige atención, no solo cuánto se lleva.</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a class="btnp" asp-page="/Proyectos/Index">Gestionar proyectos →</a>
+            <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
+        </div>
+    </div>
+
+    <form method="get" class="seg-filters">
+        <div class="field">
+            <label for="f-estado">Estado</label>
+            <select id="f-estado" name="Estado" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                @foreach (var e in Enum.GetValues<EstadoProyecto>())
+                {
+                    <option value="@((int)e)" selected="@(Model.Estado == e)">@Etiquetas.Estado(e)</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="min-width:200px">
+            <label for="f-resp">Responsable</label>
+            <select id="f-resp" name="ResponsableId" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                @foreach (var u in Model.Usuarios)
+                {
+                    <option value="@u.Id" selected="@(Model.ResponsableId == u.Id)">@u.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="min-width:130px">
+            <label for="f-prio">Prioridad</label>
+            <select id="f-prio" name="Prioridad" onchange="this.form.submit()">
+                <option value="">Todas</option>
+                @foreach (var p in Enum.GetValues<PrioridadProyecto>())
+                {
+                    <option value="@((int)p)" selected="@(Model.Prioridad == p)">@p</option>
+                }
+            </select>
+        </div>
+        @if (Model.HayFiltro)
+        {
+            <a class="btns" asp-page="/Tableros/Proyectos" style="margin-bottom:.1rem">Limpiar</a>
+        }
+    </form>
+
+    @* ── Indicadores ─────────────────────────────────────────────── *@
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-num">@d.Abiertos</div><div class="kpi-lbl">Proyectos abiertos</div></div>
+        <div class="kpi-card"><div class="kpi-num">@d.EnEjecucion</div><div class="kpi-lbl">En ejecución</div></div>
+        <div class="kpi-card"><div class="kpi-num">@d.AvancePromedio%</div><div class="kpi-lbl">Avance promedio</div></div>
+        @* «Atrasados» y «Sin línea base» van pegados a propósito: sin fecha comprometida un
+           proyecto nunca cuenta como atrasado, así que el primero solo se puede leer sabiendo
+           cuánto pesa el segundo. Separados, un 0 atrasados da falso verde. *@
+        @* Los que representan una señal llevan al listado ya filtrado: un número que no se puede
+           abrir obliga a buscar a mano cuáles son los nueve. *@
+        <a class="kpi-card @(d.Atrasados > 0 ? "alert" : "ok")" asp-page="/Proyectos/Index"
+           asp-route-Senal="@((int)SenalProyecto.Atrasado)"><div class="kpi-num">@d.Atrasados</div><div class="kpi-lbl">Atrasados</div></a>
+        <a class="kpi-card @(d.SinLineaBase > 0 ? "warn" : "ok")" asp-page="/Proyectos/Index"
+           asp-route-Senal="@((int)SenalProyecto.SinLineaBase)"
+           title="Proyectos abiertos sin fecha de cierre comprometida: no hay contra qué medir su atraso.">
+            <div class="kpi-num">@d.SinLineaBase</div><div class="kpi-lbl">Sin línea base</div>
+        </a>
+        <a class="kpi-card @(d.SinReportar > 0 ? "warn" : "ok")" asp-page="/Proyectos/Index"
+           asp-route-Senal="@((int)SenalProyecto.SinReportar)"><div class="kpi-num">@d.SinReportar</div><div class="kpi-lbl">Sin reportar 30+ días</div></a>
+        <a class="kpi-card @(d.ConDivergencia > 0 ? "warn" : "ok")" asp-page="/Proyectos/Index"
+           asp-route-Senal="@((int)SenalProyecto.Divergente)"
+           title="El trabajo reportado en las actividades y los entregables cerrados difieren en @ProyectoSemaforoDto.BrechaAtencion puntos o más: una de las dos medidas dejó de mantenerse.">
+            <div class="kpi-num">@d.ConDivergencia</div><div class="kpi-lbl">Avance sin entregables</div>
+        </a>
+        <div class="kpi-card @(d.EntregablesVencidos > 0 ? "alert" : "ok")"><div class="kpi-num">@d.EntregablesVencidos</div><div class="kpi-lbl">Entregables vencidos</div></div>
+        <div class="kpi-card @(d.ActividadesVencidas > 0 ? "alert" : "ok")"
+             title="Actividades abiertas cuya fecha de fin ya pasó. Aparecen antes que el entregable que las contiene.">
+            <div class="kpi-num">@d.ActividadesVencidas</div><div class="kpi-lbl">Actividades vencidas</div>
+        </div>
+        @* Bloqueadas no es un atraso de fecha: la actividad puede tener su ventana entera por
+           delante y estar trancada igual. Por eso va con su propio KPI y no dentro de «vencidas». *@
+        <div class="kpi-card @(d.ArrancaronBloqueadas > 0 ? "alert" : d.ActividadesBloqueadas > 0 ? "warn" : "ok")"
+             title="Actividades abiertas que esperan a otra que todavía no termina. Entre paréntesis, las que ya se están trabajando pese al bloqueo.">
+            <div class="kpi-num">
+                @d.ActividadesBloqueadas@if (d.ArrancaronBloqueadas > 0) { <text> </text><span style="font-size:.62em">(@d.ArrancaronBloqueadas)</span> }
+            </div>
+            <div class="kpi-lbl">Actividades bloqueadas</div>
+        </div>
+        <a class="kpi-card @(d.SinDesglose > 0 ? "warn" : "ok")" asp-page="/Proyectos/Index"
+           asp-route-Senal="@((int)SenalProyecto.SinDesglose)"
+           title="Proyectos en ejecución sin una sola actividad cargada: su avance sale solo del estado de los entregables.">
+            <div class="kpi-num">@d.SinDesglose</div><div class="kpi-lbl">Sin desglosar</div>
+        </a>
+        <a class="kpi-card @(d.SinResponsable > 0 ? "warn" : "ok")" asp-page="/Proyectos/Index"
+           asp-route-Senal="@((int)SenalProyecto.SinResponsable)"><div class="kpi-num">@d.SinResponsable</div><div class="kpi-lbl">Sin responsable</div></a>
+    </div>
+
+    @* ── Semáforo del portafolio ─────────────────────────────────── *@
+    <div class="dash-card">
+        <h3>Semáforo del portafolio</h3>
+        @if (!d.Semaforo.Any())
+        {
+            <p class="res-meta">No hay proyectos que coincidan con el filtro.</p>
+        }
+        else
+        {
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th style="width:140px">Responsable</th>
+                        <th style="width:110px">Estado</th>
+                        <th style="width:150px">Avance</th>
+                        <th style="width:110px">Estructura</th>
+                        <th style="width:110px">Cierre plan.</th>
+                        <th style="width:130px">Último reporte</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in d.Semaforo)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@p.Nombre</a>
+                                <div class="res-meta">
+                                    @p.Codigo
+                                    <span class="@PrioCls(p.Prioridad)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
+                                    @* El nombre lleva a la ficha —que es donde se trabaja— y este a los
+                                       indicadores del proyecto solo, que es el zoom de esta misma tabla. *@
+                                    <a asp-page="/Tableros/Proyecto" asp-route-id="@p.ProyectoId"
+                                       style="margin-left:6px" title="Indicadores de este proyecto">tablero →</a>
+                                </div>
+                            </td>
+                            <td class="res-meta">@(p.Responsable ?? "— sin asignar —")</td>
+                            <td><span class="@EstadoCls(p.Estado)" style="padding:3px 10px;font-size:var(--diger-fs-xs)">@Etiquetas.Estado(p.Estado)</span></td>
+                            <td>
+                                <div class="bar-track" style="height:12px"><div class="bar-fill @BarraCls(p)" style="width:@(p.AvancePct)%"></div></div>
+                                @* El porcentaje va con la fecha en que se declaró: lo reporta el
+                                   responsable, no se calcula, y solo, invita a leerlo como medición. *@
+                                <div class="res-meta">
+                                    @(p.AvancePct)%
+                                    @if (p.UltimoAvance is { } f)
+                                    {
+                                        <text>al @f.ToLocalTime().ToString("dd/MM")</text>
+                                    }
+                                    else
+                                    {
+                                        <text>· sin reportes</text>
+                                    }
+                                </div>
+                            </td>
+                            <td class="res-meta">
+                                @p.EntregablesCompletados / @p.TotalEntregables
+                                @if (p.TotalEntregables > 0)
+                                {
+                                    <text>· @(p.AvanceFisico)%</text>
+                                }
+                                @if (p.EntregablesVencidos > 0)
+                                {
+                                    <div><span class="badge badge-danger">@p.EntregablesVencidos vencido@(p.EntregablesVencidos == 1 ? "" : "s")</span></div>
+                                }
+                                @if (p.ActividadesVencidas > 0)
+                                {
+                                    <div><span class="badge badge-danger">@p.ActividadesVencidas actividad@(p.ActividadesVencidas == 1 ? "" : "es") vencida@(p.ActividadesVencidas == 1 ? "" : "s")</span></div>
+                                }
+                                @if (p.SinDesglose)
+                                {
+                                    <div><span class="badge badge-warning" title="Su avance sale del estado de los entregables: no hay actividades cargadas">Sin desglosar</span></div>
+                                }
+                                @* La brecha se nombra por su sentido: trabajo que no cierra nada y
+                                   cierres que nadie reportó se corrigen de maneras distintas, y decir
+                                   solo «difiere» no ayuda. *@
+                                @if (p.Divergente)
+                                {
+                                    <div>
+                                        <span class="badge badge-warning" title="@(p.AvancePct)% de trabajo reportado contra @(p.AvanceFisico)% de entregables cerrados">
+                                            @(p.Brecha > 0 ? $"+{p.Brecha} pts sin cerrar" : $"{p.Brecha} pts sin reportar")
+                                        </span>
+                                    </div>
+                                }
+                            </td>
+                            <td class="res-meta">
+                                @Fecha(p.FechaFinPlan)
+                                @if (p.Atrasado)
+                                {
+                                    <div><span class="badge badge-danger">Vencido</span></div>
+                                }
+                                else if (p.SinLineaBase)
+                                {
+                                    <div><span class="badge badge-warning">sin comprometer</span></div>
+                                }
+                            </td>
+                            <td class="res-meta">
+                                @if (p.UltimoAvance is { } ua)
+                                {
+                                    <text>@ua.ToLocalTime().ToString("dd/MM/yyyy")</text>
+                                    @if (p.SinReportar)
+                                    {
+                                        <div><span class="badge badge-warning">hace @p.DiasSinReporte días</span></div>
+                                    }
+                                }
+                                else if (p.SinReportar)
+                                {
+                                    <span class="badge badge-warning">nunca</span>
+                                }
+                                else
+                                {
+                                    <text>—</text>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* ── Gráficos ────────────────────────────────────────────────── *@
+    <div class="dash-grid" style="margin-top:16px">
+        <div class="dash-card">
+            <h3>Proyectos por estado</h3>
+            <div style="position:relative;height:240px"><canvas id="chEstado"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h3>Reportes de avance por mes</h3>
+            <p class="res-meta" style="margin-top:-.4rem">Mide si el portafolio se está documentando, no cuánto avanzó.</p>
+            <div style="position:relative;height:210px"><canvas id="chReportes"></canvas></div>
+        </div>
+        <div class="dash-card" style="grid-column:1 / -1">
+            <h3>Carga por responsable</h3>
+            @if (!d.PorResponsable.Any())
+            {
+                <p class="res-meta">Sin datos.</p>
+            }
+            else
+            {
+                var maxR = Math.Max(1, d.PorResponsable.Max(x => x.Cantidad));
+                @foreach (var c in d.PorResponsable)
+                {
+                    <div class="bar-row">
+                        <span class="bar-lbl">@c.Etiqueta</span>
+                        <div class="bar-track">
+                            <div class="bar-fill @(c.Etiqueta == "Sin asignar" ? "c-amber" : "")" style="width:@(c.Cantidad * 100 / maxR)%"></div>
+                        </div>
+                        <span class="bar-val">@c.Cantidad</span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    @* ── Actividades que exigen atención ─────────────────────────── *@
+    @* Van primero que los entregables a propósito: es el nivel donde el atraso se ve antes, y una
+       actividad vencida dentro de un entregable que todavía no vence es justamente la que se
+       escapaba del tablero anterior. *@
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Actividades vencidas y próximas (@d.ActividadesVencidas vencidas · @d.ActividadesProximas en los próximos 30 días)</h3>
+        @if (!d.Actividades.Any())
+        {
+            <p class="res-meta">Ninguna actividad abierta con fecha de cierre en la ventana.</p>
+        }
+        else
+        {
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Actividad</th>
+                        <th style="width:180px">Entregable</th>
+                        <th style="width:170px">Proyecto</th>
+                        <th style="width:130px">Responsable</th>
+                        <th style="width:80px">Avance</th>
+                        <th style="width:88px" title="Cuándo se registró la actividad. Vacío en lo cargado antes del 26-08-2026">Creada</th>
+                        <th style="width:125px;text-align:right">Fin plan.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in d.Actividades)
+                    {
+                        var vencida = a.FechaFinPlan < hoy;
+                        var dias = Math.Abs(a.FechaFinPlan.DayNumber - hoy.DayNumber);
+                        <tr>
+                            <td style="font-size:var(--diger-fs-sm)">
+                                @a.Actividad
+                                @if (a.NoArrancada)
+                                {
+                                    <span class="badge badge-warning" style="margin-left:6px"
+                                          title="Debía haber arrancado el @Fecha(a.FechaInicioPlan!.Value) y sigue en cero">Sin arrancar</span>
+                                }
+                            </td>
+                            <td class="res-meta">@a.Entregable</td>
+                            <td><a asp-page="/Proyectos/Editor" asp-route-id="@a.ProyectoId" class="res-meta" style="text-decoration:none">@a.Proyecto</a></td>
+                            <td class="res-meta">@(a.Responsable ?? "—")</td>
+                            <td class="res-meta">@(a.AvancePct)%</td>
+                            <td class="res-meta">@(a.CreadoEn?.ToLocalTime().ToString("dd/MM/yy") ?? "—")</td>
+                            <td style="text-align:right;white-space:nowrap">
+                                <span style="font-weight:700;color:@(vencida ? "var(--diger-danger-text)" : "var(--diger-blue-title)")">@Fecha(a.FechaFinPlan)</span>
+                                <div class="res-meta">@(vencida ? $"hace {dias} d" : dias == 0 ? "hoy" : $"en {dias} d")</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* ── Actividades bloqueadas por una dependencia ──────────────── *@
+    @* Aparte de «vencidas y próximas» porque no se ordena por fecha: acá lo que manda es si el
+       trabajo ya arrancó pese al bloqueo, que es la fila que obliga a decidir algo. La sección se
+       omite cuando no hay ninguna — el portafolio viejo no declaró dependencias y una tarjeta
+       vacía permanente solo enseña a ignorarla. *@
+    @if (d.Bloqueadas.Any())
+    {
+        <div class="dash-card" style="margin-top:16px">
+            <h3>Actividades bloqueadas por una dependencia (@d.Bloqueadas.Count)</h3>
+            <p class="res-meta" style="margin-top:-4px">
+                Esperan a que termine otra actividad del mismo proyecto. El portal avisa pero no impide
+                reportar avance sobre ellas.
+            </p>
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Actividad</th>
+                        <th>Espera a que termine</th>
+                        <th style="width:170px">Proyecto</th>
+                        <th style="width:130px">Responsable</th>
+                        <th style="width:88px" title="Cuándo se registró la actividad. Vacío en lo cargado antes del 26-08-2026">Creada</th>
+                        <th style="width:80px;text-align:right">Avance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in d.Bloqueadas)
+                    {
+                        <tr>
+                            <td style="font-size:var(--diger-fs-sm)">
+                                @b.Actividad
+                                @if (b.Arrancada)
+                                {
+                                    <span class="badge badge-danger" style="margin-left:6px"
+                                          title="Ya se está trabajando en ella pese a que su predecesora sigue abierta">Arrancó bloqueada</span>
+                                }
+                                else if (b.DebioArrancar)
+                                {
+                                    <span class="badge badge-warning" style="margin-left:6px"
+                                          title="Debía haber empezado el @Fecha(b.FechaInicioPlan!.Value) y encima está trancada">Debió arrancar</span>
+                                }
+                                <div class="res-meta">@b.Entregable</div>
+                            </td>
+                            <td class="res-meta">@string.Join(" · ", b.Espera)</td>
+                            <td><a asp-page="/Proyectos/Editor" asp-route-id="@b.ProyectoId" class="res-meta" style="text-decoration:none">@b.Proyecto</a></td>
+                            <td class="res-meta">@(b.Responsable ?? "—")</td>
+                            <td class="res-meta">@(b.CreadoEn?.ToLocalTime().ToString("dd/MM/yy") ?? "—")</td>
+                            <td class="res-meta" style="text-align:right">@(b.AvancePct)%</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @* ── Entregables que exigen atención ─────────────────────────── *@
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Entregables vencidos y próximos (@d.EntregablesVencidos vencidos · @d.EntregablesProximos en los próximos 30 días)</h3>
+        @if (!d.Entregables.Any())
+        {
+            <p class="res-meta">Ningún entregable abierto con fecha comprometida en la ventana.</p>
+        }
+        else
+        {
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Entregable</th>
+                        <th style="width:200px">Proyecto</th>
+                        <th style="width:140px">Responsable</th>
+                        <th style="width:80px">Avance</th>
+                        <th style="width:100px">Estado</th>
+                        <th style="width:130px;text-align:right">Fecha plan.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in d.Entregables)
+                    {
+                        var vencido = e.FechaPlan < hoy;
+                        var dias = Math.Abs(e.FechaPlan.DayNumber - hoy.DayNumber);
+                        <tr>
+                            <td style="font-size:var(--diger-fs-sm)">@e.Entregable</td>
+                            <td><a asp-page="/Proyectos/Editor" asp-route-id="@e.ProyectoId" class="res-meta" style="text-decoration:none">@e.Proyecto</a></td>
+                            <td class="res-meta">@(e.Responsable ?? "—")</td>
+                            <td class="res-meta">@(e.AvancePct)%</td>
+                            <td class="res-meta">@Etiquetas.Entregable(e.Estado)</td>
+                            <td style="text-align:right;white-space:nowrap">
+                                <span style="font-weight:700;color:@(vencido ? "var(--diger-danger-text)" : "var(--diger-blue-title)")">@Fecha(e.FechaPlan)</span>
+                                <div class="res-meta">@(vencido ? $"hace {dias} d" : dias == 0 ? "hoy" : $"en {dias} d")</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* ── Bloqueos vigentes ───────────────────────────────────────── *@
+    <div class="dash-card" style="margin-top:16px;margin-bottom:2rem">
+        <h3>Bloqueos reportados (@d.Bloqueos.Count)</h3>
+        <p class="res-meta" style="margin-top:-.4rem">
+            Solo los del último reporte de cada proyecto: un bloqueo que el reporte siguiente ya no menciona se da por superado.
+        </p>
+        @if (!d.Bloqueos.Any())
+        {
+            <p class="res-meta">Ningún proyecto reporta bloqueos en su último avance.</p>
+        }
+        else
+        {
+            @foreach (var b in d.Bloqueos)
+            {
+                <div class="hist-item" style="display:block">
+                    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+                        <a asp-page="/Proyectos/Editor" asp-route-id="@b.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@b.Proyecto</a>
+                        <span class="res-meta">@b.Autor · @b.Fecha.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                    </div>
+                    <p style="margin:.35rem 0 0;font-size:var(--diger-fs-sm)">@b.Texto</p>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>
+<script>
+  Chart.defaults.font.family = 'system-ui, sans-serif';
+  Chart.defaults.plugins.legend.position = 'bottom';
+
+  new Chart(document.getElementById('chEstado'), {
+    type: 'doughnut',
+    data: {
+      labels: @J(d.PorEstado.Select(x => x.Etiqueta)),
+      datasets: [{
+        data: @J(d.PorEstado.Select(x => x.Cantidad)),
+        // Orden fijo del enum: Planificado, En ejecución, Suspendido, Cerrado, Cancelado.
+        backgroundColor: ['#888780', '#1455a4', '#ef9f27', '#1d9e75', '#a32d2d']
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+
+  new Chart(document.getElementById('chReportes'), {
+    type: 'bar',
+    data: {
+      labels: @J(d.ReportesPorMes.Select(x => x.Mes)),
+      datasets: [{ label: 'Reportes', data: @J(d.ReportesPorMes.Select(x => x.Cantidad)), backgroundColor: '#1455a4' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+</script>
+}

@@ -115,8 +115,19 @@ public interface ICurrentUserService
     string?     Rol      { get; }
     bool        IsAuthenticated { get; }
 
-    /// <summary>Acceso global (Administrador, o procesos del sistema sin usuario).</summary>
+    /// <summary>Acceso global (rol con EsAdministrador, o procesos del sistema sin usuario).</summary>
     bool EsGlobal { get; }
+
+    /// <summary>Alcance de datos del rol activo — lo usan los filtros RLS de AppDbContext.
+    /// Sin rol resuelto se asume el más restrictivo (Unidad).</summary>
+    NivelAlcance NivelAlcance { get; }
+    /// <summary>El rol activo no puede mutar datos (ex-Consultor).</summary>
+    bool EsSoloLectura { get; }
+    /// <summary>El rol activo es de jefatura (ve trabajo de otros, no solo el propio).</summary>
+    bool EsSupervisor { get; }
+    /// <summary>El rol activo atiende el chat de soporte.</summary>
+    bool EsTecnicoSoporte { get; }
+
     /// <summary>Contexto activo: Institución.</summary>
     string? ActiveInstitucionId { get; }
     /// <summary>Contexto activo: Área.</summary>
@@ -150,6 +161,7 @@ public interface IApplicationDbContext
     DbSet<Reunion>                  Reuniones     { get; }
     DbSet<Asistente>                Asistentes    { get; }
     DbSet<AcuerdoReunion>           Acuerdos      { get; }
+    DbSet<ComentarioCompromiso>     ComentariosCompromisos { get; }
     DbSet<Expediente>               Expedientes   { get; }
     DbSet<ExpedienteTramite>        Tramites      { get; }
     DbSet<TramiteRequisito>         Requisitos    { get; }
@@ -162,17 +174,58 @@ public interface IApplicationDbContext
     DbSet<InfraChecklistItem>       ChecklistInfra { get; }
     DbSet<ExpedienteSeccionEstado>  Secciones     { get; }
     DbSet<ExpedienteEtapaAvance>    ExpedienteEtapaAvances { get; }
+    DbSet<NotaSeguimientoExpediente> NotasSeguimiento { get; }
+    DbSet<BitacoraExpediente>       BitacorasExpediente { get; }
     DbSet<Ticket>                   Tickets       { get; }
     DbSet<TicketComentario>         TicketComentarios { get; }
     DbSet<CategoriaTicket>          CategoriasTicket { get; }
     DbSet<TemaTicket>               TemasTicket   { get; }
     DbSet<UsuarioTema>              UsuarioTemas  { get; }
     DbSet<RolModuloAcceso>          RolModuloAccesos { get; }
+    DbSet<Rol>                      Roles            { get; }
+    DbSet<Permiso>                  Permisos         { get; }
+    DbSet<RolPermiso>               RolPermisos      { get; }
+    DbSet<PermisoAuditoria>         PermisosAuditoria { get; }
     DbSet<AsignacionUsuario>        AsignacionesUsuario { get; }
     DbSet<Area>                     Areas               { get; }
     DbSet<Unidad>                   Unidades            { get; }
     DbSet<Movimiento>               Movimientos         { get; }
     DbSet<Prefijo>                  Prefijos            { get; }
     DbSet<PlantillaTramite>         PlantillasTramite   { get; }
+    DbSet<Notificacion>             Notificaciones      { get; }
+    DbSet<ChatSesion>               ChatSesiones           { get; }
+    DbSet<ChatMensaje>              ChatMensajes           { get; }
+    DbSet<ExpedienteEtapaCronograma> EtapaCronogramas      { get; }
+    DbSet<Levantamiento>            Levantamientos         { get; }
+    DbSet<TramiteChecklist>         TramitesChecklist      { get; }
+    DbSet<MiembroEquipo>            MiembrosEquipo         { get; }
+    DbSet<DocumentoAdjunto>         DocumentosAdjuntos     { get; }
+    DbSet<Diger.TramitesEstado.Domain.Entities.PlanTrabajo> PlanTrabajos { get; }
+    DbSet<MetaTramite>              MetasTrabajo           { get; }
+    DbSet<Recurso>                 Recursos               { get; }
+    DbSet<TramiteSiger>            TramitesSiger          { get; }
+    DbSet<PasoSiger>               PasosSiger             { get; }
+    DbSet<CategoriaTramite>        CategoriasTramite      { get; }
+    DbSet<RequisitoSiger>          RequisitosSiger        { get; }
+    DbSet<EntregableSiger>         EntregablesSiger       { get; }
+    DbSet<LugarAtencionSiger>      LugaresAtencionSiger   { get; }
+    DbSet<EnlaceSiger>             EnlacesSiger           { get; }
+    DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
+    DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
+    DbSet<Proyecto>                Proyectos              { get; }
+    DbSet<EntregableProyecto>      ProyectoEntregables    { get; }
+    DbSet<ActividadProyecto>       ProyectoActividades    { get; }
+    DbSet<AvanceProyecto>          ProyectoAvances        { get; }
+    DbSet<DependenciaActividad>    ProyectoDependencias   { get; }
+    DbSet<CategoriaDocumento>      CategoriasDocumento    { get; }
+    DbSet<DocumentoProyecto>       ProyectoDocumentos     { get; }
+    DbSet<VersionDocumento>        ProyectoDocumentoVersiones { get; }
+    DbSet<DescargaDocumento>       ProyectoDocumentoDescargas { get; }
+    DbSet<ProyectoReunion>         ProyectoReuniones      { get; }
+    DbSet<ProyectoExpediente>      ProyectoExpedientes    { get; }
+    DbSet<ProyectoTicket>          ProyectoTickets        { get; }
+    DbSet<BitacoraProyecto>        BitacorasProyecto      { get; }
+    DbSet<RiesgoProyecto>          ProyectoRiesgos        { get; }
+    DbSet<InteresadoProyecto>      ProyectoInteresados    { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

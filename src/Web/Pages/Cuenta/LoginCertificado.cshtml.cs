@@ -80,11 +80,7 @@ public sealed class LoginCertificadoModel(ISender sender, IConfiguration config)
             if (active.AreaId != null) claims.Add(new Claim(AppClaims.ActiveArea, active.AreaId));
             if (active.UnidadId != null) claims.Add(new Claim(AppClaims.ActiveUnidad, active.UnidadId));
         }
-        else
-        {
-            claims.Add(new Claim(ClaimTypes.Role,           usuario.RolGlobal));
-            claims.Add(new Claim(AppClaims.ActiveRol,       usuario.RolGlobal));
-        }
+        // Sin asignaciones no se emite claim de rol — ver la nota equivalente en Login.cshtml.cs.
 
         var identity  = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
@@ -96,9 +92,11 @@ public sealed class LoginCertificadoModel(ISender sender, IConfiguration config)
 
         // Redirigir siempre de vuelta al puerto original o al returnUrl relativo al dominio.
         // Como la cookie está asociada al localhost en general, funcionará perfectamente en el puerto 49175.
-        var finalUrl = !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/"
-            ? returnUrl 
-            : "/Tableros/Index";
+        var finalUrl = usuario.Asignaciones.Count == 0
+            ? "/Cuenta/Perfil?sinAsignacion=true"
+            : !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/"
+                ? returnUrl
+                : "/Tableros/Index";
 
         // Si estamos en localhost y acabamos en el puerto 49176, lo mejor es forzar la vuelta al puerto normal
         var host = Request.Host.Host;
@@ -106,11 +104,11 @@ public sealed class LoginCertificadoModel(ISender sender, IConfiguration config)
         
         if (environment == "Development" && host == "localhost")
         {
-            return Redirect($"https://localhost:49175{finalUrl}");
+            return Redirect($"https://localhost:{config.GetValue<int>("Ports:DevMain", 49175)}{finalUrl}");
         }
 
         // Forzamos el regreso al puerto principal en la misma IP/Host
-        var mainPort = config.GetValue<int>("Ports:Main", 443);
+        var mainPort = config.GetValue<int>("Ports:Main", 8443);
         var portSuffix = mainPort == 443 ? "" : $":{mainPort}";
         
         // Si aún entran por subdominio (híbrido) quitamos el cert.

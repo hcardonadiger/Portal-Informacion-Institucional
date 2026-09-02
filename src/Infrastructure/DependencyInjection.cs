@@ -1,8 +1,21 @@
+using Diger.TramitesEstado.Application.AI;
+using Diger.TramitesEstado.Application.Chat;
+using Diger.TramitesEstado.Application.Informes;
+using Diger.TramitesEstado.Application.Notificaciones;
+using Diger.TramitesEstado.Application.Reuniones.Common;
 using Diger.TramitesEstado.Application.Reuniones.Import;
+using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Infrastructure.AI;
+using Diger.TramitesEstado.Infrastructure.Chat;
+using Diger.TramitesEstado.Infrastructure.Email;
 using Diger.TramitesEstado.Infrastructure.Import;
+using Diger.TramitesEstado.Infrastructure.Notifications;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
+using Diger.TramitesEstado.Infrastructure.Reports;
 using Diger.TramitesEstado.Infrastructure.Security;
+using Diger.TramitesEstado.Application.Common.Models;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Infrastructure;
 
@@ -15,7 +28,17 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(opts =>
             opts.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"),
-                sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
+                sql =>
+                {
+                    sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+                    // LocalDB se apaga por inactividad y tarda en volver a arrancar: el primer
+                    // intento de conexión al iniciar la app fallaba ("SQL Server process failed
+                    // to start"). Con reintentos, espera a que la instancia levante.
+                    sql.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorNumbersToAdd: null);
+                }));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IUnitOfWork>(sp          => sp.GetRequiredService<AppDbContext>());
@@ -30,6 +53,40 @@ public static class DependencyInjection
 
         // Importación de reuniones desde el portal demo (Supabase)
         services.AddHttpClient<IReunionImportSource, SupabaseReunionImportSource>();
+
+        // Informes (PDF + Excel)
+        services.AddScoped<IInformeService, InformeService>();
+
+        // Acta de reunión (PDF con formato)
+        services.AddScoped<IActaPdfService, ActaPdfService>();
+
+        // Notificaciones
+        services.Configure<NotificacionesOptions>(configuration.GetSection("Notificaciones"));
+        services.AddScoped<INotificacionService, NotificacionService>();
+        services.AddHostedService<RecordatorioBackgroundService>();
+
+        // Autenticación (expiración de cookie/token de recuperación)
+        services.Configure<AuthOptions>(configuration.GetSection("Auth"));
+
+        // Identidad institucional (nombre, logo, contacto — usados en layout/login)
+        services.Configure<InstitucionOptions>(configuration.GetSection("Institucion"));
+
+        // Chat de soporte
+        services.AddScoped<IChatService, ChatService>();
+
+        // Agente IA (asistente virtual en cola de chat)
+        services.Configure<AgenteOptions>(configuration.GetSection("Ai"));
+        services.AddHttpClient<IAgenteService, AgenteService>((sp, client) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<AgenteOptions>>().Value;
+            client.BaseAddress = new Uri(opts.BaseUrl);
+            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+        });
+
+        // Servicio de correo SMTP (Office 365 / Configurable)
+        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
+        services.AddScoped<IEmailService, SmtpEmailService>();
 
         // Seguridad / identidad
         services.AddHttpContextAccessor();

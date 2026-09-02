@@ -34,69 +34,229 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
-/* ── Sidebar tipo hamburguesa (todos los tamaños) + popover de usuario ── */
-var SIDEBAR_KEY = 'diger-sidebar-open';
+/* ── Navegación de cabecera: grupos desplegables + menú de usuario ────── */
+function closeAllNavGroups(except) {
+    document.querySelectorAll('.nav-group.open').forEach(function (g) {
+        if (g !== except) g.classList.remove('open');
+    });
+}
 
-function toggleSidebar(open) {
-    var sb = document.getElementById('appSidebar');
-    var bd = document.getElementById('sidebarBackdrop');
-    if (!sb) return;
-    sb.classList.toggle('open', open);
-    if (bd) bd.classList.toggle('open', open);
-    try { localStorage.setItem(SIDEBAR_KEY, open ? 'true' : 'false'); } catch (e) { }
+function closeUserPanel() {
+    var p = document.getElementById('sideUserPanel');
+    if (p) p.classList.remove('open');
+}
+
+function toggleNavGroup(btn) {
+    var g = btn.closest('.nav-group');
+    if (!g) return;
+    var willOpen = !g.classList.contains('open');
+    closeAllNavGroups(g);
+    closeUserPanel();
+    g.classList.toggle('open', willOpen);
 }
 
 function toggleUserPanel() {
     var p = document.getElementById('sideUserPanel');
-    if (p) p.classList.toggle('open');
+    if (!p) return;
+    closeAllNavGroups();
+    p.classList.toggle('open');
 }
 
-/* Restaura el último estado (abierto/cerrado) sin animar el primer render */
-(function () {
-    var sb = document.getElementById('appSidebar');
-    if (!sb) return;
-    var open;
-    try { 
-        var val = localStorage.getItem(SIDEBAR_KEY);
-        open = val === null ? true : val === 'true'; 
-    } catch (e) { open = true; }
-    if (open) {
-        var bd = document.getElementById('sidebarBackdrop');
-        sb.classList.add('no-anim', 'open');
-        if (bd) bd.classList.add('open');
-        requestAnimationFrame(function () {
-            requestAnimationFrame(function () { sb.classList.remove('no-anim'); });
-        });
-    }
-})();
+/* Menú principal en pantallas pequeñas (hamburguesa) */
+function toggleMainNav(open) {
+    var nav = document.getElementById('mainNav');
+    var bd = document.getElementById('navBackdrop');
+    if (!nav) return;
+    if (typeof open === 'undefined') open = !nav.classList.contains('open');
+    nav.classList.toggle('open', open);
+    if (bd) bd.classList.toggle('open', open);
+    if (!open) closeAllNavGroups();
+}
 
 document.addEventListener('click', function (e) {
+    if (!e.target.closest('.nav-group')) closeAllNavGroups();
     var panel = document.getElementById('sideUserPanel');
-    if (panel && panel.classList.contains('open') && !e.target.closest('.side-user')) {
+    if (panel && panel.classList.contains('open') && !e.target.closest('.user-menu')) {
         panel.classList.remove('open');
     }
 });
 
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-        toggleSidebar(false);
-        var panel = document.getElementById('sideUserPanel');
-        if (panel) panel.classList.remove('open');
+        closeAllNavGroups();
+        closeUserPanel();
+        toggleMainNav(false);
     }
 });
 
-/* ── Confirmar antes de enviar (data-confirm="mensaje" en el botón) ──── */
-document.addEventListener('submit', function (e) {
-    var btn = e.submitter;
-    if (!btn) return;
-    var msg = btn.dataset.confirm;
-    if (msg) {
-        if (!confirm(msg)) e.preventDefault();
-        return;
+/* ── seg-upd: dropdown Actualizar (position:fixed para escapar overflow:hidden) ─ */
+(function () {
+    function posicionar(det) {
+        var form    = det.querySelector('.seg-upd-form');
+        var summary = det.querySelector('summary');
+        if (!form || !summary) return;
+        var r = summary.getBoundingClientRect();
+        form.style.position = 'fixed';
+        form.style.zIndex   = '9999';
+        form.style.top      = (r.bottom + 6) + 'px';
+        form.style.left     = 'auto';
+        var right = Math.max(8, window.innerWidth - r.right);
+        form.style.right = right + 'px';
     }
-    if (btn.classList.contains('hist-del')) {
-        if (!confirm('¿Eliminar este levantamiento? Esta acción no se puede deshacer.')) {
-            e.preventDefault();
+
+    document.addEventListener('toggle', function (e) {
+        var det = e.target;
+        if (!(det instanceof HTMLDetailsElement) || !det.classList.contains('seg-upd')) return;
+        if (!det.open) return;
+        document.querySelectorAll('details.seg-upd[open]').forEach(function (other) {
+            if (other !== det) other.removeAttribute('open');
+        });
+        posicionar(det);
+    }, true);
+
+    window.addEventListener('scroll', function () {
+        document.querySelectorAll('details.seg-upd[open]').forEach(posicionar);
+    }, { passive: true, capture: true });
+
+    window.addEventListener('resize', function () {
+        document.querySelectorAll('details.seg-upd[open]').forEach(posicionar);
+    });
+})();
+
+/* ── Barra de progreso global (QW1) ───────────────────────────────────── */
+(function(){
+    var bar = document.createElement('div');
+    bar.className = 'dg-progress';
+    document.body.appendChild(bar);
+
+    window._dgProgress = {
+        start: function(){
+            bar.style.transition = 'none';
+            bar.style.width = '0';
+            bar.offsetWidth;
+            bar.classList.add('active');
+            bar.style.transition = 'width 8s cubic-bezier(.1,.7,.3,1)';
+            bar.style.width = '85%';
+        },
+        done: function(){
+            bar.style.transition = 'width .2s ease';
+            bar.style.width = '100%';
+            setTimeout(function(){ bar.classList.remove('active'); bar.style.width = '0'; }, 250);
         }
+    };
+
+    document.addEventListener('submit', function(e){
+        var form = e.target;
+        if(form.method && form.method.toLowerCase() === 'get') return;
+        if(form.dataset.noProgress) return;
+        window._dgProgress.start();
+    });
+
+    var _origSubmit = HTMLFormElement.prototype.submit;
+    var selects = document.querySelectorAll('select[onchange*="this.form.submit"]');
+    selects.forEach(function(sel){
+        sel.addEventListener('change', function(){ window._dgProgress.start(); });
+    });
+})();
+
+/* ── Debounce para filtros de texto (QW2) ─────────────────────────────── */
+(function(){
+    var timers = {};
+    document.querySelectorAll('input[type="search"], .seg-filters input[type="text"]').forEach(function(inp){
+        var form = inp.closest('form');
+        if(!form) return;
+        inp.addEventListener('input', function(){
+            var key = inp.name || inp.id || 'default';
+            clearTimeout(timers[key]);
+            timers[key] = setTimeout(function(){
+                if(typeof inp._dgFilter === 'function') inp._dgFilter();
+            }, 300);
+        });
+    });
+
+    window._dgDebounce = function(fn, ms){
+        var t;
+        return function(){
+            var ctx = this, args = arguments;
+            clearTimeout(t);
+            t = setTimeout(function(){ fn.apply(ctx, args); }, ms || 300);
+        };
+    };
+})();
+
+/* ── Modal de confirmación estilizado (QW5) ───────────────────────────── */
+(function(){
+    var overlay = document.createElement('div');
+    overlay.className = 'dg-confirm-overlay';
+    overlay.innerHTML =
+        '<div class="dg-confirm-box">'
+        + '<div class="dg-confirm-icon">⚠</div>'
+        + '<div class="dg-confirm-msg"></div>'
+        + '<div class="dg-confirm-btns">'
+          + '<button class="dg-confirm-cancel" type="button">Cancelar</button>'
+          + '<button class="dg-confirm-ok" type="button">Confirmar</button>'
+        + '</div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+
+    var msgEl = overlay.querySelector('.dg-confirm-msg');
+    var okBtn = overlay.querySelector('.dg-confirm-ok');
+    var cancelBtn = overlay.querySelector('.dg-confirm-cancel');
+    var _resolve = null;
+    var _pendingForm = null;
+    var _pendingSubmitter = null;
+
+    function showConfirm(msg){
+        msgEl.textContent = msg;
+        overlay.classList.add('open');
+        okBtn.focus();
+        return new Promise(function(resolve){ _resolve = resolve; });
     }
-});
+
+    function close(result){
+        overlay.classList.remove('open');
+        if(_resolve) _resolve(result);
+        _resolve = null;
+    }
+
+    okBtn.addEventListener('click', function(){
+        close(true);
+        if(_pendingForm){
+            var form = _pendingForm;
+            var submitter = _pendingSubmitter;
+            _pendingForm = null;
+            _pendingSubmitter = null;
+            if(submitter && submitter.name){
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = submitter.name;
+                hidden.value = submitter.value || '';
+                form.appendChild(hidden);
+            }
+            form.submit();
+        }
+    });
+    cancelBtn.addEventListener('click', function(){ _pendingForm = null; _pendingSubmitter = null; close(false); });
+    overlay.addEventListener('click', function(e){ if(e.target === overlay){ _pendingForm = null; _pendingSubmitter = null; close(false); }});
+    document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape' && overlay.classList.contains('open')){ _pendingForm = null; _pendingSubmitter = null; close(false); }
+    });
+
+    document.addEventListener('submit', function(e){
+        var btn = e.submitter;
+        if(!btn) return;
+        var msg = btn.dataset.confirm;
+        if(!msg && btn.classList.contains('hist-del')){
+            msg = '¿Eliminar este elemento? Esta acción no se puede deshacer.';
+        }
+        if(msg){
+            e.preventDefault();
+            _pendingForm = e.target;
+            _pendingSubmitter = btn;
+            showConfirm(msg);
+        }
+    });
+
+    window._dgConfirm = showConfirm;
+})();
+

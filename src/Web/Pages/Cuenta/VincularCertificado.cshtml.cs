@@ -8,10 +8,14 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [Authorize]
+[PermisoNoRequerido("Autoservicio: vincula un certificado a la propia cuenta.")]
 public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService currentUser, IConfiguration config) : PageModel
 {
     public string? Error { get; set; }
-
+    public string? Thumbprint { get; set; }
+    public string? Subject { get; set; }
+    public string? Issuer { get; set; }
+    public string? ValidTo { get; set; }
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
         if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
@@ -23,9 +27,21 @@ public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService
             return Page();
         }
 
+        Thumbprint = clientCert.Thumbprint;
+        Subject = clientCert.Subject;
+        Issuer = clientCert.Issuer;
+        ValidTo = clientCert.NotAfter.ToString("dd/MM/yyyy");
+
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync(string thumbprint, CancellationToken ct)
+    {
+        if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
+
         try
         {
-            await sender.Send(new VincularMiCertificadoCommand(currentUser.UserId.Value, clientCert.Thumbprint), ct);
+            await sender.Send(new VincularMiCertificadoCommand(currentUser.UserId.Value, thumbprint), ct);
             TempData["SuccessMessage"] = "¡Certificado digital vinculado con éxito! Ahora puedes iniciar sesión con él.";
         }
         catch (Exception ex)
@@ -37,14 +53,14 @@ public sealed class VincularCertificadoModel(ISender sender, ICurrentUserService
         var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
         var host = Request.Host.Host;
         
-        var backUrl = "/Cuenta/Perfil";
+        var backUrl = "/Cuenta/Certificado";
         
         if (isDev && host == "localhost")
         {
-            return Redirect($"https://localhost:49175{backUrl}");
+            return Redirect($"https://localhost:{config.GetValue<int>("Ports:DevMain", 49175)}{backUrl}");
         }
 
-        var mainPort = config.GetValue<int>("Ports:Main", 443);
+        var mainPort = config.GetValue<int>("Ports:Main", 8443);
         var portSuffix = mainPort == 443 ? "" : $":{mainPort}";
         var mainDomain = host.StartsWith("cert.") ? host.Substring(5) : host;
         

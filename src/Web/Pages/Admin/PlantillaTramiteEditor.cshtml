@@ -42,7 +42,7 @@
                             <td><input type="text" name="Legal[@i].Instrumento" value="@Model.Legal[i].Instrumento" placeholder="Ej: Ley de Procedimiento Administrativo"></td>
                             <td><input type="text" name="Legal[@i].Articulos" value="@Model.Legal[i].Articulos" placeholder="Arts. 12, 15"></td>
                             <td><input type="text" name="Legal[@i].Obs" value="@Model.Legal[i].Obs" placeholder="Observación..."></td>
-                            <td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>
+                            <td style="text-align:center;padding:6px"><button type="button" class="btn-rm" aria-label="Eliminar fila de fundamento legal" onclick="rmRow(this)">✕</button></td>
                         </tr>
                     }
                 </tbody>
@@ -60,7 +60,7 @@
                         <tr>
                             <td><input type="text" name="Requisitos[@i].Requisito" value="@Model.Requisitos[i].Requisito" placeholder="Ej: Copia de identidad"></td>
                             <td><input type="text" name="Requisitos[@i].Obs" value="@Model.Requisitos[i].Obs" placeholder="Observación..."></td>
-                            <td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>
+                            <td style="text-align:center;padding:6px"><button type="button" class="btn-rm" aria-label="Eliminar fila de requisito" onclick="rmRow(this)">✕</button></td>
                         </tr>
                     }
                 </tbody>
@@ -95,7 +95,7 @@
     tr.innerHTML = '<td><input type="text" name="Legal['+n+'].Instrumento" placeholder="Ej: Ley de Procedimiento Administrativo"></td>'
       +'<td><input type="text" name="Legal['+n+'].Articulos" placeholder="Arts. 12, 15"></td>'
       +'<td><input type="text" name="Legal['+n+'].Obs" placeholder="Observación..."></td>'
-      +'<td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>';
+      +'<td style="text-align:center;padding:6px"><button type="button" class="btn-rm" aria-label="Eliminar fila de fundamento legal" onclick="rmRow(this)">✕</button></td>';
   }
 
   function agregarRequisito(){
@@ -104,7 +104,7 @@
     var tr = tbody.insertRow();
     tr.innerHTML = '<td><input type="text" name="Requisitos['+n+'].Requisito" placeholder="Ej: Copia de identidad"></td>'
       +'<td><input type="text" name="Requisitos['+n+'].Obs" placeholder="Observación..."></td>'
-      +'<td style="text-align:center;padding:6px"><button type="button" class="btn-rm" onclick="rmRow(this)">✕</button></td>';
+      +'<td style="text-align:center;padding:6px"><button type="button" class="btn-rm" aria-label="Eliminar fila de requisito" onclick="rmRow(this)">✕</button></td>';
   }
 </script>
 }

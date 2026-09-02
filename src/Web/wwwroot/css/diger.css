@@ -8,11 +8,19 @@
 }
 
 body {
-    font-family: system-ui, sans-serif;
-    font-size: 15px;
+    font-family: 'Poppins', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: var(--diger-text-base);
     color: var(--diger-text);
     background: var(--diger-bg);
     min-height: 100vh;
+}
+
+:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+    outline: none;
 }
 
 /* ── CONTAINER ──────────────────────────────────────────────── */
@@ -20,6 +28,57 @@ body {
     max-width: 780px;
     margin: 0 auto;
     padding: 2rem 1rem 3rem;
+}
+
+/* Contenedor de página para las pantallas que no usan .container.
+   Mismo margen que .container; el ancho es el de un listado con acciones. */
+.pg-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2rem 1rem 3rem;
+}
+
+/* ── ENCABEZADO DE PÁGINA (Manual de Marca: navy + subrayado dorado) ── */
+/* .pg-title es el mismo título; lo usan Chat y Notificaciones. */
+.page-title,
+.pg-title {
+    color: var(--diger-blue-strong);
+    font-weight: 700;
+    font-size: 1.6rem;
+    line-height: 1.2;
+    border-bottom: 3px solid var(--diger-gold);
+    padding-bottom: .45rem;
+    margin-bottom: .5rem;
+    display: inline-block;
+}
+
+.page-subtitle {
+    color: var(--diger-text-muted);
+    font-size: .95rem;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Badge "hilo" en listados de reuniones */
+.hilo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 8px;
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    color: var(--diger-blue-strong);
+    background: var(--diger-blue-light);
+    padding: 2px 8px;
+    border-radius: var(--diger-radius-pill);
+    text-decoration: none;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.hilo-badge:hover {
+    background: var(--diger-blue);
+    color: #fff;
 }
 
 /* ── STEP BAR ───────────────────────────────────────────────── */
@@ -62,30 +121,30 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     font-weight: 700;
     border: 2px solid #d0d8e8;
-    background: #fff;
+    background: var(--diger-surface);
     color: var(--diger-text-faint);
     z-index: 1;
     position: relative;
 }
 
 .step-item.active .step-circle {
-    border-color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
     background: var(--diger-blue);
     color: #fff;
     box-shadow: 0 0 0 5px rgba(20, 85, 164, .15);
 }
 
 .step-item.done .step-circle {
-    border-color: var(--diger-blue-dark);
+    border-color: var(--diger-blue-title);
     background: var(--diger-blue-dark);
     color: #fff;
 }
 
 .step-label {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     color: var(--diger-text-faint);
     margin-top: 6px;
     text-align: center;
@@ -93,20 +152,20 @@ body {
 }
 
 .step-item.active .step-label {
-    color: var(--diger-blue);
+    color: var(--diger-blue-strong);
     font-weight: 700;
 }
 
 .step-item.done .step-label {
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
 }
 
 /* ── CARDS ──────────────────────────────────────────────────── */
 .card {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: var(--diger-radius-lg);
+    padding: var(--diger-space-6);
     margin-bottom: 1.25rem;
     box-shadow: var(--diger-shadow-sm);
     transition: box-shadow .25s, transform .25s;
@@ -118,7 +177,7 @@ body {
 }
 
 .stitle {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     font-weight: 700;
     color: var(--diger-text-muted);
     text-transform: uppercase;
@@ -139,7 +198,7 @@ body {
 .field label,
 .field>label {
     display: block;
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-secondary);
     margin-bottom: 5px;
     font-weight: 500;
@@ -153,8 +212,8 @@ select.field-input {
     width: 100%;
     padding: 9px 13px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 10px;
-    font-size: 14px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-base);
     font-family: inherit;
     background: var(--diger-bg-soft);
     color: var(--diger-text);
@@ -167,9 +226,9 @@ select.field-input {
 input.field-input:focus,
 select.field-input:focus {
     outline: none;
-    border-color: var(--diger-blue);
-    background: #fff;
-    box-shadow: 0 0 0 4px rgba(20, 85, 164, .1);
+    border-color: var(--diger-blue-strong);
+    background: var(--diger-surface);
+    box-shadow: var(--diger-ring);
 }
 
 .field textarea {
@@ -190,7 +249,7 @@ select.field-input:focus {
 }
 
 .val {
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     color: var(--diger-text);
     padding: 4px 0;
 }
@@ -211,11 +270,11 @@ select.field-input:focus {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 16px;
+    padding: var(--diger-space-2) var(--diger-space-4);
     border: 1.5px solid var(--diger-border);
     border-radius: 25px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     transition: border-color .15s, background .15s, color .15s;
     user-select: none;
     background: var(--diger-bg-soft);
@@ -223,14 +282,14 @@ select.field-input:focus {
 }
 
 .rpill:hover {
-    border-color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
     background: #f0f5ff;
 }
 
 .rpill.on {
-    border-color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
     background: var(--diger-blue-light);
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     font-weight: 600;
 }
 
@@ -240,9 +299,9 @@ select.field-input:focus {
 
 /* ── CONDITIONAL WRAP ───────────────────────────────────────── */
 .conditional-wrap {
-    background: #f5f8ff;
+    background: var(--diger-bg-blue);
     border-left: 3px solid var(--diger-blue);
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 var(--diger-radius-sm) var(--diger-radius-sm) 0;
     padding: 12px 14px;
     margin-top: 8px;
     margin-bottom: 4px;
@@ -255,7 +314,7 @@ select.field-input:focus {
     border: none;
     border-radius: var(--diger-radius-md);
     padding: 11px 28px;
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
@@ -278,11 +337,11 @@ select.field-input:focus {
 }
 
 .btns {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1.5px solid var(--diger-blue-pale);
     border-radius: var(--diger-radius-md);
     padding: 11px 28px;
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     cursor: pointer;
     color: var(--diger-text-secondary);
     font-weight: 500;
@@ -293,9 +352,15 @@ select.field-input:focus {
 }
 
 .btns:hover {
-    background: #f0f4ff;
-    border-color: var(--diger-blue);
-    color: var(--diger-blue);
+    background: var(--diger-bg-blue-pale);
+    border-color: var(--diger-blue-strong);
+    color: var(--diger-blue-strong);
+}
+
+.btns.on {
+    background: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
+    color: #fff;
 }
 
 .nav {
@@ -315,7 +380,7 @@ select.field-input:focus {
 }
 
 .col-hdr span {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     font-weight: 700;
     color: var(--diger-text-muted);
     text-align: center;
@@ -340,16 +405,16 @@ select.field-input:focus {
 }
 
 .trow .tn {
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     line-height: 1.4;
     padding-right: 4px;
-    color: #2d3748;
+    color: var(--diger-text-strong);
 }
 
 .trow input[type=checkbox] {
     margin: 3px auto;
     display: block;
-    accent-color: var(--diger-blue);
+    accent-color: var(--diger-blue-strong);
     width: 18px;
     height: 18px;
     cursor: pointer;
@@ -357,10 +422,10 @@ select.field-input:focus {
 
 .omini {
     width: 100%;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     padding: 7px 9px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     color: #555;
     font-family: inherit;
     resize: vertical;
@@ -371,7 +436,8 @@ select.field-input:focus {
 
 .omini:focus {
     outline: none;
-    border-color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
+    box-shadow: var(--diger-ring);
 }
 
 /* ── HISTORIAL ──────────────────────────────────────────────── */
@@ -385,22 +451,22 @@ select.field-input:focus {
 }
 
 .hist-header h2 {
-    font-size: 20px;
+    font-size: var(--diger-text-xl);
     font-weight: 800;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     margin: 0;
 }
 
 .hist-header p {
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
     margin-top: 2px;
 }
 
 .hist-item {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1.5px solid var(--diger-border);
-    border-radius: 13px;
+    border-radius: var(--diger-radius-md);
     padding: 1.1rem 1.3rem;
     margin-bottom: .85rem;
     display: flex;
@@ -411,7 +477,7 @@ select.field-input:focus {
 }
 
 .hist-item:hover {
-    border-color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
     box-shadow: var(--diger-shadow-md);
     transform: translateY(-1px);
 }
@@ -422,7 +488,7 @@ select.field-input:focus {
     border-radius: 50%;
     background: linear-gradient(135deg, var(--diger-blue), var(--diger-blue-dark));
     color: #fff;
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     font-weight: 800;
     display: flex;
     align-items: center;
@@ -436,14 +502,14 @@ select.field-input:focus {
 }
 
 .hist-inst {
-    font-size: 15px;
+    font-size: var(--diger-text-base);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     margin-bottom: 3px;
 }
 
 .hist-meta {
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
     display: flex;
     flex-wrap: wrap;
@@ -455,7 +521,7 @@ select.field-input:focus {
     align-items: center;
     padding: 2px 10px;
     border-radius: var(--diger-radius-md);
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     font-weight: 700;
 }
 
@@ -475,7 +541,7 @@ select.field-input:focus {
 }
 
 .hist-arrow {
-    font-size: 18px;
+    font-size: var(--diger-text-lg);
     color: var(--diger-blue-pale);
     flex-shrink: 0;
     text-decoration: none;
@@ -483,11 +549,11 @@ select.field-input:focus {
 
 .hist-del {
     padding: 6px 10px;
-    background: #fff;
+    background: var(--diger-surface);
     border: 1.5px solid var(--diger-border);
     color: var(--diger-text-faint);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     cursor: pointer;
     flex-shrink: 0;
     transition: all .2s;
@@ -499,9 +565,32 @@ select.field-input:focus {
     color: var(--diger-danger);
 }
 
+/* Reordenar entregables y actividades: mismo lenguaje que .hist-del, pero van DOS en una celda estrecha de una
+   tabla con table-layout:fixed, así que no pueden heredar de .btns (padding 11px 28px, que
+   desbordaba la columna y empujaba la ✕ fuera del borde). */
+.orden-mov {
+    padding: 5px 7px;
+    background: var(--diger-surface);
+    border: 1.5px solid var(--diger-border);
+    color: var(--diger-text-faint);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-2xs);
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all .2s;
+}
+
+.orden-mov + .orden-mov { margin-left: 3px; }
+
+.orden-mov:hover {
+    border-color: var(--diger-blue);
+    color: var(--diger-blue);
+}
+
 .hist-empty {
     text-align: center;
-    padding: 3rem 1rem;
+    padding: var(--diger-space-12) var(--diger-space-4);
     color: var(--diger-text-faint);
 }
 
@@ -520,7 +609,7 @@ select.field-input:focus {
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     color: #fff;
     flex-shrink: 0;
 }
@@ -535,19 +624,19 @@ select.field-input:focus {
 .ihdr p {
     font-weight: 600;
     margin: 0;
-    font-size: 15px;
-    color: var(--diger-blue-dark);
+    font-size: var(--diger-text-base);
+    color: var(--diger-blue-title);
 }
 
 .ihdr span {
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
 }
 
 /* ── SUCCESS PAGE ───────────────────────────────────────────── */
 .okbox {
     text-align: center;
-    padding: 2.5rem 1rem;
+    padding: var(--diger-space-10) var(--diger-space-4);
 }
 
 .check-wrap {
@@ -593,15 +682,15 @@ select.field-input:focus {
 }
 
 .okbox h2 {
-    font-size: 24px;
+    font-size: var(--diger-text-2xl);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     margin-bottom: .5rem;
 }
 
 .okbox p {
     color: var(--diger-text-muted);
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     max-width: 420px;
     margin: 0 auto 1.75rem;
     line-height: 1.6;
@@ -610,9 +699,9 @@ select.field-input:focus {
 .ok-inst {
     display: inline-block;
     background: linear-gradient(135deg, var(--diger-blue-light), #ddeeff);
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     padding: 6px 16px;
     border-radius: var(--diger-radius-pill);
     margin-bottom: 1.5rem;
@@ -621,10 +710,10 @@ select.field-input:focus {
 
 /* ── DOCUMENTS ──────────────────────────────────────────────── */
 .doc-attach-card {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: var(--diger-radius-lg);
+    padding: var(--diger-space-6);
     margin-bottom: 1.25rem;
     box-shadow: var(--diger-shadow-sm);
 }
@@ -634,22 +723,22 @@ select.field-input:focus {
     align-items: center;
     gap: 10px;
     padding: 10px 13px;
-    background: #f8fbff;
+    background: var(--diger-bg-blue-alt);
     border: 1px solid #dde4f0;
-    border-radius: 10px;
+    border-radius: var(--diger-radius-sm);
     margin-bottom: 7px;
 }
 
 .doc-item-ico {
     width: 34px;
     height: 34px;
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     background: linear-gradient(135deg, var(--diger-blue-light), #d5e8ff);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 16px;
+    font-size: var(--diger-text-base);
 }
 
 .doc-item-info {
@@ -658,13 +747,13 @@ select.field-input:focus {
 }
 
 .doc-item-name {
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
 }
 
 .doc-item-meta {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     color: var(--diger-text-muted);
     margin-top: 1px;
 }
@@ -677,12 +766,12 @@ select.field-input:focus {
 }
 
 .doc-btn-open {
-    padding: 4px 12px;
+    padding: var(--diger-space-1) var(--diger-space-3);
     background: var(--diger-blue);
     color: #fff;
     border: none;
-    border-radius: 6px;
-    font-size: 11.5px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
     cursor: pointer;
     text-decoration: none;
@@ -691,11 +780,11 @@ select.field-input:focus {
 
 .doc-btn-del {
     padding: 4px 9px;
-    background: #fff;
+    background: var(--diger-surface);
     border: 1.5px solid var(--diger-border);
     color: var(--diger-text-muted);
-    border-radius: 6px;
-    font-size: 11.5px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     cursor: pointer;
 }
 
@@ -705,14 +794,14 @@ select.field-input:focus {
 }
 
 .doc-add-form {
-    background: #f5f8ff;
+    background: var(--diger-bg-blue);
     border: 1.5px dashed #c0d0f0;
-    border-radius: 11px;
-    padding: 1rem;
+    border-radius: var(--diger-radius-md);
+    padding: var(--diger-space-4);
 }
 
 .doc-add-title {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     font-weight: 700;
     color: var(--diger-text-muted);
     text-transform: uppercase;
@@ -730,16 +819,16 @@ select.field-input:focus {
 .doc-add-inp {
     padding: 8px 10px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     font-family: inherit;
-    background: #fff;
+    background: var(--diger-surface);
     outline: none;
     width: 100%;
 }
 
 .doc-add-inp:focus {
-    border-color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
 }
 
 .btn-doc-add {
@@ -747,62 +836,92 @@ select.field-input:focus {
     background: linear-gradient(135deg, var(--diger-blue), var(--diger-blue-dark));
     color: #fff;
     border: none;
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
     cursor: pointer;
 }
 
 .doc-empty {
     text-align: center;
-    padding: 1.5rem;
+    padding: var(--diger-space-6);
     color: var(--diger-text-faint);
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
 }
 
 /* ── ASISTENTE CARDS ────────────────────────────────────────── */
 .asistente-item {
-    background: #f8fbff;
+    background: var(--diger-bg-soft);
     border: 1.5px solid var(--diger-border);
     border-radius: var(--diger-radius-md);
-    padding: 14px 16px;
+    padding: 12px 14px 14px;
     margin-bottom: 10px;
+    transition: border-color .15s;
+}
+.asistente-item:focus-within {
+    border-color: var(--diger-blue-pale);
 }
 
-.asistente-row {
-    display: grid;
-    grid-template-columns: 2fr 1.5fr 1.5fr;
-    gap: 12px;
-    margin-bottom: 10px;
-}
-
-.asistente-row:last-child {
-    margin-bottom: 0;
-    align-items: end;
-}
-
-.asistente-del-wrap {
+/* Header: avatar + nombre como campo prominente + botón eliminar */
+.asi-hdr {
     display: flex;
-    justify-content: flex-end;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--diger-bg);
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--diger-border);
 }
 
-.asistente-del-wrap .hist-del {
-    color: var(--diger-danger);
-    border-color: #f3d0d0;
-    background: #fff5f5;
+.asi-nombre {
+    flex: 1;
+    font-weight: 600;
+    font-size: var(--diger-fs-base);
+    color: var(--diger-blue-title) !important;
+    border: none !important;
+    border-bottom: 1.5px solid var(--diger-border) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding: 3px 4px !important;
+    box-shadow: none !important;
 }
+.asi-nombre:focus {
+    outline: none;
+    border-bottom-color: var(--diger-blue-strong) !important;
+}
+.asi-nombre::placeholder { font-weight: 400; color: var(--diger-text-faint); }
 
-.asistente-del-wrap .hist-del:hover {
-    background: var(--diger-danger-bg);
+/* Botón eliminar compacto en esquina */
+.asi-del {
+    flex: none;
+    border: 1.5px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    background: transparent;
+    color: var(--diger-text-muted);
+    cursor: pointer;
+    font-size: var(--diger-fs-sm);
+    padding: var(--diger-space-1) var(--diger-space-2);
+    line-height: 1;
+    transition: all .15s;
+}
+.asi-del:hover {
     border-color: var(--diger-danger);
+    color: var(--diger-danger);
+    background: var(--diger-danger-bg);
+}
+
+/* Grid de campos secundarios */
+.asi-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
+}
+.asi-fields .field {
+    margin-bottom: 0;
 }
 
 /* ── MIEMBRO ────────────────────────────────────────────────── */
 .miembro {
-    background: linear-gradient(135deg, #f5f8ff, #eef2fc);
+    background: linear-gradient(135deg, var(--diger-bg-blue), #eef2fc);
     border: 1.5px solid var(--diger-blue-pale);
     border-radius: var(--diger-radius-md);
     padding: 14px;
@@ -810,9 +929,9 @@ select.field-input:focus {
 }
 
 .miembro-header {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     font-weight: 700;
-    color: var(--diger-blue);
+    color: var(--diger-blue-strong);
     text-transform: uppercase;
     letter-spacing: .06em;
     margin-bottom: 10px;
@@ -823,14 +942,14 @@ select.field-input:focus {
 /* ── BAJA BADGE ─────────────────────────────────────────────── */
 .badge-baja {
     display: inline-block;
-    font-size: 10px;
+    font-size: var(--diger-fs-2xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .04em;
     color: var(--diger-warning);
     background: var(--diger-warning-bg);
     border: 1px solid #fcd34d;
-    border-radius: 6px;
+    border-radius: var(--diger-radius-sm);
     padding: 1px 6px;
     margin-left: 6px;
     vertical-align: middle;
@@ -846,9 +965,9 @@ tr.contacto-inactivo td {
 
 /* ── CONTACTOS: VISTA AGRUPADA POR INSTITUCIÓN ─────────────────── */
 .grupo-inst {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: 13px;
+    border-radius: var(--diger-radius-md);
     margin-bottom: 14px;
     overflow: hidden;
     box-shadow: var(--diger-shadow-sm);
@@ -861,7 +980,7 @@ tr.contacto-inactivo td {
     padding: 14px 16px;
     cursor: pointer;
     user-select: none;
-    background: #f5f8ff;
+    background: var(--diger-bg-blue);
 }
 
 .grupo-inst-hdr:hover {
@@ -869,15 +988,15 @@ tr.contacto-inactivo td {
 }
 
 .grupo-inst-hdr strong {
-    color: var(--diger-blue-dark);
-    font-size: 14.5px;
+    color: var(--diger-blue-title);
+    font-size: var(--diger-fs-base);
 }
 
 .grupo-inst-badge {
     display: inline-block;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
-    color: var(--diger-blue);
+    color: var(--diger-blue-strong);
     background: var(--diger-blue-light);
     border: 1px solid #c0d0f0;
     border-radius: var(--diger-radius-pill);
@@ -886,7 +1005,7 @@ tr.contacto-inactivo td {
 
 .grupo-inst-chevron {
     margin-left: auto;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
     transition: transform .2s;
 }
@@ -900,34 +1019,592 @@ tr.contacto-inactivo td {
 .alert-error {
     background: #fef2f2;
     border: 1px solid #fecaca;
-    border-radius: 10px;
-    padding: 12px 16px;
+    border-radius: var(--diger-radius-sm);
+    padding: var(--diger-space-3) var(--diger-space-4);
     color: var(--diger-danger-text);
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     margin-bottom: 1rem;
 }
 
 .alert-ok {
     background: #f0fdf4;
     border: 1px solid #86efac;
-    border-radius: 10px;
-    padding: 12px 16px;
+    border-radius: var(--diger-radius-sm);
+    padding: var(--diger-space-3) var(--diger-space-4);
     color: var(--diger-success);
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
+}
+
+/* Faltaba el tercer caso: «esto no está mal, pero léalo antes de creerle al número de al lado».
+   Se usa donde un indicador sale de una muestra parcial. A diferencia de sus dos hermanos, va
+   sobre tokens y no sobre literales, así que sí acompaña al modo oscuro. */
+.alert-warn {
+    background: var(--diger-warning-bg);
+    border: 1px solid var(--diger-warning);
+    border-radius: var(--diger-radius-sm);
+    padding: var(--diger-space-3) var(--diger-space-4);
+    color: var(--diger-warning-strong);
+    font-size: var(--diger-fs-sm);
+}
+
+.hint {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    margin-top: 3px;
+    display: block;
 }
 
 .hint.error {
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-danger);
     margin-top: 4px;
     display: block;
 }
 
-/* ── APP SHELL (sidebar tipo hamburguesa, en todos los tamaños de pantalla) ── */
+/* ── CONTEXTUAL HELP TOOLTIPS ─────────────────────────────────── */
+.help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--diger-border);
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    font-style: normal;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+    user-select: none;
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.help-tip:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-strong);
+}
+
+.help-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--diger-blue-dark);
+    color: #fff;
+    font-size: var(--diger-fs-sm);
+    font-weight: 500;
+    line-height: 1.45;
+    padding: var(--diger-space-2) var(--diger-space-3);
+    border-radius: var(--diger-radius-sm);
+    white-space: normal;
+    width: max-content;
+    max-width: 260px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s, visibility .15s;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(2, 42, 69, .25);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.help-tip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-tip::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--diger-blue-title);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .15s, visibility .15s;
+    z-index: 100;
+}
+
+.help-tip:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-tip.tip-down::after {
+    bottom: auto;
+    top: calc(100% + 8px);
+}
+
+.help-tip.tip-down::before {
+    bottom: auto;
+    top: calc(100% + 2px);
+    border-top-color: transparent;
+    border-bottom-color: var(--diger-blue-title);
+}
+
+.help-tip.tip-left::after {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+
+.help-tip.tip-left::before {
+    left: auto;
+    right: 3px;
+    transform: none;
+}
+
+/* ── APP SHELL: cascarón institucional (Manual de Marca 2026) ─────────── */
 .app-shell {
-    display: flex;
-    align-items: stretch;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Franja de gobierno */
+.gov-bar {
+    background: var(--diger-blue-dark);
+    color: rgba(255, 255, 255, .85);
+    font-size: var(--diger-fs-sm);
+}
+
+.gov-bar-inner {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: .35rem 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.gov-bar-inner a {
+    color: rgba(255, 255, 255, .85);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.gov-bar-inner a:hover {
+    color: #fff;
+}
+
+/* Header azul gobierno con línea dorada */
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--diger-blue);
+    border-bottom: 3px solid var(--diger-gold);
+    box-shadow: 0 2px 10px rgba(2, 42, 69, .18);
+}
+
+.app-header-inner {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .5rem 1.4rem;
+    max-width: 1500px;
+    margin: 0 auto;
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    text-decoration: none;
+    flex: none;
+    margin-right: .6rem;
+}
+
+.app-brand-word {
+    font-weight: 800;
+    font-size: var(--diger-text-xl);
+    letter-spacing: .04em;
+    color: #fff;
+}
+
+.app-brand-divider {
+    width: 1px;
+    height: 26px;
+    background: rgba(255, 255, 255, .3);
+}
+
+.app-brand-title {
+    color: rgba(255, 255, 255, .92);
+    font-weight: 500;
+    font-size: var(--diger-fs-base);
+    white-space: nowrap;
+}
+
+.nav-toggle {
+    display: none;
+    border: 1.5px solid rgba(255, 255, 255, .4);
+    background: transparent;
+    border-radius: var(--diger-radius-sm);
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--diger-text-base);
+    cursor: pointer;
+    color: #fff;
+    flex: none;
+}
+
+/* Navegación por grupos (desplegables) */
+.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-group {
+    position: relative;
+}
+
+.nav-group-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: rgba(255, 255, 255, .85);
+    padding: 9px 14px;
+    border-radius: var(--diger-radius-sm);
+    white-space: nowrap;
+}
+
+.nav-group-btn:hover {
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+}
+
+.nav-group.on > .nav-group-btn {
+    color: #fff;
+    background: rgba(255, 255, 255, .1);
+}
+
+.nav-group.open > .nav-group-btn {
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+}
+
+.nav-caret {
+    font-size: var(--diger-fs-2xs);
+    opacity: .6;
+    transition: transform .18s ease;
+}
+
+.nav-group.open .nav-caret {
+    transform: rotate(180deg);
+}
+
+.nav-group-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 210px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    box-shadow: 0 12px 30px rgba(10, 45, 110, .15);
+    padding: 6px;
+    display: none;
+    z-index: 120;
+}
+
+.nav-group.open .nav-group-menu {
+    display: block;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: var(--diger-radius-sm);
+    text-decoration: none;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    white-space: nowrap;
+}
+
+.nav-item:hover {
+    background: var(--diger-bg-soft);
+    color: var(--diger-blue-strong);
+}
+
+.nav-item.on {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+/* Entradas del desplegable del navbar.
+   Se escriben con dos clases a propósito: más abajo, la fila de atajos a tableros
+   redefine `.nav-item` (borde, gap y color propios) y, con igual especificidad,
+   ganaba por orden de aparición. Al calificar con el contenedor, el navbar deja de
+   depender de en qué parte del archivo esté escrito. */
+.nav-group-menu .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    padding: 9px 12px;
+    border-radius: var(--diger-radius-sm);
+    text-decoration: none;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    white-space: nowrap;
+}
+
+.nav-group-menu .nav-item:hover {
+    background: var(--diger-bg-soft);
+    border: 0;
+    color: var(--diger-blue-strong);
+}
+
+.nav-group-menu .nav-item.on {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+/* El icono acompaña, no compite: algo más tenue que el texto salvo en la entrada activa. */
+.nav-group-menu .nav-item .ico {
+    width: 16px;
+    height: 16px;
+    opacity: .6;
+}
+
+.nav-group-menu .nav-item:hover .ico,
+.nav-group-menu .nav-item.on .ico {
+    opacity: 1;
+}
+
+/* Con seis grupos el ancho aprieta en la franja previa al menú lateral (900px).
+   Acotado por abajo para no encoger también los botones del drawer, que ya van a lo ancho. */
+@media (min-width: 901px) and (max-width: 1180px) {
+    .nav-group-btn {
+        padding: 9px 9px;
+        font-size: var(--diger-fs-sm);
+    }
+}
+
+/* Lado derecho: notificaciones + usuario */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: none;
+    margin-left: auto;
+}
+
+.header-icon {
+    background: none;
+    border: 0;
+    color: rgba(255, 255, 255, .8);
+    font-size: 17px;
+    cursor: pointer;
+    padding: var(--diger-space-1);
+    line-height: 1;
+}
+
+.header-icon:hover {
+    color: #fff;
+}
+
+.user-menu {
+    position: relative;
+}
+
+.user-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 4px 6px;
+    border-radius: 30px;
+    text-align: left;
+}
+
+.user-menu-btn:hover {
+    background: rgba(255, 255, 255, .12);
+}
+
+/* Avatar dorado en el header (Manual de Marca) */
+.user-menu-btn .side-avatar {
+    background: var(--diger-gold);
+}
+
+.user-menu-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    min-width: 0;
+}
+
+.user-menu-name {
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+}
+
+.user-menu-rol {
+    font-size: var(--diger-fs-2xs);
+    color: rgba(255, 255, 255, .65);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+}
+
+.user-menu-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    box-shadow: 0 12px 30px rgba(10, 45, 110, .16);
+    padding: .85rem;
+    display: none;
+    z-index: 120;
+}
+
+.user-menu-panel.open {
+    display: block;
+}
+
+.user-menu-panel select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
+    font-family: inherit;
+    background: var(--diger-bg-soft);
+    color: var(--diger-text);
+    margin-bottom: .4rem;
+}
+
+.user-menu-panel select:last-child {
+    margin-bottom: 0;
+}
+
+.user-panel-link {
+    display: block;
+    padding: 8px 10px;
+    margin-bottom: .5rem;
+    border-radius: var(--diger-radius-sm);
+    text-decoration: none;
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: var(--diger-blue-title);
+    border: 1.5px solid var(--diger-border);
+    text-align: center;
+}
+
+.user-panel-link:hover {
+    background: var(--diger-blue-light);
+    border-color: var(--diger-blue-strong);
+    color: var(--diger-blue-strong);
+}
+
+.nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 45, 110, .35);
+    z-index: 150;
+}
+
+/* Cabecera responsiva: menú lateral deslizable en pantallas pequeñas */
+@media (max-width: 900px) {
+    .nav-toggle {
+        display: flex;
+    }
+
+    .main-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 264px;
+        background: var(--diger-surface);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+        padding: 1rem .7rem;
+        transform: translateX(-100%);
+        transition: transform .22s ease;
+        z-index: 200;
+        overflow-y: auto;
+        box-shadow: var(--diger-shadow-md);
+    }
+
+    .main-nav.open {
+        transform: translateX(0);
+    }
+
+    /* En el drawer móvil (fondo blanco) los botones vuelven a color de marca */
+    .nav-group-btn {
+        width: 100%;
+        justify-content: space-between;
+        color: var(--diger-text-secondary);
+    }
+
+    .nav-group-btn:hover,
+    .nav-group.on > .nav-group-btn,
+    .nav-group.open > .nav-group-btn {
+        background: var(--diger-blue-light);
+        color: var(--diger-blue-strong);
+    }
+
+    .nav-group-menu {
+        position: static;
+        display: block;
+        min-width: 0;
+        border: 0;
+        box-shadow: none;
+        padding: 0 0 .3rem .6rem;
+    }
+
+    .nav-caret {
+        display: none;
+    }
+
+    .nav-backdrop.open {
+        display: block;
+    }
+
+    .user-menu-meta {
+        display: none;
+    }
 }
 
 .app-sidebar {
@@ -983,9 +1660,9 @@ tr.contacto-inactivo td {
     border: 0;
     background: transparent;
     color: var(--diger-text-muted);
-    font-size: 18px;
+    font-size: var(--diger-text-lg);
     cursor: pointer;
-    padding: 4px;
+    padding: var(--diger-space-1);
     line-height: 1;
 }
 
@@ -994,7 +1671,7 @@ tr.contacto-inactivo td {
 }
 
 .side-label {
-    font-size: 10.5px;
+    font-size: var(--diger-fs-2xs);
     text-transform: uppercase;
     letter-spacing: .06em;
     font-weight: 700;
@@ -1012,9 +1689,9 @@ tr.contacto-inactivo td {
     align-items: center;
     gap: 10px;
     padding: 8.5px .6rem;
-    border-radius: 9px;
+    border-radius: var(--diger-radius-sm);
     text-decoration: none;
-    font-size: 13.5px;
+    font-size: var(--diger-fs-base);
     font-weight: 600;
     color: var(--diger-text-secondary);
     margin-bottom: 1px;
@@ -1030,7 +1707,7 @@ tr.contacto-inactivo td {
 
 .side-link:hover {
     background: var(--diger-blue-light);
-    color: var(--diger-blue);
+    color: var(--diger-blue-strong);
 }
 
 .side-link.on {
@@ -1039,7 +1716,7 @@ tr.contacto-inactivo td {
 }
 
 .side-link.on .dash {
-    background: #fff;
+    background: var(--diger-surface);
 }
 
 .side-user {
@@ -1057,7 +1734,7 @@ tr.contacto-inactivo td {
     border: 0;
     background: transparent;
     padding: 7px .5rem;
-    border-radius: 10px;
+    border-radius: var(--diger-radius-sm);
     cursor: pointer;
     font-family: inherit;
     text-align: left;
@@ -1076,7 +1753,7 @@ tr.contacto-inactivo td {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     font-weight: 800;
     flex: none;
 }
@@ -1089,16 +1766,16 @@ tr.contacto-inactivo td {
 }
 
 .side-user-name {
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .side-user-rol {
-    font-size: 10.5px;
+    font-size: var(--diger-fs-2xs);
     color: var(--diger-text-muted);
     font-weight: 600;
     white-space: nowrap;
@@ -1109,7 +1786,7 @@ tr.contacto-inactivo td {
 .side-user-chev {
     margin-left: auto;
     flex: none;
-    font-size: 10px;
+    font-size: var(--diger-fs-2xs);
     color: var(--diger-text-muted);
 }
 
@@ -1118,9 +1795,9 @@ tr.contacto-inactivo td {
     bottom: calc(100% + 8px);
     left: 0;
     right: 0;
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: 13px;
+    border-radius: var(--diger-radius-md);
     box-shadow: 0 10px 28px rgba(10, 45, 110, .14);
     padding: .85rem;
     display: none;
@@ -1144,7 +1821,7 @@ tr.contacto-inactivo td {
 }
 
 .side-panel-label {
-    font-size: 10.5px;
+    font-size: var(--diger-fs-2xs);
     text-transform: uppercase;
     letter-spacing: .05em;
     color: var(--diger-text-faint);
@@ -1156,8 +1833,8 @@ tr.contacto-inactivo td {
     width: 100%;
     padding: 8px 10px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 9px;
-    font-size: 12.5px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     font-family: inherit;
     background: var(--diger-bg-soft);
     color: var(--diger-text);
@@ -1172,11 +1849,11 @@ tr.contacto-inactivo td {
     width: 100%;
     padding: 8px 10px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 9px;
-    font-size: 12.5px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
     color: var(--diger-danger);
-    background: #fff;
+    background: var(--diger-surface);
     font-family: inherit;
     cursor: pointer;
     text-align: center;
@@ -1192,12 +1869,42 @@ tr.contacto-inactivo td {
     min-width: 0;
 }
 
+/* Footer institucional (navy + línea dorada superior) */
+.diger-footer {
+    background: var(--diger-blue);
+    border-top: 3px solid var(--diger-gold);
+    color: rgba(255, 255, 255, .8);
+    margin-top: 2rem;
+}
+
+.diger-footer-inner {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 1rem 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    flex-wrap: wrap;
+    font-size: var(--diger-fs-sm);
+}
+
+.diger-footer-inner a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.diger-footer-inner a:hover {
+    color: var(--diger-gold-light);
+}
+
 .app-topbar {
     display: flex;
     align-items: center;
     gap: .8rem;
     padding: .7rem 1rem;
-    background: #fff;
+    background: var(--diger-surface);
     border-bottom: 1px solid var(--diger-border);
     position: sticky;
     top: 0;
@@ -1206,16 +1913,16 @@ tr.contacto-inactivo td {
 
 .hamburger {
     border: 1.5px solid var(--diger-border);
-    background: #fff;
-    border-radius: 9px;
+    background: var(--diger-surface);
+    border-radius: var(--diger-radius-sm);
     width: 36px;
     height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: var(--diger-text-base);
     cursor: pointer;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     flex: none;
 }
 
@@ -1238,24 +1945,24 @@ tr.contacto-inactivo td {
 }
 
 .topnav-context select:hover {
-    background-color: #e8f0ff;
+    background-color: var(--diger-blue-light);
 }
 
 .topnav-context select:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(20, 85, 164, .15);
+    box-shadow: var(--diger-ring);
 }
 
 .topnav-context-div {
     width: 1.5px;
     height: 16px;
-    background: #c8d5ee;
+    background: var(--diger-blue-pale);
     margin: 0 4px;
 }
 
 /* ── TOP NAV ────────────────────────────────────────────────── */
 .topnav {
-    background: #fff;
+    background: var(--diger-surface);
     border-bottom: 1px solid var(--diger-border);
     box-shadow: var(--diger-shadow-sm);
 }
@@ -1263,7 +1970,7 @@ tr.contacto-inactivo td {
 .topnav-inner {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 1rem 2rem;
+    padding: var(--diger-space-4) var(--diger-space-8);
     display: flex;
     align-items: center;
     gap: 2.5rem;
@@ -1286,13 +1993,13 @@ tr.contacto-inactivo td {
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--diger-blue-dark);
-    padding: 4px;
-    border-radius: 6px;
+    color: var(--diger-blue-title);
+    padding: var(--diger-space-1);
+    border-radius: var(--diger-radius-sm);
 }
 
 .topnav-toggle:hover {
-    background: #f0f4ff;
+    background: var(--diger-bg-blue-pale);
 }
 
 .topnav-links {
@@ -1302,18 +2009,18 @@ tr.contacto-inactivo td {
 }
 
 .topnav-links a {
-    font-size: 13.5px;
+    font-size: var(--diger-fs-base);
     color: var(--diger-text-secondary);
     text-decoration: none;
     padding: 8px 18px;
-    border-radius: 9px;
+    border-radius: var(--diger-radius-sm);
     font-weight: 600;
     transition: all .15s;
 }
 
 .topnav-links a:hover {
-    background: #f0f4ff;
-    color: var(--diger-blue);
+    background: var(--diger-bg-blue-pale);
+    color: var(--diger-blue-strong);
 }
 
 .topnav-user {
@@ -1323,29 +2030,29 @@ tr.contacto-inactivo td {
 }
 
 .topnav-name {
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
 }
 
 .topnav-rol {
-    font-size: 10.5px;
+    font-size: var(--diger-fs-2xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .04em;
-    color: var(--diger-blue);
+    color: var(--diger-blue-strong);
     background: var(--diger-blue-light);
     padding: 3px 10px;
-    border-radius: 10px;
+    border-radius: var(--diger-radius-sm);
 }
 
 .topnav-logout {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1.5px solid var(--diger-border);
     color: var(--diger-text-muted);
-    border-radius: 9px;
+    border-radius: var(--diger-radius-sm);
     padding: 7px 16px;
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     font-weight: 600;
     cursor: pointer;
     transition: all .15s;
@@ -1368,7 +2075,7 @@ tr.contacto-inactivo td {
 }
 
 .topnav-chevron {
-    font-size: 10px;
+    font-size: var(--diger-fs-2xs);
     opacity: .7;
     transition: transform .2s;
 }
@@ -1392,27 +2099,27 @@ tr.contacto-inactivo td {
 }
 
 .topnav-dropdown-menu-inner {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: 11px;
+    border-radius: var(--diger-radius-md);
     box-shadow: 0 8px 24px rgba(10, 45, 110, .12);
     padding: 6px;
 }
 
 .topnav-dropdown-menu a {
     display: block;
-    font-size: 13.5px;
+    font-size: var(--diger-fs-base);
     color: var(--diger-text-secondary);
     text-decoration: none;
     padding: 8px 14px;
-    border-radius: 7px;
+    border-radius: var(--diger-radius-sm);
     font-weight: 600;
     transition: all .15s;
 }
 
 .topnav-dropdown-menu a:hover {
-    background: #f0f4ff;
-    color: var(--diger-blue);
+    background: var(--diger-bg-blue-pale);
+    color: var(--diger-blue-strong);
 }
 
 /* ── WORKFLOW BADGES ────────────────────────────────────────── */
@@ -1422,13 +2129,13 @@ tr.contacto-inactivo td {
     gap: 5px;
     padding: 3px 11px;
     border-radius: var(--diger-radius-md);
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     font-weight: 700;
 }
 
 .wf-registrada {
     background: var(--diger-border);
-    color: #475569;
+    color: var(--diger-text-slate-dark);
 }
 
 .wf-asignada {
@@ -1463,12 +2170,12 @@ tr.contacto-inactivo td {
 
 .status-badge.abierto {
     background: #e6f1fb;
-    color: #0c447c;
+    color: var(--diger-blue-strong);
 }
 
 .status-badge.enproceso {
     background: #faeeda;
-    color: #854f0b;
+    color: var(--diger-warning-strong);
 }
 
 .status-badge.resuelto {
@@ -1483,12 +2190,12 @@ tr.contacto-inactivo td {
 
 .status-badge.vencido {
     background: #fcebeb;
-    color: #a32d2d;
+    color: var(--diger-danger-strong);
 }
 
 .prio-badge.critica {
     background: #fcebeb;
-    color: #a32d2d;
+    color: var(--diger-danger-strong);
 }
 
 .prio-badge.alta {
@@ -1513,7 +2220,7 @@ tr.contacto-inactivo td {
 
 .rol-badge.coordinador {
     background: #e6f1fb;
-    color: #0c447c;
+    color: var(--diger-blue-strong);
 }
 
 .rol-badge.default {
@@ -1538,7 +2245,7 @@ tr.contacto-inactivo td {
 }
 
 .prog-label {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     color: var(--diger-text-muted);
     font-weight: 700;
     margin-bottom: 4px;
@@ -1547,8 +2254,8 @@ tr.contacto-inactivo td {
 /* ── RESULTADOS (avances) ───────────────────────────────────── */
 .res-item {
     border-left: 3px solid var(--diger-blue);
-    background: #f8fbff;
-    border-radius: 0 10px 10px 0;
+    background: var(--diger-bg-blue-alt);
+    border-radius: 0 var(--diger-radius-sm) var(--diger-radius-sm) 0;
     padding: 12px 14px;
     margin-bottom: 10px;
 }
@@ -1563,20 +2270,20 @@ tr.contacto-inactivo td {
 }
 
 .res-meta {
-    font-size: 11.5px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
 }
 
 .res-desc {
-    font-size: 13.5px;
-    color: #2d3748;
+    font-size: var(--diger-fs-base);
+    color: var(--diger-text-strong);
     line-height: 1.5;
 }
 
 .res-pct {
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     font-weight: 800;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
 }
 
 /* ── SEGUIMIENTO TABLE ──────────────────────────────────────── */
@@ -1596,15 +2303,15 @@ tr.contacto-inactivo td {
 .seg-table {
     width: 100%;
     border-collapse: collapse;
-    background: #fff;
-    border-radius: 13px;
+    background: var(--diger-surface);
+    border-radius: var(--diger-radius-md);
     overflow: hidden;
     box-shadow: var(--diger-shadow-sm);
 }
 
 .seg-table th {
-    background: #f5f8ff;
-    font-size: 11px;
+    background: var(--diger-bg-blue);
+    font-size: var(--diger-fs-xs);
     text-transform: uppercase;
     letter-spacing: .04em;
     color: var(--diger-text-muted);
@@ -1615,14 +2322,14 @@ tr.contacto-inactivo td {
 
 .seg-table td {
     padding: 11px 14px;
-    border-top: 1px solid #f0f4fa;
-    font-size: 13px;
-    color: #2d3748;
+    border-top: 1px solid var(--diger-border-soft);
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-strong);
     vertical-align: middle;
 }
 
 .seg-table tr:hover td {
-    background: #fafbff;
+    background: var(--diger-bg-blue-alt);
 }
 
 /* ── EDIT-GRID: tablas editables (asistentes, acuerdos) sin desbordar el contenedor ── */
@@ -1632,7 +2339,7 @@ tr.contacto-inactivo td {
 
 .edit-grid th,
 .edit-grid td {
-    padding: 8px 8px;
+    padding: var(--diger-space-2) var(--diger-space-2);
 }
 
 .edit-grid th:first-child,
@@ -1646,34 +2353,337 @@ tr.contacto-inactivo td {
     text-align: center;
 }
 
-.edit-grid input {
+/* Los select van con los input: una tabla editable que mezcla ambos se veía partida,
+   porque el select se quedaba con la apariencia por defecto del navegador. Las casillas
+   quedan fuera a propósito: width:100% estira un checkbox a lo ancho de la celda. */
+.edit-grid input:not([type="checkbox"]):not([type="radio"]),
+.edit-grid select {
     width: 100%;
     box-sizing: border-box;
     padding: 8px 10px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 9px;
-    font-size: 13px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     font-family: inherit;
     background: var(--diger-bg-soft);
     color: var(--diger-text);
     transition: border .2s, box-shadow .2s, background .2s;
 }
 
-.edit-grid input:focus {
+.edit-grid input:not([type="checkbox"]):not([type="radio"]):focus,
+.edit-grid select:focus {
     outline: none;
-    border-color: var(--diger-blue);
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(20, 85, 164, .1);
+    border-color: var(--diger-blue-strong);
+    background: var(--diger-surface);
+    box-shadow: var(--diger-ring);
 }
 
 .seg-inst {
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     text-decoration: none;
 }
 
 .seg-inst:hover {
     text-decoration: underline;
+}
+
+/* ── FICHA DE PROYECTO: ESTRUCTURA DE DESGLOSE (EDT) ─────────── */
+/* La tabla mezcla dos clases de fila —entregables y sus actividades— y sin señal visual la
+   jerarquía había que deducirla de la sangría del nombre. El grupo se pinta como una unidad:
+   cabecera tintada arriba, actividades colgando de una guía vertical. */
+
+.edt-grupo {
+    border-bottom: 8px solid var(--diger-bg);
+}
+
+.edt-ent > td {
+    background: var(--diger-bg-blue);
+    border-top: 1.5px solid var(--diger-border);
+    vertical-align: top;
+}
+
+.edt-grupo.plegado .edt-act,
+.edt-grupo.plegado .edt-add {
+    display: none;
+}
+
+/* La guía vertical va en la primera celda de la actividad y la ata a su entregable.
+   :first-of-type y NO :first-child: los input hidden del binder son hijos directos del <tr> y
+   ocupan las primeras posiciones, así que `td:first-child` no encuentra nunca la celda. */
+.edt-act > td:first-of-type {
+    position: relative;
+    padding-left: 30px;
+}
+
+.edt-act > td:first-of-type::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--diger-border);
+}
+
+/* La última actividad corta la guía a la mitad: así se ve dónde termina el grupo. */
+.edt-act:last-of-type > td:first-of-type::before {
+    bottom: 50%;
+}
+
+.edt-act > td:first-of-type::after {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    width: 9px;
+    height: 2px;
+    background: var(--diger-border);
+}
+
+/* !important porque .edit-grid fija el padding de las celdas y esta va sangrada con las
+   actividades: la acción pertenece al grupo, no a la tabla. */
+.edt-add > td {
+    padding-left: 30px !important;
+    background: var(--diger-bg-blue-alt);
+}
+
+/* Plegar el grupo. Mismo lenguaje que .orden-mov, pero cuadrado y sin borde: es un control
+   de la fila, no una acción sobre el dato. */
+.edt-toggle {
+    background: none;
+    border: 0;
+    color: var(--diger-text-muted);
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    line-height: 1;
+    padding: 4px 5px;
+    border-radius: var(--diger-radius-sm);
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.edt-toggle:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-title);
+}
+
+.edt-toggle .caret {
+    display: inline-block;
+    transition: transform var(--diger-transition);
+}
+
+.edt-grupo.plegado .edt-toggle .caret {
+    transform: rotate(-90deg);
+}
+
+/* Rótulo dentro de una celda: la fecha del entregable significa otra cosa que las de la
+   actividad, y con los encabezados compartidos no había forma de decirlo. */
+.cel-lbl {
+    display: block;
+    font-size: var(--diger-fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--diger-text-muted);
+    margin-bottom: 3px;
+}
+
+/* Campo calculado: se ve como un dato, no como algo que se pueda escribir. */
+.cel-calc {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-secondary);
+}
+
+/* ── AYUDAS EN CONTEXTO ─────────────────────────────────────── */
+/* Aviso informativo dentro de una sección. No usa .alert-error ni los fondos de estado:
+   esos son para lo que pasó, esto es para lo que conviene saber antes de actuar. */
+.hint {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 14px;
+    background: var(--diger-bg-blue);
+    border-left: 3px solid var(--diger-blue-mid);
+    border-radius: 0 var(--diger-radius-sm) var(--diger-radius-sm) 0;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    line-height: 1.5;
+}
+
+.hint.warn {
+    background: var(--diger-warning-bg);
+    border-left-color: var(--diger-warning);
+    color: var(--diger-warning-strong);
+}
+
+.hint .ico {
+    flex-shrink: 0;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.hint a {
+    color: var(--diger-blue-mid);
+    font-weight: 600;
+}
+
+/* Panel de ayuda plegable. Cerrado por defecto: quien ya sabe cómo funciona no lo abre nunca,
+   y quien no, lo encuentra donde le hace falta. */
+.ayuda {
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-bg-soft);
+    margin-bottom: var(--diger-space-4);
+}
+
+.ayuda > summary {
+    cursor: pointer;
+    padding: 9px 14px;
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-blue-title);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.ayuda > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ayuda > summary::before {
+    content: "▸";
+    font-size: var(--diger-fs-xs);
+    transition: transform var(--diger-transition);
+}
+
+.ayuda[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.ayuda .cuerpo {
+    padding: 0 14px 12px 30px;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    line-height: 1.6;
+}
+
+.ayuda .cuerpo p {
+    margin-bottom: .5rem;
+}
+
+.ayuda .cuerpo strong {
+    color: var(--diger-text-strong);
+}
+
+/* ── PESTAÑAS DE LA FICHA ───────────────────────────────────── */
+/* Reemplazan al índice de anclas (.ficha-nav): eran las mismas píldoras, pero saltaban dentro de
+   un scroll de varias pantallas en vez de cambiar lo que se ve. El vocabulario visual se conserva
+   entero — lo que cambia es que ahora hay una activa. */
+.ficha-tabs {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-bottom: var(--diger-space-4);
+}
+
+.ficha-tabs [role="tab"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 13px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    font-family: inherit;
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    cursor: pointer;
+    transition: all var(--diger-transition);
+}
+
+.ficha-tabs [role="tab"]:hover {
+    border-color: var(--diger-blue-mid);
+    color: var(--diger-blue-title);
+    box-shadow: var(--diger-shadow-sm);
+}
+
+/* La activa va en azul lleno y no en un tinte suave: no existe un token de fondo azul claro que
+   cambie con el tema —solo hay success/warning/danger— y --diger-blue-mid se lee bien en ambos.
+   Va después de :hover a propósito: misma especificidad, así que gana la de más abajo. */
+.ficha-tabs [role="tab"][aria-selected="true"] {
+    border-color: var(--diger-blue-mid);
+    background: var(--diger-blue-mid);
+    color: #fff;
+    box-shadow: var(--diger-shadow-sm);
+}
+
+/* Sobre el azul lleno el chip de conteo no puede seguir usando el fondo de la página. */
+.ficha-tabs [role="tab"][aria-selected="true"] .n {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
+}
+
+.ficha-tabs [role="tab"]:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+
+.ficha-tabs .n {
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    color: var(--diger-text-muted);
+    background: var(--diger-bg);
+    border-radius: var(--diger-radius-pill);
+    padding: 1px 7px;
+}
+
+/* El panel oculto NO se saca del DOM: dos pestañas viven dentro del mismo formulario y sus campos
+   tienen que seguir posteándose. La regla existe para que ningún display de más pise a [hidden]. */
+.tab-panel[hidden] { display: none; }
+
+/* El ancla queda debajo del encabezado si se salta desde otra pantalla. */
+.ficha-sec {
+    scroll-margin-top: 16px;
+}
+
+/* ── BARRA DE GUARDADO ──────────────────────────────────────── */
+/* La estructura puede tener decenas de filas: el botón de guardar no puede vivir solo al final
+   de un scroll de tres pantallas. */
+/* Gana por especificidad sobre el display:flex de la regla siguiente. Sin esto, ocultar la barra
+   con [hidden] no haría nada: la barra seguiría a la vista en las pestañas que no guardan. */
+.guardar-barra[hidden] { display: none; }
+
+.guardar-barra {
+    position: sticky;
+    bottom: 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding: 12px 16px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-lg);
+    box-shadow: var(--diger-shadow-md);
+    z-index: 2;
+}
+
+.guardar-barra .nota {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+}
+
+/* ── ZONA DE PELIGRO ────────────────────────────────────────── */
+.zona-peligro {
+    border-color: var(--diger-danger-bg);
+}
+
+.zona-peligro .sec-h {
+    color: var(--diger-danger-text);
 }
 
 /* ── TABLET ─────────────────────────────────────────────────── */
@@ -1684,6 +2694,26 @@ tr.contacto-inactivo td {
 
     .kpi-grid {
         grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    }
+
+    /* La tira se parte en filas: las celdas necesitan borde inferior
+       porque el derecho ya no las separa visualmente. */
+    .kpi-strip {
+        --kpi-cols: 3;
+    }
+
+    .kpi-cell {
+        border-bottom: 1px solid var(--diger-border);
+    }
+
+    .kpi-cell:nth-child(3n) {
+        border-right: 0;
+    }
+
+    /* La última fila no lleva borde inferior: quedaría pegado al borde
+       del contenedor y se leería como una línea doble. */
+    .kpi-cell:nth-last-child(-n+3) {
+        border-bottom: 0;
     }
 
     .row2,
@@ -1778,13 +2808,33 @@ tr.contacto-inactivo td {
     .doc-add-grid {
         grid-template-columns: 1fr 1fr;
     }
+
+    .kpi-strip {
+        --kpi-cols: 2;
+    }
+
+    .kpi-cell:nth-child(3n) {
+        border-right: 1px solid var(--diger-border);
+    }
+
+    .kpi-cell:nth-child(2n) {
+        border-right: 0;
+    }
+
+    .kpi-cell:nth-last-child(-n+3) {
+        border-bottom: 1px solid var(--diger-border);
+    }
+
+    .kpi-cell:nth-last-child(-n+2) {
+        border-bottom: 0;
+    }
 }
 
 /* ── REUNIONES: encabezado de sección + checkbox ───────────────── */
 .sec-h {
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     margin: 0 0 1.1rem;
     padding-bottom: .55rem;
     border-bottom: 2px solid var(--diger-bg);
@@ -1794,7 +2844,7 @@ tr.contacto-inactivo td {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-secondary);
     cursor: pointer;
     margin-top: .4rem;
@@ -1815,22 +2865,26 @@ tr.contacto-inactivo td {
 }
 
 .kpi-card {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: 14px;
+    border-radius: var(--diger-radius-md);
     padding: 1rem 1.2rem;
     box-shadow: var(--diger-shadow-sm);
+    /* La tarjeta misma suele ser un <a>: sin esto el navegador subraya el
+       label y lo pinta de azul-enlace (`.kpi-card a` no alcanza al propio <a>). */
+    text-decoration: none;
+    color: inherit;
 }
 
 .kpi-card .kpi-num {
-    font-size: 30px;
+    font-size: var(--diger-text-3xl);
     font-weight: 800;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     line-height: 1.1;
 }
 
 .kpi-card .kpi-lbl {
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
     text-transform: uppercase;
     letter-spacing: .04em;
@@ -1838,11 +2892,11 @@ tr.contacto-inactivo td {
 }
 
 .kpi-card.alert .kpi-num {
-    color: #a32d2d;
+    color: var(--diger-danger-strong);
 }
 
 .kpi-card.warn .kpi-num {
-    color: #854f0b;
+    color: var(--diger-warning-strong);
 }
 
 .kpi-card.ok .kpi-num {
@@ -1860,17 +2914,17 @@ tr.contacto-inactivo td {
 }
 
 .dash-card {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: 14px;
+    border-radius: var(--diger-radius-md);
     padding: 1.2rem 1.4rem;
     box-shadow: var(--diger-shadow-sm);
 }
 
 .dash-card h3 {
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     margin: 0 0 1rem;
 }
 
@@ -1883,7 +2937,7 @@ tr.contacto-inactivo td {
 }
 
 .bar-lbl {
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-secondary);
     text-align: right;
     overflow: hidden;
@@ -1893,23 +2947,23 @@ tr.contacto-inactivo td {
 
 .bar-track {
     background: var(--diger-bg);
-    border-radius: 6px;
+    border-radius: var(--diger-radius-sm);
     height: 16px;
     overflow: hidden;
 }
 
 .bar-fill {
     height: 100%;
-    border-radius: 6px;
+    border-radius: var(--diger-radius-sm);
     background: var(--diger-blue);
     min-width: 2px;
     transition: width .3s;
 }
 
 .bar-val {
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     text-align: right;
 }
 
@@ -1933,6 +2987,602 @@ tr.contacto-inactivo td {
     background: #0f8a6a;
 }
 
+/* ── ÍCONOS (sprite SVG de _IconSprite.cshtml) ──────────────────── */
+/* Uso: <svg class="ico"><use href="#i-alerta"></use></svg>
+   Hereda tamaño (1em) y color del contenedor, así que se ajusta con
+   font-size/color en vez de repetir width/height/stroke en cada llamada. */
+.ico {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.125em;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+}
+
+/* ── TIRA DE KPIs (Tableros/Index) ──────────────────────────────── */
+/* Una sola superficie dividida en celdas, en lugar de N tarjetas sueltas:
+   los valores en cero se apagan y solo lo accionable lleva color. */
+.kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(var(--kpi-cols, 6), minmax(0, 1fr));
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-lg);
+    box-shadow: var(--diger-shadow-sm);
+    overflow: hidden;
+    margin-bottom: 1.4rem;
+}
+
+.kpi-cell {
+    position: relative;
+    display: block;
+    padding: 1.05rem 1.1rem;
+    border-right: 1px solid var(--diger-border);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--diger-transition);
+}
+
+.kpi-cell:last-child {
+    border-right: 0;
+}
+
+a.kpi-cell:hover {
+    background: #f7f9fd;
+}
+
+.kpi-cell-top {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: .55rem;
+}
+
+.kpi-cell-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--diger-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2f8;
+    color: var(--diger-text-muted);
+    font-size: var(--diger-text-base);
+    flex-shrink: 0;
+}
+
+.kpi-cell-lbl {
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-muted);
+    line-height: 1.25;
+}
+
+.kpi-cell-num {
+    font-size: 29px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--diger-blue-title);
+    font-variant-numeric: tabular-nums;
+}
+
+.kpi-cell-sub {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-faint);
+    margin-top: 5px;
+}
+
+/* Flecha de afordancia: solo aparece en las celdas que son enlace */
+.kpi-cell-arw {
+    margin-left: auto;
+    color: var(--diger-text-faint);
+    font-size: var(--diger-fs-sm);
+    opacity: 0;
+    transition: opacity var(--diger-transition);
+}
+
+a.kpi-cell:hover .kpi-cell-arw {
+    opacity: 1;
+}
+
+/* Cero = buena noticia, no dato: se apaga y confirma en verde */
+.kpi-cell.is-zero .kpi-cell-num {
+    color: var(--diger-text-faint);
+    font-weight: 500;
+}
+
+.kpi-cell.is-zero .kpi-cell-sub {
+    color: var(--diger-success);
+}
+
+.kpi-cell.is-crit {
+    background: #fffafa;
+}
+
+.kpi-cell.is-crit::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--diger-danger);
+}
+
+.kpi-cell.is-crit .kpi-cell-ico {
+    background: var(--diger-danger-bg);
+    color: var(--diger-danger-text);
+}
+
+.kpi-cell.is-crit .kpi-cell-num {
+    color: var(--diger-danger-text);
+}
+
+.kpi-cell.is-crit .kpi-cell-sub {
+    color: var(--diger-danger-text);
+    font-weight: 600;
+}
+
+.kpi-cell.is-warn .kpi-cell-ico {
+    background: var(--diger-warning-bg);
+    color: var(--diger-warning);
+}
+
+.kpi-cell.is-warn .kpi-cell-num {
+    color: var(--diger-warning);
+}
+
+.kpi-cell.is-ok .kpi-cell-ico {
+    background: var(--diger-success-bg);
+    color: var(--diger-success);
+}
+
+/* ── FILA DE NAVEGACIÓN (atajos a tableros) ─────────────────────── */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--diger-radius-sm);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--diger-transition), border-color var(--diger-transition);
+}
+
+.nav-item:hover {
+    background: var(--diger-blue-light);
+    border-color: var(--diger-blue-pale);
+}
+
+.nav-item-ico {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--diger-radius-sm);
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.nav-item-tx {
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-item-t1 {
+    display: block;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text);
+    line-height: 1.3;
+}
+
+.nav-item-t2 {
+    display: block;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    margin-top: 1px;
+}
+
+.nav-item-ct {
+    font-size: var(--diger-text-base);
+    font-weight: 700;
+    color: var(--diger-blue-title);
+    font-variant-numeric: tabular-nums;
+}
+
+.nav-item-chev {
+    color: var(--diger-text-faint);
+    font-size: var(--diger-fs-base);
+}
+
+.nav-sep {
+    height: 1px;
+    background: var(--diger-border);
+    margin: 4px 0;
+}
+
+/* ── ESTADO VACÍO DENTRO DE UNA CARD ────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: var(--diger-space-8) var(--diger-space-4);
+}
+
+.empty-state-ico {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin: 0 auto .8rem;
+}
+
+.empty-state-t1 {
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+}
+
+.empty-state-t2 {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    margin-top: 3px;
+}
+
+/* ── TABLERO DE TRÁMITES ────────────────────────────────────────── */
+/* Bandas del semáforo. Los hex son los mismos de SemaforoAvance (Application),
+   que es lo que consumen el Excel y la página de Informes. */
+.sem-rojo    { --sem-fondo:#FCEBEB; --sem-texto:var(--diger-danger-strong); --sem-solido:#E24B4A; }
+.sem-naranja { --sem-fondo:#FAEEDA; --sem-texto:var(--diger-warning-strong); --sem-solido:#EF9F27; }
+.sem-verde   { --sem-fondo:#EAF3DE; --sem-texto:#27500A; --sem-solido:#639922; }
+
+.trm-filtros {
+    display: flex;
+    gap: 18px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.trm-filtros .f {
+    margin: 0;
+}
+
+.trm-filtros label {
+    display: block;
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+    margin-bottom: 5px;
+}
+
+.trm-filtros select {
+    height: 34px;
+    min-width: 240px;
+    padding: 0 10px;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    font-family: inherit;
+    font-size: var(--diger-fs-sm);
+    background: var(--diger-surface);
+    color: var(--diger-text);
+}
+
+.trm-bandas {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.trm-banda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    background: var(--diger-surface);
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    transition: .14s;
+}
+
+.trm-banda:hover {
+    border-color: var(--diger-blue-pale);
+}
+
+.trm-banda.on {
+    background: var(--sem-fondo, var(--diger-blue-light));
+    border-color: var(--sem-solido, var(--diger-blue-mid));
+    color: var(--sem-texto, var(--diger-blue-dark));
+}
+
+.trm-banda-n {
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    color: var(--diger-text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-banda.on .trm-banda-n {
+    color: inherit;
+}
+
+.trm-tabla td {
+    vertical-align: middle;
+}
+
+.trm-inst {
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-blue-strong);
+}
+
+.trm-nom {
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text);
+    line-height: 1.35;
+}
+
+.trm-sub {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    margin-top: 1px;
+}
+
+.trm-cod {
+    display: block;
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: var(--diger-blue-strong);
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-cod:hover {
+    text-decoration: underline;
+}
+
+.trm-nota-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-faint);
+    cursor: pointer;
+}
+
+.trm-nota-btn:hover {
+    color: var(--diger-blue-strong);
+    text-decoration: underline;
+}
+
+/* Barra de avance con el color de su banda */
+.trm-avance {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trm-barra {
+    flex: 1;
+    min-width: 40px;
+    height: 6px;
+    border-radius: var(--diger-radius-pill);
+    background: #eef1f6;
+    overflow: hidden;
+}
+
+.trm-barra > i {
+    display: block;
+    height: 100%;
+    border-radius: var(--diger-radius-pill);
+    background: var(--sem-solido, var(--diger-blue-mid));
+}
+
+.trm-pct {
+    flex-shrink: 0;
+    min-width: 36px;
+    text-align: right;
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: var(--sem-texto, var(--diger-blue-dark));
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Modales del tablero ─────────────────────────────────────────── */
+.trm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--diger-space-6) var(--diger-space-4);
+}
+
+.trm-modal[hidden] {
+    display: none;
+}
+
+.trm-modal-fondo {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 42, 69, .45);
+}
+
+.trm-modal-caja {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--diger-surface);
+    border-radius: var(--diger-radius-md);
+    box-shadow: var(--diger-shadow-md);
+    overflow: hidden;
+}
+
+.trm-modal-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--diger-border);
+}
+
+.trm-modal-kick {
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+}
+
+.trm-modal-titulo {
+    margin: 2px 0 0;
+    font-size: var(--diger-text-base);
+    font-weight: 700;
+    color: var(--diger-blue-title);
+    line-height: 1.3;
+}
+
+.trm-modal-pct {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: var(--diger-text-xl);
+    font-weight: 800;
+    color: var(--sem-texto, var(--diger-blue-dark));
+    font-variant-numeric: tabular-nums;
+}
+
+.trm-modal-x {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: none;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--diger-text-faint);
+    cursor: pointer;
+}
+
+.trm-modal-x:hover {
+    color: var(--diger-text);
+}
+
+.trm-modal-body {
+    padding: 12px 16px 16px;
+    overflow: auto;
+}
+
+.trm-etapa {
+    padding: 9px 0;
+    border-bottom: 1px solid var(--diger-border-soft);
+}
+
+.trm-etapa:last-child {
+    border-bottom: 0;
+}
+
+.trm-etapa-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.trm-etapa-num {
+    flex-shrink: 0;
+    min-width: 26px;
+    font-size: var(--diger-fs-xs);
+    font-weight: 800;
+    letter-spacing: .04em;
+    color: var(--diger-text-faint);
+}
+
+.trm-etapa-lbl {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text);
+}
+
+.trm-etapa-peso {
+    flex-shrink: 0;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-faint);
+}
+
+.trm-etapa-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 34px;
+}
+
+.trm-notas {
+    margin-top: 1rem;
+    border-top: 1px solid var(--diger-border);
+    padding-top: .6rem;
+}
+
+.trm-nota {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--diger-border-soft);
+}
+
+.trm-nota:last-child {
+    border-bottom: 0;
+}
+
+.trm-nota-meta {
+    font-size: var(--diger-fs-xs);
+    font-weight: 600;
+    color: var(--diger-text-faint);
+}
+
+.trm-nota-txt {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text);
+    line-height: 1.5;
+    margin-top: 2px;
+    white-space: pre-wrap;
+}
+
+.trm-notas-vacio {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    padding: .5rem 0;
+}
+
 /* ── EDITOR DE TEXTO ENRIQUECIDO (RTE) ──────────────────────────── */
 .rte-toolbar {
     display: flex;
@@ -1940,48 +3590,48 @@ tr.contacto-inactivo td {
     flex-wrap: wrap;
     border: 1.5px solid var(--diger-border);
     border-bottom: 0;
-    border-radius: 9px 9px 0 0;
+    border-radius: var(--diger-radius-sm) var(--diger-radius-sm) 0 0;
     padding: 5px;
-    background: #f5f8ff;
+    background: var(--diger-bg-blue);
 }
 
 .rte-toolbar button {
     border: 1px solid var(--diger-border);
-    background: #fff;
-    border-radius: 6px;
+    background: var(--diger-surface);
+    border-radius: var(--diger-radius-sm);
     min-width: 30px;
     height: 28px;
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     cursor: pointer;
-    color: #2d3748;
+    color: var(--diger-text-strong);
     padding: 0 7px;
 }
 
 .rte-toolbar button:hover {
     background: var(--diger-blue-light);
-    border-color: var(--diger-blue);
-    color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
+    color: var(--diger-blue-strong);
 }
 
 .rte-body {
     border: 1.5px solid var(--diger-border);
-    border-radius: 0 0 9px 9px;
+    border-radius: 0 0 var(--diger-radius-sm) var(--diger-radius-sm);
     background: var(--diger-bg-soft);
     padding: 10px 12px;
     min-height: 120px;
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     line-height: 1.55;
     outline: none;
 }
 
 .rte-body:focus {
-    border-color: var(--diger-blue);
-    background: #fff;
+    border-color: var(--diger-blue-strong);
+    background: var(--diger-surface);
 }
 
 .rte-body:empty::before {
     content: attr(data-placeholder);
-    color: #94a3b8;
+    color: var(--diger-text-slate);
 }
 
 .rte-body ul,
@@ -1992,8 +3642,8 @@ tr.contacto-inactivo td {
 /* Subida de foto */
 .foto-up {
     border: 1.5px dashed var(--diger-blue-pale);
-    border-radius: 10px;
-    padding: 12px;
+    border-radius: var(--diger-radius-sm);
+    padding: var(--diger-space-3);
     text-align: center;
     background: var(--diger-bg-soft);
 }
@@ -2001,7 +3651,7 @@ tr.contacto-inactivo td {
 .foto-up img {
     max-width: 100%;
     max-height: 160px;
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     margin-bottom: 8px;
     display: none;
 }
@@ -2024,16 +3674,16 @@ tr.contacto-inactivo td {
     min-width: 220px;
     padding: 9px 13px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 10px;
-    font-size: 14px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-base);
     background: var(--diger-bg-soft);
 }
 
 .lista-buscar input[type=search]:focus {
     outline: none;
-    border-color: var(--diger-blue);
-    background: #fff;
-    box-shadow: 0 0 0 4px rgba(20, 85, 164, .1);
+    border-color: var(--diger-blue-strong);
+    background: var(--diger-surface);
+    box-shadow: var(--diger-ring);
 }
 
 .pager {
@@ -2046,7 +3696,7 @@ tr.contacto-inactivo td {
 }
 
 .pager-info {
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
 }
 
@@ -2064,21 +3714,21 @@ tr.contacto-inactivo td {
     align-items: center;
     justify-content: center;
     border: 1.5px solid var(--diger-border);
-    border-radius: 8px;
-    background: #fff;
+    border-radius: var(--diger-radius-sm);
+    background: var(--diger-surface);
     color: var(--diger-text-secondary);
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     text-decoration: none;
 }
 
 .pager-b:hover {
-    border-color: var(--diger-blue);
-    color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
+    color: var(--diger-blue-strong);
 }
 
 .pager-b.on {
     background: var(--diger-blue-dark);
-    border-color: var(--diger-blue-dark);
+    border-color: var(--diger-blue-title);
     color: #fff;
     font-weight: 700;
 }
@@ -2089,7 +3739,7 @@ tr.contacto-inactivo td {
 }
 
 .pager-dots {
-    color: #94a3b8;
+    color: var(--diger-text-slate);
     padding: 0 2px;
 }
 
@@ -2124,7 +3774,7 @@ tr.contacto-inactivo td {
     top: calc(100% + 6px);
     z-index: 40;
     width: 270px;
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid #e2e4ea;
     border-radius: var(--diger-radius-md);
     box-shadow: 0 12px 34px rgba(15, 23, 42, .20);
@@ -2134,9 +3784,9 @@ tr.contacto-inactivo td {
 
 .seg-upd-form label {
     display: block;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     font-weight: 600;
-    color: #475569;
+    color: var(--diger-text-slate-dark);
     margin: .55rem 0 .2rem;
 }
 
@@ -2147,8 +3797,8 @@ tr.contacto-inactivo td {
     box-sizing: border-box;
     padding: 7px 10px;
     border: 1.5px solid var(--diger-border);
-    border-radius: 8px;
-    font-size: 13px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
     background: var(--diger-bg-soft);
 }
 
@@ -2156,8 +3806,9 @@ tr.contacto-inactivo td {
 .seg-upd-form input:focus,
 .seg-upd-form textarea:focus {
     outline: none;
-    border-color: var(--diger-blue);
-    background: #fff;
+    border-color: var(--diger-blue-strong);
+    background: var(--diger-surface);
+    box-shadow: var(--diger-ring);
 }
 
 /* ── Calendario ─────────────────────────────────────────────── */
@@ -2173,25 +3824,137 @@ tr.contacto-inactivo td {
 .cal-nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+}
+
+/* Las dos flechas van pegadas en un control segmentado: navegar mes es una
+   sola acción con dos sentidos, no dos botones de formulario sueltos. */
+.cal-seg {
+    display: inline-flex;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    overflow: hidden;
+}
+
+.cal-seg > a {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--diger-text-secondary);
+    font-size: var(--diger-text-base);
+    text-decoration: none;
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.cal-seg > a:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-strong);
+}
+
+.cal-seg > a + a {
+    border-left: 1px solid var(--diger-border);
+}
+
+.cal-hoy {
+    height: 32px;
+    padding: 0 13px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--diger-border);
+    background: var(--diger-surface);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    transition: border-color var(--diger-transition), color var(--diger-transition);
+}
+
+.cal-hoy:hover {
+    border-color: var(--diger-blue-pale);
+    color: var(--diger-blue-strong);
+}
+
+/* ── Conmutador de granularidad (día / semana / mes) ────────────── */
+.cal-vistas {
+    display: inline-flex;
+    background: var(--diger-bg);
+    border-radius: var(--diger-radius-sm);
+    padding: 2px;
+    gap: 2px;
+}
+
+.cal-vista {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 13px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text-muted);
+    text-decoration: none;
+    transition: background var(--diger-transition), color var(--diger-transition);
+}
+
+.cal-vista:hover {
+    color: var(--diger-blue-strong);
+}
+
+.cal-vista.on {
+    background: var(--diger-surface);
+    color: var(--diger-blue-title);
+    box-shadow: 0 1px 2px rgba(10, 45, 110, .10);
 }
 
 .cal-title {
-    margin: 0;
-    font-size: 20px;
-    color: var(--diger-blue-dark);
-    min-width: 190px;
-    text-align: center;
+    margin: 0 0 0 6px;
+    font-size: var(--diger-text-xl);
+    font-weight: 700;
+    color: var(--diger-blue-title);
+    min-width: 158px;
     text-transform: capitalize;
 }
 
+.cal-title span {
+    color: var(--diger-text-faint);
+    font-weight: 500;
+}
+
+.cal-counts {
+    display: flex;
+    gap: 12px;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+}
+
+.cal-counts b {
+    color: var(--diger-blue-title);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Las dos columnas se estiran a la misma altura (stretch, no start): antes el
+   calendario terminaba a media página y dejaba un hueco blanco hasta donde
+   llegaba el feed. La fila toma la altura de la columna más alta. */
 .cal-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 16px;
-    align-items: start;
+    align-items: stretch;
 }
 
+.cal-cal {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* En una sola columna .cal-cal no tiene alto definido, así que el flex:1 de
+   .cal-body no reparte nada y las semanas vuelven solas a su alto natural. */
 @media (max-width: 980px) {
     .cal-layout {
         grid-template-columns: 1fr;
@@ -2203,83 +3966,132 @@ tr.contacto-inactivo td {
     grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
+/* El encabezado va dentro de la misma tarjeta que la grilla: si queda afuera,
+   la tarjeta del calendario arranca más abajo que la del feed y las dos
+   columnas dejan de alinearse. Pierde el relleno gris, no la caja. */
 .cal-head {
-    background: #f3f6fb;
+    background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-bottom: 0;
-    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid var(--diger-border-soft);
+    border-radius: var(--diger-radius-md) var(--diger-radius-md) 0 0;
+    padding-top: 2px;
 }
 
 .cal-dow {
-    padding: 8px 6px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--diger-text-muted);
+    padding: 4px 8px 7px;
+    text-align: left;
+    font-size: var(--diger-fs-xs);
+    font-weight: 600;
+    color: var(--diger-text-faint);
     text-transform: uppercase;
-    letter-spacing: .03em;
+    letter-spacing: .07em;
 }
 
 .cal-body {
     border: 1px solid var(--diger-border);
-    border-radius: 0 0 12px 12px;
+    border-top: 0;
+    border-radius: 0 0 var(--diger-radius-md) var(--diger-radius-md);
     overflow: hidden;
+    background: var(--diger-surface);
+    /* Absorbe el alto sobrante de la columna y lo reparte entre las semanas;
+       el mínimo de .cal-cell sigue siendo el piso. */
+    flex: 1;
+    grid-auto-rows: 1fr;
 }
 
 .cal-cell {
-    min-height: 104px;
+    min-height: 96px;
     min-width: 0;
     overflow: hidden;
-    border-right: 1px solid #eef1f6;
-    border-top: 1px solid #eef1f6;
-    padding: 4px 5px 6px;
+    border-right: 1px solid var(--diger-border-soft);
+    border-top: 1px solid var(--diger-border-soft);
+    padding: 5px 6px 7px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    background: #fff;
+    gap: 2px;
+    cursor: pointer;
+    transition: background var(--diger-transition);
+}
+
+/* La primera fila no lleva línea superior: ya la delimita el borde del contenedor. */
+.cal-cell:nth-child(-n+7) {
+    border-top: 0;
+}
+
+.cal-cell:hover {
+    background: var(--diger-bg-blue-alt);
 }
 
 .cal-cell:nth-child(7n) {
     border-right: 0;
 }
 
+/* Los días de relleno se apagan con el número, no con un bloque gris: el
+   relleno creaba manchas macizas en las esquinas de la grilla. */
 .cal-out {
-    background: var(--diger-bg-soft);
+    cursor: default;
+}
+
+.cal-out:hover {
+    background: none;
 }
 
 .cal-out .cal-num {
-    color: #c2cbda;
+    color: #cdd6e2;
+    font-weight: 400;
 }
 
+/* Día seleccionado: lo pone y lo quita el JS con una clase, no con estilos
+   en línea — así no pisa el fondo de .cal-out ni el de .cal-today. */
+.cal-sel {
+    background: var(--diger-bg-blue-alt);
+}
+
+.cal-sel:hover {
+    background: var(--diger-blue-light);
+}
+
+/* Hoy se marca en el número, no con un recuadro alrededor de toda la celda
+   (el recuadro competía con las líneas de la grilla). */
 .cal-today {
-    background: #eef5ff;
-    box-shadow: inset 0 0 0 2px var(--diger-blue);
+    background: var(--diger-bg-blue-alt);
 }
 
 .cal-cell-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    min-height: 21px;
 }
 
 .cal-num {
-    font-size: 13px;
-    font-weight: 700;
-    color: #334;
+    width: 21px;
+    height: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text);
+    font-variant-numeric: tabular-nums;
 }
 
 .cal-today .cal-num {
-    color: var(--diger-blue-dark);
+    background: var(--diger-blue);
+    color: #fff;
+    font-weight: 700;
 }
 
 .cal-add {
-    width: 18px;
-    height: 18px;
-    line-height: 17px;
-    text-align: center;
-    border-radius: 6px;
-    color: #94a3b8;
-    font-weight: 700;
+    width: 19px;
+    height: 19px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--diger-fs-sm);
+    border-radius: var(--diger-radius-sm);
+    color: var(--diger-text-slate);
     text-decoration: none;
     opacity: 0;
     transition: .12s;
@@ -2294,54 +4106,245 @@ tr.contacto-inactivo td {
     color: #fff;
 }
 
+/* La hora se queda en el mismo flujo de texto que el título (una columna flex
+   aparte cuesta el gap y una caja propia: medido, deja ~89px para el título
+   contra ~97px así). Lo que se recorta es el tamaño de la hora, no su lugar. */
+/* Sin relleno: tres bloques tintados por celda era lo que más pesaba en la
+   grilla. La identidad de color queda en la regla izquierda, y el fondo
+   aparece solo al pasar el puntero. */
 .cal-chip {
     display: block;
-    font-size: 11.5px;
-    line-height: 1.35;
-    padding: 2px 6px;
-    border-radius: 6px;
-    background: #e6f0fb;
-    color: #0c447c;
+    font-size: var(--diger-fs-sm);
+    line-height: 1.4;
+    padding: 1px 4px 1px 6px;
+    border-radius: 4px;
+    background: none;
+    color: var(--diger-text-secondary);
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border-left: 3px solid var(--diger-blue);
+    border-left: 2px solid var(--diger-blue-mid);
+    transition: background var(--diger-transition), color var(--diger-transition);
 }
 
 .cal-chip:hover {
-    background: #d5e6fa;
+    background: #eef4fc;
+    color: var(--diger-blue-strong);
 }
 
-.cal-chip b {
-    font-weight: 700;
+.cal-chip time {
+    font-size: var(--diger-fs-2xs);
+    font-weight: 600;
+    color: var(--diger-text-faint);
+}
+
+.cal-chip:hover time {
+    color: #3d6fa8;
+}
+
+/* Reunión privada: se distingue con el dorado institucional */
+.cal-chip.priv {
+    border-left-color: var(--diger-gold);
+}
+
+.cal-chip.priv:hover {
+    background: #fbf6e8;
+    color: #6b5209;
+}
+
+.cal-chip.priv:hover time {
+    color: #8a6c0e;
 }
 
 .cal-mas {
-    font-size: 10.5px;
-    color: var(--diger-text-muted);
-    padding-left: 2px;
+    display: block;
+    width: 100%;
+    margin-top: 1px;
+    padding: 0 0 0 9px;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 500;
+    text-align: left;
+    color: var(--diger-text-faint);
+    cursor: pointer;
 }
 
-.cal-dots {
+.cal-mas:hover {
+    color: var(--diger-blue-strong);
+    text-decoration: underline;
+}
+
+/* Barra de actividad: reemplaza la fila de puntos sueltos. Cada segmento es
+   proporcional a cuántos eventos de ese tipo hubo, así se ve la carga del día
+   sin tener que contar puntos. */
+.cal-act {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 5px;
     margin-top: auto;
-    padding-top: 2px;
-    flex-wrap: wrap;
+    padding-top: 4px;
+}
+
+.cal-act-bar {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    height: 3px;
+    border-radius: var(--diger-radius-pill);
+    overflow: hidden;
+    background: var(--diger-border-soft);
+}
+
+.cal-act-bar > i {
+    display: block;
+    height: 100%;
+}
+
+.cal-act-n {
+    flex-shrink: 0;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    color: var(--diger-text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── VISTA DE DÍA ───────────────────────────────────────────────── */
+/* La grilla de 7 columnas no aporta nada para un solo día: se lista la
+   agenda a lo ancho, con espacio para institución y tipo. */
+.cal-dia {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-surface);
+    overflow: hidden;
+}
+
+.cal-dia-hdr {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: var(--diger-space-3) var(--diger-space-4);
+    border-bottom: 1px solid var(--diger-border-soft);
+}
+
+.cal-dia-num {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-title);
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-dia-hdr.es-hoy .cal-dia-num {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+.cal-dia-tx {
+    flex: 1;
+    min-width: 0;
+}
+
+.cal-dia-t1 {
+    display: block;
+    font-size: var(--diger-fs-base);
+    font-weight: 700;
+    color: var(--diger-blue-title);
+    text-transform: capitalize;
+}
+
+.cal-dia-t2 {
+    display: block;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    margin-top: 1px;
+}
+
+.cal-dia-lista {
+    flex: 1;
+    padding: var(--diger-space-2);
+    overflow: auto;
+}
+
+.cal-dia-item {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: var(--diger-radius-sm);
+    border-left: 3px solid var(--diger-blue-mid);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--diger-transition);
+}
+
+.cal-dia-item + .cal-dia-item {
+    margin-top: 3px;
+}
+
+.cal-dia-item:hover {
+    background: #f5f8fc;
+}
+
+.cal-dia-item.priv {
+    border-left-color: var(--diger-gold);
+}
+
+.cal-dia-item.priv:hover {
+    background: #fbf6e8;
+}
+
+.cal-dia-hora {
+    flex-shrink: 0;
+    width: 46px;
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: var(--diger-blue-strong);
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-dia-item.priv .cal-dia-hora {
+    color: var(--diger-gold);
+}
+
+.cal-dia-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.cal-dia-titulo {
+    display: block;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text);
+    line-height: 1.35;
+}
+
+.cal-dia-meta {
+    display: block;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    margin-top: 2px;
 }
 
 .cal-dot {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     display: inline-block;
-}
-
-.cal-dot-mas {
-    font-size: 10px;
-    color: var(--diger-text-muted);
+    flex-shrink: 0;
 }
 
 .cal-legend {
@@ -2349,7 +4352,7 @@ tr.contacto-inactivo td {
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 12px;
-    padding: 8px 4px;
+    padding: var(--diger-space-2) var(--diger-space-1);
     align-items: center;
 }
 
@@ -2357,71 +4360,107 @@ tr.contacto-inactivo td {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: #5b6b86;
 }
 
+.cal-legend-lbl {
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--diger-text-faint);
+    margin-right: 2px;
+}
+
+/* Sin borde ni relleno: seis píldoras delineadas competían con la grilla.
+   El recuadro aparece solo al pasar el puntero o al apagar el tipo. */
 .cal-filtro {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #334;
+    font-family: inherit;
+    font-size: var(--diger-fs-sm);
+    font-weight: 500;
+    color: var(--diger-text-secondary);
     cursor: pointer;
-    background: #fff;
-    border: 1.5px solid var(--diger-border);
+    background: none;
+    border: 1px solid transparent;
     border-radius: var(--diger-radius-pill);
-    padding: 4px 11px;
-    transition: .12s;
+    padding: 3px 10px 3px 8px;
+    transition: .14s;
 }
 
 .cal-filtro:hover {
-    border-color: var(--diger-blue);
+    background: var(--diger-surface);
+    border-color: var(--diger-border);
 }
 
+.cal-filtro-n {
+    font-size: var(--diger-fs-2xs);
+    font-weight: 600;
+    color: var(--diger-text-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Una sola señal para el estado apagado: antes se acumulaban opacidad,
+   escala de grises y tachado para comunicar lo mismo. */
 .cal-filtro.off {
-    opacity: .5;
-    background: #f3f4f7;
-    text-decoration: line-through;
+    color: var(--diger-text-faint);
 }
 
 .cal-filtro.off .cal-dot {
-    filter: grayscale(1);
+    background: #cdd5e0 !important;
 }
 
 .cal-feed {
     border: 1px solid var(--diger-border);
     border-radius: var(--diger-radius-md);
     padding: 12px 14px;
-    background: #fff;
+    background: var(--diger-surface);
     max-height: 760px;
     overflow: auto;
 }
 
 .cal-feed h3 {
     margin: 0 0 .6rem;
-    font-size: 15px;
-    color: var(--diger-blue-dark);
+    font-size: var(--diger-text-base);
+    color: var(--diger-blue-title);
 }
 
+/* La regla a la derecha separa el encabezado del contenido cuando queda
+   fijo durante el scroll — antes se superponía sin ninguna división. */
 .cal-feed-day {
-    font-size: 11.5px;
-    font-weight: 700;
-    color: var(--diger-text-muted);
-    text-transform: capitalize;
-    margin: .7rem 0 .3rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--diger-fs-xs);
+    font-weight: 600;
+    color: var(--diger-text-faint);
+    margin: .9rem 0 .35rem;
     position: sticky;
     top: 0;
-    background: #fff;
-    padding: 2px 0;
+    z-index: 1;
+    background: var(--diger-surface);
+    padding: 3px 0;
+}
+
+.cal-feed-day::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--diger-border);
+}
+
+.cal-feed-day:first-of-type {
+    margin-top: 0;
 }
 
 .cal-ev {
     display: flex;
     gap: 9px;
-    padding: 7px 6px;
-    border-radius: 9px;
+    padding: 6px;
+    border-radius: var(--diger-radius-sm);
     text-decoration: none;
     color: inherit;
 }
@@ -2431,13 +4470,13 @@ tr.contacto-inactivo td {
 }
 
 .cal-ev-ico {
-    flex: 0 0 30px;
-    height: 30px;
-    border-radius: 8px;
+    flex: 0 0 26px;
+    height: 26px;
+    border-radius: var(--diger-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: var(--diger-fs-base);
 }
 
 .cal-ev-body {
@@ -2451,36 +4490,37 @@ tr.contacto-inactivo td {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: #334;
 }
 
 .cal-ev-tag {
-    font-family: monospace;
-    font-size: 11px;
-    color: var(--diger-blue);
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    letter-spacing: .03em;
+    color: var(--diger-blue-strong);
     background: #eef3fb;
     border-radius: 5px;
-    padding: 0 5px;
+    padding: 1px 6px;
 }
 
 .cal-ev-time {
     margin-left: auto;
-    font-size: 11px;
-    color: #94a3b8;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-slate);
 }
 
 .cal-ev-titulo {
-    font-size: 13px;
+    font-size: var(--diger-fs-sm);
     font-weight: 600;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .cal-ev-det {
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -2491,7 +4531,7 @@ tr.contacto-inactivo td {
 .seg-gbar {
     height: 18px;
     background: #e8edf5;
-    border-radius: 10px;
+    border-radius: var(--diger-radius-sm);
     overflow: hidden;
     flex: 1;
 }
@@ -2516,7 +4556,7 @@ tr.contacto-inactivo td {
     border: 0;
     background: none;
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--diger-fs-base);
     color: var(--diger-text-muted);
     cursor: pointer;
     border-bottom: 3px solid transparent;
@@ -2524,8 +4564,8 @@ tr.contacto-inactivo td {
 }
 
 .seg-tab.on {
-    color: var(--diger-blue-dark);
-    border-bottom-color: var(--diger-blue);
+    color: var(--diger-blue-title);
+    border-bottom-color: var(--diger-blue-strong);
 }
 
 .seg-etapa {
@@ -2533,12 +4573,26 @@ tr.contacto-inactivo td {
     border-radius: var(--diger-radius-md);
     margin-bottom: 12px;
     overflow: hidden;
-    background: #fff;
+    background: var(--diger-surface);
     transition: opacity .2s;
 }
 
 .seg-etapa.no-aplica {
     opacity: .45;
+}
+
+/* Realce al llegar desde el tablero de trámites con #et-card-{Num}: sin esto,
+   el scroll deja al usuario en medio de una lista de 11 tarjetas iguales. */
+.seg-etapa-destacada {
+    border-color: var(--diger-blue-strong);
+    box-shadow: 0 0 0 3px rgba(20, 85, 164, .16);
+    animation: seg-etapa-pulso 2.4s ease-out;
+}
+
+@keyframes seg-etapa-pulso {
+    0%   { box-shadow: 0 0 0 0 rgba(20, 85, 164, .40); }
+    35%  { box-shadow: 0 0 0 8px rgba(20, 85, 164, .10); }
+    100% { box-shadow: 0 0 0 3px rgba(20, 85, 164, .16); }
 }
 
 .seg-etapa-head {
@@ -2547,16 +4601,16 @@ tr.contacto-inactivo td {
 }
 
 .seg-etapa-num {
-    font-size: 11px;
+    font-size: var(--diger-fs-xs);
     font-weight: 800;
     color: var(--diger-text-muted);
     letter-spacing: .03em;
 }
 
 .seg-etapa-titulo {
-    font-size: 15px;
+    font-size: var(--diger-text-base);
     font-weight: 700;
-    color: var(--diger-blue-dark);
+    color: var(--diger-blue-title);
 }
 
 .seg-mini {
@@ -2585,27 +4639,27 @@ tr.contacto-inactivo td {
 
 .seg-sub-id {
     font-weight: 700;
-    color: var(--diger-blue);
-    font-size: 12.5px;
+    color: var(--diger-blue-strong);
+    font-size: var(--diger-fs-sm);
     min-width: 34px;
 }
 
 .seg-sub-desc {
     flex: 1;
-    font-size: 13px;
-    color: #334;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text);
     line-height: 1.35;
 }
 
 .seg-sub-peso {
-    font-size: 11.5px;
-    color: #94a3b8;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-slate);
     min-width: 38px;
     text-align: right;
 }
 
 .seg-chk-etapa {
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     font-weight: 800;
     color: var(--diger-text-muted);
     text-transform: uppercase;
@@ -2615,10 +4669,10 @@ tr.contacto-inactivo td {
 
 .est-btn {
     border: 1.5px solid var(--diger-border);
-    background: #fff;
+    background: var(--diger-surface);
     border-radius: var(--diger-radius-pill);
     padding: 3px 12px;
-    font-size: 12px;
+    font-size: var(--diger-fs-sm);
     font-weight: 600;
     color: #64748b;
     cursor: pointer;
@@ -2630,7 +4684,7 @@ tr.contacto-inactivo td {
 }
 
 .est-btn.est-1 {
-    color: #854f0b;
+    color: var(--diger-warning-strong);
     background: #faeeda;
     border-color: #f0d9ac;
 }
@@ -2655,24 +4709,24 @@ tr.contacto-inactivo td {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     font-weight: 600;
     color: #5b6b86;
     text-decoration: none;
-    background: #fff;
+    background: var(--diger-surface);
     border: 1.5px solid var(--diger-border);
     border-radius: var(--diger-radius-pill);
     padding: 5px 13px;
 }
 
 .seg-tram:hover {
-    border-color: var(--diger-blue);
-    color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
+    color: var(--diger-blue-strong);
 }
 
 .seg-tram.on {
     background: var(--diger-blue-dark);
-    border-color: var(--diger-blue-dark);
+    border-color: var(--diger-blue-title);
     color: #fff;
 }
 
@@ -2701,27 +4755,27 @@ tr.contacto-inactivo td {
 .tkm-mark {
     width: 42px;
     height: 42px;
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     flex: none;
     display: grid;
     place-items: center;
     color: #fff;
     font-weight: 800;
     letter-spacing: .02em;
-    background: linear-gradient(135deg, #1455a4, #0a2d6e);
+    background: linear-gradient(135deg, var(--diger-blue-mid), var(--diger-blue-title));
 }
 
 .tkm-brand h1 {
     margin: 0;
     font-size: 21px;
     line-height: 1.15;
-    color: #0a2d6e;
+    color: var(--diger-blue-title);
 }
 
 .tkm-brand p {
     margin: 3px 0 0;
-    color: #6b7fa3;
-    font-size: 12.5px;
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-sm);
 }
 
 .tkm-actions {
@@ -2761,18 +4815,18 @@ tr.contacto-inactivo td {
 }
 
 .tkm-panel {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid #dbe5ef;
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     box-shadow: 0 8px 24px rgba(10, 45, 110, .08);
-    padding: 16px;
+    padding: var(--diger-space-4);
     margin-bottom: 14px;
 }
 
 .tkm-panel h2 {
     margin: 0 0 14px;
-    color: #0a2d6e;
-    font-size: 15px;
+    color: var(--diger-blue-title);
+    font-size: var(--diger-text-base);
     padding-bottom: 9px;
     border-bottom: 1px solid #edf2f7;
 }
@@ -2803,8 +4857,8 @@ tr.contacto-inactivo td {
 }
 
 .tkm-kv span {
-    color: #6b7fa3;
-    font-size: 12px;
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
 }
 
@@ -2818,20 +4872,20 @@ tr.contacto-inactivo td {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    border-left: 4px solid #1455a4;
+    border-left: 4px solid var(--diger-blue-mid);
     background: #f7fbff;
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 var(--diger-radius-sm) var(--diger-radius-sm) 0;
     padding: 12px 14px;
     margin-bottom: 8px;
 }
 
 .tkm-sla-box strong {
-    color: #0a2d6e;
+    color: var(--diger-blue-title);
 }
 
 .tkm-sla-box span {
-    color: #6b7fa3;
-    font-size: 12px;
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-sm);
 }
 
 .tkm-metrics {
@@ -2842,9 +4896,9 @@ tr.contacto-inactivo td {
 }
 
 .tkm-metric {
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid #dbe5ef;
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     padding: 14px 15px;
     box-shadow: 0 8px 24px rgba(10, 45, 110, .08);
     cursor: pointer;
@@ -2857,8 +4911,8 @@ tr.contacto-inactivo td {
 
 .tkm-metric span {
     display: block;
-    color: #6b7fa3;
-    font-size: 12px;
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-sm);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: .02em;
@@ -2869,15 +4923,15 @@ tr.contacto-inactivo td {
     margin-top: 4px;
     font-size: 28px;
     line-height: 1;
-    color: #0a2d6e;
+    color: var(--diger-blue-title);
 }
 
 .tkm-metric small {
-    color: #6b7fa3;
+    color: var(--diger-text-muted);
 }
 
 .tkm-metric-alert strong {
-    color: #a32d2d;
+    color: var(--diger-danger-strong);
 }
 
 .tkm-filterbar {
@@ -2885,9 +4939,9 @@ tr.contacto-inactivo td {
     gap: 14px;
     flex-wrap: wrap;
     align-items: flex-end;
-    background: #fff;
+    background: var(--diger-surface);
     border: 1px solid #dbe5ef;
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     box-shadow: 0 8px 24px rgba(10, 45, 110, .08);
     padding: 13px;
     margin-bottom: 14px;
@@ -2910,18 +4964,18 @@ tr.contacto-inactivo td {
     align-items: center;
     gap: 6px;
     max-width: 100%;
-    font-size: 12.5px;
+    font-size: var(--diger-fs-sm);
     text-decoration: none;
-    color: #0c447c;
+    color: var(--diger-blue-strong);
     background: #eef3fb;
     border: 1px solid #dbe6f5;
-    border-radius: 8px;
+    border-radius: var(--diger-radius-sm);
     padding: 4px 10px;
 }
 
 .tk-adj:hover {
     background: #e0ebf9;
-    border-color: var(--diger-blue);
+    border-color: var(--diger-blue-strong);
 }
 
 .tk-adj-n {
@@ -2933,8 +4987,8 @@ tr.contacto-inactivo td {
 }
 
 .tk-adj-t {
-    color: #94a3b8;
-    font-size: 11px;
+    color: var(--diger-text-slate);
+    font-size: var(--diger-fs-xs);
 }
 
 .tk-file-input {
@@ -2952,36 +5006,36 @@ tr.contacto-inactivo td {
     justify-content: center;
     gap: 3px;
     min-height: 96px;
-    padding: 16px;
-    border: 1.5px dashed #c8d5ee;
-    border-radius: 12px;
-    background: #f8fbff;
-    color: #4a5568;
+    padding: var(--diger-space-4);
+    border: 1.5px dashed var(--diger-blue-pale);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-bg-blue-alt);
+    color: var(--diger-text-secondary);
     text-align: center;
     cursor: pointer;
     transition: .15s;
 }
 
 .tk-filebox:hover {
-    border-color: #1455a4;
+    border-color: var(--diger-blue-strong);
     background: #f0f6ff;
-    color: #1455a4;
+    color: var(--diger-blue-strong);
 }
 
 .tk-filebox-compact {
     min-height: 72px;
-    padding: 12px;
+    padding: var(--diger-space-3);
 }
 
 .tk-filebox-title {
-    font-size: 13.5px;
+    font-size: var(--diger-fs-base);
     font-weight: 800;
-    color: #0a2d6e;
+    color: var(--diger-blue-title);
 }
 
 .tk-filebox-text {
-    font-size: 12px;
-    color: #6b7fa3;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
     line-height: 1.35;
 }
 
@@ -2999,10 +5053,10 @@ tr.contacto-inactivo td {
     gap: 10px;
     padding: 7px 10px;
     border: 1px solid #dbe6f5;
-    border-radius: 8px;
-    background: #fff;
-    font-size: 12.5px;
-    color: #2d3748;
+    border-radius: var(--diger-radius-sm);
+    background: var(--diger-surface);
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-strong);
 }
 
 .tk-file-name {
@@ -3015,14 +5069,14 @@ tr.contacto-inactivo td {
 
 .tk-file-size {
     flex: none;
-    color: #6b7fa3;
-    font-size: 11.5px;
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-sm);
 }
 
 .tk-file-error {
     margin-top: 7px;
-    color: #a32d2d;
-    font-size: 12.5px;
+    color: var(--diger-danger-strong);
+    font-size: var(--diger-fs-sm);
     font-weight: 700;
 }
 
@@ -3064,10 +5118,1082 @@ tr.contacto-inactivo td {
     }
 }
 
-/* Fix para el desborde de dropdowns de actualizacion en las tablas */
-/* details.seg-upd[open] {
-    margin-bottom: 230px;
+/* ── MI CUENTA: perfil con pestañas laterales ─────────────────────────── */
+.cuenta-shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 1.6rem;
+    align-items: start;
 }
-.seg-table tr:has(details.seg-upd[open]) td {
-    vertical-align: top;
-} */
+
+.cuenta-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: sticky;
+    top: 80px;
+}
+
+.cuenta-nav-link {
+    display: block;
+    padding: 10px 14px;
+    border-radius: var(--diger-radius-sm);
+    text-decoration: none;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    border: 1px solid transparent;
+}
+
+.cuenta-nav-link:hover {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-strong);
+}
+
+.cuenta-nav-link.on {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+.cuenta-body {
+    min-width: 0;
+}
+
+.cuenta-card-title {
+    margin: 0 0 1.4rem;
+    color: var(--diger-blue-title);
+    font-size: var(--diger-text-base);
+    border-bottom: 1px solid var(--diger-border);
+    padding-bottom: 10px;
+}
+
+.cuenta-readonly-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.cuenta-ro-label {
+    display: block;
+    font-size: var(--diger-fs-xs);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--diger-text-faint);
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.cuenta-ro-value {
+    display: block;
+    font-size: var(--diger-fs-base);
+    font-weight: 600;
+    color: var(--diger-text);
+}
+
+@media (max-width: 760px) {
+    .cuenta-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .cuenta-nav {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .cuenta-readonly-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Avatares de institución / persona — compartido entre páginas
+   ══════════════════════════════════════════════════════════════ */
+
+/* Círculo base */
+.inst-av, .asist-av {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%; font-weight: 700; letter-spacing: .02em;
+    flex: none; color: #fff; text-transform: uppercase; line-height: 1;
+}
+.inst-av      { width: 36px; height: 36px; font-size: var(--diger-fs-sm); }
+.asist-av     { width: 36px; height: 36px; font-size: var(--diger-fs-sm); }
+.inst-av.av-lg { width: 44px; height: 44px; font-size: var(--diger-text-base); }
+.inst-av.av-sm, .asist-av.av-sm { width: 28px; height: 28px; font-size: var(--diger-fs-2xs); }
+
+/* Paleta de 8 colores por institución */
+.ic0 { background: var(--diger-blue); }
+.ic1 { background: #6d28d9; }
+.ic2 { background: #0e7490; }
+.ic3 { background: var(--diger-success); }
+.ic4 { background: #9a3412; }
+.ic5 { background: #be185d; }
+.ic6 { background: var(--diger-warning); }
+.ic7 { background: #374151; }
+
+/* Pill de institución */
+.inst-pill {
+    display: inline-block; padding: 2px 9px; border-radius: var(--diger-radius-pill);
+    font-size: var(--diger-fs-sm); font-weight: 700; color: #fff; white-space: nowrap;
+}
+
+/* ── Branding de institución en la barra de navegación ─────── */
+.app-brand-inst {
+    color: rgba(255, 255, 255, .92);
+    font-weight: 600;
+    font-size: var(--diger-fs-base);
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-brand-inst-logo {
+    height: 26px;
+    width: auto;
+    max-width: 100px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: .92;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Portal utility layer — clases compartidas por Informes,
+   PlanTrabajo y otras páginas admin que siguen este patrón.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Encabezado de página ────────────────────────────────────── */
+/* .pg-hdr es el mismo encabezado; lo usan Chat y Notificaciones. */
+.page-header,
+.pg-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 1.4rem;
+    flex-wrap: wrap;
+}
+
+/* Agrupa el título con su contador. Alineado por línea base para que el
+   contador se apoye en la del título y no en el borde dorado. */
+.pg-hdr-left {
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+
+/* ── Card body / header ──────────────────────────────────────── */
+.card-body  { padding: var(--diger-space-5) var(--diger-space-6); }
+.card-header {
+    padding: .85rem 1.5rem;
+    border-bottom: 1px solid var(--diger-border);
+    font-size: var(--diger-fs-base);
+    font-weight: 700;
+    color: var(--diger-blue-title);
+    background: #f8fafd;
+    border-radius: var(--diger-radius-lg) var(--diger-radius-lg) 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.card-body.p-0, .card.p-0 { padding: 0; }
+
+/* ── Form controls ───────────────────────────────────────────── */
+.form-label {
+    display: block;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+.form-control,
+.form-select {
+    width: 100%;
+    padding: 9px 13px;
+    border: 1.5px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-base);
+    font-family: inherit;
+    background: var(--diger-bg-soft);
+    color: var(--diger-text);
+    transition: border .2s, box-shadow .2s, background .2s;
+}
+.form-control:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--diger-blue-strong);
+    background: var(--diger-surface);
+    box-shadow: var(--diger-ring);
+}
+.form-control-sm,
+.form-select-sm {
+    padding: 5px 9px;
+    font-size: var(--diger-fs-sm);
+    border-radius: var(--diger-radius-sm);
+}
+textarea.form-control { resize: vertical; }
+
+/* ── Botones adicionales ─────────────────────────────────────── */
+.btns-primary {
+    background: var(--diger-blue);
+    color: #fff;
+    border-color: var(--diger-blue-strong);
+}
+.btns-primary:hover {
+    background: var(--diger-blue-dark);
+    border-color: var(--diger-blue-title);
+    color: #fff;
+}
+.btns-sm {
+    padding: 6px 14px;
+    font-size: var(--diger-fs-sm);
+    border-radius: var(--diger-radius-sm);
+}
+.btns-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* ── Flex / spacing utilities ────────────────────────────────── */
+.d-flex                  { display: flex; }
+.align-items-center      { align-items: center; }
+.align-items-start       { align-items: flex-start; }
+.justify-content-between { justify-content: space-between; }
+.justify-content-end     { justify-content: flex-end; }
+.flex-grow-1             { flex: 1; min-width: 0; }
+.flex-wrap               { flex-wrap: wrap; }
+.gap-2                   { gap: .5rem; }
+.gap-3                   { gap: 1rem; }
+.mb-0  { margin-bottom: 0 !important; }
+.mb-1  { margin-bottom: .25rem; }
+.mb-2  { margin-bottom: .5rem; }
+.mb-3  { margin-bottom: 1rem; }
+.mb-4  { margin-bottom: 1.5rem; }
+.mt-1  { margin-top: .25rem; }
+.p-0   { padding: 0 !important; }
+.ps-4  { padding-left: 1.5rem; }
+.py-4  { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+.text-center  { text-align: center; }
+.text-end     { text-align: right; }
+.fw-semibold  { font-weight: 600; }
+.fw-bold      { font-weight: 700; }
+.align-middle { vertical-align: middle; }
+
+/* ── Typography helpers ──────────────────────────────────────── */
+.text-muted   { color: var(--diger-text-muted); }
+.text-success { color: var(--diger-success-strong); }
+.text-danger  { color: var(--diger-danger-strong); }
+.text-info    { color: var(--diger-blue-strong); }
+.text-warning { color: var(--diger-warning-strong); }
+.h5 { font-size: var(--diger-text-base); font-weight: 700; color: var(--diger-blue-title); }
+
+/* ── Responsive grid (12 col) ────────────────────────────────── */
+.row { display: grid; gap: 1rem; }
+.g-3 { gap: 1rem; }
+.col { min-width: 0; }
+@media (min-width: 768px) {
+    .row { grid-template-columns: repeat(12, 1fr); }
+    .col        { grid-column: span 12; }
+    .col-md-2   { grid-column: span 2; }
+    .col-md-4   { grid-column: span 4; }
+    .col-md-5   { grid-column: span 5; }
+    .col-md-auto { grid-column: auto; width: max-content; align-self: end; }
+}
+
+/* ── Badge ───────────────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    white-space: nowrap;
+}
+.badge-success   { background: var(--diger-success-bg);  color: var(--diger-success-strong); }
+.badge-warning   { background: var(--diger-warning-bg);  color: var(--diger-warning-strong); }
+.badge-danger    { background: var(--diger-danger-bg);   color: var(--diger-danger-text); }
+.badge-info      { background: #dbeafe; color: #1e40af; }
+.badge-primary   { background: var(--diger-blue-light);  color: var(--diger-blue-strong); }
+.badge-secondary { background: var(--diger-border); color: var(--diger-text-slate-dark); }
+.badge-light     { background: #f8fafc; color: #64748b; border: 1px solid var(--diger-border); }
+
+/* ── Progress bar ────────────────────────────────────────────── */
+.progress {
+    background: var(--diger-bg);
+    border-radius: var(--diger-radius-sm);
+    overflow: hidden;
+}
+.progress-bar {
+    height: 100%;
+    transition: width .3s;
+    min-width: 2px;
+}
+.bg-success { background: var(--diger-success) !important; }
+.bg-warning { background: var(--diger-warning) !important; }
+.bg-danger  { background: var(--diger-danger)  !important; }
+.bg-primary { background: var(--diger-blue-mid) !important; }
+
+/* ── Table ───────────────────────────────────────────────────── */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.table th {
+    background: var(--diger-bg-blue);
+    font-size: var(--diger-fs-xs);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--diger-text-muted);
+    text-align: left;
+    padding: 11px 14px;
+    font-weight: 700;
+    border-bottom: 1px solid var(--diger-border);
+}
+.table td {
+    padding: 11px 14px;
+    border-top: 1px solid #f0f4fa;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-strong);
+    vertical-align: middle;
+}
+.table-sm th, .table-sm td { padding: 7px 10px; }
+.table-hover tr:hover td   { background: #fafbff; }
+.table-danger  > td        { background: #fff5f5 !important; }
+.table-success > td        { background: #f0fdf4 !important; }
+.table-secondary > td      { background: var(--diger-bg-soft); }
+.mb-0.table                { margin-bottom: 0; }
+
+/* ── Stats row ───────────────────────────────────────────────── */
+.stats-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.stat-card {
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    padding: .9rem 1.1rem;
+    box-shadow: var(--diger-shadow-sm);
+    flex: 1;
+    min-width: 90px;
+}
+.stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--diger-blue-title);
+    line-height: 1.1;
+}
+.stat-label {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-top: 2px;
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: var(--diger-space-12) var(--diger-space-4);
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-base);
+}
+
+/* ── Barra de progreso global (QW1) ────────────────────────── */
+.dg-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0;
+    background: var(--diger-blue, #1d4ed8);
+    z-index: 99999;
+    opacity: 0;
+    pointer-events: none;
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--diger-blue, #1d4ed8) 50%, transparent);
+}
+.dg-progress.active { opacity: 1; }
+
+/* ── Modal de confirmación (QW5) ───────────────────────────── */
+.dg-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .45);
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease;
+    backdrop-filter: blur(2px);
+}
+.dg-confirm-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+.dg-confirm-box {
+    background: var(--diger-surface);
+    border-radius: var(--diger-radius-md);
+    padding: 1.75rem 2rem 1.5rem;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, .18);
+    text-align: center;
+    transform: scale(.92);
+    transition: transform .15s ease;
+}
+.dg-confirm-overlay.open .dg-confirm-box { transform: scale(1); }
+.dg-confirm-icon {
+    font-size: 2rem;
+    margin-bottom: .5rem;
+    line-height: 1;
+}
+.dg-confirm-msg {
+    font-size: .9rem;
+    color: #334155;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
+}
+.dg-confirm-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.dg-confirm-cancel,
+.dg-confirm-ok {
+    padding: 8px 22px;
+    border-radius: var(--diger-radius-sm);
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all .12s ease;
+}
+.dg-confirm-cancel {
+    background: #f1f5f9;
+    color: var(--diger-text-slate-dark);
+    border-color: var(--diger-border);
+}
+.dg-confirm-cancel:hover { background: var(--diger-border); }
+.dg-confirm-ok {
+    background: var(--diger-danger);
+    color: #fff;
+}
+.dg-confirm-ok:hover { background: #b91c1c; }
+.dg-confirm-ok:focus-visible,
+.dg-confirm-cancel:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .dg-confirm-overlay { background: rgba(0, 0, 0, .55); }
+    .dg-confirm-box { background: var(--diger-surface); box-shadow: var(--diger-shadow-lg); }
+    .dg-confirm-msg { color: var(--diger-text-secondary); }
+    .dg-confirm-cancel { background: var(--diger-border); color: var(--diger-text); border-color: var(--diger-text-slate-dark); }
+    .dg-confirm-cancel:hover { background: var(--diger-text-slate-dark); }
+}
+
+
+/* ── Dependencias entre actividades (editor de proyectos) ──────────────────
+   Van bajo el nombre de la actividad, no en una columna: la tabla ya lleva ocho y la mayoría de
+   las actividades no depende de nada, así que una novena columna estaría vacía casi siempre.
+   Todos los colores salen de tokens que sí cambian con el tema — --diger-blue-pale y compañía no
+   lo hacen y dejarían líneas claras sobre fondo oscuro. */
+.dep-lista {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.dep-rot {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    text-transform: lowercase;
+    letter-spacing: .01em;
+}
+
+.dep-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 100%;
+    padding: 1px 4px 1px 7px;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    background: var(--diger-border-soft);
+    font-size: var(--diger-fs-xs);
+    line-height: 1.5;
+    color: var(--diger-text-secondary);
+}
+
+/* La predecesora que sigue abierta es la que bloquea: se distingue de la que ya terminó, que se
+   deja a la vista porque explica de dónde salió la fecha aunque ya no frene nada. */
+.dep-chip.abierta {
+    border-color: var(--diger-warning-strong);
+    background: var(--diger-warning-bg);
+    color: var(--diger-warning-strong);
+}
+
+.dep-chip.lista .dep-nom { text-decoration: line-through; opacity: .75; }
+
+.dep-nom {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 22ch;
+}
+
+.dep-x,
+.dep-mas {
+    border: 0;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+}
+
+.dep-x {
+    line-height: 1;
+    padding: 0 2px;
+    opacity: .6;
+}
+.dep-x:hover { opacity: 1; color: var(--diger-danger-text); }
+
+.dep-mas {
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    border: 1px dashed var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    padding: 1px 8px;
+}
+.dep-mas:hover { color: var(--diger-text); border-color: var(--diger-text-muted); }
+
+.dep-x:focus-visible,
+.dep-mas:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 1px;
+}
+
+/* Un solo diálogo para toda la tabla; ver la nota de la vista. */
+.dep-dialog {
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-surface);
+    color: var(--diger-text);
+    padding: 1.1rem 1.25rem;
+    min-width: min(420px, 90vw);
+    max-width: 92vw;
+    box-shadow: var(--diger-shadow-lg);
+}
+.dep-dialog::backdrop { background: rgba(15, 23, 42, .45); }
+.dep-dialog h3 { margin: 0 0 .35rem; }
+.dep-dialog select { width: 100%; }
+
+.dep-dialog-pie {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin-top: 1rem;
+}
+/* ── Repositorio documental (pestaña Documentos y biblioteca) ──────────────
+   Prefijo repo-doc- y no doc-: `.doc-item` YA EXISTE desde la línea 721, para los documentos de
+   expedientes, y trae su propio display:flex. Reusar el nombre puso el encabezado y las acciones
+   en dos columnas —el título quedaba en 168 px y se partía en cuatro líneas— sin que nada fallara
+   ni avisara. Antes de nombrar una clase en este archivo, buscarla.
+
+   La tarjeta es una lista, no una tabla: cada documento lleva su historial plegado y su formulario
+   de versión, y eso no entra en una celda. */
+.repo-doc-cat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 1.5rem 0 .6rem;
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--diger-text-muted);
+}
+.repo-doc-cat:first-of-type { margin-top: .4rem; }
+.repo-doc-cat .n {
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    color: var(--diger-text-muted);
+    background: var(--diger-bg);
+    border-radius: var(--diger-radius-pill);
+    padding: 1px 7px;
+    letter-spacing: 0;
+}
+
+.repo-doc {
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-surface);
+    padding: .9rem 1.05rem;
+    margin-bottom: .7rem;
+}
+
+.repo-doc-cab { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+
+/* min-width:0 es lo que permite que el nombre de archivo largo se recorte en vez de estirar la
+   columna y empujar la acción fuera de la tarjeta. */
+.repo-doc-id { flex: 1 1 320px; min-width: 0; }
+
+.repo-doc-tit {
+    font-weight: 600;
+    font-size: var(--diger-fs-base);
+    line-height: 1.35;
+    color: var(--diger-text-strong);
+    overflow-wrap: anywhere;
+}
+
+.repo-doc-desc {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+}
+
+/* El nombre del archivo: identidad del documento, no metadato de esquina. Se recorta con puntos
+   suspensivos porque los reales son largos y el título es lo que tiene que leerse primero. */
+.repo-doc-archivo {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    min-width: 0;
+}
+.repo-doc-nom {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: "Cascadia Mono", Consolas, monospace;
+    color: var(--diger-text-secondary);
+}
+.repo-doc-sep { flex: 0 0 auto; opacity: .6; }
+.repo-doc-archivo > span:last-child { flex: 0 0 auto; }
+
+.repo-doc-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.repo-doc-badges:empty { display: none; }
+
+/* La acción va a la derecha y no se estira: es lo que se viene a hacer con el documento. */
+.repo-doc-vig {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+.repo-doc-bajar { font-size: var(--diger-fs-sm); padding: 6px 16px; white-space: nowrap; }
+.repo-doc-quien {
+    text-align: right;
+    font-size: var(--diger-fs-2xs);
+    line-height: 1.45;
+    color: var(--diger-text-muted);
+}
+
+.repo-doc-hist { margin-top: .8rem; }
+.repo-doc-hist > summary {
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+    padding: .25rem 0;
+}
+.repo-doc-hist > summary:hover { color: var(--diger-blue-title); }
+.repo-doc-hist > table { margin-top: .5rem; }
+
+/* La huella se compara de un vistazo entre filas: monoespaciada o no sirve para nada. */
+.repo-doc-huella {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: var(--diger-fs-2xs);
+}
+
+/* Las acciones son una fila de enlaces discretos; al abrir una, ocupa el ancho entero debajo en
+   vez de empujar a las otras a otra columna. */
+.repo-doc-acciones {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-top: .85rem;
+    padding-top: .7rem;
+    border-top: 1px solid var(--diger-border-soft);
+}
+.repo-doc-acciones > details > summary {
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    font-weight: 600;
+    color: var(--diger-blue-title);
+    padding: .2rem 0;
+}
+.repo-doc-acciones > details[open] { flex: 1 1 100%; }
+.repo-doc-acciones > details > form { margin-top: .6rem; }
+
+.repo-doc-archivar {
+    color: var(--diger-danger-text);
+    border-color: var(--diger-danger-text);
+    font-size: var(--diger-fs-xs);
+    padding: 4px 12px;
+}
+
+/* En pantalla angosta la acción deja de colgar a la derecha y se alinea con el texto: apilada
+   contra el borde derecho de una tarjeta de 320 px se lee como si fuera de otro documento. */
+@media (max-width: 620px) {
+    .repo-doc-vig { align-items: flex-start; flex-direction: row; align-self: stretch; }
+    .repo-doc-quien { text-align: left; }
+}
+
+/* ── Bandeja «Mis actividades» ─────────────────────────────────────────────
+   Tarjeta por actividad y no una tabla: cada fila lleva su formulario de reporte plegado, y eso no
+   entra en una celda. La franja de la izquierda codifica urgencia — es lo que se lee de un vistazo
+   al bajar por la lista. */
+.act-card {
+    border: 1px solid var(--diger-border);
+    border-left: 3px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-surface);
+    padding: .85rem 1rem;
+    margin-bottom: .7rem;
+}
+.act-card.vencida   { border-left-color: var(--diger-danger-text); }
+.act-card.bloqueada { border-left-color: var(--diger-warning-strong); }
+
+.act-cab { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+
+.act-pry {
+    display: inline-block;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--diger-text-muted);
+    text-decoration: none;
+    margin-bottom: 2px;
+}
+.act-pry:hover { color: var(--diger-blue-title); }
+
+.act-tit {
+    font-weight: 600;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-strong);
+    overflow-wrap: anywhere;
+}
+
+.act-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.act-badges:empty { display: none; }
+
+.act-avance { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
+.act-pct {
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: var(--diger-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.act-reportar { margin-top: .75rem; padding-top: .65rem; border-top: 1px solid var(--diger-border-soft); }
+.act-reportar > summary {
+    cursor: pointer;
+    font-size: var(--diger-fs-xs);
+    font-weight: 600;
+    color: var(--diger-blue-title);
+    padding: .2rem 0;
+}
+.act-reportar > form { margin-top: .6rem; }
+
+/* Datos rotulados de la tarjeta de actividad. Van siempre, incluso cuando el valor falta: un campo
+   que desaparece al no tener dato parece que no existe — pasó con la fecha de creación, que está
+   vacía en las 191 actividades anteriores al 26-08-2026. */
+.act-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; }
+.act-meta-i { font-size: var(--diger-fs-xs); color: var(--diger-text-secondary); }
+.act-meta-i b {
+    font-weight: 600;
+    color: var(--diger-text-muted);
+    text-transform: uppercase;
+    font-size: var(--diger-fs-2xs);
+    letter-spacing: .04em;
+    margin-right: 4px;
+}
+
+/* ── Cronograma (Gantt del proyecto) ───────────────────────────────────────
+   Dos columnas: los nombres quedan fijos y las barras se desplazan. La altura de fila es una
+   variable usada por las DOS columnas — es lo único que las mantiene alineadas, sin JavaScript.
+   Prefijo gantt- verificado como libre antes de usarlo. */
+.gantt {
+    --gantt-fila: 30px;
+    --gantt-cab: 34px;
+    display: flex;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    overflow: hidden;
+    background: var(--diger-surface);
+}
+
+.gantt-nombres {
+    flex: 0 0 clamp(190px, 30%, 300px);
+    border-right: 1px solid var(--diger-border);
+    background: var(--diger-surface);
+}
+
+.gantt-cab {
+    height: var(--gantt-cab);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--diger-text-muted);
+    background: var(--diger-bg);
+    border-bottom: 1px solid var(--diger-border);
+}
+
+.gantt-nom {
+    height: var(--gantt-fila);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: var(--diger-fs-xs);
+    border-bottom: 1px solid var(--diger-border-soft);
+    color: var(--diger-text-secondary);
+}
+.gantt-nom:last-child { border-bottom: 0; }
+.gantt-nom span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-nom.n0 { font-weight: 700; color: var(--diger-text-strong); }
+.gantt-nom.n1 { padding-left: 22px; }
+
+.gantt-scroll { flex: 1; overflow-x: auto; }
+.gantt-lienzo { position: relative; }
+
+.gantt-eje { position: relative; padding: 0; }
+.gantt-mes {
+    position: absolute;
+    top: 0;
+    height: var(--gantt-cab);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-left: 1px solid var(--diger-border);
+    font-size: var(--diger-fs-2xs);
+    color: var(--diger-text-muted);
+    overflow: hidden;
+}
+.gantt-mes:first-child { border-left: 0; }
+.gantt-mes i { font-style: normal; opacity: .55; font-size: .9em; }
+
+.gantt-pistas { position: relative; }
+
+/* Divisiones de mes detrás de las barras: sin ellas no se sabe en qué mes cae una barra del medio. */
+.gantt-div {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: var(--diger-border-soft);
+}
+
+.gantt-hoy {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--diger-danger);
+    opacity: .65;
+    z-index: 3;
+}
+
+.gantt-pista {
+    position: relative;
+    height: var(--gantt-fila);
+    border-bottom: 1px solid var(--diger-border-soft);
+}
+.gantt-pista:last-child { border-bottom: 0; }
+
+.gantt-barra {
+    position: absolute;
+    top: 7px;
+    height: 16px;
+    border-radius: 3px;
+    z-index: 2;
+    overflow: hidden;
+    min-width: 3px;
+}
+/* El entregable es una barra resumen: más fina y sin relleno de avance, para que no compita
+   visualmente con sus propias actividades. */
+.gantt-barra.n0 { top: 11px; height: 8px; border-radius: 2px; opacity: .85; }
+
+.gantt-barra.pendiente  { background: var(--diger-border); }
+.gantt-barra.enproceso  { background: var(--diger-blue-mid); }
+.gantt-barra.completada { background: var(--diger-success, #16a34a); }
+.gantt-barra.vencida    { background: var(--diger-danger); }
+.gantt-barra.cancelada  { background: var(--diger-border); opacity: .5; }
+
+/* La bloqueada se marca con un borde a rayas al inicio: es donde está la traba. */
+.gantt-barra.bloq {
+    box-shadow: inset 3px 0 0 var(--diger-warning-strong);
+}
+
+.gantt-relleno {
+    display: block;
+    height: 100%;
+    background: rgba(0, 0, 0, .28);
+}
+
+/* El compromiso del entregable es una fecha, no un intervalo: rombo, no barra. */
+.gantt-hito {
+    position: absolute;
+    top: 9px;
+    width: 11px; height: 11px;
+    margin-left: -5px;
+    transform: rotate(45deg);
+    background: var(--diger-surface);
+    border: 2px solid var(--diger-blue-title);
+    z-index: 4;
+}
+
+.gantt-leyenda {
+    display: flex; flex-wrap: wrap; gap: 6px 16px;
+    margin: .8rem 0 .7rem;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted);
+}
+.gantt-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.g-m { width: 14px; height: 9px; border-radius: 2px; display: inline-block; }
+.g-m.pendiente  { background: var(--diger-border); }
+.g-m.enproceso  { background: var(--diger-blue-mid); }
+.g-m.completada { background: var(--diger-success, #16a34a); }
+.g-m.vencida    { background: var(--diger-danger); }
+.g-m.bloq       { background: var(--diger-border); box-shadow: inset 3px 0 0 var(--diger-warning-strong); }
+.g-m.hito {
+    width: 10px; height: 10px; border-radius: 0; transform: rotate(45deg);
+    background: var(--diger-surface); border: 2px solid var(--diger-blue-title);
+}
+
+/* ── Biblioteca: modos de vista ──────────────────────────────────────────
+   Carpetas, agrupado y lista son la misma documentación con tres formas de
+   entrar: por categoría («todos los convenios»), por proyecto («el expediente
+   de este») o por quién la mantiene.
+
+   Reusa el idioma de .ficha-tabs —píldora, activa en azul lleno— en vez de
+   inventar un control nuevo: es el mismo gesto de «cambiar de vista» que ya
+   hace la ficha del proyecto, y conviene que se vea igual. */
+.bib-segs { display: flex; gap: 7px; flex-wrap: wrap; }
+
+.bib-seg {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 13px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-pill);
+    font-size: var(--diger-fs-sm);
+    font-weight: 600;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    transition: all var(--diger-transition);
+}
+
+.bib-seg:hover {
+    border-color: var(--diger-blue-mid);
+    color: var(--diger-blue-title);
+    box-shadow: var(--diger-shadow-sm);
+}
+
+/* Después de :hover a propósito: misma especificidad, gana la de más abajo. */
+.bib-seg.on {
+    border-color: var(--diger-blue-mid);
+    background: var(--diger-blue-mid);
+    color: #fff;
+    box-shadow: var(--diger-shadow-sm);
+}
+
+.bib-seg:focus-visible {
+    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline-offset: 2px;
+}
+
+/* ── Mosaico de carpetas ─────────────────────────────────────────────── */
+.bib-carpetas {
+    display: grid;
+    gap: var(--diger-space-3);
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+
+.bib-carpeta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: var(--diger-space-4);
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    text-decoration: none;
+    color: var(--diger-text);
+    transition: all var(--diger-transition);
+}
+
+.bib-carpeta:hover {
+    border-color: var(--diger-blue-mid);
+    box-shadow: var(--diger-shadow-sm);
+}
+
+.bib-carpeta-ico { font-size: 24px; line-height: 1; margin-bottom: 4px; }
+
+.bib-carpeta-nom {
+    font-weight: 600;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-blue-title);
+}
+
+/* ── Dentro de una carpeta, y grupos ─────────────────────────────────── */
+.bib-ruta {
+    display: flex;
+    gap: var(--diger-space-3);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: var(--diger-space-4);
+}
+
+.bib-grupo { margin-bottom: var(--diger-space-6); }
+
+.bib-grupo-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--diger-space-3);
+    padding-bottom: 6px;
+    margin-bottom: var(--diger-space-2);
+    border-bottom: 1px solid var(--diger-border);
+    color: var(--diger-blue-title);
+}
+
+/* ── Secciones plegables de vínculos ─────────────────────────────────────
+   Se pliegan solas cuando están vacías: un proyecto sin reuniones ni
+   expedientes —la mayoría— no debería obligar a bajar por dos vacíos para
+   llegar a los formularios. El resumen sigue diciendo cuántos hay, así que
+   plegado no equivale a esconder. */
+.vinc-sec { padding: var(--diger-space-4); }
+.vinc-sum {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--diger-space-3); cursor: pointer; list-style: none;
+}
+.vinc-sum::-webkit-details-marker { display: none; }
+.vinc-sum::before {
+    content: "▸"; color: var(--diger-text-muted);
+    margin-right: 6px; font-size: .85em;
+}
+.vinc-sec[open] > .vinc-sum::before { content: "▾"; }
+.vinc-sum .sec-h { border: 0; padding: 0; margin: 0; }
+.vinc-n {
+    font-size: var(--diger-fs-xs); color: var(--diger-text-muted);
+    font-family: inherit; white-space: nowrap;
+}
+.vinc-sum:focus-visible { outline: 2px solid var(--diger-blue, #1d4ed8); outline-offset: 2px; }

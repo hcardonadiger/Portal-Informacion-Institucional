@@ -1,0 +1,663 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Ayuda.IndexModel
+@{
+    ViewData["Title"] = "Centro de Ayuda y Manual de Usuario";
+}
+
+<div class="container" style="max-width:1180px">
+    @* ── ENCABEZADO PRINCIPAL ─────────────────────────────────────── *@
+    <div class="card" style="margin-bottom:1.5rem;background:linear-gradient(135deg, #0a2d6e 0%, #1455a4 100%);color:#ffffff;padding:1.8rem 2rem;border-radius:12px;box-shadow:0 4px 16px rgba(10,45,110,0.15)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+            <div>
+                <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff">Centro de Ayuda y Manual de Usuario</h1>
+                <p style="margin:6px 0 0 0;font-size:14px;color:#e2e8f0">
+                    Guía explicativa paso a paso adaptada según su rol y permisos de acceso en la plataforma DIGER.
+                </p>
+            </div>
+            <div style="background:rgba(255,255,255,0.15);padding:8px 16px;border-radius:30px;backdrop-filter:blur(4px);font-size:13px">
+                <span style="opacity:0.85">Usuario:</span> <strong>@Model.UserNombre</strong> 
+                <span style="margin:0 6px">•</span> 
+                <span style="background:@(Model.EsAdmin ? "#fef3c7" : "#dcfce7");color:@(Model.EsAdmin ? "#78350f" : "#14532d");padding:2px 10px;border-radius:12px;font-weight:700">
+                    @(Model.EsAdmin ? "⚙️ Administrador" : $"👤 {Model.UserRol}")
+                </span>
+            </div>
+        </div>
+
+        @* Buscador en vivo *@
+        <div style="margin-top:1.25rem">
+            <input type="text" id="ayudaSearch" onkeyup="filtrarAyuda()" placeholder="🔍 Buscar tema o pregunta frecuente en la guía..." 
+                   style="width:100%;max-width:550px;padding:10px 16px;border-radius:8px;border:none;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.12);outline:none;color:#0f172a" />
+        </div>
+    </div>
+
+    @* ── LAYOUT PRINCIPAL (SIDEBAR + CONTENIDO) ────────────────────── *@
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+        
+        @* MENÚ LATERAL DE SECCIONES *@
+        <aside style="width:260px;flex-shrink:0" class="ayuda-sidebar">
+            <div class="card" style="padding:10px;margin-bottom:1rem">
+                <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;padding:6px 12px">
+                    Módulos Habilitados
+                </div>
+                
+                <button type="button" class="ayuda-nav-btn active" onclick="mostrarTema('ayuda-inicio', this)">
+                    🌟 Inicio y Navegación
+                </button>
+                <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-mitablero', this)">
+                    📊 Mi Tablero Personal
+                </button>
+
+                @if (Model.PuedeProyectos)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-proyectos', this)">
+                        🗂️ Proyectos y seguimiento
+                    </button>
+                }
+                @if (Model.PuedeTableros)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-tableros', this)">
+                        📋 Tableros e Indicadores
+                    </button>
+                }
+                @if (Model.PuedeCalendario)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-calendario', this)">
+                        📅 Calendario de Eventos
+                    </button>
+                }
+                @if (Model.PuedeExpedientes)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-expedientes', this)">
+                        📂 Expedientes Digitales
+                    </button>
+                }
+                @if (Model.PuedeReuniones)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-reuniones', this)">
+                        👥 Reuniones y Acuerdos
+                    </button>
+                }
+                @if (Model.PuedeTickets)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-tickets', this)">
+                        🎫 Tickets de Soporte
+                    </button>
+                }
+                @if (Model.PuedeContactos)
+                {
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-contactos', this)">
+                        📇 Directorio de Contactos
+                    </button>
+                }
+                @if (Model.EsAdmin)
+                {
+                    <div style="font-size:11px;font-weight:700;color:#9333ea;text-transform:uppercase;letter-spacing:0.5px;padding:12px 12px 6px">
+                        Administración
+                    </div>
+                    <button type="button" class="ayuda-nav-btn admin" onclick="mostrarTema('ayuda-admin', this)">
+                        ⚙️ Gestión Administradora
+                    </button>
+                }
+
+                <div style="border-top:1px solid #e2e8f0;margin:8px 0;padding-top:8px">
+                    <button type="button" class="ayuda-nav-btn" onclick="mostrarTema('ayuda-faq', this)">
+                        ❓ Preguntas Frecuentes
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        @* ÁREA DE CONTENIDOS *@
+        <main style="flex:1;min-width:320px">
+            
+            @* 1. INICIO Y NAVEGACIÓN *@
+            <div id="ayuda-inicio" class="ayuda-articulo card" style="padding:1.5rem">
+                <h2 class="ayuda-titulo">🌟 Inicio y Navegación General del Portal</h2>
+                <p>La plataforma <strong>@Marca.Nombre</strong> permite dar seguimiento centralizado a procesos de estado, reuniones institucionales, compromisos y mesa de ayuda.</p>
+
+                <h3 class="ayuda-subtitulo">Componentes de la Barra Superior</h3>
+                <ul class="ayuda-lista">
+                    <li><strong>Logo DIGER / Institución:</strong> Haga clic para volver a la página de inicio. Si tiene un contexto o institución activa seleccionada, verá el logo institucional correspondiente.</li>
+                    <li><strong>Menú de Navegación Principal:</strong> Permite ingresar a los módulos de <em>Seguimiento</em>, <em>Pendientes</em>, <em>Soporte</em> y <em>Directorio</em> según los permisos asignados a su rol.</li>
+                    <li><strong>Campana de Notificaciones (🔔):</strong> Le alerta en tiempo real cuando se le asigna un ticket, vence un compromiso, o le envían un recordatorio manual.</li>
+                    <li><strong>Menú de Perfil y Contexto:</strong> Al hacer clic en su avatar en la esquina superior derecha, podrá acceder a <strong>Mi Tablero</strong>, ver su <strong>Contexto Activo</strong> (Institución, Área, Unidad), modificar su perfil o cerrar sesión.</li>
+                </ul>
+
+                <div class="ayuda-box info">
+                    💡 <strong>Tip de Uso:</strong> Si maneja múltiples instituciones o áreas, puede cambiar de contexto activo directamente desde el menú desplegable de perfil sin cerrar sesión.
+                </div>
+            </div>
+
+            @* 2. MI TABLERO PERSONAL *@
+            <div id="ayuda-mitablero" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                <h2 class="ayuda-titulo">📊 Mi Tablero Personal</h2>
+                <p>Ubicación en el menú: <code>Seguimiento &gt; Mi Tablero</code> o desde el menú desplegable del usuario.</p>
+                <p>Esta sección resume de forma automatizada toda la información en la que usted figura como responsable, asistente, reportante o analista.</p>
+
+                <h3 class="ayuda-subtitulo">Secciones del Tablero Personal:</h3>
+                <ul class="ayuda-lista">
+                    <li><strong>📋 Mis Compromisos:</strong> Lista de acuerdos pendientes asignados a su persona con semáforo de vencimiento (verde = a tiempo, naranja = próximo, rojo = vencido).</li>
+                    <li><strong>📅 Mis Reuniones:</strong> Convocatorias de reuniones pasadas o próximas en las que participa como organizador o asistente convocado.</li>
+                    <li><strong>🎫 Mis Tickets:</strong> Incidencias de soporte que usted ha creado o que le han asignado para resolución técnica.</li>
+                    <li><strong>📂 Mis Expedientes:</strong> Expedientes de trámites de digitalización bajo su responsabilidad o en los que actúa como enlace.</li>
+                </ul>
+            </div>
+
+            @* 3. TABLEROS E INDICADORES *@
+            @if (Model.PuedeTableros)
+            {
+                <div id="ayuda-tableros" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">📋 Tableros e Indicadores Generales</h2>
+                    <p>Ubicación en el menú: <code>Seguimiento &gt; Tableros</code></p>
+                    <p>El tablero general ofrece una visión global de la digitalización gubernamental e indicadores de desempeño acumulados.</p>
+
+                    <h3 class="ayuda-subtitulo">¿Qué encontrará en esta sección?</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Métricas Consolidadas:</strong> Total de expedientes en levantamiento, validación o cerrados.</li>
+                        <li><strong>Distribución por Institución:</strong> Gráficos comparativos por entidad pública.</li>
+                        <li><strong>Avance Mensual:</strong> Tendencias de trámites digitalizados a través del tiempo.</li>
+                    </ul>
+                </div>
+            }
+
+            @* 4. CALENDARIO DE EVENTOS *@
+            @if (Model.PuedeCalendario)
+            {
+                <div id="ayuda-calendario" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">📅 Calendario de Eventos y Plazos</h2>
+                    <p>Ubicación en el menú: <code>Seguimiento &gt; Calendario</code></p>
+
+                    <h3 class="ayuda-subtitulo">Funcionalidades Principales:</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Vista Mensual / Semanal:</strong> Visualice en una sola agenda todas las reuniones agendadas y los plazos límite de entrega de compromisos.</li>
+                        <li><strong>Filtros por Tipo:</strong> Diferencie fácilmente entre reuniones presenciales, virtuales o fechas límite de acuerdos.</li>
+                        <li><strong>Acceso Directo:</strong> Al hacer clic en un evento del calendario podrá abrir el acta de reunión o el detalle del compromiso.</li>
+                    </ul>
+                </div>
+            }
+
+            @* 5. EXPEDIENTES *@
+            @if (Model.PuedeExpedientes)
+            {
+                <div id="ayuda-expedientes" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">📂 Expedientes de Digitalización de Trámites</h2>
+                    <p>Ubicación en el menú: <code>Seguimiento &gt; Expedientes</code></p>
+
+                    <h3 class="ayuda-subtitulo">El Wizard de 7 Secciones:</h3>
+                    <ol class="ayuda-lista">
+                        <li><strong>Apertura del Expediente:</strong> Datos generales de la institución, código y analista asignado.</li>
+                        <li><strong>Ficha del Trámite:</strong> Nombre, descripción, alcance, plazo legal y método de pago.</li>
+                        <li><strong>Marco Legal y Documentación:</strong> Leyes de respaldo, requisitos solicitados y plantilla reutilizable.</li>
+                        <li><strong>Proceso Actual (AS-IS):</strong> Pasos y diagramas del flujo de trabajo existente.</li>
+                        <li><strong>Modelo Propuesto (TO-BE):</strong> Diseño optimizado y trámites digitalizados en SOL.</li>
+                        <li><strong>Infraestructura SOL:</strong> Requerimientos técnicos y perfil de servidores.</li>
+                        <li><strong>Estado del Expediente:</strong> Etapa del expediente (En exploración, levantamiento, modelado, validación o cerrado).</li>
+                    </ol>
+
+                    <div class="ayuda-box notice">
+                        🔔 <strong>Envío de Recordatorio:</strong> En el editor de expediente puede hacer clic en <code>🔔 Recordar</code> para enviar una notificación automática y correo electrónico de seguimiento al analista y al contacto.
+                    </div>
+                </div>
+            }
+
+            @* PROYECTOS *@
+            @if (Model.PuedeProyectos)
+            {
+                <div id="ayuda-proyectos" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">🗂️ Proyectos: portafolio, seguimiento y documentación</h2>
+                    <p>Ubicación en el menú: <code>Proyectos &gt; Portafolio</code>, <code>Mis actividades</code> y <code>Biblioteca</code></p>
+
+                    <div class="ayuda-box info">
+                        💡 <strong>Para verlo funcionando:</strong> abra el proyecto <code>PRY-2026-99 — DEMO</code>.
+                        Es un proyecto de ejemplo, completo de principio a fin, con estructura, fechas,
+                        dependencias, riesgos, bitácora y documentos. Sirve para reconocer cómo se ve un
+                        proyecto bien llevado antes de armar el suyo.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">1. Lo primero: entregable no es lo mismo que actividad</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Un proyecto se descompone en <strong>entregables</strong>, y cada entregable en
+                        <strong>actividades</strong>. Es la distinción que más cuesta al principio:
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Entregable = QUÉ se entrega.</strong> Un producto que se puede señalar y dar por recibido:
+                            «el convenio firmado», «los 6 trámites en producción», «el personal capacitado».</li>
+                        <li><strong>Actividad = QUÉ HAY QUE HACER</strong> para llegar a ese producto:
+                            «redactar el borrador», «configurar en el ambiente de pruebas», «impartir la capacitación».</li>
+                    </ul>
+                    <div class="ayuda-box notice">
+                        ✅ <strong>Prueba rápida:</strong> si no puede decir «esto ya está entregado y alguien lo recibió»,
+                        entonces no es un entregable, es una actividad. Un entregable con el mismo nombre del
+                        proyecto es señal de que todavía falta desglosarlo.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">2. El orden correcto para empezar</h3>
+                    <ol class="ayuda-lista">
+                        <li><strong>Cree el proyecto</strong> desde <code>Proyectos &gt; Portafolio &gt; + Nuevo proyecto</code>.
+                            Nombre, objetivo, prioridad y responsable.</li>
+                        <li><strong>Registre a los interesados ANTES de armar la estructura.</strong> Pestaña
+                            <code>Equipo y riesgos</code>. Esto no es opcional: el responsable de un entregable o de
+                            una actividad <strong>solo puede ser alguien registrado como interesado</strong>. Si se
+                            salta este paso, más adelante el selector de responsable aparece vacío y parece un error
+                            del sistema — no lo es.</li>
+                        <li><strong>Arme la estructura</strong> en la pestaña <code>Estructura</code>: primero los
+                            entregables, y dentro de cada uno sus actividades.</li>
+                        <li><strong>Ponga fechas y responsables</strong> a cada actividad. Sin fechas no hay
+                            cronograma ni forma de saber si algo está atrasado; sin responsable, nadie ve la
+                            actividad en su bandeja personal.</li>
+                    </ol>
+
+                    <h3 class="ayuda-subtitulo">3. El avance no se escribe: se calcula</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>El único número que se teclea es el de la actividad.</strong> De ahí sube solo:
+                            el entregable promedia sus actividades y el proyecto promedia sus entregables. Por eso
+                            el porcentaje del proyecto no se puede editar a mano.</li>
+                        <li><strong>Un entregable sin actividades vale por su estado:</strong> pendiente 0 %,
+                            en proceso 50 %, cumplido 100 %.</li>
+                        <li><strong>Lo cancelado sale del promedio</strong>, ni suma ni resta.</li>
+                        <li><strong>Las fechas reales no se escriben.</strong> Cuando una actividad pasa de 0 % queda
+                            sellada su fecha de inicio, y al llegar a 100 % la de cierre.</li>
+                    </ul>
+
+                    <h3 class="ayuda-subtitulo">4. Cómo reportar un avance</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">Hay dos caminos y llegan al mismo lugar:</p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Desde <code>Proyectos &gt; Mis actividades</code> (lo más cómodo):</strong> ahí están
+                            todas sus actividades de todos sus proyectos, ordenadas por urgencia. Despliegue
+                            <code>Reportar avance</code>, escriba qué se hizo, mueva el porcentaje y adjunte la
+                            evidencia si la tiene. No hace falta entrar proyecto por proyecto.</li>
+                        <li><strong>Desde la ficha del proyecto:</strong> pestaña <code>Bitácora</code>, eligiendo a qué
+                            actividad se imputa el reporte.</li>
+                    </ul>
+                    <div class="ayuda-box info">
+                        📝 <strong>Escriba qué se hizo, no solo el número.</strong> El porcentaje dice cuánto; la
+                        descripción dice qué. Dentro de seis meses, un «60 %» sin explicación no le sirve a nadie.
+                        Si algo está trabando la actividad, anótelo en <code>¿Algo la está trabando?</code>: ese
+                        bloqueo aparece en el tablero mientras siga siendo el último reporte, y se da por superado
+                        solo cuando usted reporta de nuevo sin mencionarlo.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">5. Las pestañas de la ficha</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Están ordenadas por lo que más se usa. La ficha <strong>abre en «Datos del proyecto»</strong>:
+                        es lo que identifica al proyecto y lo que se quiere ver al entrar, aunque se edite poco.
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li><strong>📋 Datos del proyecto:</strong> nombre, objetivo, responsable, prioridad, fechas
+                            y alcance. La pestaña que abre por defecto.</li>
+                        <li><strong>🗂️ Estructura:</strong> el desglose en entregables y actividades. Es donde se
+                            cargan fechas, responsables y dependencias.</li>
+                        <li><strong>📅 Cronograma:</strong> la misma estructura vista en el tiempo. Las barras son las
+                            fechas planificadas y el relleno es el avance reportado; la línea roja es hoy y el
+                            rombo, la fecha comprometida del entregable.</li>
+                        <li><strong>📝 Bitácora:</strong> el histórico de reportes con su evidencia. No se borra nada;
+                            el responsable del proyecto puede corregir una entrada y la corrección queda marcada.</li>
+                        <li><strong>👥 Equipo y riesgos:</strong> interesados y registro de riesgos.</li>
+                        <li><strong>📁 Documentos:</strong> el repositorio del proyecto, con versiones.</li>
+                        <li><strong>🔗 Vínculos:</strong> las reuniones y los expedientes que tocan este proyecto.
+                            Ver el punto 8.</li>
+                        <li><strong>🔎 Auditoría:</strong> quién tocó qué y cuándo. Se escribe sola.</li>
+                    </ul>
+                    <div class="ayuda-box info">
+                        💾 <strong>El botón de guardar solo aparece en Estructura y en Datos.</strong> Son las dos
+                        pestañas que guarda el mismo formulario. En el resto, cada acción se guarda con su propio
+                        botón —reportar un avance, subir un documento, vincular una reunión— y tiene efecto
+                        inmediato.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">6. Dependencias entre actividades</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Bajo el nombre de cada actividad puede declarar <strong>de qué otras depende</strong>: las que
+                        tienen que terminar antes de que esta arranque. Pueden estar en otro entregable del mismo proyecto.
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Avisan, no bloquean.</strong> Si una actividad espera a otra que sigue abierta, se
+                            marca <em>Bloqueada</em> y aparece en el tablero, pero usted puede reportar avance igual.</li>
+                        <li>Solo se puede depender de una actividad <strong>ya guardada</strong>. Para encadenar dos
+                            actividades nuevas, guarde primero y vuelva a entrar.</li>
+                    </ul>
+
+                    <h3 class="ayuda-subtitulo">7. Documentos: repositorio y biblioteca</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Documentos del proyecto</strong> (pestaña <code>Documentos</code>): convenios, actas,
+                            informes. Se clasifican por categoría y <strong>se versionan</strong>: si un acta se corrige,
+                            suba una versión nueva y la anterior queda en el historial. Ninguna versión se pisa.</li>
+                        <li><strong>Puede subir varios archivos a la vez.</strong> Cada uno da de alta
+                            <strong>su propio documento</strong> —no varias versiones del mismo—, todos en la
+                            categoría que elija. Si escribe un título, con un solo archivo se usa tal cual; con
+                            varios, cada documento se llama «Título — nombre del archivo». Si lo deja vacío, cada
+                            uno toma el nombre de su archivo.</li>
+                        <li><strong>Un archivo rechazado no arrastra a los demás.</strong> Si en un lote de diez uno
+                            no es de un tipo permitido, los otros nueve entran igual y el portal le dice cuál falló
+                            y por qué.</li>
+                        <li><strong>Biblioteca</strong> (<code>Proyectos &gt; Biblioteca</code>): la consulta transversal.
+                            Toda la documentación de todos los proyectos que usted puede ver.</li>
+                    </ul>
+
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        La biblioteca se puede mirar de <strong>tres formas</strong>, con el selector de arriba:
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li><strong>Carpetas:</strong> un mosaico navegable. Entra a una y ve lo que contiene.</li>
+                        <li><strong>Agrupado:</strong> todos los grupos abiertos a la vez, para barrer sin navegar.</li>
+                        <li><strong>Lista:</strong> la tabla plana. Es la vista por defecto.</li>
+                    </ul>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Y el <strong>criterio de agrupación se cambia</strong> con «Organizar por»: por categoría
+                        («todos los convenios»), por proyecto («el expediente documental de este») o por
+                        responsable de carga («qué mantiene cada persona»). Es la misma documentación con tres
+                        formas de entrar.
+                    </p>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Además de buscar por texto, categoría, proyecto y fechas, puede filtrar por
+                        <strong>quién cargó</strong> la versión vigente, por <strong>tipo de archivo</strong>, y con
+                        dos interruptores: <em>con más de una versión</em> —los documentos que se negocian, frente a
+                        los que se archivan y no se tocan— y <em>sin actualizar en 90+ días</em>.
+                    </p>
+
+                    <div class="ayuda-box info">
+                        ⬇️ <strong>Las descargas quedan registradas.</strong> Cada vez que alguien baja un archivo se
+                        anota quién y cuándo. La biblioteca muestra el total por documento y la última descarga; la
+                        pestaña <code>Documentos</code> de la ficha lo muestra <strong>por versión</strong>, que es lo
+                        que distingue si se llevaron la copia vieja o la corregida. Se registra desde el 31 de agosto
+                        de 2026: lo anterior figura sin descargas aunque se hubiera bajado.
+                    </div>
+
+                    <div class="ayuda-box notice">
+                        📎 <strong>No confunda documento con evidencia.</strong> La <em>evidencia</em> de la bitácora
+                        respalda un reporte concreto y queda atada a esa fecha. El <em>documento</em> es
+                        documentación del proyecto, existe por sí misma y se versiona.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">8. Vínculos con reuniones y expedientes</h3>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Un proyecto puede señalar qué <strong>reuniones</strong> lo trataron y qué
+                        <strong>expedientes</strong> atiende. El vínculo es <strong>opcional por los dos lados</strong>:
+                        una reunión puede no pertenecer a ningún proyecto —la mayoría no pertenece— y puede tocar a
+                        varios; un proyecto vive sin ninguno.
+                    </p>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        <strong>Se gestiona desde los tres sitios</strong>, y es la misma relación:
+                    </p>
+                    <ul class="ayuda-lista">
+                        <li>Desde la ficha del proyecto, pestaña <code>Vínculos</code>.</li>
+                        <li>Desde el acta de la reunión, bloque <code>Proyectos vinculados</code>. <strong>Es el sitio
+                            natural:</strong> cuando acaba de documentar una reunión tiene presente de qué trataba.</li>
+                        <li>Desde el expediente, el mismo bloque.</li>
+                    </ul>
+                    <p style="font-size:14px;color:#334155;line-height:1.6">
+                        Puede anotar <strong>por qué</strong> se vinculó —«se acordó el alcance del enlace de fibra»—.
+                        Seis meses después, eso explica el vínculo que el título de la reunión no explica. Y la
+                        <strong>✕</strong> quita el vínculo <strong>sin tocar</strong> la reunión ni el expediente:
+                        solo deja de afirmarse que están relacionados.
+                    </p>
+                    <div class="ayuda-box notice">
+                        👁️ <strong>Puede ver un vínculo y no poder abrir su destino.</strong> No es un error. Los
+                        proyectos y las reuniones se ven con reglas distintas: el proyecto lo ve además su
+                        responsable y sus interesados aunque sean de otra institución, y la institución del proyecto
+                        es la que <em>ejecuta</em> mientras que la de la reunión es la <em>beneficiaria</em>. Cuando
+                        eso pasa, la ficha le dice <strong>cuántos vínculos quedan fuera de su alcance</strong> en
+                        vez de esconderlos: así una ficha con seis reuniones vinculadas no se lee como si tuviera dos.
+                    </div>
+                    <div class="ayuda-box info">
+                        📂 <strong>Las secciones vacías salen plegadas.</strong> Si el proyecto no tiene reuniones ni
+                        expedientes vinculados, las dos secciones aparecen cerradas para no hacerle bajar por dos
+                        vacíos. El resumen sigue diciendo cuántos hay.
+                    </div>
+
+                    <h3 class="ayuda-subtitulo">Preguntas frecuentes del módulo</h3>
+
+                    <details class="faq-item">
+                        <summary>Subí varios archivos y todos quedaron con el mismo nombre</summary>
+                        <div class="faq-body">
+                            Revise si escribió un título. Con <strong>un</strong> archivo el título se usa tal cual;
+                            con <strong>varios</strong>, cada documento se llama «Título — nombre del archivo», así
+                            que se distinguen entre sí. Si prefiere que cada uno tome solo el nombre de su archivo,
+                            deje el título en blanco.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>La ficha dice que hay vínculos que no veo</summary>
+                        <div class="faq-body">
+                            Es deliberado. Los proyectos y las reuniones se ven con reglas distintas —un proyecto lo
+                            ve también su responsable y sus interesados aunque sean de otra institución— así que
+                            puede haber reuniones o expedientes vinculados que usted no alcanza. El portal
+                            <strong>le dice cuántos son</strong> en vez de esconderlos, para que no lea una ficha
+                            incompleta como si estuviera completa. No se muestra ni su título ni su institución.
+                            Si necesita verlos, pida el acceso correspondiente.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>El selector de responsable aparece vacío</summary>
+                        <div class="faq-body">
+                            No es un error: los responsables se eligen <strong>entre los interesados del proyecto</strong>,
+                            y todavía no hay ninguno registrado. Vaya a la pestaña <code>Equipo y riesgos</code>,
+                            registre a las personas y vuelva a la estructura. Registrar a alguien como interesado
+                            además le da acceso al proyecto.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>Mi proyecto marca 0 % aunque vamos avanzando</summary>
+                        <div class="faq-body">
+                            El avance sale de las actividades. Si el proyecto no está desglosado —o su único
+                            entregable repite el nombre del proyecto—, no hay de dónde calcularlo. Desglose el
+                            entregable en actividades y reporte sobre ellas.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>El cronograma dice que no hay fechas</summary>
+                        <div class="faq-body">
+                            El Gantt se dibuja con la fecha de inicio y de fin de cada actividad. Cárguelas en la
+                            pestaña <code>Estructura</code>. Las actividades a las que les falte alguna de las dos
+                            se listan aparte, debajo del cronograma.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>Mis actividades me sale vacío</summary>
+                        <div class="faq-body">
+                            Esa bandeja muestra las actividades <strong>a su nombre</strong>. Si está vacía, todavía
+                            no le han asignado ninguna: pídale al responsable del proyecto que lo registre como
+                            interesado y le asigne sus actividades.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>No puedo reordenar los entregables ni corregir la bitácora</summary>
+                        <div class="faq-body">
+                            Esas dos acciones están reservadas al <strong>responsable del proyecto</strong>, incluso
+                            para los administradores. Si el proyecto no tiene responsable asignado, no las permite
+                            nadie: asígnelo primero en <code>Datos del proyecto</code>.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>El proyecto está cerrado y no me deja editar nada</summary>
+                        <div class="faq-body">
+                            Es correcto: un proyecto cerrado o cancelado queda en solo lectura. Para retomarlo use
+                            <code>Reabrir</code> en el encabezado de la ficha; le pedirá un motivo, que queda
+                            registrado en la bitácora.
+                        </div>
+                    </details>
+
+                    <details class="faq-item">
+                        <summary>¿Por qué el tablero muestra pocos proyectos atrasados?</summary>
+                        <div class="faq-body">
+                            Un proyecto solo puede figurar como atrasado si tiene <strong>fecha de cierre
+                            comprometida</strong>. Los que no la tienen se cuentan aparte, en el indicador
+                            <em>«sin línea base»</em>: no están a tiempo, es que no hay contra qué medirlos.
+                        </div>
+                    </details>
+                </div>
+            }
+
+            @* 6. REUNIONES Y COMPROMISOS *@
+            @if (Model.PuedeReuniones)
+            {
+                <div id="ayuda-reuniones" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">👥 Reuniones, Actas y Compromisos</h2>
+                    <p>Ubicación en el menú: <code>Pendientes &gt; Reuniones</code> o <code>Pendientes &gt; Compromisos</code></p>
+
+                    <h3 class="ayuda-subtitulo">Gestión de Reuniones:</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Actas Digitales:</strong> Registro formal del objetivo, desarrollo, participantes y lectura del acta.</li>
+                        <li><strong>Auto-Registro por QR:</strong> Cada reunión genera un enlace y código QR público donde los asistentes pueden registrar su asistencia desde su dispositivo móvil.</li>
+                        <li><strong>Hilos de Reuniones:</strong> Enlace múltiples sesiones continuas en un mismo hilo para mantener la trazabilidad de acuerdos a través del tiempo.</li>
+                    </ul>
+
+                    <h3 class="ayuda-subtitulo">Gestión de Compromisos y Acuerdos:</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Asignación de Responsables:</strong> Asigne cada tarea acordada a un usuario o contacto institucional con un plazo de cumplimiento.</li>
+                        <li><strong>Seguimiento y Evidencias:</strong> Los responsables pueden ingresar al compromiso para agregar comentarios y subir archivos adjuntos como evidencia.</li>
+                        <li><strong>Notificación Manual:</strong> En el detalle del compromiso o acta de reunión, use el botón <code>🔔 Notificar Participantes</code> o <code>🔔 Recordar Responsable</code> para enviar avisos inmediatos por correo y notificación interna.</li>
+                    </ul>
+                </div>
+            }
+
+            @* 7. TICKETS DE SOPORTE *@
+            @if (Model.PuedeTickets)
+            {
+                <div id="ayuda-tickets" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">🎫 Tickets de Soporte e Incidencias SOL</h2>
+                    <p>Ubicación en el menú: <code>Soporte &gt; Tickets</code></p>
+
+                    <h3 class="ayuda-subtitulo">Flujo de Atención de Soporte:</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Creación de Ticket:</strong> Reporte dudas, fallas técnicas o solicitudes seleccionando la categoría y adjuntando capturas de pantalla.</li>
+                        <li><strong>Asignación de Agente:</strong> El equipo técnico o los administradores pueden tomar o reasignar tickets para su atención.</li>
+                        <li><strong>Estados del Ticket:</strong> Abierto ➔ En Progreso ➔ Resuelto ➔ Cerrado.</li>
+                        <li><strong>Botón de Recordatorio:</strong> Dentro de cualquier ticket puede pulsar <code>🔔 Recordar</code> para notificar al agente asignado o al reportante.</li>
+                    </ul>
+                </div>
+            }
+
+            @* 8. CONTACTOS *@
+            @if (Model.PuedeContactos)
+            {
+                <div id="ayuda-contactos" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo">📇 Directorio de Contactos Institucionales</h2>
+                    <p>Ubicación en el menú: <code>Directorio &gt; Contactos</code></p>
+
+                    <h3 class="ayuda-subtitulo">Uso del Directorio:</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Búsqueda de Contactos:</strong> Localice enlaces gubernamentales por nombre, institución, cargo, correo o departamento/área.</li>
+                        <li><strong>Asignación en Asistencias:</strong> Al registrar asistencias en reuniones, el sistema vincula automáticamente el área y datos del contacto.</li>
+                    </ul>
+                </div>
+            }
+
+            @* 9. SECCIÓN ADMINISTRADORA *@
+            @if (Model.EsAdmin)
+            {
+                <div id="ayuda-admin" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                    <h2 class="ayuda-titulo" style="color:#6b21a8">⚙️ Guía de Administración del Sistema</h2>
+                    <p>Esta sección contiene explicaciones de las herramientas reservadas exclusivamente para usuarios con rol <strong>Administrador</strong>.</p>
+
+                    <h3 class="ayuda-subtitulo">1. Matriz de Permisos por Rol (/Accesos)</h3>
+                    <p>En el menú <code>Configuración &gt; Permisos por Rol</code> puede activar o desactivar dinámicamente el acceso a cada módulo (Tableros, Calendario, Expedientes, Reuniones, Tickets, Contactos) para los roles configurables.</p>
+
+                    <h3 class="ayuda-subtitulo">2. Gestión de Usuarios (/Usuarios)</h3>
+                    <ul class="ayuda-lista">
+                        <li><strong>Alta de Usuarios:</strong> Registre nuevos usuarios asignando su rol, institución y credenciales iniciales.</li>
+                        <li><strong>Recuperación de Contraseñas:</strong> Utilice la función de restablecimiento o envíe enlaces de recuperación vía correo institucional.</li>
+                    </ul>
+
+                    <h3 class="ayuda-subtitulo">3. Plantillas de Trámites (/Admin/PlantillasTramite)</h3>
+                    <p>Gestione el catálogo estandarizado de requisitos y marco legal que se precargan automáticamente en los expedientes de digitalización.</p>
+                </div>
+            }
+
+            @* 10. PREGUNTAS FRECUENTES *@
+            <div id="ayuda-faq" class="ayuda-articulo card" style="padding:1.5rem;display:none">
+                <h2 class="ayuda-titulo">❓ Preguntas Frecuentes (FAQ)</h2>
+
+                <details class="faq-item">
+                    <summary>¿Cómo cambio mi contraseña de acceso?</summary>
+                    <div class="faq-body">
+                        Puede cambiar su contraseña haciendo clic en su avatar en la esquina superior derecha, seleccionando <strong>Mi Perfil</strong> y completando el formulario de cambio de clave. Si la olvidó, use la opción <em>"¿Olvidó su contraseña?"</em> en la pantalla de inicio de sesión.
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>¿Cómo funcionan las notificaciones automáticas y los recordatorios manuales?</summary>
+                    <div class="faq-body">
+                        Las notificaciones se reflejan en la campana (🔔) de la barra superior. Además, en Tickets, Expedientes, Reuniones y Compromisos encontrará botones con el ícono <code>🔔 Recordar</code> para enviar avisos inmediatos por notificación interna y correo electrónico.
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>¿Por qué no veo alguna sección del menú?</summary>
+                    <div class="faq-body">
+                        La visibilidad de los módulos depende del rol y de los permisos concedidos por los Administradores en la Matriz de Accesos. Si requiere acceso a un módulo adicional, contacte al Administrador de su institución.
+                    </div>
+                </details>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<style>
+  .ayuda-nav-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 9px 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #334155;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 2px;
+      transition: all .15s ease;
+  }
+  .ayuda-nav-btn:hover { background: #f1f5f9; color: #0a2d6e; }
+  .ayuda-nav-btn.active { background: #eff6ff; color: #1d4ed8; font-weight: 700; }
+  .ayuda-nav-btn.admin.active { background: #faf5ff; color: #6b21a8; font-weight: 700; }
+
+  .ayuda-titulo { font-size: 20px; color: #0a2d6e; margin-top: 0; margin-bottom: 0.8rem; }
+  .ayuda-subtitulo { font-size: 15px; color: #1e293b; margin-top: 1.25rem; margin-bottom: 0.5rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px; }
+  .ayuda-lista { padding-left: 1.2rem; color: #334155; font-size: 14px; line-height: 1.6; }
+  .ayuda-lista li { margin-bottom: 6px; }
+
+  .ayuda-box { padding: 12px 16px; border-radius: 8px; font-size: 13.5px; margin-top: 1rem; line-height: 1.5; }
+  .ayuda-box.info { background: #eff6ff; color: #1e40af; border-left: 4px solid #3b82f6; }
+  .ayuda-box.notice { background: #fefce8; color: #854f0b; border-left: 4px solid #eab308; }
+
+  .faq-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; padding: 10px 14px; }
+  .faq-item summary { font-weight: 600; color: #0f172a; cursor: pointer; font-size: 14px; }
+  .faq-body { margin-top: 8px; font-size: 13.5px; color: #475569; line-height: 1.5; padding-top: 6px; border-top: 1px solid #e2e8f0; }
+</style>
+
+@section Scripts {
+<script>
+  function mostrarTema(temaId, btn) {
+    document.querySelectorAll('.ayuda-articulo').forEach(function(el) { el.style.display = 'none'; });
+    document.querySelectorAll('.ayuda-nav-btn').forEach(function(el) { el.classList.remove('active'); });
+
+    var target = document.getElementById(temaId);
+    if (target) target.style.display = 'block';
+    if (btn) btn.classList.add('active');
+  }
+
+  function filtrarAyuda() {
+    var query = document.getElementById('ayudaSearch').value.toLowerCase();
+    var articulos = document.querySelectorAll('.ayuda-articulo');
+
+    articulos.forEach(function(art) {
+      var texto = art.innerText.toLowerCase();
+      if (!query || texto.includes(query)) {
+        art.style.display = 'block';
+      } else {
+        art.style.display = 'none';
+      }
+    });
+  }
+</script>
+}

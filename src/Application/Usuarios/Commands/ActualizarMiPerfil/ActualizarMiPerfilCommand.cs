@@ -6,10 +6,10 @@ using MediatR;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.ActualizarMiPerfil;
 
-public sealed record ActualizarMiPerfilCommand(Guid UsuarioId, string Nombre, string Correo, string? PasswordActual, string? PasswordNuevo)
+public sealed record ActualizarMiPerfilCommand(Guid UsuarioId, string Nombre, string Correo, string? Telefono)
     : IRequest<Unit>;
 
-public sealed class ActualizarMiPerfilCommandHandler(IUsuarioRepository repo, IPasswordHasher hasher, IUnitOfWork uow)
+public sealed class ActualizarMiPerfilCommandHandler(IUsuarioRepository repo, IUnitOfWork uow)
     : IRequestHandler<ActualizarMiPerfilCommand, Unit>
 {
     public async Task<Unit> Handle(ActualizarMiPerfilCommand cmd, CancellationToken ct)
@@ -22,18 +22,7 @@ public sealed class ActualizarMiPerfilCommandHandler(IUsuarioRepository repo, IP
 
         u.Renombrar(cmd.Nombre);
         u.CambiarCorreo(cmd.Correo);
-
-        if (!string.IsNullOrWhiteSpace(cmd.PasswordNuevo))
-        {
-            if (string.IsNullOrWhiteSpace(cmd.PasswordActual))
-                throw new DomainException("Debe proporcionar su contraseña actual para poder cambiarla.");
-
-            if (!hasher.Verify(cmd.PasswordActual, u.PasswordHash))
-                throw new DomainException("La contraseña actual proporcionada es incorrecta.");
-
-            var nuevoHash = hasher.Hash(cmd.PasswordNuevo);
-            u.CambiarPassword(nuevoHash);
-        }
+        u.ActualizarTelefono(cmd.Telefono);
 
         repo.Update(u);
         await uow.SaveChangesAsync(ct);
@@ -48,9 +37,6 @@ public sealed class ActualizarMiPerfilCommandValidator : AbstractValidator<Actua
         RuleFor(x => x.UsuarioId).NotEmpty();
         RuleFor(x => x.Nombre).NotEmpty().MaximumLength(150);
         RuleFor(x => x.Correo).NotEmpty().EmailAddress().MaximumLength(200);
-        
-        RuleFor(x => x.PasswordNuevo)
-            .MinimumLength(6).WithMessage("La nueva contraseña debe tener al menos 6 caracteres.")
-            .When(x => !string.IsNullOrWhiteSpace(x.PasswordNuevo));
+        RuleFor(x => x.Telefono).MaximumLength(50);
     }
 }

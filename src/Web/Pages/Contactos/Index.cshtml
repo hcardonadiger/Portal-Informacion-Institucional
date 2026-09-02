@@ -1,9 +1,10 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Contactos.IndexModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Directorio de Contactos";
-    var puedeGestionar = User.CanMutate();
-    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
+    var puedeGestionar = await Acceso.PuedeEditarAsync("Contactos");
+    var puedeEliminar  = await Acceso.PuedeEliminarAsync("Contactos");
 }
 
 <div class="container" style="max-width:1040px">
@@ -105,7 +106,13 @@
                                         <span class="badge-baja">Baja</span>
                                     }
                                 </div>
-                                <div class="res-meta" style="margin-top:2px">@(c.Cargo ?? "—")</div>
+                                <div class="res-meta" style="margin-top:2px">
+                                    @(c.Cargo ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(c.Area))
+                                    {
+                                        <span style="color:#475569"> · 🏢 @c.Area</span>
+                                    }
+                                </div>
                             </td>
                             <td>@c.Institucion</td>
                             <td class="res-meta">@(c.Correo ?? "—")</td>
@@ -141,7 +148,7 @@
                                             <input type="hidden" name="id" value="@c.Id" />
                                             <button class="hist-del" type="submit"
                                                     style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
-                                                    data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
+                                                    aria-label="Eliminar contacto" data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
                                         </form>
                                     }
                                 </div>
@@ -187,7 +194,13 @@
                                                     <span class="badge-baja">Baja</span>
                                                 }
                                             </div>
-                                            <div class="res-meta" style="margin-top:2px">@(c.Cargo ?? "—")</div>
+                                            <div class="res-meta" style="margin-top:2px">
+                                    @(c.Cargo ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(c.Area))
+                                    {
+                                        <span style="color:#475569"> · 🏢 @c.Area</span>
+                                    }
+                                </div>
                                         </td>
                                         <td class="res-meta">@(c.Correo ?? "—")</td>
                                         <td class="res-meta">@(c.Telefono ?? "—")</td>
@@ -222,7 +235,7 @@
                                                         <input type="hidden" name="id" value="@c.Id" />
                                                         <button class="hist-del" type="submit"
                                                                 style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
-                                                                data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
+                                                                aria-label="Eliminar contacto" data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
                                                     </form>
                                                 }
                                             </div>

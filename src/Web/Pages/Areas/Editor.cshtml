@@ -38,12 +38,12 @@
             <div class="row2">
                 <div class="field">
                     <label>ID</label>
-                    <input value="@Model.IdFromRoute" disabled style="background:#f4f6fb" />
+                    <input value="@Model.IdFromRoute" disabled style="background:var(--diger-border);color:var(--diger-text-muted)" />
                     <input type="hidden" asp-for="Id" />
                 </div>
                 <div class="field">
                     <label>Institución</label>
-                    <input value="@Model.InstitucionId" disabled style="background:#f4f6fb" />
+                    <input value="@Model.InstitucionId" disabled style="background:var(--diger-border);color:var(--diger-text-muted)" />
                     <input type="hidden" asp-for="InstitucionId" />
                 </div>
             </div>
@@ -69,6 +69,15 @@
             <label>Descripción (Opcional)</label>
             <textarea asp-for="Descripcion" rows="3"></textarea>
         </div>
+
+        @if (!isNew)
+        {
+            <div class="field">
+                <label class="rpill @(Model.Activo ? "on" : "")" style="display:inline-flex;width:fit-content">
+                    <input type="checkbox" asp-for="Activo" style="margin-right:6px" /> Área activa
+                </label>
+            </div>
+        }
 
         <div class="nav">
             <a class="btns" asp-page="./Index">Cancelar</a>

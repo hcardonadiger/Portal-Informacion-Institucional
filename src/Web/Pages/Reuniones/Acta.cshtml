@@ -30,10 +30,192 @@
 <div class="acta-toolbar">
     <a class="btns" asp-page="/Reuniones/Index">← Volver</a>
     <div style="display:flex;gap:8px">
-        <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
-        <button class="btnp" type="button" onclick="window.print()">Imprimir / PDF</button>
+        <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@Model.ReunionId" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio a todos los asistentes convocados a esta reunión?');">
+            <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Notificar Participantes</button>
+        </form>
+        @if (Model.EsAdmin)
+        {
+            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
+        }
+        <a class="btns" asp-page-handler="Json" asp-route-id="@Model.ReunionId">📄 Exportar JSON</a>
+        <a class="btnp" asp-page-handler="Pdf" asp-route-id="@Model.ReunionId">⬇ Descargar PDF</a>
     </div>
 </div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert-success hilo-panel" style="max-width:900px;margin:0 auto 1rem">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert-error hilo-panel" style="max-width:900px;margin:0 auto 1rem">@TempData["ErrorMessage"]</div>
+}
+
+<section class="card hilo-panel" style="max-width:900px;margin:0 auto 1.25rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.9rem">
+        <h3 class="cuenta-card-title" style="margin:0;border:0;padding:0">🔗 Hilo de reuniones</h3>
+        @if (Model.Hilo.HiloId is Guid hid)
+        {
+            <a class="btnp" asp-page="/Reuniones/Hilo" asp-route-id="@hid">Ver hilo completo →</a>
+        }
+    </div>
+
+    @if (Model.Hilo.HiloId is null)
+    {
+        <p style="color:var(--diger-text-muted);font-size:13px;margin:0">
+            Esta reunión no está enlazada a ningún hilo. Enlázala con otra reunión para dar
+            seguimiento a las acciones y tareas ejecutadas a lo largo del tiempo.
+        </p>
+    }
+    else
+    {
+        <p style="color:var(--diger-text-muted);font-size:13px;margin:0 0 .5rem">
+            Reuniones enlazadas en este hilo (@(Model.Hilo.Otras.Count + 1)):
+        </p>
+        <ul class="hilo-linked">
+            @foreach (var m in Model.Hilo.Otras)
+            {
+                <li>
+                    <a asp-page="/Reuniones/Acta" asp-route-id="@m.Id">@m.Titulo</a>
+                    <span>@(m.Fecha?.ToString("dd/MM/yyyy") ?? "sin fecha")@(string.IsNullOrWhiteSpace(m.Institucion) ? "" : " · " + m.Institucion)</span>
+                </li>
+            }
+        </ul>
+        @if (Model.EsAdmin)
+        {
+            <form method="post" asp-page-handler="Desenlazar" asp-route-id="@Model.ReunionId" style="margin-top:.6rem">
+                <button type="submit" class="btns" style="color:var(--diger-danger);border-color:#fca5a5"
+                        onclick="return confirm('¿Quitar esta reunión del hilo?')">Quitar esta reunión del hilo</button>
+            </form>
+        }
+    }
+
+    @if (Model.EsAdmin)
+    {
+        <form method="post" asp-page-handler="Enlazar" asp-route-id="@Model.ReunionId"
+              style="margin-top:1rem;border-top:1px solid var(--diger-border);padding-top:1rem">
+            <label style="display:block;font-size:13px;font-weight:600;color:var(--diger-text-secondary);margin-bottom:6px">
+                Enlazar con otra reunión
+            </label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select name="otraReunionId" style="flex:1;min-width:260px;padding:9px 12px;border:1.5px solid var(--diger-border);border-radius:9px;font-family:inherit;font-size:14px;background:var(--diger-bg-soft)">
+                    <option value="0">— Seleccione una reunión —</option>
+                    @foreach (var e in Model.Enlazables)
+                    {
+                        <option value="@e.Id">@e.Titulo@(e.Fecha is null ? "" : " (" + e.Fecha.Value.ToString("dd/MM/yyyy") + ")")</option>
+                    }
+                </select>
+                <button type="submit" class="btnp">Enlazar</button>
+            </div>
+            @if (Model.Enlazables.Count == 0)
+            {
+                <p style="color:var(--diger-text-faint);font-size:12px;margin:.5rem 0 0">No hay otras reuniones disponibles para enlazar.</p>
+            }
+        </form>
+    }
+</section>
+
+@* ── Proyectos vinculados ────────────────────────────────────────────────────
+   Se vincula desde acá y no solo desde la ficha del proyecto porque este es el
+   momento en que se sabe: quien acaba de documentar la reunión tiene presente de
+   qué trataba. La misma relación se gestiona desde los dos extremos. *@
+@{
+    // Plegada cuando no hay nada: la mayoría de las reuniones no pertenece a ningún proyecto, y el
+    // acta no debería empujarse hacia abajo por un bloque vacío. El resumen dice cuántos hay, así
+    // que plegado no equivale a esconder.
+    var hayProyectos = Model.Proyectos.Proyectos.Count > 0 || Model.Proyectos.FueraDeAlcance > 0;
+}
+<details class="card hilo-panel vinc-sec" style="max-width:900px;margin:0 auto 1.25rem" open="@hayProyectos">
+    <summary class="vinc-sum">
+        <span class="cuenta-card-title" style="margin:0;border:0;padding:0">📁 Proyectos vinculados</span>
+        <span class="vinc-n">@(Model.Proyectos.Proyectos.Count == 0 ? "ninguno" : Model.Proyectos.Proyectos.Count.ToString())</span>
+    </summary>
+
+    @if (Model.Proyectos.Proyectos.Any())
+    {
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th style="width:130px">Código</th>
+                    <th>Proyecto</th>
+                    <th style="width:120px">Estado</th>
+                    <th style="width:90px">Avance</th>
+                    <th style="width:56px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var pr in Model.Proyectos.Proyectos)
+                {
+                    <tr>
+                        <td>
+                            <a asp-page="/Proyectos/Editor" asp-route-id="@pr.ProyectoId"
+                               style="font-weight:600;text-decoration:none">@pr.Codigo</a>
+                        </td>
+                        <td style="white-space:normal">
+                            @pr.Nombre
+                            @if (!string.IsNullOrWhiteSpace(pr.Nota))
+                            {
+                                <div class="res-meta">@pr.Nota</div>
+                            }
+                            <div class="res-meta">Vinculado por @pr.VinculadoPor el @pr.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                        </td>
+                        <td class="res-meta">@pr.Estado</td>
+                        <td class="res-meta">@pr.AvancePct %</td>
+                        <td style="text-align:right">
+                            @if (Model.PuedeVincular)
+                            {
+                                <form method="post" asp-page-handler="DesvincularProyecto"
+                                      asp-route-id="@Model.ReunionId" asp-route-proyectoId="@pr.ProyectoId"
+                                      style="display:inline">
+                                    <input type="hidden" name="VinculoId" value="@pr.VinculoId" />
+                                    <button type="submit" class="btns"
+                                            title="Quitar el vínculo (el proyecto no se toca)">✕</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="res-meta">Esta reunión no está vinculada a ningún proyecto.</p>
+    }
+
+    @if (Model.Proyectos.FueraDeAlcance > 0)
+    {
+        <p class="res-meta" style="margin-top:.6rem">
+            <strong>@Model.Proyectos.FueraDeAlcance</strong>
+            proyecto@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") más está@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "n")
+            vinculado@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+        </p>
+    }
+
+    @if (Model.PuedeVincular && Model.Proyectos.Vinculables.Any())
+    {
+        <form method="post" asp-page-handler="VincularProyecto" asp-route-id="@Model.ReunionId"
+              style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+            <div class="field" style="flex:2;min-width:260px;margin:0">
+                <label for="v-proy">Vincular a un proyecto</label>
+                <select id="v-proy" name="VinculoProyectoId" required>
+                    <option value="">— Elija un proyecto —</option>
+                    @foreach (var o in Model.Proyectos.Vinculables)
+                    {
+                        <option value="@o.Id">@o.Etiqueta</option>
+                    }
+                </select>
+            </div>
+            <div class="field" style="flex:2;min-width:200px;margin:0">
+                <label for="v-nota">Por qué (opcional)</label>
+                <input id="v-nota" name="VinculoNota" maxlength="400"
+                       placeholder="Se acordó el alcance del enlace de fibra" />
+            </div>
+            <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+        </form>
+    }
+</details>
+
 
 <article class="acta">
     <header class="acta-head">
@@ -220,8 +402,8 @@
             @if (Hay(d.Foto1Url) || Hay(d.Foto2Url))
             {
                 <div class="acta-fotos">
-                    @if (Hay(d.Foto1Url)) { <figure><img src="@d.Foto1Url" alt="Evidencia 1" /><figcaption>@d.Foto1Desc</figcaption></figure> }
-                    @if (Hay(d.Foto2Url)) { <figure><img src="@d.Foto2Url" alt="Evidencia 2" /><figcaption>@d.Foto2Desc</figcaption></figure> }
+                    @if (Hay(d.Foto1Url)) { <figure><img src="@Url.Page(null, "Foto", new { id = Model.ReunionId, n = 1 })" alt="Evidencia 1" /><figcaption>@d.Foto1Desc</figcaption></figure> }
+                    @if (Hay(d.Foto2Url)) { <figure><img src="@Url.Page(null, "Foto", new { id = Model.ReunionId, n = 2 })" alt="Evidencia 2" /><figcaption>@d.Foto2Desc</figcaption></figure> }
                 </div>
             }
         </section>
@@ -274,8 +456,43 @@
         .acta-meta, .acta-cols, .acta-fotos { grid-template-columns: 1fr; }
     }
 
+    .hilo-linked {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .hilo-linked li {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: var(--diger-bg-soft);
+        border: 1px solid var(--diger-border);
+    }
+
+    .hilo-linked li a {
+        font-weight: 600;
+        color: var(--diger-blue);
+        text-decoration: none;
+    }
+
+    .hilo-linked li a:hover {
+        text-decoration: underline;
+    }
+
+    .hilo-linked li span {
+        font-size: 12px;
+        color: var(--diger-text-muted);
+    }
+
     @@media print {
-        .app-sidebar, .app-topbar, .acta-toolbar { display: none !important; }
+        .app-header, .gov-bar, .diger-footer, .acta-toolbar, .hilo-panel { display: none !important; }
         body { background: #fff; }
         .acta { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
         .acta-sec, .acta-table tr, figure { break-inside: avoid; }

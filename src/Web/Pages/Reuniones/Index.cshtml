@@ -1,9 +1,23 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Reuniones.IndexModel
+@inject AccesoModulosService Acceso
+@functions {
+    static string IC(string? inst)
+    {
+        if (string.IsNullOrEmpty(inst)) return "ic7";
+        var h = 0; foreach (var c in inst) h = (h * 31 + c) & 0x7FFFFFFF;
+        return $"ic{h % 8}";
+    }
+    static string InstIni(string? inst)
+    {
+        if (string.IsNullOrEmpty(inst)) return "—";
+        return inst.Length >= 2 ? inst[..2].ToUpper() : inst.ToUpper();
+    }
+}
 @{
     ViewData["Title"] = "Reuniones y Asistencias";
-    var puedeGestionar = User.CanMutate();
-    var puedeEliminar  = !User.IsInRole(nameof(RolUsuario.Empleado)) && !User.IsInRole(nameof(RolUsuario.Consultor));
+    var puedeGestionar = await Acceso.PuedeEditarAsync("Reuniones");
+    var puedeEliminar  = await Acceso.PuedeEliminarAsync("Reuniones");
 }
 
 <div class="container" style="max-width:1040px">
@@ -11,13 +25,12 @@
     <div class="hist-header">
         <div>
             <h2>Reuniones y Asistencias</h2>
-            <p>Actas de reuniones y capacitaciones</p>
+            <p>Actas de reuniones y capacitaciones <span class="help-tip tip-down" data-tip="Gestione reuniones, registre asistencia con código QR, documente acuerdos y haga seguimiento a compromisos.">?</span></p>
         </div>
         <div style="display:flex;gap:8px">
             <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaReuniones()">Vista por institución</button>
             @if (puedeGestionar)
             {
-
                 <a class="btnp" asp-page="/Reuniones/Editor">+ Nueva reunión</a>
             }
         </div>
@@ -65,7 +78,7 @@
                     <th>Título</th>
                     <th style="text-align:center">Fecha</th>
                     <th style="text-align:center">Institución</th>
-                    <th style="text-align:center">Tipo</th>
+                    <th style="text-align:center">Tipo <span class="help-tip tip-down tip-left" data-tip="Clasificación: reunión técnica, capacitación, taller, seguimiento, etc.">?</span></th>
                     <th style="text-align:center">Asistentes</th>
                     <th style="width:1%"></th>
                 </tr>
@@ -75,27 +88,38 @@
                 @foreach (var r in Model.Resultado.Items)
                 {
                     <tr>
-                        <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a></td>
+                        <td>
+                            <div class="reun-titulo-cell">
+                                <span class="inst-av av-sm @IC(r.Institucion)" aria-hidden="true">@InstIni(r.Institucion)</span>
+                                <div>
+                                    <a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>
+                                    @if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }
+                                </div>
+                            </div>
+                        </td>
                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
-                        <td style="text-align:center">@(r.Institucion ?? "—")</td>
+                        <td style="text-align:center">
+                            @if (r.Institucion != null) { <span class="inst-pill @IC(r.Institucion)">@r.Institucion</span> }
+                            else { <span class="res-meta">—</span> }
+                        </td>
                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
-                        <td style="text-align:center">@r.NumAsistentes</td>
+                        <td style="text-align:center">
+                            @if (r.NumAsistentes > 0) { <span class="reun-asist-n">@r.NumAsistentes</span> }
+                            else { <span class="res-meta">0</span> }
+                        </td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
                                style="font-size:12.5px;padding:6px 12px">Acta</a>
+                            <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
+                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
                             @if (puedeGestionar)
                             {
-                                <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
-                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
-                            }
-                            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
-                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
-                            @if (puedeEliminar)
-                            {
+                                <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
+                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Editar</a>
                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                     <input type="hidden" name="id" value="@r.Id" />
                                     <button class="hist-del" type="submit" style="margin-left:4px"
-                                            onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
+                                            aria-label="Eliminar reunión" onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
                                 </form>
                             }
                         </td>
@@ -113,6 +137,7 @@
             {
                 <div class="grupo-inst">
                     <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
+                        <span class="inst-av av-lg @IC(grupo.Key == "Sin institución" ? null : grupo.Key)" aria-hidden="true">@InstIni(grupo.Key == "Sin institución" ? null : grupo.Key)</span>
                         <strong>@grupo.Key</strong>
                         <span class="grupo-inst-badge">@grupo.Count() reuni@(grupo.Count() == 1 ? "ón" : "ones")</span>
                         <span class="grupo-inst-chevron">▾</span>
@@ -132,26 +157,26 @@
                                 @foreach (var r in grupo.OrderByDescending(r => r.Fecha))
                                 {
                                     <tr>
-                                        <td><a class="seg-inst" asp-page="/Reuniones/Editor" asp-route-id="@r.Id">@r.Titulo</a></td>
+                                        <td><a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
                                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
-                                        <td style="text-align:center">@r.NumAsistentes</td>
+                                        <td style="text-align:center">
+                                            @if (r.NumAsistentes > 0) { <span class="reun-asist-n">@r.NumAsistentes</span> }
+                                            else { <span class="res-meta">0</span> }
+                                        </td>
                                         <td style="white-space:nowrap;text-align:right">
                                             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
                                                style="font-size:12.5px;padding:6px 12px">Acta</a>
+                                            <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
+                                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
                                             @if (puedeGestionar)
                                             {
-                                                <a class="btns" asp-page="/Reuniones/Asistencia" asp-route-id="@r.Id"
-                                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Asistencia</a>
-                                            }
-                                            <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
-                                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
-                                            @if (puedeEliminar)
-                                            {
+                                                <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@r.Id"
+                                                   style="font-size:12.5px;padding:6px 12px;margin-left:4px">Editar</a>
                                                 <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                                     <input type="hidden" name="id" value="@r.Id" />
                                                     <button class="hist-del" type="submit" style="margin-left:4px"
-                                                            onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
+                                                            aria-label="Eliminar reunión" onclick="return confirm('¿Eliminar esta reunión?')">✕</button>
                                                 </form>
                                             }
                                         </td>
@@ -165,9 +190,20 @@
         </div>
     }
 </div>
+<style>
+    .reun-titulo-cell { display: flex; align-items: center; gap: 10px; }
+    .reun-titulo-cell > div { display: flex; flex-direction: column; gap: 2px; }
+    .reun-asist-n {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 26px; height: 22px; padding: 0 7px;
+        background: var(--diger-blue-light); color: var(--diger-blue);
+        border-radius: 20px; font-size: 12px; font-weight: 700;
+    }
+    .grupo-inst-hdr { display: flex; align-items: center; gap: 10px; }
+</style>
 <script>
     (function () {
-        // Populate dropdowns from table data
+        // Populate dropdowns — inst text is inside .inst-pill, still readable via textContent
         const rows = Array.from(document.querySelectorAll('#reunion-tbl tbody tr'));
         const fill = (id, idx) => {
             const sel = document.getElementById(id);

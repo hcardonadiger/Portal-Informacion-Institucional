@@ -10,6 +10,9 @@ public sealed class ExpedienteTramite : BaseEntity
     public string? NombreCorto     { get; set; }
     public string? AreaResponsable { get; set; }
 
+    public DateOnly   FechaCreacion  { get; set; }
+    public EstadoTramite EstadoTramite { get; set; } = EstadoTramite.Pendiente;
+
     // Ficha
     public string? Modalidad   { get; set; }
     public string? PlazoLegal  { get; set; }
@@ -31,6 +34,8 @@ public sealed class ExpedienteTramite : BaseEntity
     public string? Telefono    { get; set; }
     public string? EmailTramite { get; set; }
     public string? SitioWeb    { get; set; }
+
+    public int? TramiteSigerId { get; set; }
 }
 
 /// <summary>Requisito de un trámite y la acción propuesta en el modelo.</summary>
