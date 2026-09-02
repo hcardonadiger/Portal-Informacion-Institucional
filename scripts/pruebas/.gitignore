@@ -1,0 +1,3 @@
+# Estado de una corrida concreta: huellas, inventarios, bitacoras y los identificadores de
+# los procesos levantados. Es de la maquina donde se probo, no del repositorio.
+.estado/
