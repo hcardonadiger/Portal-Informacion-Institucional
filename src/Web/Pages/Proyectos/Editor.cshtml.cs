@@ -126,6 +126,7 @@ public sealed class EditorModel(
     [BindProperty] public string?           AreaId          { get; set; }
     [BindProperty] public string?           UnidadId        { get; set; }
     [BindProperty] public PrioridadProyecto Prioridad       { get; set; }
+    [BindProperty] public AccionProyecto?   Accion          { get; set; }
     [BindProperty] public DateOnly?         FechaInicioPlan { get; set; }
     [BindProperty] public DateOnly?         FechaFinPlan    { get; set; }
     [BindProperty] public List<EntregableForm> Entregables  { get; set; } = [];
@@ -237,6 +238,7 @@ public sealed class EditorModel(
         AreaId          = Proyecto.AreaId;
         UnidadId        = Proyecto.UnidadId;
         Prioridad       = Proyecto.Prioridad;
+        Accion          = Proyecto.Accion;
         FechaInicioPlan = Proyecto.FechaInicioPlan;
         FechaFinPlan    = Proyecto.FechaFinPlan;
 
@@ -297,6 +299,7 @@ public sealed class EditorModel(
                 ResponsableId,
                 usuarios.FirstOrDefault(u => u.Id == ResponsableId)?.Nombre ?? actual.Responsable,
                 Prioridad,
+                Accion,
                 FechaInicioPlan,
                 FechaFinPlan,
                 entregables), ct);

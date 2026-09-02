@@ -1,5 +1,6 @@
 @page "{id:int}"
 @using Diger.TramitesEstado.Application.Proyectos.Common
+@using Diger.TramitesEstado.Application.Dashboards.Queries
 @model Diger.TramitesEstado.Web.Pages.Proyectos.EditorModel
 @{
     var p = Model.Proyecto;
@@ -811,6 +812,19 @@
                                 <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
                             }
                         </select>
+                    </div>
+                    @* Qué hace DIGER acá. Vacía a propósito para los proyectos que nadie clasificó
+                       todavía: es distinto de elegir mal, y el listado los deja ver como tales. *@
+                    <div class="field" style="width:190px">
+                        <label for="f-accion">Acción</label>
+                        <select id="f-accion" name="Accion" disabled="@(!Model.PuedeEditar)">
+                            <option value="">— Sin clasificar —</option>
+                            @foreach (var ac in Enum.GetValues<AccionProyecto>())
+                            {
+                                <option value="@((int)ac)" selected="@(Model.Accion == ac)">@Etiquetas.Accion(ac)</option>
+                            }
+                        </select>
+                        <div class="res-meta" style="margin-top:4px">Qué hacemos nosotros en el proyecto, no de qué trata.</div>
                     </div>
                     <div class="field" style="width:170px">
                         <label for="f-ini">Inicio planificado</label>

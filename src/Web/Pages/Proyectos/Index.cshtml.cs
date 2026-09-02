@@ -5,6 +5,9 @@ using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
 using Diger.TramitesEstado.Infrastructure.Security;
+// Con alias y no con un using suelto: hay otra clase Etiquetas en Tickets y el nombre a secas se
+// vuelve ambiguo. El alias deja el rótulo de la acción en un solo lugar, el mismo que usa el tablero.
+using EtiquetasProyecto = Diger.TramitesEstado.Application.Dashboards.Queries.Etiquetas;
 
 namespace Diger.TramitesEstado.Web.Pages.Proyectos;
 
@@ -17,6 +20,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     [BindProperty(SupportsGet = true)] public int?               Anio          { get; set; }
     [BindProperty(SupportsGet = true)] public string?            Q             { get; set; }
     [BindProperty(SupportsGet = true)] public PrioridadProyecto? Prioridad     { get; set; }
+    [BindProperty(SupportsGet = true)] public AccionProyecto?    Accion        { get; set; }
     [BindProperty(SupportsGet = true)] public string?            AreaId        { get; set; }
     [BindProperty(SupportsGet = true)] public string?            UnidadId      { get; set; }
 
@@ -29,6 +33,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     [BindProperty] public string?           NuevoObjetivo   { get; set; }
     [BindProperty] public Guid?             NuevoResponsable{ get; set; }
     [BindProperty] public PrioridadProyecto NuevaPrioridad  { get; set; } = PrioridadProyecto.Media;
+    [BindProperty] public AccionProyecto?   NuevaAccion     { get; set; }
     [BindProperty] public DateOnly?         NuevaFechaInicio{ get; set; }
     [BindProperty] public DateOnly?         NuevaFechaFin   { get; set; }
 
@@ -60,7 +65,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
             var id = await sender.Send(new CrearProyectoCommand(
                 NuevoNombre, NuevoObjetivo, AreaId: null, UnidadId: null,
                 ResponsableId: NuevoResponsable, Responsable: responsable,
-                Prioridad: NuevaPrioridad,
+                Prioridad: NuevaPrioridad, Accion: NuevaAccion,
                 FechaInicioPlan: NuevaFechaInicio, FechaFinPlan: NuevaFechaFin), ct);
 
             TempData["SuccessMsg"] = "Proyecto creado. Cargue sus entregables y las actividades de cada uno.";
@@ -75,7 +80,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
 
     private async Task CargarAsync(CancellationToken ct)
     {
-        Proyectos  = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, Prioridad, AreaId, UnidadId, Senal), ct);
+        Proyectos  = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, Prioridad, AreaId, UnidadId, Senal, Accion), ct);
         PuedeCrear = await acceso.PuedeClaveAsync("Proyectos.Crear", ct);
 
         // La lista de usuarios solo hace falta para el filtro y el modal de alta.
@@ -94,11 +99,11 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     /// </summary>
     public async Task<IActionResult> OnGetExportAsync(CancellationToken ct)
     {
-        var proyectos = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, Prioridad, AreaId, UnidadId, Senal), ct);
+        var proyectos = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, Prioridad, AreaId, UnidadId, Senal, Accion), ct);
 
         var sb = new StringBuilder();
         sb.AppendLine(string.Join(",",
-            "Código", "Nombre", "Estado", "Prioridad", "Responsable",
+            "Código", "Nombre", "Estado", "Acción", "Prioridad", "Responsable",
             "Inicio planificado", "Cierre planificado", "Cierre real",
             "Avance % calculado", "Avance % por entregables cerrados", "Brecha (pts)",
             "Último reporte", "Días sin reporte",
@@ -108,7 +113,8 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
 
         foreach (var p in proyectos)
             sb.AppendLine(string.Join(",",
-                Q_(p.Codigo), Q_(p.Nombre), Q_(EstadoTxt(p.Estado)), Q_(p.Prioridad.ToString()),
+                Q_(p.Codigo), Q_(p.Nombre), Q_(EstadoTxt(p.Estado)),
+                Q_(EtiquetasProyecto.Accion(p.Accion)), Q_(p.Prioridad.ToString()),
                 Q_(p.Responsable ?? "sin asignar"),
                 Q_(F(p.FechaInicioPlan)), Q_(F(p.FechaFinPlan)), Q_(F(p.FechaFinReal)),
                 p.AvancePct.ToString(),

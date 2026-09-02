@@ -1735,6 +1735,7 @@ public sealed class ProyectoConfiguration : IEntityTypeConfiguration<Proyecto>
         b.HasIndex(x => x.InstitucionId);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
         b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.Accion).HasConversion<string>().HasMaxLength(20);
 
         // Filtrado: el índice único va sobre los vivos, porque el borrado es lógico y un código
         // liberado por un borrado tiene que poder reutilizarse.
