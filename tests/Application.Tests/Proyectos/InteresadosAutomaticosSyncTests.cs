@@ -159,5 +159,47 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             .Should().BeTrue();
     }
 
+    [Fact]
+    public async Task SincronizarProyectoYSincronizarUsuario_CoincidenEnElRolCuandoCalificaPorAmbosCaminos()
+    {
+        // Usuario que es a la vez JefeDeArea de AREA-X y Pmo de UNIDAD-Y, y un proyecto que cae
+        // dentro de ambas. Los dos métodos de sincronización mantienen la misma tabla
+        // ProyectoInteresados, así que tienen que coincidir en el Rol que le asignan a este par
+        // (usuario, proyecto) — sin importar cuál de los dos se invoque, ni cuántas veces.
+        var jefePmo = await SembrarUsuarioAsync("Jefe y Pmo a la vez");
+        _ctx.AsignacionesUsuario.Add(AsignacionUsuario.Crear(jefePmo.Id, "DIGER", "AREA-X", null, "JefeArea"));
+        _ctx.AsignacionesUsuario.Add(AsignacionUsuario.Crear(jefePmo.Id, "DIGER", null, "UNIDAD-Y", "Pmo"));
+        _catalogo.Obtener("JefeArea").Returns(new RolInfo(
+            "JefeArea", "Jefe de Área", NivelAlcance.Area, false, false, false, false,
+            EsJefeDeArea: true, EsPmo: false, Color: null));
+        _catalogo.Obtener("Pmo").Returns(new RolInfo(
+            "Pmo", "PMO", NivelAlcance.Unidad, false, false, false, false,
+            EsJefeDeArea: false, EsPmo: true, Color: null));
+
+        var proyecto = Proyecto.Crear("PRY-2026-08", "Proyecto en ambos caminos");
+        proyecto.AreaId = "AREA-X";
+        proyecto.UnidadId = "UNIDAD-Y";
+        _ctx.Proyectos.Add(proyecto);
+        await _ctx.SaveChangesAsync();
+
+        // Vía SincronizarProyectoAsync, dos veces seguidas (idempotencia).
+        await _sync.SincronizarProyectoAsync(proyecto.Id);
+        await _sync.SincronizarProyectoAsync(proyecto.Id);
+        var filaPorProyecto = await _ctx.ProyectoInteresados
+            .SingleAsync(i => i.ProyectoId == proyecto.Id && i.UsuarioId == jefePmo.Id);
+        filaPorProyecto.Rol.Should().Be(RolInteresado.Ejecutor);
+
+        // Se limpia la fila para poder observar de forma aislada lo que produce el otro método.
+        _ctx.ProyectoInteresados.Remove(filaPorProyecto);
+        await _ctx.SaveChangesAsync();
+
+        // Vía SincronizarUsuarioAsync, dos veces seguidas (idempotencia — no debería alternar Rol).
+        await _sync.SincronizarUsuarioAsync(jefePmo.Id);
+        await _sync.SincronizarUsuarioAsync(jefePmo.Id);
+        var filaPorUsuario = await _ctx.ProyectoInteresados
+            .SingleAsync(i => i.ProyectoId == proyecto.Id && i.UsuarioId == jefePmo.Id);
+        filaPorUsuario.Rol.Should().Be(RolInteresado.Ejecutor);
+    }
+
     public void Dispose() => _ctx.Dispose();
 }

@@ -45,37 +45,50 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
 
     public async Task SincronizarUsuarioAsync(Guid usuarioId, CancellationToken ct = default)
     {
+        // OrderBy: no cambia el resultado (ver más abajo por qué), pero evita depender del orden
+        // en que el motor de base de datos decida devolver las filas.
         var asignaciones = await ctx.AsignacionesUsuario
             .Where(a => a.UsuarioId == usuarioId)
+            .OrderBy(a => a.Id)
             .ToListAsync(ct);
 
         var deseados = new Dictionary<int, RolInteresado>();
 
-        // Cada asignación se evalúa por su propio rol: un usuario puede tener varias asignaciones
-        // (una por institución/área/unidad) con roles distintos entre sí, así que no basta con
-        // mirar la primera — eso dejaría sin sincronizar cualquier asignación que no sea la primera.
-        foreach (var asignacion in asignaciones)
+        // Precedencia FIJA cuando un mismo proyecto califica por los dos caminos: primero se
+        // aplican todas las áreas (JefeDeArea -> Patrocinador) y RECIÉN DESPUÉS todas las unidades
+        // (Pmo -> Ejecutor), que sobrescriben. Es el mismo orden de bloques que
+        // CalcularDeseadosPorProyectoAsync (área primero, unidad después) — a propósito: si no
+        // coinciden, SincronizarProyectoAsync y SincronizarUsuarioAsync pueden calcular un Rol
+        // distinto para el mismo par (usuario, proyecto) y no hay ninguna razón de negocio para que
+        // el resultado dependa de cuál de los dos métodos se llamó, ni de en qué orden EF devuelva
+        // las AsignacionesUsuario del usuario (antes: se iteraba asignación por asignación y ganaba
+        // la última que trajera la base — no determinístico).
+        var areas = asignaciones
+            .Where(a => a.AreaId != null && catalogo.Obtener(a.Rol)?.EsJefeDeArea == true)
+            .Select(a => a.AreaId!)
+            .Distinct()
+            .ToList();
+        if (areas.Count > 0)
         {
-            var rolInfo = catalogo.Obtener(asignacion.Rol);
-            if (rolInfo is null) continue;
+            var ids = await ctx.Proyectos.IgnoreQueryFilters()
+                .Where(p => !p.IsDeleted && p.AreaId != null && areas.Contains(p.AreaId))
+                .Select(p => p.Id)
+                .ToListAsync(ct);
+            foreach (var id in ids) deseados[id] = RolInteresado.Patrocinador;
+        }
 
-            if (rolInfo.EsJefeDeArea && asignacion.AreaId is { } areaId)
-            {
-                var ids = await ctx.Proyectos.IgnoreQueryFilters()
-                    .Where(p => !p.IsDeleted && p.AreaId == areaId)
-                    .Select(p => p.Id)
-                    .ToListAsync(ct);
-                foreach (var id in ids) deseados[id] = RolInteresado.Patrocinador;
-            }
-
-            if (rolInfo.EsPmo && asignacion.UnidadId is { } unidadId)
-            {
-                var ids = await ctx.Proyectos.IgnoreQueryFilters()
-                    .Where(p => !p.IsDeleted && p.UnidadId == unidadId)
-                    .Select(p => p.Id)
-                    .ToListAsync(ct);
-                foreach (var id in ids) deseados[id] = RolInteresado.Ejecutor;
-            }
+        var unidades = asignaciones
+            .Where(a => a.UnidadId != null && catalogo.Obtener(a.Rol)?.EsPmo == true)
+            .Select(a => a.UnidadId!)
+            .Distinct()
+            .ToList();
+        if (unidades.Count > 0)
+        {
+            var ids = await ctx.Proyectos.IgnoreQueryFilters()
+                .Where(p => !p.IsDeleted && p.UnidadId != null && unidades.Contains(p.UnidadId))
+                .Select(p => p.Id)
+                .ToListAsync(ct);
+            foreach (var id in ids) deseados[id] = RolInteresado.Ejecutor;
         }
 
         var todosLosActuales = await ctx.ProyectoInteresados
