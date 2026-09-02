@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Proyectos.Common;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Commands;
 
@@ -70,7 +71,8 @@ public sealed record CrearProyectoCommand(
 
 public sealed class CrearProyectoCommandHandler(
     IApplicationDbContext ctx,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<CrearProyectoCommand, int>
 {
     public async Task<int> Handle(CrearProyectoCommand cmd, CancellationToken ct)
@@ -94,6 +96,10 @@ public sealed class CrearProyectoCommandHandler(
 
         ctx.Proyectos.Add(proyecto);
         await ctx.SaveChangesAsync(ct);
+
+        if (!string.IsNullOrWhiteSpace(proyecto.AreaId) || !string.IsNullOrWhiteSpace(proyecto.UnidadId))
+            await sync.SincronizarProyectoAsync(proyecto.Id, ct);
+
         return proyecto.Id;
     }
 
@@ -135,7 +141,8 @@ public sealed record ActualizarProyectoCommand(
 
 public sealed class ActualizarProyectoCommandHandler(
     IApplicationDbContext ctx,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<ActualizarProyectoCommand, Unit>
 {
     public async Task<Unit> Handle(ActualizarProyectoCommand cmd, CancellationToken ct)
@@ -151,6 +158,12 @@ public sealed class ActualizarProyectoCommandHandler(
 
         // El diff se arma ANTES de tocar nada: después las propiedades ya son las nuevas.
         var cambiosFicha = DiffFicha(proyecto, cmd, nombre);
+
+        // Se compara ANTES de mutar: una vez asignadas, proyecto.AreaId/UnidadId ya son los valores
+        // nuevos y la comparación siempre daría "sin cambio".
+        var areaOUnidadCambio =
+               proyecto.AreaId   != (string.IsNullOrWhiteSpace(cmd.AreaId)   ? null : cmd.AreaId.Trim())
+            || proyecto.UnidadId != (string.IsNullOrWhiteSpace(cmd.UnidadId) ? null : cmd.UnidadId.Trim());
 
         proyecto.Nombre          = nombre;
         proyecto.Objetivo        = string.IsNullOrWhiteSpace(cmd.Objetivo) ? null : cmd.Objetivo.Trim();
@@ -224,6 +237,10 @@ public sealed class ActualizarProyectoCommandHandler(
                 proyecto.Id, TipoEventoProyecto.ModificacionEstructura, resultado.Resumen, actor));
 
         await ctx.SaveChangesAsync(ct);
+
+        if (areaOUnidadCambio)
+            await sync.SincronizarProyectoAsync(cmd.Id, ct);
+
         return Unit.Value;
     }
 

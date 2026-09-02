@@ -3,6 +3,7 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 using Diger.TramitesEstado.Application.Tests.Expedientes;
 using Diger.TramitesEstado.Domain.Common;
 using Diger.TramitesEstado.Domain.Entities;
@@ -27,6 +28,7 @@ public class ProyectosDependenciasTests : IDisposable
 {
     private readonly AppDbContext _ctx;
     private readonly ICurrentUserService _usuario = Substitute.For<ICurrentUserService>();
+    private readonly IInteresadosAutomaticosSync _sync = Substitute.For<IInteresadosAutomaticosSync>();
 
     public ProyectosDependenciasTests()
     {
@@ -42,7 +44,7 @@ public class ProyectosDependenciasTests : IDisposable
     // Alcanzan para encadenar, para cerrar un círculo y para dejar una suelta.
     private async Task<int> ProyectoConTresActividadesAsync()
     {
-        var id = await new CrearProyectoCommandHandler(_ctx, _usuario)
+        var id = await new CrearProyectoCommandHandler(_ctx, _usuario, _sync)
             .Handle(new CrearProyectoCommand("SOL — institución de prueba"), CancellationToken.None);
 
         await GuardarAsync(id, [Entregable("Integración", "Levantamiento", "Desarrollo", "Piloto")]);
@@ -54,7 +56,7 @@ public class ProyectosDependenciasTests : IDisposable
             actividades.Select(a => new ActividadInput(0, a, null, null, null, 0, false, null, null)).ToList());
 
     private Task GuardarAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
-        new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "SOL — institución de prueba", null, null, null, null, null,
             PrioridadProyecto.Media, null, null, entregables), CancellationToken.None);
 

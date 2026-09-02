@@ -4,6 +4,7 @@ using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.EventHandlers;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 using Diger.TramitesEstado.Application.Tests.Expedientes;
 using Diger.TramitesEstado.Domain.Common;
 using Diger.TramitesEstado.Domain.Entities;
@@ -20,6 +21,7 @@ public class ProyectosTests : IDisposable
 {
     private readonly AppDbContext _ctx;
     private readonly ICurrentUserService _usuario = Substitute.For<ICurrentUserService>();
+    private readonly IInteresadosAutomaticosSync _sync = Substitute.For<IInteresadosAutomaticosSync>();
 
     public ProyectosTests()
     {
@@ -31,7 +33,7 @@ public class ProyectosTests : IDisposable
     }
 
     private Task<int> CrearAsync(string nombre = "Proyecto de prueba") =>
-        new CrearProyectoCommandHandler(_ctx, _usuario)
+        new CrearProyectoCommandHandler(_ctx, _usuario, _sync)
             .Handle(new CrearProyectoCommand(nombre, FechaInicioPlan: new DateOnly(2026, 3, 1)), CancellationToken.None);
 
     // ── Código correlativo ────────────────────────────────────────
@@ -52,7 +54,7 @@ public class ProyectosTests : IDisposable
             FechaInicioPlan: new DateOnly(2026, 6, 1),
             FechaFinPlan: new DateOnly(2026, 5, 1));
 
-        var act = () => new CrearProyectoCommandHandler(_ctx, _usuario).Handle(cmd, CancellationToken.None);
+        var act = () => new CrearProyectoCommandHandler(_ctx, _usuario, _sync).Handle(cmd, CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
     }
@@ -581,7 +583,7 @@ public class ProyectosTests : IDisposable
         var idA = await CrearAsync("A");
         var idB = await CrearAsync("B");
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             idB, "B", null, null, null, null, null, PrioridadProyecto.Media, null, null,
             [new EntregableInput(0, "Entregable de B", null, null, EstadoEntregable.Pendiente, null, null, [])]),
             CancellationToken.None);
@@ -614,7 +616,7 @@ public class ProyectosTests : IDisposable
     {
         var id = await CrearAsync();
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null, null, null, PrioridadProyecto.Alta, null, null,
             [
                 new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente,  null, null, []),
@@ -848,7 +850,7 @@ public class ProyectosTests : IDisposable
             .ToListAsync();
 
     private Task GuardarFichaAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
-        new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null, Duenio, "Dueño del proyecto",
             PrioridadProyecto.Media, null, null, entregables), CancellationToken.None);
 
@@ -915,7 +917,7 @@ public class ProyectosTests : IDisposable
     private async Task<int> ConEntregablesAsync(Guid? responsable)
     {
         var id = await CrearAsync();
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null,
             responsable, responsable is null ? null : "Dueño del proyecto",
             PrioridadProyecto.Media, null, null,
@@ -1151,7 +1153,7 @@ public class ProyectosTests : IDisposable
             .Append(new EntregableInput(0, "Nuevo", null, null, EstadoEntregable.Pendiente, null, null, []))
             .ToList();
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto con otro nombre", null, null, null, Duenio, "Dueño del proyecto",
             PrioridadProyecto.Alta, null, null, entrada), CancellationToken.None);
 
