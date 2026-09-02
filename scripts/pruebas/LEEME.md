@@ -3,113 +3,141 @@
 Para probar el aplicativo entrando, guardando y publicando de verdad, sin que quede una sola
 fila de basura en las bases que después hay que fusionar con la de TEST.
 
-## La idea
+## Lo primero: el sistema ya arranca en una copia
 
-No se limpia después: se prueba sobre una copia y la copia se destruye entera.
+Desde el 2 de septiembre de 2026, los tres `appsettings.Development.json` apuntan al
+**sandbox**, no a las bases reales:
 
-Limpiar no alcanza. Una prueba no solo inserta filas: deja bitácora, historial, y sellos de
-`UpdatedAt` y `UpdatedBy` en filas que ya existían. Eso no se deshace con un `DELETE`, y es
-justo lo que ensuciaría la fusión con TEST.
-
-## Los cuatro comandos
-
-Desde `scripts\pruebas` en PowerShell:
-
-| Comando | Qué hace |
+| Sistema | Base a la que se conecta |
 |---|---|
-| `.\Nuevo-EntornoPruebas.ps1` | Copia las bases reales a copias `_E2E` y guarda una huella de las reales |
-| `.\Iniciar-EntornoPruebas.ps1` | Levanta las tres aplicaciones apuntadas a las copias |
-| `.\Verificar-BasesReales.ps1` | Dice si las bases reales cambiaron (se puede correr cuando sea) |
-| `.\Borrar-EntornoPruebas.ps1` | Baja todo, borra los archivos subidos y destruye las copias |
+| GestionGD (portal interno) | `DigerTramitesEstado_Unificada_Sandbox` |
+| API pública | `DigerTramitesEstado_Unificada_Sandbox` |
+| HondurasSimple (portal ciudadano) | `VentanillaDigital_Net_Sandbox` |
 
-`Borrar` ya llama a `Detener` y a `Verificar` por dentro. Con esos cuatro alcanza.
+Vale igual si arranca desde Visual Studio, desde `dotnet run` o desde `Iniciar-Todo.ps1`.
+Encender el sistema **no puede** escribir en la base real: para eso habría que descomentar a
+mano la otra línea del archivo, y que cueste un gesto consciente es justamente lo que evita
+el accidente.
 
-## Direcciones mientras el entorno está arriba
+## Los dos entornos, y cuándo se usa cada uno
 
-| Sistema | Dirección |
-|---|---|
-| GestionGD (portal interno) | https://localhost:49185 |
-| API pública | http://localhost:5299/swagger |
-| HondurasÁgil (portal ciudadano) | https://localhost:7280 |
+**Sandbox** (`_Sandbox`) — el del día a día, y el que usa quien prueba. Es una copia
+permanente, sembrada para que haya contenido que mirar. Se ensucia sin culpa; cuando estorbe,
+se rehace.
 
-Son puertos distintos a los de desarrollo (49175 / 7199 / 7180) a propósito: los dos entornos
-pueden estar arriba a la vez sin pisarse, y el puerto por sí solo dice dónde está uno parado.
+```
+scripts\pruebas\Refrescar-Sandbox.ps1            crea el sandbox y lo siembra
+scripts\pruebas\Refrescar-Sandbox.ps1 -Rehacer   lo tira y lo copia de nuevo
+scripts\Iniciar-Todo.ps1                         levanta los tres sistemas
+```
+
+**Desechable** (`_E2E`) — para cuando hace falta *demostrar* que las bases reales no se
+tocaron: toma una huella antes, otra después, y las compara.
+
+```
+scripts\pruebas\Nuevo-EntornoPruebas.ps1      copia las reales y toma su huella
+scripts\pruebas\Iniciar-EntornoPruebas.ps1    levanta los tres en puertos aparte
+scripts\pruebas\Verificar-BasesReales.ps1     dice si las reales cambiaron
+scripts\pruebas\Borrar-EntornoPruebas.ps1     destruye copias y archivos subidos
+```
+
+## Por qué hace falta sembrar el sandbox
+
+La base real es un volcado crudo de SIGER: 1057 trámites, **ninguno publicado**, ninguno con
+categoría, modalidad, costo ni tiempo. HondurasSimple solo enseña lo que GestionGD publica,
+así que contra una copia tal cual el catálogo sale **vacío** y no hay nada que probar.
+
+El sembrado publica los trámites que tienen con qué llenar una ficha —institución, pasos y
+requisitos reales— y les pone categoría, modalidad, costo y tiempo **de relleno**. Ese
+relleno es inventado y está ahí para que las pantallas tengan variedad que filtrar y ordenar.
+Lo que se prueba es el comportamiento de la pantalla, no la exactitud del dato.
+
+Resultado del sembrado: **460 publicados** en 19 instituciones, con las cuatro modalidades
+representadas y un resto a propósito sin modalidad, sin costo y sin tiempo, porque hay
+comportamientos que solo se ven cuando el dato falta.
+
+De esos 460, HondurasSimple replica **54**: los de `INPREMA`, `IHTT` y `CONSUCOOP`, que es el
+corte del piloto. Eso lo decide el propio portal ciudadano, no el sembrado.
+
+## Direcciones
+
+| Sistema | Con `Iniciar-Todo.ps1` (sandbox) | Con `Iniciar-EntornoPruebas.ps1` (desechable) |
+|---|---|---|
+| GestionGD | https://localhost:49175 | https://localhost:49185 |
+| API pública | https://localhost:7199/swagger | http://localhost:5299/swagger |
+| HondurasSimple | https://localhost:7180 | https://localhost:7280 |
+
+Chrome avisa la primera vez de que el certificado no es de fiar. Se arregla de una vez con
+`dotnet dev-certs https --trust`, aceptando el cuadro que sale.
 
 ## Por qué no puede tocar la base real
 
 Cuatro barreras, no una:
 
 1. **Sufijo obligatorio.** Ningún guion crea, sobrescribe ni borra una base cuyo nombre no
-   termine en `_E2E`. La comprobación corre otra vez justo antes de cada `RESTORE` y de cada
-   `DROP`, no solo al empezar.
+   termine en `_E2E` o `_Sandbox`. La comprobación corre otra vez justo antes de cada
+   `RESTORE` y de cada `DROP`, no solo al empezar. El guion de sembrado hace lo mismo por su
+   cuenta: si la base no termina en `_Sandbox`, se detiene sin tocar nada.
 2. **Lista de intocables.** `DigerTramitesEstado_Unificada`, `VentanillaDigital_Net`,
    `GestionGD_TEST`, `TramitesEstado_Prod`, `master` y las demás están negadas por nombre,
-   aunque alguien las renombrara terminándolas en `_E2E`.
-3. **Ningún appsettings se toca.** Las aplicaciones se apuntan a las copias solo por variables
-   de entorno del proceso que se lanza, y esas mueren con el proceso. Un archivo de
-   configuración editado, en cambio, sobrevive al olvido.
+   aunque alguien las renombrara terminándolas en `_Sandbox`.
+3. **Development ya no apunta a las reales.** Es la barrera que cubre el arranque normal,
+   el que nadie recuerda revisar.
 4. **El respaldo es `COPY_ONLY`.** Copiar la base real no le altera ni su cadena de respaldos.
 
-Y para no quedarse en la promesa, `Nuevo-EntornoPruebas.ps1` toma una huella de las bases
-reales antes de empezar, y `Borrar-EntornoPruebas.ps1` la vuelve a tomar al terminar y las
-compara. La huella son dos medidas:
-
-- filas por tabla, que ve las altas y las bajas;
-- el contador de escrituras del propio motor (`user_updates`), que ve además las
-  modificaciones, que el conteo de filas no distingue.
-
-Si las dos coinciden, no se escribió nada. Si SQL Server se reinició en medio, el contador
-vuelve a cero y deja de servir; el guion lo detecta y lo dice, en vez de dar un falso verde.
+Y para no quedarse en la promesa, el entorno desechable toma una huella de las bases reales
+antes de empezar y la vuelve a tomar al terminar. La huella son dos medidas: filas por tabla,
+que ve las altas y las bajas; y el contador de escrituras del propio motor (`user_updates`),
+que ve además las modificaciones. Si las dos coinciden, no se escribió nada.
 
 ## La comprobación a ojo
 
 Arriba de cada pantalla hay una cinta. En pruebas es verde y dice el nombre de la base:
 
-    Entorno de pruebas · base DigerTramitesEstado_Unificada_E2E
+    Entorno de pruebas · base DigerTramitesEstado_Unificada_Sandbox
 
-Si dice `_E2E`, es la copia. Si alguna vez sale roja diciendo **PRODUCCIÓN — datos reales**,
-hay que cerrar y avisar.
+Si dice `_Sandbox` o `_E2E`, es una copia. Si alguna vez sale roja diciendo
+**PRODUCCIÓN — datos reales**, hay que cerrar y avisar.
 
-## Cosas que conviene saber antes de probar
+## Cosas que conviene saber
 
 - Los usuarios y contraseñas son los mismos que en la base real: la copia es idéntica.
-- La copia se hace en el momento, así que refleja la base real tal como esté ese día.
-- HondurasÁgil reconcilia con la API cada 60 minutos. Para no esperar una hora a que se vea
-  un cambio hecho en GestionGD, arranque con `.\Iniciar-EntornoPruebas.ps1 -SincronizacionRapida`
-  y el ciclo pesado pasa a un minuto.
-- La salida de cada aplicación va a `.estado\log-portal.txt`, `log-api.txt` y `log-agil.txt`.
-  Si algo no arranca, el motivo está ahí, no en una ventana que hay que estar mirando.
-- El plan de pruebas con los 14 casos está en
-  `honduras-agil\docs\plan-de-pruebas-manual.html`.
+- La clave de la API la manda *user-secrets* si está puesta; da igual, ambos lados usan la
+  misma. El valor de `appsettings.Development.json` solo entra si no hay user-secrets.
+- HondurasSimple sincroniza cada 10 segundos el ciclo ligero y cada **5 minutos** el pesado.
+  Las **bajas** solo se resuelven en el pesado: quitar una publicación tarda hasta 5 minutos
+  en verse.
+- El sembrado no se repite solo. `Refrescar-Sandbox.ps1` lo salta si ya hay trámites
+  publicados, para no pisar lo que se haya publicado a mano durante las pruebas. Con
+  `-SoloSembrar` se fuerza.
 
 ## Encargo para Cowork
 
 Texto para pegarle tal cual:
 
-> Quiero que pruebes el aplicativo sin tocar las bases reales.
+> Quiero que pruebes HondurasSimple desde Chrome, viéndolo.
 >
-> 1. Abrí PowerShell en `C:\Users\jgarcia\Documents\Portal-Informacion-Institucional\scripts\pruebas`.
-> 2. Corré `.\Nuevo-EntornoPruebas.ps1 -Rehacer` y después
->    `.\Iniciar-EntornoPruebas.ps1 -SincronizacionRapida`.
-> 3. Antes de tocar nada, entrá a https://localhost:49185 y confirmá que la cinta de arriba
->    dice **Entorno de pruebas** y que el nombre de la base termina en `_E2E`. Si no dice eso,
+> 1. Abrí PowerShell en `C:\Users\jgarcia\Documents\Portal-Informacion-Institucional`.
+> 2. Corré `scripts\pruebas\Refrescar-Sandbox.ps1` y después `scripts\Iniciar-Todo.ps1`.
+> 3. Entrá a https://localhost:7180 y confirmá que la cinta de arriba dice
+>    **Entorno de pruebas** y que el nombre de la base termina en `_Sandbox`. Si no dice eso,
 >    parás y avisás.
-> 4. Corré los casos del plan `honduras-agil\docs\plan-de-pruebas-manual.html` contra
->    https://localhost:49185 y https://localhost:7280. Podés crear, editar, publicar y borrar
->    lo que haga falta: es una copia desechable.
-> 5. Al terminar, corré `.\Borrar-EntornoPruebas.ps1` y pegame lo que imprime la parte de
->    "Comprobando que las bases reales están intactas".
-> 6. Contame qué caso pasó y cuál no, con la evidencia.
+> 4. Seguí el documento `honduras-agil\docs\flujo-de-pruebas-hondurassimple.html` de arriba
+>    abajo, los 22 pasos. Antes de reportar nada, leé la sección
+>    «Lo que ya sabemos y no hay que reportar».
+> 5. Podés buscar, filtrar, votar y publicar lo que haga falta: es una copia desechable.
+> 6. Contame paso por paso cuál pasó y cuál no, con captura de lo que no.
 >
 > No edites ningún `appsettings.json`. No corras nada contra
 > `DigerTramitesEstado_Unificada` ni `VentanillaDigital_Net`.
 
 ## Si algo sale mal
 
-- **Un puerto quedó ocupado.** `.\Detener-EntornoPruebas.ps1` mata lo que esté escuchando en
-  los puertos de pruebas.
-- **No se puede borrar una copia porque hay conexiones.** Correr `Detener` primero; el `DROP`
-  usa `SINGLE_USER WITH ROLLBACK IMMEDIATE`, pero SSMS abierto en esa base también cuenta.
+- **El catálogo de HondurasSimple sale vacío.** O no ha corrido la sincronización, o la API
+  no responde. Abra https://localhost:7199/swagger para descartar lo segundo.
+- **Un puerto quedó ocupado.** `Detener-EntornoPruebas.ps1` para el entorno desechable; para
+  el normal, cierre las ventanas que abrió `Iniciar-Todo.ps1`.
+- **No se puede borrar una copia porque hay conexiones.** Detenga primero; el `DROP` usa
+  `SINGLE_USER WITH ROLLBACK IMMEDIATE`, pero SSMS abierto en esa base también cuenta.
 - **`Verificar-BasesReales.ps1` marca diferencias.** Si tuvo SSMS o Visual Studio escribiendo
-  en la base real mientras probaba, la diferencia puede ser suya y no de las pruebas. El
-  detalle sale tabla por tabla.
+  en la base real mientras probaba, la diferencia puede ser suya y no de las pruebas.

@@ -100,70 +100,8 @@ foreach ($c in $carpetas) {
 # ---------------------------------------------------------------------------------------
 # 3. Respaldo COPY_ONLY y restauracion con nombre nuevo
 # ---------------------------------------------------------------------------------------
-function Get-PropiedadServidor {
-    param([string] $Propiedad)
-    $r = Invoke-Sql -Instancia $Instancia -Consulta "SET NOCOUNT ON; SELECT CONVERT(nvarchar(400), SERVERPROPERTY('$Propiedad'));"
-    return ($r | Where-Object { $_ -match '\S' } | Select-Object -First 1).Trim()
-}
-
-function New-CopiaDesechable {
-    param(
-        [Parameter(Mandatory)][string] $Origen,
-        [Parameter(Mandatory)][string] $Copia
-    )
-
-    # Otra vez, justo antes de la operacion destructiva. Es barato y es el punto que importa.
-    Assert-EsCopiaDesechable $Copia
-
-    if (Test-BaseExiste -Instancia $Instancia -Base $Copia) {
-        if (-not $Rehacer) {
-            Write-Aviso "$Copia ya existe. Use -Rehacer si la quiere rehacer desde cero."
-            return
-        }
-        Write-Paso "Quitando la copia anterior $Copia..."
-        $sqlDrop = "ALTER DATABASE [$Copia] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$Copia];"
-        Invoke-Sql -Instancia $Instancia -Consulta $sqlDrop | Out-Null
-    }
-
-    $rutaRespaldo = Get-PropiedadServidor 'InstanceDefaultBackupPath'
-    $rutaDatos    = Get-PropiedadServidor 'InstanceDefaultDataPath'
-    $bak          = Join-Path $rutaRespaldo ($Copia + '_origen.bak')
-
-    # COPY_ONLY a proposito: un respaldo normal reinicia la base diferencial de la base real.
-    # Copiarla no puede cambiarle nada, ni siquiera su cadena de respaldos.
-    Write-Paso "Respaldando $Origen (COPY_ONLY)..."
-    $sqlBackup = "BACKUP DATABASE [$Origen] TO DISK = N'$bak' WITH COPY_ONLY, INIT, FORMAT, STATS = 25;"
-    Invoke-Sql -Instancia $Instancia -TimeoutSegundos 900 -Consulta $sqlBackup | Out-Null
-
-    # Los nombres logicos de la copia son los mismos que los del origen: se leen de ahi y se
-    # arma el MOVE. Asi no hay que interpretar RESTORE FILELISTONLY, cuyas columnas cambian
-    # entre versiones de SQL Server.
-    # COLLATE explicito: sys.master_files devuelve name y type_desc con intercalaciones
-    # distintas, y concatenarlas sin mas da el Msg 451. No es cosmetico: revienta el guion.
-    $colSis = 'COLLATE Latin1_General_CI_AS'
-    $sqlArchivos = "SET NOCOUNT ON; SELECT CONVERT(nvarchar(200), mf.name) $colSis + N'|' + CONVERT(nvarchar(60), mf.type_desc) $colSis FROM sys.master_files mf WHERE mf.database_id = DB_ID(N'$Origen') ORDER BY mf.file_id;"
-    $archivos = Invoke-Sql -Instancia $Instancia -Consulta $sqlArchivos | Where-Object { $_ -match '\|' }
-
-    $moves = foreach ($a in $archivos) {
-        $partes  = $a.Trim().Split('|')
-        $logico  = $partes[0]
-        $ext     = if ($partes[1] -eq 'LOG') { '_log.ldf' } else { '.mdf' }
-        $destino = Join-Path $rutaDatos ($Copia + '_' + $logico + $ext)
-        "MOVE N'$logico' TO N'$destino'"
-    }
-
-    Write-Paso "Restaurando como $Copia..."
-    $sqlRestore = "RESTORE DATABASE [$Copia] FROM DISK = N'$bak' WITH " + ($moves -join ', ') + ", REPLACE, RECOVERY, STATS = 25; ALTER DATABASE [$Copia] SET RECOVERY SIMPLE; ALTER DATABASE [$Copia] SET MULTI_USER;"
-    Invoke-Sql -Instancia $Instancia -TimeoutSegundos 900 -Consulta $sqlRestore | Out-Null
-
-    # El .bak intermedio ocupa lo mismo que la base y ya no hace falta.
-    Remove-Item -Path $bak -Force -ErrorAction SilentlyContinue
-
-    Write-Ok "$Copia lista"
-}
-
-New-CopiaDesechable -Origen $BasePortalReal     -Copia $BasePortalCopia
-New-CopiaDesechable -Origen $BaseVentanillaReal -Copia $BaseVentanillaCopia
+New-CopiaDeBase -Instancia $Instancia -Origen $BasePortalReal     -Copia $BasePortalCopia     -Rehacer:$Rehacer
+New-CopiaDeBase -Instancia $Instancia -Origen $BaseVentanillaReal -Copia $BaseVentanillaCopia -Rehacer:$Rehacer
 
 # ---------------------------------------------------------------------------------------
 # 4. Ficha del entorno para los demas guiones

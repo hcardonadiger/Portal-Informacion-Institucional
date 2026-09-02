@@ -15,7 +15,16 @@ $ErrorActionPreference = 'Stop'
 
 # Sufijo obligatorio de toda copia desechable. Ningun guion de esta carpeta crea, sobrescribe
 # ni borra una base cuyo nombre no termine exactamente asi. Es la barrera principal.
-$script:SufijoCopia = '_E2E'
+# Sufijos de copia. Ningun guion de esta carpeta crea, sobrescribe ni borra una base cuyo
+# nombre no termine en uno de estos. Es la barrera principal.
+#
+#   _E2E      copia de usar y tirar, para la corrida que demuestra que nada se toco.
+#   _Sandbox  copia permanente. Es a la que apuntan los appsettings de Development, o sea
+#             la que se usa al encender el sistema sin mas. Se ensucia sin culpa y se
+#             refresca con Refrescar-Sandbox.ps1 cuando estorbe.
+$script:SufijoCopia    = '_E2E'
+$script:SufijoSandbox  = '_Sandbox'
+$script:SufijosCopia   = @('_E2E', '_Sandbox')
 
 # Cinturon ademas del tirante. Aunque alguien renombre una base real terminandola en _E2E,
 # estos nombres no se tocan nunca.
@@ -58,8 +67,12 @@ function Assert-EsCopiaDesechable {
     if ($script:BasesIntocables -contains $Base) {
         throw "NEGADO: '$Base' esta en la lista de bases intocables. Este guion no la toca."
     }
-    if (-not $Base.EndsWith($script:SufijoCopia, [StringComparison]::Ordinal)) {
-        throw "NEGADO: '$Base' no termina en '$($script:SufijoCopia)'. Solo se opera sobre copias desechables."
+    $coincide = $false
+    foreach ($s in $script:SufijosCopia) {
+        if ($Base.EndsWith($s, [StringComparison]::Ordinal)) { $coincide = $true; break }
+    }
+    if (-not $coincide) {
+        throw "NEGADO: '$Base' no termina en $($script:SufijosCopia -join ' ni '). Solo se opera sobre copias."
     }
 }
 
@@ -153,3 +166,75 @@ function Write-Paso  { param([string]$Texto) Write-Host "  $Texto" -ForegroundCo
 function Write-Ok    { param([string]$Texto) Write-Host "  [ok] $Texto" -ForegroundColor Green }
 function Write-Aviso { param([string]$Texto) Write-Host "  [aviso] $Texto" -ForegroundColor Yellow }
 function Write-Malo  { param([string]$Texto) Write-Host "  [FALLA] $Texto" -ForegroundColor Red }
+
+function Get-PropiedadServidor {
+    param(
+        [Parameter(Mandatory)][string] $Instancia,
+        [Parameter(Mandatory)][string] $Propiedad
+    )
+    $r = Invoke-Sql -Instancia $Instancia -Consulta "SET NOCOUNT ON; SELECT CONVERT(nvarchar(400), SERVERPROPERTY('$Propiedad'));"
+    return ($r | Where-Object { $_ -match '\S' } | Select-Object -First 1).Trim()
+}
+
+function New-CopiaDeBase {
+    <#
+    .SYNOPSIS
+        Copia una base real a otra con nombre nuevo, sin tocar la original.
+    .DESCRIPTION
+        La usan tanto el entorno desechable (_E2E) como el sandbox permanente (_Sandbox).
+        El respaldo es COPY_ONLY a proposito: un respaldo normal reinicia la base diferencial
+        de la base real, y copiarla no tiene por que cambiarle nada, ni su cadena de respaldos.
+    #>
+    param(
+        [Parameter(Mandatory)][string] $Instancia,
+        [Parameter(Mandatory)][string] $Origen,
+        [Parameter(Mandatory)][string] $Copia,
+        [switch] $Rehacer
+    )
+
+    # La barrera, justo antes de la operacion destructiva. Es barata y es el punto que importa.
+    Assert-EsCopiaDesechable $Copia
+
+    if (Test-BaseExiste -Instancia $Instancia -Base $Copia) {
+        if (-not $Rehacer) {
+            Write-Aviso "$Copia ya existe. Use -Rehacer si la quiere rehacer desde cero."
+            return
+        }
+        Write-Paso "Quitando la copia anterior $Copia..."
+        $sqlDrop = "ALTER DATABASE [$Copia] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$Copia];"
+        Invoke-Sql -Instancia $Instancia -Consulta $sqlDrop | Out-Null
+    }
+
+    $rutaRespaldo = Get-PropiedadServidor -Instancia $Instancia -Propiedad 'InstanceDefaultBackupPath'
+    $rutaDatos    = Get-PropiedadServidor -Instancia $Instancia -Propiedad 'InstanceDefaultDataPath'
+    $bak          = Join-Path $rutaRespaldo ($Copia + '_origen.bak')
+
+    Write-Paso "Respaldando $Origen (COPY_ONLY)..."
+    $sqlBackup = "BACKUP DATABASE [$Origen] TO DISK = N'$bak' WITH COPY_ONLY, INIT, FORMAT, STATS = 25;"
+    Invoke-Sql -Instancia $Instancia -TimeoutSegundos 900 -Consulta $sqlBackup | Out-Null
+
+    # Los nombres logicos de la copia son los mismos que los del origen: se leen de ahi y se
+    # arma el MOVE. Asi no hay que interpretar RESTORE FILELISTONLY, cuyas columnas cambian
+    # entre versiones de SQL Server.
+    # El COLLATE explicito no es cosmetico: sys.master_files devuelve name y type_desc con
+    # intercalaciones distintas y concatenarlas sin mas da el Msg 451.
+    $col = 'COLLATE Latin1_General_CI_AS'
+    $sqlArchivos = "SET NOCOUNT ON; SELECT CONVERT(nvarchar(200), mf.name) $col + N'|' + CONVERT(nvarchar(60), mf.type_desc) $col FROM sys.master_files mf WHERE mf.database_id = DB_ID(N'$Origen') ORDER BY mf.file_id;"
+    $archivos = Invoke-Sql -Instancia $Instancia -Consulta $sqlArchivos | Where-Object { $_ -match '\|' }
+
+    $moves = foreach ($a in $archivos) {
+        $partes  = $a.Trim().Split('|')
+        $ext     = if ($partes[1] -eq 'LOG') { '_log.ldf' } else { '.mdf' }
+        $destino = Join-Path $rutaDatos ($Copia + '_' + $partes[0] + $ext)
+        "MOVE N'$($partes[0])' TO N'$destino'"
+    }
+
+    Write-Paso "Restaurando como $Copia..."
+    $sqlRestore = "RESTORE DATABASE [$Copia] FROM DISK = N'$bak' WITH " + ($moves -join ', ') + ", REPLACE, RECOVERY, STATS = 25; ALTER DATABASE [$Copia] SET RECOVERY SIMPLE; ALTER DATABASE [$Copia] SET MULTI_USER;"
+    Invoke-Sql -Instancia $Instancia -TimeoutSegundos 900 -Consulta $sqlRestore | Out-Null
+
+    # El .bak intermedio ocupa lo mismo que la base y ya no hace falta.
+    Remove-Item -Path $bak -Force -ErrorAction SilentlyContinue
+
+    Write-Ok "$Copia lista"
+}
