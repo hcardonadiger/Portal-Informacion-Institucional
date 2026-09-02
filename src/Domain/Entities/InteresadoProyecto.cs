@@ -65,6 +65,11 @@ public sealed class InteresadoProyecto : BaseEntity
 
     public string? Notas { get; private set; }
 
+    /// <summary>True si esta fila la creó la sincronización automática (EsJefeDeArea/EsPmo), no una
+    /// persona a mano. Estas filas no se pueden quitar desde la ficha — ver QuitarInteresadoCommand
+    /// — porque son la forma en que el jefe de área/PMO conserva acceso mientras tenga ese rol.</summary>
+    public bool Automatico { get; private set; }
+
     public string   RegistradoPor { get; private set; } = default!;
     public DateTime RegistradoEn  { get; private set; }
 
@@ -108,6 +113,20 @@ public sealed class InteresadoProyecto : BaseEntity
             RegistradoPor = string.IsNullOrWhiteSpace(registradoPor) ? "—" : registradoPor.Trim(),
             RegistradoEn  = DateTime.UtcNow
         };
+    }
+
+    /// <summary>Alta hecha por la sincronización automática (EsJefeDeArea/EsPmo), no por una
+    /// persona. Mismo registro que Crear, pero marcado Automatico — ver QuitarInteresadoCommand,
+    /// que rechaza quitar estas filas desde la ficha.</summary>
+    public static InteresadoProyecto CrearAutomatico(
+        int proyectoId, Guid usuarioId, string nombre, RolInteresado rol, string? correo)
+    {
+        var interesado = Crear(
+            proyectoId, usuarioId, nombre, rol,
+            registradoPor: "Sistema (sincronización automática)",
+            correo: correo);
+        interesado.Automatico = true;
+        return interesado;
     }
 
     /// <summary>

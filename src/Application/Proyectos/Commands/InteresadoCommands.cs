@@ -105,6 +105,12 @@ public sealed class QuitarInteresadoCommandHandler(
             .FirstOrDefaultAsync(i => i.Id == cmd.InteresadoId, ct)
             ?? throw new NotFoundException(nameof(InteresadoProyecto), cmd.InteresadoId);
 
+        if (interesado.Automatico)
+            throw new DomainException(
+                $"«{interesado.Nombre}» quedó como interesado automáticamente por su rol de área o " +
+                "unidad. Se quita solo cuando deja de tener ese rol o esa asignación — no se puede " +
+                "quitar desde aquí.");
+
         // Quitar a un interesado le quita el acceso al proyecto, salvo que lo alcance por su
         // propio ámbito o porque sea el responsable. Vale la pena que la bitácora lo diga.
         ctx.BitacorasProyecto.Add(BitacoraProyecto.Crear(

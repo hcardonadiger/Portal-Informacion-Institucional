@@ -992,6 +992,7 @@ public sealed class InteresadoProyectoConfiguration : IEntityTypeConfiguration<I
         b.Property(x => x.Rol).HasConversion<string>().HasMaxLength(25).IsRequired();
         b.Property(x => x.Influencia).HasConversion<string>().HasMaxLength(10).IsRequired();
         b.Property(x => x.UsuarioId).IsRequired();
+        b.Property(x => x.Automatico).HasDefaultValue(false);
 
         b.HasIndex(x => new { x.ProyectoId, x.Rol });
 
