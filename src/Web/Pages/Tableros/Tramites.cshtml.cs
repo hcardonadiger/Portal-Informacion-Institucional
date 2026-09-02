@@ -8,7 +8,7 @@ namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
 [Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
-public sealed class TramitesModel(ISender sender, IInstitucionRepository institucionRepo) : PageModel
+public sealed class TramitesModel(ISender sender) : PageModel
 {
     public TramitesSeguimientoDto Data { get; private set; } = default!;
 
@@ -19,8 +19,9 @@ public sealed class TramitesModel(ISender sender, IInstitucionRepository institu
     public DateOnly? Hasta { get; private set; }
     public EstadoTramite? Estado { get; private set; }
 
-    /// <summary>Instituciones del alcance del usuario, para el desplegable.</summary>
-    public IReadOnlyList<(string Id, string Nombre)> Instituciones { get; private set; } = [];
+    /// <summary>Instituciones con algún expediente vigente, para el desplegable — no el catálogo
+    /// completo (ver GetTramitesSeguimientoQueryHandler).</summary>
+    public IReadOnlyList<InstitucionOpcionDto> Instituciones { get; private set; } = [];
 
     public async Task OnGetAsync(string? institucion, string? banda, DateOnly? desde, DateOnly? hasta, string? estado, CancellationToken ct)
     {
@@ -31,9 +32,7 @@ public sealed class TramitesModel(ISender sender, IInstitucionRepository institu
         Estado = Enum.TryParse<EstadoTramite>(estado, ignoreCase: true, out var est) ? est : null;
 
         Data = await sender.Send(new GetTramitesSeguimientoQuery(InstitucionId, Banda, Desde, Hasta, Estado), ct);
-
-        var activas = await institucionRepo.GetAllActivasAsync(ct);
-        Instituciones = activas.Select(i => (i.Id, i.Nombre)).OrderBy(x => x.Nombre).ToList();
+        Instituciones = Data.Instituciones;
     }
 
     /// <summary>Bitácora completa de un expediente (la consume el modal de notas).</summary>

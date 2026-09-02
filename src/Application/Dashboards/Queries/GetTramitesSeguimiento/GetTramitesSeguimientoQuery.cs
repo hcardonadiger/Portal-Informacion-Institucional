@@ -27,10 +27,14 @@ public sealed record TramiteSeguimientoDto(
 /// <summary>Última nota de seguimiento de un expediente, para la columna del tablero.</summary>
 public sealed record NotaResumenDto(int ExpedienteId, string Texto, string CreadoPor, DateTime CreadoEl, int Total);
 
+/// <summary>Opción del desplegable de institución: solo las que tienen algún expediente vigente
+/// (post corte-legado), no el catálogo completo — el filtro necesita el Id, no solo el nombre.</summary>
+public sealed record InstitucionOpcionDto(string Id, string Nombre);
+
 public sealed record TramitesSeguimientoDto(
     IReadOnlyList<TramiteSeguimientoDto> Tramites,
     IReadOnlyDictionary<int, NotaResumenDto> UltimaNotaPorExpediente,
-    IReadOnlyList<string> Instituciones)
+    IReadOnlyList<InstitucionOpcionDto> Instituciones)
 {
     public int Total     => Tramites.Count;
     public int Rezagados => Tramites.Count(t => t.Banda == BandaAvance.Rezagado);
@@ -71,11 +75,14 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
             .ToListAsync(ct);
 
         // El desplegable ofrece todas las instituciones del alcance, no solo las que
-        // sobreviven al filtro: si no, al elegir una desaparecerían las demás.
+        // sobreviven al filtro: si no, al elegir una desaparecerían las demás. Pero solo las que
+        // de verdad tienen un expediente vigente — no el catálogo completo de instituciones.
         var instituciones = expedientes
-            .Select(e => e.Institucion)
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .Distinct().OrderBy(s => s).ToList();
+            .Where(e => !string.IsNullOrWhiteSpace(e.InstitucionId))
+            .GroupBy(e => e.InstitucionId!)
+            .Select(g => new InstitucionOpcionDto(g.Key, g.First().Institucion))
+            .OrderBy(i => i.Nombre)
+            .ToList();
 
         if (!string.IsNullOrWhiteSpace(q.InstitucionId))
             expedientes = expedientes.Where(e => e.InstitucionId == q.InstitucionId).ToList();
