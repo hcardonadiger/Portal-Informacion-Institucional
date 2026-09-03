@@ -1975,12 +1975,27 @@
                                 <td>@it.Influencia</td>
                                 @if (Model.PuedeEditar)
                                 {
+                                    @* El botón solo se ofrece cuando la acción existe. Removible sale del mismo
+                                       cálculo de derecho vigente que usa la guarda de QuitarInteresadoCommand, así
+                                       que aquí no se puede confirmar un ✕ para recibir después una DomainException
+                                       —el callejón sin salida que había antes—. Deshabilitado y no oculto: que la
+                                       fila diga por qué no se puede quitar es lo que evita que alguien la busque. *@
                                     <td style="text-align:right">
-                                        <form method="post" asp-page-handler="QuitarInteresado" asp-route-id="@p.Id">
-                                            <input type="hidden" name="IntId" value="@it.Id" />
-                                            <button type="submit" class="hist-del" aria-label="Quitar interesado"
-                                                    data-confirm="¿Quitar a @it.Nombre de los interesados?">✕</button>
-                                        </form>
+                                        @if (it.Removible)
+                                        {
+                                            <form method="post" asp-page-handler="QuitarInteresado" asp-route-id="@p.Id">
+                                                <input type="hidden" name="IntId" value="@it.Id" />
+                                                <button type="submit" class="hist-del" aria-label="Quitar interesado"
+                                                        data-confirm="¿Quitar a @it.Nombre de los interesados?">✕</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="hist-del" disabled
+                                                    aria-label="No se puede quitar a @it.Nombre"
+                                                    style="opacity:.4;cursor:not-allowed"
+                                                    title="Figura por su rol de área o unidad. Deja de figurar cuando pierde ese rol o esa asignación.">✕</button>
+                                        }
                                     </td>
                                 }
                             </tr>

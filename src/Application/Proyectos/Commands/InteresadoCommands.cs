@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Proyectos.Common;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Commands;
 
@@ -96,7 +97,8 @@ public sealed record QuitarInteresadoCommand(int InteresadoId) : IRequest<Unit>;
 
 public sealed class QuitarInteresadoCommandHandler(
     IApplicationDbContext ctx,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<QuitarInteresadoCommand, Unit>
 {
     public async Task<Unit> Handle(QuitarInteresadoCommand cmd, CancellationToken ct)
@@ -105,11 +107,26 @@ public sealed class QuitarInteresadoCommandHandler(
             .FirstOrDefaultAsync(i => i.Id == cmd.InteresadoId, ct)
             ?? throw new NotFoundException(nameof(InteresadoProyecto), cmd.InteresadoId);
 
-        if (interesado.Automatico)
+        // Se pregunta por el DERECHO VIGENTE, no por la bandera Automatico de la fila. Son dos
+        // preguntas distintas y la que importa es esta:
+        //
+        //  · Una fila MANUAL de quien hoy es jefe de área de este proyecto no se puede quitar. El
+        //    sync salta a quien ya figura, así que nunca le creó la fila automática: esa fila
+        //    manual es lo único que sostiene el acceso que su capacidad le garantiza, y quitarla
+        //    se lo quitaba para siempre. La fila sigue siendo manual —que es lo correcto, alguien
+        //    la puso a mano— y sobrevive intacta a la revocación de la capacidad.
+        //  · Una fila AUTOMÁTICA huérfana —de una capacidad ya revocada— sí se puede quitar. Con
+        //    la guarda por bandera era irremovible para siempre y no había ninguna salida desde el
+        //    portal.
+        //
+        // Es además la misma fuente de verdad que consulta GetInteresadosProyectoQuery para
+        // decidir si pinta el botón de quitar; si divergieran, el botón volvería a ofrecer una
+        // acción que este handler rechaza.
+        var derechoVigente = await sync.CalcularDerechoVigenteAsync(interesado.ProyectoId, ct);
+        if (derechoVigente.ContainsKey(interesado.UsuarioId))
             throw new DomainException(
-                $"«{interesado.Nombre}» quedó como interesado automáticamente por su rol de área o " +
-                "unidad. Se quita solo cuando deja de tener ese rol o esa asignación — no se puede " +
-                "quitar desde aquí.");
+                $"«{interesado.Nombre}» figura como interesado por su rol de área o unidad. Se quita " +
+                "solo cuando deja de tener ese rol o esa asignación — no se puede quitar desde aquí.");
 
         // Quitar a un interesado le quita el acceso al proyecto, salvo que lo alcance por su
         // propio ámbito o porque sea el responsable. Vale la pena que la bitácora lo diga.

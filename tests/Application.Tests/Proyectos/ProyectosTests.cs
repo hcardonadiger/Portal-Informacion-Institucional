@@ -30,6 +30,13 @@ public class ProyectosTests : IDisposable
             .Options;
         _ctx = new AppDbContext(opts, new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
         _usuario.Nombre.Returns("Henry Cardona");
+
+        // Sin esto, el doble devuelve una tarea con null para CalcularDerechoVigenteAsync y todo
+        // lo que consulta el derecho vigente —la guarda de quitar, la consulta de la ficha—
+        // revienta con NRE. Un diccionario vacío es lo que corresponde acá: en esta suite nadie
+        // tiene capacidad de jefe de área ni de PMO, así que todas las filas son removibles.
+        _sync.CalcularDerechoVigenteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, RolInteresado>());
     }
 
     private Task<int> CrearAsync(string nombre = "Proyecto de prueba") =>
@@ -1371,7 +1378,7 @@ public class ProyectosTests : IDisposable
         await InteresadoAsync(id, await UsuarioAsync("Beneficiario amplio"), RolInteresado.Beneficiario, NivelCualitativo.Alta);
         await InteresadoAsync(id, await UsuarioAsync("Contraparte media"),   RolInteresado.ContraparteTecnica, NivelCualitativo.Media);
 
-        var lista = await new GetInteresadosProyectoQueryHandler(_ctx)
+        var lista = await new GetInteresadosProyectoQueryHandler(_ctx, _sync)
             .Handle(new GetInteresadosProyectoQuery(id), CancellationToken.None);
 
         lista.Single(i => i.Nombre == "Patrocinador fuerte").EsClave.Should().BeTrue();
@@ -1388,7 +1395,7 @@ public class ProyectosTests : IDisposable
         await InteresadoAsync(id, await UsuarioAsync("Alta"),  RolInteresado.Patrocinador, NivelCualitativo.Alta);
         await InteresadoAsync(id, await UsuarioAsync("Media"), RolInteresado.Ejecutor,     NivelCualitativo.Media);
 
-        var lista = await new GetInteresadosProyectoQueryHandler(_ctx)
+        var lista = await new GetInteresadosProyectoQueryHandler(_ctx, _sync)
             .Handle(new GetInteresadosProyectoQuery(id), CancellationToken.None);
 
         lista.Select(i => i.Nombre).Should().Equal("Alta", "Media", "Baja");
@@ -1455,7 +1462,7 @@ public class ProyectosTests : IDisposable
         await LimpiarAuditoriaAsync();
 
         var iid = await InteresadoAsync(id, uid, RolInteresado.ContraparteTecnica);
-        await new QuitarInteresadoCommandHandler(_ctx, _usuario)
+        await new QuitarInteresadoCommandHandler(_ctx, _usuario, _sync)
             .Handle(new QuitarInteresadoCommand(iid), CancellationToken.None);
 
         var detalles = await _ctx.BitacorasProyecto

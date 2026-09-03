@@ -201,5 +201,90 @@ public class InteresadosAutomaticosSyncTests : IDisposable
         filaPorUsuario.Rol.Should().Be(RolInteresado.Ejecutor);
     }
 
+    // ── Bitácora (I3) ─────────────────────────────────────────────
+    // Los dos caminos manuales escriben en BitacorasProyecto porque conceder o quitar un
+    // interesado es un cambio de ACCESO, no una anotación de gestión. El camino automático hace
+    // exactamente lo mismo y es el que más filas va a mover: si es el único invisible, la
+    // pregunta «¿por qué esta persona ve este proyecto?» se queda sin nada que leer.
+
+    private const string ActorDelSistema = "Sistema (sincronización automática)";
+
+    [Fact]
+    public async Task SincronizarProyecto_DejaConstanciaEnLaBitacoraAlDarDeAlta()
+    {
+        var jefe = await SembrarUsuarioAsync("Jefe de Área");
+        _ctx.AsignacionesUsuario.Add(AsignacionUsuario.Crear(jefe.Id, "DIGER", "GOBDIGITAL", null, "JefeArea"));
+        _catalogo.Obtener("JefeArea").Returns(new RolInfo(
+            "JefeArea", "Jefe de Área", NivelAlcance.Area, false, false, false, false,
+            EsJefeDeArea: true, EsPmo: false, Color: null));
+
+        var proyecto = Proyecto.Crear("PRY-2026-20", "Proyecto de prueba");
+        proyecto.AreaId = "GOBDIGITAL";
+        _ctx.Proyectos.Add(proyecto);
+        await _ctx.SaveChangesAsync();
+
+        await _sync.SincronizarProyectoAsync(proyecto.Id);
+
+        var entradas = await _ctx.BitacorasProyecto.Where(b => b.ProyectoId == proyecto.Id).ToListAsync();
+        entradas.Should().ContainSingle();
+        entradas[0].Tipo.Should().Be(TipoEventoProyecto.Interesado);
+        entradas[0].Actor.Should().Be(ActorDelSistema);
+        entradas[0].Detalle.Should().Contain("Jefe de Área").And.Contain("jefe de área",
+            "el motivo tiene que estar escrito, no solo el hecho");
+    }
+
+    [Fact]
+    public async Task SincronizarProyecto_DejaConstanciaEnLaBitacoraAlQuitar()
+    {
+        var exJefe = await SembrarUsuarioAsync("Ex Jefe");
+        var proyecto = Proyecto.Crear("PRY-2026-21", "Proyecto de prueba");
+        proyecto.AreaId = "GOBDIGITAL";
+        _ctx.Proyectos.Add(proyecto);
+        await _ctx.SaveChangesAsync();
+
+        _ctx.ProyectoInteresados.Add(InteresadoProyecto.CrearAutomatico(
+            proyecto.Id, exJefe.Id, exJefe.Nombre, RolInteresado.Patrocinador, null));
+        await _ctx.SaveChangesAsync();
+
+        await _sync.SincronizarProyectoAsync(proyecto.Id);
+
+        var entradas = await _ctx.BitacorasProyecto.Where(b => b.ProyectoId == proyecto.Id).ToListAsync();
+        entradas.Should().ContainSingle();
+        entradas[0].Actor.Should().Be(ActorDelSistema);
+        entradas[0].Detalle.Should().Contain("Ex Jefe").And.Contain("jefe de área");
+    }
+
+    [Fact]
+    public async Task SincronizarUsuario_DejaConstanciaEnLaBitacoraEnLasDosDirecciones()
+    {
+        var jefe = await SembrarUsuarioAsync("Jefe de Área");
+        _ctx.AsignacionesUsuario.Add(AsignacionUsuario.Crear(jefe.Id, "DIGER", "SIGER", null, "JefeArea"));
+        _catalogo.Obtener("JefeArea").Returns(new RolInfo(
+            "JefeArea", "Jefe de Área", NivelAlcance.Area, false, false, false, false,
+            EsJefeDeArea: true, EsPmo: false, Color: null));
+
+        var proyecto = Proyecto.Crear("PRY-2026-22", "Proyecto de prueba");
+        proyecto.AreaId = "SIGER";
+        _ctx.Proyectos.Add(proyecto);
+        await _ctx.SaveChangesAsync();
+
+        await _sync.SincronizarUsuarioAsync(jefe.Id);
+        (await _ctx.BitacorasProyecto.CountAsync(b => b.ProyectoId == proyecto.Id))
+            .Should().Be(1, "el alta automática se registra");
+
+        // Se le retira la capacidad al rol: la siguiente pasada tiene que dar de baja Y registrarlo.
+        _catalogo.Obtener("JefeArea").Returns(new RolInfo(
+            "JefeArea", "Jefe de Área", NivelAlcance.Area, false, false, false, false,
+            EsJefeDeArea: false, EsPmo: false, Color: null));
+
+        await _sync.SincronizarUsuarioAsync(jefe.Id);
+
+        var entradas = await _ctx.BitacorasProyecto
+            .Where(b => b.ProyectoId == proyecto.Id).OrderBy(b => b.Id).ToListAsync();
+        entradas.Should().HaveCount(2, "la baja automática también se registra");
+        entradas[1].Actor.Should().Be(ActorDelSistema);
+        entradas[1].Detalle.Should().Contain("Jefe de Área");
+    }
+
     public void Dispose() => _ctx.Dispose();
 }

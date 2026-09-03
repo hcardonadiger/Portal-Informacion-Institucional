@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 using Diger.TramitesEstado.Application.Roles;
 using Diger.TramitesEstado.Domain.Common;
 using Diger.TramitesEstado.Domain.Entities;
@@ -15,6 +16,7 @@ public class RolesModuleTests : IDisposable
 {
     private readonly AppDbContext _ctx;
     private readonly IRolCatalogo _catalogo = Substitute.For<IRolCatalogo>();
+    private readonly IInteresadosAutomaticosSync _sync = Substitute.For<IInteresadosAutomaticosSync>();
 
     public RolesModuleTests()
     {
@@ -89,7 +91,7 @@ public class RolesModuleTests : IDisposable
     public async Task Actualizar_QuitarAdministradorAlUltimo_LanzaDomainException()
     {
         await SembrarAsync(Administrador());
-        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo);
+        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo, _sync);
 
         var act = async () => await handler.Handle(
             new ActualizarRolCommand("Administrador", "Administrador", NivelAlcance.Global, null, null,
@@ -103,7 +105,7 @@ public class RolesModuleTests : IDisposable
     public async Task Actualizar_DesactivarAlUltimoAdministrador_LanzaDomainException()
     {
         await SembrarAsync(Administrador());
-        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo);
+        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo, _sync);
 
         var act = async () => await handler.Handle(
             new ActualizarRolCommand("Administrador", "Administrador", NivelAlcance.Global, null, null,
@@ -120,7 +122,7 @@ public class RolesModuleTests : IDisposable
             Administrador(),
             Rol.Crear("Superusuario", "Superusuario", NivelAlcance.Global, esAdministrador: true));
 
-        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo);
+        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo, _sync);
 
         await handler.Handle(
             new ActualizarRolCommand("Superusuario", "Ex superusuario", NivelAlcance.Area, null, null,
@@ -136,7 +138,7 @@ public class RolesModuleTests : IDisposable
     [Fact]
     public async Task Actualizar_RolInexistente_LanzaNotFound()
     {
-        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo);
+        var handler = new ActualizarRolCommandHandler(_ctx, _catalogo, _sync);
 
         var act = async () => await handler.Handle(
             new ActualizarRolCommand("NoExiste", "X", NivelAlcance.Unidad, null, null, false, false, false, false, true),

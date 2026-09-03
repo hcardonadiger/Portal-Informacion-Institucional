@@ -123,7 +123,7 @@ public sealed class InteresadoProyecto : BaseEntity
     {
         var interesado = Crear(
             proyectoId, usuarioId, nombre, rol,
-            registradoPor: "Sistema (sincronización automática)",
+            registradoPor: ActorSistema,
             correo: correo);
         interesado.Automatico = true;
         return interesado;
@@ -161,6 +161,12 @@ public sealed class InteresadoProyecto : BaseEntity
     }
 
     private static string? Limpiar(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>Quien firma las filas —y las entradas de bitácora— que escribe la sincronización
+    /// automática. Constante y no literal para que la ficha y la bitácora nombren igual al mismo
+    /// actor: la bitácora del sync se lee al lado de la del alta manual, y dos redacciones del
+    /// mismo "Sistema" harían pensar que son dos mecanismos distintos.</summary>
+    public const string ActorSistema = "Sistema (sincronización automática)";
 
     public const int MaxNombre = 200;
     public const int MaxNotas  = 1000;

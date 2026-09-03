@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Proyectos.Common;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Queries;
 
@@ -230,19 +231,33 @@ public sealed class GetRiesgosProyectoQueryHandler(IApplicationDbContext ctx)
 // ── Interesados ───────────────────────────────────────────────────────────
 public sealed record GetInteresadosProyectoQuery(int ProyectoId) : IRequest<IReadOnlyList<InteresadoProyectoDto>>;
 
-public sealed class GetInteresadosProyectoQueryHandler(IApplicationDbContext ctx)
+public sealed class GetInteresadosProyectoQueryHandler(
+    IApplicationDbContext ctx,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<GetInteresadosProyectoQuery, IReadOnlyList<InteresadoProyectoDto>>
 {
-    public async Task<IReadOnlyList<InteresadoProyectoDto>> Handle(GetInteresadosProyectoQuery query, CancellationToken ct) =>
-        await ctx.ProyectoInteresados.AsNoTracking()
+    public async Task<IReadOnlyList<InteresadoProyectoDto>> Handle(GetInteresadosProyectoQuery query, CancellationToken ct)
+    {
+        var filas = await ctx.ProyectoInteresados.AsNoTracking()
             .Where(i => i.ProyectoId == query.ProyectoId)
             .Join(ctx.Proyectos, i => i.ProyectoId, p => p.Id, (i, _) => i)   // aplica el alcance
             .OrderByDescending(i => i.Influencia)
             .ThenBy(i => i.Rol)
             .ThenBy(i => i.Nombre)
-            .Select(i => new InteresadoProyectoDto(
-                i.Id, i.UsuarioId, i.Nombre, i.Institucion, i.Cargo, i.Correo, i.Rol, i.Influencia, i.Notas))
             .ToListAsync(ct);
+
+        // Removible sale de la MISMA fuente de verdad que la guarda de QuitarInteresadoCommand —el
+        // derecho vigente, no la bandera Automatico— para que la ficha no ofrezca un botón que el
+        // comando va a rechazar. Antes la vista no tenía forma de distinguir y pintaba el ✕ para
+        // todas las filas: el usuario confirmaba y se llevaba una DomainException.
+        var derechoVigente = await sync.CalcularDerechoVigenteAsync(query.ProyectoId, ct);
+
+        return filas
+            .Select(i => new InteresadoProyectoDto(
+                i.Id, i.UsuarioId, i.Nombre, i.Institucion, i.Cargo, i.Correo, i.Rol, i.Influencia,
+                i.Notas, Removible: !derechoVigente.ContainsKey(i.UsuarioId)))
+            .ToList();
+    }
 }
 
 // ── Auditoría del proyecto ────────────────────────────────────────────────

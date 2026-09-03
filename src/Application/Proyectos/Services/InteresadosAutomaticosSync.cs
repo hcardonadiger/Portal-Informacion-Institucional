@@ -17,6 +17,26 @@ public interface IInteresadosAutomaticosSync
     /// <summary>Recalcula los proyectos donde UN usuario debe figurar como interesado automático.
     /// Llamar cuando cambia su rol o su área/unidad asignada.</summary>
     Task SincronizarUsuarioAsync(Guid usuarioId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Quién está HOY habilitado de oficio sobre este proyecto por su capacidad de rol, y con
+    /// qué papel. Vacío si el proyecto no existe o está borrado.
+    ///
+    /// <para>Es la única fuente de verdad de esa pregunta, y por eso es pública: la usan la
+    /// guarda de <c>QuitarInteresadoCommand</c> —que rechaza quitar a quien lo tiene, lleve su
+    /// fila la bandera Automatico o no— y la consulta que llena la ficha, que es la que pinta el
+    /// botón de quitar. Si cada una preguntara por su lado, el botón volvería a ofrecer una
+    /// acción que el comando rechaza, que es justo el callejón sin salida que esto cierra.</para>
+    ///
+    /// <para>Se responde por derecho vigente y no por la bandera a propósito: una fila manual
+    /// preexistente nunca se promueve a automática (el sync salta a quien ya figura), así que la
+    /// bandera diría que se puede quitar cuando esa fila es lo único que sostiene el acceso que
+    /// la capacidad garantiza. Y a la inversa: una fila automática huérfana —de una capacidad ya
+    /// revocada— sí se puede quitar a mano, cosa que antes no tenía ninguna salida desde el
+    /// portal.</para>
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, RolInteresado>> CalcularDerechoVigenteAsync(
+        int proyectoId, CancellationToken ct = default);
 }
 
 public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx, IRolCatalogo catalogo)
@@ -95,9 +115,16 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
             .Where(i => i.UsuarioId == usuarioId)
             .ToListAsync(ct);
 
+        // La bitácora se escribe en las dos direcciones, igual que en los dos caminos manuales
+        // (ver AgregarInteresadoCommand / QuitarInteresadoCommand): esto concede y revoca acceso a
+        // un proyecto, no anota una gestión. Es además el mecanismo que más filas mueve, así que
+        // sin esto la pregunta de por qué alguien ve un proyecto se queda sin nada que leer.
         foreach (var fila in todosLosActuales)
             if (fila.Automatico && !deseados.ContainsKey(fila.ProyectoId))
+            {
                 ctx.ProyectoInteresados.Remove(fila);
+                ctx.BitacorasProyecto.Add(Baja(fila.ProyectoId, fila.Nombre, fila.Rol));
+            }
 
         var yaFiguraEn = todosLosActuales.Select(a => a.ProyectoId).ToHashSet();
 
@@ -109,11 +136,45 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
                 if (yaFiguraEn.Contains(proyectoId)) continue;
                 ctx.ProyectoInteresados.Add(InteresadoProyecto.CrearAutomatico(
                     proyectoId, usuario.Id, usuario.Nombre, rol, usuario.Correo));
+                ctx.BitacorasProyecto.Add(Alta(proyectoId, usuario.Nombre, rol));
             }
         }
 
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, RolInteresado>> CalcularDerechoVigenteAsync(
+        int proyectoId, CancellationToken ct = default)
+    {
+        // Mismo IgnoreQueryFilters y misma reposición de !IsDeleted que SincronizarProyectoAsync,
+        // por la misma razón: a quién le corresponde este proyecto de oficio no depende del
+        // alcance de quien lo pregunta.
+        var proyecto = await ctx.Proyectos.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.Id == proyectoId && !p.IsDeleted, ct);
+        if (proyecto is null) return new Dictionary<Guid, RolInteresado>();
+
+        return await CalcularDeseadosPorProyectoAsync(proyecto.AreaId, proyecto.UnidadId, ct);
+    }
+
+    /// <summary>Por qué le corresponde el proyecto, en las palabras que va a leer alguien en la
+    /// bitácora. El Rol es el que codifica el camino —área → Patrocinador, unidad → Ejecutor, ver
+    /// la precedencia fija de más arriba—, así que las dos mitades del servicio escriben lo mismo
+    /// sin tener que arrastrar el AreaId/UnidadId hasta acá.</summary>
+    private static string Motivo(RolInteresado rol) =>
+        rol == RolInteresado.Ejecutor ? "su rol de PMO de la unidad" : "su rol de jefe de área";
+
+    private static BitacoraProyecto Alta(int proyectoId, string nombre, RolInteresado rol) =>
+        BitacoraProyecto.Crear(
+            proyectoId, TipoEventoProyecto.Interesado,
+            $"Interesado automático agregado: {nombre} ({rol}), por {Motivo(rol)}. Puede ver el proyecto.",
+            InteresadoProyecto.ActorSistema);
+
+    private static BitacoraProyecto Baja(int proyectoId, string nombre, RolInteresado rol) =>
+        BitacoraProyecto.Crear(
+            proyectoId, TipoEventoProyecto.Interesado,
+            $"Interesado automático quitado: {nombre}. Ya no le corresponde por {Motivo(rol)}; " +
+            "pierde el acceso que le daba este registro.",
+            InteresadoProyecto.ActorSistema);
 
     private async Task<Dictionary<Guid, RolInteresado>> CalcularDeseadosPorProyectoAsync(
         string? areaId, string? unidadId, CancellationToken ct)
@@ -153,7 +214,10 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
     {
         foreach (var fila in actuales)
             if (fila.Automatico && !deseados.ContainsKey(fila.UsuarioId))
+            {
                 ctx.ProyectoInteresados.Remove(fila);
+                ctx.BitacorasProyecto.Add(Baja(proyectoId, fila.Nombre, fila.Rol));
+            }
 
         var yaFiguran = actuales.Select(a => a.UsuarioId).ToHashSet();
 
@@ -164,6 +228,7 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
             if (usuario is null || !usuario.Activo) continue;
             ctx.ProyectoInteresados.Add(InteresadoProyecto.CrearAutomatico(
                 proyectoId, usuario.Id, usuario.Nombre, rol, usuario.Correo));
+            ctx.BitacorasProyecto.Add(Alta(proyectoId, usuario.Nombre, rol));
         }
 
         await ctx.SaveChangesAsync(ct);

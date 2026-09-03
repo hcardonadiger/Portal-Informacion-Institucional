@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Application.Proyectos.Services;
+
 namespace Diger.TramitesEstado.Application.Roles;
 
 public sealed record RolListItemDto(
@@ -67,7 +69,10 @@ public sealed record ActualizarRolCommand(
     bool EsAdministrador, bool EsSoloLectura, bool EsSupervisor, bool EsTecnicoSoporte,
     bool Activo, bool EsJefeDeArea = false, bool EsPmo = false) : IRequest<Unit>;
 
-public sealed class ActualizarRolCommandHandler(IApplicationDbContext ctx, IRolCatalogo catalogo)
+public sealed class ActualizarRolCommandHandler(
+    IApplicationDbContext ctx,
+    IRolCatalogo catalogo,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<ActualizarRolCommand, Unit>
 {
     public async Task<Unit> Handle(ActualizarRolCommand cmd, CancellationToken ct)
@@ -84,6 +89,11 @@ public sealed class ActualizarRolCommandHandler(IApplicationDbContext ctx, IRolC
         if (rol.EsAdministrador && rol.Activo && !cmd.Activo)
             await ValidarNoEsUltimoAdministradorAsync(ctx, rol.Id, ct);
 
+        // Los valores viejos se leen ANTES de Actualizar: después ya están pisados y no habría
+        // con qué comparar.
+        var cambioLaCapacidad = rol.EsJefeDeArea != cmd.EsJefeDeArea || rol.EsPmo != cmd.EsPmo;
+        var cambioLaVigencia  = rol.Activo != cmd.Activo;
+
         rol.Actualizar(
             cmd.Nombre, cmd.NivelAlcance, cmd.Descripcion, cmd.Color,
             cmd.EsAdministrador, cmd.EsSoloLectura, cmd.EsSupervisor, cmd.EsTecnicoSoporte,
@@ -93,6 +103,35 @@ public sealed class ActualizarRolCommandHandler(IApplicationDbContext ctx, IRolC
 
         await ctx.SaveChangesAsync(ct);
         await catalogo.RecargarAsync(ct);
+
+        // EsJefeDeArea/EsPmo conceden acceso a proyectos a través de InteresadoProyecto, y hasta
+        // acá esta pantalla era el único lugar del portal que las movía SIN avisarle al sync. El
+        // efecto era doble y grave: destildar la casilla no revocaba nada —y las filas quedaban
+        // irremovibles, sin ninguna salida desde el portal—, y tildarla no concedía nada hasta que
+        // alguien volviera a guardar cada proyecto o la jerarquía de cada usuario.
+        //
+        // El orden importa y es obligatorio: RecargarAsync PRIMERO, porque el sync resuelve las
+        // capacidades leyendo el catálogo, y el catálogo guarda una foto que solo cambia ahí. Si
+        // se invirtiera, la reconciliación correría con las capacidades viejas y no haría nada.
+        //
+        // Desactivar el rol lo saca del catálogo, lo que equivale a quitarle todas sus
+        // capacidades; reactivarlo se las devuelve. Por eso alcanza con que la vigencia cambie, en
+        // cualquiera de las dos direcciones.
+        //
+        // EliminarRolCommandHandler no necesita nada equivalente: rechaza borrar un rol que tenga
+        // usuarios asignados, así que por esa vía no puede quedar ninguna fila huérfana.
+        if (cambioLaCapacidad || cambioLaVigencia)
+        {
+            var usuarios = await ctx.AsignacionesUsuario
+                .Where(a => a.Rol == rol.Id)
+                .Select(a => a.UsuarioId)
+                .Distinct()
+                .ToListAsync(ct);
+
+            foreach (var usuarioId in usuarios)
+                await sync.SincronizarUsuarioAsync(usuarioId, ct);
+        }
+
         return Unit.Value;
     }
 

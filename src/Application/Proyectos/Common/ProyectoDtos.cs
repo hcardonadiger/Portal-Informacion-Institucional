@@ -252,7 +252,8 @@ public sealed record InteresadoProyectoDto(
     string?          Correo,
     RolInteresado    Rol,
     NivelCualitativo Influencia,
-    string?          Notas)
+    string?          Notas,
+    bool             Removible = true)
 {
     public bool EsClave =>
         Influencia == NivelCualitativo.Alta
