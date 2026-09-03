@@ -1,0 +1,518 @@
+<title>Flujo de pruebas — La separación de Honduras Simple</title>
+<style>
+:root{
+  color-scheme:light;
+  --papel:#F6F8FB; --tarjeta:#FFFFFF;
+  --tinta:#111C2E; --tinta-suave:#4A5A70; --tinta-tenue:#6B7B92;
+  --borde:#DCE3EC; --borde-fuerte:#C3CEDC;
+  --azul:#02395E; --accion:#0055A4; --accion-suave:#E9F0F8;
+  --verde:#146B4F; --verde-suave:#E7F3EE;
+  --ambar:#8A5A00; --ambar-suave:#FAF0DA;
+  --sombra:0 1px 2px rgba(17,28,46,.05), 0 10px 28px -16px rgba(17,28,46,.22);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --papel:#0D1520; --tarjeta:#141F2E;
+    --tinta:#E8EEF6; --tinta-suave:#A7B6C9; --tinta-tenue:#8496AC;
+    --borde:#253447; --borde-fuerte:#33465C;
+    --azul:#9CC6E4; --accion:#7FB2D9; --accion-suave:#17293C;
+    --verde:#5FC49B; --verde-suave:#10241C;
+    --ambar:#E0A93C; --ambar-suave:#2A2011;
+    --sombra:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --papel:#0D1520; --tarjeta:#141F2E;
+  --tinta:#E8EEF6; --tinta-suave:#A7B6C9; --tinta-tenue:#8496AC;
+  --borde:#253447; --borde-fuerte:#33465C;
+  --azul:#9CC6E4; --accion:#7FB2D9; --accion-suave:#17293C;
+  --verde:#5FC49B; --verde-suave:#10241C;
+  --ambar:#E0A93C; --ambar-suave:#2A2011;
+  --sombra:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -16px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--papel); color:var(--tinta);
+  font-family:"Inter",system-ui,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.envoltura{max-width:46rem; margin:0 auto; padding:2.5rem 1.25rem 4rem}
+code,.mono{
+  font-family:ui-monospace,"Cascadia Mono","Consolas",monospace;
+  font-size:.86em; font-variant-numeric:tabular-nums;
+}
+
+/* ---- Cabecera ---- */
+.cejilla{
+  font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accion); margin:0 0 .6rem;
+}
+h1{
+  font-size:clamp(1.9rem,5vw,2.6rem); font-weight:700; letter-spacing:-.02em;
+  line-height:1.1; margin:0 0 .5rem; color:var(--azul); text-wrap:balance;
+}
+.entradilla{margin:0; color:var(--tinta-suave); font-size:1.05rem; max-width:34rem}
+.barra-avance{
+  display:flex; align-items:center; gap:.75rem; margin-top:1.75rem;
+  padding:.7rem .95rem; background:var(--tarjeta);
+  border:1px solid var(--borde); border-radius:.6rem;
+}
+.barra-avance .canal{flex:1; height:.4rem; background:var(--accion-suave); border-radius:99px; overflow:hidden}
+.barra-avance .relleno{height:100%; width:0%; background:var(--accion); border-radius:99px; transition:width .25s ease}
+.barra-avance output{font-size:.85rem; font-weight:600; color:var(--tinta-suave); font-variant-numeric:tabular-nums; white-space:nowrap}
+
+/* ---- Paneles ---- */
+.panel{
+  margin:2.25rem 0; padding:1.15rem 1.25rem;
+  background:var(--tarjeta); border:1px solid var(--borde);
+  border-radius:.7rem; box-shadow:var(--sombra);
+}
+.panel h2{
+  font-size:.78rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--tinta-tenue); margin:0 0 .9rem;
+}
+.panel.aviso{background:var(--ambar-suave); border-color:var(--ambar)}
+.panel.aviso h2{color:var(--ambar)}
+.panel p{margin:0 0 .7rem}
+.panel p:last-child{margin-bottom:0}
+.arranque{list-style:none; margin:0 0 1rem; padding:0; display:flex; flex-direction:column; gap:.45rem}
+.arranque li{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; font-size:.95rem}
+.arranque .rotulo{font-weight:600; min-width:9.5rem}
+.arranque code{color:var(--accion); background:var(--accion-suave); padding:.1rem .4rem; border-radius:.3rem}
+
+/* ---- Pruebas ---- */
+.pruebas{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1rem}
+.prueba{
+  display:grid; grid-template-columns:auto 1fr; gap:1rem;
+  padding:1.15rem 1.25rem; background:var(--tarjeta);
+  border:1px solid var(--borde); border-radius:.7rem; box-shadow:var(--sombra);
+  transition:opacity .2s ease;
+}
+.prueba:has(input:checked){opacity:.5}
+.marca{cursor:pointer; align-self:start; line-height:0}
+.marca input{position:absolute; opacity:0; width:0; height:0}
+.num{
+  display:grid; place-items:center; width:2.1rem; height:2.1rem;
+  border:1.5px solid var(--borde-fuerte); border-radius:.5rem;
+  font-size:.95rem; font-weight:700; line-height:1; color:var(--tinta-tenue);
+  font-variant-numeric:tabular-nums; transition:all .15s ease;
+}
+.marca:hover .num{border-color:var(--accion); color:var(--accion)}
+.marca input:focus-visible + .num{outline:3px solid var(--accion); outline-offset:2px}
+.marca input:checked + .num{background:var(--verde); border-color:var(--verde); color:#fff; font-size:0}
+.marca input:checked + .num::after{content:"\2713"; font-size:1.1rem}
+.prueba h3{margin:.15rem 0 .35rem; font-size:1.1rem; font-weight:700; letter-spacing:-.01em; color:var(--tinta); text-wrap:balance}
+.proposito{margin:0 0 .9rem; font-size:.9rem; color:var(--tinta-tenue)}
+dl{margin:0; display:flex; flex-direction:column; gap:.5rem}
+dl > div{display:grid; grid-template-columns:5.2rem 1fr; gap:.75rem; align-items:baseline}
+dt{
+  font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--tinta-tenue); padding-top:.2rem;
+}
+dd{margin:0; font-size:.95rem; color:var(--tinta-suave)}
+dd b, dd strong{color:var(--tinta); font-weight:600}
+dd code{color:var(--accion)}
+.esperado{
+  background:var(--verde-suave); border-left:3px solid var(--verde);
+  border-radius:0 .35rem .35rem 0; padding:.5rem .75rem; margin-left:-.1rem;
+}
+.esperado dt{color:var(--verde); padding-top:.15rem}
+.esperado dd{color:var(--tinta)}
+.prueba.ojo{border-color:var(--ambar)}
+.prueba.ojo .esperado{background:var(--ambar-suave); border-left-color:var(--ambar)}
+.prueba.ojo .esperado dt{color:var(--ambar)}
+.nota{
+  margin:.9rem 0 0; padding:.6rem .75rem; font-size:.87rem;
+  color:var(--tinta-suave); background:var(--accion-suave); border-radius:.4rem;
+}
+.prueba.ojo .nota{background:transparent; border:1px dashed var(--ambar); color:var(--tinta-suave)}
+ul.cierre{margin:0; padding-left:1.1rem; display:flex; flex-direction:column; gap:.5rem; font-size:.95rem; color:var(--tinta-suave)}
+ul.cierre b{color:var(--tinta)}
+footer{margin-top:2.5rem; padding-top:1.25rem; border-top:1px solid var(--borde); font-size:.85rem; color:var(--tinta-tenue)}
+@media (max-width:34rem){
+  dl > div{grid-template-columns:1fr; gap:.15rem}
+  dt{padding-top:0}
+  .esperado{padding:.55rem .7rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+/* ---- Rotulo de tramo ---- */
+h2.tramo{
+  margin:2rem 0 .9rem; font-size:.78rem; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--tinta-tenue);
+  padding-bottom:.45rem; border-bottom:1px solid var(--borde);
+}
+h2.tramo:first-of-type{margin-top:1.5rem}
+</style>
+<div class="envoltura">
+
+<p class="cejilla">Recorrido visual en Chrome</p>
+<h1>Flujo de pruebas — La separación de Honduras Simple</h1>
+<p class="entradilla">El portal interno acaba de partirse en dos: <b>SIGER</b> quedó de pura consulta, y todo el trabajo que escribe se mudó a una sección aparte llamada <b>Honduras Simple</b>. Esto se prueba con <b>tres usuarios distintos</b>, porque el cambio no se ve en una pantalla: se ve en lo que cada quien alcanza y en lo que no.</p>
+
+<div class="barra-avance">
+  <div class="canal"><div class="relleno" id="relleno"></div></div>
+  <output id="cuenta">0 de 20 comprobadas</output>
+</div>
+
+<section class="panel">
+  <h2>Antes de empezar</h2>
+  <ul class="arranque">
+    <li><span class="rotulo">Levantar todo</span> <code>scripts\pruebas\Refrescar-Sandbox.ps1</code> y después <code>scripts\Iniciar-Todo.ps1</code></li>
+    <li><span class="rotulo">Portal interno</span> <code>https://localhost:49175</code> — aquí se prueba casi todo</li>
+    <li><span class="rotulo">Portal ciudadano</span> <code>https://localhost:7180</code> — solo hace falta en el tramo E</li>
+    <li><span class="rotulo">Navegador</span> Chrome. Conviene una <b>ventana de incógnito por cada usuario</b>, para no andar cerrando sesión.</li>
+    <li><span class="rotulo">Compruebe primero</span> la cinta verde debe decir <b>base DigerTramitesEstado_Unificada_Sandbox</b></li>
+  </ul>
+  <p>Si esa cinta no aparece, o el nombre de la base no termina en <b>_Sandbox</b>, <b>pare</b>: estaría probando contra datos que no son de prueba.</p>
+</section>
+
+<section class="panel">
+  <h2>Los tres usuarios</h2>
+  <p>Los tres tienen la misma contraseña: <code>Pruebas#2026</code>. Existen solo en el sandbox.</p>
+  <ul class="arranque">
+    <li><span class="rotulo">El de fuera</span> <code>inventario.cowork@diger.gob.hn</code> — rol <b>Consultor</b>. Representa a la gente ajena que algún día tendrá el inventario.</li>
+    <li><span class="rotulo">El operador</span> <code>operador.cowork@diger.gob.hn</code> — rol <b>Jefe de Área</b>. Hace el trabajo de Honduras Simple. <b>No es administrador.</b></li>
+    <li><span class="rotulo">El administrador</span> <code>admin.cowork@diger.gob.hn</code> — solo hace falta en el tramo D.</li>
+  </ul>
+  <p>Que el operador <b>no</b> sea administrador es a propósito, y es lo que da valor a la prueba: el administrador se salta la tabla de permisos por código, así que probando con él no se comprueba nada.</p>
+</section>
+
+<section class="panel aviso">
+  <h2>Lo que ya sabemos y no hay que reportar</h2>
+  <ul class="cierre">
+    <li><b>El perfil de fuera todavía ve «Completitud».</b> Es lo esperado hoy. Al separar, nadie perdió lo que ya tenía: quien podía ver esa pantalla la sigue viendo. Cerrarle la puerta es una decisión del administrador, y es justo lo que se prueba en el tramo D. <b>No es un fallo.</b></li>
+    <li><b>Las direcciones viejas <code>/Siger/Editor</code> y sus compañeras siguen funcionando.</b> Redirigen a las nuevas a propósito, para no romper enlaces guardados. Tienen fecha de caducidad, pero hoy deben responder.</li>
+    <li><b>El inventario muestra una barra «Publicados en portal».</b> Es un número, no un botón. Que el perfil de fuera lo vea es correcto: es información de consulta.</li>
+    <li>Los <b>costos, tiempos y modalidades del sandbox son inventados</b>, y hay trámites con el nombre <b>EN MAYÚSCULAS</b> o cortado a media frase: viene así del origen, en SIGER.</li>
+    <li>La <b>cinta verde</b> de arriba no existe en producción. Es solo la señal de que se está en pruebas.</li>
+  </ul>
+</section>
+
+<h2 class="tramo">A. El perfil de fuera — lo que no debe alcanzar</h2>
+<ol class="pruebas" start="1">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">1</span></label>
+    <div>
+      <h3>El inventario y el observatorio se abren</h3>
+      <p class="proposito">Es lo único que este perfil debe poder hacer. Si esto falla, la separación dejó al de fuera sin nada.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Entre como <code>inventario.cowork@diger.gob.hn</code>.</dd></div>
+        <div><dt>Haga</dt><dd>Abra <b>SIGER &rarr; Inventario</b> y después <b>SIGER &rarr; Observatorio</b>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Las dos pantallas cargan con datos. El inventario trae la tabla de trámites y sus barras de arriba.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">2</span></label>
+    <div>
+      <h3>El menú lateral, contado entrada por entrada</h3>
+      <p class="proposito">El menú es la primera puerta. Lo que no sale ahí, no se descubre por accidente.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Mire el menú de la izquierda y lea el grupo <b>SIGER</b> y el grupo <b>Honduras Simple</b>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>En <b>SIGER</b>: <b>Inventario</b> y <b>Observatorio</b>, nada más. En <b>Honduras Simple</b>: <b>únicamente Completitud</b>.</dd></div>
+      </dl>
+      <p class="nota">No deben aparecer <b>Conciliación</b>, <b>Publicado</b>, <b>Llenado asistido</b>, <b>Captura por lotes</b> ni <b>Archivo del original</b>. Si sale alguna de esas cinco, <b>eso sí es un fallo</b> y hay que reportarlo.</p>
+    </div>
+  </li>
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">3</span></label>
+    <div>
+      <h3>Escribiendo la dirección a mano tampoco se entra</h3>
+      <p class="proposito">Esconder el botón no es cerrar la puerta. Esta es la prueba de verdad.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Pegue en la barra del navegador, una por una, estas seis direcciones:
+          <br><code>/HondurasSimple/Editor</code>
+          <br><code>/HondurasSimple/Archivo</code>
+          <br><code>/HondurasSimple/CapturaLote</code>
+          <br><code>/HondurasSimple/Llenado</code>
+          <br><code>/HondurasSimple/Conciliacion</code>
+          <br><code>/HondurasSimple/Publicacion</code></dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Las <b>seis</b> llevan a la pantalla de <b>acceso denegado</b>. Ninguna debe abrirse, ni siquiera un instante antes de rebotar.</dd></div>
+      </dl>
+      <p class="nota">Si alguna abre, es el fallo más grave que puede tener este cambio: repórtelo con la dirección exacta.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">4</span></label>
+    <div>
+      <h3>La ficha se lee, pero no se toca</h3>
+      <p class="proposito">La ficha se quedó en SIGER porque es de consulta. Borrarla no lo es.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Inventario &rarr; pulse cualquier trámite para abrir su ficha.</dd></div>
+        <div><dt>Haga</dt><dd>Lea la ficha entera y busque botones en la cabecera y al pie.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La ficha carga completa. <b>No hay</b> botón <b>Editar</b>, ni <b>Completar la ficha</b>, ni <b>Eliminar</b>.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">5</span></label>
+    <div>
+      <h3>El inventario no ofrece ningún atajo al trabajo</h3>
+      <p class="proposito">Los botones de la cabecera del inventario eran la otra puerta de entrada.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Inventario.</dd></div>
+        <div><dt>Haga</dt><dd>Mire la cabecera y recorra unas cuantas filas de la tabla.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>No aparece el botón <b>Publicado</b>, ni <b>Nueva ficha</b>, ni un <b>Editar</b> por fila.</dd></div>
+      </dl>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">B. El operador — lo que sí debe alcanzar</h2>
+<ol class="pruebas" start="6">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">6</span></label>
+    <div>
+      <h3>El operador ve las seis entradas de Honduras Simple</h3>
+      <p class="proposito">La otra mitad de la separación: que a quien sí trabaja no le falte nada.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Ventana nueva. Entre como <code>operador.cowork@diger.gob.hn</code>.</dd></div>
+        <div><dt>Haga</dt><dd>Lea el menú de la izquierda.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Dos grupos. En <b>SIGER</b>: Inventario y Observatorio. En <b>Honduras Simple</b>, las seis: <b>Conciliación</b>, <b>Publicado</b>, <b>Llenado asistido</b>, <b>Completitud</b>, <b>Captura por lotes</b> y <b>Archivo del original</b>.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">7</span></label>
+    <div>
+      <h3>Las siete pantallas abren, sin ser administrador</h3>
+      <p class="proposito">Aquí se cazaría el error más traicionero: una pantalla que quedara pidiendo un permiso que ya no existe. Con un administrador no se notaría, porque el administrador se salta la tabla.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Abra las seis del menú, una por una. Después abra una ficha del inventario y pulse <b>Editar</b>: esa es la séptima.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Las siete cargan con su contenido. Ninguna manda a <b>acceso denegado</b> ni a la pantalla de error.</dd></div>
+      </dl>
+      <p class="nota">Ponga cuidado en <b>Conciliación</b>: es la que llevaba escrita la política vieja. Si va a fallar alguna, es esa.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">8</span></label>
+    <div>
+      <h3>Conciliación hace su trabajo</h3>
+      <p class="proposito">Abrir no es funcionar.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Honduras Simple &rarr; <b>Conciliación</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Recorra la lista, use los filtros que tenga y entre en un caso.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La lista trae registros y los filtros responden. Nada queda en blanco ni tira a la pantalla de error.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">9</span></label>
+    <div>
+      <h3>El llenado asistido guarda</h3>
+      <p class="proposito">Escribir de verdad es lo que prueba que el permiso de edición viajó bien.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Honduras Simple &rarr; <b>Llenado asistido</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Tome un trámite, cambie algún dato y <b>guarde</b>. Vuelva a entrar a ese mismo trámite.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Guarda sin error y, al volver, el cambio sigue ahí.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">10</span></label>
+    <div>
+      <h3>El editor guarda, y la ficha se puede borrar</h3>
+      <p class="proposito">Editar y eliminar son ahora permisos de Honduras Simple, no de SIGER. El operador debe tener los dos.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Inventario &rarr; abra una ficha.</dd></div>
+        <div><dt>Haga</dt><dd>Compruebe que están los botones <b>Editar</b> y <b>Eliminar</b>. Pulse <b>Editar</b>, cambie algo y guarde.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Los dos botones están. El editor abre en <code>/HondurasSimple/Editor</code> y el cambio se guarda.</dd></div>
+      </dl>
+      <p class="nota">Puede borrar una ficha si quiere: el sandbox es desechable. Pero no hace falta para dar el paso por bueno.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">C. Las direcciones de antes</h2>
+<ol class="pruebas" start="11">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">11</span></label>
+    <div>
+      <h3>Los enlaces guardados siguen llevando a algún lado</h3>
+      <p class="proposito">Estas pantallas cambiaron de dirección. Quien tuviera un favorito no debe encontrarse un error.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Como <b>operador</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Pegue estas siete, una por una, y mire dónde termina cada una:
+          <br><code>/Siger/Editor</code> &middot; <code>/Siger/Archivo</code> &middot; <code>/Siger/CapturaLote</code>
+          <br><code>/Siger/Completitud</code> &middot; <code>/Siger/Llenado</code> &middot; <code>/Siger/Conciliacion</code> &middot; <code>/Siger/Publicacion</code></dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Las siete terminan en la misma pantalla, pero con <code>/HondurasSimple/</code> en la barra. Ninguna da error ni pantalla en blanco.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">12</span></label>
+    <div>
+      <h3>El salto no se come los filtros</h3>
+      <p class="proposito">Una redirección que pierde lo que iba detrás del signo de interrogación es una redirección a medias.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Pegue <code>/Siger/Publicacion?tab=candidatas</code>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Termina en <code>/HondurasSimple/Publicacion?tab=candidatas</code>, con la pestaña <b>Candidatas</b> ya abierta.</dd></div>
+      </dl>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">D. El interruptor — para esto se hizo todo</h2>
+<ol class="pruebas" start="13">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">13</span></label>
+    <div>
+      <h3>Las dos áreas salen separadas en la pantalla de permisos</h3>
+      <p class="proposito">Antes había un solo interruptor para las dos cosas. Ese era el problema.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Ventana nueva. Entre como <code>admin.cowork@diger.gob.hn</code> y vaya a <b>Accesos &rarr; Permisos</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Elija el rol <b>Consultor</b>. Busque por <code>Honduras</code>, y después borre la búsqueda y mire el área <b>SIGER</b>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Dos áreas distintas: <b>SIGER</b> con un solo permiso, <b>Ver</b>; y <b>Honduras Simple</b> con los suyos aparte.</dd></div>
+      </dl>
+      <p class="nota">Si en el área SIGER aparece un <b>Editar</b> o un <b>Eliminar</b>, la separación se deshizo: repórtelo.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">14</span></label>
+    <div>
+      <h3>Cerrarle la puerta al perfil de fuera</h3>
+      <p class="proposito">Este es el gesto que se hará el día que se le entregue el inventario a gente ajena.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Accesos &rarr; Permisos &rarr; rol <b>Consultor</b>.</dd></div>
+        <div><dt>Haga</dt><dd><b>Desmarque</b> todo lo del área <b>Honduras Simple</b> y guarde. Deje intacto el <b>Ver</b> de SIGER.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>El aviso de <b>Permisos actualizados</b>, y al volver a mirar, el área Honduras Simple queda sin nada marcado.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">15</span></label>
+    <div>
+      <h3>La puerta quedó cerrada, y el inventario sigue abierto</h3>
+      <p class="proposito">Si un solo paso resume el cambio entero, es este. Antes era imposible: dar SIGER era dar todo.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Vuelva a la ventana del <b>perfil de fuera</b> y recargue.</dd></div>
+        <div><dt>Haga</dt><dd>Mire el menú. Después pegue otra vez <code>/HondurasSimple/Completitud</code> a mano.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>El grupo <b>Honduras Simple</b> <b>desapareció entero</b> del menú, incluida Completitud. La dirección a mano da <b>acceso denegado</b>. Y <b>SIGER sigue funcionando igual</b>: Inventario y Observatorio abren con sus datos.</dd></div>
+      </dl>
+      <p class="nota">El cambio surte efecto al instante, sin reiniciar y sin volver a entrar. Si tuviera que esperar, dígalo.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">16</span></label>
+    <div>
+      <h3>Y se vuelve a abrir</h3>
+      <p class="proposito">Un interruptor que solo apaga no es un interruptor.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Como administrador, vuelva a marcarle al <b>Consultor</b> el permiso <b>Ver</b> de Honduras Simple y guarde. Recargue la ventana del perfil de fuera.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd><b>Completitud</b> reaparece en el menú y la pantalla abre.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">17</span></label>
+    <div>
+      <h3>La bitácora dice quién movió qué</h3>
+      <p class="proposito">El traslado de permisos corrió solo al arrancar. Tiene que haber dejado rastro.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Accesos &rarr; Permisos &rarr; <b>Bitácora de cambios</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Busque las filas cuyo autor sea <code>separacion-honduras-simple</code>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Filas con permisos que empiezan por <b>HondurasSimple.</b> Ahí deben estar también sus propios cambios de los pasos 14 y 16, con su nombre.</dd></div>
+      </dl>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">E. Que llegue al portal ciudadano</h2>
+<ol class="pruebas" start="18">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">18</span></label>
+    <div>
+      <h3>Publicar desde la pantalla mudada</h3>
+      <p class="proposito">La pantalla cambió de sitio y de permiso. Lo que hace por dentro debe seguir intacto.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Como <b>operador</b>: Honduras Simple &rarr; <b>Publicado</b> &rarr; pestaña <b>Candidatas</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Filtre por <b>INPREMA</b>, <b>IHTT</b> o <b>CONSUCOOP</b>, marque un trámite y pulse <b>Publicar seleccionadas</b>. <b>Apunte el nombre.</b></dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Confirma sin error y el trámite pasa a la pestaña <b>Publicados</b>.</dd></div>
+      </dl>
+      <p class="nota">Tiene que ser de una de esas tres instituciones: el portal ciudadano solo replica esas. Con otra, el paso 19 no puede salir bien.</p>
+    </div>
+  </li>
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">19</span></label>
+    <div>
+      <h3>Aparece en Honduras Simple</h3>
+      <p class="proposito">Esta es la pregunta de fondo: que lo del portal interno llegue al del ciudadano.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd><code>https://localhost:7180</code>, el catálogo.</dd></div>
+        <div><dt>Haga</dt><dd>Cuente <b>15 segundos</b>, recargue y busque el trámite que apuntó.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Ahí está, y su ficha abre con los datos que trae del portal interno.</dd></div>
+      </dl>
+      <p class="nota">Si no sale, espere y recargue una vez más antes de reportar: el ciclo corto pasa cada 10 segundos.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">20</span></label>
+    <div>
+      <h3>Y se puede quitar</h3>
+      <p class="proposito">Cierra el ciclo entero: publicar, ver, despublicar.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Como operador: Honduras Simple &rarr; <b>Publicado</b> &rarr; pestaña <b>Publicados</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Quítele la publicación a ese mismo trámite. Vuelva al catálogo ciudadano y recargue.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>En el portal interno sale de <b>Publicados</b> enseguida. En el ciudadano <b>tarda hasta 5 minutos</b> en desaparecer, y eso es correcto: las bajas solo se resuelven en la revisión completa.</dd></div>
+      </dl>
+      <p class="nota">Que siga viéndose un rato <b>no es un fallo</b>. Solo lo es si sigue ahí pasados los cinco minutos.</p>
+    </div>
+  </li>
+</ol>
+
+<section class="panel aviso">
+  <h2>Si algo no pasa</h2>
+  <ul class="cierre">
+    <li><b>Una pantalla manda a «acceso denegado» y no debería.</b> Diga con <b>qué usuario</b> y <b>qué dirección</b>. Es el dato que hace falta; la causa no hay que averiguarla.</li>
+    <li><b>Sale la pantalla de error del portal.</b> Copie el código y el mensaje que aparecen en la dirección, y diga qué había pulsado justo antes.</li>
+    <li><b>Cambió un permiso y no pasó nada.</b> Recargue una vez. Si sigue igual, repórtelo: debería ser inmediato.</li>
+    <li><b>Dejó el sandbox hecho un desastre.</b> Es para eso. <code>scripts\pruebas\Refrescar-Sandbox.ps1 -Rehacer</code> y vuelve a estar recién copiado — pero avise antes, porque eso borra también los tres usuarios de prueba.</li>
+    <li>Al reportar, diga <b>el número del paso</b>, qué vio y qué esperaba. Con una captura basta.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>Portal interno &middot; flujo de pruebas de la separación de Honduras Simple &middot; 3 de septiembre de 2026.<br>
+  Todo corre sobre <b>DigerTramitesEstado_Unificada_Sandbox</b>; las bases reales no se tocan.<br>
+  Para probar el portal ciudadano por dentro —portada, catálogo, fichas— use el otro recorrido:
+  <code>honduras-agil\docs\flujo-de-pruebas-hondurassimple.html</code>.</p>
+</footer>
+
+</div>
+
+<script>
+  // Marca de avance. Solo cuenta; no guarda nada en ningun lado.
+  const casillas = [...document.querySelectorAll('.prueba input[type=checkbox]')];
+  const cuenta = document.getElementById('cuenta');
+  const relleno = document.getElementById('relleno');
+  function actualizar() {
+    const n = casillas.filter(c => c.checked).length;
+    cuenta.textContent = n + ' de ' + casillas.length + ' comprobadas';
+    relleno.style.width = (casillas.length ? (n / casillas.length) * 100 : 0) + '%';
+  }
+  casillas.forEach(c => c.addEventListener('change', actualizar));
+  actualizar();
+</script>

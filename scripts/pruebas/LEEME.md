@@ -111,22 +111,57 @@ Si dice `_Sandbox` o `_E2E`, es una copia. Si alguna vez sale roja diciendo
   publicados, para no pisar lo que se haya publicado a mano durante las pruebas. Con
   `-SoloSembrar` se fuerza.
 
+## Los dos recorridos de prueba
+
+Hay dos, y prueban cosas distintas. No se solapan.
+
+| Documento | Qué prueba | Dónde |
+|---|---|---|
+| `docs\flujo-de-pruebas-separacion-honduras-simple.html` | **El portal interno**: que SIGER quedara de pura consulta y que el trabajo de Honduras Simple viva detrás de su propia puerta. Termina comprobando que lo publicado llega al portal ciudadano. 20 pasos. | Este repositorio |
+| `honduras-agil\docs\flujo-de-pruebas-hondurassimple.html` | **El portal ciudadano** por dentro: portada, catálogo, fichas, búsqueda, accesibilidad. 22 pasos. | Repositorio `honduras-agil` |
+
+El de la separación necesita **tres usuarios**, que existen solo en el sandbox y comparten la
+contraseña `Pruebas#2026`:
+
+| Correo | Rol | Para qué |
+|---|---|---|
+| `inventario.cowork@diger.gob.hn` | Consultor | El perfil de fuera: solo debe alcanzar el inventario |
+| `operador.cowork@diger.gob.hn` | Jefe de Área | Hace el trabajo de Honduras Simple. **No es administrador** |
+| `admin.cowork@diger.gob.hn` | Administrador | Solo para abrir y cerrar permisos |
+
+Si se rehace el sandbox con `-Rehacer`, esos tres usuarios **se pierden** junto con la copia.
+Se vuelven a crear con:
+
+```
+sqlcmd -S "LP-GD-JAGM\SQLEXPRESS" -U sa -P admin123 -C -I ^
+       -d DigerTramitesEstado_Unificada_Sandbox ^
+       -i scripts\pruebas\sql\usuarios-cowork.sql
+```
+
+Es idempotente, y se niega a correr contra cualquier base que no termine en `_Sandbox`.
+
 ## Encargo para Cowork
 
 Texto para pegarle tal cual:
 
-> Quiero que pruebes HondurasSimple desde Chrome, viéndolo.
+> Quiero que pruebes desde Chrome, viéndolo, el cambio que separó Honduras Simple del
+> inventario SIGER en el portal interno.
 >
 > 1. Abrí PowerShell en `C:\Users\jgarcia\Documents\Portal-Informacion-Institucional`.
 > 2. Corré `scripts\pruebas\Refrescar-Sandbox.ps1` y después `scripts\Iniciar-Todo.ps1`.
-> 3. Entrá a https://localhost:7180 y confirmá que la cinta de arriba dice
+> 3. Entrá a https://localhost:49175 y confirmá que la cinta de arriba dice
 >    **Entorno de pruebas** y que el nombre de la base termina en `_Sandbox`. Si no dice eso,
 >    parás y avisás.
-> 4. Seguí el documento `honduras-agil\docs\flujo-de-pruebas-hondurassimple.html` de arriba
->    abajo, los 22 pasos. Antes de reportar nada, leé la sección
->    «Lo que ya sabemos y no hay que reportar».
-> 5. Podés buscar, filtrar, votar y publicar lo que haga falta: es una copia desechable.
-> 6. Contame paso por paso cuál pasó y cuál no, con captura de lo que no.
+> 4. Seguí el documento `docs\flujo-de-pruebas-separacion-honduras-simple.html` de arriba
+>    abajo, los 20 pasos. Antes de reportar nada, leé la sección
+>    «Lo que ya sabemos y no hay que reportar»: hay cosas que parecen fallos y no lo son.
+> 5. Usá los tres usuarios que dice el documento, cada uno en su ventana de incógnito. El
+>    paso 7 y el paso 15 son los importantes; si tenés poco tiempo, esos dos no los saltes.
+> 6. Podés escribir, publicar y borrar lo que haga falta: es una copia desechable.
+> 7. Contame paso por paso cuál pasó y cuál no, con captura de lo que no.
+>
+> Si después sobra tiempo, hacé también el recorrido del portal ciudadano:
+> `honduras-agil\docs\flujo-de-pruebas-hondurassimple.html`, https://localhost:7180.
 >
 > No edites ningún `appsettings.json`. No corras nada contra
 > `DigerTramitesEstado_Unificada` ni `VentanillaDigital_Net`.
