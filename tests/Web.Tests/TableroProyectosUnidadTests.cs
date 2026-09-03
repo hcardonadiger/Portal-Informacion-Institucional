@@ -123,6 +123,21 @@ public sealed class TableroProyectosUnidadTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task El_estado_se_muestra_con_su_etiqueta_legible_y_no_con_el_nombre_del_enum()
+    {
+        var html = await TableroAsync("Empleado");
+
+        // Se ancla en la celda de la tabla a propósito. Un NotContain("EnEjecucion") suelto no
+        // prueba esta página: el panel de notificaciones del layout escribe «PRY-UNI-01 pasó a
+        // «EnEjecucion»» porque ProyectoEstadoCambiadoEvent guarda Estado.ToString(). Ese es otro
+        // defecto, en otro lugar, y no es lo que arregla esta vista.
+        html.Should().Contain("<td class=\"res-meta\">En ejecuci",
+            "la etiqueta compartida escribe 'En ejecucion' con espacio, como sus dos tableros hermanos");
+        html.Should().NotContain("<td class=\"res-meta\">EnEjecucion",
+            "imprimir el enum crudo en la columna Estado es el defecto que se corrige aqui");
+    }
+
+    [Fact]
     public async Task La_pestana_de_unidad_viene_activa_y_la_de_institucion_no_se_ofrece_a_un_rol_de_unidad()
     {
         var html = await TableroAsync("Empleado");

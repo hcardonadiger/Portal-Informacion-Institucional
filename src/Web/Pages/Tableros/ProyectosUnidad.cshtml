@@ -1,4 +1,5 @@
 @page
+@using Diger.TramitesEstado.Application.Dashboards.Queries
 @model Diger.TramitesEstado.Web.Pages.Tableros.ProyectosUnidadModel
 @{
     ViewData["Title"] = "Mis proyectos";
@@ -52,7 +53,10 @@
                             @* UnidadNombre puede venir null aunque UnidadId tenga valor: Unidades lleva
                                query filter por institución activa y el nombre no siempre se resuelve. *@
                             <td class="res-meta">@(p.UnidadNombre ?? "—")</td>
-                            <td class="res-meta">@p.Estado</td>
+                            @* Etiquetas.Estado y no @p.Estado: el enum crudo imprime "EnEjecucion". Es el
+                               mismo helper que usan /Tableros/Proyectos y /Tableros/ProyectosArea, para que
+                               las tres vistas del mismo proyecto no lo nombren de tres maneras. *@
+                            <td class="res-meta">@Etiquetas.Estado(p.Estado)</td>
                             <td>
                                 <div class="bar-track" style="height:12px"><div class="bar-fill @(p.Atrasado ? "c-red" : p.SinReportar ? "c-amber" : "")" style="width:@(p.AvancePct)%"></div></div>
                                 <div class="res-meta">@(p.AvancePct)%</div>
