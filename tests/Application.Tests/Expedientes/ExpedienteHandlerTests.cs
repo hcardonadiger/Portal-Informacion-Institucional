@@ -58,7 +58,7 @@ public class ExpedienteHandlerTests : IDisposable
         ObsExpediente: null, ObsLevantamiento: null, ValidadoDiger: null, ValidadoInst: null,
         FechaValidacion: null, NumActa: null,
         Tramites: [new TramiteInput(0, "Constancia de solvencia", "Solvencia", "Registro", null, null, null, null,
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)],
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)],
         Requisitos: [new RequisitoInput(0, 0, "Cédula", null, AccionRequisito.Mantener, null)],
         Flujos: [new FlujoNodoInput(0, FaseFlujo.Actual, 0, TipoNodoFlujo.Inicio, "Recepción", null, null, null, null, null)],
         Legal: [], DocsSolicitados: [], DocsInternos: [], Perfiles: [], Condiciones: [],

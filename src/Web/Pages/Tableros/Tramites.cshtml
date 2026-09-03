@@ -71,6 +71,19 @@
                 <option value="Suspendido" selected="@(Model.Estado == EstadoTramite.Suspendido)">Suspendido</option>
             </select>
         </div>
+        @* «Sin clasificar» va en la misma lista y no como casilla aparte: es una respuesta más a
+           «¿qué acción?», y mientras el campo sea nuevo es la que más se va a usar. *@
+        <div class="f">
+            <label>Acción</label>
+            <select name="accion" onchange="this.form.submit()">
+                <option value="">Todas</option>
+                @foreach (var ac in new[] { "Acompañamiento", "Digitalización", "Soporte", "Desarrollo" })
+                {
+                    <option value="@ac" selected="@(Model.Accion == ac)">@ac</option>
+                }
+                <option value="@FiltroAccion.SinClasificar" selected="@(Model.Accion == FiltroAccion.SinClasificar)">Sin clasificar</option>
+            </select>
+        </div>
         <div class="f"><label>Desde</label><input type="date" name="desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" /></div>
         <div class="f"><label>Hasta</label><input type="date" name="hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" /></div>
         <div class="f" style="align-self:end"><button class="btnp" type="submit">Filtrar</button></div>
@@ -158,7 +171,22 @@
                             <td class="trm-inst">@t.Institucion</td>
                             <td>
                                 <div class="trm-nom">@t.NombreTramite</div>
-                                <div class="trm-sub">@EstadoLbl(t.EstadoExpediente)</div>
+                                @* La acción va acá y no en su propia columna: la tabla ya reparte
+                                   seis anchos y una séptima la aprieta. Se muestra siempre —también
+                                   cuando falta— porque filtrar por algo invisible obliga a confiar
+                                   a ciegas en el resultado. *@
+                                <div class="trm-sub">
+                                    @EstadoLbl(t.EstadoExpediente)
+                                    ·
+                                    @if (string.IsNullOrWhiteSpace(t.Accion))
+                                    {
+                                        <span style="opacity:.65">sin clasificar</span>
+                                    }
+                                    else
+                                    {
+                                        @t.Accion
+                                    }
+                                </div>
                             </td>
                             <td>
                                 <a asp-page="/Expedientes/Seguimiento" asp-route-id="@t.ExpedienteId" asp-route-t="@t.TramiteIndex"
