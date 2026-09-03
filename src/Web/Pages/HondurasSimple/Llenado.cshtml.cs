@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Application.Siger.Llenado;
 using Diger.TramitesEstado.Application.Siger.Llenado.Commands.GenerarPropuestas;
 using Microsoft.EntityFrameworkCore;
 
-namespace Diger.TramitesEstado.Web.Pages.Siger;
+namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 
 /// <summary>
 /// La cola donde se revisa lo que el llenado asistido propuso para las fichas incompletas.
@@ -29,7 +29,7 @@ namespace Diger.TramitesEstado.Web.Pages.Siger;
 /// </para>
 /// </remarks>
 [Authorize]
-[Permission("Siger.Llenado", AccionModulo.Ver, "Ver la cola del llenado asistido")]
+[Permission("HondurasSimple.Llenado", AccionModulo.Ver, "Ver la cola del llenado asistido")]
 public sealed class LlenadoModel(IApplicationDbContext ctx, ISender sender) : PageModel
 {
     private const int TamanoPagina = 25;
@@ -67,7 +67,7 @@ public sealed class LlenadoModel(IApplicationDbContext ctx, ISender sender) : Pa
 
     // ── Acciones ──────────────────────────────────────────────────────────────
 
-    [Permission("Siger.Llenado", AccionModulo.Editar, "Generar propuestas de llenado")]
+    [Permission("HondurasSimple.Llenado", AccionModulo.Editar, "Generar propuestas de llenado")]
     public async Task<IActionResult> OnPostGenerarAsync(CancellationToken ct)
     {
         var r = await sender.Send(new GenerarPropuestasLlenadoCommand(), ct);
@@ -84,17 +84,17 @@ public sealed class LlenadoModel(IApplicationDbContext ctx, ISender sender) : Pa
         return Redirigir();
     }
 
-    [Permission("Siger.Llenado", AccionModulo.Editar, "Aprobar propuestas de llenado")]
+    [Permission("HondurasSimple.Llenado", AccionModulo.Editar, "Aprobar propuestas de llenado")]
     public Task<IActionResult> OnPostAprobarAsync(CancellationToken ct) => DecidirMarcadasAsync(true, ct);
 
-    [Permission("Siger.Llenado", AccionModulo.Editar, "Rechazar propuestas de llenado")]
+    [Permission("HondurasSimple.Llenado", AccionModulo.Editar, "Rechazar propuestas de llenado")]
     public Task<IActionResult> OnPostRechazarAsync(CancellationToken ct) => DecidirMarcadasAsync(false, ct);
 
     /// <summary>
     /// Aprueba todo lo que coincide con el filtro, no solo lo marcado en la página visible. Es la
     /// única forma de que mil propuestas se resuelvan en una tarde y no en un mes.
     /// </summary>
-    [Permission("Siger.Llenado", AccionModulo.Editar, "Aprobar en bloque por filtro")]
+    [Permission("HondurasSimple.Llenado", AccionModulo.Editar, "Aprobar en bloque por filtro")]
     public async Task<IActionResult> OnPostAprobarFiltroAsync(CancellationToken ct)
     {
         var ids = await Filtrada(Pendientes: true).Select(p => p.Id).ToListAsync(ct);

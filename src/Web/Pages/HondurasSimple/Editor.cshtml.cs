@@ -2,12 +2,12 @@ using Diger.TramitesEstado.Application.Siger.Bloqueo;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 
-namespace Diger.TramitesEstado.Web.Pages.Siger;
+namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 
 // Antes era [Authorize(Roles = nameof(RolUsuario.Administrador))], que comparaba contra el
 // código literal del rol: un rol personalizado con capacidad de administrador quedaba fuera.
 [Authorize]
-[Permission("Siger", AccionModulo.Editar, "Crear y editar fichas SIGER")]
+[Permission("HondurasSimple", AccionModulo.Editar, "Crear y editar fichas SIGER")]
 public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> sol, ISender sender) : PageModel
 {
     [BindProperty] public TramiteSigerForm Form { get; set; } = new();
@@ -102,14 +102,14 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         if (enlazados.Count == 0)
         {
             TempData["SuccessMsg"] = "Esta ficha ya no estaba enlazada a ningún expediente.";
-            return RedirectToPage("/Siger/Editor", new { id });
+            return RedirectToPage("/HondurasSimple/Editor", new { id });
         }
 
         foreach (var t in enlazados) t.TramiteSigerId = null;
         await ctx.SaveChangesAsync(ct);
 
         TempData["SuccessMsg"] = "Ficha desenlazada. Vuelve a editarse en esta pantalla.";
-        return RedirectToPage("/Siger/Editor", new { id });
+        return RedirectToPage("/HondurasSimple/Editor", new { id });
     }
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {

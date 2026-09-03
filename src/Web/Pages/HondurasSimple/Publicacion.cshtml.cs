@@ -1,10 +1,10 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 
-namespace Diger.TramitesEstado.Web.Pages.Siger;
+namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 
 /// <summary>
-/// Qué trámites ve el ciudadano en HondurasÁgil, y la pantalla para decidirlo.
+/// Qué trámites ve el ciudadano en Honduras Simple, y la pantalla para decidirlo.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,7 +25,7 @@ namespace Diger.TramitesEstado.Web.Pages.Siger;
 /// </para>
 /// </remarks>
 [Authorize]
-[Permission("Siger.Publicacion", AccionModulo.Ver, "Ver qué trámites están publicados en HondurasÁgil")]
+[Permission("HondurasSimple.Publicacion", AccionModulo.Ver, "Ver qué trámites están publicados en Honduras Simple")]
 public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
 {
     public const string TabPublicadas = "publicadas";
@@ -53,13 +53,13 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
 
     // ── Acciones ──────────────────────────────────────────────────────────────
 
-    [Permission("Siger.Publicacion", AccionModulo.Editar, "Publicar trámites en HondurasÁgil")]
+    [Permission("HondurasSimple.Publicacion", AccionModulo.Editar, "Publicar trámites en Honduras Simple")]
     public Task<IActionResult> OnPostPublicarAsync(CancellationToken ct)
         => CambiarPublicacionAsync(true, ct);
 
     /// <summary>Quitar de HA es despublicar, no borrar (D-16): la ficha se queda entera y se
     /// puede volver a publicar cuando se corrija lo que hiciera falta.</summary>
-    [Permission("Siger.Publicacion", AccionModulo.Editar, "Quitar trámites de HondurasÁgil")]
+    [Permission("HondurasSimple.Publicacion", AccionModulo.Editar, "Quitar trámites de Honduras Simple")]
     public Task<IActionResult> OnPostQuitarAsync(CancellationToken ct)
         => CambiarPublicacionAsync(false, ct);
 
@@ -88,8 +88,8 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
         TempData["SuccessMsg"] = cambiadas == 0
             ? "Ninguna ficha cambió de estado."
             : publicar
-                ? $"{cambiadas} ficha(s) publicada(s) en HondurasÁgil."
-                : $"{cambiadas} ficha(s) retirada(s) de HondurasÁgil. Siguen completas en el inventario.";
+                ? $"{cambiadas} ficha(s) publicada(s) en Honduras Simple."
+                : $"{cambiadas} ficha(s) retirada(s) de Honduras Simple. Siguen completas en el inventario.";
 
         return Redirigir();
     }
@@ -155,7 +155,7 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
     }
 
     /// <summary>
-    /// Candidata = todavía no está en HondurasÁgil y su estado no da motivo para dudar.
+    /// Candidata = todavía no está en Honduras Simple y su estado no da motivo para dudar.
     /// </summary>
     /// <remarks>
     /// Es un árbol de expresión y no un método porque esto viaja a SQL: EF no puede traducir una

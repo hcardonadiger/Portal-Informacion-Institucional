@@ -101,7 +101,10 @@ public sealed class DetalleModel(IApplicationDbContext ctx, ISender sender) : Pa
         return Page();
     }
 
-    [Permission("Siger", AccionModulo.Eliminar, "Eliminar fichas SIGER")]
+    // La pagina se queda en SIGER porque es de consulta, pero borrar no lo es: su permiso
+    // se fue con el resto del trabajo de Honduras Simple. Quien solo tiene Siger.Ver lee la
+    // ficha y no puede tocarla.
+    [Permission("HondurasSimple", AccionModulo.Eliminar, "Eliminar fichas SIGER")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
         // El chequeo de rol por nombre que había acá lo sustituye el [Permission] de arriba,

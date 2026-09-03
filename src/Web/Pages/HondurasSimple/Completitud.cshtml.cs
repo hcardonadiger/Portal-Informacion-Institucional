@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Diger.TramitesEstado.Web.Pages.Siger;
+namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 
 /// <summary>Por institución, cuántas fichas tienen ya categoría, modalidad, tiempo, costo y
 /// enlace a SOL. Es la única forma de saber si el piloto está listo para publicarse y de
 /// estimar el costo del corte siguiente — el plan lo marca como obligatorio, no adorno.</summary>
 [Authorize]
-[Permission("Siger", AccionModulo.Ver, "Ver el inventario SIGER")]
+[Permission("HondurasSimple", AccionModulo.Ver, "Ver la completitud de las fichas")]
 public sealed class CompletitudModel(IApplicationDbContext ctx) : PageModel
 {
     public IReadOnlyList<CompletitudInstitucionRow> Filas { get; private set; } = [];

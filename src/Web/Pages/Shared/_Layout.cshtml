@@ -106,6 +106,18 @@
         var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
         var puedeSoporte     = await Acceso.EsSoporteAsync();   // atiende el chat de soporte
         var puedeProyectos   = await Acceso.PuedeAsync(ModulosPortal.Proyectos);
+        var puedeSiger       = await Acceso.PuedeAsync(ModulosPortal.Siger);
+
+        // Honduras Simple se calcula una vez y no cuatro veces dentro del menú: son cuatro
+        // módulos distintos y el grupo tiene que aparecer si el usuario alcanza cualquiera de
+        // ellos. Gatearlo solo con "HondurasSimple.Ver" escondería el menú entero a quien
+        // únicamente publica, que es un rol perfectamente razonable.
+        var hsFichas         = await Acceso.PuedeAsync(ModulosPortal.HondurasSimple);
+        var hsFichasEditar   = await Acceso.PuedeClaveAsync("HondurasSimple.Editar");
+        var hsLlenado        = await Acceso.PuedeClaveAsync("HondurasSimple.Llenado.Ver");
+        var hsConciliacion   = await Acceso.PuedeClaveAsync("HondurasSimple.Conciliacion.Editar");
+        var hsPublicacion    = await Acceso.PuedeClaveAsync("HondurasSimple.Publicacion.Ver");
+        var puedeHondurasSimple = hsFichas || hsFichasEditar || hsLlenado || hsConciliacion || hsPublicacion;
 
         var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
         List<AsignacionAuthDto>? asignaciones = null;
@@ -173,16 +185,49 @@
                                 </div>
                             </div>
                         }
-                        @if (puedeExpedientes)
+                        @* SIGER quedó de sola consulta el 3 de septiembre de 2026: todo lo que
+                           escribía se fue al grupo de abajo. Es el único grupo pensado para que
+                           gente de fuera lo tenga, y por eso ahora se gatea con Siger y no con
+                           Expedientes —antes, enseñar el inventario obligaba a regalar
+                           Expedientes entero—. *@
+                        @if (puedeSiger)
                         {
                             <div class="nav-group @(EsRuta("/Siger") ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">SIGER<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
                                     <a class="nav-item @(EsRuta("/Siger/Index") ? "on" : "")" asp-page="/Siger/Index"><svg class="ico"><use href="#i-inventario"></use></svg>Inventario</a>
                                     <a class="nav-item @(EsRuta("/Siger/Tablero") ? "on" : "")" asp-page="/Siger/Tablero"><svg class="ico"><use href="#i-grafica"></use></svg>Observatorio</a>
-                                    @if (await Acceso.PuedeClaveAsync("Siger.Conciliacion.Editar"))
+                                </div>
+                            </div>
+                        }
+                        @* El trabajo del portal ciudadano. Seis entradas: el tope que este menú
+                           se puso a propósito. El editor de fichas no está acá porque no se
+                           empieza por él —se llega desde el inventario o desde una ficha—. *@
+                        @if (puedeHondurasSimple)
+                        {
+                            <div class="nav-group @(EsRuta("/HondurasSimple") ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Honduras Simple<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    @if (hsConciliacion)
                                     {
-                                        <a class="nav-item @(EsRuta("/Siger/Conciliacion") ? "on" : "")" asp-page="/Siger/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
+                                        <a class="nav-item @(EsRuta("/HondurasSimple/Conciliacion") ? "on" : "")" asp-page="/HondurasSimple/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
+                                    }
+                                    @if (hsPublicacion)
+                                    {
+                                        <a class="nav-item @(EsRuta("/HondurasSimple/Publicacion") ? "on" : "")" asp-page="/HondurasSimple/Publicacion"><svg class="ico"><use href="#i-check"></use></svg>Publicado</a>
+                                    }
+                                    @if (hsLlenado)
+                                    {
+                                        <a class="nav-item @(EsRuta("/HondurasSimple/Llenado") ? "on" : "")" asp-page="/HondurasSimple/Llenado"><svg class="ico"><use href="#i-asignacion"></use></svg>Llenado asistido</a>
+                                    }
+                                    @if (hsFichas)
+                                    {
+                                        <a class="nav-item @(EsRuta("/HondurasSimple/Completitud") ? "on" : "")" asp-page="/HondurasSimple/Completitud"><svg class="ico"><use href="#i-estado"></use></svg>Completitud</a>
+                                    }
+                                    @if (hsFichasEditar)
+                                    {
+                                        <a class="nav-item @(EsRuta("/HondurasSimple/CapturaLote") ? "on" : "")" asp-page="/HondurasSimple/CapturaLote"><svg class="ico"><use href="#i-mas"></use></svg>Captura por lotes</a>
+                                        <a class="nav-item @(EsRuta("/HondurasSimple/Archivo") ? "on" : "")" asp-page="/HondurasSimple/Archivo"><svg class="ico"><use href="#i-informe"></use></svg>Archivo del original</a>
                                     }
                                 </div>
                             </div>

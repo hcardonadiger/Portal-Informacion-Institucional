@@ -3,7 +3,12 @@
 @inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Inventario de Tramites SIGER";
-    var esAdmin = await Acceso.PuedeEditarAsync("Siger");
+    // Estas tres puertas ya no son de SIGER: llevan a Honduras Simple. Se preguntan por su
+    // permiso, no por el del inventario, o quien solo consulta veria botones que le van a
+    // cerrar la puerta en la cara.
+    var puedeVerFichas    = await Acceso.PuedeAsync(ModulosPortal.HondurasSimple);
+    var puedeEditarFichas = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
+    var puedePublicar     = await Acceso.PuedeClaveAsync("HondurasSimple.Publicacion.Ver");
 }
 
 <div class="container" style="max-width:1200px">
@@ -14,13 +19,19 @@
             <p>Registro de tramites del Portal de Tramites y Servicios</p>
         </div>
         <div style="display:flex;gap:8px">
-            <a class="btns" asp-page="/Siger/Completitud">Completitud</a>
-            @if (esAdmin)
+            @if (puedeVerFichas)
             {
-                <a class="btns" asp-page="/Siger/CapturaLote">Captura por lotes</a>
-                <a class="btns" asp-page="/Siger/Publicacion">Publicado en HA</a>
-                <a class="btns" asp-page="/Siger/Archivo">Archivo del original</a>
-                <a class="btnp" asp-page="/Siger/Editor">+ Nuevo tramite</a>
+                <a class="btns" asp-page="/HondurasSimple/Completitud">Completitud</a>
+            }
+            @if (puedePublicar)
+            {
+                <a class="btns" asp-page="/HondurasSimple/Publicacion">Publicado</a>
+            }
+            @if (puedeEditarFichas)
+            {
+                <a class="btns" asp-page="/HondurasSimple/CapturaLote">Captura por lotes</a>
+                <a class="btns" asp-page="/HondurasSimple/Archivo">Archivo del original</a>
+                <a class="btnp" asp-page="/HondurasSimple/Editor">+ Nuevo tramite</a>
             }
         </div>
     </div>
@@ -209,9 +220,9 @@
                                     <a class="btns" style="font-size:12px;padding:4px 10px" href="@t.DiagramaUrl.Replace("~/", "https://beta.sigpret.gob.hn/")" target="_blank" rel="noopener" title="Ver diagrama del proceso">Diagrama</a>
                                 }
                                 <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/Siger/Detalle" asp-route-id="@t.Id">Ver</a>
-                                @if (esAdmin)
+                                @if (puedeEditarFichas)
                                 {
-                                    <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/Siger/Editor" asp-route-id="@t.Id">Editar</a>
+                                    <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/HondurasSimple/Editor" asp-route-id="@t.Id">Editar</a>
                                 }
                             </td>
                         </tr>

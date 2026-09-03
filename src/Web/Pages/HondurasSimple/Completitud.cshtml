@@ -1,5 +1,5 @@
 @page
-@model Diger.TramitesEstado.Web.Pages.Siger.CompletitudModel
+@model Diger.TramitesEstado.Web.Pages.HondurasSimple.CompletitudModel
 @{
     ViewData["Title"] = "Completitud de fichas — SIGER";
     string ClasePct(int pct) => pct >= 90 ? "wf-completada" : pct >= 40 ? "wf-enproceso" : "wf-registrada";
@@ -12,7 +12,7 @@
             <p>Solo cuenta trámites con institución vinculada. Los sin vincular quedan fuera hasta que se resuelva la Fase 2.</p>
         </div>
         <div style="display:flex;gap:8px">
-            <a class="btns" asp-page="/Siger/CapturaLote">Ir a captura por lotes</a>
+            <a class="btns" asp-page="/HondurasSimple/CapturaLote">Ir a captura por lotes</a>
             <a class="btns" asp-page="/Siger/Index">← Inventario</a>
         </div>
     </div>
@@ -45,7 +45,7 @@
                 {
                     <tr>
                         <td>
-                            <a class="seg-inst" asp-page="/Siger/CapturaLote" asp-route-InstitucionId="@f.InstitucionId">@f.Institucion</a>
+                            <a class="seg-inst" asp-page="/HondurasSimple/CapturaLote" asp-route-InstitucionId="@f.InstitucionId">@f.Institucion</a>
                         </td>
                         <td style="text-align:center">@f.Fichas</td>
                         <td style="text-align:center">

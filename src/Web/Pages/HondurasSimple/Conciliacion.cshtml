@@ -1,10 +1,10 @@
 @page
 @using Diger.TramitesEstado.Web.Pages.Siger
 @using Diger.TramitesEstado.Application.Siger
-@model Diger.TramitesEstado.Web.Pages.Siger.ConciliacionModel
+@model Diger.TramitesEstado.Web.Pages.HondurasSimple.ConciliacionModel
 @{
     ViewData["Title"] = "Conciliacion Expedientes - SIGER";
-    var buscarUrl = Url.Page("/Siger/Conciliacion", "BuscarSiger");
+    var buscarUrl = Url.Page("/HondurasSimple/Conciliacion", "BuscarSiger");
     // Detalle exige {id:int} en la ruta, así que Url.Page sin id no la puede generar:
     // se compone la base y el id se agrega aquí y en el JS al cambiar de ficha.
     var detalleUrl = Url.Content("~/Siger/Detalle");
@@ -109,7 +109,7 @@
         @foreach (var t in tabs)
         {
             var activa = Model.Tab == t.Key;
-            <a asp-page="/Siger/Conciliacion" asp-route-tab="@t.Key" asp-route-buscar="@Model.Buscar" asp-route-sigla="@Model.Sigla"
+            <a asp-page="/HondurasSimple/Conciliacion" asp-route-tab="@t.Key" asp-route-buscar="@Model.Buscar" asp-route-sigla="@Model.Sigla"
                style="padding:8px 16px;text-decoration:none;font-weight:600;font-size:14px;border-bottom:3px solid @(activa ? "#1455a4" : "transparent");color:@(activa ? "#1455a4" : "#64748b")">
                 @t.Label <span style="opacity:.7">(@t.Count)</span>
             </a>
@@ -134,7 +134,7 @@
             </select>
         </div>
         <button class="btnp" type="submit">Filtrar</button>
-        <a class="btns" asp-page="/Siger/Conciliacion" asp-route-tab="@Model.Tab">Limpiar</a>
+        <a class="btns" asp-page="/HondurasSimple/Conciliacion" asp-route-tab="@Model.Tab">Limpiar</a>
     </form>
 
     @if (!Model.Resultado.Items.Any())

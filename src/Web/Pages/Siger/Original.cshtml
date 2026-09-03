@@ -1,6 +1,9 @@
 @page "{id:int}"
 @model Diger.TramitesEstado.Web.Pages.Siger.OriginalModel
+@inject AccesoModulosService Acceso
 @{
+    // El archivo del original se fue a Honduras Simple: solo se ofrece a quien puede entrar.
+    var puedeArchivar = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
     var esOriginal = Model.Version == Diger.TramitesEstado.Domain.Entities.OrigenFoto.VersionOriginal;
     ViewData["Title"] = esOriginal ? "Original de SIGER" : $"Versión {Model.Version}";
     var f = Model.Foto;
@@ -46,8 +49,11 @@
                 @if (esOriginal)
                 {
                     <text>
-                        Esta ficha no tiene foto original guardada. Si el inventario aún no se ha
-                        archivado, se toma desde <a asp-page="/Siger/Archivo">Archivo del SIGER original</a>.
+                        Esta ficha no tiene foto original guardada.
+                        @if (puedeArchivar)
+                        {
+                            <text>Si el inventario aún no se ha archivado, se toma desde <a asp-page="/HondurasSimple/Archivo">Archivo del SIGER original</a>.</text>
+                        }
                     </text>
                 }
                 else

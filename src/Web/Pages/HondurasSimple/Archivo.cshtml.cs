@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Diger.TramitesEstado.Web.Pages.Siger;
+namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 
 /// <summary>Estado del archivo del SIGER original y disparador de la captura.</summary>
 /// <remarks>
@@ -8,7 +8,7 @@ namespace Diger.TramitesEstado.Web.Pages.Siger;
 /// haga falta: sirve además como respuesta permanente a «¿ya se tomó la foto, y de cuántas?».
 /// </remarks>
 [Authorize]
-[Permission("Siger", AccionModulo.Editar, "Capturar el archivo del SIGER original")]
+[Permission("HondurasSimple", AccionModulo.Editar, "Capturar el archivo del SIGER original")]
 public sealed class ArchivoModel(ISender sender, IApplicationDbContext ctx) : PageModel
 {
     public int TotalFichas { get; private set; }

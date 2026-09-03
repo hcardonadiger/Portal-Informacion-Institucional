@@ -1,5 +1,5 @@
 @page
-@model Diger.TramitesEstado.Web.Pages.Siger.EditorModel
+@model Diger.TramitesEstado.Web.Pages.HondurasSimple.EditorModel
 @{
     ViewData["Title"] = Model.EsNuevo ? "Nuevo Tramite SIGER" : "Editar Tramite SIGER";
 
@@ -59,7 +59,7 @@
             <p style="font-size:13px;color:#78350f;margin:0">
                 Lo que sí se sigue editando en esta pantalla: el <strong>código</strong>, el
                 <strong>estado de SIGER</strong>, el plan de digitalización y si el trámite es popular.
-                Publicarla o quitarla del portal se decide en <a asp-page="/Siger/Publicacion">Publicación</a>.
+                Publicarla o quitarla del portal se decide en <a asp-page="/HondurasSimple/Publicacion">Publicación</a>.
             </p>
             <form method="post" asp-page-handler="Desenlazar" style="margin-top:.8rem"
                   onsubmit="return confirm('Al desenlazarla, esta ficha vuelve a editarse en esta pantalla y deja de recibir los cambios del expediente @Model.Bloqueo.ExpedienteCodigo. El trámite del expediente se queda donde está, pero ya no manda sobre la ficha. ¿Continuar?')">

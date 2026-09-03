@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Diger.TramitesEstado.Web.Pages.Siger;
+namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 
 /// <summary>
 /// Bandeja de conciliación entre los trámites de los expedientes y el inventario SIGER.
@@ -13,8 +13,8 @@ namespace Diger.TramitesEstado.Web.Pages.Siger;
 /// Id nuevo. Por eso lo que se persiste es la clave estable, y el Id solo se usa para llegar a
 /// ella. Ver <see cref="Domain.Entities.ConciliacionSiger"/>.
 /// </remarks>
-[Permission("Siger.Conciliacion", AccionModulo.Editar, "Conciliar trámites SIGER con expedientes")]
-[Authorize(Policy = "Siger.Conciliacion.Editar")]
+[Permission("HondurasSimple.Conciliacion", AccionModulo.Editar, "Conciliar trámites SIGER con expedientes")]
+[Authorize(Policy = "HondurasSimple.Conciliacion.Editar")]
 public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
 {
     public const string TabPendientes   = "pendientes";

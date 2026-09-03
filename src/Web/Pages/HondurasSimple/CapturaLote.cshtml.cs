@@ -1,13 +1,13 @@
 using Diger.TramitesEstado.Application.Siger.Bloqueo;
 using Microsoft.EntityFrameworkCore;
 
-namespace Diger.TramitesEstado.Web.Pages.Siger;
+namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 
 /// <summary>Asignar categoría/modalidad/tiempo/costo a una selección de trámites filtrada por
 /// institución, en una sola pantalla. El plan lo marca como obligatorio para la Fase 3: con un
 /// formulario de uno en uno, cientos de fichas por piloto son meses de trabajo humano insufrible.</summary>
 [Authorize]
-[Permission("Siger", AccionModulo.Editar, "Captura por lotes de fichas SIGER")]
+[Permission("HondurasSimple", AccionModulo.Editar, "Captura por lotes de fichas SIGER")]
 public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? InstitucionId { get; set; }

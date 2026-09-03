@@ -1,10 +1,10 @@
 @page
 @using Diger.TramitesEstado.Domain.Enums
-@model Diger.TramitesEstado.Web.Pages.Siger.LlenadoModel
+@model Diger.TramitesEstado.Web.Pages.HondurasSimple.LlenadoModel
 @inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Llenado asistido";
-    var puedeDecidir = await Acceso.PuedeClaveAsync("Siger.Llenado.Editar");
+    var puedeDecidir = await Acceso.PuedeClaveAsync("HondurasSimple.Llenado.Editar");
     var enPendientes = Model.Tab == "pendientes";
 }
 
@@ -48,7 +48,7 @@
         @foreach (var t in tabs)
         {
             var activa = Model.Tab == t.Key;
-            <a asp-page="/Siger/Llenado" asp-route-tab="@t.Key" asp-route-sigla="@Model.Sigla"
+            <a asp-page="/HondurasSimple/Llenado" asp-route-tab="@t.Key" asp-route-sigla="@Model.Sigla"
                asp-route-campo="@Model.Campo" asp-route-certeza="@Model.Certeza" asp-route-buscar="@Model.Buscar"
                style="padding:8px 16px;text-decoration:none;font-weight:600;font-size:14px;border-bottom:3px solid @(activa ? "#1455a4" : "transparent");color:@(activa ? "#1455a4" : "#64748b")">
                 @t.Label <span style="opacity:.7">(@t.Count)</span>
@@ -94,7 +94,7 @@
             </select>
         </div>
         <button class="btnp" type="submit">Filtrar</button>
-        <a class="btns" asp-page="/Siger/Llenado" asp-route-tab="@Model.Tab">Limpiar</a>
+        <a class="btns" asp-page="/HondurasSimple/Llenado" asp-route-tab="@Model.Tab">Limpiar</a>
     </form>
 
     @if (!Model.Resultado.Items.Any())

@@ -27,7 +27,7 @@ public static class CatalogoModulos
 
     /// <summary>Áreas en el mismo orden en que aparecen los grupos del navbar.</summary>
     public static readonly IReadOnlyList<string> Areas =
-        ["Expedientes", "SIGER", "Proyectos", "Tableros", "Agenda", "Soporte", "Administración", SinClasificar];
+        ["Expedientes", "SIGER", "Honduras Simple", "Proyectos", "Tableros", "Agenda", "Soporte", "Administración", SinClasificar];
 
     private static readonly Dictionary<string, (string Etiqueta, string Area, int Orden)> Mapa =
         new(StringComparer.OrdinalIgnoreCase)
@@ -38,10 +38,18 @@ public static class CatalogoModulos
             ["Recursos"]                = ("Recursos y plantillas",    "Expedientes", 30),
 
             // ── SIGER ────────────────────────────────────────────────────
-            ["Siger"]                   = ("Inventario",               "SIGER", 10),
-            ["Siger.Conciliacion"]      = ("Conciliación",             "SIGER", 11),
-            ["Siger.Publicacion"]       = ("Publicado en HondurasÁgil", "SIGER", 12),
-            ["Siger.Llenado"]           = ("Llenado asistido",        "SIGER", 13),
+            // Solo consulta. Es la única área que puede abrirse a gente de fuera, así que no
+            // le puede quedar ninguna acción de escritura colgando: el día que reaparezca un
+            // "Siger.Editar", la separación volvió a ser decorativa.
+            ["Siger"]                       = ("Inventario y observatorio",    "SIGER", 10),
+
+            // ── Honduras Simple ──────────────────────────────────────────
+            // Lo que colgaba de SIGER y escribía. Se separó el 3 de septiembre de 2026 porque
+            // el inventario va a abrirse a terceros y este trabajo no.
+            ["HondurasSimple"]              = ("Fichas",                       "Honduras Simple", 10),
+            ["HondurasSimple.Llenado"]      = ("Llenado asistido",             "Honduras Simple", 11),
+            ["HondurasSimple.Conciliacion"] = ("Conciliación",                 "Honduras Simple", 12),
+            ["HondurasSimple.Publicacion"]  = ("Publicado en Honduras Simple", "Honduras Simple", 13),
 
             // ── Proyectos ────────────────────────────────────────────────
             // Grupo propio y no bajo Expedientes: ahí viven los instrumentos de

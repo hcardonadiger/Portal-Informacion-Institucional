@@ -181,6 +181,9 @@ builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.PermissionCa
 // DESPUÉS del sync: la siembra traduce la matriz por módulo a permisos por acción y necesita
 // el catálogo ya poblado. Solo actúa la primera vez (ver la guarda en el propio servicio).
 builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.PermisosSeedService>();
+// Y DESPUES de la siembra: traslada a HondurasSimple.* lo que los roles tenian bajo Siger.*
+// cuando el trabajo del portal ciudadano vivia dentro del inventario. Tambien de una sola vez.
+builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.MigracionHondurasSimpleService>();
 
 
 builder.Services.AddRazorPages(opts =>
@@ -248,6 +251,10 @@ app.Use(async (ctx, next) =>
         "connect-src 'self' wss: ws:;";
     await next();
 });
+
+// Las rutas viejas de las paginas que se mudaron a /HondurasSimple/. Va antes del ruteo
+// porque su trabajo es no llegar nunca a el.
+app.UseRedireccionesHondurasSimple();
 
 app.UseStaticFiles();
 
