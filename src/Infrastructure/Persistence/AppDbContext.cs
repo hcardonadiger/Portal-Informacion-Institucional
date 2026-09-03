@@ -683,6 +683,7 @@ public sealed class ExpedienteTramiteConfiguration : IEntityTypeConfiguration<Ex
         b.Property(x => x.Modalidad).HasMaxLength(60);
         b.Property(x => x.PlazoLegal).HasMaxLength(100);
         b.Property(x => x.Tercero).HasMaxLength(200);
+        b.Property(x => x.Accion).HasMaxLength(60);
         b.Property(x => x.TiempoReal).HasMaxLength(100);
         b.Property(x => x.MetodoPago).HasMaxLength(60);
         b.Property(x => x.PagoBanco).HasMaxLength(120);

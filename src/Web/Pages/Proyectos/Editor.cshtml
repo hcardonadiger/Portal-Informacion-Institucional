@@ -75,6 +75,11 @@
             @* La ficha es para editar; el tablero, para leer cómo va. Se separan porque el segundo
                calcula cosas que la ficha no muestra —esperado a la fecha, carga por persona— y
                mezclarlas alargaría una pantalla que ya tiene ocho pestañas. *@
+            @* Se descarga la ficha entera, no la pestaña abierta: el PDF existe para archivar y
+               enviar el proyecto completo, y una descarga que dependiera de dónde está parado el
+               usuario daría documentos distintos con el mismo nombre. *@
+            <a class="btns" asp-page="/Proyectos/Editor" asp-page-handler="Pdf" asp-route-id="@p.Id"
+               style="font-size:13px" title="Descarga la estructura completa del proyecto en PDF">Descargar PDF</a>
             <a class="btns" asp-page="/Tableros/Proyecto" asp-route-id="@p.Id" style="font-size:13px">Tablero →</a>
             <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
         </div>

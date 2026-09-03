@@ -17,6 +17,7 @@ public sealed class EditorModel(
     ISender sender,
     AccesoModulosService acceso,
     ICurrentUserService currentUser,
+    IProyectoPdfService proyectoPdf,
     IWebHostEnvironment env) : PageModel
 {
     public ProyectoDetailDto Proyecto { get; private set; } = default!;
@@ -243,6 +244,29 @@ public sealed class EditorModel(
         FechaFinPlan    = Proyecto.FechaFinPlan;
 
         return Page();
+    }
+
+    /// <summary>
+    /// Descarga la estructura completa del proyecto en PDF.
+    ///
+    /// <para>No lleva permiso propio: reutiliza la carga de la ficha, y esa consulta ya está
+    /// filtrada por alcance —quien no puede abrir el proyecto recibe el mismo NotFound que en
+    /// pantalla—. Pedir una clave aparte cerraría más el documento que la página de la que sale,
+    /// y no hay dato en el PDF que no esté ya a la vista de quien lo pide.</para>
+    /// </summary>
+    public async Task<IActionResult> OnGetPdfAsync(int id, CancellationToken ct)
+    {
+        if (!await CargarAsync(id, ct)) return NotFound();
+
+        var dto = new ProyectoPdfDto(
+            Proyecto, Cronograma, Avances, Interesados, Riesgos, Documentos, Vinculos, Auditoria,
+            InstitucionNombre: Proyecto.InstitucionId,
+            AreaNombre:        Alcance.Areas.FirstOrDefault(a => a.Id == Proyecto.AreaId)?.Nombre,
+            UnidadNombre:      Alcance.Unidades.FirstOrDefault(u => u.Id == Proyecto.UnidadId)?.Nombre);
+
+        var bytes  = proyectoPdf.Generar(dto);
+        var nombre = $"{Proyecto.Codigo}_estructura_{DateTime.Now:yyyyMMdd}.pdf";
+        return File(bytes, "application/pdf", nombre);
     }
 
     // ── Guardar ficha + estructura ──────────────────────────────────────────

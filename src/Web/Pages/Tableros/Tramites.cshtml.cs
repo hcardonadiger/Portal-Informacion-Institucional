@@ -19,19 +19,25 @@ public sealed class TramitesModel(ISender sender) : PageModel
     public DateOnly? Hasta { get; private set; }
     public EstadoTramite? Estado { get; private set; }
 
+    /// <summary>Acción seleccionada en el filtro; null = todas. Puede traer el centinela
+    /// <see cref="FiltroAccion.SinClasificar"/>.</summary>
+    public string? Accion { get; private set; }
+
     /// <summary>Instituciones con algún expediente vigente, para el desplegable — no el catálogo
     /// completo (ver GetTramitesSeguimientoQueryHandler).</summary>
     public IReadOnlyList<InstitucionOpcionDto> Instituciones { get; private set; } = [];
 
-    public async Task OnGetAsync(string? institucion, string? banda, DateOnly? desde, DateOnly? hasta, string? estado, CancellationToken ct)
+    public async Task OnGetAsync(string? institucion, string? banda, DateOnly? desde, DateOnly? hasta, string? estado,
+        string? accion, CancellationToken ct)
     {
         InstitucionId = string.IsNullOrWhiteSpace(institucion) ? null : institucion;
         Banda = Enum.TryParse<BandaAvance>(banda, ignoreCase: true, out var b) ? b : null;
         Desde = desde;
         Hasta = hasta;
         Estado = Enum.TryParse<EstadoTramite>(estado, ignoreCase: true, out var est) ? est : null;
+        Accion = string.IsNullOrWhiteSpace(accion) ? null : accion;
 
-        Data = await sender.Send(new GetTramitesSeguimientoQuery(InstitucionId, Banda, Desde, Hasta, Estado), ct);
+        Data = await sender.Send(new GetTramitesSeguimientoQuery(InstitucionId, Banda, Desde, Hasta, Estado, Accion), ct);
         Instituciones = Data.Instituciones;
     }
 
@@ -96,6 +102,7 @@ public sealed class TramitesModel(ISender sender) : PageModel
             desde       = Request.Query["desde"].ToString(),
             hasta       = Request.Query["hasta"].ToString(),
             estado      = Request.Query["estado"].ToString(),
+            accion      = Request.Query["accion"].ToString(),
         });
     }
 }
