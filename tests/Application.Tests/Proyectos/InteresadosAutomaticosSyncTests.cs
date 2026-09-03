@@ -76,6 +76,66 @@ public class InteresadosAutomaticosSyncTests : IDisposable
     }
 
     [Fact]
+    public async Task SincronizarProyecto_QuitaLaFilaDeUnUsuarioDesactivado()
+    {
+        // Desactivar a alguien no le quitaba su fila automática: la baja solo miraba si seguía
+        // calificando por su asignación, y esa no se toca al desactivar la cuenta. La fila
+        // quedaba huérfana y —desde que la guarda de QuitarInteresado pregunta por el derecho
+        // vigente— tampoco se podía quitar a mano. Contradecía además a AgregarInteresadoCommand,
+        // que sí rechaza a un usuario inactivo.
+        var jefe = await SembrarUsuarioAsync("Jefe Desactivado");
+        _ctx.AsignacionesUsuario.Add(AsignacionUsuario.Crear(jefe.Id, "DIGER", "GOBDIGITAL", null, "JefeArea"));
+        _catalogo.Obtener("JefeArea").Returns(new RolInfo(
+            "JefeArea", "Jefe de Área", NivelAlcance.Area, false, false, false, false,
+            EsJefeDeArea: true, EsPmo: false, Color: null));
+
+        var proyecto = Proyecto.Crear("PRY-2026-90", "Proyecto de prueba");
+        proyecto.AreaId = "GOBDIGITAL";
+        _ctx.Proyectos.Add(proyecto);
+        await _ctx.SaveChangesAsync();
+
+        await _sync.SincronizarProyectoAsync(proyecto.Id);
+        (await _ctx.ProyectoInteresados.AnyAsync(i => i.UsuarioId == jefe.Id)).Should().BeTrue("estando activo si le toca");
+
+        jefe.Desactivar();
+        await _ctx.SaveChangesAsync();
+
+        await _sync.SincronizarProyectoAsync(proyecto.Id);
+
+        (await _ctx.ProyectoInteresados.AnyAsync(i => i.UsuarioId == jefe.Id))
+            .Should().BeFalse("una cuenta desactivada no conserva el acceso que le daba su capacidad");
+
+        (await _sync.CalcularDerechoVigenteAsync(proyecto.Id))
+            .Should().NotContainKey(jefe.Id, "y tampoco puede seguir bloqueando el borrado manual");
+    }
+
+    [Fact]
+    public async Task SincronizarUsuario_QuitaSusFilasAlQuedarDesactivado()
+    {
+        var jefe = await SembrarUsuarioAsync("Jefe Desactivado");
+        _ctx.AsignacionesUsuario.Add(AsignacionUsuario.Crear(jefe.Id, "DIGER", "GOBDIGITAL", null, "JefeArea"));
+        _catalogo.Obtener("JefeArea").Returns(new RolInfo(
+            "JefeArea", "Jefe de Área", NivelAlcance.Area, false, false, false, false,
+            EsJefeDeArea: true, EsPmo: false, Color: null));
+
+        var proyecto = Proyecto.Crear("PRY-2026-91", "Proyecto de prueba");
+        proyecto.AreaId = "GOBDIGITAL";
+        _ctx.Proyectos.Add(proyecto);
+        await _ctx.SaveChangesAsync();
+
+        await _sync.SincronizarUsuarioAsync(jefe.Id);
+        (await _ctx.ProyectoInteresados.AnyAsync(i => i.UsuarioId == jefe.Id)).Should().BeTrue();
+
+        jefe.Desactivar();
+        await _ctx.SaveChangesAsync();
+
+        await _sync.SincronizarUsuarioAsync(jefe.Id);
+
+        (await _ctx.ProyectoInteresados.AnyAsync(i => i.UsuarioId == jefe.Id))
+            .Should().BeFalse("el camino por usuario tiene que cerrar igual que el camino por proyecto");
+    }
+
+    [Fact]
     public async Task SincronizarProyecto_NoTocaUnInteresadoManualDelMismoUsuario()
     {
         var jefe = await SembrarUsuarioAsync("Jefe de Área");

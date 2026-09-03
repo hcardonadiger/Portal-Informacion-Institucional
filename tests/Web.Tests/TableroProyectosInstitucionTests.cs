@@ -216,6 +216,30 @@ public sealed class TableroProyectosInstitucionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Un_area_que_no_existe_en_el_desplegable_se_descarta_en_vez_de_vaciar_el_tablero()
+    {
+        // Es la misma enfermedad que la de las áreas inactivas, pero por el otro lado: un id que
+        // el desplegable no ofrece —tecleado a mano, o de otra institución— dejaba un tablero
+        // vacío, sin nada marcado como seleccionado y sin más pista que el botón «Limpiar».
+        // Descartarlo devuelve el tablero completo, que es lo que la pantalla ya está diciendo.
+        var html = await TableroAsync(consulta: "?AreaIds=AREA-QUE-NO-EXISTE");
+
+        html.Should().Contain("PRY-INS-01").And.Contain("PRY-INS-02").And.Contain("PRY-INS-03");
+        html.Should().NotContain(">Limpiar<",
+            "descartado el unico id desconocido no queda filtro puesto, y anunciar uno seria mentir");
+    }
+
+    [Fact]
+    public async Task Un_area_desconocida_no_arrastra_a_las_conocidas_que_la_acompanan()
+    {
+        var html = await TableroAsync(consulta: "?AreaIds=AREA-TEC&AreaIds=AREA-QUE-NO-EXISTE");
+
+        html.Should().Contain("PRY-INS-01", "el area valida del par sigue filtrando");
+        html.Should().NotContain("PRY-INS-02", "descartar la desconocida no puede ensanchar el filtro");
+        html.Should().Contain(">Limpiar<", "sigue habiendo un filtro puesto");
+    }
+
+    [Fact]
     public async Task Sin_la_clave_Proyectos_Ver_la_pagina_se_deniega_antes_de_redirigir()
     {
         // El usuario sin rol no tiene ninguna clave: la denegación gana sobre el redirect.

@@ -42,9 +42,6 @@ public sealed class ProyectosModel(ISender sender, ICurrentUserService currentUs
                 : RedirectToPage("/Tableros/ProyectosUnidad");
         }
 
-        Data     = await sender.Send(new GetProyectosDashboardQuery(Estado, ResponsableId, Prioridad, AreaIds), ct);
-        Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
-
         // Acotada a la institución activa, y NO por gusto: el filtro global de Area en
         // AppDbContext es `_alcanceGlobal || a.InstitucionId == _activeInst`, así que para el
         // destinatario natural de este tablero —un rol global— el filtro se cortocircuita y la
@@ -52,6 +49,21 @@ public sealed class ProyectosModel(ISender sender, ICurrentUserService currentUs
         // ofrecería áreas que este tablero no muestra y filtrar por una devolvería un tablero
         // vacío sin explicación.
         var areas = await sender.Send(new GetAreasQuery(currentUser.ActiveInstitucionId), ct);
+
+        // Un id que el catálogo no conoce —tecleado a mano, o de otra institución— se descarta en
+        // vez de aplicarse, y se descarta ANTES de consultar. No es una fuga: la consulta interseca
+        // sobre un IQueryable ya recortado por el filtro global de Proyecto, así que un área ajena
+        // nunca amplió nada. Es que la pantalla mentía: aplicado, el tablero salía vacío, sin
+        // ninguna opción marcada en el desplegable y sin más pista que el botón «Limpiar». Es el
+        // mismo «tablero vacío inexplicable» que el rescate de las áreas inactivas previene abajo,
+        // y no tenía sentido curar una mitad sola. Nótese que las inactivas SÍ sobreviven a este
+        // descarte: GetAreasQuery las devuelve, solo el desplegable las omite.
+        AreaIds = AreaIds?
+            .Where(id => areas.Any(a => a.Id == id))
+            .ToArray();
+
+        Data     = await sender.Send(new GetProyectosDashboardQuery(Estado, ResponsableId, Prioridad, AreaIds), ct);
+        Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
 
         // Las áreas desactivadas no se ofrecen —ya no son una opción a futuro— salvo la que el
         // usuario trae seleccionada: una URL guardada de cuando el área seguía activa sigue

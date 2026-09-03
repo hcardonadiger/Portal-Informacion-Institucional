@@ -84,7 +84,7 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
         // las AsignacionesUsuario del usuario (antes: se iteraba asignación por asignación y ganaba
         // la última que trajera la base — no determinístico).
         var areas = asignaciones
-            .Where(a => a.AreaId != null && catalogo.Obtener(a.Rol)?.EsJefeDeArea == true)
+            .Where(a => !string.IsNullOrWhiteSpace(a.AreaId) && catalogo.Obtener(a.Rol)?.EsJefeDeArea == true)
             .Select(a => a.AreaId!)
             .Distinct()
             .ToList();
@@ -98,7 +98,7 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
         }
 
         var unidades = asignaciones
-            .Where(a => a.UnidadId != null && catalogo.Obtener(a.Rol)?.EsPmo == true)
+            .Where(a => !string.IsNullOrWhiteSpace(a.UnidadId) && catalogo.Obtener(a.Rol)?.EsPmo == true)
             .Select(a => a.UnidadId!)
             .Distinct()
             .ToList();
@@ -110,6 +110,15 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
                 .ToListAsync(ct);
             foreach (var id in ids) deseados[id] = RolInteresado.Ejecutor;
         }
+
+        var usuario = await ctx.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId, ct);
+
+        // Se resuelve ANTES de la baja, no después: una cuenta desactivada no califica para nada,
+        // así que sus filas automáticas tienen que caer por la rama de baja de más abajo. Mirar el
+        // Activo solo al dar de alta —como se hacía— dejaba la fila viva, y desde que la guarda de
+        // QuitarInteresado pregunta por el derecho vigente, además imborrable. Mismo corte que
+        // CalcularDeseadosPorProyectoAsync hace para el camino por proyecto.
+        if (usuario is null || !usuario.Activo) deseados.Clear();
 
         var todosLosActuales = await ctx.ProyectoInteresados
             .Where(i => i.UsuarioId == usuarioId)
@@ -128,7 +137,8 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
 
         var yaFiguraEn = todosLosActuales.Select(a => a.ProyectoId).ToHashSet();
 
-        var usuario = await ctx.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId, ct);
+        // El usuario ya está resuelto arriba. La guarda sigue acá porque `deseados` vacío y
+        // usuario nulo son cosas distintas para el compilador, no porque se vuelva a preguntar.
         if (usuario is not null && usuario.Activo)
         {
             foreach (var (proyectoId, rol) in deseados)
@@ -203,6 +213,25 @@ public sealed class InteresadosAutomaticosSyncService(IApplicationDbContext ctx,
             foreach (var a in asignados)
                 if (catalogo.Obtener(a.Rol)?.EsPmo == true)
                     resultado[a.UsuarioId] = RolInteresado.Ejecutor;
+        }
+
+        // Una cuenta desactivada no califica, y el corte va acá y no en la rama de alta a
+        // propósito: este diccionario es también lo que decide la BAJA (AplicarAsync quita las
+        // filas automáticas de quien no figure en él) y lo que responde CalcularDerechoVigenteAsync,
+        // que es la guarda del borrado manual. Filtrando solo al dar de alta, al desactivar a
+        // alguien su fila sobrevivía —seguía calificando por su asignación, que no se toca al
+        // desactivar la cuenta— y encima quedaba imborrable desde la ficha. Contradecía a
+        // AgregarInteresadoCommandHandler, que sí rechaza a un usuario inactivo.
+        if (resultado.Count > 0)
+        {
+            var candidatos = resultado.Keys.ToList();
+            var activos = await ctx.Usuarios
+                .Where(u => candidatos.Contains(u.Id) && u.Activo)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+
+            foreach (var id in candidatos.Except(activos))
+                resultado.Remove(id);
         }
 
         return resultado;

@@ -38,6 +38,14 @@ public sealed class TableroProyectosUnidadTests : IAsyncLifetime
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // DIGER y CONSUCOOP ya vienen del HasData del modelo. La unidad de la institución ajena
+        // es la que hace que UnidadNombre venga null con UnidadId lleno: el catálogo Unidades
+        // lleva filtro por institución activa y no la resuelve.
+        db.Areas.Add(Area.Crear("AREA-EXT", "CONSUCOOP", "Area externa"));
+        await db.SaveChangesAsync();
+        db.Unidades.Add(Unidad.Crear("UNI-EXT", "AREA-EXT", "Unidad de otra institucion"));
+        await db.SaveChangesAsync();
+
         var empleado = await db.Usuarios.SingleAsync(u => u.Correo == "empleado@pruebas.gob.hn");
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -48,8 +56,11 @@ public sealed class TableroProyectosUnidadTests : IAsyncLifetime
 
         // (2) Suyo por interesado: el otro camino de acceso, el que sostiene el tablero cuando
         //     el proyecto lo lleva otra persona.
+        //     Además lleva una unidad que el catálogo no resuelve, para fijar el respaldo de la
+        //     columna Unidad — ver la prueba del fallback.
         var comoInteresado = Nuevo("PRY-UNI-02", "Proyecto donde soy interesado");
         comoInteresado.FechaFinPlan = hoy.AddDays(30);
+        comoInteresado.UnidadId     = "UNI-EXT";
 
         // (3) Ajeno: ni responsable ni interesado. Su ausencia es la mitad de la prueba.
         var ajeno = Nuevo("PRY-UNI-03", "Proyecto de otra persona");
@@ -135,6 +146,20 @@ public sealed class TableroProyectosUnidadTests : IAsyncLifetime
             "la etiqueta compartida escribe 'En ejecucion' con espacio, como sus dos tableros hermanos");
         html.Should().NotContain("<td class=\"res-meta\">EnEjecucion",
             "imprimir el enum crudo en la columna Estado es el defecto que se corrige aqui");
+    }
+
+    [Fact]
+    public async Task La_columna_Unidad_cae_al_Id_cuando_el_catalogo_no_resuelve_el_nombre()
+    {
+        var html = await TableroAsync("Empleado");
+
+        // Mismo respaldo que /Tableros/ProyectosArea, y por la misma razón: un proyecto que SÍ
+        // tiene unidad no puede mostrarse igual que uno que no la tiene. Con el guion como único
+        // respaldo, las dos vistas hermanas contestaban distinto sobre el mismo proyecto.
+        html.Should().Contain("<td class=\"res-meta\">UNI-EXT</td>",
+            "el nombre no se resuelve —la unidad es de otra institucion— pero el Id sigue identificandola");
+        html.Should().Contain("<td class=\"res-meta\">Sin unidad</td>",
+            "el proyecto que de verdad no tiene unidad se dice con todas las letras, no con un guion");
     }
 
     [Fact]

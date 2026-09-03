@@ -146,11 +146,18 @@
                 </label>
                 <label class="chk">
                     <input type="checkbox" name="EsJefeDeArea" value="true" checked="@Model.EsJefeDeArea" />
-                    <span><strong>Jefe de área</strong> — queda como interesado automático (no removible) en todos los proyectos de su área</span>
+                    @* El texto dice «mientras tenga la capacidad» y no «no removible» a secas: al
+                       destildar esta casilla el acceso se revoca de verdad, y decir solo «no
+                       removible» hacía creer lo contrario. *@
+                    <span><strong>Jefe de área</strong> — queda como interesado en todos los proyectos de su área, y por eso los ve. No se le puede quitar mientras conserve esta capacidad; al destildarla, se le quita.</span>
                 </label>
                 <label class="chk">
                     <input type="checkbox" name="EsPmo" value="true" checked="@Model.EsPmo" />
-                    <span><strong>PMO</strong> — queda como interesado automático (no removible) en todos los proyectos de su unidad, con permiso para accionar sobre ellos</span>
+                    @* Sin «con permiso para accionar sobre ellos»: esta capacidad no otorga ninguna
+                       clave de permiso. Solo inscribe al usuario como interesado —con la etiqueta
+                       Ejecutor— y es eso lo que le da acceso al proyecto. Lo que pueda hacer dentro
+                       lo siguen decidiendo sus claves de Proyectos.*. *@
+                    <span><strong>PMO</strong> — queda como interesado en todos los proyectos de su unidad, y por eso los ve. No se le puede quitar mientras conserve esta capacidad; al destildarla, se le quita.</span>
                 </label>
             </div>
         </div>

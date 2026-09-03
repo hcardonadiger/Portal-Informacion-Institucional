@@ -28,7 +28,7 @@
 
     <div class="dash-card" style="margin-top:16px">
         <h3>Proyectos</h3>
-        @if (!d.Proyectos.Any())
+        @if (d.Proyectos.Count == 0)
         {
             <p class="res-meta">No hay proyectos donde figures como interesado o responsable.</p>
         }
@@ -51,8 +51,12 @@
                             <td><a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@p.Nombre</a>
                                 <div class="res-meta">@p.Codigo</div></td>
                             @* UnidadNombre puede venir null aunque UnidadId tenga valor: Unidades lleva
-                               query filter por institución activa y el nombre no siempre se resuelve. *@
-                            <td class="res-meta">@(p.UnidadNombre ?? "—")</td>
+                               query filter por institución activa y el nombre no siempre se resuelve.
+                               Dos escalones de respaldo, los mismos que /Tableros/ProyectosArea: el Id
+                               de la unidad —que al menos la identifica— y, ya sin Id, «Sin unidad». Un
+                               guion para los dos casos hacía que esta vista y la de área contestaran
+                               distinto sobre el mismo proyecto. *@
+                            <td class="res-meta">@(p.UnidadNombre ?? p.UnidadId ?? "Sin unidad")</td>
                             @* Etiquetas.Estado y no @p.Estado: el enum crudo imprime "EnEjecucion". Es el
                                mismo helper que usan /Tableros/Proyectos y /Tableros/ProyectosArea, para que
                                las tres vistas del mismo proyecto no lo nombren de tres maneras. *@
