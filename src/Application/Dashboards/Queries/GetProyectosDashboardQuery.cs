@@ -12,10 +12,14 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries;
 /// proyecto puede tener un número creíble y aun así llevar un mes sin que nadie lo toque,
 /// que es justamente lo que mide el indicador de «sin reportar».</para>
 /// </summary>
+/// <param name="AreaIds">Áreas a las que se acota el tablero. <c>null</c> o lista vacía = sin
+/// acotar, que es como se ve el portafolio completo desde el nivel de institución. Es un filtro
+/// de presentación: no sustituye ni relaja el alcance con el que el usuario ve los proyectos.</param>
 public sealed record GetProyectosDashboardQuery(
     EstadoProyecto?    Estado        = null,
     Guid?              ResponsableId = null,
-    PrioridadProyecto? Prioridad     = null) : IRequest<ProyectosDashboardDto>;
+    PrioridadProyecto? Prioridad     = null,
+    IReadOnlyList<string>? AreaIds   = null) : IRequest<ProyectosDashboardDto>;
 
 public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetProyectosDashboardQuery, ProyectosDashboardDto>
@@ -37,6 +41,10 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         if (q.Estado is { } e)        baseQuery = baseQuery.Where(p => p.Estado == e);
         if (q.ResponsableId is { } r) baseQuery = baseQuery.Where(p => p.ResponsableId == r);
         if (q.Prioridad is { } pr)    baseQuery = baseQuery.Where(p => p.Prioridad == pr);
+        // Lista vacía = no filtrar: pedir «ninguna área» y ver el portafolio vacío no le sirve a nadie.
+        // Los proyectos sin área quedan fuera cuando sí se filtra — se pidieron esas áreas, no «esas o ninguna».
+        if (q.AreaIds is { Count: > 0 } areas)
+            baseQuery = baseQuery.Where(p => p.AreaId != null && areas.Contains(p.AreaId));
 
         // Una sola pasada a la base: el resto se calcula en memoria sobre esta proyección.
         // El portafolio es de decenas de proyectos, no de miles.
