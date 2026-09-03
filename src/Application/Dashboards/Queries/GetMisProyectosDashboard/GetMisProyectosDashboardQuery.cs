@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Application.Dashboards.Common;
+
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetMisProyectosDashboard;
 
 public sealed record MisProyectosItemDto(
@@ -17,8 +19,6 @@ public sealed record GetMisProyectosDashboardQuery : IRequest<MisProyectosDashbo
 public sealed class GetMisProyectosDashboardQueryHandler(IApplicationDbContext ctx, ICurrentUserService currentUser)
     : IRequestHandler<GetMisProyectosDashboardQuery, MisProyectosDashboardDto>
 {
-    private const int DiasSinReporte = 30;
-
     public async Task<MisProyectosDashboardDto> Handle(GetMisProyectosDashboardQuery q, CancellationToken ct)
     {
         var userId = currentUser.UserId;
@@ -44,13 +44,12 @@ public sealed class GetMisProyectosDashboardQueryHandler(IApplicationDbContext c
             .ToDictionaryAsync(u => u.Id, u => u.Nombre, ct);
 
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
-        var corte = DateTime.UtcNow.AddDays(-DiasSinReporte);
+        var corte = ProyectoEstadoReglas.CorteSinReporte(DateTime.UtcNow);
 
         var items = proyectos.Select(p =>
         {
-            var abierto = p.Estado is EstadoProyecto.Planificado or EstadoProyecto.EnEjecucion or EstadoProyecto.Suspendido;
-            var atrasado = p.FechaFinPlan is { } fin && fin < hoy && abierto;
-            var sinReportar = p.Estado == EstadoProyecto.EnEjecucion && (p.UltimoAvance is null || p.UltimoAvance < corte);
+            var atrasado    = ProyectoEstadoReglas.Atrasado(p.FechaFinPlan, p.Estado, hoy);
+            var sinReportar = ProyectoEstadoReglas.SinReportar(p.Estado, p.UltimoAvance, corte);
             return new MisProyectosItemDto(
                 p.Id, p.Codigo, p.Nombre, p.UnidadId,
                 p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var n) ? n : null,
@@ -61,7 +60,7 @@ public sealed class GetMisProyectosDashboardQueryHandler(IApplicationDbContext c
 
         return new MisProyectosDashboardDto(
             items.Count,
-            enEjecucion.Count == 0 ? 0 : (int)Math.Round(enEjecucion.Average(i => i.AvancePct)),
+            ProyectoEstadoReglas.AvancePromedio(enEjecucion.Select(i => i.AvancePct)),
             items.Count(i => i.Atrasado),
             items.Count(i => i.SinReportar),
             items);
