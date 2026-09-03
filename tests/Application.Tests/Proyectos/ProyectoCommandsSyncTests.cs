@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Application.Common.Interfaces;
+﻿using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Services;
@@ -116,7 +116,7 @@ public class ProyectoCommandsSyncTests : IDisposable
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(
             new ActualizarProyectoCommand(
                 id, "Proyecto de prueba", objetivo, area, unidad, null, responsable,
-                PrioridadProyecto.Media, null, null, []),
+                PrioridadProyecto.Media, null, null, null, []),
             CancellationToken.None);
 
     public void Dispose() => _ctx.Dispose();

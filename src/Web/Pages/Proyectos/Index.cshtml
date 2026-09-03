@@ -1,6 +1,7 @@
 @page
 @using Diger.TramitesEstado.Application.Proyectos.Common
 @using Diger.TramitesEstado.Application.Proyectos.Queries
+@using Diger.TramitesEstado.Application.Dashboards.Queries
 @model Diger.TramitesEstado.Web.Pages.Proyectos.IndexModel
 @{
     ViewData["Title"] = "Proyectos";
@@ -107,6 +108,16 @@
                 }
             </select>
         </div>
+        <div class="field" style="min-width:165px">
+            <label for="f-accion">Acción</label>
+            <select id="f-accion" name="Accion">
+                <option value="">— Todas —</option>
+                @foreach (var ac in Enum.GetValues<AccionProyecto>())
+                {
+                    <option value="@((int)ac)" selected="@(Model.Accion == ac)">@Etiquetas.Accion(ac)</option>
+                }
+            </select>
+        </div>
         @* Las señales son las mismas que cuenta el tablero: desde allá se llega acá con una
            puesta, y desde acá se pueden combinar con el resto de los filtros. *@
         <div class="field" style="min-width:175px">
@@ -125,7 +136,8 @@
         </div>
         <button class="btns" type="submit">Filtrar</button>
         @if (Model.Estado is not null || Model.ResponsableId is not null || Model.Anio is not null
-             || !string.IsNullOrWhiteSpace(Model.Q) || Model.Prioridad is not null || Model.Senal is not null)
+             || !string.IsNullOrWhiteSpace(Model.Q) || Model.Prioridad is not null || Model.Senal is not null
+             || Model.Accion is not null)
         {
             <a class="btns" asp-page="/Proyectos/Index">Limpiar</a>
         }
@@ -159,7 +171,7 @@
                     <th style="width:80px"></th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody data-pg="pry-portafolio">
                 @foreach (var p in Model.Proyectos)
                 {
                     <tr>
@@ -168,6 +180,12 @@
                             <div class="res-meta">
                                 @p.Codigo
                                 <span class="@PrioCls(p.Prioridad)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
+                                @if (p.Accion is { } accion)
+                                {
+                                    @* Sin acción no se pinta nada: una insignia «Sin clasificar» en
+                                       cada fila vieja es ruido, y el filtro ya permite encontrarlas. *@
+                                    <span class="badge" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@Etiquetas.Accion(accion)</span>
+                                }
                                 @if (p.SinReportar)
                                 {
                                     @* El síntoma que más interesa en seguimiento: no es que vaya tarde,
@@ -237,6 +255,7 @@
                 }
             </tbody>
         </table>
+        <partial name="_TablaPaginada" model='new PaginadorVm("pry-portafolio")' />
     }
 </div>
 
@@ -271,6 +290,16 @@
                             @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
                             {
                                 <option value="@((int)pr)" selected="@(pr == PrioridadProyecto.Media)">@pr</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" style="width:180px">
+                        <label for="n-accion">Acción</label>
+                        <select id="n-accion" name="NuevaAccion">
+                            <option value="">— Sin clasificar —</option>
+                            @foreach (var ac in Enum.GetValues<AccionProyecto>())
+                            {
+                                <option value="@((int)ac)">@Etiquetas.Accion(ac)</option>
                             }
                         </select>
                     </div>

@@ -28,7 +28,8 @@ public sealed record GetProyectosQuery(
     PrioridadProyecto? Prioridad     = null,
     string?            AreaId        = null,
     string?            UnidadId      = null,
-    SenalProyecto?     Senal         = null) : IRequest<IReadOnlyList<ProyectoListItemDto>>;
+    SenalProyecto?     Senal         = null,
+    AccionProyecto?    Accion        = null) : IRequest<IReadOnlyList<ProyectoListItemDto>>;
 
 public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetProyectosQuery, IReadOnlyList<ProyectoListItemDto>>
@@ -40,6 +41,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
         if (query.Estado is { } estado)   q = q.Where(p => p.Estado == estado);
         if (query.ResponsableId is { } r) q = q.Where(p => p.ResponsableId == r);
         if (query.Prioridad is { } prio)  q = q.Where(p => p.Prioridad == prio);
+        if (query.Accion is { } accion)   q = q.Where(p => p.Accion == accion);
 
         if (!string.IsNullOrWhiteSpace(query.AreaId))   q = q.Where(p => p.AreaId == query.AreaId);
         if (!string.IsNullOrWhiteSpace(query.UnidadId)) q = q.Where(p => p.UnidadId == query.UnidadId);
@@ -72,6 +74,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
                 p.Nombre,
                 p.Responsable,
                 p.Prioridad,
+                p.Accion,
                 p.Estado,
                 p.FechaInicioPlan,
                 p.FechaFinPlan,
@@ -148,7 +151,7 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
 
         return new ProyectoDetailDto(
             p.Id, p.Codigo, p.Nombre, p.Objetivo, p.InstitucionId, p.AreaId, p.UnidadId,
-            p.ResponsableId, p.Responsable, p.Prioridad, p.Estado,
+            p.ResponsableId, p.Responsable, p.Prioridad, p.Accion, p.Estado,
             p.FechaInicioPlan, p.FechaFinPlan, p.FechaInicioReal, p.FechaFinReal,
             p.AvancePct, p.CreatedAt, p.CreatedBy,
             p.Entregables.OrderBy(e => e.Orden)

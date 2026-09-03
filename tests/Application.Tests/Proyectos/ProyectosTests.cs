@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Application.Common.Exceptions;
+﻿using Diger.TramitesEstado.Application.Common.Exceptions;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.EventHandlers;
@@ -591,7 +591,7 @@ public class ProyectosTests : IDisposable
         var idB = await CrearAsync("B");
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            idB, "B", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+            idB, "B", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [new EntregableInput(0, "Entregable de B", null, null, EstadoEntregable.Pendiente, null, null, [])]),
             CancellationToken.None);
 
@@ -624,7 +624,7 @@ public class ProyectosTests : IDisposable
         var id = await CrearAsync();
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Proyecto de prueba", null, null, null, null, null, PrioridadProyecto.Alta, null, null,
+            id, "Proyecto de prueba", null, null, null, null, null, PrioridadProyecto.Alta, null, null, null,
             [
                 new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente,  null, null, []),
                 new EntregableInput(0, "   ",     null, null, EstadoEntregable.Pendiente,  null, null, []), // fila vacía del editor
@@ -859,7 +859,7 @@ public class ProyectosTests : IDisposable
     private Task GuardarFichaAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null, Duenio, "Dueño del proyecto",
-            PrioridadProyecto.Media, null, null, entregables), CancellationToken.None);
+            PrioridadProyecto.Media, null, null, null, entregables), CancellationToken.None);
 
     /// <summary>Le cuelga actividades a un entregable, con su porcentaje ya reportado.</summary>
     private async Task ConActividadesAsync(int proyectoId, int entregableId, params (int Pct, string Nombre)[] actividades)
@@ -927,7 +927,7 @@ public class ProyectosTests : IDisposable
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null,
             responsable, responsable is null ? null : "Dueño del proyecto",
-            PrioridadProyecto.Media, null, null,
+            PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Primero", null, null, EstadoEntregable.Pendiente, null, null, []),
                 new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente, null, null, []),
@@ -1162,7 +1162,7 @@ public class ProyectosTests : IDisposable
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto con otro nombre", null, null, null, Duenio, "Dueño del proyecto",
-            PrioridadProyecto.Alta, null, null, entrada), CancellationToken.None);
+            PrioridadProyecto.Alta, null, null, null, entrada), CancellationToken.None);
 
         var auditoria = await _ctx.BitacorasProyecto.OrderBy(b => b.Id).ToListAsync();
 

@@ -13,6 +13,14 @@ public sealed class RecordatorioBackgroundService(
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
+        // La cancelación es el apagado normal del host: se captura aquí para que no
+        // escape como excepción no controlada (el depurador rompería en cada Task.Delay).
+        try { await EjecutarBucleAsync(ct); }
+        catch (OperationCanceledException) { /* apagado solicitado */ }
+    }
+
+    private async Task EjecutarBucleAsync(CancellationToken ct)
+    {
         var opts = options.Value;
 
         // Esperar al arranque para no competir con las migraciones EF del startup

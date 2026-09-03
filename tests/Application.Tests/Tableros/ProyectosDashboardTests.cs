@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Application.Common.Interfaces;
+﻿using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Dashboards.Common;
 using Diger.TramitesEstado.Application.Dashboards.Queries;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
@@ -69,7 +69,7 @@ public class ProyectosDashboardTests : IDisposable
 
         // Dos entregables, uno cumplido: 50 % por la regla 0/50/100. El avance ya no se declara.
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            a, "A", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+            a, "A", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Cumplido", null, null, EstadoEntregable.Completado, null, null, []),
                 new EntregableInput(0, "Pendiente", null, null, EstadoEntregable.Pendiente, null, null, [])
@@ -100,7 +100,7 @@ public class ProyectosDashboardTests : IDisposable
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Con entregables", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+            id, "Con entregables", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Vencido",    null, hoy.AddDays(-5),  EstadoEntregable.EnProceso,  null, null, []),
                 new EntregableInput(0, "Por vencer", null, hoy.AddDays(10),  EstadoEntregable.Pendiente,  null, null, []),
@@ -123,7 +123,7 @@ public class ProyectosDashboardTests : IDisposable
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Con actividades", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+            id, "Con actividades", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Único", null, hoy.AddDays(150), EstadoEntregable.EnProceso, null, null,
                 [
@@ -185,7 +185,7 @@ public class ProyectosDashboardTests : IDisposable
         var id = await ProyectoEnEjecucionAsync("Con dependencias");
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Único", null, null, EstadoEntregable.EnProceso, null, null,
                 [
@@ -209,7 +209,7 @@ public class ProyectosDashboardTests : IDisposable
                 .ToList())).ToList();
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             entrada), CancellationToken.None);
 
         var d = await TableroAsync();

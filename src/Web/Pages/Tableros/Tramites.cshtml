@@ -149,7 +149,7 @@
                         <th style="width:9%"></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="trm-avances">
                     @foreach (var t in d.Tramites)
                     {
                         var k = $"{t.ExpedienteId}-{t.TramiteIndex}";
@@ -190,6 +190,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("trm-avances")' />
         }
     </div>
 </div>

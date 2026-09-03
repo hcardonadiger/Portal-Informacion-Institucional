@@ -1,5 +1,7 @@
-using Diger.TramitesEstado.Application.Proyectos.Common;
+﻿using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Services;
+// Por Etiquetas: la bitácora escribe los mismos rótulos que el usuario ve en pantalla.
+using Diger.TramitesEstado.Application.Dashboards.Queries;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Commands;
 
@@ -66,6 +68,7 @@ public sealed record CrearProyectoCommand(
     Guid?             ResponsableId   = null,
     string?           Responsable     = null,
     PrioridadProyecto Prioridad       = PrioridadProyecto.Media,
+    AccionProyecto?   Accion          = null,
     DateOnly?         FechaInicioPlan = null,
     DateOnly?         FechaFinPlan    = null) : IRequest<int>;
 
@@ -91,6 +94,7 @@ public sealed class CrearProyectoCommandHandler(
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
         proyecto.Prioridad       = cmd.Prioridad;
+        proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
 
@@ -135,6 +139,7 @@ public sealed record ActualizarProyectoCommand(
     Guid?             ResponsableId,
     string?           Responsable,
     PrioridadProyecto Prioridad,
+    AccionProyecto?   Accion,
     DateOnly?         FechaInicioPlan,
     DateOnly?         FechaFinPlan,
     IReadOnlyList<EntregableInput> Entregables) : IRequest<Unit>;
@@ -174,6 +179,7 @@ public sealed class ActualizarProyectoCommandHandler(
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
         proyecto.Prioridad       = cmd.Prioridad;
+        proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
 
@@ -256,6 +262,8 @@ public sealed class ActualizarProyectoCommandHandler(
         if (p.ResponsableId != cmd.ResponsableId)
             partes.Add($"responsable: {p.Responsable ?? "sin asignar"} → {responsable ?? "sin asignar"}");
         if (p.Prioridad != cmd.Prioridad)      partes.Add($"prioridad: {p.Prioridad} → {cmd.Prioridad}");
+        if (p.Accion != cmd.Accion)
+            partes.Add($"acción: {Etiquetas.Accion(p.Accion)} → {Etiquetas.Accion(cmd.Accion)}");
 
         // El alcance decide quién ve el proyecto: cambiarlo merece quedar registrado.
         var area   = string.IsNullOrWhiteSpace(cmd.AreaId)   ? null : cmd.AreaId.Trim();

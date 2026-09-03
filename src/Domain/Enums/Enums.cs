@@ -248,6 +248,20 @@ public enum PrioridadProyecto
     Baja  = 3
 }
 
+// ── Qué hace DIGER dentro del proyecto ─────────────────────────────────────
+// Es la acción, no el tema: «SOL — CONSUCOOP» es Acompañamiento aunque el proyecto trate sobre
+// digitalización. Responde «¿qué ponemos nosotros acá?», que es distinto de «¿de qué se trata?».
+//
+// Los miembros van sin tilde porque el valor se guarda como texto (HasConversion<string>) y ese
+// texto es también el identificador C#; el acento se lo pone Etiquetas.Accion al mostrarlo.
+public enum AccionProyecto
+{
+    Acompanamiento = 1,
+    Digitalizacion = 2,
+    Soporte        = 3,
+    Desarrollo     = 4
+}
+
 // ── Estado de un entregable dentro de un proyecto ──────────────────────────
 // Los miembros conservan sus nombres aunque el tipo se llamara antes EstadoHito: se guardan como
 // texto (HasConversion<string>), así que renombrarlos obligaría a reescribir la columna entera.

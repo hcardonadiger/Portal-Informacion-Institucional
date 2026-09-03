@@ -163,7 +163,7 @@
                         <th style="width:130px">Último reporte</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-semaforo">
                     @foreach (var p in d.Semaforo)
                     {
                         <tr>
@@ -259,6 +259,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-semaforo")' />
         }
     </div>
 
@@ -320,7 +321,7 @@
                         <th style="width:125px;text-align:right">Fin plan.</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-actividades">
                     @foreach (var a in d.Actividades)
                     {
                         var vencida = a.FechaFinPlan < hoy;
@@ -347,6 +348,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-actividades")' />
         }
     </div>
 
@@ -374,7 +376,7 @@
                         <th style="width:80px;text-align:right">Avance</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-bloqueadas">
                     @foreach (var b in d.Bloqueadas)
                     {
                         <tr>
@@ -401,6 +403,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-bloqueadas")' />
         </div>
     }
 
@@ -424,7 +427,7 @@
                         <th style="width:130px;text-align:right">Fecha plan.</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-entregables">
                     @foreach (var e in d.Entregables)
                     {
                         var vencido = e.FechaPlan < hoy;
@@ -443,6 +446,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-entregables")' />
         }
     </div>
 
@@ -458,6 +462,7 @@
         }
         else
         {
+            <div data-pg="pry-bloqueos">
             @foreach (var b in d.Bloqueos)
             {
                 <div class="hist-item" style="display:block">
@@ -468,6 +473,8 @@
                     <p style="margin:.35rem 0 0;font-size:var(--diger-fs-sm)">@b.Texto</p>
                 </div>
             }
+            </div>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-bloqueos")' />
         }
     </div>
 </div>

@@ -296,4 +296,20 @@ public static class Etiquetas
         EstadoActividad.EnProceso => "En proceso",
         _                         => e.ToString()
     };
+
+    /// <summary>
+    /// Acción de DIGER en el proyecto. Los miembros del enum van sin tilde porque su nombre es
+    /// también el valor guardado en la columna; acá se les pone el acento que corresponde.
+    ///
+    /// <para>Acepta null y devuelve «Sin clasificar»: la acción es opcional, así que la mitad de
+    /// los proyectos —todos los anteriores a este campo— no tiene ninguna, y el listado necesita
+    /// algo que escribir en esa celda.</para>
+    /// </summary>
+    public static string Accion(AccionProyecto? a) => a switch
+    {
+        AccionProyecto.Acompanamiento => "Acompañamiento",
+        AccionProyecto.Digitalizacion => "Digitalización",
+        null                          => "Sin clasificar",
+        _                             => a.ToString()!
+    };
 }
