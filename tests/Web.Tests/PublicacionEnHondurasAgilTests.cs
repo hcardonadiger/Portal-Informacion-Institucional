@@ -30,7 +30,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
     {
         await _portal.PrepararAsync();
         await _portal.OtorgarAsync("Administrador",
-            "Siger.Ver", "Siger.Editar", "Siger.Publicacion.Ver", "Siger.Publicacion.Editar");
+            "Siger.Ver", "HondurasSimple.Editar", "HondurasSimple.Publicacion.Ver", "HondurasSimple.Publicacion.Editar");
 
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -71,7 +71,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
     [Fact]
     public async Task La_pantalla_lista_lo_que_el_ciudadano_esta_viendo()
     {
-        var html = await LeerAsync("/Siger/Publicacion");
+        var html = await LeerAsync("/HondurasSimple/Publicacion");
 
         html.Should().Contain("Constancia publicada y completa");
         html.Should().NotContain("Permiso aprobado al que le faltan campos",
@@ -81,7 +81,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
     [Fact]
     public async Task Las_candidatas_salen_con_el_aviso_de_lo_que_les_falta()
     {
-        var html = await LeerAsync("/Siger/Publicacion?tab=candidatas");
+        var html = await LeerAsync("/HondurasSimple/Publicacion?tab=candidatas");
 
         html.Should().Contain("Permiso aprobado al que le faltan campos");
         html.Should().Contain("falta", "el aviso tiene que decir qué campos faltan");
@@ -93,7 +93,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
     [Fact]
     public async Task Una_ficha_incompleta_se_puede_publicar_igual()
     {
-        await EnviarAsync("/Siger/Publicacion?tab=candidatas", "Publicar",
+        await EnviarAsync("/HondurasSimple/Publicacion?tab=candidatas", "Publicar",
             [new("Seleccion", _candidataIncompleta.ToString())]);
 
         (await PublicadoAsync(_candidataIncompleta)).Should().BeTrue();
@@ -102,7 +102,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
     [Fact]
     public async Task Quitar_de_Honduras_Agil_despublica_pero_no_borra()
     {
-        await EnviarAsync("/Siger/Publicacion", "Quitar",
+        await EnviarAsync("/HondurasSimple/Publicacion", "Quitar",
             [new("Seleccion", _publicadaCompleta.ToString())]);
 
         using var scope = _portal.Services.CreateScope();
@@ -123,7 +123,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
     [Fact]
     public async Task Editar_una_ficha_publicada_no_la_despublica()
     {
-        await EnviarAsync("/Siger/Editor", null,
+        await EnviarAsync("/HondurasSimple/Editor", null,
         [
             new("Form.Id",          _publicadaSinAprobar.ToString()),
             new("Form.Codigo",      "910-003"),
@@ -145,7 +145,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
     [Fact]
     public async Task Editar_una_ficha_sin_publicar_no_la_publica()
     {
-        await EnviarAsync("/Siger/Editor", null,
+        await EnviarAsync("/HondurasSimple/Editor", null,
         [
             new("Form.Id",          _candidataIncompleta.ToString()),
             new("Form.Codigo",      "910-002"),

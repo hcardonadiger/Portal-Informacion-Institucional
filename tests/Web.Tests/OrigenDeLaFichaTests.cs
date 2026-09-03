@@ -25,7 +25,7 @@ public sealed class OrigenDeLaFichaTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _portal.PrepararAsync();
-        await _portal.OtorgarAsync("Administrador", "Siger.Ver", "Siger.Editar");
+        await _portal.OtorgarAsync("Administrador", "Siger.Ver", "HondurasSimple.Editar");
 
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

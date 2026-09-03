@@ -26,7 +26,7 @@ public sealed class AlertaFichaIncompletaTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _portal.PrepararAsync();
-        await _portal.OtorgarAsync("Administrador", "Siger.Ver", "Siger.Editar");
+        await _portal.OtorgarAsync("Administrador", "Siger.Ver", "HondurasSimple.Editar");
 
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -145,7 +145,7 @@ public sealed class AlertaFichaIncompletaTests : IAsyncLifetime
     [Fact]
     public async Task El_editor_dice_lo_mismo_que_el_inventario()
     {
-        var html = await LeerAsync($"/Siger/Editor?id={_idIncompleta}");
+        var html = await LeerAsync($"/HondurasSimple/Editor?id={_idIncompleta}");
 
         html.Should().Contain("Falta capturar: categoría, tiempo, costo.");
         html.Should().Contain("el trámite no se publica");
@@ -154,7 +154,7 @@ public sealed class AlertaFichaIncompletaTests : IAsyncLifetime
     [Fact]
     public async Task El_editor_confirma_cuando_la_ficha_ya_esta_completa()
     {
-        var html = await LeerAsync($"/Siger/Editor?id={_idCompleta}");
+        var html = await LeerAsync($"/HondurasSimple/Editor?id={_idCompleta}");
 
         html.Should().Contain("La ficha pública está completa.");
     }

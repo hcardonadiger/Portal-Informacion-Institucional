@@ -28,7 +28,7 @@ public sealed class DireccionSolEnElEditorTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _portal.PrepararAsync();
-        await _portal.OtorgarAsync("Administrador", "Siger.Ver", "Siger.Editar");
+        await _portal.OtorgarAsync("Administrador", "Siger.Ver", "HondurasSimple.Editar");
 
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -60,7 +60,7 @@ public sealed class DireccionSolEnElEditorTests : IAsyncLifetime
     [Fact]
     public async Task La_pantalla_enseña_el_prefijo_que_la_persona_no_escribe()
     {
-        var html = await LeerAsync($"/Siger/Editor?id={_limpia}");
+        var html = await LeerAsync($"/HondurasSimple/Editor?id={_limpia}");
 
         html.Should().Contain("/IDP/",
             "sin ver el prefijo, quien captura no sabe qué dirección va a producir lo que teclea");
@@ -178,14 +178,14 @@ public sealed class DireccionSolEnElEditorTests : IAsyncLifetime
     {
         var cliente = _portal.ClienteComo("Administrador");
 
-        var pagina = await cliente.GetAsync($"/Siger/Editor?id={id}");
+        var pagina = await cliente.GetAsync($"/HondurasSimple/Editor?id={id}");
         pagina.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var campos = CamposBase(await FichaAsync(id));
         campos.AddRange(extra);
         campos.Add(new("__RequestVerificationToken", Token(await pagina.Content.ReadAsStringAsync())));
 
-        return await cliente.PostAsync($"/Siger/Editor?id={id}", new FormUrlEncodedContent(campos));
+        return await cliente.PostAsync($"/HondurasSimple/Editor?id={id}", new FormUrlEncodedContent(campos));
     }
 
     private async Task GuardarAsync(int id, List<KeyValuePair<string, string>> extra)

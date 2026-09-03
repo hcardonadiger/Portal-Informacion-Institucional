@@ -28,7 +28,7 @@ public sealed class PaseASigerWebTests : IAsyncLifetime
 
         // El Administrador puede las dos cosas; el Empleado solo expedientes. Esa diferencia es
         // justo lo que se está probando.
-        await _portal.OtorgarAsync("Administrador", "Expedientes.Ver", "Expedientes.Editar", "Siger.Ver", "Siger.Editar");
+        await _portal.OtorgarAsync("Administrador", "Expedientes.Ver", "Expedientes.Editar", "Siger.Ver", "HondurasSimple.Editar");
         await _portal.OtorgarAsync("Empleado", "Expedientes.Ver", "Expedientes.Editar");
 
         using var scope = _portal.Services.CreateScope();

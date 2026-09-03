@@ -33,7 +33,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     {
         await _portal.PrepararAsync();
         await _portal.OtorgarAsync("Administrador",
-            "Siger.Ver", "Siger.Editar", "Siger.Llenado.Ver", "Siger.Llenado.Editar");
+            "Siger.Ver", "HondurasSimple.Editar", "HondurasSimple.Llenado.Ver", "HondurasSimple.Llenado.Editar");
 
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -78,7 +78,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task La_cola_enseña_lo_propuesto_con_su_justificacion()
     {
-        var html = await LeerAsync("/Siger/Llenado");
+        var html = await LeerAsync("/HondurasSimple/Llenado");
 
         html.Should().Contain("Emisión de licencia de conducir");
         html.Should().Contain("5 días hábiles");
@@ -90,7 +90,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task La_categoria_se_enseña_por_su_nombre_y_no_por_su_numero()
     {
-        var html = await LeerAsync("/Siger/Llenado?campo=Categoria");
+        var html = await LeerAsync("/HondurasSimple/Llenado?campo=Categoria");
 
         html.Should().Contain("Pruebas de llenado");
     }
@@ -98,7 +98,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task Se_puede_filtrar_por_certeza()
     {
-        var html = await LeerAsync("/Siger/Llenado?certeza=Alta");
+        var html = await LeerAsync("/HondurasSimple/Llenado?certeza=Alta");
 
         html.Should().Contain("5 días hábiles");
         html.Should().NotContain("Renovación de placa vehicular",
@@ -110,7 +110,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task Aprobar_escribe_el_valor_en_la_ficha()
     {
-        await EnviarAsync("/Siger/Llenado", "Aprobar", [new("Seleccion", _propTiempo.ToString())]);
+        await EnviarAsync("/HondurasSimple/Llenado", "Aprobar", [new("Seleccion", _propTiempo.ToString())]);
 
         var ficha = await FichaAsync(_fichaVacia);
         ficha.TiempoTexto.Should().Be("5 días hábiles");
@@ -132,7 +132,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
         var antes = (await FichaAsync(_fichaYaLlena)).CategoriaId;
         antes.Should().NotBeNull("la prueba no valdría nada si el campo estuviera vacío");
 
-        await EnviarAsync("/Siger/Llenado", "Aprobar", [new("Seleccion", _propSuperada.ToString())]);
+        await EnviarAsync("/HondurasSimple/Llenado", "Aprobar", [new("Seleccion", _propSuperada.ToString())]);
 
         var ficha = await FichaAsync(_fichaYaLlena);
         ficha.CategoriaId.Should().Be(antes, "lo que escribió una persona no se toca");
@@ -147,7 +147,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task Aprobar_por_filtro_alcanza_mas_que_la_pagina_visible()
     {
-        await EnviarAsync("/Siger/Llenado?certeza=Alta", "AprobarFiltro", []);
+        await EnviarAsync("/HondurasSimple/Llenado?certeza=Alta", "AprobarFiltro", []);
 
         (await PropuestaAsync(_propTiempo)).Estado.Should().Be(EstadoPropuesta.Aprobada);
         (await PropuestaAsync(_propCategoria)).Estado.Should().Be(EstadoPropuesta.Pendiente,
@@ -159,7 +159,7 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task Rechazar_deja_el_campo_vacio_y_guarda_la_decision()
     {
-        await EnviarAsync("/Siger/Llenado", "Rechazar", [new("Seleccion", _propCategoria.ToString())]);
+        await EnviarAsync("/HondurasSimple/Llenado", "Rechazar", [new("Seleccion", _propCategoria.ToString())]);
 
         (await FichaAsync(_fichaVacia)).CategoriaId.Should().BeNull();
 
@@ -175,13 +175,13 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task Quien_solo_puede_ver_no_puede_aprobar()
     {
-        await _portal.OtorgarAsync("Empleado", "Siger.Llenado.Ver");
+        await _portal.OtorgarAsync("Empleado", "HondurasSimple.Llenado.Ver");
         var cliente = _portal.ClienteComo("Empleado");
 
-        var pagina = await cliente.GetAsync("/Siger/Llenado");
+        var pagina = await cliente.GetAsync("/HondurasSimple/Llenado");
         pagina.StatusCode.Should().Be(HttpStatusCode.OK, "ver la cola sí puede");
 
-        var respuesta = await cliente.PostAsync("/Siger/Llenado?handler=Aprobar",
+        var respuesta = await cliente.PostAsync("/HondurasSimple/Llenado?handler=Aprobar",
             new FormUrlEncodedContent([
                 new KeyValuePair<string, string>("Seleccion", _propTiempo.ToString()),
                 new KeyValuePair<string, string>("__RequestVerificationToken", Token(await pagina.Content.ReadAsStringAsync()))
