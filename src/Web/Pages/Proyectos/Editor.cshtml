@@ -354,9 +354,9 @@
             }
 
             @{
-                // La columna de orden solo existe para el responsable del proyecto: reordenar es su
-                // atribución. Con ella la tabla pasa a 8 columnas, y de eso depende el colspan de las
-                // filas de «agregar actividad».
+                // La columna de orden solo existe para el responsable del proyecto y para un
+                // administrador: reordenar es de ellos. Con ella la tabla pasa a 8 columnas, y de eso
+                // depende el colspan de las filas de «agregar actividad».
                 var conOrden = Model.PuedeReordenarActividades;
                 var cols     = conOrden ? 9 : 8;   // +1 por la columna «Creado»
 
@@ -753,8 +753,8 @@
                 <div id="aviso-orden" class="hint warn" hidden style="margin-top:.6rem">
                     <span class="ico" aria-hidden="true">↕️</span>
                     <div>
-                        Movió entregables de lugar. El orden lo guarda <strong>«Guardar orden»</strong>, que
-                        es atribución suya como responsable; «Guardar cambios» nunca lo altera.
+                        Movió entregables de lugar. El orden lo guarda <strong>«Guardar orden»</strong>;
+                        «Guardar cambios» nunca lo altera.
                     </div>
                 </div>
             }
@@ -805,8 +805,8 @@
                             }
                         </select>
                         <div class="res-meta" style="margin-top:4px">
-                            Sale del padrón completo, no de los interesados. Es quien puede reordenar la
-                            estructura y corregir la bitácora.
+                            Sale del padrón completo, no de los interesados. Es el único que puede
+                            corregir la bitácora, y —junto con los administradores— reordenar la estructura.
                         </div>
                     </div>
                     <div class="field" style="width:150px">

@@ -944,6 +944,16 @@ public class ProyectosTests : IDisposable
         return u;
     }
 
+    /// <summary>Un administrador que <b>no</b> es el responsable. La capacidad EsAdministrador del
+    /// rol es lo que ICurrentUserService expone como EsGlobal; el resto de los dobles de esta
+    /// suite lo dejan en false, que es el valor por omisión de NSubstitute.</summary>
+    private ICurrentUserService ComoAdministrador()
+    {
+        var u = Como(Ajeno);
+        u.EsGlobal.Returns(true);
+        return u;
+    }
+
     private Task<int[]> IdsPorOrdenAsync(int proyectoId) =>
         _ctx.ProyectoEntregables.Where(e => e.ProyectoId == proyectoId)
             .OrderBy(e => e.Orden).Select(e => e.Id).ToArrayAsync();
@@ -980,7 +990,8 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Reordenar_UnProyectoSinResponsableNoAdmiteLaAccion()
     {
-        // Sin bypass de administrador: si nadie es dueño, nadie reordena.
+        // Sin responsable no hay contra quién comparar: a quien no es administrador se le rechaza
+        // aunque haya creado el proyecto. El administrador sí pasa — ver la prueba de más abajo.
         var id  = await ConEntregablesAsync(responsable: null);
         var ids = await IdsPorOrdenAsync(id);
 
@@ -1031,6 +1042,90 @@ public class ProyectosTests : IDisposable
             .Handle(new ReordenarActividadesCommand(id, ajeno, [1]), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>().WithMessage("*no pertenece*");
+    }
+
+    // ── Reordenar: el administrador es la excepción a la guarda de propiedad ──
+    // Reordenar es cosmético y reversible, así que admite el bypass. Corregir la bitácora reescribe
+    // un registro histórico y NO lo admite: es lo que separa a estas cuatro pruebas de la última.
+
+    [Fact]
+    public async Task ReordenarActividades_UnAdministradorLasMueveAunqueNoSeaElResponsable()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"), (0, "Tercera"));
+
+        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
+
+        await new ReordenarActividadesCommandHandler(_ctx, ComoAdministrador()).Handle(
+            new ReordenarActividadesCommand(id, ids[0], [actuales[2], actuales[0], actuales[1]]),
+            CancellationToken.None);
+
+        (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
+            .Should().Equal("Tercera", "Una", "Otra");
+    }
+
+    [Fact]
+    public async Task Reordenar_UnAdministradorMueveLosEntregablesDeUnProyectoAjeno()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        int[] nuevo = [ids[2], ids[0], ids[1]];
+
+        await new ReordenarEntregablesCommandHandler(_ctx, ComoAdministrador())
+            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
+
+        (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
+    }
+
+    [Fact]
+    public async Task Reordenar_UnAdministradorDesatascaUnProyectoSinResponsable()
+    {
+        // El caso que motivó abrir la guarda: sin responsable asignado no había quien reordenara,
+        // y el proyecto quedaba con su estructura congelada hasta que alguien editara la ficha.
+        var id  = await ConEntregablesAsync(responsable: null);
+        var ids = await IdsPorOrdenAsync(id);
+        int[] nuevo = [ids[2], ids[0], ids[1]];
+
+        await new ReordenarEntregablesCommandHandler(_ctx, ComoAdministrador())
+            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
+
+        (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
+    }
+
+    [Fact]
+    public async Task ReordenarActividades_SigueRechazandoAlAjenoQueNoEsAdministrador()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"));
+
+        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
+
+        var act = () => new ReordenarActividadesCommandHandler(_ctx, Como(Ajeno))
+            .Handle(new ReordenarActividadesCommand(id, ids[0], [actuales[1], actuales[0]]),
+                    CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*responsable del proyecto*");
+        (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
+            .Should().Equal("Una", "Otra");
+    }
+
+    [Fact]
+    public async Task CorregirAvance_NoLaHabilitaSerAdministrador()
+    {
+        // La contracara de las tres de arriba: el bypass es solo para reordenar. Si esta prueba
+        // empieza a fallar, el bypass se filtró a la corrección de la bitácora.
+        var id = await ConDuenioYEntregablesAsync();
+        var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
+            .Handle(new RegistrarAvanceCommand(id, "Original"), CancellationToken.None);
+
+        var act = () => new ActualizarAvanceCommandHandler(_ctx, ComoAdministrador())
+            .Handle(new ActualizarAvanceCommand(avanceId, "Intento del administrador", null),
+                    CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*responsable del proyecto*");
+        (await _ctx.ProyectoAvances.FindAsync(avanceId))!.Descripcion.Should().Be("Original");
     }
 
     [Fact]
