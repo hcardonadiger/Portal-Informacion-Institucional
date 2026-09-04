@@ -141,6 +141,16 @@ public sealed class AppDbContext(
             ))
         ));
 
+        // Usuario es la excepción a «la administración de usuarios es global»: sigue SIN filtro
+        // de alcance institucional —cualquier administrador ve a todos— pero sí oculta a los
+        // eliminados. Va como filtro global y no como Where en la lista a propósito: así el
+        // eliminado desaparece también del login, de los selectores de responsable y de cualquier
+        // consulta que nadie se acuerde de filtrar. Para verlos —la casilla «Mostrar eliminados» y
+        // el comando de restaurar— hay que pedir IgnoreQueryFilters() explícitamente.
+        // AsignacionUsuario NO se filtra ni se borra: se conserva para poder restaurar y para que
+        // la auditoría de accesos no pierda el rastro de quién tuvo qué.
+        mb.Entity<Usuario>().HasQueryFilter(u => !u.IsDeleted);
+
         mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
             _alcanceGlobal ||
             (c.InstitucionId == _activeInst && (

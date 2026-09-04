@@ -44,7 +44,22 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
             FichaCompleta = FichaPublicaCompletitud.Evaluar(t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl);
             UltimaRevision = t.UpdatedAt ?? t.UltimaModificacion ?? t.CreatedAt;
         }
+        else
+        {
+            // Llegaba en 0 y había que adivinar un hueco libre: de los 1141 valores del rango en
+            // uso hay más de mil ocupados, así que casi cualquier número tecleado chocaba contra
+            // el índice único. Se precarga el siguiente, que es lo que casi siempre corresponde.
+            Form.IdSiger = await SiguienteIdSigerAsync(ct);
+        }
         return Page();
+    }
+
+    /// <summary>Máximo + 1. No reutiliza los huecos que dejan los Ids borrados: un Id SIGER
+    /// reciclado se confundiría con el trámite que lo tuvo antes en los reportes viejos.</summary>
+    private async Task<int> SiguienteIdSigerAsync(CancellationToken ct)
+    {
+        var max = await ctx.TramitesSiger.AsNoTracking().MaxAsync(t => (int?)t.IdSiger, ct);
+        return (max ?? 0) + 1;
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
@@ -55,6 +70,8 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
             ModelState.AddModelError("Form.SolUrl", "El enlace a SOL debe ser una URL absoluta (http:// o https://).");
         if (Form.EstaEnSol && string.IsNullOrWhiteSpace(Form.SolUrl))
             ModelState.AddModelError("Form.SolUrl", "Si el trámite está en SOL, el enlace es obligatorio.");
+
+        await ComprobarQueNoChoqueAsync(ct);
 
         if (!ModelState.IsValid) return Page();
 
@@ -122,6 +139,46 @@ public sealed class EditorModel(IApplicationDbContext ctx) : PageModel
             await ctx.SaveChangesAsync(ct);
             TempData["SuccessMsg"] = "Tramite actualizado.";
             return RedirectToPage("/Siger/Detalle", new { id = entity.Id });
+        }
+    }
+
+    /// <summary>
+    /// <c>IdSiger</c> y <c>Codigo</c> tienen índice único en la base. Sin esta comprobación el
+    /// choque salía como <c>DbUpdateException</c> y el usuario veía «Ocurrió un error inesperado»
+    /// con el formulario perdido y sin pista de qué campo corregir.
+    ///
+    /// <para>Nombra al trámite que ocupa el valor: «ya existe» obliga a salir a buscar cuál es, y
+    /// muchas veces el que estorba es un trámite de otra institución que el usuario no conoce.</para>
+    ///
+    /// <para>No sustituye al índice único —dos altas simultáneas siguen pudiendo cruzarse—; para
+    /// esa carrera está el caso de <c>DbUpdateException</c> en <c>WebExceptionHandler</c>.</para>
+    /// </summary>
+    private async Task ComprobarQueNoChoqueAsync(CancellationToken ct)
+    {
+        // Excluir la propia fila: al editar, su Id y su código chocan consigo mismos. Al crear,
+        // Form.Id vale 0 y ninguna fila lo tiene, así que la condición no excluye nada.
+        var conElMismoId = await ctx.TramitesSiger.AsNoTracking()
+            .Where(t => t.IdSiger == Form.IdSiger && t.Id != Form.Id)
+            .Select(t => new { t.Codigo, t.Nombre })
+            .FirstOrDefaultAsync(ct);
+
+        if (conElMismoId is not null)
+            ModelState.AddModelError("Form.IdSiger",
+                $"El Id SIGER {Form.IdSiger} ya lo usa el trámite {conElMismoId.Codigo} — {conElMismoId.Nombre}.");
+
+        Form.Codigo = Form.Codigo?.Trim();
+
+        if (!string.IsNullOrEmpty(Form.Codigo))
+        {
+            var codigo = Form.Codigo;
+            var conElMismoCodigo = await ctx.TramitesSiger.AsNoTracking()
+                .Where(t => t.Codigo == codigo && t.Id != Form.Id)
+                .Select(t => new { t.IdSiger, t.Nombre })
+                .FirstOrDefaultAsync(ct);
+
+            if (conElMismoCodigo is not null)
+                ModelState.AddModelError("Form.Codigo",
+                    $"El código {codigo} ya lo usa el trámite «{conElMismoCodigo.Nombre}» (Id SIGER {conElMismoCodigo.IdSiger}).");
         }
     }
 

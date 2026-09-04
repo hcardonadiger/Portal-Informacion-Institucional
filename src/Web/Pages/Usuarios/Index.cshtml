@@ -38,6 +38,17 @@
         <input type="search" name="q" value="@Model.Q" placeholder="Buscar por nombre o correo…" />
         <button class="btns" type="submit">Buscar</button>
         @if (!string.IsNullOrEmpty(Model.Q)) { <a class="btns" asp-page="/Usuarios/Index">Limpiar</a> }
+        @* Solo para el administrador: es el único que elimina y restaura, y para el resto los
+           eliminados sencillamente no existen. Sin esta casilla, un borrado por error solo se
+           desharía tocando la base de datos. *@
+        @if (Model.PuedeEliminar)
+        {
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-left:auto">
+                <input type="checkbox" name="eliminados" value="true" checked="@Model.VerEliminados"
+                       onchange="this.form.submit()" style="width:auto;margin:0" />
+                <span>Mostrar eliminados</span>
+            </label>
+        }
     </form>
 
     <table class="seg-table">
@@ -53,8 +64,20 @@
         <tbody>
             @foreach (var u in Model.Resultado.Items)
             {
-                <tr>
-                    <td><a class="seg-inst" asp-page="/Usuarios/Editor" asp-route-id="@u.Id">@u.Nombre</a></td>
+                <tr style="@(u.Eliminado ? "opacity:.55" : "")">
+                    <td>
+                        @if (u.Eliminado)
+                        {
+                            @* Sin enlace al editor: el filtro global lo esconde y la página daría
+                               «no encontrado». Primero se restaura, después se edita. *@
+                            <span>@u.Nombre</span>
+                            <span class="badge badge-secondary" style="margin-left:6px">Eliminado</span>
+                        }
+                        else
+                        {
+                            <a class="seg-inst" asp-page="/Usuarios/Editor" asp-route-id="@u.Id">@u.Nombre</a>
+                        }
+                    </td>
                     <td class="res-meta">@u.Correo</td>
                     <td>
                         @{
@@ -75,9 +98,26 @@
                             <span style="color:#94a3b8;font-size:13px;font-weight:600">○ Inactivo</span>
                         }
                     </td>
-                    <td style="text-align:right">
-                        <a class="btns" asp-page="/Usuarios/Editor" asp-route-id="@u.Id"
-                           style="font-size:12.5px;padding:6px 12px">Editar</a>
+                    <td style="text-align:right;white-space:nowrap">
+                        @if (u.Eliminado)
+                        {
+                            <button type="submit" class="btns" form="acciones-usuarios"
+                                    asp-page-handler="Restaurar" name="id" value="@u.Id"
+                                    style="font-size:12.5px;padding:6px 12px">Restaurar</button>
+                        }
+                        else
+                        {
+                            <a class="btns" asp-page="/Usuarios/Editor" asp-route-id="@u.Id"
+                               style="font-size:12.5px;padding:6px 12px">Editar</a>
+                            @if (Model.PuedeEliminar)
+                            {
+                                <button type="submit" class="hist-del" form="acciones-usuarios"
+                                        asp-page-handler="Eliminar" name="id" value="@u.Id"
+                                        title="Eliminar a @u.Nombre"
+                                        aria-label="Eliminar a @u.Nombre"
+                                        onclick="return confirm('¿Eliminar a @u.Nombre? Dejará de aparecer en el portal y no podrá iniciar sesión. Puede recuperarlo con «Mostrar eliminados».');">&#10005;</button>
+                            }
+                        }
                     </td>
                 </tr>
             }
@@ -87,6 +127,17 @@
             }
         </tbody>
     </table>
+
+    @if (Model.PuedeEliminar)
+    {
+        @* Fuera de la tabla a propósito: un <form> entre <tbody> y <tr> es HTML inválido y el
+           navegador lo reubica, dejando los botones huérfanos. Los de arriba lo alcanzan con
+           form="acciones-usuarios". *@
+        <form method="post" id="acciones-usuarios" hidden>
+            <input type="hidden" name="q" value="@Model.Q" />
+            <input type="hidden" name="eliminados" value="@Model.VerEliminados.ToString().ToLowerInvariant()" />
+        </form>
+    }
 
     <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
 </div>

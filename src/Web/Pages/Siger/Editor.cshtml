@@ -16,14 +16,35 @@
     <form method="post" class="card">
         <input type="hidden" asp-for="Form.Id" />
 
+        @* ModelOnly y no All: los errores de campo ya salen junto a su campo, y repetirlos arriba
+           obligaría a leer dos veces lo mismo. Esto recoge lo que no tiene campo al que colgarse. *@
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="hint warn" style="margin-bottom:1rem">
+                <span class="ico" aria-hidden="true">⚠️</span>
+                <div>
+                    No se pudo guardar. Revise los campos marcados.
+                    <div asp-validation-summary="ModelOnly"></div>
+                </div>
+            </div>
+        }
+
         <div class="form-grid">
             <div class="field">
                 <label asp-for="Form.IdSiger">Id SIGER</label>
                 <input asp-for="Form.IdSiger" type="number" required />
+                @* Los dos tienen índice único en la base. Sin estos avisos el choque salía como
+                   «Ocurrió un error inesperado» y el formulario se perdía entero. *@
+                <span asp-validation-for="Form.IdSiger" class="field-error"></span>
+                @if (Model.EsNuevo)
+                {
+                    <div class="res-meta" style="margin-top:4px">Se propuso el siguiente libre; puede cambiarlo.</div>
+                }
             </div>
             <div class="field">
                 <label asp-for="Form.Codigo">Codigo</label>
                 <input asp-for="Form.Codigo" required maxlength="20" placeholder="400-001" />
+                <span asp-validation-for="Form.Codigo" class="field-error"></span>
             </div>
         </div>
 

@@ -3,7 +3,8 @@ using Diger.TramitesEstado.Domain.Enums;
 namespace Diger.TramitesEstado.Application.Usuarios.Common;
 
 public sealed record UsuarioListItemDto(
-    Guid Id, string Nombre, string Correo, string Rol, bool Activo, DateTime FechaCreacion);
+    Guid Id, string Nombre, string Correo, string Rol, bool Activo, DateTime FechaCreacion,
+    bool Eliminado = false);
 
 public sealed record UsuarioDetailDto(
     Guid Id, string Nombre, string Correo, string Rol, bool Activo, string? CertificadoThumbprint,
