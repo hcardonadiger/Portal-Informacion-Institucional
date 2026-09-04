@@ -99,11 +99,21 @@
                         }
                     </td>
                     <td style="text-align:right;white-space:nowrap">
+                        @* Un formulario POR FILA, con el handler en su propio action.
+                           No se puede colgar el handler del botón: diger.js intercepta el submit de
+                           cualquier .hist-del, muestra su modal y reenvía con form.submit(), que usa
+                           el action del FORMULARIO y descarta el formaction del botón. Con el handler
+                           solo en el botón, el POST caía en /Usuarios sin ?handler=, Razor Pages no
+                           encontraba handler y renderizaba la página sin ejecutar nada: la lista salía
+                           vacía y no se borraba a nadie. *@
                         @if (u.Eliminado)
                         {
-                            <button type="submit" class="btns" form="acciones-usuarios"
-                                    asp-page-handler="Restaurar" name="id" value="@u.Id"
-                                    style="font-size:12.5px;padding:6px 12px">Restaurar</button>
+                            <form method="post" asp-page-handler="Restaurar" style="display:inline">
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <input type="hidden" name="q" value="@Model.Q" />
+                                <button type="submit" class="btns"
+                                        style="font-size:12.5px;padding:6px 12px">Restaurar</button>
+                            </form>
                         }
                         else
                         {
@@ -111,11 +121,18 @@
                                style="font-size:12.5px;padding:6px 12px">Editar</a>
                             @if (Model.PuedeEliminar)
                             {
-                                <button type="submit" class="hist-del" form="acciones-usuarios"
-                                        asp-page-handler="Eliminar" name="id" value="@u.Id"
-                                        title="Eliminar a @u.Nombre"
-                                        aria-label="Eliminar a @u.Nombre"
-                                        onclick="return confirm('¿Eliminar a @u.Nombre? Dejará de aparecer en el portal y no podrá iniciar sesión. Puede recuperarlo con «Mostrar eliminados».');">&#10005;</button>
+                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <input type="hidden" name="q" value="@Model.Q" />
+                                    <input type="hidden" name="eliminados" value="@Model.VerEliminados.ToString().ToLowerInvariant()" />
+                                    @* data-confirm y no onclick: el modal ya lo pone diger.js al ver
+                                       .hist-del. Con un confirm() propio encima salían DOS diálogos
+                                       seguidos para la misma acción. *@
+                                    <button type="submit" class="hist-del"
+                                            data-confirm="¿Eliminar a @u.Nombre? Dejará de aparecer en el portal y no podrá iniciar sesión. Puede recuperarlo con «Mostrar eliminados»."
+                                            title="Eliminar a @u.Nombre"
+                                            aria-label="Eliminar a @u.Nombre">&#10005;</button>
+                                </form>
                             }
                         }
                     </td>
@@ -127,17 +144,6 @@
             }
         </tbody>
     </table>
-
-    @if (Model.PuedeEliminar)
-    {
-        @* Fuera de la tabla a propósito: un <form> entre <tbody> y <tr> es HTML inválido y el
-           navegador lo reubica, dejando los botones huérfanos. Los de arriba lo alcanzan con
-           form="acciones-usuarios". *@
-        <form method="post" id="acciones-usuarios" hidden>
-            <input type="hidden" name="q" value="@Model.Q" />
-            <input type="hidden" name="eliminados" value="@Model.VerEliminados.ToString().ToLowerInvariant()" />
-        </form>
-    }
 
     <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
 </div>
