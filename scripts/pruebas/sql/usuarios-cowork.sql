@@ -48,3 +48,34 @@ SELECT u.Correo + '  ->  ' + a.Rol AS Listo
 FROM Usuarios u JOIN AsignacionesUsuario a ON a.UsuarioId = u.Id
 WHERE u.Correo LIKE '%.cowork@diger.gob.hn'
 ORDER BY u.Correo;
+
+-- ---------------------------------------------------------------------------
+-- El operador necesita las ocho llaves de Honduras Simple.
+--
+-- El traslado que corre al encender copia una por una las concesiones que el rol
+-- tenia bajo SIGER. Jefe de Area tenia cuatro: Ver, Editar, Eliminar y Conciliacion.
+-- Nunca tuvo Llenado ni Publicado, porque bajo SIGER esas dos pantallas solo las
+-- alcanzaban los administradores, que se saltan la matriz por codigo. Eso viene de
+-- antes de la separacion y no lo cambia el traslado.
+--
+-- Para el recorrido de pruebas hacen falta las ocho: el paso 7 comprueba justamente
+-- que un operador que NO es administrador entra a las siete pantallas. Sin estas
+-- cuatro, Llenado y Publicado le cierran la puerta y el recorrido reporta un fallo
+-- que no existe.
+-- ---------------------------------------------------------------------------
+INSERT INTO RolPermisos (RolId, PermisoClave)
+SELECT N'JefeArea', v.Clave
+FROM (VALUES
+    (N'HondurasSimple.Llenado.Ver'),
+    (N'HondurasSimple.Llenado.Editar'),
+    (N'HondurasSimple.Publicacion.Ver'),
+    (N'HondurasSimple.Publicacion.Editar')
+) v(Clave)
+WHERE NOT EXISTS (
+    SELECT 1 FROM RolPermisos r
+    WHERE r.RolId = N'JefeArea' AND r.PermisoClave = v.Clave);
+
+SELECT N'JefeArea  ->  ' + PermisoClave AS [Permisos del operador]
+FROM RolPermisos
+WHERE RolId = N'JefeArea' AND PermisoClave LIKE N'HondurasSimple%'
+ORDER BY PermisoClave;
