@@ -264,3 +264,35 @@ De la corrida salió confirmado, y un cambio de la fase 1 lo puede tumbar sin qu
 
 La fase 1 toca justamente el filtro que produce el primero de esos cinco. La prueba 3 de la
 tarea 1.1 existe para eso.
+
+---
+
+## Estado: ejecutado
+
+Las cuatro fases estan aplicadas y comprometidas en la rama `Jamil`. Nada empujado.
+
+| Fase | Commit | Qué quedó |
+|---|---|---|
+| 1 · H-02 | `f5cae48` | El filtro respeta `[AllowAnonymous]` y `[PermisoNoRequerido]`; la excepcion de `AppDbContext` se acoto a la propia cuenta (Opcion A) |
+| 2 · H-04 | `2e182b1` | La ficha pinta los **cuatro** campos del llenado, no solo el tiempo |
+| 3 · H-06 | `2d56503` | El aviso cuenta otorgados y revocados; `scroll-margin-top`; el `confirm()` sale de **dos** pantallas |
+| 4 · terreno | `8368771` | Operador a CONSUCOOP, candidata sin publicar en las tres, documento corregido |
+
+**17 pruebas nuevas**, suite en 682 y en verde. Compila en Release sin errores.
+
+### Dos cosas que se ampliaron respecto al plan
+
+- **Fase 2** iba a mostrar `TiempoTexto`. Al comparar campo por campo, como pedia la propia
+  tarea 2.1, aparecio que la ficha no pintaba **ninguno** de los cuatro campos que escribe el
+  llenado. Se muestran los cuatro.
+- **Fase 3** nombraba el `confirm()` de Llenado. Conciliacion tenia el mismo, y habria producido
+  el mismo falso positivo en la proxima corrida. Se quitaron los dos, y la confirmacion se exige
+  ahora tambien en el servidor.
+
+### Lo que queda pendiente
+
+- **Tarea 4.4** — cerrar el pendiente del paso 15 con dos sesiones vivas a la vez. No es un
+  arreglo sino una comprobacion, y necesita el portal levantado: va con la proxima corrida.
+- **Para produccion**: nadie hereda `HondurasSimple.Llenado.*` ni `HondurasSimple.Publicacion.*`.
+  Hay que otorgarlos a mano al rol que corresponda; en el sandbox se otorgaron a `JefeArea` desde
+  `usuarios-cowork.sql`, que es un guion de pruebas y no llega a produccion.
