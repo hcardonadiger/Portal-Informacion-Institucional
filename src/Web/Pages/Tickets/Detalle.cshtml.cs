@@ -9,10 +9,19 @@ namespace Diger.TramitesEstado.Web.Pages.Tickets;
 // Ver el detalle basta con Tickets.Ver; tomar, liberar, comentar o cambiar el estado son
 // mutaciones y piden Tickets.Editar (ver los overrides por handler más abajo).
 [Permission("Tickets", AccionModulo.Ver, "Ver tickets")]
-public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser, IWebHostEnvironment env, AccesoModulosService acceso) : PageModel
+public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser, IWebHostEnvironment env, AccesoModulosService acceso, IOptions<SoporteOptions> soporteOpts) : PageModel
 {
     public TicketDetailDto Ticket { get; private set; } = default!;
     public string? Error { get; set; }
+
+    // ── Asignación central (Feature B) ────────────────────────────
+    // La acción se gatea por el permiso Tickets.Asignacion (aparte de Tickets.Editar: "distribuir/
+    // reasignar" no es lo mismo que "atender"). El administrador puede asignar SIEMPRE —aprueba por
+    // código—; el toggle AdministradorCentral solo abre la función a los no-admin con ese permiso.
+    public bool AsignacionCentralActiva { get; } = soporteOpts.Value.Asignacion.AdministradorCentral;
+    public bool PuedeAsignar { get; private set; }
+    public bool PuedeDistribuir => PuedeAsignar && (currentUser.EsGlobal || AsignacionCentralActiva);
+    public IReadOnlyList<UsuarioAsignableDto> Operadores { get; private set; } = [];
 
     /// <summary>Antes era "el rol se llama Administrador"; ahora es la clave concreta que el
     /// servidor va a exigir en los handlers de mutación, así el botón y el gateo coinciden.</summary>
@@ -49,6 +58,10 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         // mostrar los proyectos que el ticket ya tenía, no una lista vacía que parece un dato.
         Proyectos     = await sender.Send(new GetProyectosDeTicketQuery(id), ct);
         PuedeVincular = await acceso.PuedeEditarAsync("Proyectos", ct);
+
+        PuedeAsignar = await acceso.PuedeEditarAsync("Tickets.Asignacion", ct);
+        if (PuedeDistribuir)
+            Operadores = await sender.Send(new GetOperadoresSoporteQuery(Ticket.TemaId), ct);
         return true;
     }
 
@@ -111,6 +124,23 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         if (!PuedeLiberar) return Forbid();
         await sender.Send(new AsignarTicketCommand(id, null), ct);
         TempData["SuccessMsg"] = "Ticket liberado. Queda disponible para que lo tome un responsable.";
+        return RedirectToPage(new { id });
+    }
+
+    /// <summary>Asignación/reasignación por el administrador central (Feature B). Pide el permiso
+    /// <c>Tickets.Asignacion</c> y que el modo esté habilitado por configuración.</summary>
+    [Permission("Tickets.Asignacion", AccionModulo.Editar, "Asignar y reasignar tickets")]
+    public async Task<IActionResult> OnPostAsignarAsync(int id, Guid operadorId, CancellationToken ct)
+    {
+        if (!await CargarAsync(id, ct)) return NotFound();
+        if (!PuedeDistribuir) return Forbid();
+        if (operadorId == Guid.Empty)
+        {
+            TempData["ErrorMsg"] = "Debe seleccionar un operador.";
+            return RedirectToPage(new { id });
+        }
+        await sender.Send(new AsignarTicketCommand(id, operadorId), ct);
+        TempData["SuccessMsg"] = "Ticket asignado al operador seleccionado.";
         return RedirectToPage(new { id });
     }
 

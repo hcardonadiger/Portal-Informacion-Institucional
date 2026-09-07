@@ -122,6 +122,13 @@
             <input type="checkbox" name="soloVencidos" value="true" checked="@Model.SoloVencidos" onchange="this.form.submit()" />
             <span>Vencidos</span>
         </label>
+        @if (Model.PuedeDistribuir)
+        {
+            <label class="chk" style="margin:0 0 .45rem" title="Tickets todavía sin operador asignado (cola de distribución)">
+                <input type="checkbox" name="soloSinAsignar" value="true" checked="@Model.SoloSinAsignar" onchange="this.form.submit()" />
+                <span>Sin asignar</span>
+            </label>
+        }
         <div class="field" style="min-width:190px;flex:1">
             <label>Buscar</label>
             <input type="search" name="q" value="@Model.Q" placeholder="Nº, título o institución…" />

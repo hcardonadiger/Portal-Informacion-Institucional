@@ -15,6 +15,11 @@ public sealed class TicketFormDto
     public int? ExpedienteId  { get; set; }
     /// <summary>Ids del catálogo (TramiteDefinicion) de los trámites afectados por el incidente.</summary>
     public List<int> TramiteIds { get; set; } = [];
+
+    /// <summary>Operador de soporte elegido por el creador (asignación manual en creación).
+    /// Solo se aplica cuando <c>Soporte:Asignacion:ManualEnCreacion</c> está activo; en cualquier
+    /// otro caso el handler lo ignora. Nunca se persiste directamente: pasa por <c>Ticket.Asignar</c>.</summary>
+    public Guid? OperadorId { get; set; }
     // El reportante se obtiene del usuario que registra el ticket (no se captura en el formulario).
 }
 

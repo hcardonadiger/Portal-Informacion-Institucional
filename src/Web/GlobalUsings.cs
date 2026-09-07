@@ -60,6 +60,8 @@ global using Diger.TramitesEstado.Application.Tickets.Commands.EliminarTicket;
 global using Diger.TramitesEstado.Application.Tickets.Queries.GetTickets;
 global using Diger.TramitesEstado.Application.Tickets.Queries.GetTicketById;
 global using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
+global using Diger.TramitesEstado.Application.Tickets.Queries.GetOperadoresSoporte;
+global using Microsoft.Extensions.Options;
 global using Diger.TramitesEstado.Application.Tickets.Temas;
 global using Diger.TramitesEstado.Application.Tickets.Categorias;
 global using Diger.TramitesEstado.Application.Permisos;

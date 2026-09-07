@@ -289,6 +289,31 @@
                         <p class="hint" style="margin:.5rem 0 0">Libéralo si debe tomarlo otra persona.</p>
                     }
                 }
+
+                @if (Model.PuedeDistribuir)
+                {
+                    <div style="margin-top:.8rem;border-top:1px solid #e6ebf3;padding-top:.7rem">
+                        <p class="res-meta" style="margin:0 0 .35rem">Asignación central</p>
+                        @if (Model.Operadores.Count == 0)
+                        {
+                            <p class="hint" style="margin:0">No hay operadores de soporte disponibles para este tema.</p>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Asignar" asp-route-id="@t.Id">
+                                <select name="operadorId" class="inp" style="width:100%;margin-bottom:.5rem" required>
+                                    <option value="">— Seleccionar operador —</option>
+                                    @foreach (var op in Model.Operadores)
+                                    {
+                                        <option value="@op.Id" selected="@(t.AsignadoAId == op.Id)">@op.Nombre (@op.Rol)</option>
+                                    }
+                                </select>
+                                <button class="btnp" type="submit" style="width:100%">@(Model.SinResponsable ? "Asignar" : "Reasignar")</button>
+                            </form>
+                            <p class="hint" style="margin:.5rem 0 0">Distribuye o reasigna el ticket a un operador de soporte.</p>
+                        }
+                    </div>
+                }
             </div>
 
             <div class="card">

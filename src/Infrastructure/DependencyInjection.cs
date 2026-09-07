@@ -71,6 +71,9 @@ public static class DependencyInjection
         // Identidad institucional (nombre, logo, contacto — usados en layout/login)
         services.Configure<InstitucionOptions>(configuration.GetSection("Institucion"));
 
+        // Política de asignación de tickets de soporte (manual en creación / admin central)
+        services.Configure<SoporteOptions>(configuration.GetSection("Soporte"));
+
         // Chat de soporte
         services.AddScoped<IChatService, ChatService>();
 
