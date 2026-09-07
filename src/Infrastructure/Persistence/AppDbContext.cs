@@ -278,13 +278,42 @@ public sealed class AppDbContext(
         base.OnModelCreating(mb);
     }
 
+    /// <summary>
+    /// Excepción acotada al autoservicio de la propia cuenta.
+    ///
+    /// <para>El bloqueo de solo lectura no admitía ninguna excepción, y eso dejaba sin efecto la
+    /// decisión que declara <c>[PermisoNoRequerido]</c>: cambiar la contraseña propia, editar el
+    /// perfil o vincular un certificado no pueden depender de un permiso otorgable —ni del
+    /// alcance de escritura del rol—, porque entonces basta desmarcar una casilla para dejar a
+    /// alguien sin poder entrar a su propia cuenta. Con la guarda cerrada del todo, esas páginas
+    /// pasaban el filtro y morían al guardar.</para>
+    ///
+    /// <para>La excepción se abre lo mínimo: <b>todas</b> las filas mutadas tienen que ser
+    /// modificaciones de la fila de <c>Usuario</c> del usuario activo. No vale un alta, no vale
+    /// una baja, y no vale acompañarla de ninguna otra entidad en el mismo guardado — si así
+    /// fuera, cualquier página podría colgar su mutación de un cambio de perfil.</para>
+    /// </summary>
+    private bool EsAutoservicioDeLaPropiaCuenta()
+    {
+        if (_usuarioId is null) return false;
+
+        var mutadas = ChangeTracker.Entries()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .ToList();
+
+        return mutadas.Count > 0
+            && mutadas.All(e => e.State == EntityState.Modified
+                             && e.Entity is Usuario u
+                             && u.Id == _usuarioId.Value);
+    }
+
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         // ── Bloqueo de seguridad duro para roles de solo lectura ───────────────
         var hasMutations = ChangeTracker.Entries().Any(e =>
             e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted);
 
-        if (hasMutations && _esSoloLectura)
+        if (hasMutations && _esSoloLectura && !EsAutoservicioDeLaPropiaCuenta())
         {
             throw new UnauthorizedAccessException("El rol activo es de solo lectura y no puede mutar datos.");
         }
