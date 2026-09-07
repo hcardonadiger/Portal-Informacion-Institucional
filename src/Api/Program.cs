@@ -64,7 +64,10 @@ builder.Services.AddSwaggerGen(opts =>
 {
     opts.SwaggerDoc("v1", new()
     {
-        Title   = "DIGER — API pública de trámites (v1)",
+        // El nombre va literal y no por Marca.Nombre, que es donde dev lo centralizo: este
+        // proyecto no referencia a ninguno de los otros a proposito —esa fue la separacion de
+        // la API publica— y colgarle una dependencia entera por una cadena la desharia.
+        Title   = "GestionGD — API pública de trámites (v1)",
         Version = "v1",
         Description =
             "Publica el inventario oficial de trámites del Estado para que otros sistemas lo " +

@@ -1,5 +1,6 @@
 @page "{id:int}"
 @using Diger.TramitesEstado.Application.Proyectos.Common
+@using Diger.TramitesEstado.Application.Dashboards.Queries
 @model Diger.TramitesEstado.Web.Pages.Proyectos.EditorModel
 @{
     var p = Model.Proyecto;
@@ -74,6 +75,11 @@
             @* La ficha es para editar; el tablero, para leer cómo va. Se separan porque el segundo
                calcula cosas que la ficha no muestra —esperado a la fecha, carga por persona— y
                mezclarlas alargaría una pantalla que ya tiene ocho pestañas. *@
+            @* Se descarga la ficha entera, no la pestaña abierta: el PDF existe para archivar y
+               enviar el proyecto completo, y una descarga que dependiera de dónde está parado el
+               usuario daría documentos distintos con el mismo nombre. *@
+            <a class="btns" asp-page="/Proyectos/Editor" asp-page-handler="Pdf" asp-route-id="@p.Id"
+               style="font-size:13px" title="Descarga la estructura completa del proyecto en PDF">Descargar PDF</a>
             <a class="btns" asp-page="/Tableros/Proyecto" asp-route-id="@p.Id" style="font-size:13px">Tablero →</a>
             <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
         </div>
@@ -348,9 +354,9 @@
             }
 
             @{
-                // La columna de orden solo existe para el responsable del proyecto: reordenar es su
-                // atribución. Con ella la tabla pasa a 8 columnas, y de eso depende el colspan de las
-                // filas de «agregar actividad».
+                // La columna de orden solo existe para el responsable del proyecto y para un
+                // administrador: reordenar es de ellos. Con ella la tabla pasa a 8 columnas, y de eso
+                // depende el colspan de las filas de «agregar actividad».
                 var conOrden = Model.PuedeReordenarActividades;
                 var cols     = conOrden ? 9 : 8;   // +1 por la columna «Creado»
 
@@ -747,8 +753,8 @@
                 <div id="aviso-orden" class="hint warn" hidden style="margin-top:.6rem">
                     <span class="ico" aria-hidden="true">↕️</span>
                     <div>
-                        Movió entregables de lugar. El orden lo guarda <strong>«Guardar orden»</strong>, que
-                        es atribución suya como responsable; «Guardar cambios» nunca lo altera.
+                        Movió entregables de lugar. El orden lo guarda <strong>«Guardar orden»</strong>;
+                        «Guardar cambios» nunca lo altera.
                     </div>
                 </div>
             }
@@ -799,8 +805,8 @@
                             }
                         </select>
                         <div class="res-meta" style="margin-top:4px">
-                            Sale del padrón completo, no de los interesados. Es quien puede reordenar la
-                            estructura y corregir la bitácora.
+                            Sale del padrón completo, no de los interesados. Es el único que puede
+                            corregir la bitácora, y —junto con los administradores— reordenar la estructura.
                         </div>
                     </div>
                     <div class="field" style="width:150px">
@@ -811,6 +817,19 @@
                                 <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
                             }
                         </select>
+                    </div>
+                    @* Qué hace DIGER acá. Vacía a propósito para los proyectos que nadie clasificó
+                       todavía: es distinto de elegir mal, y el listado los deja ver como tales. *@
+                    <div class="field" style="width:190px">
+                        <label for="f-accion">Acción</label>
+                        <select id="f-accion" name="Accion" disabled="@(!Model.PuedeEditar)">
+                            <option value="">— Sin clasificar —</option>
+                            @foreach (var ac in Enum.GetValues<AccionProyecto>())
+                            {
+                                <option value="@((int)ac)" selected="@(Model.Accion == ac)">@Etiquetas.Accion(ac)</option>
+                            }
+                        </select>
+                        <div class="res-meta" style="margin-top:4px">Qué hacemos nosotros en el proyecto, no de qué trata.</div>
                     </div>
                     <div class="field" style="width:170px">
                         <label for="f-ini">Inicio planificado</label>
@@ -1975,12 +1994,27 @@
                                 <td>@it.Influencia</td>
                                 @if (Model.PuedeEditar)
                                 {
+                                    @* El botón solo se ofrece cuando la acción existe. Removible sale del mismo
+                                       cálculo de derecho vigente que usa la guarda de QuitarInteresadoCommand, así
+                                       que aquí no se puede confirmar un ✕ para recibir después una DomainException
+                                       —el callejón sin salida que había antes—. Deshabilitado y no oculto: que la
+                                       fila diga por qué no se puede quitar es lo que evita que alguien la busque. *@
                                     <td style="text-align:right">
-                                        <form method="post" asp-page-handler="QuitarInteresado" asp-route-id="@p.Id">
-                                            <input type="hidden" name="IntId" value="@it.Id" />
-                                            <button type="submit" class="hist-del" aria-label="Quitar interesado"
-                                                    data-confirm="¿Quitar a @it.Nombre de los interesados?">✕</button>
-                                        </form>
+                                        @if (it.Removible)
+                                        {
+                                            <form method="post" asp-page-handler="QuitarInteresado" asp-route-id="@p.Id">
+                                                <input type="hidden" name="IntId" value="@it.Id" />
+                                                <button type="submit" class="hist-del" aria-label="Quitar interesado"
+                                                        data-confirm="¿Quitar a @it.Nombre de los interesados?">✕</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="hist-del" disabled
+                                                    aria-label="No se puede quitar a @it.Nombre"
+                                                    style="opacity:.4;cursor:not-allowed"
+                                                    title="Figura por su rol de área o unidad. Deja de figurar cuando pierde ese rol o esa asignación.">✕</button>
+                                        }
                                     </td>
                                 }
                             </tr>

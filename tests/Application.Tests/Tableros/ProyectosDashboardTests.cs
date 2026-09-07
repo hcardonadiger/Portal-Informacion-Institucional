@@ -1,9 +1,10 @@
-using Diger.TramitesEstado.Application.Common.Interfaces;
+﻿using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Dashboards.Common;
 using Diger.TramitesEstado.Application.Dashboards.Queries;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 using Diger.TramitesEstado.Application.Tests.Expedientes;
 using Diger.TramitesEstado.Domain.Enums;
 using Diger.TramitesEstado.Infrastructure.Persistence;
@@ -18,6 +19,7 @@ public class ProyectosDashboardTests : IDisposable
 {
     private readonly AppDbContext _ctx;
     private readonly ICurrentUserService _usuario = Substitute.For<ICurrentUserService>();
+    private readonly IInteresadosAutomaticosSync _sync = Substitute.For<IInteresadosAutomaticosSync>();
 
     public ProyectosDashboardTests()
     {
@@ -30,7 +32,7 @@ public class ProyectosDashboardTests : IDisposable
 
     private async Task<int> ProyectoEnEjecucionAsync(string nombre)
     {
-        var id = await new CrearProyectoCommandHandler(_ctx, _usuario)
+        var id = await new CrearProyectoCommandHandler(_ctx, _usuario, _sync)
             .Handle(new CrearProyectoCommand(nombre), CancellationToken.None);
         await new CambiarEstadoProyectoCommandHandler(_ctx, _usuario)
             .Handle(new CambiarEstadoProyectoCommand(id, EstadoProyecto.EnEjecucion), CancellationToken.None);
@@ -63,11 +65,11 @@ public class ProyectosDashboardTests : IDisposable
         var a = await ProyectoEnEjecucionAsync("A");
         await ProyectoEnEjecucionAsync("B");
         // Un planificado con 0 % no debe arrastrar el promedio hacia abajo.
-        await new CrearProyectoCommandHandler(_ctx, _usuario).Handle(new CrearProyectoCommand("Planificado"), CancellationToken.None);
+        await new CrearProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new CrearProyectoCommand("Planificado"), CancellationToken.None);
 
         // Dos entregables, uno cumplido: 50 % por la regla 0/50/100. El avance ya no se declara.
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
-            a, "A", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
+            a, "A", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Cumplido", null, null, EstadoEntregable.Completado, null, null, []),
                 new EntregableInput(0, "Pendiente", null, null, EstadoEntregable.Pendiente, null, null, [])
@@ -97,8 +99,8 @@ public class ProyectosDashboardTests : IDisposable
         var id = await ProyectoEnEjecucionAsync("Con entregables");
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
-            id, "Con entregables", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
+            id, "Con entregables", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Vencido",    null, hoy.AddDays(-5),  EstadoEntregable.EnProceso,  null, null, []),
                 new EntregableInput(0, "Por vencer", null, hoy.AddDays(10),  EstadoEntregable.Pendiente,  null, null, []),
@@ -120,8 +122,8 @@ public class ProyectosDashboardTests : IDisposable
         var id = await ProyectoEnEjecucionAsync("Con actividades");
         var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
-            id, "Con actividades", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
+            id, "Con actividades", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Único", null, hoy.AddDays(150), EstadoEntregable.EnProceso, null, null,
                 [
@@ -182,8 +184,8 @@ public class ProyectosDashboardTests : IDisposable
     {
         var id = await ProyectoEnEjecucionAsync("Con dependencias");
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
-            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
+            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Único", null, null, EstadoEntregable.EnProceso, null, null,
                 [
@@ -206,8 +208,8 @@ public class ProyectosDashboardTests : IDisposable
                 a.Nombre == "Levantamiento" ? [] : new List<int> { actividades["Levantamiento"] }))
                 .ToList())).ToList();
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
-            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
+            id, "Con dependencias", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             entrada), CancellationToken.None);
 
         var d = await TableroAsync();

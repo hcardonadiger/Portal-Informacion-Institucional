@@ -73,17 +73,38 @@
     <form method="post" class="card">
         <input type="hidden" asp-for="Form.Id" />
 
+        @* ModelOnly y no All: los errores de campo ya salen junto a su campo, y repetirlos arriba
+           obligaría a leer dos veces lo mismo. Esto recoge lo que no tiene campo al que colgarse. *@
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="hint warn" style="margin-bottom:1rem">
+                <span class="ico" aria-hidden="true">⚠️</span>
+                <div>
+                    No se pudo guardar. Revise los campos marcados.
+                    <div asp-validation-summary="ModelOnly"></div>
+                </div>
+            </div>
+        }
+
         <div class="form-grid">
             <div class="field">
                 @* Sin «required»: una ficha creada desde un expediente no existe en SIGER y por
                    tanto no tiene identificador. Dejarlo vacío es la forma de decirlo. *@
                 <label asp-for="Form.IdSiger">Id SIGER</label>
                 <input asp-for="Form.IdSiger" type="number" placeholder="Vacío si no viene de SIGER" />
+                @* Lleva indice unico en la base. Sin este aviso el choque salia como «Ocurrió un
+                   error inesperado» y el formulario se perdia entero. *@
+                <span asp-validation-for="Form.IdSiger" class="field-error"></span>
                 <span class="res-meta">Déjelo vacío si la ficha se creó desde un expediente.</span>
+                @if (Model.EsNuevo && Model.SiguienteIdSigerLibre is int siguiente)
+                {
+                    <div class="res-meta" style="margin-top:4px">El siguiente libre es @siguiente.</div>
+                }
             </div>
             <div class="field">
                 <label asp-for="Form.Codigo">Codigo</label>
                 <input asp-for="Form.Codigo" required maxlength="20" placeholder="400-001" />
+                <span asp-validation-for="Form.Codigo" class="field-error"></span>
             </div>
         </div>
 

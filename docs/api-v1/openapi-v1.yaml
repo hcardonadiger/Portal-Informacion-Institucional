@@ -16,7 +16,7 @@
 # =============================================================================
 openapi: 3.0.1
 info:
-  title: DIGER — API pública de trámites (v1)
+  title: GestionGD — API pública de trámites (v1)
   description: "Publica el inventario oficial de trámites del Estado para que otros sistemas lo consuman. Hoy su único consumidor es HondurasÁgil.\n\n**Solo lectura.** No hay POST, PUT ni DELETE, y no los habrá en la v1: los trámites se editan en PortalDigital, no por aquí.\n\n**Solo lo publicado.** Un trámite sin publicar no existe para esta API. Por eso un código no publicado devuelve 404 igual que uno inexistente: distinguirlos delataría qué códigos hay.\n\n### Cómo autenticarse\nPulse **Authorize** y pegue la clave. Viaja en la cabecera `X-Api-Key`. `/api/v1/salud` es la única ruta que no la pide, para que un monitor externo no tenga que custodiar un secreto.\n\n### Cómo sincronizar\nSon dos rutas que se complementan, y hacen falta las dos:\n\n- `/cambios?desde=` trae lo que cambió. Es el día a día.\n- `/codigos-publicados` trae todos los códigos vivos. Sirve para **retirar bajas**, que es lo que `/cambios` no puede reportar: un trámite dado de baja no deja ninguna fila que devolver.\n\nConviene además forzar un ciclo completo cada tanto. `/cambios` se apoya en la fecha de modificación, así que una publicación hecha con un UPDATE directo contra la base no la toca y sería invisible para siempre."
   version: v1
 paths:

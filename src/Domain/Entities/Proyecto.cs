@@ -57,6 +57,18 @@ public sealed class Proyecto : BaseAuditableEntity, ISoftDeletable
 
     public PrioridadProyecto Prioridad { get; set; } = PrioridadProyecto.Media;
 
+    /// <summary>
+    /// Qué hace DIGER en el proyecto: acompañar, digitalizar, dar soporte o desarrollar. Es la
+    /// acción, no el tema — «SOL — CONSUCOOP» es acompañamiento aunque trate sobre digitalización.
+    ///
+    /// <para><b>Opcional a propósito.</b> Se agregó el 2026-09-02, con el portafolio ya cargado, y
+    /// los proyectos existentes quedaron en null en vez de recibir un valor por defecto: una acción
+    /// inventada por una migración se lee igual que una que alguien declaró, y no hay forma
+    /// posterior de distinguirlas. El null dice «todavía nadie lo clasificó», que es el dato
+    /// verdadero.</para>
+    /// </summary>
+    public AccionProyecto? Accion { get; set; }
+
     /// <summary>Solo lo mueve <see cref="CambiarEstado"/>, que valida la transición.</summary>
     public EstadoProyecto Estado { get; private set; } = EstadoProyecto.Planificado;
 

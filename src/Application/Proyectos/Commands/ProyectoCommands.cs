@@ -1,4 +1,7 @@
-using Diger.TramitesEstado.Application.Proyectos.Common;
+﻿using Diger.TramitesEstado.Application.Proyectos.Common;
+using Diger.TramitesEstado.Application.Proyectos.Services;
+// Por Etiquetas: la bitácora escribe los mismos rótulos que el usuario ve en pantalla.
+using Diger.TramitesEstado.Application.Dashboards.Queries;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Commands;
 
@@ -65,12 +68,14 @@ public sealed record CrearProyectoCommand(
     Guid?             ResponsableId   = null,
     string?           Responsable     = null,
     PrioridadProyecto Prioridad       = PrioridadProyecto.Media,
+    AccionProyecto?   Accion          = null,
     DateOnly?         FechaInicioPlan = null,
     DateOnly?         FechaFinPlan    = null) : IRequest<int>;
 
 public sealed class CrearProyectoCommandHandler(
     IApplicationDbContext ctx,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<CrearProyectoCommand, int>
 {
     public async Task<int> Handle(CrearProyectoCommand cmd, CancellationToken ct)
@@ -89,11 +94,16 @@ public sealed class CrearProyectoCommandHandler(
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
         proyecto.Prioridad       = cmd.Prioridad;
+        proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
 
         ctx.Proyectos.Add(proyecto);
         await ctx.SaveChangesAsync(ct);
+
+        if (!string.IsNullOrWhiteSpace(proyecto.AreaId) || !string.IsNullOrWhiteSpace(proyecto.UnidadId))
+            await sync.SincronizarProyectoAsync(proyecto.Id, ct);
+
         return proyecto.Id;
     }
 
@@ -129,13 +139,15 @@ public sealed record ActualizarProyectoCommand(
     Guid?             ResponsableId,
     string?           Responsable,
     PrioridadProyecto Prioridad,
+    AccionProyecto?   Accion,
     DateOnly?         FechaInicioPlan,
     DateOnly?         FechaFinPlan,
     IReadOnlyList<EntregableInput> Entregables) : IRequest<Unit>;
 
 public sealed class ActualizarProyectoCommandHandler(
     IApplicationDbContext ctx,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<ActualizarProyectoCommand, Unit>
 {
     public async Task<Unit> Handle(ActualizarProyectoCommand cmd, CancellationToken ct)
@@ -152,6 +164,12 @@ public sealed class ActualizarProyectoCommandHandler(
         // El diff se arma ANTES de tocar nada: después las propiedades ya son las nuevas.
         var cambiosFicha = DiffFicha(proyecto, cmd, nombre);
 
+        // Se compara ANTES de mutar: una vez asignadas, proyecto.AreaId/UnidadId ya son los valores
+        // nuevos y la comparación siempre daría "sin cambio".
+        var areaOUnidadCambio =
+               proyecto.AreaId   != (string.IsNullOrWhiteSpace(cmd.AreaId)   ? null : cmd.AreaId.Trim())
+            || proyecto.UnidadId != (string.IsNullOrWhiteSpace(cmd.UnidadId) ? null : cmd.UnidadId.Trim());
+
         proyecto.Nombre          = nombre;
         proyecto.Objetivo        = string.IsNullOrWhiteSpace(cmd.Objetivo) ? null : cmd.Objetivo.Trim();
         // La institución NO se edita desde la ficha: mover un proyecto de institución es
@@ -161,6 +179,7 @@ public sealed class ActualizarProyectoCommandHandler(
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
         proyecto.Prioridad       = cmd.Prioridad;
+        proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
 
@@ -224,6 +243,10 @@ public sealed class ActualizarProyectoCommandHandler(
                 proyecto.Id, TipoEventoProyecto.ModificacionEstructura, resultado.Resumen, actor));
 
         await ctx.SaveChangesAsync(ct);
+
+        if (areaOUnidadCambio)
+            await sync.SincronizarProyectoAsync(cmd.Id, ct);
+
         return Unit.Value;
     }
 
@@ -239,6 +262,8 @@ public sealed class ActualizarProyectoCommandHandler(
         if (p.ResponsableId != cmd.ResponsableId)
             partes.Add($"responsable: {p.Responsable ?? "sin asignar"} → {responsable ?? "sin asignar"}");
         if (p.Prioridad != cmd.Prioridad)      partes.Add($"prioridad: {p.Prioridad} → {cmd.Prioridad}");
+        if (p.Accion != cmd.Accion)
+            partes.Add($"acción: {Etiquetas.Accion(p.Accion)} → {Etiquetas.Accion(cmd.Accion)}");
 
         // El alcance decide quién ve el proyecto: cambiarlo merece quedar registrado.
         var area   = string.IsNullOrWhiteSpace(cmd.AreaId)   ? null : cmd.AreaId.Trim();
@@ -269,7 +294,7 @@ public sealed class ActualizarProyectoCommandHandler(
     /// eliminado": pasaba en cada guardado de la ficha, aunque no se tocara nada.</para>
     ///
     /// <para>El orden no se toca: los que ya existían conservan el suyo y los nuevos van al final.
-    /// Reordenar es atribución del responsable del proyecto y tiene su propio comando.</para>
+    /// Reordenar es del responsable del proyecto o de un administrador, y tiene su propio comando.</para>
     /// </summary>
     private static ResultadoEstructura ReconciliarEstructura(
         Proyecto proyecto,
@@ -510,14 +535,32 @@ public sealed class EliminarProyectoCommandHandler(IApplicationDbContext ctx)
 /// <summary>
 /// Acciones reservadas al responsable del proyecto: reordenar la estructura y corregir la bitácora.
 ///
-/// <para><b>Sin bypass de administrador, a propósito.</b> El resto del portal deja pasar a
-/// <c>EsAdministrador</c> por código, pero acá se pidió expresamente que fueran del propietario y
-/// de nadie más. Consecuencia a tener presente: un proyecto <b>sin responsable asignado</b> no
-/// admite ninguna de las dos acciones — ni siquiera para un administrador — hasta que se le asigne
-/// uno desde la ficha. El mensaje de error lo dice para que no parezca una falla.</para>
+/// <para><b>Las dos no tienen el mismo bypass, a propósito.</b> Reordenar admite además al
+/// administrador (<see cref="ExigirParaOrdenar"/>): mover una fila de lugar es cosmético y
+/// reversible. Corregir la bitácora no (<see cref="Exigir"/>): reescribe un registro histórico, y
+/// que solo pueda hacerlo el responsable es lo que sostiene la confianza en el historial.</para>
+///
+/// <para>Consecuencia a tener presente en la que <b>no</b> admite bypass: un proyecto <b>sin
+/// responsable asignado</b> no admite corregir la bitácora — ni siquiera para un administrador —
+/// hasta que se le asigne uno desde la ficha. El mensaje de error lo dice para que no parezca una
+/// falla.</para>
 /// </summary>
 internal static class PropiedadProyecto
 {
+    /// <summary>Reordenar la estructura: el responsable <b>o</b> un administrador.
+    ///
+    /// <para>El bypass va antes de la validación de responsable, no después: un proyecto sin
+    /// responsable asignado es justamente el que queda atascado —nadie puede reordenarlo— y
+    /// desatascarlo es lo que se espera del administrador.</para></summary>
+    public static void ExigirParaOrdenar(Proyecto proyecto, ICurrentUserService usuario)
+    {
+        // EsGlobal es como ICurrentUserService expone la capacidad EsAdministrador del rol.
+        if (usuario.EsGlobal) return;
+
+        Exigir(proyecto, usuario);
+    }
+
+    /// <summary>Solo el responsable del proyecto. Sin bypass de administrador.</summary>
     public static void Exigir(Proyecto proyecto, ICurrentUserService usuario)
     {
         if (proyecto.ResponsableId is null)
@@ -549,7 +592,7 @@ public sealed class ReordenarEntregablesCommandHandler(
             .FirstOrDefaultAsync(p => p.Id == cmd.ProyectoId, ct)
             ?? throw new NotFoundException(nameof(Proyecto), cmd.ProyectoId);
 
-        PropiedadProyecto.Exigir(proyecto, currentUser);
+        PropiedadProyecto.ExigirParaOrdenar(proyecto, currentUser);
 
         if (proyecto.Estado is EstadoProyecto.Cerrado or EstadoProyecto.Cancelado)
             throw new DomainException($"El proyecto está «{proyecto.Estado}» y ya no admite cambios.");
@@ -569,7 +612,8 @@ public sealed class ReordenarEntregablesCommandHandler(
 
 // ── Reordenar actividades ─────────────────────────────────────────────────
 /// <summary>Reordena las actividades dentro de un entregable. Misma atribución que reordenar
-/// entregables: el cronograma es del responsable del proyecto.</summary>
+/// entregables: el responsable del proyecto o un administrador. Solo mueve actividades <b>dentro</b>
+/// de su entregable; pasarlas a otro no es reordenar, es reasignarlas.</summary>
 public sealed record ReordenarActividadesCommand(
     int ProyectoId,
     int EntregableId,
@@ -585,7 +629,7 @@ public sealed class ReordenarActividadesCommandHandler(
         var proyecto = await ProyectoConEstructura.CargarAsync(ctx, cmd.ProyectoId, ct)
             ?? throw new NotFoundException(nameof(Proyecto), cmd.ProyectoId);
 
-        PropiedadProyecto.Exigir(proyecto, currentUser);
+        PropiedadProyecto.ExigirParaOrdenar(proyecto, currentUser);
 
         if (proyecto.Estado is EstadoProyecto.Cerrado or EstadoProyecto.Cancelado)
             throw new DomainException($"El proyecto está «{proyecto.Estado}» y ya no admite cambios.");

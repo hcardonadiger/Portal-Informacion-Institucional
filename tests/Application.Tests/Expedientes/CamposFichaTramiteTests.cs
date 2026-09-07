@@ -221,5 +221,5 @@ public class CamposFichaTramiteTests
 
     private static TramiteInput Tramite(int indice, string nombre) => new(
         indice, nombre, null, null, null, null, null, null, null, null, null,
-        null, null, null, null, null, null, null, null, null, null, null, null, null);
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }

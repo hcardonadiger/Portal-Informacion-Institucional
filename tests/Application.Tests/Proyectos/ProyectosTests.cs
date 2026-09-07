@@ -1,9 +1,10 @@
-using Diger.TramitesEstado.Application.Common.Exceptions;
+﻿using Diger.TramitesEstado.Application.Common.Exceptions;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.EventHandlers;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 using Diger.TramitesEstado.Application.Tests.Expedientes;
 using Diger.TramitesEstado.Domain.Common;
 using Diger.TramitesEstado.Domain.Entities;
@@ -20,6 +21,7 @@ public class ProyectosTests : IDisposable
 {
     private readonly AppDbContext _ctx;
     private readonly ICurrentUserService _usuario = Substitute.For<ICurrentUserService>();
+    private readonly IInteresadosAutomaticosSync _sync = Substitute.For<IInteresadosAutomaticosSync>();
 
     public ProyectosTests()
     {
@@ -28,10 +30,17 @@ public class ProyectosTests : IDisposable
             .Options;
         _ctx = new AppDbContext(opts, new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
         _usuario.Nombre.Returns("Henry Cardona");
+
+        // Sin esto, el doble devuelve una tarea con null para CalcularDerechoVigenteAsync y todo
+        // lo que consulta el derecho vigente —la guarda de quitar, la consulta de la ficha—
+        // revienta con NRE. Un diccionario vacío es lo que corresponde acá: en esta suite nadie
+        // tiene capacidad de jefe de área ni de PMO, así que todas las filas son removibles.
+        _sync.CalcularDerechoVigenteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, RolInteresado>());
     }
 
     private Task<int> CrearAsync(string nombre = "Proyecto de prueba") =>
-        new CrearProyectoCommandHandler(_ctx, _usuario)
+        new CrearProyectoCommandHandler(_ctx, _usuario, _sync)
             .Handle(new CrearProyectoCommand(nombre, FechaInicioPlan: new DateOnly(2026, 3, 1)), CancellationToken.None);
 
     // ── Código correlativo ────────────────────────────────────────
@@ -52,7 +61,7 @@ public class ProyectosTests : IDisposable
             FechaInicioPlan: new DateOnly(2026, 6, 1),
             FechaFinPlan: new DateOnly(2026, 5, 1));
 
-        var act = () => new CrearProyectoCommandHandler(_ctx, _usuario).Handle(cmd, CancellationToken.None);
+        var act = () => new CrearProyectoCommandHandler(_ctx, _usuario, _sync).Handle(cmd, CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>();
     }
@@ -581,8 +590,8 @@ public class ProyectosTests : IDisposable
         var idA = await CrearAsync("A");
         var idB = await CrearAsync("B");
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
-            idB, "B", null, null, null, null, null, PrioridadProyecto.Media, null, null,
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
+            idB, "B", null, null, null, null, null, PrioridadProyecto.Media, null, null, null,
             [new EntregableInput(0, "Entregable de B", null, null, EstadoEntregable.Pendiente, null, null, [])]),
             CancellationToken.None);
 
@@ -614,8 +623,8 @@ public class ProyectosTests : IDisposable
     {
         var id = await CrearAsync();
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
-            id, "Proyecto de prueba", null, null, null, null, null, PrioridadProyecto.Alta, null, null,
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
+            id, "Proyecto de prueba", null, null, null, null, null, PrioridadProyecto.Alta, null, null, null,
             [
                 new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente,  null, null, []),
                 new EntregableInput(0, "   ",     null, null, EstadoEntregable.Pendiente,  null, null, []), // fila vacía del editor
@@ -848,9 +857,9 @@ public class ProyectosTests : IDisposable
             .ToListAsync();
 
     private Task GuardarFichaAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
-        new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null, Duenio, "Dueño del proyecto",
-            PrioridadProyecto.Media, null, null, entregables), CancellationToken.None);
+            PrioridadProyecto.Media, null, null, null, entregables), CancellationToken.None);
 
     /// <summary>Le cuelga actividades a un entregable, con su porcentaje ya reportado.</summary>
     private async Task ConActividadesAsync(int proyectoId, int entregableId, params (int Pct, string Nombre)[] actividades)
@@ -915,10 +924,10 @@ public class ProyectosTests : IDisposable
     private async Task<int> ConEntregablesAsync(Guid? responsable)
     {
         var id = await CrearAsync();
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null,
             responsable, responsable is null ? null : "Dueño del proyecto",
-            PrioridadProyecto.Media, null, null,
+            PrioridadProyecto.Media, null, null, null,
             [
                 new EntregableInput(0, "Primero", null, null, EstadoEntregable.Pendiente, null, null, []),
                 new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente, null, null, []),
@@ -932,6 +941,16 @@ public class ProyectosTests : IDisposable
         var u = Substitute.For<ICurrentUserService>();
         u.Nombre.Returns("Henry Cardona");
         u.UserId.Returns(uid);
+        return u;
+    }
+
+    /// <summary>Un administrador que <b>no</b> es el responsable. La capacidad EsAdministrador del
+    /// rol es lo que ICurrentUserService expone como EsGlobal; el resto de los dobles de esta
+    /// suite lo dejan en false, que es el valor por omisión de NSubstitute.</summary>
+    private ICurrentUserService ComoAdministrador()
+    {
+        var u = Como(Ajeno);
+        u.EsGlobal.Returns(true);
         return u;
     }
 
@@ -971,7 +990,8 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Reordenar_UnProyectoSinResponsableNoAdmiteLaAccion()
     {
-        // Sin bypass de administrador: si nadie es dueño, nadie reordena.
+        // Sin responsable no hay contra quién comparar: a quien no es administrador se le rechaza
+        // aunque haya creado el proyecto. El administrador sí pasa — ver la prueba de más abajo.
         var id  = await ConEntregablesAsync(responsable: null);
         var ids = await IdsPorOrdenAsync(id);
 
@@ -1022,6 +1042,90 @@ public class ProyectosTests : IDisposable
             .Handle(new ReordenarActividadesCommand(id, ajeno, [1]), CancellationToken.None);
 
         await act.Should().ThrowAsync<DomainException>().WithMessage("*no pertenece*");
+    }
+
+    // ── Reordenar: el administrador es la excepción a la guarda de propiedad ──
+    // Reordenar es cosmético y reversible, así que admite el bypass. Corregir la bitácora reescribe
+    // un registro histórico y NO lo admite: es lo que separa a estas cuatro pruebas de la última.
+
+    [Fact]
+    public async Task ReordenarActividades_UnAdministradorLasMueveAunqueNoSeaElResponsable()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"), (0, "Tercera"));
+
+        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
+
+        await new ReordenarActividadesCommandHandler(_ctx, ComoAdministrador()).Handle(
+            new ReordenarActividadesCommand(id, ids[0], [actuales[2], actuales[0], actuales[1]]),
+            CancellationToken.None);
+
+        (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
+            .Should().Equal("Tercera", "Una", "Otra");
+    }
+
+    [Fact]
+    public async Task Reordenar_UnAdministradorMueveLosEntregablesDeUnProyectoAjeno()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        int[] nuevo = [ids[2], ids[0], ids[1]];
+
+        await new ReordenarEntregablesCommandHandler(_ctx, ComoAdministrador())
+            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
+
+        (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
+    }
+
+    [Fact]
+    public async Task Reordenar_UnAdministradorDesatascaUnProyectoSinResponsable()
+    {
+        // El caso que motivó abrir la guarda: sin responsable asignado no había quien reordenara,
+        // y el proyecto quedaba con su estructura congelada hasta que alguien editara la ficha.
+        var id  = await ConEntregablesAsync(responsable: null);
+        var ids = await IdsPorOrdenAsync(id);
+        int[] nuevo = [ids[2], ids[0], ids[1]];
+
+        await new ReordenarEntregablesCommandHandler(_ctx, ComoAdministrador())
+            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
+
+        (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
+    }
+
+    [Fact]
+    public async Task ReordenarActividades_SigueRechazandoAlAjenoQueNoEsAdministrador()
+    {
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+        await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"));
+
+        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
+
+        var act = () => new ReordenarActividadesCommandHandler(_ctx, Como(Ajeno))
+            .Handle(new ReordenarActividadesCommand(id, ids[0], [actuales[1], actuales[0]]),
+                    CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*responsable del proyecto*");
+        (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
+            .Should().Equal("Una", "Otra");
+    }
+
+    [Fact]
+    public async Task CorregirAvance_NoLaHabilitaSerAdministrador()
+    {
+        // La contracara de las tres de arriba: el bypass es solo para reordenar. Si esta prueba
+        // empieza a fallar, el bypass se filtró a la corrección de la bitácora.
+        var id = await ConDuenioYEntregablesAsync();
+        var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
+            .Handle(new RegistrarAvanceCommand(id, "Original"), CancellationToken.None);
+
+        var act = () => new ActualizarAvanceCommandHandler(_ctx, ComoAdministrador())
+            .Handle(new ActualizarAvanceCommand(avanceId, "Intento del administrador", null),
+                    CancellationToken.None);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*responsable del proyecto*");
+        (await _ctx.ProyectoAvances.FindAsync(avanceId))!.Descripcion.Should().Be("Original");
     }
 
     [Fact]
@@ -1151,9 +1255,9 @@ public class ProyectosTests : IDisposable
             .Append(new EntregableInput(0, "Nuevo", null, null, EstadoEntregable.Pendiente, null, null, []))
             .ToList();
 
-        await new ActualizarProyectoCommandHandler(_ctx, _usuario).Handle(new ActualizarProyectoCommand(
+        await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto con otro nombre", null, null, null, Duenio, "Dueño del proyecto",
-            PrioridadProyecto.Alta, null, null, entrada), CancellationToken.None);
+            PrioridadProyecto.Alta, null, null, null, entrada), CancellationToken.None);
 
         var auditoria = await _ctx.BitacorasProyecto.OrderBy(b => b.Id).ToListAsync();
 
@@ -1369,7 +1473,7 @@ public class ProyectosTests : IDisposable
         await InteresadoAsync(id, await UsuarioAsync("Beneficiario amplio"), RolInteresado.Beneficiario, NivelCualitativo.Alta);
         await InteresadoAsync(id, await UsuarioAsync("Contraparte media"),   RolInteresado.ContraparteTecnica, NivelCualitativo.Media);
 
-        var lista = await new GetInteresadosProyectoQueryHandler(_ctx)
+        var lista = await new GetInteresadosProyectoQueryHandler(_ctx, _sync)
             .Handle(new GetInteresadosProyectoQuery(id), CancellationToken.None);
 
         lista.Single(i => i.Nombre == "Patrocinador fuerte").EsClave.Should().BeTrue();
@@ -1386,7 +1490,7 @@ public class ProyectosTests : IDisposable
         await InteresadoAsync(id, await UsuarioAsync("Alta"),  RolInteresado.Patrocinador, NivelCualitativo.Alta);
         await InteresadoAsync(id, await UsuarioAsync("Media"), RolInteresado.Ejecutor,     NivelCualitativo.Media);
 
-        var lista = await new GetInteresadosProyectoQueryHandler(_ctx)
+        var lista = await new GetInteresadosProyectoQueryHandler(_ctx, _sync)
             .Handle(new GetInteresadosProyectoQuery(id), CancellationToken.None);
 
         lista.Select(i => i.Nombre).Should().Equal("Alta", "Media", "Baja");
@@ -1453,7 +1557,7 @@ public class ProyectosTests : IDisposable
         await LimpiarAuditoriaAsync();
 
         var iid = await InteresadoAsync(id, uid, RolInteresado.ContraparteTecnica);
-        await new QuitarInteresadoCommandHandler(_ctx, _usuario)
+        await new QuitarInteresadoCommandHandler(_ctx, _usuario, _sync)
             .Handle(new QuitarInteresadoCommand(iid), CancellationToken.None);
 
         var detalles = await _ctx.BitacorasProyecto

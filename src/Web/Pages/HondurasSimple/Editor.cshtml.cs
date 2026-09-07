@@ -82,8 +82,74 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         {
             // Ficha nueva: todavía no hay institución elegida, así que se enseña el host solo.
             PrefijoSol = DireccionSol.Prefijo(sol.Value.UrlBase, null);
+
+            // Habia que adivinar un hueco libre: de los 1141 valores del rango en uso hay mas de
+            // mil ocupados, asi que casi cualquier numero tecleado chocaba contra el indice unico.
+            //
+            // Se ENSEÑA el siguiente en vez de escribirlo en el campo: aqui el vacio significa algo
+            // —una ficha promovida desde un expediente no existe en SIGER y no tiene identificador,
+            // y el indice unico esta filtrado por IS NOT NULL justamente para eso—. Rellenarlo solo
+            // le quitaria ese significado sin avisar.
+            SiguienteIdSigerLibre = await SiguienteIdSigerAsync(ct);
         }
         return Page();
+    }
+
+    /// <summary>El siguiente Id SIGER libre, para enseñarlo como sugerencia al crear una ficha.</summary>
+    public int? SiguienteIdSigerLibre { get; private set; }
+
+    /// <summary>Máximo + 1. No reutiliza los huecos que dejan los Ids borrados: un Id SIGER
+    /// reciclado se confundiría con el trámite que lo tuvo antes en los reportes viejos.</summary>
+    private async Task<int> SiguienteIdSigerAsync(CancellationToken ct)
+    {
+        var max = await ctx.TramitesSiger.AsNoTracking().MaxAsync(t => (int?)t.IdSiger, ct);
+        return (max ?? 0) + 1;
+    }
+
+    /// <summary>
+    /// <c>IdSiger</c> y <c>Codigo</c> tienen índice único en la base. Sin esta comprobación el
+    /// choque salía como <c>DbUpdateException</c> y el usuario veía «Ocurrió un error inesperado»
+    /// con el formulario perdido y sin pista de qué campo corregir.
+    ///
+    /// <para>Nombra al trámite que ocupa el valor: «ya existe» obliga a salir a buscar cuál es, y
+    /// muchas veces el que estorba es un trámite de otra institución que el usuario no conoce.</para>
+    ///
+    /// <para>No sustituye al índice único —dos altas simultáneas siguen pudiendo cruzarse—; para
+    /// esa carrera está el caso de <c>DbUpdateException</c> en <c>WebExceptionHandler</c>.</para>
+    /// </summary>
+    private async Task ComprobarQueNoChoqueAsync(CancellationToken ct)
+    {
+        // Excluir la propia fila: al editar, su Id y su código chocan consigo mismos. Al crear,
+        // Form.Id vale 0 y ninguna fila lo tiene, así que la condición no excluye nada.
+        //
+        // Con IdSiger nulo no hay nada que comprobar: el indice unico esta filtrado por
+        // IS NOT NULL y varias fichas promovidas pueden convivir sin identificador.
+        if (Form.IdSiger is int idSiger)
+        {
+            var conElMismoId = await ctx.TramitesSiger.AsNoTracking()
+                .Where(t => t.IdSiger == idSiger && t.Id != Form.Id)
+                .Select(t => new { t.Codigo, t.Nombre })
+                .FirstOrDefaultAsync(ct);
+
+            if (conElMismoId is not null)
+                ModelState.AddModelError("Form.IdSiger",
+                    $"El Id SIGER {idSiger} ya lo usa el trámite {conElMismoId.Codigo} — {conElMismoId.Nombre}.");
+        }
+
+        Form.Codigo = Form.Codigo?.Trim();
+
+        if (!string.IsNullOrEmpty(Form.Codigo))
+        {
+            var codigo = Form.Codigo;
+            var conElMismoCodigo = await ctx.TramitesSiger.AsNoTracking()
+                .Where(t => t.Codigo == codigo && t.Id != Form.Id)
+                .Select(t => new { t.IdSiger, t.Nombre })
+                .FirstOrDefaultAsync(ct);
+
+            if (conElMismoCodigo is not null)
+                ModelState.AddModelError("Form.Codigo",
+                    $"El código {codigo} ya lo usa el trámite «{conElMismoCodigo.Nombre}» (Id SIGER {conElMismoCodigo.IdSiger}).");
+        }
     }
 
 
@@ -149,6 +215,8 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         if (Form.EstaEnSol && tramo is null && string.IsNullOrWhiteSpace(heredadaQueQueda))
             ModelState.AddModelError("Form.SolTramo",
                 "Si el trámite está en SOL, el tramo del enlace es obligatorio.");
+
+        await ComprobarQueNoChoqueAsync(ct);
 
         if (!ModelState.IsValid) return Page();
 

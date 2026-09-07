@@ -1,0 +1,117 @@
+@page
+@using Diger.TramitesEstado.Application.Dashboards.Queries
+@using Diger.TramitesEstado.Application.Dashboards.Queries.GetMisProyectosDashboard
+@model Diger.TramitesEstado.Web.Pages.Tableros.ProyectosAreaModel
+@{
+    ViewData["Title"] = "Proyectos de mi área";
+    ViewData["TabActiva"] = "Area";
+    var d = Model.Data;
+    string Fecha(DateOnly? f) => f?.ToString("dd/MM/yyyy") ?? "—";
+
+    // UnidadNombre puede venir null aunque UnidadId tenga valor: el catálogo Unidades lleva
+    // filtro por institución activa y una unidad de otra institución no se resuelve. De ahí las
+    // dos reglas de este desglose:
+    //
+    //   1. Se agrupa por UnidadId, nunca por el nombre. Agrupando por nombre, ese proyecto —que
+    //      SÍ tiene unidad— caería en el mismo montón que los que no la tienen, y el desglose
+    //      diría una mentira que nadie puede ver desde la pantalla.
+    //   2. El nombre solo se usa para mostrar, con dos escalones de respaldo: el Id de la unidad
+    //      (que al menos identifica el grupo) y, ya sin Id, «Sin unidad».
+    static string EtiquetaUnidad(MisProyectosItemDto p) => p.UnidadNombre ?? p.UnidadId ?? "Sin unidad";
+
+    var porUnidad = d.Proyectos
+        .GroupBy(p => p.UnidadId)
+        .Select(g => new
+        {
+            Unidad   = EtiquetaUnidad(g.First()),
+            Cantidad = g.Count(),
+            // Misma regla que el KPI de avance promedio, tomada de donde vive para los tres
+            // tableros en vez de recalcularla acá con otro redondeo.
+            Avance   = ProyectoEstadoReglas.AvancePromedio(g.Select(x => x.AvancePct))
+        })
+        .OrderByDescending(x => x.Cantidad)
+        .ThenBy(x => x.Unidad, StringComparer.Ordinal)
+        .ToList();
+}
+
+<div class="container" style="max-width:1180px">
+    <div class="hist-header">
+        <div>
+            <h2>Proyectos de mi área</h2>
+            <p>Todas las unidades de tu área, en un solo lugar.</p>
+        </div>
+        <a class="btns" asp-page="/Tableros/Index">← Tableros</a>
+    </div>
+
+    <partial name="_TabsProyectos" />
+
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-num">@d.TotalProyectos</div><div class="kpi-lbl">Proyectos</div></div>
+        <div class="kpi-card"><div class="kpi-num">@d.AvancePromedio%</div><div class="kpi-lbl">Avance promedio</div></div>
+        <div class="kpi-card @(d.Atrasados > 0 ? "alert" : "ok")"><div class="kpi-num">@d.Atrasados</div><div class="kpi-lbl">Atrasados</div></div>
+        <div class="kpi-card @(d.SinReportar30 > 0 ? "warn" : "ok")"><div class="kpi-num">@d.SinReportar30</div><div class="kpi-lbl">Sin reportar 30+ días</div></div>
+    </div>
+
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Avance por unidad</h3>
+        @if (porUnidad.Count == 0)
+        {
+            <p class="res-meta">Sin datos.</p>
+        }
+        else
+        {
+            @foreach (var u in porUnidad)
+            {
+                <div class="bar-row">
+                    <span class="bar-lbl">@u.Unidad (@u.Cantidad)</span>
+                    <div class="bar-track"><div class="bar-fill" style="width:@(u.Avance)%"></div></div>
+                    <span class="bar-val">@(u.Avance)%</span>
+                </div>
+            }
+        }
+    </div>
+
+    <div class="dash-card" style="margin-top:16px">
+        <h3>Proyectos</h3>
+        @if (d.Proyectos.Count == 0)
+        {
+            <p class="res-meta">No hay proyectos en tu área.</p>
+        }
+        else
+        {
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th style="width:150px">Unidad</th>
+                        <th style="width:110px">Estado</th>
+                        <th style="width:150px">Avance</th>
+                        <th style="width:120px">Cierre plan.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in d.Proyectos)
+                    {
+                        <tr>
+                            <td><a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@p.Nombre</a>
+                                <div class="res-meta">@p.Codigo</div></td>
+                            <td class="res-meta">@EtiquetaUnidad(p)</td>
+                            @* Etiquetas.Estado y no @p.Estado: el enum crudo imprime "EnEjecucion". Es el
+                               mismo helper que usa /Tableros/Proyectos, para que las tres vistas del
+                               mismo proyecto no lo nombren de tres maneras. *@
+                            <td class="res-meta">@Etiquetas.Estado(p.Estado)</td>
+                            <td>
+                                <div class="bar-track" style="height:12px"><div class="bar-fill @(p.Atrasado ? "c-red" : p.SinReportar ? "c-amber" : "")" style="width:@(p.AvancePct)%"></div></div>
+                                <div class="res-meta">@(p.AvancePct)%</div>
+                            </td>
+                            <td class="res-meta">
+                                @Fecha(p.FechaFinPlan)
+                                @if (p.Atrasado) { <div><span class="badge badge-danger">Vencido</span></div> }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

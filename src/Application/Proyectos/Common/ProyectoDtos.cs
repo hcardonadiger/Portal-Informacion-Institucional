@@ -252,7 +252,8 @@ public sealed record InteresadoProyectoDto(
     string?          Correo,
     RolInteresado    Rol,
     NivelCualitativo Influencia,
-    string?          Notas)
+    string?          Notas,
+    bool             Removible = true)
 {
     public bool EsClave =>
         Influencia == NivelCualitativo.Alta
@@ -265,6 +266,7 @@ public sealed record ProyectoListItemDto(
     string            Nombre,
     string?           Responsable,
     PrioridadProyecto Prioridad,
+    AccionProyecto?   Accion,
     EstadoProyecto    Estado,
     DateOnly?         FechaInicioPlan,
     DateOnly?         FechaFinPlan,
@@ -323,6 +325,7 @@ public sealed record ProyectoDetailDto(
     Guid?             ResponsableId,
     string?           Responsable,
     PrioridadProyecto Prioridad,
+    AccionProyecto?   Accion,
     EstadoProyecto    Estado,
     DateOnly?         FechaInicioPlan,
     DateOnly?         FechaFinPlan,

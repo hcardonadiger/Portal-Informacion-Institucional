@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Dashboards.Common;
 using Diger.TramitesEstado.Application.Dashboards.Queries;
 using Diger.TramitesEstado.Application.Tests.Expedientes;   // FakeCurrentUser (alcance global)
 using Diger.TramitesEstado.Domain.Entities;
@@ -43,7 +44,7 @@ public class ProyectosTableroTests : IDisposable
         return p.Id;
     }
 
-    private Task<Dashboards.Common.ProyectosDashboardDto> TableroAsync() =>
+    private Task<ProyectosDashboardDto> TableroAsync() =>
         new GetProyectosDashboardQueryHandler(_ctx).Handle(new GetProyectosDashboardQuery(), CancellationToken.None);
 
     [Fact]

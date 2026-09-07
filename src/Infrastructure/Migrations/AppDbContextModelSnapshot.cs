@@ -1643,6 +1643,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Accion")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<string>("Alcance")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
@@ -2395,6 +2399,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Automatico")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Cargo")
                         .HasMaxLength(200)
@@ -3162,6 +3171,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Accion")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("AreaId")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
@@ -3794,6 +3807,12 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(300)");
 
                     b.Property<bool>("EsAdministrador")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EsJefeDeArea")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EsPmo")
                         .HasColumnType("bit");
 
                     b.Property<bool>("EsSistema")
@@ -4573,6 +4592,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Nombre")
                         .IsRequired()

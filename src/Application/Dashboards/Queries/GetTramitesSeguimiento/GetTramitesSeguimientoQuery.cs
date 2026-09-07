@@ -17,6 +17,9 @@ public sealed record TramiteSeguimientoDto(
     string   Institucion,
     int      TramiteIndex,
     string   NombreTramite,
+
+    /// <summary>Qué hace DIGER con este trámite. Null mientras nadie lo haya clasificado.</summary>
+    string?  Accion,
     string   Analista,
     EstadoExpediente EstadoExpediente,
     int      AvancePct,
@@ -28,10 +31,14 @@ public sealed record TramiteSeguimientoDto(
 /// <summary>Última nota de seguimiento de un expediente, para la columna del tablero.</summary>
 public sealed record NotaResumenDto(int ExpedienteId, string Texto, string CreadoPor, DateTime CreadoEl, int Total);
 
+/// <summary>Opción del desplegable de institución: solo las que tienen algún expediente vigente
+/// (post corte-legado), no el catálogo completo — el filtro necesita el Id, no solo el nombre.</summary>
+public sealed record InstitucionOpcionDto(string Id, string Nombre);
+
 public sealed record TramitesSeguimientoDto(
     IReadOnlyList<TramiteSeguimientoDto> Tramites,
     IReadOnlyDictionary<int, NotaResumenDto> UltimaNotaPorExpediente,
-    IReadOnlyList<string> Instituciones)
+    IReadOnlyList<InstitucionOpcionDto> Instituciones)
 {
     public int Total     => Tramites.Count;
     public int Rezagados => Tramites.Count(t => t.Banda == BandaAvance.Rezagado);
@@ -43,10 +50,25 @@ public sealed record TramitesSeguimientoDto(
 }
 
 /// <param name="Banda">Filtro por banda del semáforo; null = todas.</param>
+/// <param name="Accion">
+/// Qué hace DIGER con el trámite (Acompañamiento, Digitalización, Soporte, Desarrollo). Null =
+/// todas. El valor <see cref="FiltroAccion.SinClasificar"/> pide justamente las que nadie
+/// clasificó — es un filtro tan legítimo como los demás y, mientras el campo sea nuevo, el más
+/// útil de todos.
+/// </param>
 public sealed record GetTramitesSeguimientoQuery(
     string? InstitucionId, BandaAvance? Banda,
-    DateOnly? Desde = null, DateOnly? Hasta = null, EstadoTramite? Estado = null)
+    DateOnly? Desde = null, DateOnly? Hasta = null, EstadoTramite? Estado = null,
+    string? Accion = null)
     : IRequest<TramitesSeguimientoDto>;
+
+/// <summary>Valores del filtro de acción que no son una acción en sí.</summary>
+public static class FiltroAccion
+{
+    /// <summary>Centinela para «los que no tienen acción asignada». Va como constante y no como
+    /// cadena suelta porque lo comparten la consulta y la vista.</summary>
+    public const string SinClasificar = "(sin clasificar)";
+}
 
 public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetTramitesSeguimientoQuery, TramitesSeguimientoDto>
@@ -67,16 +89,19 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
             {
                 e.Id, e.Codigo, e.InstitucionId, e.Institucion, e.Analista, e.EstadoExpediente,
                 Tramites = e.Tramites.OrderBy(t => t.TramiteIndex)
-                    .Select(t => new { t.TramiteIndex, t.NombreTramite, t.FechaCreacion, t.EstadoTramite }).ToList()
+                    .Select(t => new { t.TramiteIndex, t.NombreTramite, t.FechaCreacion, t.EstadoTramite, t.Accion }).ToList()
             })
             .ToListAsync(ct);
 
         // El desplegable ofrece todas las instituciones del alcance, no solo las que
-        // sobreviven al filtro: si no, al elegir una desaparecerían las demás.
+        // sobreviven al filtro: si no, al elegir una desaparecerían las demás. Pero solo las que
+        // de verdad tienen un expediente vigente — no el catálogo completo de instituciones.
         var instituciones = expedientes
-            .Select(e => e.Institucion)
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .Distinct().OrderBy(s => s).ToList();
+            .Where(e => !string.IsNullOrWhiteSpace(e.InstitucionId))
+            .GroupBy(e => e.InstitucionId!)
+            .Select(g => new InstitucionOpcionDto(g.Key, g.First().Institucion))
+            .OrderBy(i => i.Nombre)
+            .ToList();
 
         if (!string.IsNullOrWhiteSpace(q.InstitucionId))
             expedientes = expedientes.Where(e => e.InstitucionId == q.InstitucionId).ToList();
@@ -122,6 +147,22 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
                 if (q.Hasta is { } hasta && t.FechaCreacion > hasta) continue;
                 if (q.Estado is { } estado && t.EstadoTramite != estado) continue;
 
+                // «Sin clasificar» no es una acción, es la ausencia de una: se resuelve aparte
+                // porque comparar contra el centinela como si fuera un valor guardado no
+                // encontraría nada.
+                if (!string.IsNullOrWhiteSpace(q.Accion))
+                {
+                    var sinAccion = string.IsNullOrWhiteSpace(t.Accion);
+                    if (q.Accion == FiltroAccion.SinClasificar)
+                    {
+                        if (!sinAccion) continue;
+                    }
+                    else if (sinAccion || !string.Equals(t.Accion, q.Accion, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                }
+
                 var hay = porTramite.TryGetValue((e.Id, t.TramiteIndex), out var d);
                 var estados = hay ? d.Estados : sinDatosEstados;
                 var aplica  = hay ? d.Aplica  : sinDatosAplica;
@@ -138,7 +179,7 @@ public sealed class GetTramitesSeguimientoQueryHandler(IApplicationDbContext ctx
 
                 tramites.Add(new TramiteSeguimientoDto(
                     e.Id, e.Codigo, e.InstitucionId ?? "", e.Institucion,
-                    t.TramiteIndex, t.NombreTramite, e.Analista, e.EstadoExpediente,
+                    t.TramiteIndex, t.NombreTramite, t.Accion, e.Analista, e.EstadoExpediente,
                     avance, etapas));
             }
         }

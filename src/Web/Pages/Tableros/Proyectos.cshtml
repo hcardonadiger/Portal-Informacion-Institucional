@@ -5,6 +5,7 @@
 @model Diger.TramitesEstado.Web.Pages.Tableros.ProyectosModel
 @{
     ViewData["Title"] = "Tablero de Proyectos";
+    ViewData["TabActiva"] = "Institucion";
     var d = Model.Data;
     var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
     var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -42,6 +43,8 @@
         </div>
     </div>
 
+    <partial name="_TabsProyectos" />
+
     <form method="get" class="seg-filters">
         <div class="field">
             <label for="f-estado">Estado</label>
@@ -70,6 +73,19 @@
                 @foreach (var p in Enum.GetValues<PrioridadProyecto>())
                 {
                     <option value="@((int)p)" selected="@(Model.Prioridad == p)">@p</option>
+                }
+            </select>
+        </div>
+        @* Selección múltiple nativa: el spec pide poder ver «una área, varias, o todas a la vez»,
+           y no seleccionar ninguna es justamente «todas» —la consulta trata la lista vacía como
+           «sin acotar»—. Solo se ofrecen las áreas de la institución activa; una desactivada
+           aparece únicamente si ya venía seleccionada en la URL. *@
+        <div class="field" style="min-width:220px">
+            <label for="f-area">Área</label>
+            <select id="f-area" name="AreaIds" multiple size="1" onchange="this.form.submit()" style="min-height:38px">
+                @foreach (var a in Model.Areas)
+                {
+                    <option value="@a.Id" selected="@(Model.AreaIds?.Contains(a.Id) == true)">@a.Nombre@(a.Activo ? "" : " (inactiva)")</option>
                 }
             </select>
         </div>
@@ -147,7 +163,7 @@
                         <th style="width:130px">Último reporte</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-semaforo">
                     @foreach (var p in d.Semaforo)
                     {
                         <tr>
@@ -243,6 +259,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-semaforo")' />
         }
     </div>
 
@@ -304,7 +321,7 @@
                         <th style="width:125px;text-align:right">Fin plan.</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-actividades">
                     @foreach (var a in d.Actividades)
                     {
                         var vencida = a.FechaFinPlan < hoy;
@@ -331,6 +348,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-actividades")' />
         }
     </div>
 
@@ -358,7 +376,7 @@
                         <th style="width:80px;text-align:right">Avance</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-bloqueadas">
                     @foreach (var b in d.Bloqueadas)
                     {
                         <tr>
@@ -385,6 +403,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-bloqueadas")' />
         </div>
     }
 
@@ -408,7 +427,7 @@
                         <th style="width:130px;text-align:right">Fecha plan.</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-pg="pry-entregables">
                     @foreach (var e in d.Entregables)
                     {
                         var vencido = e.FechaPlan < hoy;
@@ -427,6 +446,7 @@
                     }
                 </tbody>
             </table>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-entregables")' />
         }
     </div>
 
@@ -442,6 +462,7 @@
         }
         else
         {
+            <div data-pg="pry-bloqueos">
             @foreach (var b in d.Bloqueos)
             {
                 <div class="hist-item" style="display:block">
@@ -452,6 +473,8 @@
                     <p style="margin:.35rem 0 0;font-size:var(--diger-fs-sm)">@b.Texto</p>
                 </div>
             }
+            </div>
+            <partial name="_TablaPaginada" model='new PaginadorVm("pry-bloqueos")' />
         }
     </div>
 </div>

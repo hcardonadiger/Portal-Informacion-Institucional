@@ -9,6 +9,7 @@ public sealed record TramiteInput(
     string? Modalidad,
     string? PlazoLegal,
     string? Tercero,
+    string? Accion,
     string? TiempoReal,
     string? MetodoPago,
     string? PagoBanco,

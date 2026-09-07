@@ -145,6 +145,16 @@ public sealed class AppDbContext(
             ))
         ));
 
+        // Usuario es la excepción a «la administración de usuarios es global»: sigue SIN filtro
+        // de alcance institucional —cualquier administrador ve a todos— pero sí oculta a los
+        // eliminados. Va como filtro global y no como Where en la lista a propósito: así el
+        // eliminado desaparece también del login, de los selectores de responsable y de cualquier
+        // consulta que nadie se acuerde de filtrar. Para verlos —la casilla «Mostrar eliminados» y
+        // el comando de restaurar— hay que pedir IgnoreQueryFilters() explícitamente.
+        // AsignacionUsuario NO se filtra ni se borra: se conserva para poder restaurar y para que
+        // la auditoría de accesos no pierda el rastro de quién tuvo qué.
+        mb.Entity<Usuario>().HasQueryFilter(u => !u.IsDeleted);
+
         mb.Entity<Contacto>().HasQueryFilter(c => !c.IsDeleted && (
             _alcanceGlobal ||
             (c.InstitucionId == _activeInst && (
@@ -722,6 +732,7 @@ public sealed class ExpedienteTramiteConfiguration : IEntityTypeConfiguration<Ex
         b.Property(x => x.Modalidad).HasMaxLength(60);
         b.Property(x => x.PlazoLegal).HasMaxLength(100);
         b.Property(x => x.Tercero).HasMaxLength(200);
+        b.Property(x => x.Accion).HasMaxLength(60);
         b.Property(x => x.TiempoReal).HasMaxLength(100);
         b.Property(x => x.MetodoPago).HasMaxLength(60);
         b.Property(x => x.PagoBanco).HasMaxLength(120);
@@ -1096,6 +1107,7 @@ public sealed class InteresadoProyectoConfiguration : IEntityTypeConfiguration<I
         b.Property(x => x.Rol).HasConversion<string>().HasMaxLength(25).IsRequired();
         b.Property(x => x.Influencia).HasConversion<string>().HasMaxLength(10).IsRequired();
         b.Property(x => x.UsuarioId).IsRequired();
+        b.Property(x => x.Automatico).HasDefaultValue(false);
 
         b.HasIndex(x => new { x.ProyectoId, x.Rol });
 
@@ -1914,6 +1926,7 @@ public sealed class ProyectoConfiguration : IEntityTypeConfiguration<Proyecto>
         b.HasIndex(x => x.InstitucionId);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
         b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.Accion).HasConversion<string>().HasMaxLength(20);
 
         // Filtrado: el índice único va sobre los vivos, porque el borrado es lógico y un código
         // liberado por un borrado tiene que poder reutilizarse.

@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Behaviors;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +21,8 @@ public static class DependencyInjection
 
         // IMemoryCache: requerido por CachingBehavior para catálogos estáticos.
         services.AddMemoryCache();
+
+        services.AddScoped<IInteresadosAutomaticosSync, InteresadosAutomaticosSyncService>();
 
         return services;
     }
