@@ -15,6 +15,10 @@ public sealed class DetalleModel(IApplicationDbContext ctx, ISender sender) : Pa
     /// <summary>Qué le falta a esta ficha para poder publicarse. Vacía = completa.</summary>
     public IReadOnlyList<string> Faltantes { get; private set; } = [];
 
+    /// <summary>Nombre de la categoría de la ficha. Se resuelve acá porque en la ficha se guarda
+    /// el id, y un «3» en pantalla no le dice nada a nadie.</summary>
+    public string? CategoriaNombre { get; private set; }
+
 
     /// <summary>Dónde se edita esta ficha (D-17).</summary>
     public BloqueoFichaDto Bloqueo { get; private set; } = new(false, null, null, null, false);
@@ -76,6 +80,14 @@ public sealed class DetalleModel(IApplicationDbContext ctx, ISender sender) : Pa
 
         Faltantes = FichaPublicaCompletitud.CamposFaltantes(
             t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo);
+
+        if (t.CategoriaId is int categoriaId)
+        {
+            CategoriaNombre = await ctx.CategoriasTramite.AsNoTracking()
+                .Where(c => c.Id == categoriaId)
+                .Select(c => c.Nombre)
+                .FirstOrDefaultAsync(ct);
+        }
 
         Bloqueo = await sender.Send(new GetBloqueoFichaQuery(id), ct);
 

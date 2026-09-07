@@ -205,6 +205,28 @@
                 <span class="detail-lbl">Temporalidad</span>
                 <span>@(t.Temporalidad ?? "—")</span>
             </div>
+            @* ── Los cuatro datos que exige el portal ciudadano ────────────
+               Van juntos y con etiqueta propia porque son los que escribe el llenado asistido.
+               Antes no se pintaba ninguno: la página solo sabía decir cuáles FALTABAN, así que
+               en cuanto se llenaban desaparecían de la vista y parecía que la aprobación no
+               había guardado nada. El tiempo, además, se leía como si fuera Temporalidad, que
+               es otro dato y viene de SIGER. *@
+            <div class="detail-row">
+                <span class="detail-lbl">Categoria <span class="help-tip" data-tip="Categoría con la que el trámite se clasifica en el Portal de Trámites y Servicios.">?</span></span>
+                <span>@(Model.CategoriaNombre ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Modalidad</span>
+                <span>@(t.Modalidad ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Tiempo de respuesta <span class="help-tip" data-tip="Cuánto tarda el trámite. Es el dato que se publica; no confundir con Temporalidad, que describe cada cuánto se realiza.">?</span></span>
+                <span>@(t.TiempoTexto ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Costo</span>
+                <span>@(t.CostoEsGratuito is null ? "—" : (t.CostoEsGratuito.Value ? "Gratuito" : "Con costo"))</span>
+            </div>
             <div class="detail-row">
                 <span class="detail-lbl">Fecha ingreso</span>
                 <span>@(t.FechaIngreso?.ToString("dd/MM/yyyy") ?? "—")</span>
