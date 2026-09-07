@@ -230,7 +230,20 @@ public sealed record ProyectoSemaforoDto(
 
     /// <summary>Abierto y sin fecha de cierre comprometida. No es lo mismo que ir a tiempo:
     /// es que no hay fecha contra la cual estar atrasado.</summary>
-    bool              SinLineaBase)
+    bool              SinLineaBase,
+
+    /// <summary>Unidad a la que cuelga el proyecto. La necesita el tablero de área, que agrupa
+    /// el semáforo por unidad; el de institución la ignora.
+    ///
+    /// <para>Van al final y con valor por defecto a propósito: el record es posicional y lo
+    /// construye un solo sitio, así que agregarlos acá no obliga a tocar a nadie más.</para></summary>
+    string?           UnidadId = null,
+
+    /// <summary>Nombre de la unidad, solo para mostrar. <b>Puede venir null aunque
+    /// <see cref="UnidadId"/> tenga valor</b>: el catálogo de unidades lleva filtro por institución
+    /// activa y una unidad de otra institución no se resuelve. Por eso quien agrupe debe hacerlo
+    /// por el Id y nunca por este nombre.</para></summary>
+    string?           UnidadNombre = null)
 {
     /// <summary>Entregables cerrados sobre el total: lo que está efectivamente entregado, frente
     /// a <see cref="AvancePct"/>, que promedia el trabajo reportado en las actividades.</summary>

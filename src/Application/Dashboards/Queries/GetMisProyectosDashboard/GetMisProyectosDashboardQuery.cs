@@ -11,9 +11,14 @@ public sealed record MisProyectosDashboardDto(
     IReadOnlyList<MisProyectosItemDto> Proyectos);
 
 /// <summary>Proyectos donde la persona que consulta es interesado o responsable — la vista
-/// «Unidad» tal cual, y la base de la vista «Área» (que además agrupa por UnidadNombre): un jefe
-/// de área ve aquí todo su portafolio porque la sincronización automática (ver
-/// IInteresadosAutomaticosSync) ya lo dejó como interesado de cada proyecto de su área.</summary>
+/// «Unidad» tal cual. Un jefe de área suele ver aquí casi todo su portafolio porque la
+/// sincronización automática (ver IInteresadosAutomaticosSync) ya lo dejó como interesado de cada
+/// proyecto de su área.
+///
+/// <para>Desde el 2026-09-07 la vista «Área» ya no se apoya en esta consulta: pasó a
+/// <c>GetProyectosDashboardQuery</c>, que le da el mismo detalle que al nivel institución y le
+/// permite conmutar entre «toda mi área» y «solo lo mío». Ese «solo lo mío» usa el mismo predicado
+/// de acá —responsable o interesado— para no estrenar una segunda definición de «mío».</para></summary>
 public sealed record GetMisProyectosDashboardQuery : IRequest<MisProyectosDashboardDto>;
 
 public sealed class GetMisProyectosDashboardQueryHandler(IApplicationDbContext ctx, ICurrentUserService currentUser)
