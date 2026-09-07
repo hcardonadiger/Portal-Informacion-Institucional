@@ -174,7 +174,7 @@ h2.tramo:first-of-type{margin-top:1.5rem}
   <p>Los tres tienen la misma contraseña: <code>Pruebas#2026</code>. Existen solo en el sandbox.</p>
   <ul class="arranque">
     <li><span class="rotulo">El de fuera</span> <code>inventario.cowork@diger.gob.hn</code> — rol <b>Consultor</b>. Representa a la gente ajena que algún día tendrá el inventario.</li>
-    <li><span class="rotulo">El operador</span> <code>operador.cowork@diger.gob.hn</code> — rol <b>Jefe de Área</b>. Hace el trabajo de Honduras Simple. <b>No es administrador.</b></li>
+    <li><span class="rotulo">El operador</span> <code>operador.cowork@diger.gob.hn</code> — rol <b>Jefe de Área</b>. Hace el trabajo de Honduras Simple, en la institución <b>CONSUCOOP</b> —que es donde hay expedientes que ver—. <b>No es administrador.</b></li>
     <li><span class="rotulo">El administrador</span> <code>admin.cowork@diger.gob.hn</code> — solo hace falta en el tramo D.</li>
   </ul>
   <p>Que el operador <b>no</b> sea administrador es a propósito, y es lo que da valor a la prueba: el administrador se salta la tabla de permisos por código, así que probando con él no se comprueba nada.</p>
@@ -184,6 +184,8 @@ h2.tramo:first-of-type{margin-top:1.5rem}
   <h2>Lo que ya sabemos y no hay que reportar</h2>
   <ul class="cierre">
     <li><b>El perfil de fuera todavía ve «Completitud».</b> Es lo esperado hoy. Al separar, nadie perdió lo que ya tenía: quien podía ver esa pantalla la sigue viendo. Cerrarle la puerta es una decisión del administrador, y es justo lo que se prueba en el tramo D. <b>No es un fallo.</b></li>
+    <li><b>«Inventario SIGER», en Conciliación, es un botón.</b> Lleva al inventario; no es un contador y no tiene por qué mostrar un número. Que aparezca sin cifra al lado es lo normal.</li>
+    <li><b>Si Conciliación abre vacía, mire primero el alcance del usuario.</b> Un rol de alcance Área o Unidad solo ve expedientes de su propia institución: si el usuario está en una institución sin expedientes, la pantalla sale en blanco y está funcionando bien. El operador de pruebas está en <b>CONSUCOOP</b> justamente por eso.</li>
     <li><b>Las direcciones viejas <code>/Siger/Editor</code> y sus compañeras siguen funcionando.</b> Redirigen a las nuevas a propósito, para no romper enlaces guardados. Tienen fecha de caducidad, pero hoy deben responder.</li>
     <li><b>El inventario muestra una barra «Publicados en portal».</b> Es un número, no un botón. Que el perfil de fuera lo vea es correcto: es información de consulta.</li>
     <li>Los <b>costos, tiempos y modalidades del sandbox son inventados</b>, y hay trámites con el nombre <b>EN MAYÚSCULAS</b> o cortado a media frase: viene así del origen, en SIGER.</li>
@@ -210,10 +212,10 @@ h2.tramo:first-of-type{margin-top:1.5rem}
   <li class="prueba">
     <label class="marca"><input type="checkbox"><span class="num">2</span></label>
     <div>
-      <h3>El menú lateral, contado entrada por entrada</h3>
+      <h3>La barra de arriba, contada entrada por entrada</h3>
       <p class="proposito">El menú es la primera puerta. Lo que no sale ahí, no se descubre por accidente.</p>
       <dl>
-        <div><dt>Haga</dt><dd>Mire el menú de la izquierda y lea el grupo <b>SIGER</b> y el grupo <b>Honduras Simple</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Mire la barra de navegación de arriba y lea el grupo <b>SIGER</b> y el grupo <b>Honduras Simple</b>.</dd></div>
         <div class="esperado"><dt>Debe verse</dt><dd>En <b>SIGER</b>: <b>Inventario</b> y <b>Observatorio</b>, nada más. En <b>Honduras Simple</b>: <b>únicamente Completitud</b>.</dd></div>
       </dl>
       <p class="nota">No deben aparecer <b>Conciliación</b>, <b>Publicado</b>, <b>Llenado asistido</b>, <b>Captura por lotes</b> ni <b>Archivo del original</b>. Si sale alguna de esas cinco, <b>eso sí es un fallo</b> y hay que reportarlo.</p>
@@ -276,7 +278,7 @@ h2.tramo:first-of-type{margin-top:1.5rem}
       <p class="proposito">La otra mitad de la separación: que a quien sí trabaja no le falte nada.</p>
       <dl>
         <div><dt>Dónde</dt><dd>Ventana nueva. Entre como <code>operador.cowork@diger.gob.hn</code>.</dd></div>
-        <div><dt>Haga</dt><dd>Lea el menú de la izquierda.</dd></div>
+        <div><dt>Haga</dt><dd>Lea la barra de navegación de arriba.</dd></div>
         <div class="esperado"><dt>Debe verse</dt><dd>Dos grupos. En <b>SIGER</b>: Inventario y Observatorio. En <b>Honduras Simple</b>, las seis: <b>Conciliación</b>, <b>Publicado</b>, <b>Llenado asistido</b>, <b>Completitud</b>, <b>Captura por lotes</b> y <b>Archivo del original</b>.</dd></div>
       </dl>
     </div>
@@ -301,9 +303,9 @@ h2.tramo:first-of-type{margin-top:1.5rem}
       <h3>Conciliación hace su trabajo</h3>
       <p class="proposito">Abrir no es funcionar.</p>
       <dl>
-        <div><dt>Dónde</dt><dd>Honduras Simple &rarr; <b>Conciliación</b>.</dd></div>
+        <div><dt>Dónde</dt><dd>Como <code>operador.cowork@diger.gob.hn</code>, que está en <b>CONSUCOOP</b>. Honduras Simple &rarr; <b>Conciliación</b>.</dd></div>
         <div><dt>Haga</dt><dd>Recorra la lista, use los filtros que tenga y entre en un caso.</dd></div>
-        <div class="esperado"><dt>Debe verse</dt><dd>La lista trae registros y los filtros responden. Nada queda en blanco ni tira a la pantalla de error.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La lista trae registros —los trámites de CONSUCOOP, que es la institución del operador— y los filtros responden. Nada queda en blanco ni tira a la pantalla de error.<br>Si sale vacía, compruebe primero en qué institución está el usuario: un rol de alcance Área solo ve lo suyo, y eso no es un fallo del portal.</dd></div>
       </dl>
     </div>
   </li>

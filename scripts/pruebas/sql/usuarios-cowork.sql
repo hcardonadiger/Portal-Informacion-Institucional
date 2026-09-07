@@ -32,17 +32,29 @@ WHERE UsuarioId IN (SELECT Id FROM Usuarios WHERE Correo LIKE '%.cowork@diger.go
 DELETE FROM Usuarios WHERE Correo LIKE '%.cowork@diger.gob.hn';
 
 DECLARE @Cuentas TABLE (Id uniqueidentifier DEFAULT NEWID(), Correo nvarchar(200),
-                        Nombre nvarchar(200), Rol nvarchar(50), Area nvarchar(50) NULL);
-INSERT INTO @Cuentas (Correo, Nombre, Rol, Area) VALUES
-    (N'admin.cowork@diger.gob.hn',      N'Cowork - Administrador',      N'Administrador', NULL),
-    (N'inventario.cowork@diger.gob.hn', N'Cowork - Solo inventario',    N'Consultor',     NULL),
-    (N'operador.cowork@diger.gob.hn',   N'Cowork - Operador H. Simple', N'JefeArea',      N'GOBDIG');
+                        Nombre nvarchar(200), Rol nvarchar(50),
+                        Institucion nvarchar(50), Area nvarchar(50) NULL);
+
+-- El operador va en CONSUCOOP y no en DIGER. En el sandbox NO hay un solo expediente de
+-- DIGER —estan repartidos entre CONSUCOOP, IHADFA, FOSOVI e INPREMA— y el filtro RLS ancla
+-- todo rol no global en su propia institucion. Con el operador en DIGER, Conciliacion abria
+-- vacia y el filtro devolvia cero: la pantalla funcionaba, el usuario de prueba no podia ver
+-- nada. Eso fue el hallazgo H-01 de la corrida, y era del terreno, no del portal.
+--
+-- El area queda en NULL a proposito: GOBDIG es un area de DIGER y no existe bajo CONSUCOOP.
+-- Los expedientes del sandbox tienen AreaId nulo, y la rama de alcance Area del filtro admite
+-- AreaId == null, asi que un jefe de area sin area fijada los ve en cuanto coincide la
+-- institucion.
+INSERT INTO @Cuentas (Correo, Nombre, Rol, Institucion, Area) VALUES
+    (N'admin.cowork@diger.gob.hn',      N'Cowork - Administrador',      N'Administrador', N'DIGER',     NULL),
+    (N'inventario.cowork@diger.gob.hn', N'Cowork - Solo inventario',    N'Consultor',     N'DIGER',     NULL),
+    (N'operador.cowork@diger.gob.hn',   N'Cowork - Operador H. Simple', N'JefeArea',      N'CONSUCOOP', NULL);
 
 INSERT INTO Usuarios (Id, Nombre, Correo, PasswordHash, Activo, CreatedAt, CreatedBy)
 SELECT Id, Nombre, Correo, @Hash, 1, SYSDATETIME(), N'preparacion-pruebas-cowork' FROM @Cuentas;
 
 INSERT INTO AsignacionesUsuario (Id, UsuarioId, InstitucionId, AreaId, UnidadId, Rol, CreatedAt, CreatedBy)
-SELECT NEWID(), Id, N'DIGER', Area, NULL, Rol, SYSDATETIME(), N'preparacion-pruebas-cowork' FROM @Cuentas;
+SELECT NEWID(), Id, Institucion, Area, NULL, Rol, SYSDATETIME(), N'preparacion-pruebas-cowork' FROM @Cuentas;
 
 SELECT u.Correo + '  ->  ' + a.Rol AS Listo
 FROM Usuarios u JOIN AsignacionesUsuario a ON a.UsuarioId = u.Id

@@ -144,6 +144,28 @@ WHERE t.InstitucionId IS NOT NULL
   AND EXISTS (SELECT 1 FROM RequisitosSiger r WHERE r.TramiteSigerId = t.Id);
 
 /* -----------------------------------------------------------------------------------------
+   3b. Al menos una candidata por institucion del portal ciudadano
+
+   El paso anterior publica TODO lo que puede, y en INPREMA eso dejaba las 24 fichas
+   publicadas: cero candidatas. El recorrido de pruebas pide filtrar Candidatas por INPREMA,
+   IHTT o CONSUCOOP y publicar una, y ese paso simplemente no se podia ejecutar. Se reporto
+   como hallazgo H-05, y era del sembrado, no del portal.
+
+   Candidata = no publicada y con estado Aprobado o Completo (ver EsCandidata en
+   Publicacion.cshtml.cs). Se despublica UNA por institucion, la de menor Id para que el
+   sembrado sea reproducible: dos corridas dejan la misma ficha esperando.
+   ----------------------------------------------------------------------------------------- */
+UPDATE t SET t.Publicado = 0
+FROM TramitesSiger t
+JOIN (
+    SELECT MIN(Id) AS Id
+    FROM TramitesSiger
+    WHERE InstitucionId IN (N'INPREMA', N'IHTT', N'CONSUCOOP')
+      AND EstadoSiger = N'Aprobado'
+    GROUP BY InstitucionId
+) elegidas ON elegidas.Id = t.Id;
+
+/* -----------------------------------------------------------------------------------------
    4. Destacados
    La pantalla de inicio tiene dos titulos distintos: «Los mas consultados este mes» cuando
    hay medicion real, y «Tramites destacados» cuando la lista viene marcada a mano. En un
