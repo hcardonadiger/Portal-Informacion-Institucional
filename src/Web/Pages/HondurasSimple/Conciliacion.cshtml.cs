@@ -124,8 +124,16 @@ public sealed class ConciliacionModel(IApplicationDbContext ctx) : PageModel
     /// página visible. Se recalcula el cruce en el servidor: la petición no trae qué enlazar,
     /// así que un formulario manipulado no puede colar pares arbitrarios.
     /// </summary>
-    public async Task<IActionResult> OnPostEnlazarAltaConfianzaAsync(CancellationToken ct)
+    public async Task<IActionResult> OnPostEnlazarAltaConfianzaAsync(bool confirmado, CancellationToken ct)
     {
+        // Mismo motivo que en Llenado asistido: la confirmacion se pide acá y no en un
+        // confirm() del navegador, que congela la pestaña y hace que el boton parezca muerto.
+        if (!confirmado)
+        {
+            TempData["SuccessMsg"] = "No se enlazo nada: falta confirmar la tanda.";
+            return Redirigir();
+        }
+
         var candidatas = AplicarFiltros(await ConstruirFilasAsync(ct))
             .Where(EsEnlazableAutomatico)
             .ToList();

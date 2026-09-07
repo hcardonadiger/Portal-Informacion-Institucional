@@ -147,11 +147,55 @@ public sealed class LlenadoAsistidoTests : IAsyncLifetime
     [Fact]
     public async Task Aprobar_por_filtro_alcanza_mas_que_la_pagina_visible()
     {
-        await EnviarAsync("/HondurasSimple/Llenado?certeza=Alta", "AprobarFiltro", []);
+        await EnviarAsync("/HondurasSimple/Llenado?certeza=Alta", "AprobarFiltro",
+            [new("confirmado", "true")]);
 
         (await PropuestaAsync(_propTiempo)).Estado.Should().Be(EstadoPropuesta.Aprobada);
         (await PropuestaAsync(_propCategoria)).Estado.Should().Be(EstadoPropuesta.Pendiente,
             "esa es de certeza Media y el filtro pedía Alta: aprobar por filtro no puede desbordarse");
+    }
+
+    /// <summary>
+    /// La confirmación de la aprobación por filtro vive en la página, no en un diálogo del
+    /// navegador.
+    ///
+    /// <para>El aviso era un <c>onclick="return confirm(...)"</c>. Un modal del navegador
+    /// congela la pestaña hasta que alguien lo despacha a mano, así que en la corrida de pruebas
+    /// el botón «no hizo nada» y se reportó como fallo (H-03) — cuando el handler funcionaba
+    /// perfectamente: se comprobó disparándolo por HTTP, saltándose el modal.</para>
+    ///
+    /// <para>El aviso se conserva, porque la acción escribe en fichas de verdad y quien la pulsa
+    /// tiene que saber cuántas. Lo que cambia es dónde: un segundo paso dentro de la propia
+    /// página, que un navegador automatizado puede completar como lo haría una persona.</para>
+    /// </summary>
+    [Fact]
+    public async Task Aprobar_por_filtro_sin_confirmar_no_escribe_nada()
+    {
+        var cliente = _portal.ClienteComo("Administrador");
+        var pagina  = await cliente.GetAsync("/HondurasSimple/Llenado?certeza=Alta");
+
+        var respuesta = await cliente.PostAsync(
+            "/HondurasSimple/Llenado?certeza=Alta&handler=AprobarFiltro",
+            new FormUrlEncodedContent([
+                new KeyValuePair<string, string>("__RequestVerificationToken",
+                    Token(await pagina.Content.ReadAsStringAsync()))
+            ]));
+
+        respuesta.StatusCode.Should().BeOneOf(new[] { HttpStatusCode.Redirect, HttpStatusCode.Found });
+
+        (await PropuestaAsync(_propTiempo)).Estado.Should().Be(EstadoPropuesta.Pendiente,
+            "sin confirmar no se escribe: la confirmacion es del servidor, no solo de la pantalla");
+    }
+
+    [Fact]
+    public async Task El_aviso_de_la_tanda_no_es_un_dialogo_bloqueante()
+    {
+        var html = await LeerAsync("/HondurasSimple/Llenado?certeza=Alta");
+
+        html.Should().NotContain("confirm(",
+            "un modal del navegador congela la pestaña y ya produjo un falso positivo");
+        html.Should().Contain("Se van a escribir",
+            "el aviso se conserva: la accion escribe en fichas de verdad");
     }
 
     // ── Rechazar ──────────────────────────────────────────────────────────────

@@ -63,14 +63,28 @@ public sealed class GetCatalogoPermisosQueryHandler(IApplicationDbContext ctx, I
 // ── Command: reemplaza toda la matriz en una sola transacción ──────────────
 // (a diferencia de GuardarAccesosCommand, que es por rol) porque la guardia anti-bloqueo
 // necesita ver el estado final completo de todos los roles a la vez.
+
+/// <summary>
+/// Qué cambió de verdad al guardar la matriz.
+///
+/// <para>El comando devolvía <c>Unit</c>, así que la pantalla no tenía forma de distinguir
+/// «guardé tu cambio» de «no había nada que guardar» y avisaba éxito en los dos casos. Un aviso
+/// que sale siempre deja de ser información: quien lo lee ya no sabe si su clic hizo algo, y en
+/// la corrida de pruebas se leyó como confirmación de un cambio que nunca se marcó (H-06).</para>
+/// </summary>
+public sealed record CambiosDeMatrizDto(int Otorgados, int Revocados)
+{
+    public bool HuboCambios => Otorgados > 0 || Revocados > 0;
+}
+
 public sealed record GuardarMatrizPermisosCommand(
-    IReadOnlyDictionary<string, IReadOnlyList<string>> Grants) : IRequest<Unit>;
+    IReadOnlyDictionary<string, IReadOnlyList<string>> Grants) : IRequest<CambiosDeMatrizDto>;
 
 public sealed class GuardarMatrizPermisosCommandHandler(
     IApplicationDbContext ctx, IPermissionCache cache, ICurrentUserService currentUser, IRolCatalogo catalogo)
-    : IRequestHandler<GuardarMatrizPermisosCommand, Unit>
+    : IRequestHandler<GuardarMatrizPermisosCommand, CambiosDeMatrizDto>
 {
-    public async Task<Unit> Handle(GuardarMatrizPermisosCommand cmd, CancellationToken ct)
+    public async Task<CambiosDeMatrizDto> Handle(GuardarMatrizPermisosCommand cmd, CancellationToken ct)
     {
         var actor = currentUser.Nombre ?? currentUser.Correo ?? "—";
 
@@ -138,6 +152,9 @@ public sealed class GuardarMatrizPermisosCommandHandler(
                 throw new DomainException("No puede quitar el último rol con permiso para administrar permisos.");
         }
 
+        var otorgados = 0;
+        var revocados = 0;
+
         foreach (var (rolId, clavesDeseadas) in cmd.Grants)
         {
             var validas = (clavesDeseadas ?? [])
@@ -155,6 +172,7 @@ public sealed class GuardarMatrizPermisosCommandHandler(
                 ctx.RolPermisos.Add(RolPermiso.Crear(rolId, clave));
                 ctx.PermisosAuditoria.Add(PermisoAuditoria.Crear(
                     rolId, clave, permisosActivos[clave].Nombre, AccionPermiso.Otorgado, actor));
+                otorgados++;
             }
 
             foreach (var g in actualesDelRol.Where(g => !validas.Contains(g.PermisoClave)))
@@ -163,6 +181,7 @@ public sealed class GuardarMatrizPermisosCommandHandler(
                 var nombre = permisosActivos.TryGetValue(g.PermisoClave, out var n) ? n.Nombre : g.PermisoClave;
                 ctx.PermisosAuditoria.Add(PermisoAuditoria.Crear(
                     rolId, g.PermisoClave, nombre, AccionPermiso.Revocado, actor));
+                revocados++;
             }
         }
 
@@ -171,6 +190,6 @@ public sealed class GuardarMatrizPermisosCommandHandler(
         foreach (var rolId in cmd.Grants.Keys)
             cache.Invalidar(rolId);
 
-        return Unit.Value;
+        return new CambiosDeMatrizDto(otorgados, revocados);
     }
 }

@@ -260,10 +260,23 @@
                     Hay <b>@Model.AltaConfianzaEnFiltro</b> tramite(s) de alta confianza en el filtro actual
                     (nombre identico, misma institucion y un solo candidato).
                 </span>
-                <button class="btnp" type="submit" style="margin-left:auto"
-                        onclick="return confirm('Se enlazaran @Model.AltaConfianzaEnFiltro tramite(s) a su ficha SIGER sugerida, en todas las paginas del filtro actual.\n\nPuede deshacerlo despues desde la pestaña Enlazados.\n\n¿Continuar?');">
-                    Enlazar los @Model.AltaConfianzaEnFiltro de alta confianza
-                </button>
+                @* Confirmacion en la pagina, no en un confirm() del navegador: ver la nota de
+                   Llenado.cshtml. Un modal bloqueante hace que el boton parezca muerto. *@
+                <details class="conf-tanda" style="margin-left:auto">
+                    <summary class="btnp" style="list-style:none;cursor:pointer">
+                        Enlazar los @Model.AltaConfianzaEnFiltro de alta confianza
+                    </summary>
+                    <div class="conf-tanda-cuerpo">
+                        <p style="margin:0 0 .55rem">
+                            Se enlazaran <strong>@Model.AltaConfianzaEnFiltro</strong> tramite(s) a su ficha SIGER
+                            sugerida, en todas las paginas del filtro actual.
+                            Puede deshacerlo despues desde la pestaña Enlazados.
+                        </p>
+                        <button class="btnp" type="submit" name="confirmado" value="true">
+                            Sí, enlazar los @Model.AltaConfianzaEnFiltro
+                        </button>
+                    </div>
+                </details>
             </form>
         }
 

@@ -123,11 +123,26 @@
                     <button class="btnp" type="submit" asp-page-handler="Aprobar">Aprobar marcadas</button>
                     <button class="btns" type="submit" asp-page-handler="Rechazar">Rechazar marcadas</button>
 
-                    <button class="btns" type="submit" asp-page-handler="AprobarFiltro"
-                            style="border-color:#b45309;color:#b45309"
-                            onclick="return confirm('Se van a escribir @Model.AlcanceDelFiltro valor(es) en sus fichas, no solo los marcados en esta página. ¿Continuar?')">
-                        Aprobar las @Model.AlcanceDelFiltro que coinciden con el filtro
-                    </button>
+                    @* Confirmacion en la propia pagina. Vivia en un confirm() del navegador, que
+                       congela la pestaña hasta que alguien lo despacha a mano: el boton parecia
+                       muerto para quien probaba (H-03). El aviso se conserva —la accion escribe en
+                       fichas de verdad y hay que saber cuantas— pero como un segundo paso que
+                       cualquiera, persona o navegador automatizado, puede completar. *@
+                    <details class="conf-tanda">
+                        <summary class="btns" style="border-color:#b45309;color:#b45309;list-style:none;cursor:pointer">
+                            Aprobar las @Model.AlcanceDelFiltro que coinciden con el filtro
+                        </summary>
+                        <div class="conf-tanda-cuerpo">
+                            <p style="margin:0 0 .55rem">
+                                Se van a escribir <strong>@Model.AlcanceDelFiltro</strong> valor(es) en sus fichas,
+                                no solo los marcados en esta página.
+                            </p>
+                            <button class="btnp" type="submit" asp-page-handler="AprobarFiltro"
+                                    name="confirmado" value="true">
+                                Sí, escribir las @Model.AlcanceDelFiltro
+                            </button>
+                        </div>
+                    </details>
                 </div>
                 <p class="res-meta" style="margin:0 0 .8rem">
                     Aprobar escribe el valor en la ficha solo si el campo sigue vacío: lo que alguien

@@ -2332,6 +2332,14 @@ tr.contacto-inactivo td {
     background: var(--diger-bg-blue-alt);
 }
 
+/* La barra de arriba es sticky y mide 48px: sin este margen, una fila a la que se llega
+   desplazandose —por ancla, por foco de teclado o por scrollIntoView— queda debajo de ella y
+   el clic aterriza en la barra. En la corrida de pruebas eso se reporto como "la casilla no
+   respondio": respondia, pero el puntero nunca llegaba a tocarla. */
+.seg-table tr {
+    scroll-margin-top: 64px;
+}
+
 /* ── EDIT-GRID: tablas editables (asistentes, acuerdos) sin desbordar el contenedor ── */
 .edit-grid {
     table-layout: fixed;
@@ -6197,3 +6205,28 @@ textarea.form-control { resize: vertical; }
     font-family: inherit; white-space: nowrap;
 }
 .vinc-sum:focus-visible { outline: 2px solid var(--diger-blue, #1d4ed8); outline-offset: 2px; }
+
+/* ── CONF-TANDA: confirmar una accion masiva sin bloquear la pestaña ──
+   Las acciones que escriben en cientos de fichas llevaban su aviso en un confirm() del
+   navegador. Un modal nativo congela la pestaña hasta que alguien lo despacha a mano, de modo
+   que para quien prueba —o para cualquier navegador automatizado— el boton simplemente no hace
+   nada. El aviso se conserva; lo que cambia es que vive en la pagina. */
+.conf-tanda {
+    display: inline-block;
+}
+
+.conf-tanda > summary::-webkit-details-marker {
+    display: none;
+}
+
+.conf-tanda-cuerpo {
+    margin-top: .5rem;
+    padding: .75rem .9rem;
+    border: 1px solid #fcd9a4;
+    border-left: 3px solid #b45309;
+    border-radius: var(--diger-radius-md);
+    background: #fffbeb;
+    font-size: var(--diger-fs-sm);
+    color: #7c5010;
+    max-width: 520px;
+}

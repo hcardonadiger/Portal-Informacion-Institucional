@@ -223,6 +223,66 @@ public class GuardarMatrizPermisosCommandTests : IDisposable
             .Clave.Should().Be(PermisosConstants.GestionarPermisos);
     }
 
+    // ── Cuántas concesiones cambiaron ─────────────────────────────────────────
+    // El comando no devolvía nada, así que la pantalla no podía distinguir "guardé tu cambio"
+    // de "no había nada que guardar" y avisaba éxito siempre. Es el hallazgo H-06: se guardó sin
+    // tocar una sola casilla y el portal contestó "Permisos actualizados".
+
+    [Fact]
+    public async Task Handle_SinCambios_DevuelveCero()
+    {
+        await SembrarPermisosAsync("Tickets.Ver");
+        await CrearHandler().Handle(Comando((Empleado, ["Tickets.Ver"])), CancellationToken.None);
+
+        var resultado = await CrearHandler().Handle(
+            Comando((Empleado, ["Tickets.Ver"])), CancellationToken.None);
+
+        resultado.Otorgados.Should().Be(0);
+        resultado.Revocados.Should().Be(0);
+        resultado.HuboCambios.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_ConUnaClaveNueva_DevuelveUnOtorgado()
+    {
+        await SembrarPermisosAsync("Tickets.Ver", "Tickets.Editar");
+        await CrearHandler().Handle(Comando((Empleado, ["Tickets.Ver"])), CancellationToken.None);
+
+        var resultado = await CrearHandler().Handle(
+            Comando((Empleado, ["Tickets.Ver", "Tickets.Editar"])), CancellationToken.None);
+
+        resultado.Otorgados.Should().Be(1);
+        resultado.Revocados.Should().Be(0);
+        resultado.HuboCambios.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_AlQuitarUnaClave_DevuelveUnRevocado()
+    {
+        await SembrarPermisosAsync("Tickets.Ver", "Tickets.Editar");
+        await CrearHandler().Handle(
+            Comando((Empleado, ["Tickets.Ver", "Tickets.Editar"])), CancellationToken.None);
+
+        var resultado = await CrearHandler().Handle(
+            Comando((Empleado, ["Tickets.Ver"])), CancellationToken.None);
+
+        resultado.Otorgados.Should().Be(0);
+        resultado.Revocados.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_LasClavesQueElCatalogoNoConoce_NoCuentanComoCambio()
+    {
+        // Se descartan antes de escribir, así que contarlas haría que la pantalla dijera que
+        // guardó algo que no existe.
+        await SembrarPermisosAsync("Tickets.Ver");
+
+        var resultado = await CrearHandler().Handle(
+            Comando((Empleado, ["Tickets.Ver", "Modulo.Inventado"])), CancellationToken.None);
+
+        resultado.Otorgados.Should().Be(1);
+    }
+
     public void Dispose() => _ctx.Dispose();
 }
 

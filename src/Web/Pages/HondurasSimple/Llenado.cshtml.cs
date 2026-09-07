@@ -95,8 +95,19 @@ public sealed class LlenadoModel(IApplicationDbContext ctx, ISender sender) : Pa
     /// única forma de que mil propuestas se resuelvan en una tarde y no en un mes.
     /// </summary>
     [Permission("HondurasSimple.Llenado", AccionModulo.Editar, "Aprobar en bloque por filtro")]
-    public async Task<IActionResult> OnPostAprobarFiltroAsync(CancellationToken ct)
+    public async Task<IActionResult> OnPostAprobarFiltroAsync(bool confirmado, CancellationToken ct)
     {
+        // La confirmacion se exige en el servidor y no solo en la pantalla. Antes vivia en un
+        // onclick="return confirm(...)" del navegador, que congela la pestaña hasta que alguien
+        // lo despacha a mano: en la corrida de pruebas el boton "no hizo nada" y se reporto como
+        // fallo, cuando el handler funcionaba. Pedirla acá deja el aviso en pie sin bloquear a
+        // nadie, y ademas protege el handler de un POST suelto.
+        if (!confirmado)
+        {
+            TempData["SuccessMsg"] = "No se aprobo nada: falta confirmar la tanda.";
+            return Redirigir();
+        }
+
         var ids = await Filtrada(Pendientes: true).Select(p => p.Id).ToListAsync(ct);
         return await DecidirAsync(ids, aprobar: true, ct);
     }
