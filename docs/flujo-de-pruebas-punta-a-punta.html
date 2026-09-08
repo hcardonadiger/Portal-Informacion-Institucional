@@ -1,0 +1,561 @@
+<title>Plan de pruebas de punta a punta — de GestionGD a Honduras Simple</title>
+<style>
+:root{
+  color-scheme:light;
+  --papel:#F6F8FB; --tarjeta:#FFFFFF;
+  --tinta:#111C2E; --tinta-suave:#4A5A70; --tinta-tenue:#6B7B92;
+  --borde:#DCE3EC; --borde-fuerte:#C3CEDC;
+  --azul:#02395E; --accion:#0055A4; --accion-suave:#E9F0F8;
+  --verde:#146B4F; --verde-suave:#E7F3EE;
+  --ambar:#8A5A00; --ambar-suave:#FAF0DA;
+  --sombra:0 1px 2px rgba(17,28,46,.05), 0 10px 28px -16px rgba(17,28,46,.22);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --papel:#0D1520; --tarjeta:#141F2E;
+    --tinta:#E8EEF6; --tinta-suave:#A7B6C9; --tinta-tenue:#8496AC;
+    --borde:#253447; --borde-fuerte:#33465C;
+    --azul:#9CC6E4; --accion:#7FB2D9; --accion-suave:#17293C;
+    --verde:#5FC49B; --verde-suave:#10241C;
+    --ambar:#E0A93C; --ambar-suave:#2A2011;
+    --sombra:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --papel:#0D1520; --tarjeta:#141F2E;
+  --tinta:#E8EEF6; --tinta-suave:#A7B6C9; --tinta-tenue:#8496AC;
+  --borde:#253447; --borde-fuerte:#33465C;
+  --azul:#9CC6E4; --accion:#7FB2D9; --accion-suave:#17293C;
+  --verde:#5FC49B; --verde-suave:#10241C;
+  --ambar:#E0A93C; --ambar-suave:#2A2011;
+  --sombra:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -16px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--papel); color:var(--tinta);
+  font-family:"Inter",system-ui,sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.envoltura{max-width:46rem; margin:0 auto; padding:2.5rem 1.25rem 4rem}
+code,.mono{
+  font-family:ui-monospace,"Cascadia Mono","Consolas",monospace;
+  font-size:.86em; font-variant-numeric:tabular-nums;
+}
+
+/* ---- Cabecera ---- */
+.cejilla{
+  font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accion); margin:0 0 .6rem;
+}
+h1{
+  font-size:clamp(1.9rem,5vw,2.6rem); font-weight:700; letter-spacing:-.02em;
+  line-height:1.1; margin:0 0 .5rem; color:var(--azul); text-wrap:balance;
+}
+.entradilla{margin:0; color:var(--tinta-suave); font-size:1.05rem; max-width:34rem}
+.barra-avance{
+  display:flex; align-items:center; gap:.75rem; margin-top:1.75rem;
+  padding:.7rem .95rem; background:var(--tarjeta);
+  border:1px solid var(--borde); border-radius:.6rem;
+}
+.barra-avance .canal{flex:1; height:.4rem; background:var(--accion-suave); border-radius:99px; overflow:hidden}
+.barra-avance .relleno{height:100%; width:0%; background:var(--accion); border-radius:99px; transition:width .25s ease}
+.barra-avance output{font-size:.85rem; font-weight:600; color:var(--tinta-suave); font-variant-numeric:tabular-nums; white-space:nowrap}
+
+/* ---- Paneles ---- */
+.panel{
+  margin:2.25rem 0; padding:1.15rem 1.25rem;
+  background:var(--tarjeta); border:1px solid var(--borde);
+  border-radius:.7rem; box-shadow:var(--sombra);
+}
+.panel h2{
+  font-size:.78rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--tinta-tenue); margin:0 0 .9rem;
+}
+.panel.aviso{background:var(--ambar-suave); border-color:var(--ambar)}
+.panel.aviso h2{color:var(--ambar)}
+.panel p{margin:0 0 .7rem}
+.panel p:last-child{margin-bottom:0}
+.arranque{list-style:none; margin:0 0 1rem; padding:0; display:flex; flex-direction:column; gap:.45rem}
+.arranque li{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; font-size:.95rem}
+.arranque .rotulo{font-weight:600; min-width:9.5rem}
+.arranque code{color:var(--accion); background:var(--accion-suave); padding:.1rem .4rem; border-radius:.3rem}
+
+/* ---- Pruebas ---- */
+.pruebas{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1rem}
+.prueba{
+  display:grid; grid-template-columns:auto 1fr; gap:1rem;
+  padding:1.15rem 1.25rem; background:var(--tarjeta);
+  border:1px solid var(--borde); border-radius:.7rem; box-shadow:var(--sombra);
+  transition:opacity .2s ease;
+}
+.prueba:has(input:checked){opacity:.5}
+.marca{cursor:pointer; align-self:start; line-height:0}
+.marca input{position:absolute; opacity:0; width:0; height:0}
+.num{
+  display:grid; place-items:center; width:2.1rem; height:2.1rem;
+  border:1.5px solid var(--borde-fuerte); border-radius:.5rem;
+  font-size:.95rem; font-weight:700; line-height:1; color:var(--tinta-tenue);
+  font-variant-numeric:tabular-nums; transition:all .15s ease;
+}
+.marca:hover .num{border-color:var(--accion); color:var(--accion)}
+.marca input:focus-visible + .num{outline:3px solid var(--accion); outline-offset:2px}
+.marca input:checked + .num{background:var(--verde); border-color:var(--verde); color:#fff; font-size:0}
+.marca input:checked + .num::after{content:"\2713"; font-size:1.1rem}
+.prueba h3{margin:.15rem 0 .35rem; font-size:1.1rem; font-weight:700; letter-spacing:-.01em; color:var(--tinta); text-wrap:balance}
+.proposito{margin:0 0 .9rem; font-size:.9rem; color:var(--tinta-tenue)}
+dl{margin:0; display:flex; flex-direction:column; gap:.5rem}
+dl > div{display:grid; grid-template-columns:5.2rem 1fr; gap:.75rem; align-items:baseline}
+dt{
+  font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--tinta-tenue); padding-top:.2rem;
+}
+dd{margin:0; font-size:.95rem; color:var(--tinta-suave)}
+dd b, dd strong{color:var(--tinta); font-weight:600}
+dd code{color:var(--accion)}
+.esperado{
+  background:var(--verde-suave); border-left:3px solid var(--verde);
+  border-radius:0 .35rem .35rem 0; padding:.5rem .75rem; margin-left:-.1rem;
+}
+.esperado dt{color:var(--verde); padding-top:.15rem}
+.esperado dd{color:var(--tinta)}
+.prueba.ojo{border-color:var(--ambar)}
+.prueba.ojo .esperado{background:var(--ambar-suave); border-left-color:var(--ambar)}
+.prueba.ojo .esperado dt{color:var(--ambar)}
+.nota{
+  margin:.9rem 0 0; padding:.6rem .75rem; font-size:.87rem;
+  color:var(--tinta-suave); background:var(--accion-suave); border-radius:.4rem;
+}
+.prueba.ojo .nota{background:transparent; border:1px dashed var(--ambar); color:var(--tinta-suave)}
+ul.cierre{margin:0; padding-left:1.1rem; display:flex; flex-direction:column; gap:.5rem; font-size:.95rem; color:var(--tinta-suave)}
+ul.cierre b{color:var(--tinta)}
+footer{margin-top:2.5rem; padding-top:1.25rem; border-top:1px solid var(--borde); font-size:.85rem; color:var(--tinta-tenue)}
+@media (max-width:34rem){
+  dl > div{grid-template-columns:1fr; gap:.15rem}
+  dt{padding-top:0}
+  .esperado{padding:.55rem .7rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+/* ---- Rotulo de tramo ---- */
+h2.tramo{
+  margin:2rem 0 .9rem; font-size:.78rem; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--tinta-tenue);
+  padding-bottom:.45rem; border-bottom:1px solid var(--borde);
+}
+h2.tramo:first-of-type{margin-top:1.5rem}
+</style>
+<div class="envoltura">
+
+<p class="cejilla">Recorrido visual en Chrome · tres sistemas a la vez</p>
+<h1>Plan de pruebas de punta a punta — de GestionGD a Honduras Simple</h1>
+<p class="entradilla">Un trámite nace en el portal interno, alguien lo completa, alguien decide publicarlo, la API lo expone y el portal ciudadano lo copia solo. Son <b>tres sistemas y cuatro saltos</b>, y cada salto puede romperse sin que los otros se enteren. Este recorrido sigue <b>un solo trámite</b> por toda la cadena, de punta a punta, y después le quita cosas para ver si el daño también viaja.</p>
+
+<div class="barra-avance">
+  <div class="canal"><div class="relleno" id="relleno"></div></div>
+  <output id="cuenta">0 de 22 comprobadas</output>
+</div>
+
+<section class="panel">
+  <h2>Antes de empezar</h2>
+  <ul class="arranque">
+    <li><span class="rotulo">Levantar todo</span> en <code>C:\Users\jgarcia\Documents\Portal-Informacion-Institucional</code>: primero <code>scripts\pruebas\Refrescar-Sandbox.ps1</code>, después <code>scripts\Iniciar-Todo.ps1</code></li>
+    <li><span class="rotulo">Portal interno</span> <code>https://localhost:49175</code> — GestionGD, donde se captura y se publica</li>
+    <li><span class="rotulo">La API</span> <code>https://localhost:7199/swagger</code> — el puente entre los dos portales</li>
+    <li><span class="rotulo">Portal ciudadano</span> <code>https://localhost:7180</code> — Honduras Simple</li>
+    <li><span class="rotulo">Navegador</span> Chrome, con las <b>tres pestañas abiertas a la vez</b>. Todo el recorrido consiste en saltar entre ellas.</li>
+    <li><span class="rotulo">Clave de la API</span> <code>clave-de-pruebas-local</code> — se pega una sola vez, en el paso 2</li>
+  </ul>
+  <p>Un script levanta los tres. Si alguno no arranca, mire la consola que abrió: casi siempre es un puerto ocupado por una ejecución anterior que quedó viva.</p>
+</section>
+
+<section class="panel aviso">
+  <h2>Pare aquí si esto no cuadra</h2>
+  <p>Los tres sistemas llevan una <b>cinta arriba</b> que dice sobre qué base están. Las tres deben nombrar una base terminada en <b>_Sandbox</b>: el portal interno y la API sobre <code>DigerTramitesEstado_Unificada_Sandbox</code>, el portal ciudadano sobre <code>VentanillaDigital_Net_Sandbox</code>.</p>
+  <p><b>Si una sola de las tres no dice _Sandbox, pare y avise.</b> El portal interno y la API tienen que mirar <b>la misma</b> base o la prueba no cierra nunca: se publicaría en una y se consultaría en otra, y el trámite no aparecería jamás sin que nada esté roto.</p>
+</section>
+
+<section class="panel">
+  <h2>Los usuarios</h2>
+  <p>Contraseña para todos: <code>Pruebas#2026</code>. Existen solo en el sandbox. El portal ciudadano <b>no pide cuenta</b>: es público.</p>
+  <ul class="arranque">
+    <li><span class="rotulo">El operador</span> <code>operador.cowork@diger.gob.hn</code> — hace casi todo el recorrido. Institución <b>CONSUCOOP</b>. <b>No es administrador</b>, y es a propósito.</li>
+    <li><span class="rotulo">El administrador</span> <code>admin.cowork@diger.gob.hn</code> — solo si el operador se topa con una puerta cerrada.</li>
+  </ul>
+  <p>Si al entrar le rebota el usuario, corra <code>scripts\pruebas\sql\usuarios-cowork.sql</code> contra el sandbox y vuelva a intentar.</p>
+</section>
+
+<section class="panel aviso">
+  <h2>Lo que ya sabemos y no hay que reportar</h2>
+  <ul class="cierre">
+    <li><b>Al ciudadano solo llegan trámites de tres instituciones: INPREMA, IHTT y CONSUCOOP.</b> Es el corte del piloto y lo decide el portal ciudadano, no la API. Publicar un trámite de otra institución y no verlo en Honduras Simple <b>es lo correcto</b> — de hecho, el paso 17 lo comprueba a propósito.</li>
+    <li><b>Se publican fichas incompletas a propósito.</b> Donde falta un dato, el ciudadano ve un guion. Se decidió que le sirve más saber que el trámite existe y quién lo atiende, que no encontrarlo. Un guion no es un fallo.</li>
+    <li><b>La API contesta el mismo 404 para «no existe» y para «no está publicado».</b> Es deliberado: distinguirlos dejaría averiguar qué códigos hay sin poder verlos.</li>
+    <li><b>Pedir <code>tamano=500</code> devuelve 20 fichas, no 100.</b> Está documentado y es el comportamiento acordado.</li>
+    <li><b>En Honduras Simple, «Mis Trámites» son pantallas de muestra.</b> Todavía no hay cuentas de ciudadano ni estado real de expedientes: los datos que salen ahí son de ejemplo y ningún botón guarda nada. No lo reporte.</li>
+    <li><b>La búsqueda del portal ciudadano no busca por código ni por institución</b>, solo por nombre, descripción y objetivo. Buscar <code>603-019</code> y no encontrar nada es lo esperado.</li>
+    <li>Los <b>costos, tiempos y modalidades del sandbox son inventados</b>, y hay nombres <b>EN MAYÚSCULAS</b> o cortados a media frase: vienen así del inventario original.</li>
+    <li>Las <b>cintas de colores</b> de arriba no existen en producción. Son la señal de que se está en pruebas.</li>
+  </ul>
+</section>
+
+<h2 class="tramo">A. Que la cadena esté de pie</h2>
+<ol class="pruebas" start="1">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">1</span></label>
+    <div>
+      <h3>Los tres arrancan, y los tres sobre el sandbox</h3>
+      <p class="proposito">Sin esto, todo lo que venga después mide otra cosa. Es el paso que más veces salva el día.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Abra las tres direcciones en tres pestañas y lea la cinta de arriba de cada una.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Portal interno y API sobre <b>DigerTramitesEstado_Unificada_Sandbox</b>; portal ciudadano sobre <b>VentanillaDigital_Net_Sandbox</b>. Las tres pantallas cargan con datos.</dd></div>
+      </dl>
+      <p class="nota">La API no tiene cinta visible: mire en su lugar que <code>https://localhost:7199/swagger</code> abra la lista de rutas.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">2</span></label>
+    <div>
+      <h3>La API está viva, y su salud no pide clave</h3>
+      <p class="proposito">Es la única ruta abierta, y lo es para que un monitor pueda vigilarla sin custodiar un secreto.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>En Swagger, despliegue <code>GET /api/v1/salud</code>, pulse <b>Try it out</b> y <b>Execute</b>. <b>Sin</b> haber puesto la clave todavía.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Responde <b>200</b> y trae la hora del servidor.</dd></div>
+      </dl>
+      <p class="nota">Ahora sí: pulse <b>Authorize</b> arriba a la derecha, pegue <code>clave-de-pruebas-local</code> y confirme. Queda puesta para todo el recorrido.</p>
+    </div>
+  </li>
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">3</span></label>
+    <div>
+      <h3>Sin clave, la API no suelta nada</h3>
+      <p class="proposito">La API es la única cara expuesta a la red. Si se abre sin clave, el inventario entero es público sin que nadie lo haya decidido.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Abra en una pestaña nueva, pegando la dirección a mano: <code>https://localhost:7199/api/v1/tramites</code></dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Un <b>401</b>. No debe salir ni una ficha.</dd></div>
+      </dl>
+      <p class="nota">Se hace en pestaña aparte a propósito: el <b>Authorize</b> de Swagger pone la clave por usted y taparía justo lo que se quiere ver. Si aquí sale la lista de trámites, es el fallo más grave de todo el recorrido.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">B. La ficha se prepara en GestionGD</h2>
+<ol class="pruebas" start="4">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">4</span></label>
+    <div>
+      <h3>Escoger el trámite del recorrido y anotar su código</h3>
+      <p class="proposito">Todo lo que sigue va detrás de un mismo código. El código es la identidad pública del trámite y es lo único que viaja por los tres sistemas.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Entre al portal interno como <code>operador.cowork@diger.gob.hn</code> y abra <b>SIGER &rarr; Inventario</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Filtre por la institución <b>CONSUCOOP</b>, marque «<b>solo las que les falta algo</b>» y escoja una ficha <b>sin publicar</b>. Anote su <b>código</b> (tiene la forma <code>603-019</code>) y su nombre.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La ficha abre y muestra un aviso de <b>qué le falta</b> para poder publicarse.</dd></div>
+      </dl>
+      <p class="nota">Tiene que ser de <b>INPREMA, IHTT o CONSUCOOP</b>. Una de otra institución no llegará nunca al ciudadano, y el recorrido se cae en el paso 11 sin que nada esté roto.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">5</span></label>
+    <div>
+      <h3>Antes de tocar nada: para la API ese trámite no existe</h3>
+      <p class="proposito">Fija el punto de partida. Sin esta foto, el paso 9 no demuestra nada: no se sabría si apareció ahora o si ya estaba.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>En Swagger, <code>GET /api/v1/tramites/{codigo}</code> con el código que anotó.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd><b>404</b>. La ficha existe en el portal interno, pero no está publicada, y para la API eso es no existir.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">6</span></label>
+    <div>
+      <h3>Completar los cuatro campos, y ver apagarse el aviso</h3>
+      <p class="proposito">«Completa» significa exactamente cuatro cosas: categoría, modalidad, tiempo y costo. Lo decide GestionGD, no la API.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd><b>Honduras Simple &rarr; Editor</b>, con la ficha que escogió.</dd></div>
+        <div><dt>Haga</dt><dd>Llene <b>categoría</b>, <b>modalidad</b>, <b>tiempo estimado</b> y <b>costo</b>. Guarde.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Al recargar, el aviso de «le falta» <b>desaparece</b> y la ficha queda marcada como completa.</dd></div>
+      </dl>
+      <p class="nota">Anote los cuatro valores que escribió. En el paso 12 hay que comprobar que el ciudadano lee <b>exactamente</b> eso.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">7</span></label>
+    <div>
+      <h3>El contador de la institución sube en uno</h3>
+      <p class="proposito">Completitud es la pantalla con la que se decide si un piloto está listo. Si no cuenta bien, se publica a ciegas.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd><b>Honduras Simple &rarr; Completitud</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Busque la fila de <b>CONSUCOOP</b> y mire el número de fichas completas.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Una ficha completa <b>más</b> que antes del paso 6.</dd></div>
+      </dl>
+      <p class="nota">Si no anotó el número de antes, no pasa nada: deje otra ficha completa y compruebe que sube otra vez.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">C. Publicar es un acto aparte</h2>
+<ol class="pruebas" start="8">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">8</span></label>
+    <div>
+      <h3>Publicar la ficha</h3>
+      <p class="proposito">Completar y publicar son dos decisiones distintas, y las toman personas distintas. Esta pantalla es donde ocurre la segunda.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd><b>Honduras Simple &rarr; Publicado</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Busque su ficha en la pestaña de <b>no publicadas</b>, márquela y pulse <b>publicar</b>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La ficha pasa a la lista de <b>publicadas</b> y el contador de publicadas sube.</dd></div>
+      </dl>
+      <p class="nota">Anote la <b>hora exacta</b>. Desde aquí se cuenta lo que tarda en llegar al ciudadano.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">9</span></label>
+    <div>
+      <h3>La API ya la sirve, por su código</h3>
+      <p class="proposito">Primer salto de la cadena. Si falla aquí, el problema es de GestionGD o de la API, y no hay que seguir buscando en el portal ciudadano.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Repita el paso 5: <code>GET /api/v1/tramites/{codigo}</code>, el mismo código.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Ahora <b>200</b>, con la ficha completa. Los cuatro valores del paso 6 deben estar ahí.</dd></div>
+      </dl>
+      <p class="nota">Es inmediato: no hay que esperar nada. La API lee la misma base en la que acaba de publicar.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">10</span></label>
+    <div>
+      <h3>Y sale en la lista de lo que está vivo</h3>
+      <p class="proposito">Esa lista es lo único que permite detectar bajas. Si un código publicado no aparece ahí, el portal ciudadano lo va a borrar creyendo que se retiró.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>En Swagger, <code>GET /api/v1/codigos-publicados</code>. Busque su código con <code>Ctrl+F</code>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>El código está en la lista.</dd></div>
+      </dl>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">D. Llega sola al ciudadano</h2>
+<ol class="pruebas" start="11">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">11</span></label>
+    <div>
+      <h3>Aparece en Honduras Simple sin reiniciar nada</h3>
+      <p class="proposito">Es la promesa central del sistema: se publica en un portal y aparece en el otro solo, sin que nadie toque nada.</p>
+      <dl>
+        <div><dt>Dónde</dt><dd>Portal ciudadano, <code>https://localhost:7180/Tramites</code>.</dd></div>
+        <div><dt>Haga</dt><dd>Busque el trámite por su <b>nombre</b>. Si no sale, espere y recargue. <b>No reinicie nada.</b></dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Aparece en <b>menos de un minuto</b> desde la hora que anotó en el paso 8.</dd></div>
+      </dl>
+      <p class="nota">El portal ciudadano pregunta por novedades cada diez segundos. Si tarda más de un minuto, siga esperando hasta cinco y <b>anote cuánto tardó</b>: ese número es el resultado de la prueba, tanto si es rápido como si no.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">12</span></label>
+    <div>
+      <h3>El ciudadano lee lo mismo que se escribió</h3>
+      <p class="proposito">Que llegue no basta: tiene que llegar <b>igual</b>. Un dato que se deforma en el camino es peor que uno que no llega, porque nadie lo nota.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Abra la ficha y compare, uno por uno, con lo que anotó en el paso 6: <b>categoría</b>, <b>modalidad</b>, <b>tiempo</b> y <b>costo</b>. Compare también el <b>nombre</b> y la <b>institución</b>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Los seis coinciden, letra por letra.</dd></div>
+      </dl>
+      <p class="nota">Las tildes cuentan. Si un acento se perdió por el camino, repórtelo: significa que algo del trayecto no está tratando bien el texto.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">13</span></label>
+    <div>
+      <h3>Sale en su institución y en su categoría</h3>
+      <p class="proposito">Una ficha suelta que no se puede encontrar navegando sirve de poco. Los conteos se calculan en cada visita, así que también son una prueba.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Entre por <b>Instituciones</b> &rarr; CONSUCOOP, y después por <b>Categorías</b> &rarr; la categoría que le puso en el paso 6.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>El trámite aparece por los dos caminos, y los conteos de esa institución y esa categoría <b>incluyen</b> el nuevo.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">14</span></label>
+    <div>
+      <h3>Se llega por la dirección directa</h3>
+      <p class="proposito">El código es la identidad pública en toda la cadena. Esta dirección es la que alguien va a guardar, mandar por mensaje o imprimir.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Pegue en el navegador <code>https://localhost:7180/Tramites/{codigo}</code>, con su código.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Abre la misma ficha del paso 12.</dd></div>
+      </dl>
+      <p class="nota">Guarde esta dirección: hace falta otra vez en el paso 19.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">E. Lo que falta no se inventa</h2>
+<ol class="pruebas" start="15">
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">15</span></label>
+    <div>
+      <h3>Una ficha a medio llenar sale con un guion, no se esconde</h3>
+      <p class="proposito">Es una decisión tomada, no un descuido: al ciudadano le sirve más saber que el trámite existe que no encontrarlo.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Vuelva al portal interno y publique una <b>segunda</b> ficha de CONSUCOOP, esta vez <b>sin completar nada</b>. Espere y búsquela en el portal ciudadano.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Aparece igual. Donde falta el dato hay un <b>guion</b>, y el trámite sigue diciendo su nombre y su institución.</dd></div>
+      </dl>
+      <p class="nota">Que la pantalla de publicación <b>avise</b> de que la ficha está incompleta y aun así deje publicar es lo correcto: el aviso informa, no impide.</p>
+    </div>
+  </li>
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">16</span></label>
+    <div>
+      <h3>Un costo sin capturar nunca dice «gratuito»</h3>
+      <p class="proposito">Es el error más caro que puede cometer este sistema: decirle a alguien que no pague algo que sí se paga.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>En la ficha incompleta del paso 15, mire el <b>costo</b>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Un <b>guion</b>, o un texto que diga que no se sabe. <b>Nunca</b> la palabra «Gratuito», ni «L 0.00», ni «Sin costo».</dd></div>
+      </dl>
+      <p class="nota">Si aparece cualquiera de esas tres, repórtelo como grave aunque todo lo demás haya salido bien.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">F. El corte del piloto</h2>
+<ol class="pruebas" start="17">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">17</span></label>
+    <div>
+      <h3>Publicado no es lo mismo que visible</h3>
+      <p class="proposito">El piloto va por tres instituciones. Ese recorte lo hace el portal ciudadano, no la API — y conviene comprobar que de verdad recorta.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>En el portal interno, publique un trámite de <b>cualquier otra</b> institución (ni INPREMA, ni IHTT, ni CONSUCOOP). Anote el código. Espere dos minutos.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La API <b>sí</b> lo sirve: <code>GET /api/v1/tramites/{codigo}</code> responde 200.<br>El portal ciudadano <b>no</b>: no sale en el buscador, y su dirección directa da <b>página no encontrada</b>.</dd></div>
+      </dl>
+      <p class="nota">Las dos mitades tienen que cumplirse. Si la API tampoco lo sirve, el problema es otro y hay que reportarlo.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">G. Quitar también viaja</h2>
+<ol class="pruebas" start="18">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">18</span></label>
+    <div>
+      <h3>Despublicar: la API deja de servirla en el acto</h3>
+      <p class="proposito">Retirar tiene que ser tan fiable como publicar. Una ficha equivocada que no se puede quitar es un problema serio.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>En <b>Honduras Simple &rarr; Publicado</b>, busque su trámite del paso 8, márquelo y pulse <b>quitar</b>. Anote la hora. Después, en Swagger: <code>GET /api/v1/tramites/{codigo}</code>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Vuelve el <b>404</b>, igual que en el paso 5. Y su código ya <b>no</b> está en <code>/api/v1/codigos-publicados</code>.</dd></div>
+      </dl>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">19</span></label>
+    <div>
+      <h3>Y el ciudadano la pierde</h3>
+      <p class="proposito">Detectar una baja es más difícil que detectar un alta: una ficha retirada no deja rastro que traer. Esta es la prueba de que aun así se detecta.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Recargue la dirección directa que guardó en el paso 14, y busque el trámite en el catálogo.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La dirección directa da <b>página no encontrada</b> y el trámite desaparece del catálogo.</dd></div>
+      </dl>
+      <p class="nota">Puede tardar más que el alta. Recargue al minuto; si sigue ahí, espere hasta <b>cinco</b>. <b>Anote a qué minuto desapareció</b> — es el dato de esta prueba. Si a los diez minutos sigue visible, es un fallo.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">H. Cuando la API se cae</h2>
+<ol class="pruebas" start="20">
+
+  <li class="prueba ojo">
+    <label class="marca"><input type="checkbox"><span class="num">20</span></label>
+    <div>
+      <h3>Se apaga la API y el portal ciudadano sigue en pie</h3>
+      <p class="proposito">Envejecer los datos es malo; quedarse sin portal es peor. El portal ciudadano guarda su propia copia justamente para esto.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Cierre la ventana de consola de la <b>API</b> —solo esa; las tres están minimizadas en la barra de tareas y cada una dice qué proyecto corre—. Compruebe que <code>https://localhost:7199/swagger</code> ya no abre. Después recorra el portal ciudadano: <b>portada, catálogo, una ficha, instituciones</b>.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Todo el portal ciudadano <b>sigue funcionando</b>, con los datos de la última sincronización. Ninguna pantalla de error, ningún catálogo vacío.</dd></div>
+      </dl>
+      <p class="nota">Es la prueba que más vale de todo el recorrido, porque es la única que reproduce el día malo. Si el portal se cae o se vacía, repórtelo aunque todo lo demás haya salido perfecto.</p>
+    </div>
+  </li>
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">21</span></label>
+    <div>
+      <h3>Se enciende y se recupera solo</h3>
+      <p class="proposito">Recuperarse sin que nadie intervenga es lo que separa una caída de un incidente.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>Vuelva a levantar solo la API: <code>scripts\Iniciar-Todo.ps1 -Solo Api</code>. Después publique cualquier ficha de CONSUCOOP en el portal interno y espere.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La ficha nueva aparece en el portal ciudadano. <b>Sin reiniciarlo.</b></dd></div>
+      </dl>
+      <p class="nota">Puede tardar un poco más que en el paso 11: después de una caída el portal espera antes de volver a confiar. Dele hasta cinco minutos.</p>
+    </div>
+  </li>
+</ol>
+
+<h2 class="tramo">I. Los bordes que muerden</h2>
+<ol class="pruebas" start="22">
+
+  <li class="prueba">
+    <label class="marca"><input type="checkbox"><span class="num">22</span></label>
+    <div>
+      <h3>Pedir «Virtual» también trae los híbridos</h3>
+      <p class="proposito">Suena a error y no lo es: un trámite híbrido también se puede hacer en línea, y dejarlo fuera contaría de menos lo que hay disponible.</p>
+      <dl>
+        <div><dt>Haga</dt><dd>En Swagger, <code>GET /api/v1/tramites</code> con <code>modalidad=Virtual</code>. Después con <code>modalidad=Hibrido</code>. Y por último con <code>modalidad=Mixto</code>, que no existe.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd><b>Virtual</b> trae virtuales <b>e</b> híbridos. <b>Hibrido</b> trae solo híbridos. <b>Mixto</b> devuelve <b>cero resultados</b> y responde 200, no un error.</dd></div>
+      </dl>
+      <p class="nota">Se escriben sin tilde y con esa grafía exacta: <code>Presencial</code>, <code>Virtual</code>, <code>Hibrido</code>.</p>
+    </div>
+  </li>
+</ol>
+
+<section class="panel">
+  <h2>Si algo no pasa</h2>
+  <ul class="cierre">
+    <li><b>Diga en qué salto se rompió.</b> Es lo más útil que puede aportar, y este recorrido está armado para poder decirlo: si el paso 9 pasa y el 11 no, el problema está entre la API y el portal ciudadano, y nadie tiene que buscar en GestionGD.</li>
+    <li><b>El trámite no aparece en el portal ciudadano.</b> Antes de reportar, compruebe dos cosas: que la institución sea <b>INPREMA, IHTT o CONSUCOOP</b>, y que el paso 9 diera 200. Si el paso 9 dio 404, el fallo está antes y hay que reportarlo como tal.</li>
+    <li><b>Todo el catálogo desapareció de golpe.</b> Repórtelo enseguida y diga si la API estaba levantada. Es la única forma de distinguir un fallo de un vaciado.</li>
+    <li><b>Swagger responde 401 en todo.</b> Se cayó la clave del <b>Authorize</b>: vuelva a ponerla. Solo repórtelo si se cae sola una y otra vez.</li>
+    <li><b>Un tiempo de espera raro.</b> No lo descarte: los pasos 11 y 19 piden anotar cuánto tardó. Un «tardó ocho minutos» es un hallazgo, no una molestia.</li>
+    <li><b>Dejó el sandbox hecho un desastre.</b> Es para eso. <code>scripts\pruebas\Refrescar-Sandbox.ps1 -Rehacer</code> lo deja recién copiado — pero avise antes, porque eso borra también los usuarios de prueba.</li>
+    <li>Al reportar, diga <b>el número del paso</b>, qué vio y qué esperaba, y pegue <b>el código del trámite</b> con el que iba. Con una captura basta.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>Plan de pruebas de punta a punta &middot; GestionGD &rarr; API v1 &rarr; Honduras Simple &middot; 8 de septiembre de 2026.<br>
+  Todo corre sobre <b>DigerTramitesEstado_Unificada_Sandbox</b> y <b>VentanillaDigital_Net_Sandbox</b>; las bases reales no se tocan.<br>
+  Para probar cada portal por dentro hay dos recorridos aparte:
+  <code>docs\flujo-de-pruebas-separacion-honduras-simple.html</code> (portal interno) y
+  <code>honduras-agil\docs\flujo-de-pruebas-hondurassimple.html</code> (portal ciudadano).</p>
+</footer>
+
+</div>
+
+<script>
+  // Marca de avance. Solo cuenta; no guarda nada en ningun lado.
+  const casillas = [...document.querySelectorAll('.prueba input[type=checkbox]')];
+  const cuenta = document.getElementById('cuenta');
+  const relleno = document.getElementById('relleno');
+  function actualizar() {
+    const n = casillas.filter(c => c.checked).length;
+    cuenta.textContent = n + ' de ' + casillas.length + ' comprobadas';
+    relleno.style.width = (casillas.length ? (n / casillas.length) * 100 : 0) + '%';
+  }
+  casillas.forEach(c => c.addEventListener('change', actualizar));
+  actualizar();
+</script>
