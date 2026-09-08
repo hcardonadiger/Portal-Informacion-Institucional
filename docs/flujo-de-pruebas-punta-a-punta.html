@@ -165,9 +165,10 @@ h2.tramo:first-of-type{margin-top:1.5rem}
     <li><span class="rotulo">La API</span> <code>https://localhost:7199/swagger</code> — el puente entre los dos portales</li>
     <li><span class="rotulo">Portal ciudadano</span> <code>https://localhost:7180</code> — Honduras Simple</li>
     <li><span class="rotulo">Navegador</span> Chrome, con las <b>tres pestañas abiertas a la vez</b>. Todo el recorrido consiste en saltar entre ellas.</li>
-    <li><span class="rotulo">Clave de la API</span> <code>clave-de-pruebas-local</code> — se pega una sola vez, en el paso 2</li>
+    <li><span class="rotulo">Clave de la API</span> <b>ya viene puesta.</b> Se deja hecho el <b>Authorize</b> de Swagger antes de que usted empiece; no hay que escribir ninguna clave. Si en algún momento Swagger empieza a devolver 401 en todo, avise: se volvió a caer y hay que ponerla otra vez.</li>
   </ul>
   <p>Un script levanta los tres. Si alguno no arranca, mire la consola que abrió: casi siempre es un puerto ocupado por una ejecución anterior que quedó viva.</p>
+  <p><b>Cuatro cosas de este recorrido no las hace quien prueba</b>, porque piden consola o teclear una credencial: levantar los tres sistemas, la <b>sesión del operador</b> —que se deja abierta—, el <b>Authorize</b> de Swagger, y <b>apagar y encender la API</b> en los pasos 20 y 21. Las tres primeras vienen hechas antes de empezar. Para la cuarta, avise cuando llegue al paso 20 y espere.</p>
 </section>
 
 <section class="panel aviso">
@@ -200,6 +201,18 @@ h2.tramo:first-of-type{margin-top:1.5rem}
   </ul>
 </section>
 
+<section class="panel">
+  <h2>Las cinco fichas del recorrido</h2>
+  <p>Van escogidas de antemano y comprobadas una por una en el estado que aquí se dice. Si alguna no está así al abrirla, avise antes de seguir: alguien la movió.</p>
+  <ul class="arranque">
+    <li><span class="rotulo">506-001</span> CONSUCOOP · sin publicar · <b>le falta la modalidad</b> — pasos 4 a 14, y 18 y 19</li>
+    <li><span class="rotulo">123-008</span> IHTT · sin publicar · <b>le falta el tiempo</b> — paso 15</li>
+    <li><span class="rotulo">506-008</span> CONSUCOOP · <b>ya publicada</b> · <b>sin costo capturado</b> — paso 16</li>
+    <li><span class="rotulo">400-001</span> ADUANAS · sin publicar · <b>fuera del piloto</b> — paso 17</li>
+    <li><span class="rotulo">603-001</span> INPREMA · sin publicar — paso 21</li>
+  </ul>
+</section>
+
 <h2 class="tramo">A. Que la cadena esté de pie</h2>
 <ol class="pruebas" start="1">
 
@@ -225,7 +238,7 @@ h2.tramo:first-of-type{margin-top:1.5rem}
         <div><dt>Haga</dt><dd>En Swagger, despliegue <code>GET /api/v1/salud</code>, pulse <b>Try it out</b> y <b>Execute</b>. <b>Sin</b> haber puesto la clave todavía.</dd></div>
         <div class="esperado"><dt>Debe verse</dt><dd>Responde <b>200</b> y trae la hora del servidor.</dd></div>
       </dl>
-      <p class="nota">Ahora sí: pulse <b>Authorize</b> arriba a la derecha, pegue <code>clave-de-pruebas-local</code> y confirme. Queda puesta para todo el recorrido.</p>
+      <p class="nota">Compruebe ahora que el <b>Authorize</b> ya está hecho: pruebe <code>GET /api/v1/codigos-publicados</code> y confirme que responde <b>200</b>. Si responde 401, pare y avise — sin eso, ocho pasos del recorrido no se pueden hacer.<br><b>No busque la clave en los archivos del proyecto.</b> La que está escrita en <code>appsettings.Development.json</code> <b>no es la que vale</b> en esta máquina: la de verdad vive fuera del repositorio y la pone quien le prepara el entorno.</p>
     </div>
   </li>
 
@@ -253,10 +266,10 @@ h2.tramo:first-of-type{margin-top:1.5rem}
       <p class="proposito">Todo lo que sigue va detrás de un mismo código. El código es la identidad pública del trámite y es lo único que viaja por los tres sistemas.</p>
       <dl>
         <div><dt>Dónde</dt><dd>Entre al portal interno como <code>operador.cowork@diger.gob.hn</code> y abra <b>SIGER &rarr; Inventario</b>.</dd></div>
-        <div><dt>Haga</dt><dd>Filtre por la institución <b>CONSUCOOP</b>, marque «<b>solo las que les falta algo</b>» y escoja una ficha <b>sin publicar</b>. Anote su <b>código</b> (tiene la forma <code>603-019</code>) y su nombre.</dd></div>
-        <div class="esperado"><dt>Debe verse</dt><dd>La ficha abre y muestra un aviso de <b>qué le falta</b> para poder publicarse.</dd></div>
+        <div><dt>Haga</dt><dd>Busque el código <code>506-001</code> — «Inscripción de Cooperativas», de <b>CONSUCOOP</b>. Ábralo.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>La ficha abre, está <b>sin publicar</b>, y muestra un aviso de <b>qué le falta</b>: le falta la <b>modalidad</b>, y solo eso.</dd></div>
       </dl>
-      <p class="nota">Tiene que ser de <b>INPREMA, IHTT o CONSUCOOP</b>. Una de otra institución no llegará nunca al ciudadano, y el recorrido se cae en el paso 11 sin que nada esté roto.</p>
+      <p class="nota">Las fichas de este recorrido van escogidas de antemano, y no es por comodidad: en el sandbox solo quedan <b>seis</b> fichas sin publicar en las tres instituciones del piloto, y hacen falta cuatro repartidas con la forma justa. Si escoge otra, es probable que el recorrido se quede sin material a mitad de camino.</p>
     </div>
   </li>
 
@@ -409,8 +422,8 @@ h2.tramo:first-of-type{margin-top:1.5rem}
       <h3>Una ficha a medio llenar sale con un guion, no se esconde</h3>
       <p class="proposito">Es una decisión tomada, no un descuido: al ciudadano le sirve más saber que el trámite existe que no encontrarlo.</p>
       <dl>
-        <div><dt>Haga</dt><dd>Vuelva al portal interno y publique una <b>segunda</b> ficha de CONSUCOOP, esta vez <b>sin completar nada</b>. Espere y búsquela en el portal ciudadano.</dd></div>
-        <div class="esperado"><dt>Debe verse</dt><dd>Aparece igual. Donde falta el dato hay un <b>guion</b>, y el trámite sigue diciendo su nombre y su institución.</dd></div>
+        <div><dt>Haga</dt><dd>Vuelva al portal interno y publique <code>123-008</code> —«Cambio de unidad…», de <b>IHTT</b>— <b>sin completar nada</b>. Le falta el <b>tiempo</b>. Espere y búsquela en el portal ciudadano.</dd></div>
+        <div class="esperado"><dt>Debe verse</dt><dd>Aparece igual. Donde iba el <b>tiempo</b> hay un <b>guion</b>, y el trámite sigue diciendo su nombre, su institución y su costo.</dd></div>
       </dl>
       <p class="nota">Que la pantalla de publicación <b>avise</b> de que la ficha está incompleta y aun así deje publicar es lo correcto: el aviso informa, no impide.</p>
     </div>
@@ -422,10 +435,10 @@ h2.tramo:first-of-type{margin-top:1.5rem}
       <h3>Un costo sin capturar nunca dice «gratuito»</h3>
       <p class="proposito">Es el error más caro que puede cometer este sistema: decirle a alguien que no pague algo que sí se paga.</p>
       <dl>
-        <div><dt>Haga</dt><dd>En la ficha incompleta del paso 15, mire el <b>costo</b>.</dd></div>
+        <div><dt>Haga</dt><dd>Abra <code>http://localhost:5180/Tramites/506-008</code> —«Venta de Resmas de Papel Seguridad»—. Es una ficha que <b>ya está publicada</b> y a la que <b>nunca se le capturó el costo</b>. Mire el <b>costo</b>.</dd></div>
         <div class="esperado"><dt>Debe verse</dt><dd>Un <b>guion</b>, o un texto que diga que no se sabe. <b>Nunca</b> la palabra «Gratuito», ni «L 0.00», ni «Sin costo».</dd></div>
       </dl>
-      <p class="nota">Si aparece cualquiera de esas tres, repórtelo como grave aunque todo lo demás haya salido bien.</p>
+      <p class="nota">Se usa esta ficha y no la del paso 15 porque es la única forma de probar el caso de verdad: la del paso 15 <b>sí</b> tiene costo capturado, y una ficha con costo no demuestra nada sobre lo que pasa cuando no lo hay.<br>Si aparece cualquiera de esas tres palabras, repórtelo como grave aunque todo lo demás haya salido bien.</p>
     </div>
   </li>
 </ol>
@@ -439,7 +452,7 @@ h2.tramo:first-of-type{margin-top:1.5rem}
       <h3>Publicado no es lo mismo que visible</h3>
       <p class="proposito">El piloto va por tres instituciones. Ese recorte lo hace el portal ciudadano, no la API — y conviene comprobar que de verdad recorta.</p>
       <dl>
-        <div><dt>Haga</dt><dd>En el portal interno, publique un trámite de <b>cualquier otra</b> institución (ni INPREMA, ni IHTT, ni CONSUCOOP). Anote el código. Espere dos minutos.</dd></div>
+        <div><dt>Haga</dt><dd>En el portal interno, publique <code>400-001</code> —«Solicitud para destrucción de mercancías», de <b>ADUANAS</b>—. Espere dos minutos.</dd></div>
         <div class="esperado"><dt>Debe verse</dt><dd>La API <b>sí</b> lo sirve: <code>GET /api/v1/tramites/{codigo}</code> responde 200.<br>El portal ciudadano <b>no</b>: no sale en el buscador, y su dirección directa da <b>página no encontrada</b>.</dd></div>
       </dl>
       <p class="nota">Las dos mitades tienen que cumplirse. Si la API tampoco lo sirve, el problema es otro y hay que reportarlo.</p>
@@ -498,7 +511,7 @@ h2.tramo:first-of-type{margin-top:1.5rem}
       <h3>Se enciende y se recupera solo</h3>
       <p class="proposito">Recuperarse sin que nadie intervenga es lo que separa una caída de un incidente.</p>
       <dl>
-        <div><dt>Haga</dt><dd>Vuelva a levantar solo la API: <code>scripts\Iniciar-Todo.ps1 -Solo Api</code>. Después publique cualquier ficha de CONSUCOOP en el portal interno y espere.</dd></div>
+        <div><dt>Haga</dt><dd>Avise para que le vuelvan a levantar la API. Cuando Swagger abra otra vez, publique <code>603-001</code> —«Afiliación de docentes», de <b>INPREMA</b>— en el portal interno, y espere.</dd></div>
         <div class="esperado"><dt>Debe verse</dt><dd>La ficha nueva aparece en el portal ciudadano. <b>Sin reiniciarlo.</b></dd></div>
       </dl>
       <p class="nota">Puede tardar un poco más que en el paso 11: después de una caída el portal espera antes de volver a confiar. Dele hasta cinco minutos.</p>

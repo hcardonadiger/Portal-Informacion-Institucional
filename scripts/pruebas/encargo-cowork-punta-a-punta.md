@@ -7,11 +7,18 @@ mismo tiempo y saltar entre ellos. Lo que necesito saber es **en qué salto se r
 se rompe. Esa es toda la gracia del recorrido: está armado para que puedas decirlo sin
 tener que averiguar la causa.
 
-## Preparar
+## Lo que ya viene hecho
 
-1. Abrí PowerShell en `C:\Users\jgarcia\Documents\Portal-Informacion-Institucional`.
-2. Corré `scripts\pruebas\Refrescar-Sandbox.ps1` y después `scripts\Iniciar-Todo.ps1`.
-3. Ese script levanta los tres y te abre las tres pestañas. Dejalas abiertas todo el rato.
+No tenés que levantar nada ni escribir ninguna credencial. Cuando empecés ya vas a
+encontrar:
+
+1. **Los tres sistemas arriba**, sobre el sandbox.
+2. **La sesión del operador abierta** en el portal interno.
+3. **El Authorize de Swagger puesto**, de modo que la API te responde sin que pongas clave.
+
+Lo único que necesito de vos durante el recorrido es que **avises al llegar al paso 20**:
+apagar y volver a encender la API es lo único que queda por hacer desde consola, y lo hago
+yo mientras vos mirás.
 
 | Qué | Dónde |
 |---|---|
@@ -19,18 +26,14 @@ tener que averiguar la causa.
 | La API | https://localhost:7199/swagger |
 | Portal ciudadano (Honduras Simple) | https://localhost:7180 |
 
-**Mirá la cinta de arriba de cada portal antes de empezar.** El interno debe decir una base
-terminada en `DigerTramitesEstado_Unificada_Sandbox` y el ciudadano en
+**Aun así, mirá la cinta de arriba de cada portal antes de tocar nada.** El interno debe
+decir una base terminada en `DigerTramitesEstado_Unificada_Sandbox` y el ciudadano en
 `VentanillaDigital_Net_Sandbox`. **Si una de las dos no dice _Sandbox, parás y me avisás.**
 No sigas: estarías escribiendo en datos que no son de prueba.
 
-Si al entrar te rebota el usuario, corré esto y volvé a intentar:
-
-```
-sqlcmd -S "LP-GD-JAGM\SQLEXPRESS" -U sa -P admin123 -C -I ^
-       -d DigerTramitesEstado_Unificada_Sandbox ^
-       -i scripts\pruebas\sql\usuarios-cowork.sql
-```
+Si te encontrás con la sesión cerrada, o Swagger empieza a devolver 401 en todo, avisame y
+lo dejo puesto otra vez. No busqués la clave en los archivos del proyecto: la que está
+escrita ahí **no es la que vale**.
 
 ## Los usuarios
 
@@ -43,8 +46,8 @@ Contraseña: `Pruebas#2026`
 
 El **portal ciudadano no pide cuenta**: es público, se entra y ya.
 
-La clave de la API es `clave-de-pruebas-local`. Se pega una sola vez, en el paso 2, con el
-botón **Authorize** de Swagger.
+Si el operador se topa con una puerta cerrada y hace falta el administrador, pedímelo: el
+cambio de sesión lo hago yo.
 
 ## Probar
 
@@ -73,8 +76,14 @@ ninguna base real.
 desaparecer el trámite. Anotá el minuto, aunque tarde poco. Un «tardó ocho minutos» es un
 hallazgo, no una molestia — y sin el número no sirve de nada.
 
-**Anotá el código del trámite.** El del paso 4, con la forma `603-019`. Va en cada reporte
-que me mandes. Sin él no puedo mirar nada.
+**Anotá el código del trámite.** Va en cada reporte que me mandes. Sin él no puedo mirar
+nada.
+
+**Y no cambiés las fichas del recorrido.** Son cinco, están nombradas por su código en el
+documento, y están escogidas por el estado exacto en que se encuentran —a una le falta la
+modalidad, a otra el tiempo, otra no tiene el costo capturado—. En el sandbox solo quedan
+seis fichas sin publicar en las tres instituciones del piloto: si agarrás otra, es probable
+que el recorrido se quede sin material a mitad de camino.
 
 ## Cómo quiero el reporte
 
@@ -130,9 +139,8 @@ No edites ningún `appsettings.json` de los tres proyectos. No corras nada contr
 `DigerTramitesEstado_Unificada` ni contra `VentanillaDigital_Net`: esas dos son las de
 verdad.
 
-En el paso 20 hay que cerrar la ventana de la API, y en el 21 volver a levantarla con
-`scripts\Iniciar-Todo.ps1 -Solo Api`. Eso sí está pedido y es parte de la prueba. No apagues
-ninguno de los otros dos.
+El apagado y el encendido de la API de los pasos 20 y 21 los hago yo. Vos avisás, mirás y
+medís. No apagues nada por tu cuenta.
 
 Si dejaste el sandbox hecho un desastre, no pasa nada, es para eso — pero avisame antes de
 rehacerlo, porque eso borra también los usuarios de prueba.
