@@ -31,6 +31,8 @@
             </p>
         </div>
         <div style="display:flex;gap:8px">
+            <a class="btns" asp-page-handler="Informe" asp-route-id="@d.ProyectoId" target="_blank" rel="noopener"
+               title="Descargar el Informe de Estado del proyecto en PDF (formato PMI)">Informe PMI (PDF)</a>
             <a class="btnp" asp-page="/Proyectos/Editor" asp-route-id="@d.ProyectoId">Abrir ficha →</a>
             <a class="btns" asp-page="/Tableros/Proyectos">← Portafolio</a>
         </div>

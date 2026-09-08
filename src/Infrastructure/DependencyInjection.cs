@@ -2,6 +2,7 @@ using Diger.TramitesEstado.Application.AI;
 using Diger.TramitesEstado.Application.Chat;
 using Diger.TramitesEstado.Application.Informes;
 using Diger.TramitesEstado.Application.Notificaciones;
+using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Reuniones.Common;
 using Diger.TramitesEstado.Application.Reuniones.Import;
 using Diger.TramitesEstado.Application.Common.Interfaces;
@@ -59,6 +60,9 @@ public static class DependencyInjection
 
         // Acta de reunión (PDF con formato)
         services.AddScoped<IActaPdfService, ActaPdfService>();
+
+        // Informe de estado del proyecto (PDF, formato PMI)
+        services.AddScoped<IInformeProyectoPdfService, InformeProyectoPdfService>();
 
         // Notificaciones
         services.Configure<NotificacionesOptions>(configuration.GetSection("Notificaciones"));

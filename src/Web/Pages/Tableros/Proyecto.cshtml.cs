@@ -1,4 +1,6 @@
+using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
+using Diger.TramitesEstado.Application.Proyectos.Queries.GetInformeProyecto;
 using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
@@ -13,7 +15,7 @@ namespace Diger.TramitesEstado.Web.Pages.Tableros;
 /// </summary>
 [Authorize]
 [Permission("Proyectos", AccionModulo.Ver, "Ver proyectos")]
-public sealed class ProyectoModel(ISender sender) : PageModel
+public sealed class ProyectoModel(ISender sender, IInformeProyectoPdfService informePdf) : PageModel
 {
     public TableroProyectoDto Data { get; private set; } = default!;
 
@@ -24,5 +26,17 @@ public sealed class ProyectoModel(ISender sender) : PageModel
 
         Data = d;
         return Page();
+    }
+
+    /// <summary>Descarga el Informe de Estado (PDF, formato PMI) del proyecto. El alcance lo hace
+    /// valer la consulta: un proyecto ajeno devuelve null y aquí se traduce en 404.</summary>
+    public async Task<IActionResult> OnGetInformeAsync(int id, CancellationToken ct)
+    {
+        var dto = await sender.Send(new GetInformeProyectoQuery(id), ct);
+        if (dto is null) return NotFound();
+
+        var bytes  = informePdf.Generar(dto);
+        var nombre = $"Informe_{dto.Ficha.Codigo}_{DateTime.Now:yyyyMMdd}.pdf";
+        return File(bytes, "application/pdf", nombre);
     }
 }
