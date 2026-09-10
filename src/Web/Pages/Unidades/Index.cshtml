@@ -29,6 +29,7 @@
                     <th>Área</th>
                     <th>Nombre</th>
                     <th>Nombre Corto</th>
+                    <th style="text-align:center">Estado</th>
                     <th style="width:1%"></th>
                 </tr>
             </thead>
@@ -40,6 +41,16 @@
                         <td>@item.AreaNombre</td>
                         <td><a class="seg-inst" asp-page="./Editor" asp-route-id="@item.Id">@item.Nombre</a></td>
                         <td>@(item.NombreCorto ?? "-")</td>
+                        <td style="text-align:center">
+                            @if (item.Activo)
+                            {
+                                <span class="wf-badge wf-activa">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="wf-badge" style="background-color:#fee2e2;color:#991b1b;border:1px solid #fca5a5">Inactivo</span>
+                            }
+                        </td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="./Editor" asp-route-id="@item.Id" style="font-size:12.5px;padding:6px 12px">Editar</a>
                         </td>

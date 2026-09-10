@@ -20,6 +20,18 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     /// <summary>Id del usuario que creó la reunión (para las reuniones privadas).</summary>
     public Guid? CreadoPorId { get; set; }
 
+    // ── Hilo (reuniones enlazadas) ────────────────────────────────
+    /// <summary>Identificador del hilo al que pertenece la reunión. Las reuniones que comparten
+    /// el mismo <see cref="HiloId"/> forman una secuencia enlazada para dar seguimiento a acciones
+    /// y tareas a través del tiempo. <c>null</c> = no pertenece a ningún hilo.</summary>
+    public Guid? HiloId { get; private set; }
+
+    /// <summary>Enlaza la reunión al hilo indicado.</summary>
+    public void EnlazarAHilo(Guid hiloId) => HiloId = hiloId;
+
+    /// <summary>Saca la reunión de su hilo actual.</summary>
+    public void SalirDelHilo() => HiloId = null;
+
     // ── Auto-registro de asistencia (enlace + QR público) ─────────
     /// <summary>Token público (difícil de adivinar) del enlace de auto-registro de participantes.</summary>
     public Guid RegistroToken  { get; private set; } = Guid.NewGuid();
@@ -31,7 +43,21 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     // ── Datos generales ───────────────────────────────────────────
     public DateOnly? Fecha     { get; set; }
     public string?   Hora      { get; set; }
-    public string?   Duracion  { get; set; }
+
+    /// <summary>
+    /// Duración planificada en minutos.
+    ///
+    /// <para>Reemplazó a un campo <c>Duracion</c> de texto libre («2 horas»). El cambio no fue
+    /// cosmético: una reunión sin hora de fin no se puede publicar en ningún calendario —ni Outlook
+    /// ni un archivo .ics aceptan un evento sin <c>end</c>—, y el campo viejo estaba lleno en 1 de
+    /// 45 filas, con el valor «1», que no dice si es una hora o un minuto.</para>
+    ///
+    /// <para>Sigue siendo opcional porque las reuniones importadas no traen el dato y no se puede
+    /// inventar. Para calcular la ventana, use <see cref="DuracionEfectivaMinutos"/>, que aplica el
+    /// valor supuesto en un solo lugar en vez de dejar que cada consumidor elija el suyo.</para>
+    /// </summary>
+    public int?      DuracionMinutos { get; set; }
+
     public string?   Modalidad { get; set; }   // Presencial / Virtual / Híbrida / Otro
     public string?   Lugar     { get; set; }
     public string?   InstitucionId { get; set; } // beneficiaria (opcional; permite "Otro")
@@ -40,6 +66,45 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public string?   Institucion   { get; set; } // snapshot del nombre
     public string?   Tipo      { get; set; }     // Taller / Seminario / Reunión técnica / …
     public bool      EsCapacitacionPlataforma { get; set; }
+
+    // ── Ventana de la reunión (hora de pared) ─────────────────────
+    // Lo que sigue traduce tres campos sueltos —fecha, hora como texto y duración— al par
+    // inicio/fin que exige cualquier calendario. Vive en el dominio y no en quien exporta porque
+    // la regla es de la reunión: si mañana se publica a Outlook, a un .ics y al calendario del
+    // portal, los tres tienen que contestar lo mismo.
+    //
+    // Son horas de PARED, sin zona horaria (DateTimeKind.Unspecified) a propósito: «la reunión es
+    // a las 9:00» es un hecho local. Convertir a un instante absoluto es responsabilidad de quien
+    // conoce la zona configurada, no de la entidad.
+
+    /// <summary>Duración supuesta cuando la reunión no la declara: una hora.</summary>
+    public const int DuracionPredeterminadaMinutos = 60;
+
+    /// <summary>La duración a usar para calcular el fin. Un único lugar donde vive el supuesto.</summary>
+    public int DuracionEfectivaMinutos =>
+        DuracionMinutos > 0 ? DuracionMinutos.Value : DuracionPredeterminadaMinutos;
+
+    /// <summary><see cref="Hora"/> es texto («09:30»); acá se interpreta. Null si está vacía o
+    /// ilegible —no se asume medianoche, porque no es lo mismo «a las 00:00» que «sin hora».</summary>
+    public TimeOnly? HoraInicio =>
+        TimeOnly.TryParse(Hora, out var t) ? t : null;
+
+    /// <summary>Tiene fecha pero no hora: es un evento de día completo, no uno a medianoche.</summary>
+    public bool EsTodoElDia => Fecha is not null && HoraInicio is null;
+
+    public DateTime? InicioLocal =>
+        Fecha is { } f ? f.ToDateTime(HoraInicio ?? TimeOnly.MinValue, DateTimeKind.Unspecified) : null;
+
+    /// <summary>Fin de la ventana. Un evento de día completo termina en la medianoche siguiente,
+    /// que es como lo representan tanto iCalendar como Microsoft Graph.</summary>
+    public DateTime? FinLocal =>
+        InicioLocal is { } i
+            ? (EsTodoElDia ? i.AddDays(1) : i.AddMinutes(DuracionEfectivaMinutos))
+            : null;
+
+    // ── Expediente vinculado ──────────────────────────────────────
+    public int?    ExpedienteId     { get; set; }
+    public string? ExpedienteCodigo { get; set; }
 
     // ── Memoria ───────────────────────────────────────────────────
     public string? ObjetivoAgenda { get; set; }
@@ -125,18 +190,44 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 
     /// <summary>Registra un participante desde el formulario público de auto-registro.</summary>
     public Asistente RegistrarAsistente(string nombre, string? cargo, string? institucion,
-        string? departamento, string? correo, string? telefono)
+        string? departamento, string? correo, string? telefono, string? institucionId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         var a = new Asistente
         {
-            Nombre = nombre.Trim(), Cargo = cargo?.Trim(), Institucion = institucion?.Trim(),
+            Nombre = nombre.Trim(), Cargo = cargo?.Trim(),
+            InstitucionId = institucionId, Institucion = institucion?.Trim(),
             Departamento = departamento?.Trim(), Correo = correo?.Trim().ToLowerInvariant(), Telefono = telefono?.Trim(),
             AutoRegistro = true, RegistradoEl = DateTime.UtcNow
         };
         _asistentes.Add(a);
         NumAsistentes = _asistentes.Count;
         return a;
+    }
+
+    /// <summary>Pre-registra un invitado por el organizador antes de la reunión.
+    /// El pre-registro queda pendiente hasta que el invitado confirme su asistencia (presencialmente o por QR).</summary>
+    public Asistente PreRegistrar(string nombre, string? cargo, string? institucion,
+        string? departamento, string? correo, string? telefono, string? institucionId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
+        var a = new Asistente
+        {
+            Nombre = nombre.Trim(), Cargo = cargo?.Trim(),
+            InstitucionId = institucionId, Institucion = institucion?.Trim(),
+            Departamento = departamento?.Trim(), Correo = correo?.Trim().ToLowerInvariant(),
+            Telefono = telefono?.Trim(), EsPreregistro = true
+        };
+        _asistentes.Add(a);
+        NumAsistentes = _asistentes.Count;
+        return a;
+    }
+
+    /// <summary>Confirma o marca como ausente un asistente pre-registrado.</summary>
+    public void ConfirmarAsistencia(int asistenteId, bool asistio)
+    {
+        var a = _asistentes.FirstOrDefault(x => x.Id == asistenteId);
+        if (a is not null) a.Confirmado = asistio;
     }
 
     /// <summary>Elimina un asistente puntual (gestión de la lista en vivo) sin tocar el resto.</summary>
@@ -162,14 +253,23 @@ public sealed class Asistente : BaseEntity
     public int       ReunionId    { get; set; }
     public string    Nombre       { get; set; } = default!;
     public string?   Cargo        { get; set; }
+    /// <summary>Id del catálogo de instituciones; null cuando la institución es texto libre (legado u "Otra").</summary>
+    public string?   InstitucionId { get; set; }
+    /// <summary>Snapshot del nombre de la institución para visualización.</summary>
     public string?   Institucion  { get; set; }
     public string?   Departamento { get; set; }
     public string?   Correo       { get; set; }
     public string?   Telefono     { get; set; }
 
     // ── Trazabilidad del auto-registro ────────────────────────────
-    public bool      AutoRegistro { get; set; }
-    public DateTime? RegistradoEl { get; set; }
+    public bool      AutoRegistro  { get; set; }
+    public DateTime? RegistradoEl  { get; set; }
+
+    // ── Pre-registro ──────────────────────────────────────────────
+    /// <summary>true = fue pre-registrado por el organizador antes de la reunión.</summary>
+    public bool  EsPreregistro { get; set; }
+    /// <summary>null = pendiente de confirmar; true = asistió; false = ausente.</summary>
+    public bool? Confirmado    { get; set; }
 }
 
 public sealed class AcuerdoReunion : BaseEntity
@@ -177,8 +277,17 @@ public sealed class AcuerdoReunion : BaseEntity
     public int       ReunionId   { get; set; }
     public int       Orden       { get; set; }
     public string    Compromiso  { get; set; } = default!;
-    public string?   Responsable { get; set; }   // responsable (texto libre)
+    /// <summary>Contacto del directorio responsable del compromiso; null cuando es texto libre
+    /// (institución, persona fuera del directorio o dato legado).</summary>
+    public int?      ResponsableContactoId { get; set; }
+    /// <summary>Snapshot del nombre del responsable para visualización.</summary>
+    public string?   Responsable { get; set; }
     public DateOnly? Plazo       { get; set; }
+
+    // ── Expediente / Trámites vinculados ─────────────────────────
+    public int?      ExpedienteId  { get; set; }
+    public int?      TramiteIndex  { get; set; }
+    public string?   TramiteNombre { get; set; }
 
     // ── Seguimiento ───────────────────────────────────────────────
     public EstadoCompromiso Estado            { get; set; } = EstadoCompromiso.Pendiente;
@@ -187,9 +296,16 @@ public sealed class AcuerdoReunion : BaseEntity
     public DateTime?        SeguimientoActualizadoEl  { get; set; }
     public string?          SeguimientoActualizadoPor { get; set; }
 
+    public ICollection<ComentarioCompromiso> Comentarios { get; set; } = [];
+
     /// <summary>True si el plazo ya venció y el compromiso sigue abierto.</summary>
     public bool EstaVencido(DateOnly hoy) =>
         Plazo is { } p && p < hoy &&
+        Estado is EstadoCompromiso.Pendiente or EstadoCompromiso.EnProgreso or EstadoCompromiso.Reprogramado;
+
+    /// <summary>True si el plazo está a 3 días o menos de vencer y el compromiso sigue abierto.</summary>
+    public bool EstaProximoAVencer(DateOnly hoy) =>
+        Plazo is { } p && p >= hoy && p <= hoy.AddDays(3) &&
         Estado is EstadoCompromiso.Pendiente or EstadoCompromiso.EnProgreso or EstadoCompromiso.Reprogramado;
 
     /// <summary>Aplica un cambio de seguimiento. Al marcar Cumplido sin fecha, registra hoy.</summary>

@@ -15,24 +15,29 @@ public sealed record EventoCalendarioDto(
     string Titulo, string? Detalle, string? Etiqueta, string Pagina, int RefId);
 
 public sealed record CalendarioDto(
-    int Anio, int Mes,
+    DateOnly Desde, DateOnly Hasta,
     IReadOnlyList<ReunionCalendarioDto> Reuniones,
     IReadOnlyList<EventoCalendarioDto>  Actividad);
 
-public sealed record GetCalendarioQuery(int Anio, int Mes) : IRequest<CalendarioDto>;
+/// <summary>Rango de fechas locales; <paramref name="Hasta"/> es exclusivo.</summary>
+/// <remarks>
+/// Es un rango y no un año/mes porque las vistas de semana cruzan el límite del
+/// mes: la semana del 28/07/2026 llega hasta el 03/08/2026.
+/// </remarks>
+public sealed record GetCalendarioQuery(DateOnly Desde, DateOnly Hasta) : IRequest<CalendarioDto>;
 
 public sealed class GetCalendarioQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetCalendarioQuery, CalendarioDto>
 {
     public async Task<CalendarioDto> Handle(GetCalendarioQuery q, CancellationToken ct)
     {
-        var desdeD = new DateOnly(q.Anio, q.Mes, 1);
-        var hastaD = desdeD.AddMonths(1);
+        var desdeD = q.Desde;
+        var hastaD = q.Hasta;
 
         // Ventana UTC ampliada ±1 día para no cortar eventos por la diferencia horaria;
         // luego se filtra por fecha local.
-        var desdeUtc = new DateTime(q.Anio, q.Mes, 1, 0, 0, 0, DateTimeKind.Unspecified).AddDays(-1);
-        var hastaUtc = desdeD.AddMonths(1).ToDateTime(TimeOnly.MinValue).AddDays(1);
+        var desdeUtc = desdeD.ToDateTime(TimeOnly.MinValue).AddDays(-1);
+        var hastaUtc = hastaD.ToDateTime(TimeOnly.MinValue).AddDays(1);
 
         // ── Reuniones del mes (por su fecha programada) ──
         // Se selecciona el enum Visibilidad y se calcula "Privada" en memoria: proyectar la igualdad
@@ -112,6 +117,6 @@ public sealed class GetCalendarioQueryHandler(IApplicationDbContext ctx)
         }
 
         var actividad = eventos.OrderByDescending(e => e.Cuando).ToList();
-        return new CalendarioDto(q.Anio, q.Mes, reuniones, actividad);
+        return new CalendarioDto(desdeD, hastaD, reuniones, actividad);
     }
 }

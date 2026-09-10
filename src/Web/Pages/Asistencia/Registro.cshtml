@@ -84,7 +84,7 @@
                     </div>
                     <div class="field">
                         <label>Institución</label>
-                        <select id="instSel" onchange="toggleOtro()">
+                        <select id="instSel" onchange="onInstChange()">
                             <option value="">— Seleccione —</option>
                             @foreach (var i in r.Instituciones)
                             {
@@ -96,7 +96,14 @@
                         <input id="instOtro" style="display:none;margin-top:6px" placeholder="Escriba la institución" oninput="syncOtro()" />
                     </div>
                     <div class="row2" style="gap:12px">
-                        <div class="field"><label>Departamento / Unidad</label><input asp-for="Datos.Departamento" placeholder="Área" /></div>
+                        <div class="field">
+                            <label>Área / Departamento</label>
+                            <select id="areaSel" onchange="toggleAreaOtro()">
+                                <option value="">— Seleccione —</option>
+                            </select>
+                            <input type="hidden" asp-for="Datos.Departamento" id="areaVal" />
+                            <input id="areaOtro" style="display:none;margin-top:6px" placeholder="Escriba el área / departamento" oninput="syncAreaOtro()" />
+                        </div>
                         <div class="field"><label>Cargo</label><input asp-for="Datos.Cargo" placeholder="Puesto" /></div>
                     </div>
                     @if (Model.Fase == "formulario")
@@ -132,26 +139,84 @@
 
 @section Scripts {
 <script>
-  function toggleOtro(){
-    var s=document.getElementById('instSel'), o=document.getElementById('instOtro'), v=document.getElementById('instVal');
+  var catalogAreas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Areas.Select(a => new { inst = a.InstitucionNombre, instId = a.InstitucionId, nombre = a.Nombre })));
+
+  function syncOtro(){ document.getElementById('instVal').value=document.getElementById('instOtro').value; }
+  function syncAreaOtro(){ document.getElementById('areaVal').value=document.getElementById('areaOtro').value; }
+
+  function toggleAreaOtro(){
+    var s=document.getElementById('areaSel'), o=document.getElementById('areaOtro'), v=document.getElementById('areaVal');
     if(!s) return;
     if(s.value==='__OTRO__'){ o.style.display='block'; v.value=o.value; }
     else { o.style.display='none'; v.value=s.value; }
   }
-  function syncOtro(){ document.getElementById('instVal').value=document.getElementById('instOtro').value; }
 
-  // Preselecciona la institución cuando llega precargada (registro rápido o reintento tras error).
-  function initInst(actual){
-    var s=document.getElementById('instSel'), o=document.getElementById('instOtro');
+  function renderAreasForInst(instNombre, actualArea){
+    var s=document.getElementById('areaSel'), o=document.getElementById('areaOtro'), v=document.getElementById('areaVal');
     if(!s) return;
-    actual = actual || '';
-    var opciones = Array.from(s.options).map(function(op){ return op.value; });
-    if(actual && opciones.indexOf(actual) < 0){ s.value='__OTRO__'; o.value=actual; }
-    else { s.value=actual; }
-    toggleOtro();
+    s.innerHTML = '';
+
+    var matching = catalogAreas.filter(function(a){
+      return a.inst === instNombre || a.instId === instNombre;
+    });
+
+    var optZero = document.createElement('option');
+    optZero.value = '';
+    optZero.textContent = matching.length > 0 ? '— Seleccione Área —' : '— Área libre / Otros —';
+    s.appendChild(optZero);
+
+    matching.forEach(function(a){
+      var opt = document.createElement('option');
+      opt.value = a.nombre;
+      opt.textContent = a.nombre;
+      s.appendChild(opt);
+    });
+
+    var optOtros = document.createElement('option');
+    optOtros.value = '__OTRO__';
+    optOtros.textContent = 'Otros…';
+    s.appendChild(optOtros);
+
+    actualArea = actualArea || v.value || '';
+    if(actualArea){
+      var matchOpt = Array.from(s.options).find(function(op){ return op.value === actualArea; });
+      if(matchOpt){
+        s.value = actualArea;
+      } else {
+        s.value = '__OTRO__';
+        o.value = actualArea;
+      }
+    } else {
+      s.value = '';
+    }
+    toggleAreaOtro();
   }
+
+  function onInstChange(){
+    var s=document.getElementById('instSel'), o=document.getElementById('instOtro'), v=document.getElementById('instVal');
+    if(!s) return;
+    if(s.value==='__OTRO__'){ o.style.display='block'; v.value=o.value; }
+    else { o.style.display='none'; v.value=s.value; }
+
+    renderAreasForInst(v.value);
+  }
+
+  function initForm(actualInst, actualArea){
+    var s=document.getElementById('instSel'), o=document.getElementById('instOtro'), v=document.getElementById('instVal');
+    if(!s) return;
+    actualInst = actualInst || '';
+    var opciones = Array.from(s.options).map(function(op){ return op.value; });
+    if(actualInst && opciones.indexOf(actualInst) < 0){ s.value='__OTRO__'; o.value=actualInst; v.value=actualInst; o.style.display='block'; }
+    else { s.value=actualInst; v.value=actualInst; o.style.display='none'; }
+
+    renderAreasForInst(v.value, actualArea);
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
-    initInst(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Datos.Institucion ?? "")));
+    initForm(
+      @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Datos.Institucion ?? "")),
+      @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Datos.Departamento ?? ""))
+    );
   });
 </script>
 }

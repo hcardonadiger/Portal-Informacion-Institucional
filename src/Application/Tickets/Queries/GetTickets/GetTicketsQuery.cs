@@ -11,7 +11,8 @@ public sealed record GetTicketsQuery(
     int? Page = null,
     int? Size = null,
     IReadOnlyList<int>? TemaIds = null,   // "Sus temas": limita a estos temas
-    bool SoloVencidos = false) : IRequest<PagedResult<TicketListItemDto>>;
+    bool SoloVencidos = false,
+    bool SoloSinAsignar = false) : IRequest<PagedResult<TicketListItemDto>>;
 
 public sealed class GetTicketsQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetTicketsQuery, PagedResult<TicketListItemDto>>
@@ -36,6 +37,10 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext ctx)
         // Lista no nula (aunque vacía) = filtro activo; vacía → sin resultados.
         if (query.TemaIds is not null)
             baseq = baseq.Where(t => t.TemaId != null && query.TemaIds.Contains(t.TemaId.Value));
+
+        // "Sin asignar": cola de distribución para el administrador central.
+        if (query.SoloSinAsignar)
+            baseq = baseq.Where(t => t.AsignadoAId == null);
 
         // "Solo vencidos": SLA superado en tickets abiertos (se calcula en SQL con DATEADD).
         if (query.SoloVencidos)

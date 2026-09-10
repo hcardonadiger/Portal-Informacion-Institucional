@@ -7,8 +7,10 @@ namespace Diger.TramitesEstado.Application.Expedientes.Commands.ActualizarExpedi
 public sealed record ActualizarExpedienteCommand(int Id, ExpedienteInputDto Datos) : IRequest<Unit>;
 
 public sealed class ActualizarExpedienteCommandHandler(
-    IExpedienteRepository repo,
-    IUnitOfWork uow)
+    IExpedienteRepository  repo,
+    IApplicationDbContext  ctx,
+    ICurrentUserService    currentUser,
+    IUnitOfWork            uow)
     : IRequestHandler<ActualizarExpedienteCommand, Unit>
 {
     public async Task<Unit> Handle(ActualizarExpedienteCommand cmd, CancellationToken ct)
@@ -16,8 +18,119 @@ public sealed class ActualizarExpedienteCommandHandler(
         var exp = await repo.GetByIdWithDetailsAsync(cmd.Id, ct)
             ?? throw new NotFoundException(nameof(Expediente), cmd.Id);
 
-        ExpedienteMapper.Aplicar(exp, cmd.Datos);
+        var datos = cmd.Datos;
+        // Si viene un usuario del sistema, el snapshot del nombre se toma de su registro
+        if (datos.AnalistaId.HasValue)
+        {
+            var nombre = await ctx.Usuarios
+                .Where(u => u.Id == datos.AnalistaId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct)
+                ?? throw new NotFoundException(nameof(Usuario), datos.AnalistaId.Value);
+            datos = datos with { Analista = nombre };
+        }
+
+        if (datos.ContraparteUsuarioId.HasValue)
+        {
+            var nombreC = await ctx.Usuarios
+                .Where(u => u.Id == datos.ContraparteUsuarioId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct);
+            datos = datos with { ContraparteUsuarioNombre = nombreC };
+        }
+
+        if (datos.ValidadoDigerUsuarioId.HasValue)
+        {
+            var nombreVD = await ctx.Usuarios
+                .Where(u => u.Id == datos.ValidadoDigerUsuarioId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct)
+                ?? throw new NotFoundException(nameof(Usuario), datos.ValidadoDigerUsuarioId.Value);
+            datos = datos with { ValidadoDiger = nombreVD };
+        }
+
+        if (datos.ValidadoInstUsuarioId.HasValue)
+        {
+            var nombreVI = await ctx.Usuarios
+                .Where(u => u.Id == datos.ValidadoInstUsuarioId.Value)
+                .Select(u => u.Nombre)
+                .FirstOrDefaultAsync(ct)
+                ?? throw new NotFoundException(nameof(Usuario), datos.ValidadoInstUsuarioId.Value);
+            datos = datos with { ValidadoInst = nombreVI };
+        }
+
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        if (exp.ContraparteUsuarioId.HasValue && exp.ContraparteUsuarioId == currentUser.UserId && !currentUser.EsGlobal)
+        {
+            if (exp.FechaLimiteEntrega.HasValue && exp.FechaLimiteEntrega.Value < hoy)
+                throw new DomainException("El plazo de entrega para el llenado de la ficha ha vencido. El expediente se encuentra bloqueado.");
+
+            if (exp.EstadoExpediente != EstadoExpediente.EnExploracion && exp.EstadoExpediente != EstadoExpediente.EnLevantamiento)
+                throw new DomainException("El expediente se encuentra en una etapa avanzada. La edición está inhabilitada.");
+        }
+
+        var estadoAnterior = exp.EstadoExpediente;
+        var validadoDigerAnterior = exp.ValidadoDigerUsuarioId;
+        var validadoInstAnterior  = exp.ValidadoInstUsuarioId;
+
+        var diffHijos = ExpedienteMapper.Aplicar(exp, datos);
         exp.MarcarActualizado();
+
+        var actor = currentUser.Nombre ?? currentUser.Correo ?? "—";
+        if (datos.EstadoExpediente != estadoAnterior)
+            exp.CambiarEstado(datos.EstadoExpediente, actor);
+
+        if (diffHijos is not null)
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(exp.Id, TipoEventoBitacora.ModificacionHijos, diffHijos, actor));
+
+        if (datos.ValidadoDigerUsuarioId.HasValue && datos.ValidadoDigerUsuarioId != validadoDigerAnterior)
+        {
+            exp.FechaHoraValidacionDiger = DateTime.UtcNow;
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(exp.Id, TipoEventoBitacora.Validacion,
+                $"Validado por DIGER: {exp.ValidadoDiger}", actor));
+        }
+
+        if (datos.ValidadoInstUsuarioId.HasValue && datos.ValidadoInstUsuarioId != validadoInstAnterior)
+        {
+            exp.FechaHoraValidacionInst = DateTime.UtcNow;
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(exp.Id, TipoEventoBitacora.Validacion,
+                $"Validado por institución: {exp.ValidadoInst}", actor));
+        }
+
+        // Cuando el expediente cierra por primera vez, cumplir metas vinculadas
+        if (cmd.Datos.EstadoExpediente == EstadoExpediente.Cerrado
+            && estadoAnterior != EstadoExpediente.Cerrado)
+        {
+            var metas = await ctx.MetasTrabajo
+                .Where(m => m.ExpedienteId == cmd.Id
+                         && m.Estado != EstadoMeta.Cumplida
+                         && m.Estado != EstadoMeta.Cancelada)
+                .ToListAsync(ct);
+
+            if (metas.Count > 0)
+            {
+                // Fecha real por trámite del cronograma; la global sirve de respaldo
+                var fechasPorTramite = (await ctx.EtapaCronogramas
+                        .Where(c => c.ExpedienteId == cmd.Id && c.FechaRealFin.HasValue)
+                        .GroupBy(c => c.TramiteIndex)
+                        .Select(g => new { g.Key, Fecha = g.Max(c => c.FechaRealFin!.Value) })
+                        .ToListAsync(ct))
+                    .ToDictionary(x => x.Key, x => x.Fecha);
+
+                var fechaGlobal = fechasPorTramite.Count > 0
+                    ? fechasPorTramite.Values.Max()
+                    : DateOnly.FromDateTime(DateTime.UtcNow);
+
+                foreach (var meta in metas)
+                {
+                    meta.Estado       = EstadoMeta.Cumplida;
+                    meta.FechaRealFin = meta.ExpedienteTramiteIndex.HasValue
+                        && fechasPorTramite.TryGetValue(meta.ExpedienteTramiteIndex.Value, out var f)
+                            ? f
+                            : fechaGlobal;
+                }
+            }
+        }
 
         repo.Update(exp);
         await uow.SaveChangesAsync(ct);

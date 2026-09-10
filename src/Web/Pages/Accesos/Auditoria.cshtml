@@ -1,0 +1,100 @@
+@page
+@using Diger.TramitesEstado.Web.Pages.Accesos
+@model AuditoriaModel
+@{
+    ViewData["Title"] = "Bitácora de permisos";
+}
+
+<div class="container" style="max-width:1000px">
+    <div class="hist-header">
+        <div>
+            <h2>Bitácora de permisos</h2>
+            <p>Registro de cada permiso otorgado o revocado: qué clave, a qué rol, quién lo hizo y cuándo. Es acumulativo y no se puede editar ni borrar.</p>
+        </div>
+    </div>
+    <p class="hint">
+        <a asp-page="./Permisos">← Administrar permisos</a>
+        &nbsp;·&nbsp;
+        <a asp-page="./Roles">Administrar roles →</a>
+    </p>
+
+    <form method="get" class="card">
+        <div class="row2">
+            <div class="field">
+                <label>Rol</label>
+                <select name="rolId">
+                    <option value="">Todos los roles</option>
+                    @foreach (var r in Model.Roles)
+                    {
+                        <option value="@r.RolId" selected="@(r.RolId == Model.RolId)">@r.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label>Buscar</label>
+                <input type="text" name="q" value="@Model.Q" placeholder="Clave, permiso o quién lo hizo" />
+            </div>
+        </div>
+        <div class="row2">
+            <div class="field">
+                <label>Desde</label>
+                <input type="date" name="desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="field">
+                <label>Hasta</label>
+                <input type="date" name="hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" />
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+            <button class="btnp" type="submit">Filtrar</button>
+            <a class="btns" asp-page="./Auditoria">Limpiar</a>
+        </div>
+    </form>
+
+    @if (Model.Resultado.Total == 0)
+    {
+        <div class="hist-empty">
+            <div class="ico">🗒️</div>
+            <p>No hay movimientos que coincidan con el filtro.</p>
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto">
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th style="width:150px">Fecha</th>
+                        <th style="width:100px">Acción</th>
+                        <th>Permiso</th>
+                        <th style="width:150px">Rol</th>
+                        <th style="width:180px">Quién</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model.Resultado.Items)
+                    {
+                        var otorgado = a.Accion == AccionPermiso.Otorgado;
+                        <tr>
+                            <td class="res-meta">@a.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <span class="wf-badge"
+                                      style="background:@(otorgado ? "var(--diger-success-bg)" : "var(--diger-danger-bg)");color:@(otorgado ? "var(--diger-success-strong)" : "var(--diger-danger-strong)")">
+                                    @(otorgado ? "Otorgado" : "Revocado")
+                                </span>
+                            </td>
+                            <td>
+                                @a.PermisoNombre
+                                <div class="hint">@a.PermisoClave</div>
+                            </td>
+                            <td>@Model.NombreRol(a.RolId)</td>
+                            <td>@a.Actor</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+    }
+</div>

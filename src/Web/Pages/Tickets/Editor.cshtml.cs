@@ -2,14 +2,27 @@ using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
-[Authorize(Policy = "PuedeGestionarTickets")]
-public sealed class EditorModel(ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
+// Levantar un ticket propio y modificar uno ya existente eran dos permisos distintos: antes
+// la diferencia estaba escrita como "si trae id y no sos Administrador, Forbid". Ahora la
+// clase pide Tickets.Crear (el caso base) y los handlers exigen Tickets.Editar en vivo cuando
+// llega un id — la distinción no se puede expresar con un atributo porque depende del request.
+[Permission("Tickets", AccionModulo.Crear, "Levantar tickets")]
+public sealed class EditorModel(
+    ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser,
+    IWebHostEnvironment env, AccesoModulosService acceso, IOptions<SoporteOptions> soporteOpts) : PageModel
 {
     public int? TicketId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
     public IReadOnlyList<ExpedienteListItemDto> Expedientes { get; private set; } = [];
     public IReadOnlyList<TramiteOpcion> Tramites { get; private set; } = [];
     public IReadOnlyList<TemaOpcionDto> Temas { get; private set; } = [];
+
+    // ── Asignación manual en creación (Feature A) ─────────────────
+    private readonly SoporteOptions.AsignacionOptions _asig = soporteOpts.Value.Asignacion;
+    public bool AsignacionManual    => _asig.ManualEnCreacion;
+    public bool OperadorObligatorio => _asig.OperadorObligatorio;
+    /// <summary>Operadores para el tema actualmente seleccionado; el JS los recarga al cambiar de tema.</summary>
+    public IReadOnlyList<UsuarioAsignableDto> Operadores { get; private set; } = [];
 
     public sealed record TramiteOpcion(int Id, string Nombre, string InstitucionId);
 
@@ -40,10 +53,25 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
             .Where(t => scopeIds.Contains(t.InstitucionId))
             .Select(t => new TramiteOpcion(t.Id, t.Nombre, t.InstitucionId))
             .ToList();
+
+        // Operadores del tema seleccionado (solo importa al crear con asignación manual activa).
+        if (AsignacionManual)
+            Operadores = await sender.Send(new GetOperadoresSoporteQuery(Datos.TemaId), ct);
+    }
+
+    /// <summary>Handler AJAX: operadores de soporte del tema indicado (para el selector dependiente).</summary>
+    public async Task<IActionResult> OnGetOperadoresAsync(int? temaId, CancellationToken ct)
+    {
+        if (!AsignacionManual) return new JsonResult(Array.Empty<UsuarioAsignableDto>());
+        var ops = await sender.Send(new GetOperadoresSoporteQuery(temaId), ct);
+        return new JsonResult(ops);
     }
 
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
+        if (id is not null && !await acceso.PuedeEditarAsync("Tickets", ct))
+            return Forbid();
+
         await CargarCatalogosAsync(ct);
         if (id is null) return Page();
 
@@ -65,6 +93,9 @@ public sealed class EditorModel(ISender sender, IInstitucionRepository instituci
 
     public async Task<IActionResult> OnPostAsync(int? id, CancellationToken ct)
     {
+        if (id is not null && !await acceso.PuedeEditarAsync("Tickets", ct))
+            return Forbid();
+
         TicketId = id;
         await CargarCatalogosAsync(ct);
 

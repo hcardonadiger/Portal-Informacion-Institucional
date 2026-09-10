@@ -3,19 +3,21 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Diger.TramitesEstado.Web.Common;
 
-public class ConsultorReadOnlyPageFilter : IAsyncPageFilter
+/// <summary>
+/// Bloquea las peticiones de mutación para roles marcados como solo lectura en la tabla
+/// Roles (antes era el rol "Consultor" hardcodeado). AppDbContext repite el bloqueo en
+/// SaveChangesAsync como red de seguridad de última línea.
+/// </summary>
+public class ConsultorReadOnlyPageFilter(ICurrentUserService currentUser) : IAsyncPageFilter
 {
     public async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context, PageHandlerExecutionDelegate next)
     {
         var method = context.HttpContext.Request.Method;
 
-        if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || 
+        if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) ||
             HttpMethods.IsDelete(method) || HttpMethods.IsPatch(method))
         {
-            var user = context.HttpContext.User;
-            var activeRol = user.FindFirst("diger:rol")?.Value;
-
-            if (activeRol == "Consultor")
+            if (currentUser.EsSoloLectura)
             {
                 context.Result = new ForbidResult();
                 return;

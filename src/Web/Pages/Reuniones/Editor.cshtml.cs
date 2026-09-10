@@ -1,12 +1,21 @@
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
-[Authorize(Policy = "PuedeGestionarReuniones")]
+[Authorize]
+[Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
 public sealed class EditorModel(
     ISender sender, IInstitucionRepository institucionRepo,
     ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
 {
+    /// <summary>Enciende el modo edición de la pantalla. Hoy siempre es true porque la clase
+    /// entera exige Reuniones.Editar — la vista de solo lectura de una reunión es Acta.cshtml,
+    /// que es adonde Index manda a quien no puede editar. Se deja resuelto contra la matriz y
+    /// no fijo en true para que siga siendo correcto si alguna vez se afloja el gateo de la
+    /// página.</summary>
+    public bool EsAdmin { get; private set; } = true;
     public int? ReunionId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
+    public IReadOnlyList<ContactoDto> ContactosDirectorio { get; private set; } = [];
+    public string? InstitucionActivaId { get; private set; }
 
     private async Task<IReadOnlyList<Institucion>> InstitucionesEnAlcanceAsync(CancellationToken ct)
     {
@@ -21,17 +30,16 @@ public sealed class EditorModel(
     [BindProperty] public IFormFile?          Foto1File  { get; set; }
     [BindProperty] public IFormFile?          Foto2File  { get; set; }
 
-    private static readonly string[] ExtPermitidas = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
-
     /// <summary>Guarda una imagen subida en wwwroot/uploads/reuniones y devuelve su ruta relativa.</summary>
     private async Task<string?> GuardarFotoAsync(IFormFile? file, CancellationToken ct)
     {
         if (file is null || file.Length == 0) return null;
-        if (file.Length > 5 * 1024 * 1024) throw new DomainException("La imagen supera el límite de 5 MB.");
+        if (file.Length > UploadsConfig.ReunionesMaxBytes)
+            throw new DomainException($"La imagen supera el límite de {UploadsConfig.ReunionesMaxBytes / (1024 * 1024)} MB.");
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!ExtPermitidas.Contains(ext)) throw new DomainException("Formato de imagen no permitido (use JPG, PNG, WEBP o GIF).");
+        if (!UploadsConfig.ExtensionesImagenesPermitidas.Contains(ext)) throw new DomainException("Formato de imagen no permitido (use JPG, PNG, WEBP o GIF).");
 
-        var dir = Path.Combine(env.WebRootPath, "uploads", "reuniones");
+        var dir = Path.Combine(env.ContentRootPath, "App_Data", "uploads", "reuniones");
         Directory.CreateDirectory(dir);
         var nombre = $"{Guid.NewGuid():N}{ext}";
         await using (var fs = System.IO.File.Create(Path.Combine(dir, nombre)))
@@ -47,7 +55,13 @@ public sealed class EditorModel(
 
     public async Task<IActionResult> OnGetAsync(int? id, DateOnly? fecha, CancellationToken ct)
     {
+        if (!EsAdmin)
+            return Forbid();
+
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
+        InstitucionActivaId = currentUser.ActiveInstitucionId;
+        ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
+
         if (id is null)
         {
             if (fecha is { } f) Datos.Fecha = f;   // pre-llenado desde el calendario
@@ -71,8 +85,12 @@ public sealed class EditorModel(
 
     public async Task<IActionResult> OnPostAsync(int? id, CancellationToken ct)
     {
+        if (!EsAdmin)
+            return Forbid();
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
+        InstitucionActivaId = currentUser.ActiveInstitucionId;
+        ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
 
         if (string.IsNullOrWhiteSpace(Datos.Titulo))
         {
@@ -100,6 +118,8 @@ public sealed class EditorModel(
     {
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
+        InstitucionActivaId = currentUser.ActiveInstitucionId;
+        ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
 
         if (string.IsNullOrWhiteSpace(Datos.Titulo))
         {

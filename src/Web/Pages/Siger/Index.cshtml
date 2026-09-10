@@ -1,0 +1,183 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Siger.IndexModel
+@inject AccesoModulosService Acceso
+@{
+    ViewData["Title"] = "Inventario de Tramites SIGER";
+    var esAdmin = await Acceso.PuedeEditarAsync("Siger");
+}
+
+<div class="container" style="max-width:1200px">
+    <partial name="_SuccessBanner" />
+    <div class="hist-header">
+        <div>
+            <h2>Inventario de Tramites SIGER</h2>
+            <p>Registro de tramites del Portal de Tramites y Servicios</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a class="btns" asp-page="/Siger/Completitud">Completitud</a>
+            @if (esAdmin)
+            {
+                <a class="btns" asp-page="/Siger/CapturaLote">Captura por lotes</a>
+                <a class="btnp" asp-page="/Siger/Editor">+ Nuevo tramite</a>
+            }
+        </div>
+    </div>
+
+    @* ── KPIs ──────────────────────────────────────────────────── *@
+    <div class="row2" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem">
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#0a2d6e">@Model.TotalRegistros</div>
+            <div class="prog-label">Tramites registrados <span class="help-tip tip-down" data-tip="Total de trámites importados del inventario SIGER.">?</span></div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#15803d">@Model.TotalPublicados</div>
+            <div class="prog-label">Publicados en portal <span class="help-tip tip-down" data-tip="Trámites visibles en el Portal de Trámites y Servicios del gobierno.">?</span></div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#1455a4">@Model.TotalEnLinea</div>
+            <div class="prog-label">Disponibles en linea <span class="help-tip tip-down" data-tip="Trámites que se pueden completar totalmente por internet.">?</span></div>
+        </div>
+        <div class="card" style="margin:0;text-align:center">
+            <div style="font-size:26px;font-weight:800;color:#b45309">@Model.TotalInstituciones</div>
+            <div class="prog-label">Instituciones</div>
+        </div>
+    </div>
+
+    @* ── Filtros ───────────────────────────────────────────────── *@
+    <form method="get" class="seg-filters">
+        <div class="field">
+            <label>Buscar</label>
+            <input asp-for="Buscar" placeholder="Nombre, codigo, institucion..." />
+        </div>
+        <div class="field">
+            <label>Institucion</label>
+            <select asp-for="Institucion">
+                <option value="">Todas</option>
+                @foreach (var i in Model.Instituciones)
+                {
+                    <option value="@i">@i</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="min-width:120px">
+            <label>Estado</label>
+            <select asp-for="Estado">
+                <option value="">Todos</option>
+                @foreach (var e in Model.Estados)
+                {
+                    <option value="@e">@e</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="min-width:100px">
+            <label>Publicado</label>
+            <select asp-for="Publicado">
+                <option value="">Todos</option>
+                <option value="Si">Si</option>
+                <option value="No">No</option>
+            </select>
+        </div>
+        <div class="field" style="min-width:100px">
+            <label>En linea</label>
+            <select asp-for="EnLinea">
+                <option value="">Todos</option>
+                <option value="Si">Si</option>
+                <option value="No">No</option>
+            </select>
+        </div>
+        <button class="btnp" type="submit">Filtrar</button>
+        <a class="btns" asp-page="/Siger/Index">Limpiar</a>
+    </form>
+
+    @if (!Model.Resultado.Items.Any())
+    {
+        <div class="hist-empty">
+            <div class="ico"></div>
+            <p>No hay tramites que coincidan con los criterios de busqueda.</p>
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto">
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Codigo</th>
+                        <th>Tramite</th>
+                        <th>Institucion</th>
+                        <th style="text-align:center">Estado</th>
+                        <th style="text-align:center">Portal <span class="help-tip tip-down" data-tip="¿Está publicado en el portal de trámites y servicios?">?</span></th>
+                        <th style="text-align:center">En linea <span class="help-tip tip-down" data-tip="¿Se puede realizar completamente en línea?">?</span></th>
+                        <th style="text-align:center">Plan dig. <span class="help-tip tip-down tip-left" data-tip="¿Está incluido en el plan de digitalización?">?</span></th>
+                        <th style="text-align:center">Pasos</th>
+                        <th style="text-align:center">Req.</th>
+                        <th style="text-align:center">Exp. <span class="help-tip tip-down tip-left" data-tip="Expedientes de digitalización vinculados a este trámite.">?</span></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in Model.Resultado.Items)
+                    {
+                        <tr>
+                            <td style="white-space:nowrap;font-weight:600">@t.Codigo</td>
+                            <td>
+                                <a asp-page="/Siger/Detalle" asp-route-id="@t.Id" style="color:var(--diger-text);text-decoration:none">
+                                    @(t.Nombre.Length > 80 ? t.Nombre[..80] + "..." : t.Nombre)
+                                </a>
+                            </td>
+                            <td style="white-space:nowrap">
+                                @if (t.InstitucionId != null)
+                                {
+                                    <a asp-page="/Instituciones/Editor" asp-route-id="@t.InstitucionId"
+                                       style="color:#1455a4;text-decoration:none;font-weight:600"
+                                       title="Ver institución en catálogo">@t.Sigla</a>
+                                }
+                                else
+                                {
+                                    @t.Sigla
+                                }
+                            </td>
+                            <td style="text-align:center">
+                                @{
+                                    var cls = t.Estado switch { "Registrado" => "wf-registrada", "Aprobado" => "wf-completada", _ => "wf-asignada" };
+                                }
+                                <span class="@cls">@t.Estado</span>
+                            </td>
+                            <td style="text-align:center">
+                                @if (t.Publicado) {<span style="color:#15803d;font-weight:700">Si</span>}
+                                else {<span style="color:#94a3b8">No</span>}
+                            </td>
+                            <td style="text-align:center">
+                                @if (t.EnLinea) {<span style="color:#1455a4;font-weight:700">Si</span>}
+                                else {<span style="color:#94a3b8">No</span>}
+                            </td>
+                            <td style="text-align:center">
+                                @if (t.EnPlan) {<span style="color:#b45309;font-weight:700">Si</span>}
+                                else {<span style="color:#94a3b8">No</span>}
+                            </td>
+                            <td style="text-align:center">@t.Pasos</td>
+                            <td style="text-align:center">@t.Requisitos</td>
+                            <td style="text-align:center">
+                                @if (t.Expedientes > 0) {<span style="font-weight:700;color:#2f7d32">@t.Expedientes</span>}
+                                else {<span style="color:#94a3b8">—</span>}
+                            </td>
+                            <td style="text-align:right;white-space:nowrap">
+                                @if (!string.IsNullOrWhiteSpace(t.DiagramaUrl))
+                                {
+                                    <a class="btns" style="font-size:12px;padding:4px 10px" href="@t.DiagramaUrl.Replace("~/", "https://beta.sigpret.gob.hn/")" target="_blank" rel="noopener" title="Ver diagrama del proceso">Diagrama</a>
+                                }
+                                <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/Siger/Detalle" asp-route-id="@t.Id">Ver</a>
+                                @if (esAdmin)
+                                {
+                                    <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/Siger/Editor" asp-route-id="@t.Id">Editar</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
+    }
+</div>

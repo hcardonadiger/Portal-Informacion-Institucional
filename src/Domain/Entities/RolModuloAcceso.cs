@@ -6,14 +6,15 @@ namespace Diger.TramitesEstado.Domain.Entities;
 /// </summary>
 public sealed class RolModuloAcceso : BaseEntity
 {
-    public RolUsuario Rol    { get; set; }
-    public string     Modulo { get; set; } = default!;
+    public string RolId  { get; set; } = default!;
+    public string Modulo { get; set; } = default!;
 
     private RolModuloAcceso() { }
 
-    public static RolModuloAcceso Crear(RolUsuario rol, string modulo)
+    public static RolModuloAcceso Crear(string rolId, string modulo)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rolId);
         ArgumentException.ThrowIfNullOrWhiteSpace(modulo);
-        return new RolModuloAcceso { Rol = rol, Modulo = modulo.Trim() };
+        return new RolModuloAcceso { RolId = rolId.Trim(), Modulo = modulo.Trim() };
     }
 }

@@ -7,4 +7,4 @@ public sealed record UsuarioListItemDto(
 
 public sealed record UsuarioDetailDto(
     Guid Id, string Nombre, string Correo, string Rol, bool Activo, string? CertificadoThumbprint,
-    IReadOnlyList<AsignacionDto> Asignaciones, IReadOnlyList<int> TemaIds);
+    IReadOnlyList<AsignacionDto> Asignaciones, IReadOnlyList<int> TemaIds, string? Telefono = null);

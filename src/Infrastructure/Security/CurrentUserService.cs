@@ -15,9 +15,13 @@ public static class AppClaims
     public const string AsignacionesJson  = "diger:asignaciones";
 }
 
-public sealed class CurrentUserService(IHttpContextAccessor accessor) : ICurrentUserService
+public sealed class CurrentUserService(IHttpContextAccessor accessor, IRolCatalogo rolCatalogo) : ICurrentUserService
 {
     private ClaimsPrincipal? User => accessor.HttpContext?.User;
+
+    /// <summary>Capacidades del rol activo, o null si el rol no está en el catálogo
+    /// (inexistente, inactivo, o catálogo no cargado) — en ese caso se asume lo más restrictivo.</summary>
+    private RolInfo? RolActual => rolCatalogo.Obtener(Rol);
 
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated == true;
 
@@ -42,8 +46,15 @@ public sealed class CurrentUserService(IHttpContextAccessor accessor) : ICurrent
     public string? ActiveUnidadId      => User?.FindFirstValue(AppClaims.ActiveUnidad);
 
     // ── Alcance institucional ──────────────────────────────────────────────
-    // Sin usuario (procesos del sistema/seed) o Administrador ⇒ acceso global.
-    public bool EsGlobal => !IsAuthenticated || Rol is null or "Administrador";
+    // Sin usuario (procesos del sistema/seed) ⇒ acceso global. Con usuario, lo decide
+    // la capacidad EsAdministrador del rol (tabla Roles), no un nombre hardcodeado.
+    public bool EsGlobal => !IsAuthenticated || Rol is null || RolActual?.EsAdministrador == true;
+
+    // Falla cerrado: rol no resuelto ⇒ el alcance más restrictivo y sin capacidades.
+    public NivelAlcance NivelAlcance  => RolActual?.NivelAlcance ?? NivelAlcance.Unidad;
+    public bool EsSoloLectura         => RolActual?.EsSoloLectura == true;
+    public bool EsSupervisor          => RolActual?.EsSupervisor == true;
+    public bool EsTecnicoSoporte      => RolActual?.EsTecnicoSoporte == true;
     
     public IReadOnlyCollection<string> InstitucionesAsignadas
     {

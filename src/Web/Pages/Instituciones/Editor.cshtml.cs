@@ -1,16 +1,22 @@
+using Diger.TramitesEstado.Web.Common;
+
 namespace Diger.TramitesEstado.Web.Pages.Instituciones;
 
-[Authorize(Policy = "PuedeAdministrarCatalogo")]
-public sealed class EditorModel(ISender sender) : PageModel
+[Permission("Instituciones", AccionModulo.Editar, "Crear y editar instituciones")]
+[Authorize(Policy = "Instituciones.Editar")]
+public sealed class EditorModel(ISender sender, IInstitucionBrandingService branding) : PageModel
 {
     public string? InstId { get; private set; }
     public InstitucionDetailDto? Detalle { get; private set; }
 
     private string _id = string.Empty;
-    [BindProperty] public string Id { get => _id; set => _id = value?.ToUpperInvariant() ?? string.Empty; }
+    [BindProperty] public string  Id           { get => _id; set => _id = value?.ToUpperInvariant() ?? string.Empty; }
     [BindProperty] public string  Nombre       { get; set; } = string.Empty;
     [BindProperty] public bool    Activo       { get; set; } = true;
-    [BindProperty] public string? TramitesText { get; set; }
+    [BindProperty] public string? NombreCorto  { get; set; }
+    [BindProperty] public string? Descripcion  { get; set; }
+    [BindProperty] public string? LogoUrl      { get; set; }
+    [BindProperty] public string? Color        { get; set; }
 
     public string? Error { get; set; }
 
@@ -26,7 +32,10 @@ public sealed class EditorModel(ISender sender) : PageModel
             Id           = d.Id;
             Nombre       = d.Nombre;
             Activo       = d.Activo;
-            TramitesText = string.Join("\n", d.Tramites);
+            NombreCorto  = d.NombreCorto;
+            Descripcion  = d.Descripcion;
+            LogoUrl      = d.LogoUrl;
+            Color        = d.Color;
             return Page();
         }
         catch (NotFoundException)
@@ -40,16 +49,16 @@ public sealed class EditorModel(ISender sender) : PageModel
         InstId = id;
         if (!ModelState.IsValid) return Page();
 
-        var tramites = (TramitesText ?? "")
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
-
         try
         {
             if (id is null)
-                await sender.Send(new CrearInstitucionCommand(Id, Nombre, tramites), ct);
+                await sender.Send(new CrearInstitucionCommand(Id, Nombre), ct);
             else
-                await sender.Send(new ActualizarInstitucionCommand(id, Nombre, Activo, tramites), ct);
+            {
+                await sender.Send(new ActualizarInstitucionCommand(
+                    id, Nombre, Activo, LogoUrl, NombreCorto, Color, Descripcion), ct);
+                branding.InvalidarCache(id);
+            }
 
             TempData["SuccessMsg"] = id is null ? "Institución creada." : "Institución actualizada.";
             return RedirectToPage("/Instituciones/Index");

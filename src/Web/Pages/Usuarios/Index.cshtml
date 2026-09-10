@@ -1,15 +1,21 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Usuarios.IndexModel
+@inject Diger.TramitesEstado.Application.Common.Interfaces.IRolCatalogo RolCatalogo
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Usuarios";
-    (string bg, string fg) RolColor(string r) => r switch
+
+    // El color del badge lo define el rol en /Accesos/Roles. La tabla de abajo queda solo
+    // como respaldo para los roles base que aún no tengan color asignado y para códigos que
+    // ya no estén en el catálogo (usuarios con un rol desactivado o eliminado).
+    (string bg, string fg) RolColorPorDefecto(string r) => r switch
     {
-        "Administrador"    => ("#eeedfe", "#3c3489"),
+        "Administrador"   => ("#eeedfe", "#3c3489"),
         "JefeInstitucion" => ("#e6f1fb", "#0c447c"),
         "JefeArea"        => ("#e6f1fb", "#1a5fa0"),
         "JefeUnidad"      => ("#e8f5e9", "#1b5e20"),
         "Consultor"       => ("#fff8e1", "#6d4c00"),
-        _                  => ("#e1f5ee", "#085041"),
+        _                 => ("#e1f5ee", "#085041"),
     };
 }
 
@@ -20,7 +26,12 @@
             <h2>Usuarios</h2>
             <p>Gestión de usuarios internos del portal DIGER</p>
         </div>
-        <a class="btnp" asp-page="/Usuarios/Editor">+ Nuevo usuario</a>
+        @* Esta página pide Usuarios.Ver; el editor pide Usuarios.Editar. Sin este gateo, un
+           rol de solo consulta veía el botón y caía en Forbidden al usarlo. *@
+        @if (await Acceso.PuedeEditarAsync("Usuarios"))
+        {
+            <a class="btnp" asp-page="/Usuarios/Editor">+ Nuevo usuario</a>
+        }
     </div>
 
     <form method="get" class="lista-buscar">
@@ -45,7 +56,15 @@
                 <tr>
                     <td><a class="seg-inst" asp-page="/Usuarios/Editor" asp-route-id="@u.Id">@u.Nombre</a></td>
                     <td class="res-meta">@u.Correo</td>
-                    <td>@{ var (bg, fg) = RolColor(u.Rol); }<span class="rol-badge" style="padding:2px 10px;font-size:12px;background:@bg;color:@fg">@u.Rol</span></td>
+                    <td>
+                        @{
+                            var info = RolCatalogo.Obtener(u.Rol);
+                            var (bg, fg) = string.IsNullOrWhiteSpace(info?.Color)
+                                ? RolColorPorDefecto(u.Rol)
+                                : (info!.Color!, "#fff");
+                        }
+                        <span class="rol-badge" style="padding:2px 10px;font-size:12px;background:@bg;color:@fg" title="@u.Rol">@(info?.Nombre ?? u.Rol)</span>
+                    </td>
                     <td>
                         @if (u.Activo)
                         {

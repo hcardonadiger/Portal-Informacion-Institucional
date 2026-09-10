@@ -6,7 +6,8 @@ using Diger.TramitesEstado.Domain.Enums;
 
 namespace Diger.TramitesEstado.Web.Pages.Unidades;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+[Permission("Unidades", AccionModulo.Ver, "Ver unidades")]
+[Authorize(Policy = "Unidades.Ver")]
 public class IndexModel(ISender sender) : PageModel
 {
     public IReadOnlyList<UnidadListItemDto> Items { get; set; } = [];

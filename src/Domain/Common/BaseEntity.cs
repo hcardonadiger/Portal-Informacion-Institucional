@@ -1,7 +1,14 @@
 namespace Diger.TramitesEstado.Domain.Common;
 
+// ── Domain events (dispatch) ────────────────────────────────────────────────
+public interface IHasDomainEvents
+{
+    IReadOnlyCollection<INotification> DomainEvents { get; }
+    void ClearDomainEvents();
+}
+
 // ── Base entity ───────────────────────────────────────────────────────────
-public abstract class BaseEntity<TId>
+public abstract class BaseEntity<TId> : IHasDomainEvents
 {
     public TId Id { get; protected set; } = default!;
 
@@ -33,6 +40,8 @@ public record ReunionCreatedEvent(int ReunionId, string Titulo)                 
 public record ReunionUpdatedEvent(int ReunionId)                                           : INotification;
 public record TicketCreatedEvent(int TicketId, string Numero, string Titulo)               : INotification;
 public record TicketEstadoCambiadoEvent(int TicketId, string Numero, string Estado)        : INotification;
+public record ExpedienteEstadoCambiadoEvent(int ExpedienteId, string Codigo, string EstadoAnterior, string EstadoNuevo, string Actor) : INotification;
+public record ProyectoEstadoCambiadoEvent(int ProyectoId, string Codigo, string EstadoAnterior, string EstadoNuevo, string Actor)     : INotification;
 
 // ── Domain exception ──────────────────────────────────────────────────────
 public sealed class DomainException(string message) : Exception(message);

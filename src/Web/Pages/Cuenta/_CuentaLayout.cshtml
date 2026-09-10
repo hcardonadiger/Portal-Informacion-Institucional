@@ -1,0 +1,30 @@
+@{
+    Layout = "/Pages/Shared/_Layout.cshtml";
+}
+
+<div class="container" style="max-width:960px">
+    <div style="margin:1.6rem 0 1.8rem">
+        <h1 class="page-title">Mi cuenta</h1>
+        <p class="page-subtitle">Administra tu información personal y credenciales de acceso</p>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert-success" style="margin-bottom:1.5rem">@TempData["SuccessMessage"]</div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert-error" style="margin-bottom:1.5rem">@TempData["ErrorMessage"]</div>
+    }
+
+    <div class="cuenta-shell">
+        <partial name="_CuentaNav" />
+        <section class="cuenta-body">
+            @RenderBody()
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

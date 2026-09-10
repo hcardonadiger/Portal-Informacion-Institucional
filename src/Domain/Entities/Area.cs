@@ -10,6 +10,7 @@ public sealed class Area : BaseAuditableEntity<string>
     public string? Descripcion  { get; private set; }
     public string? NombreCorto  { get; private set; }
     public string? LogoUrl      { get; private set; }
+    public bool   Activo        { get; private set; } = true;
 
     private Area() { }
 
@@ -26,16 +27,17 @@ public sealed class Area : BaseAuditableEntity<string>
             Nombre = nombre.Trim().ToUpper(), 
             Descripcion = descripcion?.Trim(),
             NombreCorto = nombreCorto?.Trim().ToUpper(),
-            LogoUrl = logoUrl?.Trim()
+            LogoUrl = logoUrl?.Trim(),
+            Activo = true
         };
     }
 
     private static void ValidarId(string id)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        if (!Regex.IsMatch(id.Trim(), @"^[A-Z0-9]+$"))
+        if (!Regex.IsMatch(id.Trim(), @"^[A-Z0-9\-_]+$"))
         {
-            throw new DomainException("El Id del Área solo puede contener letras mayúsculas y números, sin espacios ni símbolos.");
+            throw new DomainException("El Id del Área solo puede contener letras mayúsculas, números, guiones (-) y guiones bajos (_), sin espacios.");
         }
     }
 
@@ -51,4 +53,7 @@ public sealed class Area : BaseAuditableEntity<string>
         NombreCorto = nombreCorto?.Trim().ToUpper();
         LogoUrl = logoUrl?.Trim();
     }
+
+    public void Activar()    => Activo = true;
+    public void Desactivar() => Activo = false;
 }

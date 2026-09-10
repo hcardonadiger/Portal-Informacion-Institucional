@@ -30,3 +30,9 @@ Thumbs.db
 
 # Archivos subidos por usuarios (no versionar)
 src/Web/wwwroot/uploads/
+src/Web/App_Data/uploads/
+
+# Configuracion local de Claude Code: contiene credenciales, no versionar
+.claude/settings.local.json
+# Respaldos y scripts SQL generados localmente (pueden pesar decenas de MB)
+.backups/

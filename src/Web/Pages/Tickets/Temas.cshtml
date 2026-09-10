@@ -40,13 +40,27 @@
         }
         else
         {
-            <table class="seg-table">
-                <thead><tr><th>Nombre</th><th style="width:90px">Activa</th><th style="width:1%">Temas</th><th style="width:1%"></th></tr></thead>
+            @* .edit-grid además de .seg-table: es la clase que estila los controles dentro de
+               una tabla editable. Sin ella los input y select de las celdas no coinciden con
+               ninguna regla (.field input necesita un padre .field) y salían con la apariencia
+               por defecto del navegador — otra tipografía, otra altura y fondo blanco en modo
+               oscuro. La cabecera lleva una columna por cada <td> de la fila, incluida la de
+               eliminar, que vive fuera del form. *@
+            <table class="seg-table edit-grid">
+                @* Anchos en píxeles, no width:1%. .edit-grid usa table-layout:fixed, donde 1%
+                   se toma literal (~10px) y el contenido desborda; el idiom "1% = tan angosta
+                   como el contenido" solo funciona con layout automático. La primera columna
+                   va sin ancho: se queda con el resto. *@
+                <thead><tr><th>Nombre</th><th style="width:90px">Activa</th><th style="width:76px">Temas</th><th style="width:112px"></th><th style="width:56px"></th></tr></thead>
                 <tbody>
                     @foreach (var c in Model.Categorias)
                     {
                         <tr>
-                            <form method="post" asp-page-handler="ActualizarCategoria" style="display:contents">
+                            @* El <form> como hijo directo de <tr> no envuelve nada: el parser lo
+                               inserta y lo saca de la pila, así que los <td> cuelgan del <tr>.
+                               Funciona porque el parser deja los controles asociados a él como
+                               form owner — por eso `display:contents` acá no hacía nada. *@
+                            <form method="post" asp-page-handler="ActualizarCategoria">
                                 <input type="hidden" name="id" value="@c.Id" />
                                 <td><input name="nombre" value="@c.Nombre" maxlength="80" style="width:100%" /></td>
                                 <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@c.Activo" /></td>
@@ -56,7 +70,7 @@
                             <td style="text-align:right">
                                 <form method="post" asp-page-handler="EliminarCategoria" style="display:inline">
                                     <input type="hidden" name="id" value="@c.Id" />
-                                    <button class="hist-del" type="submit" data-confirm="¿Eliminar la categoría «@c.Nombre»? Sus temas quedarán sin categoría.">✕</button>
+                                    <button class="hist-del" type="submit" aria-label="Eliminar categoría" data-confirm="¿Eliminar la categoría «@c.Nombre»? Sus temas quedarán sin categoría.">✕</button>
                                 </form>
                             </td>
                         </tr>
@@ -97,22 +111,25 @@
         }
         else
         {
-            <table class="seg-table" style="margin-top:1rem">
+            <table class="seg-table edit-grid" style="margin-top:1rem">
                 <thead>
+                    @* Ver la nota de anchos de la tabla de categorías. *@
                     <tr>
                         <th>Nombre</th>
-                        <th style="width:180px">Categoría</th>
-                        <th style="width:110px">Tiempo máx. (h)</th>
-                        <th style="width:80px">Activo</th>
-                        <th style="width:1%">Uso</th>
-                        <th style="width:1%"></th>
+                        <th style="width:170px">Categoría</th>
+                        <th style="width:104px">Tiempo máx. (h)</th>
+                        <th style="width:74px">Activo</th>
+                        <th style="width:92px" title="Tickets · especialistas asignados">Uso</th>
+                        <th style="width:112px"></th>
+                        <th style="width:56px"></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var tm in Model.Temas)
                     {
                         <tr>
-                            <form method="post" asp-page-handler="Actualizar" style="display:contents">
+                            @* Ver la nota de la tabla de categorías sobre el <form> dentro de <tr>. *@
+                            <form method="post" asp-page-handler="Actualizar">
                                 <input type="hidden" name="id" value="@tm.Id" />
                                 <td><input name="nombre" value="@tm.Nombre" maxlength="80" style="width:100%" /></td>
                                 <td>
@@ -126,9 +143,10 @@
                                 </td>
                                 <td><input type="number" name="horas" min="0" max="100000" value="@tm.HorasResolucion" style="width:100%" /></td>
                                 <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@tm.Activo" /></td>
-                                <td class="res-meta" style="white-space:nowrap">
-                                    <span title="Tickets">@tm.Tickets</span>
-                                    <span title="Especialistas" style="margin-left:6px">@tm.Especialistas</span>
+                                @* Dos números pelados sin separador se leían como uno solo. *@
+                                <td class="res-meta" style="white-space:nowrap;text-align:center"
+                                    title="@tm.Tickets ticket(s) · @tm.Especialistas especialista(s)">
+                                    @tm.Tickets <span style="opacity:.45">·</span> @tm.Especialistas
                                 </td>
                                 <td style="text-align:right"><button class="btns" type="submit" style="font-size:12.5px;padding:6px 12px">Guardar</button></td>
                             </form>
@@ -137,7 +155,7 @@
                                 {
                                     <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                         <input type="hidden" name="id" value="@tm.Id" />
-                                        <button class="hist-del" type="submit" data-confirm="¿Eliminar el tema «@tm.Nombre»?">✕</button>
+                                        <button class="hist-del" type="submit" aria-label="Eliminar tema" data-confirm="¿Eliminar el tema «@tm.Nombre»?">✕</button>
                                     </form>
                                 }
                                 else

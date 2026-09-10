@@ -1,0 +1,32 @@
+@model Diger.TramitesEstado.Web.Pages.Cuenta.LoginModel
+@{
+    var certUrl = (string)(ViewData["CertUrl"] ?? "#");
+}
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert-error">@Model.Error</div>
+}
+
+<form method="post" asp-page="/Cuenta/Login" asp-route-returnUrl="@Model.ReturnUrl">
+    <div class="field">
+        <label>Correo institucional</label>
+        <input asp-for="Correo" type="email" autocomplete="username" placeholder="usuario@diger.gob.hn" />
+    </div>
+    <div class="field">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+            <label style="margin:0">Contraseña</label>
+            <a asp-page="/Cuenta/OlvidarPassword" class="login-link">¿Olvidó su contraseña?</a>
+        </div>
+        <input asp-for="Password" type="password" autocomplete="current-password" placeholder="••••••••" />
+    </div>
+    <button class="btnp login-btn" type="submit">Iniciar sesión</button>
+</form>
+
+<div class="login-alt">
+    <div class="login-divider"><span>o si tiene certificado digital</span></div>
+    <a href="@certUrl" class="btns login-btn"><span style="margin-right:6px">🔐</span> Ingresar con Certificado</a>
+    <div style="text-align:center;margin-top:.9rem">
+        <a asp-page="/Cuenta/AyudaCertificado" class="login-link">¿Cómo uso un certificado digital?</a>
+    </div>
+</div>

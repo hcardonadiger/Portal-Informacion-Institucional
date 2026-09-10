@@ -4,10 +4,13 @@ namespace Diger.TramitesEstado.Application.Expedientes.Common;
 /// (campos escalares + reconstrucción en bloque de las colecciones hijas).</summary>
 public static class ExpedienteMapper
 {
-    public static void Aplicar(Expediente e, ExpedienteInputDto d)
+    /// <summary>Aplica el DTO sobre la entidad. Retorna un resumen legible de los cambios en las
+    /// colecciones hijas (para auditoría), o null si ninguna cambió de tamaño.</summary>
+    public static string? Aplicar(Expediente e, ExpedienteInputDto d)
     {
         // Apertura
         e.FechaApertura   = d.FechaApertura;
+        e.AnalistaId      = d.AnalistaId;
         e.Analista        = d.Analista.Trim();
         e.DirSede         = d.DirSede?.Trim();
         e.NumTramitesProd = d.NumTramitesProd;
@@ -17,6 +20,11 @@ public static class ExpedienteMapper
         e.ContactoCargo  = d.ContactoCargo?.Trim();
         e.ContactoCorreo = d.ContactoCorreo?.Trim();
         e.ContactoTel    = d.ContactoTel?.Trim();
+
+        // Contraparte e Histórico
+        e.ContraparteUsuarioId     = d.ContraparteUsuarioId;
+        e.ContraparteUsuarioNombre = d.ContraparteUsuarioNombre?.Trim();
+        e.FechaLimiteEntrega       = d.FechaLimiteEntrega;
 
         // Legal / proceso / modelo
         e.ObsLegal        = d.ObsLegal;
@@ -44,16 +52,20 @@ public static class ExpedienteMapper
         e.InfraPlan        = d.InfraPlan;
 
         // Estado / cierre
-        e.EstadoExpediente    = d.EstadoExpediente;
+        // EstadoExpediente NO se asigna aquí: pasa por Expediente.CambiarEstado()
+        // (máquina de estados) desde el handler, que valida la transición.
         e.EstadoLevantamiento = d.EstadoLevantamiento;
         e.ObsExpediente       = d.ObsExpediente;
         e.ObsLevantamiento    = d.ObsLevantamiento;
-        e.ValidadoDiger       = d.ValidadoDiger?.Trim();
-        e.ValidadoInst        = d.ValidadoInst?.Trim();
+        e.ValidadoDiger          = d.ValidadoDiger?.Trim();
+        e.ValidadoDigerUsuarioId = d.ValidadoDigerUsuarioId;
+        e.ValidadoInst           = d.ValidadoInst?.Trim();
+        e.ValidadoInstUsuarioId  = d.ValidadoInstUsuarioId;
         e.FechaValidacion     = d.FechaValidacion;
         e.NumActa             = d.NumActa?.Trim();
 
         // ── Colecciones (reemplazo en bloque) ─────────────────────
+        var antesHijos = ConteosHijos(e);
         e.LimpiarHijos();
 
         foreach (var t in d.Tramites.Where(x => !string.IsNullOrWhiteSpace(x.NombreTramite)))
@@ -61,12 +73,15 @@ public static class ExpedienteMapper
             {
                 TramiteIndex = t.TramiteIndex, NombreTramite = t.NombreTramite.Trim(),
                 NombreCorto = t.NombreCorto, AreaResponsable = t.AreaResponsable,
+                FechaCreacion = t.FechaCreacion ?? DateOnly.FromDateTime(DateTime.Now),
+                EstadoTramite = t.EstadoTramite ?? EstadoTramite.Pendiente,
                 Modalidad = t.Modalidad, PlazoLegal = t.PlazoLegal, Tercero = t.Tercero,
                 TiempoReal = t.TiempoReal, MetodoPago = t.MetodoPago, PagoBanco = t.PagoBanco,
                 PagoCuenta = t.PagoCuenta, TgrInst = t.TgrInst, TgrRubro = t.TgrRubro, TgrMonto = t.TgrMonto,
                 DocEntregado = t.DocEntregado, Objetivo = t.Objetivo, Alcance = t.Alcance,
                 AlcanceObs = t.AlcanceObs, Descripcion = t.Descripcion, Dirigido = t.Dirigido,
-                Horario = t.Horario, Telefono = t.Telefono, EmailTramite = t.EmailTramite, SitioWeb = t.SitioWeb
+                Horario = t.Horario, Telefono = t.Telefono, EmailTramite = t.EmailTramite, SitioWeb = t.SitioWeb,
+                TramiteSigerId = t.TramiteSigerId
             });
 
         foreach (var r in d.Requisitos.Where(x => !string.IsNullOrWhiteSpace(x.Requisito)))
@@ -119,6 +134,36 @@ public static class ExpedienteMapper
 
         foreach (var s in d.Secciones)
             e.Agregar(new ExpedienteSeccionEstado { Seccion = s.Seccion, Estado = s.Estado, Nota = s.Nota });
+
+        return DescribirCambiosHijos(antesHijos, ConteosHijos(e));
+    }
+
+    private static Dictionary<string, int> ConteosHijos(Expediente e) => new()
+    {
+        ["Trámites"] = e.Tramites.Count,
+        ["Requisitos"] = e.Requisitos.Count,
+        ["Flujos"] = e.Flujos.Count,
+        ["Legal"] = e.Legal.Count,
+        ["Docs solicitados"] = e.DocsSolicitados.Count,
+        ["Docs internos"] = e.DocsInternos.Count,
+        ["Perfiles"] = e.Perfiles.Count,
+        ["Condiciones"] = e.Condiciones.Count,
+        ["Checklist infra"] = e.ChecklistInfra.Count,
+        ["Secciones"] = e.Secciones.Count,
+    };
+
+    /// <summary>Resumen legible de los conteos que cambiaron entre dos snapshots de colecciones hijas.</summary>
+    private static string? DescribirCambiosHijos(Dictionary<string, int> antes, Dictionary<string, int> despues)
+    {
+        var cambios = new List<string>();
+        foreach (var (clave, valorAntes) in antes)
+        {
+            var valorDespues = despues[clave];
+            if (valorAntes == valorDespues) continue;
+            var delta = valorDespues - valorAntes;
+            cambios.Add($"{clave} {valorAntes}→{valorDespues} ({(delta > 0 ? "+" : "")}{delta})");
+        }
+        return cambios.Count == 0 ? null : string.Join(" · ", cambios);
     }
 
     /// <summary>Proyecta la entidad de vuelta al DTO de entrada (para repoblar el editor).</summary>
@@ -135,7 +180,8 @@ public static class ExpedienteMapper
             t.TramiteIndex, t.NombreTramite, t.NombreCorto, t.AreaResponsable, t.Modalidad, t.PlazoLegal,
             t.Tercero, t.TiempoReal, t.MetodoPago, t.PagoBanco, t.PagoCuenta, t.TgrInst, t.TgrRubro,
             t.TgrMonto, t.DocEntregado, t.Objetivo, t.Alcance, t.AlcanceObs, t.Descripcion, t.Dirigido,
-            t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb)).ToList(),
+            t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb, t.TramiteSigerId,
+            t.FechaCreacion, t.EstadoTramite)).ToList(),
         e.Requisitos.OrderBy(r => r.TramiteIndex).ThenBy(r => r.Orden).Select(r => new RequisitoInput(
             r.TramiteIndex, r.Orden, r.Requisito, r.Obs, r.Accion, r.Justificacion,
             r.PlantillaOrigenId, r.EsPersonalizado)).ToList(),
@@ -149,5 +195,11 @@ public static class ExpedienteMapper
         e.Perfiles.Select(p => new PerfilInput(p.Perfil, p.Nombre, p.Correo)).ToList(),
         e.Condiciones.Select(c => c.Condicion).ToList(),
         e.ChecklistInfra.OrderBy(c => c.Orden).Select(c => new ChecklistInput(c.Orden, c.Grupo, c.Requisito, c.Status, c.Obs)).ToList(),
-        e.Secciones.OrderBy(s => s.Seccion).Select(s => new SeccionInput(s.Seccion, s.Estado, s.Nota)).ToList());
+        e.Secciones.OrderBy(s => s.Seccion).Select(s => new SeccionInput(s.Seccion, s.Estado, s.Nota)).ToList(),
+        e.AnalistaId,
+        e.ContraparteUsuarioId,
+        e.ContraparteUsuarioNombre,
+        e.FechaLimiteEntrega,
+        e.ValidadoDigerUsuarioId,
+        e.ValidadoInstUsuarioId);
 }

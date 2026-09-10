@@ -2,7 +2,8 @@ namespace Diger.TramitesEstado.Application.Instituciones.Queries.GetInstitucione
 
 public sealed record InstitucionListItemDto(
     string Id, string Nombre, bool Activo, int NumTramites,
-    int Expedientes, int Tickets, int Reuniones, int Contactos);
+    int Expedientes, int Tickets, int Reuniones, int Contactos,
+    int TramitesSiger);
 
 public sealed record GetInstitucionesQuery(string? Q = null, int? Page = null, int? Size = null)
     : IRequest<PagedResult<InstitucionListItemDto>>;
@@ -26,11 +27,13 @@ public sealed class GetInstitucionesQueryHandler(IApplicationDbContext ctx)
             .OrderBy(i => i.Nombre)
             .Skip((page - 1) * size).Take(size)
             .Select(i => new InstitucionListItemDto(
-                i.Id, i.Nombre, i.Activo, i.Tramites.Count,
+                i.Id, i.Nombre, i.Activo,
+                ctx.Expedientes.Where(e => e.InstitucionId == i.Id).SelectMany(e => e.Tramites).Count(),
                 ctx.Expedientes.Count(e => e.InstitucionId == i.Id),
                 ctx.Tickets.Count(t => t.InstitucionId == i.Id),
                 ctx.Reuniones.Count(r => r.InstitucionId == i.Id),
-                ctx.Contactos.Count(c => c.InstitucionId == i.Id)))
+                ctx.Contactos.Count(c => c.InstitucionId == i.Id),
+                ctx.TramitesSiger.Count(s => s.InstitucionId == i.Id)))
             .ToListAsync(ct);
 
         return new PagedResult<InstitucionListItemDto>(items, total, page, size);

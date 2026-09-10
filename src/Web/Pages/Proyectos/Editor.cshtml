@@ -1,0 +1,2861 @@
+@page "{id:int}"
+@using Diger.TramitesEstado.Application.Proyectos.Common
+@model Diger.TramitesEstado.Web.Pages.Proyectos.EditorModel
+@{
+    var p = Model.Proyecto;
+
+    // Porcentaje para CSS. SIEMPRE con cultura invariante: con es-HN saldría «12,5%» y el
+    // navegador descarta la declaración entera sin decir nada — la barra se iría al borde.
+    string Pct(double v) => v.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    ViewData["Title"] = p.Codigo + " — " + p.Nombre;
+
+    string EstadoCls(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.EnEjecucion => "status-badge abierto",
+        EstadoProyecto.Suspendido  => "status-badge enproceso",
+        EstadoProyecto.Cerrado     => "status-badge resuelto",
+        EstadoProyecto.Cancelado   => "status-badge vencido",
+        _                          => "status-badge default"
+    };
+    string EstadoTxt(EstadoProyecto e) => e == EstadoProyecto.EnEjecucion ? "En ejecución" : e.ToString();
+    string BarraCls(int pct) => pct >= 80 ? "bg-success" : pct >= 40 ? "bg-primary" : "bg-warning";
+    string Iso(DateOnly? d) => d?.ToString("yyyy-MM-dd") ?? "";
+    string Tamano(long? b) => b is null ? "" : b >= 1048576 ? $"{b / 1048576.0:0.#} MB" : $"{Math.Max(1, (int)(b / 1024))} KB";
+
+    // El único rol cuyo nombre en PascalCase no se lee bien tal cual.
+    string RolTexto(RolInteresado r) => r == RolInteresado.ContraparteTecnica ? "Contraparte técnica" : r.ToString();
+}
+
+<div class="container" style="max-width:1080px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>@p.Nombre</h2>
+            <p>
+                <strong>@p.Codigo</strong>
+                · <span class="@EstadoCls(p.Estado)" style="padding:3px 10px;font-size:var(--diger-fs-xs)">@EstadoTxt(p.Estado)</span>
+                · @(string.IsNullOrWhiteSpace(p.Responsable) ? "sin responsable" : p.Responsable)
+            </p>
+            @* Las señales del portafolio, en la ficha: quien abre el proyecto ve de entrada lo
+               mismo que lo hizo saltar en el listado o en el tablero, sin tener que deducirlo. *@
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+                @if (p.EstaAtrasado)
+                {
+                    <span class="badge badge-danger" title="La fecha de cierre planificada ya pasó y el proyecto sigue abierto">
+                        Atrasado · vencía el @p.FechaFinPlan!.Value.ToString("dd/MM/yyyy")
+                    </span>
+                }
+                @if (p.SinLineaBase)
+                {
+                    <span class="badge badge-warning" title="No hay fecha de cierre comprometida: no hay contra qué medir el atraso">
+                        Sin fecha de cierre
+                    </span>
+                }
+                @if (Model.SinReportar)
+                {
+                    <span class="badge badge-warning" title="El seguimiento se mide por reportes, no solo por fechas">
+                        @(Model.DiasSinReportar is { } d ? $"Sin reportar hace {d} días" : "Nunca se reportó un avance")
+                    </span>
+                }
+                @if (p.SinDesglose && !p.EstaCerrado)
+                {
+                    <span class="badge badge-secondary" title="Sin actividades cargadas, el avance sale solo del estado de los entregables">
+                        Sin desglosar
+                    </span>
+                }
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+            @* La ficha es para editar; el tablero, para leer cómo va. Se separan porque el segundo
+               calcula cosas que la ficha no muestra —esperado a la fecha, carga por persona— y
+               mezclarlas alargaría una pantalla que ya tiene ocho pestañas. *@
+            <a class="btns" asp-page="/Tableros/Proyecto" asp-route-id="@p.Id" style="font-size:13px">Tablero →</a>
+            <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
+        </div>
+    </div>
+
+    @* ── Resumen de ejecución ────────────────────────────────────── *@
+    <div class="card">
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+            <div style="flex:1;min-width:240px">
+                <label class="res-meta" style="display:block;margin-bottom:4px">Avance calculado</label>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <div class="progress" style="flex:1;height:10px">
+                        <div class="progress-bar @BarraCls(p.AvancePct)" style="width:@(p.AvancePct)%"></div>
+                    </div>
+                    <strong style="width:44px;text-align:right">@(p.AvancePct)%</strong>
+                </div>
+                @* De dónde sale el número. Ya no lo declara nadie: promedia las actividades hacia
+                   arriba, y un proyecto sin desglosar depende solo del estado de sus entregables —
+                   que es un dato distinto y conviene que se note. *@
+                <div class="res-meta" style="margin-top:3px">
+                    @if (p.SinDesglose)
+                    {
+                        <text>por el estado de los entregables: el proyecto todavía no tiene actividades</text>
+                    }
+                    else
+                    {
+                        <text>promedio de @p.TotalActividades actividad@(p.TotalActividades == 1 ? "" : "es") en @p.TotalEntregables entregable@(p.TotalEntregables == 1 ? "" : "s")</text>
+                    }
+                </div>
+            </div>
+            <div>
+                <label class="res-meta" style="display:block">Entregables cumplidos</label>
+                <strong>@p.EntregablesCompletados / @p.TotalEntregables</strong>
+                @if (p.EntregablesAtrasados > 0)
+                {
+                    <span class="badge badge-danger" style="margin-left:6px">@p.EntregablesAtrasados atrasado@(p.EntregablesAtrasados == 1 ? "" : "s")</span>
+                }
+            </div>
+            <div>
+                <label class="res-meta" style="display:block">Actividades terminadas</label>
+                <strong>@p.ActividadesTerminadas / @p.TotalActividades</strong>
+                @if (p.ActividadesAtrasadas > 0)
+                {
+                    <span class="badge badge-danger" style="margin-left:6px">@p.ActividadesAtrasadas vencida@(p.ActividadesAtrasadas == 1 ? "" : "s")</span>
+                }
+            </div>
+            <div>
+                <label class="res-meta" style="display:block">Último reporte</label>
+                <strong>
+                    @if (Model.DiasSinReportar is { } dias)
+                    {
+                        @(dias == 0 ? "hoy" : dias == 1 ? "ayer" : $"hace {dias} días")
+                    }
+                    else
+                    {
+                        <text>nunca</text>
+                    }
+                </strong>
+                <div class="res-meta">@Model.Avances.Count reporte@(Model.Avances.Count == 1 ? "" : "s")</div>
+            </div>
+
+            @if (Model.PuedeEditar && p.EstadosPosibles.Any())
+            {
+                @* El <select> solo ofrece las transiciones que el dominio acepta: la lista viene
+                   de Proyecto.PuedePasarA, no de un switch escrito acá. *@
+                <form method="post" asp-page-handler="CambiarEstado" asp-route-id="@p.Id"
+                      style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
+                    <div class="field" style="margin:0;min-width:170px">
+                        <label for="nuevo-estado">Cambiar estado a</label>
+                        <select id="nuevo-estado" name="nuevo">
+                            @foreach (var e in p.EstadosPosibles)
+                            {
+                                <option value="@((int)e)">@EstadoTxt(e)</option>
+                            }
+                        </select>
+                    </div>
+                    <button class="btns" type="submit" style="margin-bottom:.1rem">Aplicar</button>
+                </form>
+            }
+        </div>
+        @if (p.EstaCerrado)
+        {
+            <p class="res-meta" style="margin-top:.75rem">
+                El proyecto está @(EstadoTxt(p.Estado).ToLowerInvariant()): la ficha y la bitácora quedan en solo lectura.
+            </p>
+
+            @* Reabrir es la única salida de un estado terminal, y no está en el selector de estado
+               a propósito: revertir un cierre que alguien firmó pide decir por qué. *@
+            @if (Model.PuedeReabrir)
+            {
+                <form method="post" asp-page-handler="Reabrir" asp-route-id="@p.Id"
+                      style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:.75rem">
+                    <div class="field" style="flex:1;min-width:280px;margin:0">
+                        <label for="r-motivo">Motivo para reabrirlo <span style="color:var(--diger-danger)">*</span></label>
+                        <input id="r-motivo" name="MotivoReapertura" maxlength="500" required
+                               placeholder="Por qué vuelve a ejecución" />
+                    </div>
+                    <button type="submit" class="btns" style="margin-bottom:.1rem">Reabrir proyecto</button>
+                </form>
+            }
+        }
+    </div>
+
+    @* ── Pestañas de la ficha ────────────────────────────────────── *@
+    @* Antes eran ocho secciones apiladas con un índice de anclas que solo saltaba dentro de un
+       scroll de varias pantallas. Ahora el índice ES la navegación: se pinta una sección a la vez.
+
+       El orden de la barra sigue la probabilidad de uso y NO coincide con el orden del DOM:
+       «Datos» tiene que vivir dentro del mismo <form> que la estructura porque las guarda el mismo
+       comando. aria-controls es lo que ata cada botón con su panel, así que la diferencia no le
+       importa a nadie salvo al lector del HTML.
+
+       Datos va primero y es la que abre por defecto: es la pestaña de aterrizaje. Lo que identifica
+       al proyecto —nombre, responsable, fechas, estado— es lo que se quiere ver al abrir la ficha,
+       aunque se edite poco.
+
+       El resto sigue el volumen real del portafolio: 214 actividades y 33 entregables en la
+       estructura, 44 reportes en la bitácora, 8 entre interesados y riesgos, 4 documentos y ningún
+       vínculo todavía. La auditoría cierra: solo se abre para investigar algo. *@
+    <nav class="ficha-tabs" role="tablist" aria-label="Secciones de la ficha">
+        <button type="button" role="tab" id="tab-datos" data-tab="datos"
+                aria-controls="panel-datos" aria-selected="true"
+                onclick="abrirPestana('datos')">
+            <span aria-hidden="true">📋</span> Datos del proyecto
+        </button>
+        <button type="button" role="tab" id="tab-estructura" data-tab="estructura"
+                aria-controls="panel-estructura" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('estructura')">
+            <span aria-hidden="true">🗂️</span> Estructura
+            <span class="n">@p.TotalEntregables · @p.TotalActividades</span>
+        </button>
+        <button type="button" role="tab" id="tab-cronograma" data-tab="cronograma"
+                aria-controls="panel-cronograma" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('cronograma')"
+                title="La estructura vista en el tiempo, con el avance sobre cada barra">
+            <span aria-hidden="true">📅</span> Cronograma
+        </button>
+        <button type="button" role="tab" id="tab-bitacora" data-tab="bitacora"
+                aria-controls="panel-bitacora" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('bitacora')">
+            <span aria-hidden="true">📝</span> Bitácora
+            <span class="n">@Model.Avances.Count</span>
+        </button>
+        <button type="button" role="tab" id="tab-equipo" data-tab="equipo"
+                aria-controls="panel-equipo" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('equipo')"
+                title="Quién responde por el proyecto y qué puede salir mal: se consultan juntos">
+            <span aria-hidden="true">👥</span> Equipo y riesgos
+            <span class="n">@Model.Interesados.Count · @Model.Riesgos.Count(r => r.EstaAbierto)</span>
+        </button>
+        <button type="button" role="tab" id="tab-documentos" data-tab="documentos"
+                aria-controls="panel-documentos" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('documentos')"
+                title="Convenios, actas e informes del proyecto, con su historial de versiones">
+            <span aria-hidden="true">📁</span> Documentos
+            <span class="n">@Model.Documentos.Count</span>
+        </button>
+        @* Vínculos: lo que este proyecto toca fuera de su propia estructura. *@
+        <button type="button" role="tab" id="tab-vinculos" data-tab="vinculos"
+                aria-controls="panel-vinculos" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('vinculos')">
+            <svg class="ico"><use href="#i-reunion"></use></svg>Vínculos
+            @{
+                var nVinc = Model.Vinculos.Reuniones.Count + Model.Vinculos.Expedientes.Count
+                          + Model.Vinculos.Tickets.Count;
+            }
+            @if (nVinc > 0)
+            {
+                <span class="n">@nVinc</span>
+            }
+        </button>
+        <button type="button" role="tab" id="tab-auditoria" data-tab="auditoria"
+                aria-controls="panel-auditoria" aria-selected="false" tabindex="-1"
+                onclick="abrirPestana('auditoria')">
+            <span aria-hidden="true">🔎</span> Auditoría
+        </button>
+    </nav>
+
+    @* ── Estructura + ficha (un solo guardado) ───────────────────── *@
+    @* La estructura va primero y la ficha después, al revés que antes: a un proyecto abierto se
+       entra a mirar y mover el desglose, no a corregirle el nombre. Las dos siguen en el mismo
+       formulario porque las guarda el mismo comando. *@
+    <form method="post" asp-page-handler="Guardar" asp-route-id="@p.Id">
+        @* Cada pestaña es una <section> que se oculta con [hidden], NO se saca del DOM: la
+           estructura y los datos del proyecto los postea el mismo formulario, y un panel removido
+           dejaría de mandar sus campos. Es el mismo criterio con que se pliegan los grupos de la
+           tabla. *@
+        <section class="tab-panel" id="panel-estructura" data-tab="estructura"
+                 role="tabpanel" aria-labelledby="tab-estructura" hidden>
+        <div class="card ficha-sec" id="estructura">
+            <h3 class="sec-h">Estructura de desglose</h3>
+            <p class="res-meta" style="margin-top:-.35rem">
+                El proyecto se descompone en <strong>entregables</strong> —lo que se entrega— y cada
+                entregable en <strong>actividades</strong> —lo que hay que hacer para entregarlo—.
+            </p>
+
+            <details class="ayuda">
+                <summary>¿De dónde sale el porcentaje de avance?</summary>
+                <div class="cuerpo">
+                    <p>
+                        <strong>Solo se escribe un número: el de la actividad.</strong> De ahí sube todo:
+                        el entregable promedia sus actividades y el proyecto promedia sus entregables.
+                        Por eso el porcentaje de arriba no se puede teclear.
+                    </p>
+                    <p>
+                        <strong>Un entregable sin actividades vale por su estado</strong> — pendiente 0 %,
+                        en proceso 50 %, cumplido 100 % —. Es la regla de valor fijo del PMI y es lo que
+                        sostiene a los proyectos que todavía no se desglosaron.
+                    </p>
+                    <p>
+                        <strong>Lo cancelado sale del promedio</strong>, ni suma ni resta: una actividad
+                        que se descartó no debería arrastrar el avance hacia abajo como si estuviera en cero.
+                    </p>
+                    <p>
+                        <strong>Las fechas reales no se escriben.</strong> Cuando una actividad pasa de 0 %
+                        queda sellada su fecha de inicio, y al llegar a 100 % la de cierre. El entregable se
+                        da por cumplido solo cuando todas sus actividades llegan al 100 %.
+                    </p>
+                </div>
+            </details>
+
+            <details class="ayuda">
+                <summary>¿Qué son las dependencias entre actividades?</summary>
+                <div class="cuerpo">
+                    <p>
+                        Bajo el nombre de cada actividad se declara <strong>de qué otras actividades
+                        depende</strong>: las que tienen que <strong>terminar antes</strong> de que esta
+                        pueda arrancar. Pueden estar en otro entregable del mismo proyecto.
+                    </p>
+                    <p>
+                        <strong>Avisan, no bloquean.</strong> Si una actividad espera a otra que sigue
+                        abierta, se marca <em>Bloqueada</em> y aparece en el tablero — pero reportar avance
+                        sobre ella se permite igual. Buena parte del portafolio se cargó desde actas y
+                        arrastra estructura incompleta: un candado convertiría el dato que falta en un
+                        error del que reporta.
+                    </p>
+                    <p>
+                        <em>Choca con su predecesora</em> es otra cosa: la actividad tiene planificado
+                        empezar <strong>antes</strong> de que termine aquella de la que depende. El
+                        conflicto ya está escrito en el cronograma aunque nadie haya llegado tarde.
+                    </p>
+                    <p>
+                        Solo se puede depender de una actividad <strong>ya guardada</strong>. Para
+                        encadenar dos actividades nuevas, guarde primero y vuelva a entrar.
+                    </p>
+                </div>
+            </details>
+
+            @if (p.SinDesglose && Model.PuedeEditar)
+            {
+                <div class="hint warn" style="margin-bottom:1rem">
+                    <span class="ico" aria-hidden="true">⚠️</span>
+                    <div>
+                        Este proyecto todavía <strong>no tiene actividades</strong>. Mientras siga así su
+                        avance sale solo del estado de los entregables y nadie puede reportar progreso
+                        contra él. Use <strong>+ Actividad</strong> en el entregable que corresponda.
+                    </div>
+                </div>
+            }
+
+            @if (Model.PuedeEditar && !Model.Interesados.Any())
+            {
+                <div class="hint" style="margin-bottom:1rem">
+                    <span class="ico" aria-hidden="true">💡</span>
+                    <div>
+                        Los responsables de entregables y actividades se eligen <strong>entre los
+                        interesados del proyecto</strong>, y este todavía no tiene ninguno: por eso los
+                        selectores de responsable están vacíos.
+                        <a href="#interesados">Registre interesados</a> y vuelva acá.
+                    </div>
+                </div>
+            }
+
+            @{
+                // La columna de orden solo existe para el responsable del proyecto: reordenar es su
+                // atribución. Con ella la tabla pasa a 8 columnas, y de eso depende el colspan de las
+                // filas de «agregar actividad».
+                var conOrden = Model.PuedeReordenarActividades;
+                var cols     = conOrden ? 9 : 8;   // +1 por la columna «Creado»
+
+                // Las filas anteriores al 26-08-2026 no tienen fecha: la entidad no llevaba auditoría.
+                // Se muestra un guion en vez de inventarles la fecha de la migración.
+                string Creado(DateTime? f) => f?.ToLocalTime().ToString("dd/MM/yy") ?? "—";
+
+                // Fuera del atributo: un ternario con comillas dobles dentro de un title="" rompe el
+                // parseo de Razor. Ya pasó con el tooltip de las dependencias.
+                string CreadoTip(string? quien) => quien is { Length: > 0 }
+                    ? $"Registrado por {quien}"
+                    : "Se registró antes de que el portal guardara esta fecha";
+            }
+
+            @if (!p.Entregables.Any() && !Model.PuedeEditar)
+            {
+                <div class="hist-empty">
+                    <div class="ico">🗂️</div>
+                    <p>Este proyecto no tiene entregables registrados.</p>
+                </div>
+            }
+            else if (!p.Entregables.Any())
+            {
+                <div class="hint" style="margin-bottom:1rem">
+                    <span class="ico" aria-hidden="true">🗂️</span>
+                    <div>
+                        El proyecto todavía no tiene estructura. Empiece por el primer entregable:
+                        <strong>qué producto concreto va a entregar</strong> — no la tarea para lograrlo,
+                        que va como actividad adentro.
+                    </div>
+                </div>
+            }
+
+            @* La tabla se renderiza aunque esté vacía si se puede editar: es el ancla que el script
+               necesita para colgar el primer entregable, y sus encabezados son los que le dan
+               sentido a la fila que aparece al agregarlo. *@
+            @if (p.Entregables.Any() || Model.PuedeEditar)
+            {
+                @* .edit-grid además de .seg-table: es la que estila los input/select dentro de las
+                   celdas. Con table-layout:fixed hay que dar anchos en píxeles — width:1% se toma
+                   literal y el contenido desborda. La primera columna va sin ancho y se queda el resto. *@
+                <div style="overflow-x:auto">
+                <table class="seg-table edit-grid" id="tabla-estructura">
+                    <thead>
+                        <tr>
+                            <th>Entregable / actividad</th>
+                            <th style="width:145px">Responsable</th>
+                            <th style="width:118px" title="Solo las actividades tienen fecha de inicio; en el entregable se muestra la de la primera de ellas">Inicio</th>
+                            <th style="width:118px" title="En la actividad, cuándo debe terminar. En el entregable, la fecha comprometida de entrega">Fin</th>
+                            <th style="width:120px" title="El de la actividad lo fija su porcentaje; el del entregable se elige a mano">Estado</th>
+                            <th style="width:110px" title="Solo se escribe el de la actividad: el del entregable es el promedio">Avance</th>
+                            <th style="width:92px" title="Cuándo se registró la fila en el portal. Vacío en lo cargado antes del 26-08-2026, cuando todavía no se guardaba">Creado</th>
+                            @if (conOrden)
+                            {
+                                <th style="width:66px">Orden</th>
+                            }
+                            <th style="width:42px"></th>
+                        </tr>
+                    </thead>
+
+                    @for (var i = 0; i < p.Entregables.Count; i++)
+                    {
+                        var e = p.Entregables[i];
+                        @* Un tbody por entregable: agrupa sus actividades, permite plegarlas y le da al
+                           JS un contenedor natural donde insertar filas y contar índices. *@
+                        <tbody class="ent-grupo edt-grupo" data-ent="@i">
+                            <tr class="ent-row edt-ent">
+                                @* Entregables.Index permite que los índices no sean correlativos: al borrar
+                                   una fila en el navegador no hay que renumerar el resto para que el binder
+                                   no corte la lista en el primer hueco. *@
+                                <input type="hidden" name="Entregables.Index" value="@i" />
+                                @* El Id viaja para que el comando actualice el entregable en su lugar. Sin
+                                   él habría que borrar y recrear, y eso desimputa los avances. *@
+                                <input type="hidden" name="Entregables[@i].Id" value="@e.Id" />
+                                @* La descripción viaja de ida y vuelta aunque la tabla no la muestre.
+                                   Sin esto llega null y el comando la interpreta como «vaciar»: cada
+                                   guardado de la ficha borraba las descripciones. *@
+                                <input type="hidden" name="Entregables[@i].Descripcion" value="@e.Descripcion" />
+                                <td>
+                                    <div style="display:flex;gap:6px;align-items:flex-start">
+                                        <button type="button" class="edt-toggle" onclick="alternarGrupo(this)"
+                                                aria-expanded="true" title="Plegar o desplegar sus actividades">
+                                            <span class="caret" aria-hidden="true">▾</span>
+                                        </button>
+                                        <div style="flex:1;min-width:0">
+                                            <input name="Entregables[@i].Nombre" value="@e.Nombre" maxlength="300"
+                                                   style="width:100%;font-weight:600" disabled="@(!Model.PuedeEditar)"
+                                                   aria-label="Nombre del entregable @(i + 1)" />
+                                            <div class="res-meta" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                                                @if (e.SinDesglose)
+                                                {
+                                                    <span class="badge badge-secondary" title="Su avance sale del estado, no de trabajo reportado">Sin desglosar</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@e.ActividadesTerminadas de @e.ActividadesVigentes actividades terminadas</span>
+                                                }
+                                                @if (e.EstaAtrasado)
+                                                {
+                                                    <span class="badge badge-danger">Atrasado</span>
+                                                }
+                                                @if (e.ActividadesAtrasadas > 0)
+                                                {
+                                                    <span class="badge badge-danger">@e.ActividadesAtrasadas vencida@(e.ActividadesAtrasadas == 1 ? "" : "s")</span>
+                                                }
+                                                @if (e.DesbordaElPlan)
+                                                {
+                                                    <span class="badge badge-warning"
+                                                          title="La última actividad termina el @e.FinActividades!.Value.ToString("dd/MM/yyyy"), después de la fecha comprometida">
+                                                        Actividades fuera de plazo
+                                                    </span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <select name="Entregables[@i].ResponsableId" disabled="@(!Model.PuedeEditar)"
+                                            aria-label="Responsable del entregable @(i + 1)">
+                                        <option value="">—</option>
+                                        @foreach (var it in Model.Interesados)
+                                        {
+                                            <option value="@it.UsuarioId" selected="@(e.ResponsableId == it.UsuarioId)">@it.Nombre</option>
+                                        }
+                                        @* El responsable que ya estaba y no figura entre los interesados se
+                                           conserva como opción propia. Si desapareciera del selector, guardar
+                                           la ficha lo borraría sin que nadie lo hubiera decidido — y son los
+                                           que vienen de la carga inicial, cuando la lista no existía. *@
+                                        @if (e.ResponsableId is { } rid && Model.Interesados.All(it => it.UsuarioId != rid))
+                                        {
+                                            <option value="@rid" selected>@(e.Responsable ?? "asignado") · no es interesado</option>
+                                        }
+                                    </select>
+                                </td>
+                                @* Las dos columnas de fecha se funden en una sola celda rotulada: el
+                                   entregable no tiene ventana como la actividad, tiene un compromiso de
+                                   entrega, y con los encabezados compartidos eso no se podía decir. *@
+                                <td colspan="2">
+                                    <label class="cel-lbl" for="e-fin-@i">Entrega comprometida</label>
+                                    <input id="e-fin-@i" type="date" name="Entregables[@i].FechaPlan" value="@Iso(e.FechaPlan)"
+                                           disabled="@(!Model.PuedeEditar)" />
+                                    <div class="cel-calc" style="margin-top:3px">
+                                        @if (e.InicioActividades is { } ini || e.FinActividades is not null)
+                                        {
+                                            <text>
+                                                actividades:
+                                                @(e.InicioActividades?.ToString("dd/MM/yy") ?? "?")
+                                                → @(e.FinActividades?.ToString("dd/MM/yy") ?? "?")
+                                            </text>
+                                        }
+                                        else if (e.FechaReal is { } fr)
+                                        {
+                                            <text>entregado el @fr.ToString("dd/MM/yy")</text>
+                                        }
+                                        else
+                                        {
+                                            <text>sin actividades fechadas</text>
+                                        }
+                                    </div>
+                                    @if (e.FechaReal is { } freal && e.InicioActividades is not null)
+                                    {
+                                        <div class="cel-calc">entregado el @freal.ToString("dd/MM/yy")</div>
+                                    }
+                                </td>
+                                <td>
+                                    <select name="Entregables[@i].Estado" disabled="@(!Model.PuedeEditar)"
+                                            aria-label="Estado del entregable @(i + 1)">
+                                        @foreach (var est in Enum.GetValues<EstadoEntregable>())
+                                        {
+                                            <option value="@((int)est)" selected="@(e.Estado == est)">@(est == EstadoEntregable.EnProceso ? "En proceso" : est.ToString())</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    @* Calculado, no editable: es el promedio de las actividades de abajo. *@
+                                    <div style="display:flex;align-items:center;gap:6px"
+                                         title="@(e.SinDesglose ? "Sale del estado del entregable: pendiente 0 %, en proceso 50 %, cumplido 100 %" : $"Promedio de sus {e.ActividadesVigentes} actividades vigentes")">
+                                        <div class="progress" style="flex:1;height:7px">
+                                            <div class="progress-bar @BarraCls(e.AvancePct)" style="width:@(e.AvancePct)%"></div>
+                                        </div>
+                                        <strong style="font-size:var(--diger-fs-xs);width:32px;text-align:right">@(e.AvancePct)%</strong>
+                                    </div>
+                                </td>
+                                <td class="cel-calc" title="@CreadoTip(e.CreadoPor)">@Creado(e.CreadoEn)</td>
+                                @if (conOrden)
+                                {
+                                    <td style="text-align:right;white-space:nowrap">
+                                        @if (Model.PuedeReordenar)
+                                        {
+                                            @* El Id viaja con la fila: al moverla en el DOM se mueve con ella,
+                                               así el orden que se postea es el que se ve. *@
+                                            <input type="hidden" name="OrdenEntregables" value="@e.Id" />
+                                            <button type="button" class="orden-mov" aria-label="Subir «@e.Nombre»"
+                                                    title="Subir" onclick="moverEntregable(this, -1)">▲</button>
+                                            <button type="button" class="orden-mov" aria-label="Bajar «@e.Nombre»"
+                                                    title="Bajar" onclick="moverEntregable(this, 1)">▼</button>
+                                        }
+                                    </td>
+                                }
+                                <td style="text-align:right">
+                                    @if (Model.PuedeEditar)
+                                    {
+                                        <button type="button" class="hist-del" aria-label="Quitar entregable «@e.Nombre»"
+                                                title="Quitar el entregable y sus actividades"
+                                                onclick="quitarEntregable(this)">✕</button>
+                                    }
+                                </td>
+                            </tr>
+
+                            @for (var j = 0; j < e.Actividades.Count; j++)
+                            {
+                                var a = e.Actividades[j];
+                                @* Se arma acá y no dentro del title: una llamada con comillas dobles
+                                   adentro de un atributo delimitado por comillas dobles rompe el parseo. *@
+                                var espera = string.Join(" · ", a.PredecesorasPendientes.Select(pr => pr.Nombre));
+                                <tr class="act-row edt-act" data-act="@a.Id">
+                                    <input type="hidden" name="Entregables[@i].Actividades.Index" value="@j" />
+                                    <input type="hidden" name="Entregables[@i].Actividades[@j].Id" value="@a.Id" />
+                                    <input type="hidden" name="Entregables[@i].Actividades[@j].Descripcion" value="@a.Descripcion" />
+                                    <td>
+                                        <input name="Entregables[@i].Actividades[@j].Nombre" value="@a.Nombre" maxlength="300"
+                                               style="width:100%" disabled="@(!Model.PuedeEditar)"
+                                               aria-label="Nombre de la actividad @(j + 1)" />
+                                        @if (a.EstaAtrasada || a.NoArrancada || a.EstaCancelada || a.Bloqueada || a.DesfaseIncoherente || a.FechaFinReal is not null)
+                                        {
+                                            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">
+                                                @if (a.EstaAtrasada)
+                                                {
+                                                    <span class="badge badge-danger">Vencida</span>
+                                                }
+                                                @if (a.NoArrancada)
+                                                {
+                                                    <span class="badge badge-warning" title="Debía haber arrancado y sigue en cero">Sin arrancar</span>
+                                                }
+                                                @if (a.Bloqueada)
+                                                {
+                                                    <span class="badge badge-warning"
+                                                          title="Espera a que termine: @espera">
+                                                        @(a.ArrancoBloqueada ? "Arrancó bloqueada" : "Bloqueada")
+                                                    </span>
+                                                }
+                                                @if (a.DesfaseIncoherente)
+                                                {
+                                                    <span class="badge badge-warning"
+                                                          title="Su ventana empieza antes de que termine una actividad de la que depende: el conflicto ya está en el cronograma">
+                                                        Choca con su predecesora
+                                                    </span>
+                                                }
+                                                @if (a.EstaCancelada)
+                                                {
+                                                    <span class="badge badge-secondary" title="No cuenta en el promedio del entregable">No cuenta</span>
+                                                }
+                                                @if (a.FechaFinReal is { } ffr)
+                                                {
+                                                    <span class="res-meta" style="font-size:var(--diger-fs-xs)">terminada @ffr.ToString("dd/MM/yy")</span>
+                                                }
+                                            </div>
+                                        }
+                                        @* Las dependencias no tienen columna propia: la tabla ya lleva ocho
+                                           y la mayoría de las actividades no depende de nada. Van bajo el
+                                           nombre, donde solo ocupan lugar cuando existen. *@
+                                        @if (a.Predecesoras.Count > 0 || Model.PuedeEditar)
+                                        {
+                                            <div class="dep-lista">
+                                                @if (a.Predecesoras.Count > 0)
+                                                {
+                                                    <span class="dep-rot" aria-hidden="true">depende de</span>
+                                                }
+                                                @foreach (var pre in a.Predecesoras)
+                                                {
+                                                    var clasePre = pre.SigueAbierta ? "abierta" : "lista";
+                                                    var glosaPre = pre.SigueAbierta ? "todavía abierta" : "ya terminada";
+                                                    <span class="dep-chip @clasePre" data-pre="@pre.Id"
+                                                          title="@pre.Entregable · @glosaPre">
+                                                        @* El hidden es lo que se postea; el chip es solo su cara visible. *@
+                                                        <input type="hidden" name="Entregables[@i].Actividades[@j].Predecesoras" value="@pre.Id" />
+                                                        <span class="dep-nom">@pre.Nombre</span>
+                                                        @if (Model.PuedeEditar)
+                                                        {
+                                                            <button type="button" class="dep-x" onclick="quitarDependencia(this)"
+                                                                    aria-label="Quitar la dependencia con @pre.Nombre">&#10005;</button>
+                                                        }
+                                                    </span>
+                                                }
+                                                @if (Model.PuedeEditar)
+                                                {
+                                                    <button type="button" class="dep-mas" onclick="abrirDependencia(this)"
+                                                            aria-label="Agregar una dependencia a @a.Nombre"
+                                                            title="Elegir qué actividad tiene que terminar antes que esta">+ depende de…</button>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <select name="Entregables[@i].Actividades[@j].ResponsableId" disabled="@(!Model.PuedeEditar)"
+                                                aria-label="Responsable de la actividad @(j + 1)">
+                                            <option value="">—</option>
+                                            @foreach (var it in Model.Interesados)
+                                            {
+                                                <option value="@it.UsuarioId" selected="@(a.ResponsableId == it.UsuarioId)">@it.Nombre</option>
+                                            }
+                                            @if (a.ResponsableId is { } aRid && Model.Interesados.All(it => it.UsuarioId != aRid))
+                                            {
+                                                <option value="@aRid" selected>@(a.Responsable ?? "asignado") · no es interesado</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="date" name="Entregables[@i].Actividades[@j].FechaInicioPlan" value="@Iso(a.FechaInicioPlan)"
+                                               disabled="@(!Model.PuedeEditar)" aria-label="Inicio planificado de la actividad @(j + 1)" />
+                                    </td>
+                                    <td>
+                                        <input type="date" name="Entregables[@i].Actividades[@j].FechaFinPlan" value="@Iso(a.FechaFinPlan)"
+                                               disabled="@(!Model.PuedeEditar)" aria-label="Fin planificado de la actividad @(j + 1)" />
+                                    </td>
+                                    <td>
+                                        @* El estado no se elige: lo deriva el porcentaje. Lo único que se
+                                           decide es cancelarla, que además la saca del promedio. *@
+                                        <div class="cel-calc" title="Lo fija el porcentaje: 0 pendiente, 1-99 en proceso, 100 completada">
+                                            @(a.Estado == EstadoActividad.EnProceso ? "En proceso" : a.Estado.ToString())
+                                        </div>
+                                        @if (Model.PuedeEditar)
+                                        {
+                                            <label style="display:flex;align-items:center;gap:5px;margin-top:3px;font-size:var(--diger-fs-xs);cursor:pointer"
+                                                   title="Sale del promedio del entregable, sin borrarse">
+                                                <input type="checkbox" name="Entregables[@i].Actividades[@j].Cancelada" value="true"
+                                                       checked="@a.EstaCancelada" style="width:auto;margin:0" />
+                                                <span>Cancelada</span>
+                                            </label>
+                                            @* Par obligado del checkbox: sin el hidden, destildarlo no manda
+                                               nada y el binder deja el valor anterior. *@
+                                            <input type="hidden" name="Entregables[@i].Actividades[@j].Cancelada" value="false" />
+                                        }
+                                    </td>
+                                    <td>
+                                        <div style="display:flex;align-items:center;gap:4px">
+                                            <input type="number" name="Entregables[@i].Actividades[@j].AvancePct"
+                                                   min="0" max="100" step="5" value="@a.AvancePct"
+                                                   disabled="@(!Model.PuedeEditar)"
+                                                   aria-label="Avance de la actividad @(j + 1) en porcentaje"
+                                                   title="El único número que se escribe a mano en todo el árbol" />
+                                            <span class="cel-calc">%</span>
+                                        </div>
+                                    </td>
+                                    <td class="cel-calc" title="@CreadoTip(a.CreadoPor)">@Creado(a.CreadoEn)</td>
+                                    @if (conOrden)
+                                    {
+                                        <td style="text-align:right;white-space:nowrap">
+                                            @if (e.Actividades.Count > 1)
+                                            {
+                                                <button type="button" class="orden-mov" aria-label="Subir «@a.Nombre»"
+                                                        title="Subir" onclick="moverActividad(this, -1)">▲</button>
+                                                <button type="button" class="orden-mov" aria-label="Bajar «@a.Nombre»"
+                                                        title="Bajar" onclick="moverActividad(this, 1)">▼</button>
+                                            }
+                                        </td>
+                                    }
+                                    <td style="text-align:right">
+                                        @if (Model.PuedeEditar)
+                                        {
+                                            <button type="button" class="hist-del" aria-label="Quitar actividad «@a.Nombre»"
+                                                    title="Quitar la actividad" onclick="quitarActividad(this)">✕</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+
+                            @if (Model.PuedeEditar)
+                            {
+                                <tr class="act-add edt-add">
+                                    <td colspan="@cols">
+                                        <button type="button" class="btns" style="font-size:12.5px;padding:4px 10px"
+                                                onclick="agregarActividad(this)">+ Actividad</button>
+                                        @if (conOrden && e.Actividades.Count > 1)
+                                        {
+                                            @* Fuera del formulario de la ficha, con form="…": el reordenamiento
+                                               es de un entregable a la vez y no puede arrastrar los Ids de los
+                                               demás, que están en la misma página. *@
+                                            <button type="button" class="btns" style="font-size:12.5px;padding:4px 10px"
+                                                    onclick="guardarOrdenActividades(this, @e.Id)">Guardar orden</button>
+                                        }
+                                        <span class="res-meta" style="margin-left:6px">en «@e.Nombre»</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    }
+                </table>
+                </div>
+            }
+
+            @if (Model.PuedeReordenar)
+            {
+                <div id="aviso-orden" class="hint warn" hidden style="margin-top:.6rem">
+                    <span class="ico" aria-hidden="true">↕️</span>
+                    <div>
+                        Movió entregables de lugar. El orden lo guarda <strong>«Guardar orden»</strong>, que
+                        es atribución suya como responsable; «Guardar cambios» nunca lo altera.
+                    </div>
+                </div>
+            }
+
+            @if (Model.PuedeEditar)
+            {
+                <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;align-items:center">
+                    <button type="button" class="btns" onclick="agregarEntregable()">+ Agregar entregable</button>
+                    @if (p.Entregables.Any())
+                    {
+                        <button type="button" class="btns" onclick="alternarTodos()" id="btn-plegar">Plegar todo</button>
+                    }
+                </div>
+            }
+        </div>
+        </section>
+
+        @* ── Datos del proyecto ──────────────────────────────────── *@
+        @* Ya no va plegada: la pestaña hace ese trabajo, y un <details> dentro de un panel que
+           además se oculta eran dos capas para esconder lo mismo. *@
+
+        <section class="tab-panel" id="panel-datos" data-tab="datos"
+                 role="tabpanel" aria-labelledby="tab-datos">
+            <div class="card ficha-sec" id="ficha">
+                <h3 class="sec-h" style="display:inline-flex;align-items:center;gap:8px;margin:0">
+                    <span aria-hidden="true">📋</span> Datos del proyecto
+                    <span class="res-meta" style="font-weight:400">— nombre, objetivo, responsable, fechas y alcance</span>
+                </h3>
+
+            <div style="margin-top:1.1rem">
+                <div class="field">
+                    <label for="f-nombre">Nombre <span style="color:var(--diger-danger)">*</span></label>
+                    <input id="f-nombre" name="Nombre" value="@Model.Nombre" maxlength="300" required disabled="@(!Model.PuedeEditar)" />
+                </div>
+                <div class="field">
+                    <label for="f-obj">Objetivo</label>
+                    <textarea id="f-obj" name="Objetivo" rows="3" maxlength="2000" disabled="@(!Model.PuedeEditar)">@Model.Objetivo</textarea>
+                </div>
+
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:200px">
+                        <label for="f-resp">Responsable del proyecto</label>
+                        <select id="f-resp" name="ResponsableId" disabled="@(!Model.PuedeEditar)">
+                            <option value="">— Sin asignar —</option>
+                            @foreach (var u in Model.Usuarios)
+                            {
+                                <option value="@u.Id" selected="@(Model.ResponsableId == u.Id)">@u.Nombre</option>
+                            }
+                        </select>
+                        <div class="res-meta" style="margin-top:4px">
+                            Sale del padrón completo, no de los interesados. Es quien puede reordenar la
+                            estructura y corregir la bitácora.
+                        </div>
+                    </div>
+                    <div class="field" style="width:150px">
+                        <label for="f-prio">Prioridad</label>
+                        <select id="f-prio" name="Prioridad" disabled="@(!Model.PuedeEditar)">
+                            @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                            {
+                                <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" style="width:170px">
+                        <label for="f-ini">Inicio planificado</label>
+                        <input id="f-ini" type="date" name="FechaInicioPlan" value="@Iso(Model.FechaInicioPlan)" disabled="@(!Model.PuedeEditar)" />
+                    </div>
+                    <div class="field" style="width:170px">
+                        <label for="f-fin">Cierre planificado</label>
+                        <input id="f-fin" type="date" name="FechaFinPlan" value="@Iso(Model.FechaFinPlan)" disabled="@(!Model.PuedeEditar)" />
+                        <div class="res-meta" style="margin-top:4px">Sin esta fecha el proyecto nunca cuenta como atrasado.</div>
+                    </div>
+
+                    @* Alcance: quién ve el proyecto. Vacío = transversal, lo ve toda la institución. *@
+                    <div class="field" style="width:200px">
+                        <label for="f-area">Área</label>
+                        <select id="f-area" name="AreaId" disabled="@(!Model.PuedeEditar)">
+                            <option value="">— Toda la institución —</option>
+                            @foreach (var a in Model.Alcance.Areas)
+                            {
+                                <option value="@a.Id" selected="@(Model.AreaId == a.Id)">@a.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" style="width:200px">
+                        <label for="f-unidad">Unidad</label>
+                        <select id="f-unidad" name="UnidadId" disabled="@(!Model.PuedeEditar)">
+                            <option value="">— Toda el área —</option>
+                            @foreach (var u in Model.Alcance.Unidades)
+                            {
+                                <option value="@u.Id" data-area="@u.Padre" selected="@(Model.UnidadId == u.Id)">@u.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="hint">
+                    <span class="ico" aria-hidden="true">🔒</span>
+                    <div>
+                        <strong>Área y unidad deciden quién ve el proyecto.</strong> Vacías, lo ve toda la
+                        institución. El responsable y los interesados lo ven siempre.
+                    </div>
+                </div>
+
+                <p class="res-meta" style="margin-top:.75rem">
+                    Ejecución real: @(p.FechaInicioReal?.ToString("dd/MM/yyyy") ?? "sin iniciar")
+                    → @(p.FechaFinReal?.ToString("dd/MM/yyyy") ?? "abierto").
+                    Las marca el cambio de estado, no se editan a mano.
+                </p>
+            </div>
+            </div>
+        </section>
+
+        @if (Model.PuedeEditar)
+        {
+            @* Pegajosa: la estructura puede tener decenas de filas y el botón no puede vivir solo
+               al final de un scroll de tres pantallas. *@
+            <div class="guardar-barra" id="barra-guardar">
+                <span class="nota">Guarda la estructura y los datos del proyecto.</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    @if (Model.PuedeReordenar)
+                    {
+                        @* Mismo formulario, otro handler: el reordenamiento no pasa por el
+                           guardado en bloque de la ficha porque es una acción del propietario. *@
+                        <button type="submit" class="btns" asp-page-handler="ReordenarEntregables" asp-route-id="@p.Id">
+                            Guardar orden
+                        </button>
+                    }
+                    <button type="submit" class="btnp">Guardar cambios</button>
+                </div>
+            </div>
+        }
+    </form>
+
+        @* ── Vínculos ───────────────────────────────────────────────────── *@
+        <section class="tab-panel" id="panel-vinculos" data-tab="vinculos"
+                 role="tabpanel" aria-labelledby="tab-vinculos" hidden>
+
+            @{
+                var vin = Model.Vinculos;
+
+                // Las secciones se pliegan solas cuando no hay nada que enseñar. Un proyecto sin
+                // reuniones ni expedientes —que es la mayoría— no debería obligar a bajar por dos
+                // vacíos para llegar a los formularios. El resumen sigue diciendo cuántos hay, así
+                // que plegado no equivale a esconder.
+                var hayReuniones   = vin.Reuniones.Count   > 0 || vin.ReunionesFueraDeAlcance   > 0;
+                var hayExpedientes = vin.Expedientes.Count > 0 || vin.ExpedientesFueraDeAlcance > 0;
+                var hayTickets     = vin.Tickets.Count     > 0 || vin.TicketsFueraDeAlcance     > 0;
+
+                string EstadoTicketCls(string e) => e switch
+                {
+                    "Abierto"    => "status-badge abierto",
+                    "EnProgreso" => "status-badge enproceso",
+                    "Resuelto"   => "status-badge resuelto",
+                    _            => "status-badge default"
+                };
+            }
+
+            <details class="card ficha-sec vinc-sec" open="@hayReuniones">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Reuniones vinculadas</span>
+                    <span class="vinc-n">@(vin.Reuniones.Count == 0 ? "ninguna" : vin.Reuniones.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
+                    Reuniones donde se trató este proyecto. El vínculo es opcional por los dos lados:
+                    una reunión puede no pertenecer a ninguno, o tocar a varios.
+                </p>
+
+                @if (vin.Reuniones.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th>Reunión</th>
+                                    <th style="width:110px">Fecha</th>
+                                    <th style="width:170px">Institución</th>
+                                    <th style="width:90px">Asistentes</th>
+                                    <th style="width:170px">Vinculada por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in vin.Reuniones)
+                                {
+                                    <tr>
+                                        <td style="white-space:normal">
+                                            <a asp-page="/Reuniones/Acta" asp-route-id="@r.ReunionId"
+                                               style="font-weight:600;text-decoration:none">@r.Titulo</a>
+                                            @if (!string.IsNullOrWhiteSpace(r.Tipo))
+                                            {
+                                                <span class="badge badge-secondary" style="margin-left:6px">@r.Tipo</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(r.Nota))
+                                            {
+                                                <div class="res-meta">@r.Nota</div>
+                                            }
+                                        </td>
+                                        <td class="res-meta">@(r.Fecha?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td class="res-meta" style="white-space:normal">@(r.Institucion ?? "—")</td>
+                                        <td class="res-meta">@r.Asistentes</td>
+                                        <td class="res-meta">
+                                            @r.VinculadoPor<br />
+                                            @r.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoReunion"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@r.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (la reunión no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">🗓️</div>
+                        <p>No hay reuniones vinculadas a este proyecto.</p>
+                    </div>
+                }
+
+                @* El conteo de lo que queda fuera de alcance: no se esconde, se dice. Sin esto una
+                   ficha con seis reuniones vinculadas se leería como si tuviera dos. *@
+                @if (vin.ReunionesFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.ReunionesFueraDeAlcance</strong>
+                        reunión@(vin.ReunionesFueraDeAlcance == 1 ? "" : "es") más está@(vin.ReunionesFueraDeAlcance == 1 ? "" : "n")
+                        vinculada@(vin.ReunionesFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularReunion" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-reunion">Vincular una reunión</label>
+                            <select id="v-reunion" name="VinculoReunionId" required>
+                                <option value="">— Elija una reunión —</option>
+                                @foreach (var o in Model.ReunionesVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-r">Por qué (opcional)</label>
+                            <input id="v-nota-r" name="VinculoNota" maxlength="400"
+                                   placeholder="Se acordó el alcance del enlace de fibra" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
+
+            <details class="card ficha-sec vinc-sec" open="@hayExpedientes">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Expedientes vinculados</span>
+                    <span class="vinc-n">@(vin.Expedientes.Count == 0 ? "ninguno" : vin.Expedientes.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
+                    Expedientes de digitalización que este proyecto atiende. Un expediente puede
+                    alimentar a varios proyectos.
+                </p>
+
+                @if (vin.Expedientes.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px">Código</th>
+                                    <th>Institución</th>
+                                    <th style="width:140px">Estado</th>
+                                    <th style="width:110px">Apertura</th>
+                                    <th style="width:170px">Vinculado por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var e in vin.Expedientes)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Expedientes/Editor" asp-route-id="@e.ExpedienteId"
+                                               style="font-weight:600;text-decoration:none">@e.Codigo</a>
+                                        </td>
+                                        <td style="white-space:normal">
+                                            @e.Institucion
+                                            @if (!string.IsNullOrWhiteSpace(e.Nota))
+                                            {
+                                                <div class="res-meta">@e.Nota</div>
+                                            }
+                                        </td>
+                                        <td class="res-meta">@e.Estado</td>
+                                        <td class="res-meta">@(e.FechaApertura?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td class="res-meta">
+                                            @e.VinculadoPor<br />
+                                            @e.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoExpediente"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@e.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (el expediente no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">📁</div>
+                        <p>No hay expedientes vinculados a este proyecto.</p>
+                    </div>
+                }
+
+                @if (vin.ExpedientesFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.ExpedientesFueraDeAlcance</strong>
+                        expediente@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "s") más está@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "n")
+                        vinculado@(vin.ExpedientesFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularExpediente" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-exp">Vincular un expediente</label>
+                            <select id="v-exp" name="VinculoExpedienteId" required>
+                                <option value="">— Elija un expediente —</option>
+                                @foreach (var o in Model.ExpedientesVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-e">Por qué (opcional)</label>
+                            <input id="v-nota-e" name="VinculoNota" maxlength="400"
+                                   placeholder="El proyecto digitaliza este trámite" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
+
+            <details class="card ficha-sec vinc-sec" open="@hayTickets">
+                <summary class="vinc-sum">
+                    <span class="sec-h">Tickets vinculados</span>
+                    <span class="vinc-n">@(vin.Tickets.Count == 0 ? "ninguno" : vin.Tickets.Count.ToString())</span>
+                </summary>
+                <p class="res-meta" style="margin-top:.4rem">
+                    Tickets de soporte que este proyecto atiende: un requerimiento que entró por la
+                    mesa de ayuda y terminó siendo trabajo del proyecto. Los abiertos van primero.
+                </p>
+
+                @if (vin.Tickets.Any())
+                {
+                    <div style="overflow-x:auto">
+                        <table class="seg-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px">Número</th>
+                                    <th>Título</th>
+                                    <th style="width:120px">Estado</th>
+                                    <th style="width:150px">Asignado a</th>
+                                    <th style="width:170px">Vinculado por</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var t in vin.Tickets)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-page="/Tickets/Detalle" asp-route-id="@t.TicketId"
+                                               style="font-weight:600;text-decoration:none">@t.Numero</a>
+                                            <div class="res-meta">@t.Prioridad</div>
+                                        </td>
+                                        <td style="white-space:normal">
+                                            @t.Titulo
+                                            @if (!string.IsNullOrWhiteSpace(t.Nota))
+                                            {
+                                                <div class="res-meta">@t.Nota</div>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="@EstadoTicketCls(t.Estado)"
+                                                  style="padding:2px 9px;font-size:var(--diger-fs-xs)">@t.Estado</span>
+                                        </td>
+                                        <td class="res-meta">@(t.AsignadoA ?? "— sin asignar —")</td>
+                                        <td class="res-meta">
+                                            @t.VinculadoPor<br />
+                                            @t.VinculadoEn.ToLocalTime().ToString("dd/MM/yyyy")
+                                        </td>
+                                        <td style="text-align:right">
+                                            @if (Model.PuedeEditar)
+                                            {
+                                                <form method="post" asp-page-handler="QuitarVinculoTicket"
+                                                      asp-route-id="@p.Id" style="display:inline">
+                                                    <input type="hidden" name="VinculoId" value="@t.VinculoId" />
+                                                    <button type="submit" class="btns"
+                                                            title="Quitar el vínculo (el ticket no se toca)">✕</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="hist-empty">
+                        <div class="ico">🎫</div>
+                        <p>No hay tickets vinculados a este proyecto.</p>
+                    </div>
+                }
+
+                @if (vin.TicketsFueraDeAlcance > 0)
+                {
+                    <p class="res-meta" style="margin-top:.6rem">
+                        <strong>@vin.TicketsFueraDeAlcance</strong>
+                        ticket@(vin.TicketsFueraDeAlcance == 1 ? "" : "s") más está@(vin.TicketsFueraDeAlcance == 1 ? "" : "n")
+                        vinculado@(vin.TicketsFueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                    </p>
+                }
+
+                @if (Model.PuedeEditar)
+                {
+                    <form method="post" asp-page-handler="VincularTicket" asp-route-id="@p.Id"
+                          style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                        <div class="field" style="flex:2;min-width:260px;margin:0">
+                            <label for="v-tck">Vincular un ticket</label>
+                            <select id="v-tck" name="VinculoTicketId" required>
+                                <option value="">— Elija un ticket —</option>
+                                @foreach (var o in Model.TicketsVinculables)
+                                {
+                                    <option value="@o.Id">@o.Etiqueta</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:2;min-width:220px;margin:0">
+                            <label for="v-nota-t">Por qué (opcional)</label>
+                            <input id="v-nota-t" name="VinculoNota" maxlength="400"
+                                   placeholder="Lo pedido entra en el entregable de reportes" />
+                        </div>
+                        <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                    </form>
+                }
+            </details>
+        </section>
+
+    <section class="tab-panel" id="panel-bitacora" data-tab="bitacora"
+             role="tabpanel" aria-labelledby="tab-bitacora" hidden>
+    @* ── Bitácora de ejecución ───────────────────────────────────── *@
+    <div class="card ficha-sec" id="bitacora">
+        <h3 class="sec-h">Bitácora de ejecución</h3>
+        <p class="res-meta" style="margin-top:-.35rem">
+            Qué se hizo, cuándo y con qué respaldo. Ninguna entrada se borra; el responsable del
+            proyecto puede corregirlas, y la corrección queda marcada con quién la hizo y cuándo.
+        </p>
+
+        @if (Model.PuedeReportarAvance)
+        {
+            <form method="post" asp-page-handler="RegistrarAvance" asp-route-id="@p.Id" enctype="multipart/form-data"
+                  style="border:1px solid var(--diger-border);border-radius:var(--diger-radius-md);padding:1rem;margin-bottom:1.25rem">
+                <details class="ayuda">
+                    <summary>¿A qué conviene imputar el reporte?</summary>
+                    <div class="cuerpo">
+                        <p>
+                            <strong>A una actividad</strong> — es lo que mueve los números. Se reporta el
+                            acumulado de esa actividad, no lo que avanzó desde la última vez, y de ahí sube al
+                            entregable y al proyecto.
+                        </p>
+                        <p>
+                            <strong>A un entregable</strong> — para lo que no cae en una actividad puntual, o
+                            para darlo por cumplido. Los entregables desglosados se cierran solos cuando todas
+                            sus actividades llegan al 100 %.
+                        </p>
+                        <p>
+                            <strong>Al proyecto</strong> — una nota de ejecución: una reunión, una gestión, un
+                            bloqueo. No mueve ningún porcentaje, y sirve igual: es lo que evita que el proyecto
+                            aparezca como «sin reportar».
+                        </p>
+                    </div>
+                </details>
+
+                <div class="field">
+                    <label for="a-desc">Qué se avanzó <span style="color:var(--diger-danger)">*</span></label>
+                    <textarea id="a-desc" name="AvanceDescripcion" rows="3" maxlength="2000" required
+                              placeholder="Detalle de lo ejecutado en este período"></textarea>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:260px">
+                        <label for="a-destino">Imputar a</label>
+                        @* Un solo selector para los dos niveles: la actividad ya sabe de qué entregable
+                           cuelga, así que pedir los dos obligaría a mantenerlos coherentes acá y el
+                           comando rechazaría la combinación imposible al final del formulario. *@
+                        <select id="a-destino" name="AvanceDestino" onchange="alternarDestinoAvance()">
+                            <option value="">— Avance general del proyecto —</option>
+                            @foreach (var e in p.Entregables)
+                            {
+                                <optgroup label="@e.Nombre">
+                                    <option value="e:@e.Id" data-tipo="e"
+                                            data-cerrado="@(e.Estado == EstadoEntregable.Completado ? "1" : "0")">
+                                        El entregable en general
+                                    </option>
+                                    @foreach (var a in e.Actividades.Where(a => !a.EstaCancelada))
+                                    {
+                                        <option value="a:@a.Id" data-tipo="a" data-pct="@a.AvancePct">
+                                            @a.Nombre — @(a.AvancePct)%
+                                        </option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                        @* Cerrar el entregable acá es lo que mantiene el cronograma al día: hacerlo en
+                           la tabla de arriba, aparte, es el paso que nadie da. Solo aparece con un
+                           entregable elegido y todavía abierto — los desglosados se cierran solos
+                           cuando sus actividades llegan al 100 %. *@
+                        <label id="a-cerrar-ent" for="a-cerrar" hidden
+                               style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:var(--diger-fs-xs);cursor:pointer">
+                            <input id="a-cerrar" type="checkbox" name="AvanceCompletarEntregable" value="true" style="width:auto;margin:0" />
+                            <span>Dar este entregable por cumplido</span>
+                        </label>
+                    </div>
+                    @* El porcentaje solo existe si se imputa a una actividad: es el único nivel que
+                       lleva número. Con un entregable o con el proyecto entero no hay nada que
+                       escribir — ese avance se calcula. *@
+                    <div class="field" style="width:160px" id="a-pct-campo" hidden>
+                        <label for="a-pct">Avance de la actividad (%)</label>
+                        <input id="a-pct" type="number" name="AvancePorcentaje" min="0" max="100" step="5" />
+                    </div>
+                    <div class="field" style="flex:1;min-width:220px">
+                        <label for="a-file">Evidencia (opcional)</label>
+                        <input id="a-file" type="file" name="AvanceArchivo" />
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="field" style="flex:1;min-width:260px">
+                        <label for="a-bloq">Bloqueos</label>
+                        <input id="a-bloq" name="AvanceBloqueo" maxlength="1000" placeholder="Qué está trabando la ejecución, si algo" />
+                    </div>
+                    @* Solo si hay riesgos vivos que este bloqueo pueda estar confirmando. Vincularlo
+                       los pasa a «Materializado»: dejan de ser algo que podría pasar. *@
+                    @{
+                        var riesgosVivos = Model.Riesgos
+                            .Where(r => r.Estado is EstadoRiesgo.Abierto or EstadoRiesgo.EnTratamiento)
+                            .ToList();
+                    }
+                    @if (riesgosVivos.Count > 0)
+                    {
+                        <div class="field" style="flex:1;min-width:240px">
+                            <label for="a-riesgo">¿Se materializó un riesgo?</label>
+                            <select id="a-riesgo" name="AvanceRiesgoId">
+                                <option value="">— Ninguno de los registrados —</option>
+                                @foreach (var r in riesgosVivos)
+                                {
+                                    <option value="@r.Id">@(r.Descripcion.Length > 70 ? r.Descripcion[..70] + "…" : r.Descripcion)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <div style="display:flex;justify-content:flex-end">
+                    <button type="submit" class="btnp">Registrar avance</button>
+                </div>
+            </form>
+        }
+
+        @if (!Model.Avances.Any())
+        {
+            <div class="hist-empty">
+                <div class="ico">🗒️</div>
+                <p>Todavía no hay avances registrados.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var a in Model.Avances)
+            {
+                <div class="hist-item" style="display:block">
+                    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+                        <strong>@a.Autor</strong>
+                        <span class="res-meta">
+                            @a.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            @if (a.FueEditada)
+                            {
+                                @* La bitácora no aparenta ser intacta cuando no lo es. *@
+                                <span title="Corregida por @a.EditadoPor el @a.EditadoEn!.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")">
+                                    · editada
+                                </span>
+                            }
+                        </span>
+                    </div>
+                    <p style="margin:.4rem 0;white-space:pre-wrap">@a.Descripcion</p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        @if (a.FijoAvance)
+                        {
+                            <span class="badge badge-primary">actividad al @(a.PorcentajeReportado)%</span>
+                        }
+                        else if (a.EsDeclaracionHistorica)
+                        {
+                            @* Entradas anteriores al desglose: ese número era el avance del proyecto
+                               entero, declarado a mano. Se rotula distinto para no leerse como si
+                               fuera un reporte de actividad. *@
+                            <span class="badge badge-secondary"
+                                  title="Avance del proyecto declarado a mano, antes de que se calculara desde las actividades">
+                                @(a.PorcentajeReportado)% declarado
+                            </span>
+                        }
+                        @if (a.EntregableNombre is { } en)
+                        {
+                            <span class="badge badge-secondary">@en</span>
+                        }
+                        @if (a.ActividadNombre is { } an)
+                        {
+                            <span class="badge badge-secondary">↳ @an</span>
+                        }
+                        @if (a.TieneEvidencia)
+                        {
+                            @* Descarga por handler autenticado, nunca el enlace directo a /uploads:
+                               esa carpeta se sirve como estática sin autorización. *@
+                            <a class="btns" style="font-size:12.5px;padding:5px 11px"
+                               asp-page-handler="Evidencia" asp-route-id="@p.Id" asp-route-avanceId="@a.Id">
+                                📎 @a.ArchivoNombre <span class="res-meta">@Tamano(a.ArchivoTamano)</span>
+                            </a>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(a.Bloqueo))
+                    {
+                        @* No usa .alert-error: eso es para errores de la página, no para contenido.
+                           Un bloqueo reportado es un dato del avance, aunque se pinte en rojo. *@
+                        <p style="margin:.6rem 0 0;padding:8px 12px;font-size:var(--diger-fs-sm);
+                                  background:var(--diger-danger-bg);color:var(--diger-danger-text);
+                                  border-radius:var(--diger-radius-sm)">
+                            <strong>Bloqueo:</strong> @a.Bloqueo
+                        </p>
+                    }
+
+                    @if (Model.PuedeCorregirBitacora)
+                    {
+                        <div style="margin-top:.6rem">
+                            <button type="button" class="btns" style="font-size:12.5px;padding:5px 11px"
+                                    onclick="alternarCorreccion(@a.Id)">Corregir</button>
+                        </div>
+
+                        @* El porcentaje y la evidencia no se editan: el porcentaje ya movió a su
+                           actividad, y cambiarlo en la entrada vieja no desharía ese efecto. Para
+                           corregir un número se reporta de nuevo. *@
+                        <form method="post" asp-page-handler="ActualizarAvance" asp-route-id="@p.Id"
+                              id="correccion-@a.Id" hidden style="margin-top:.6rem">
+                            <input type="hidden" name="CorreccionAvanceId" value="@a.Id" />
+                            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                                <div class="field" style="width:100%">
+                                    <label for="c-desc-@a.Id">Descripción</label>
+                                    <textarea id="c-desc-@a.Id" name="CorreccionDescripcion" rows="4"
+                                              maxlength="2000" required>@a.Descripcion</textarea>
+                                </div>
+                                <div class="field" style="width:100%">
+                                    <label for="c-bloq-@a.Id">Bloqueo</label>
+                                    <textarea id="c-bloq-@a.Id" name="CorreccionBloqueo" rows="2"
+                                              maxlength="1000">@a.Bloqueo</textarea>
+                                </div>
+                                <div class="field" style="flex:1;min-width:190px">
+                                    <label for="c-destino-@a.Id">Imputar a</label>
+                                    @* Una entrada que fijó el porcentaje de una actividad no se puede
+                                       reimputar: el comando lo rechaza, porque mover la referencia no
+                                       desharía el efecto que tuvo sobre la actividad original. *@
+                                    <select id="c-destino-@a.Id" name="CorreccionDestino" disabled="@a.FijoAvance">
+                                        <option value="">— avance general —</option>
+                                        @foreach (var e in p.Entregables)
+                                        {
+                                            <optgroup label="@e.Nombre">
+                                                <option value="e:@e.Id" selected="@(a.EntregableId == e.Id && a.ActividadId is null)">
+                                                    El entregable en general
+                                                </option>
+                                                @foreach (var act in e.Actividades)
+                                                {
+                                                    <option value="a:@act.Id" selected="@(a.ActividadId == act.Id)">@act.Nombre</option>
+                                                }
+                                            </optgroup>
+                                        }
+                                    </select>
+                                    @if (a.FijoAvance)
+                                    {
+                                        @* Un select deshabilitado no postea nada, y sin valor la corrección
+                                           llegaría con la imputación vacía — que es justo lo que el dominio
+                                           rechaza para estas entradas. El hidden la vuelve a mandar tal cual. *@
+                                        <input type="hidden" name="CorreccionDestino" value="a:@a.ActividadId" />
+                                        <div class="res-meta" style="font-size:var(--diger-fs-xs);margin-top:3px">
+                                            Esta entrada fijó el avance de «@a.ActividadNombre»: para corregir el
+                                            número, registre un reporte nuevo.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:.6rem">
+                                <button type="submit" class="btnp">Guardar corrección</button>
+                                <button type="button" class="btns" onclick="alternarCorreccion(@a.Id)">Cancelar</button>
+                            </div>
+                        </form>
+                    }
+                </div>
+            }
+        }
+    </div>
+    </section>
+
+
+
+    @* ── Cronograma ──────────────────────────────────────────────── *@
+    <section class="tab-panel" id="panel-cronograma" data-tab="cronograma"
+             role="tabpanel" aria-labelledby="tab-cronograma" hidden>
+        <div class="card ficha-sec" id="cronograma">
+            <h3 class="sec-h">Cronograma</h3>
+            <p class="res-meta" style="margin-top:-.35rem">
+                La misma estructura de la pestaña anterior, vista en el tiempo. Se dibuja con las
+                <strong>fechas planificadas</strong>; el relleno de cada barra es el avance reportado.
+            </p>
+
+            @{
+                var g = Model.Cronograma;
+                // Ancho mínimo por mes: menos de esto y las etiquetas del eje se pisan.
+                var anchoLienzo = Math.Max(g.Meses.Count * 78, 560);
+            }
+
+            @if (!g.TieneQueDibujar)
+            {
+                <div class="hist-empty">
+                    <div class="ico">📅</div>
+                    <p>No hay ninguna fecha cargada en este proyecto.</p>
+                    <p class="res-meta">
+                        El cronograma se dibuja con las fechas de inicio y fin de las actividades.
+                        Se cargan desde <a href="#estructura" onclick="abrirPestana('estructura')">la estructura</a>.
+                    </p>
+                </div>
+            }
+            else
+            {
+                <div class="gantt-leyenda">
+                    <span><i class="g-m completada"></i> Terminada</span>
+                    <span><i class="g-m enproceso"></i> En proceso</span>
+                    <span><i class="g-m pendiente"></i> Pendiente</span>
+                    <span><i class="g-m vencida"></i> Vencida</span>
+                    <span><i class="g-m bloq"></i> Bloqueada</span>
+                    <span><i class="g-m hito"></i> Compromiso del entregable</span>
+                </div>
+
+                <div class="gantt">
+                    @* Columna fija de nombres. Las alturas de fila se fijan por CSS para que las
+                       dos columnas queden alineadas sin JavaScript. *@
+                    <div class="gantt-nombres">
+                        <div class="gantt-cab">Entregable / actividad</div>
+                        @foreach (var b in g.Barras)
+                        {
+                            <div class="gantt-nom n@(b.Nivel)" title="@b.Nombre@(b.Responsable is { Length: > 0 } r ? " · " + r : "")">
+                                <span>@b.Nombre</span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="gantt-scroll">
+                        <div class="gantt-lienzo" style="min-width:@(anchoLienzo)px">
+                            @* Eje: cada mes con su ancho real, no todos iguales. *@
+                            <div class="gantt-cab gantt-eje">
+                                @foreach (var m in g.Meses)
+                                {
+                                    <span class="gantt-mes" style="left:@Pct(m.OffsetPct);width:@Pct(m.AnchoPct)">
+                                        @m.Etiqueta<i>@m.Anio</i>
+                                    </span>
+                                }
+                            </div>
+
+                            <div class="gantt-pistas">
+                                @* Las divisiones de mes se repiten detrás de las barras: sin ellas
+                                   no se puede leer en qué mes cae una barra del medio. *@
+                                @foreach (var m in g.Meses.Skip(1))
+                                {
+                                    <span class="gantt-div" style="left:@Pct(m.OffsetPct)"></span>
+                                }
+
+                                @if (g.HoyPct is { } hoyPct)
+                                {
+                                    <span class="gantt-hoy" style="left:@Pct(hoyPct)" title="Hoy"></span>
+                                }
+
+                                @foreach (var b in g.Barras)
+                                {
+                                    <div class="gantt-pista">
+                                        @if (b.AnchoPct > 0)
+                                        {
+                                            var clase = b.Estado.ToString().ToLowerInvariant();
+                                            var tip = $"{b.Inicio:dd/MM/yyyy} → {b.Fin:dd/MM/yyyy} · {b.AvancePct}%"
+                                                    + (b.Bloqueada ? " · espera a " + string.Join(", ", b.Espera) : "");
+
+                                            <span class="gantt-barra @clase n@(b.Nivel) @(b.Bloqueada ? "bloq" : "")" title="@tip"
+                                                  style="left:@Pct(b.OffsetPct);width:@Pct(b.AnchoPct)">
+                                                @if (b.AvancePct > 0 && b.Nivel == 1)
+                                                {
+                                                    <i class="gantt-relleno" style="width:@(b.AvancePct)%"></i>
+                                                }
+                                            </span>
+                                        }
+
+                                        @* El compromiso del entregable es un hito, no una barra:
+                                           es una fecha, no un intervalo. *@
+                                        @if (b.CompromisoPct is { } cPct)
+                                        {
+                                            <span class="gantt-hito" style="left:@Pct(cPct)"
+                                                  title="Compromiso de entrega: @b.Compromiso?.ToString("dd/MM/yyyy")"></span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="res-meta" style="margin-top:.7rem">
+                    Del @g.Desde!.Value.ToString("dd/MM/yyyy") al @g.Hasta!.Value.ToString("dd/MM/yyyy").
+                    Pase el cursor sobre una barra para ver sus fechas y su avance.
+                </p>
+            }
+
+            @* Lo que no se puede dibujar se lista, no se esconde: en el portafolio real la mayoría
+               de las actividades todavía no tiene fechas, y omitirlas daría a entender que el
+               cronograma está completo. *@
+            @if (g.SinFechas.Any())
+            {
+                <div class="hint warn" style="margin-top:1rem">
+                    <span class="ico" aria-hidden="true">📅</span>
+                    <div>
+                        <strong>@g.SinFechas.Count actividad@(g.SinFechas.Count == 1 ? "" : "es") sin fechas</strong>
+                        — no se pueden dibujar. Necesitan inicio y fin para entrar al cronograma:
+                        <span class="res-meta">@string.Join(" · ", g.SinFechas.Take(6).Select(b => b.Nombre))@(g.SinFechas.Count > 6 ? " …" : "")</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+    @* ── Repositorio documental ──────────────────────────────────── *@
+    <section class="tab-panel" id="panel-documentos" data-tab="documentos"
+             role="tabpanel" aria-labelledby="tab-documentos" hidden>
+
+    @if (!Model.PuedeVerDocumentos)
+    {
+        <div class="card ficha-sec" id="documentos">
+            <h3 class="sec-h">Documentación</h3>
+            <p class="res-meta" style="margin:0">
+                No tiene permiso para consultar la documentación de proyectos.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="card ficha-sec" id="documentos">
+            <h3 class="sec-h">Documentación</h3>
+            <p class="res-meta" style="margin-top:-.35rem">
+                Convenios, actas, informes y todo lo que respalda al proyecto. <strong>Lo ve quien ve
+                el proyecto</strong>: no hay documentos reservados dentro de un proyecto que ya se puede abrir.
+            </p>
+
+            <details class="ayuda">
+                <summary>¿Qué diferencia hay con la evidencia de la bitácora?</summary>
+                <div class="cuerpo">
+                    <p>
+                        La <strong>bitácora</strong> guarda el archivo que respalda un reporte concreto:
+                        «el acta con la que se cerró esta actividad». Queda atado a ese reporte y a esa fecha.
+                    </p>
+                    <p>
+                        Esto es la <strong>documentación del proyecto</strong>, que existe con independencia
+                        de qué se reportó y cuándo — y que se <strong>versiona</strong>: cuando un convenio se
+                        adenda o un acta se corrige, se sube una versión nueva y la anterior queda en el
+                        historial. <strong>Ninguna versión se pisa ni se borra.</strong>
+                    </p>
+                </div>
+            </details>
+
+            @if (Model.PuedeSubirDocumentos)
+            {
+                <details class="card" style="margin-bottom:1rem;padding:0" id="doc-nuevo">
+                    <summary style="cursor:pointer;padding:.8rem 1rem;font-weight:600;font-size:var(--diger-fs-sm)">
+                        + Agregar un documento
+                    </summary>
+                    <form method="post" asp-page-handler="SubirDocumento" asp-route-id="@p.Id"
+                          enctype="multipart/form-data" style="padding:0 1rem 1rem">
+                        <div style="display:flex;gap:12px;flex-wrap:wrap">
+                            @* Opcional, no descartable: lo que se escriba se usa, sea un archivo o
+                               veinte. Vacío, cada documento toma el nombre del suyo. *@
+                            <div class="field" style="flex:2;min-width:240px">
+                                <label for="doc-titulo">Título</label>
+                                <input id="doc-titulo" name="DocTitulo" maxlength="300"
+                                       placeholder="Convenio marco DIGER–SRECI" />
+                                <small class="res-meta">
+                                    Opcional. Con varios archivos, cada documento se llama «Título — nombre del archivo».
+                                </small>
+                            </div>
+                            <div class="field" style="flex:1;min-width:170px">
+                                <label for="doc-cat">Categoría <span style="color:var(--diger-danger)">*</span></label>
+                                <select id="doc-cat" name="DocCategoriaId" required>
+                                    @foreach (var c in Model.Categorias)
+                                    {
+                                        <option value="@c.Id">@c.Nombre</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="doc-desc">Descripción</label>
+                            <input id="doc-desc" name="DocDescripcion" maxlength="2000"
+                                   placeholder="De qué se trata, para quien lo abra dentro de un año" />
+                        </div>
+                        <div class="field">
+                            <label for="doc-file">Archivos <span style="color:var(--diger-danger)">*</span></label>
+                            <input id="doc-file" type="file" name="DocArchivos" multiple required
+                                   onchange="docLote(this)" />
+                            <small class="res-meta" id="doc-file-info">
+                                Puede elegir varios a la vez. Cada archivo se da de alta como un documento
+                                aparte, todos en la misma categoría.
+                            </small>
+                        </div>
+                        <button type="submit" class="btnp">Subir documentos</button>
+                    </form>
+                </details>
+            }
+
+            @if (!Model.Documentos.Any())
+            {
+                <div class="hist-empty">
+                    <div class="ico">📁</div>
+                    <p>Este proyecto todavía no tiene documentación cargada.</p>
+                </div>
+            }
+            else
+            {
+                @* Agrupados por categoría: el orden ya viene resuelto de la consulta, así que acá
+                   solo se corta el listado cuando cambia el nombre. *@
+                @foreach (var grupo in Model.Documentos.GroupBy(d => d.Categoria))
+                {
+                    <h4 class="repo-doc-cat">@grupo.Key <span class="n">@grupo.Count()</span></h4>
+
+                    @foreach (var doc in grupo)
+                    {
+                        <article class="repo-doc">
+                            <div class="repo-doc-cab">
+                                <div class="repo-doc-id">
+                                    <div class="repo-doc-tit">@doc.Titulo</div>
+
+                                    @if (!string.IsNullOrWhiteSpace(doc.Descripcion))
+                                    {
+                                        <div class="repo-doc-desc">@doc.Descripcion</div>
+                                    }
+
+                                    @* El nombre del archivo va con el título y no arrinconado a la
+                                       derecha: es parte de la identidad del documento, y los nombres
+                                       reales son largos —«Estado_Conectividad_Escolar_…docx»— así que
+                                       en una columna estrecha se partían en cinco líneas. *@
+                                    @if (doc.Vigente is { } vig)
+                                    {
+                                        <div class="repo-doc-archivo">
+                                            <span class="repo-doc-nom">@vig.ArchivoNombre</span>
+                                            <span class="repo-doc-sep">·</span>
+                                            <span>@vig.TamanoLegible</span>
+                                        </div>
+                                    }
+
+                                    <div class="repo-doc-badges">
+                                        @if (doc.FueCorregido)
+                                        {
+                                            <span class="badge badge-secondary" title="Tiene historial: se corrigió al menos una vez">
+                                                v@(doc.Vigente!.Numero) · @doc.TotalVersiones versiones
+                                            </span>
+                                        }
+                                        @if (doc.UltimaVersionRepiteContenido)
+                                        {
+                                            <span class="badge badge-warning" title="La última versión tiene exactamente el mismo contenido que la anterior">
+                                                Contenido repetido
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+
+                                @if (doc.Vigente is { } v)
+                                {
+                                    <div class="repo-doc-vig">
+                                        <a class="btnp repo-doc-bajar" asp-page-handler="Documento"
+                                           asp-route-versionId="@v.Id" title="Descargar @v.ArchivoNombre">
+                                            Descargar
+                                        </a>
+                                        <div class="repo-doc-quien">
+                                            @v.SubidoPor<br />
+                                            @v.SubidoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            @* Descargas de ESTA versión, no del documento: es lo que
+                                               distingue que se bajó la copia vieja y no la corregida. *@
+                                            @if (v.Descargas > 0)
+                                            {
+                                                <br />
+                                                <span title="Última: @v.UltimaDescargaPor, @(v.UltimaDescargaEn?.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))">
+                                                    ↓ @v.Descargas @(v.Descargas == 1 ? "descarga" : "descargas")
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (doc.TotalVersiones > 1)
+                            {
+                                <details class="repo-doc-hist">
+                                    <summary>Historial de versiones (@doc.TotalVersiones)</summary>
+                                    <table class="seg-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:52px">Ver.</th>
+                                                <th>Archivo</th>
+                                                <th style="width:150px">Qué cambió</th>
+                                                <th style="width:150px">Quién y cuándo</th>
+                                                <th style="width:96px" title="Descargas registradas de esta versión concreta">Descargas</th>
+                                                <th style="width:110px" title="Huella del contenido: dos versiones con la misma huella son el mismo archivo">Huella</th>
+                                                <th style="width:52px"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var ver in doc.Versiones)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <strong>v@(ver.Numero)</strong>
+                                                        @if (ver.Numero == doc.Vigente!.Numero)
+                                                        {
+                                                            <div class="res-meta" style="font-size:var(--diger-fs-2xs)">vigente</div>
+                                                        }
+                                                    </td>
+                                                    <td style="white-space:normal">@ver.ArchivoNombre <span class="res-meta">· @ver.TamanoLegible</span></td>
+                                                    <td class="res-meta" style="white-space:normal">@(ver.Notas ?? "—")</td>
+                                                    <td class="res-meta">@ver.SubidoPor<br />@ver.SubidoEn.ToLocalTime().ToString("dd/MM/yy HH:mm")</td>
+                                                    <td class="res-meta">
+                                                        @if (ver.Descargas == 0)
+                                                        {
+                                                            <span title="Sin descargas registradas">—</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <strong>@ver.Descargas</strong>
+                                                            <div style="font-size:var(--diger-fs-2xs)">
+                                                                @ver.UltimaDescargaPor<br />
+                                                                @ver.UltimaDescargaEn?.ToLocalTime().ToString("dd/MM/yy HH:mm")
+                                                            </div>
+                                                        }
+                                                    </td>
+                                                    <td class="res-meta repo-doc-huella">@ver.HuellaCorta</td>
+                                                    <td style="text-align:right">
+                                                        <a class="btns" style="padding:3px 8px;font-size:12px"
+                                                           asp-page-handler="Documento" asp-route-versionId="@ver.Id"
+                                                           title="Descargar esta versión">📥</a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </details>
+                            }
+
+                            @if (Model.PuedeSubirDocumentos || Model.PuedeEditarDocumentos || Model.PuedeArchivarDocumentos)
+                            {
+                                <div class="repo-doc-acciones">
+                                    @if (Model.PuedeSubirDocumentos)
+                                    {
+                                        <details>
+                                            <summary>Subir versión nueva</summary>
+                                            <form method="post" asp-page-handler="SubirVersion" asp-route-id="@p.Id"
+                                                  asp-route-documentoId="@doc.Id" enctype="multipart/form-data">
+                                                <div class="field">
+                                                    <label>Archivo</label>
+                                                    <input type="file" name="DocArchivo" required />
+                                                </div>
+                                                <div class="field">
+                                                    <label>Qué cambió</label>
+                                                    <input name="DocNotas" maxlength="1000"
+                                                           placeholder="Se corrigió la fecha de la cláusula tercera" />
+                                                </div>
+                                                <button type="submit" class="btns">Agregar versión</button>
+                                                <span class="res-meta">La versión actual queda en el historial.</span>
+                                            </form>
+                                        </details>
+                                    }
+
+                                    @if (Model.PuedeEditarDocumentos)
+                                    {
+                                        <details>
+                                            <summary>Editar ficha</summary>
+                                            <form method="post" asp-page-handler="GuardarDocumento" asp-route-id="@p.Id"
+                                                  asp-route-documentoId="@doc.Id">
+                                                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                                                    <div class="field" style="flex:2;min-width:220px">
+                                                        <label>Título</label>
+                                                        <input name="DocTitulo" value="@doc.Titulo" maxlength="300" required />
+                                                    </div>
+                                                    <div class="field" style="flex:1;min-width:160px">
+                                                        <label>Categoría</label>
+                                                        <select name="DocCategoriaId">
+                                                            @foreach (var c in Model.Categorias)
+                                                            {
+                                                                <option value="@c.Id" selected="@(c.Id == doc.CategoriaId)">@c.Nombre</option>
+                                                            }
+                                                            @if (Model.Categorias.All(c => c.Id != doc.CategoriaId))
+                                                            {
+                                                                <option value="@doc.CategoriaId" selected>@doc.Categoria · desactivada</option>
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label>Descripción</label>
+                                                    <input name="DocDescripcion" value="@doc.Descripcion" maxlength="2000" />
+                                                </div>
+                                                <button type="submit" class="btns">Guardar ficha</button>
+                                                <span class="res-meta">El archivo no se toca: para cambiarlo, suba una versión.</span>
+                                            </form>
+                                        </details>
+                                    }
+
+                                    @if (Model.PuedeArchivarDocumentos)
+                                    {
+                                        <form method="post" asp-page-handler="ArchivarDocumento" asp-route-id="@p.Id"
+                                              asp-route-documentoId="@doc.Id" style="margin-left:auto">
+                                            <button type="submit" class="btns repo-doc-archivar"
+                                                    data-confirm="¿Archivar «@doc.Titulo»? Deja de listarse, con todo su historial. No se borra de la base.">
+                                                Archivar
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </article>
+                    }
+                }
+            }
+        </div>
+    }
+    </section>
+    @* Interesados y riesgos comparten pestaña: son las dos preguntas de la misma conversación
+       —quién responde y qué puede salir mal— y por separado eran dos tarjetas cortas más. *@
+    <section class="tab-panel" id="panel-equipo" data-tab="equipo"
+             role="tabpanel" aria-labelledby="tab-equipo" hidden>
+    @* ── Interesados ─────────────────────────────────────────────── *@
+    <div class="card ficha-sec" id="interesados">
+        <h3 class="sec-h">Interesados</h3>
+        <p class="res-meta" style="margin-top:-.35rem">
+            Quién patrocina, ejecuta, acompaña, se beneficia o regula. La influencia alta en un rol
+            que decide es la que conviene tener del lado propio antes de que algo se trabe.
+        </p>
+
+        @* Esta lista no es decorativa y no se nota mirándola: registrar a alguien acá le abre el
+           proyecto y lo habilita como responsable. Sin decirlo, el selector vacío de la estructura
+           parece un error de la pantalla. *@
+        <div class="hint" style="margin-bottom:1rem">
+            <span class="ico" aria-hidden="true">🔑</span>
+            <div>
+                De esta lista salen los <strong>responsables de entregables y actividades</strong> de la
+                <a href="#estructura">estructura</a>. Además, registrar a alguien acá <strong>le da acceso
+                al proyecto</strong> aunque quede fuera de su área o su institución — por eso el interesado
+                tiene que ser un usuario del portal.
+            </div>
+        </div>
+
+        @if (!Model.Interesados.Any())
+        {
+            <p class="res-meta">Todavía no hay interesados registrados.</p>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th style="width:180px">Institución</th>
+                            <th style="width:160px">Rol</th>
+                            <th style="width:110px">Influencia</th>
+                            @if (Model.PuedeEditar) { <th style="width:46px"></th> }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var it in Model.Interesados)
+                        {
+                            <tr>
+                                <td style="white-space:normal">
+                                    <strong>@it.Nombre</strong>
+                                    @if (it.EsClave) { <span class="badge badge-primary" style="margin-left:6px">clave</span> }
+                                    @if (it.Cargo is { Length: > 0 } || it.Correo is { Length: > 0 })
+                                    {
+                                        <span class="res-meta" style="display:block;margin-top:3px">@it.Cargo@(it.Cargo is { Length: > 0 } && it.Correo is { Length: > 0 } ? " · " : "")@it.Correo</span>
+                                    }
+                                    @if (it.Notas is { Length: > 0 }) { <span class="res-meta" style="display:block;margin-top:3px">@it.Notas</span> }
+                                </td>
+                                <td style="white-space:normal">@(it.Institucion ?? "—")</td>
+                                <td>@RolTexto(it.Rol)</td>
+                                <td>@it.Influencia</td>
+                                @if (Model.PuedeEditar)
+                                {
+                                    <td style="text-align:right">
+                                        <form method="post" asp-page-handler="QuitarInteresado" asp-route-id="@p.Id">
+                                            <input type="hidden" name="IntId" value="@it.Id" />
+                                            <button type="submit" class="hist-del" aria-label="Quitar interesado"
+                                                    data-confirm="¿Quitar a @it.Nombre de los interesados?">✕</button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.PuedeEditar)
+        {
+            <details style="margin-top:1rem">
+                <summary class="btns" style="display:inline-block;cursor:pointer">+ Agregar interesado</summary>
+                <form method="post" asp-page-handler="GuardarInteresado" asp-route-id="@p.Id" style="margin-top:.8rem">
+                    <p class="res-meta" style="margin:0 0 .7rem">
+                        El interesado es un usuario del portal y <strong>pasa a ver este proyecto</strong>,
+                        aunque quede fuera de su institución, área o unidad. Si la persona no tiene
+                        cuenta, hay que creársela antes.
+                    </p>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <div class="field" style="flex:1;min-width:240px">
+                            <label for="i-usr">Usuario <span style="color:var(--diger-danger)">*</span></label>
+                            <select id="i-usr" name="IntUsuarioId" required>
+                                <option value="">— Elija un usuario —</option>
+                                @foreach (var u in Model.Usuarios)
+                                {
+                                    <option value="@u.Id">@u.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-rol">Rol</label>
+                            <select id="i-rol" name="IntRol">
+                                @foreach (var r in Enum.GetValues<RolInteresado>())
+                                {
+                                    <option value="@((int)r)">@RolTexto(r)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-inf">Influencia</label>
+                            <select id="i-inf" name="IntInfluencia">
+                                @foreach (var n in Enum.GetValues<NivelCualitativo>())
+                                {
+                                    <option value="@((int)n)" selected="@(n == NivelCualitativo.Media)">@n</option>
+                                }
+                            </select>
+                        </div>
+                        @* Institución y cargo siguen a mano: es por quién participa y con qué papel
+                           en esta mesa, que no siempre es la asignación que tiene en el portal. *@
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-inst">Participa por</label>
+                            <input id="i-inst" name="IntInstitucion" maxlength="200" placeholder="DIGER, INPREMA, mesa técnica…" />
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="i-cargo">Cargo</label>
+                            <input id="i-cargo" name="IntCargo" maxlength="200" />
+                        </div>
+                        <div class="field" style="width:100%">
+                            <label for="i-notas">Notas</label>
+                            <input id="i-notas" name="IntNotas" maxlength="1000" />
+                        </div>
+                    </div>
+                    <div style="margin-top:.6rem"><button type="submit" class="btnp">Agregar</button></div>
+                </form>
+            </details>
+        }
+    </div>
+
+    @* ── Riesgos ─────────────────────────────────────────────────── *@
+    <div class="card ficha-sec" id="riesgos">
+        <h3 class="sec-h">Riesgos</h3>
+        <p class="res-meta" style="margin-top:-.35rem">
+            Severidad = probabilidad × impacto, de 1 a 9. Un riesgo <strong>materializado</strong> es
+            el que ya ocurrió: es el que aparece como bloqueo en la bitácora.
+        </p>
+
+        @if (!Model.Riesgos.Any())
+        {
+            <p class="res-meta">Todavía no hay riesgos registrados.</p>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th>Riesgo</th>
+                            <th style="width:120px">Categoría</th>
+                            <th style="width:96px">Severidad</th>
+                            <th style="width:120px">Estrategia</th>
+                            <th style="width:150px">Responsable</th>
+                            <th style="width:150px">Estado</th>
+                            @if (Model.PuedeEditar) { <th style="width:46px"></th> }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Riesgos)
+                        {
+                            <tr style="@(r.Estado == EstadoRiesgo.Cerrado ? "opacity:.55" : "")">
+                                <td style="white-space:normal">
+                                    @r.Descripcion
+                                    @if (r.Mitigacion is { Length: > 0 })
+                                    {
+                                        <span class="res-meta" style="display:block;margin-top:3px"><strong>Mitigación:</strong> @r.Mitigacion</span>
+                                    }
+                                    <span class="res-meta" style="display:block;margin-top:3px">
+                                        Detectado @r.FechaDeteccion.ToString("dd/MM/yyyy")
+                                        @if (r.FechaRevision is { } fr) { <text> · revisar @fr.ToString("dd/MM/yyyy")</text> }
+                                        @if (r.RevisionVencida) { <span class="badge badge-danger" style="margin-left:6px">revisión vencida</span> }
+                                        @if (r.SinPlan) { <span class="badge badge-warning" style="margin-left:6px">sin mitigación</span> }
+                                    </span>
+                                </td>
+                                <td>@r.Categoria</td>
+                                <td>
+                                    <span class="badge @(r.NivelSeveridad == NivelCualitativo.Alta ? "badge-danger"
+                                                       : r.NivelSeveridad == NivelCualitativo.Media ? "badge-warning" : "badge-secondary")">
+                                        @r.Severidad
+                                    </span>
+                                    <span class="res-meta" style="display:block;margin-top:3px">@r.Probabilidad × @r.Impacto</span>
+                                </td>
+                                <td>@r.Estrategia</td>
+                                <td style="white-space:normal">@(r.Responsable ?? "— sin asignar —")</td>
+                                <td>
+                                    @if (Model.PuedeEditar)
+                                    {
+                                        <form method="post" asp-page-handler="EstadoRiesgo" asp-route-id="@p.Id">
+                                            <input type="hidden" name="RiesgoId" value="@r.Id" />
+                                            <select name="RiesgoEstado" onchange="this.form.submit()">
+                                                @foreach (var e in Enum.GetValues<EstadoRiesgo>())
+                                                {
+                                                    <option value="@((int)e)" selected="@(r.Estado == e)">@e</option>
+                                                }
+                                            </select>
+                                        </form>
+                                    }
+                                    else { <text>@r.Estado</text> }
+                                </td>
+                                @if (Model.PuedeEditar)
+                                {
+                                    <td style="text-align:right">
+                                        <form method="post" asp-page-handler="EliminarRiesgo" asp-route-id="@p.Id">
+                                            <input type="hidden" name="RiesgoId" value="@r.Id" />
+                                            <button type="submit" class="hist-del" aria-label="Eliminar riesgo"
+                                                    data-confirm="¿Eliminar este riesgo? La auditoría conserva el rastro.">✕</button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.PuedeEditar)
+        {
+            <details style="margin-top:1rem">
+                <summary class="btns" style="display:inline-block;cursor:pointer">+ Registrar riesgo</summary>
+                <form method="post" asp-page-handler="GuardarRiesgo" asp-route-id="@p.Id" style="margin-top:.8rem">
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <div class="field" style="width:100%">
+                            <label for="r-desc">Riesgo *</label>
+                            <input id="r-desc" name="RiesgoDescripcion" maxlength="500" required
+                                   placeholder="Qué puede pasar y por qué" />
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-cat">Categoría</label>
+                            <select id="r-cat" name="RiesgoCategoria">
+                                @foreach (var c in Enum.GetValues<CategoriaRiesgo>())
+                                {
+                                    <option value="@((int)c)">@c</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-prob">Probabilidad</label>
+                            <select id="r-prob" name="RiesgoProbabilidad">
+                                @foreach (var n in Enum.GetValues<NivelCualitativo>())
+                                {
+                                    <option value="@((int)n)" selected="@(n == NivelCualitativo.Media)">@n</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-imp">Impacto</label>
+                            <select id="r-imp" name="RiesgoImpacto">
+                                @foreach (var n in Enum.GetValues<NivelCualitativo>())
+                                {
+                                    <option value="@((int)n)" selected="@(n == NivelCualitativo.Media)">@n</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-est">Estrategia</label>
+                            <select id="r-est" name="RiesgoEstrategia">
+                                @foreach (var e in Enum.GetValues<EstrategiaRiesgo>())
+                                {
+                                    <option value="@((int)e)" selected="@(e == EstrategiaRiesgo.Mitigar)">@e</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-resp">Responsable</label>
+                            <select id="r-resp" name="RiesgoResponsable">
+                                <option value="">—</option>
+                                @foreach (var u in Model.Usuarios)
+                                {
+                                    <option value="@u.Id">@u.Nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="field" style="flex:1;min-width:190px">
+                            <label for="r-rev">Revisar el</label>
+                            <input id="r-rev" type="date" name="RiesgoRevision" />
+                        </div>
+                        <div class="field" style="width:100%">
+                            <label for="r-mit">Mitigación</label>
+                            <input id="r-mit" name="RiesgoMitigacion" maxlength="1000"
+                                   placeholder="Qué se va a hacer para que no ocurra o duela menos" />
+                        </div>
+                    </div>
+                    <div style="margin-top:.6rem"><button type="submit" class="btnp">Registrar</button></div>
+                </form>
+            </details>
+        }
+    </div>
+    </section>
+
+    @* La zona de peligro va al final de esta pestaña, no suelta al pie de la página: es una
+       acción de administración, del mismo orden que mirar quién tocó qué, y así deja de estar a
+       la vista bajo cualquier otra sección. *@
+    <section class="tab-panel" id="panel-auditoria" data-tab="auditoria"
+             role="tabpanel" aria-labelledby="tab-auditoria" hidden>
+    @* ── Auditoría ───────────────────────────────────────────────── *@
+    @if (Model.Auditoria.Any())
+    {
+        <div class="card ficha-sec" id="auditoria">
+            <h3 class="sec-h">Auditoría</h3>
+            <p class="res-meta" style="margin-top:-.35rem">
+                Quién tocó la ficha, la estructura o la bitácora, y cuándo. Se escribe sola y no se
+                edita ni se borra.
+            </p>
+
+            <div style="overflow-x:auto">
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:140px">Fecha</th>
+                            <th style="width:150px">Tipo</th>
+                            <th>Detalle</th>
+                            <th style="width:160px">Quién</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in Model.Auditoria)
+                        {
+                            <tr>
+                                <td>@b.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td><span class="badge badge-secondary">@b.Etiqueta</span></td>
+                                <td style="white-space:normal">@b.Detalle</td>
+                                <td>@b.Actor</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    @* Sin else: en Razor un `else` después del cierre de un bloque se puede leer como texto.
+       Dos @if separados dicen lo mismo y no dependen de cómo parsee el motor. *@
+    @if (!Model.Auditoria.Any())
+    {
+        <div class="card ficha-sec" id="auditoria">
+            <h3 class="sec-h">Auditoría</h3>
+            <p class="res-meta" style="margin:0">
+                Todavía no hay movimientos registrados en este proyecto.
+            </p>
+        </div>
+    }
+
+    @if (Model.PuedeEliminar)
+    {
+        @* Al final y en su propia caja: es la única acción de la ficha que saca el proyecto del
+           portafolio, y estaba suelta como un botón más al pie de la página. *@
+        <div class="card zona-peligro" style="margin-bottom:2rem">
+            <h3 class="sec-h">Eliminar el proyecto</h3>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+                <p class="res-meta" style="flex:1;min-width:260px;margin:0">
+                    El proyecto se archiva con su estructura, su bitácora y su auditoría: deja de aparecer
+                    en el portafolio, pero nada se borra de la base. Su código no se reutiliza.
+                </p>
+                <form method="post" asp-page-handler="Eliminar" asp-route-id="@p.Id">
+                    <button type="submit" class="btns"
+                            style="color:var(--diger-danger-text);border-color:var(--diger-danger-text)"
+                            data-confirm="¿Eliminar el proyecto «@p.Nombre»? Se archiva junto con su estructura y su bitácora.">
+                        Eliminar proyecto
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+    </section>
+</div>
+
+@* Fuera del formulario de la ficha, a propósito. Reordenar actividades es de un entregable a la
+   vez, y si sus inputs vivieran dentro del formulario grande viajarían también los Ids de los
+   demás entregables — el dominio exige la lista exacta de un entregable y rechazaría la mezcla.
+   Los botones se asocian con este formulario por su atributo form=. *@
+@if (Model.PuedeReordenarActividades)
+{
+    <form method="post" asp-page-handler="ReordenarActividades" asp-route-id="@p.Id" id="form-orden-act" hidden>
+        <input type="hidden" name="OrdenActividadesDe" id="orden-act-de" />
+        <div id="orden-act-ids"></div>
+    </form>
+}
+
+
+@* El selector de dependencias es uno solo para toda la tabla y vive FUERA del formulario de la
+   ficha: repetir un <select> con las actividades del proyecto en cada fila serían decenas de miles
+   de <option> en un proyecto desglosado. La lista se arma al abrirlo, ya filtrada. *@
+@if (Model.PuedeEditar)
+{
+    <dialog id="dlg-dep" class="dep-dialog" aria-labelledby="dlg-dep-titulo">
+        <h3 id="dlg-dep-titulo">Depende de…</h3>
+        <p class="res-meta" id="dlg-dep-de"></p>
+        <label class="cel-lbl" for="dlg-dep-sel">Tiene que terminar antes</label>
+        <select id="dlg-dep-sel"></select>
+        <p class="hint" id="dlg-dep-vacio" hidden style="margin-top:.6rem">
+            <span class="ico" aria-hidden="true">💡</span>
+            <span>No queda ninguna otra actividad guardada de la que esta pueda depender.</span>
+        </p>
+        <div class="dep-dialog-pie">
+            <button type="button" class="btns" onclick="cerrarDependencia()">Cancelar</button>
+            <button type="button" class="btnp" id="dlg-dep-ok" onclick="confirmarDependencia()">Agregar</button>
+        </div>
+    </dialog>
+}
+
+@* Las secciones no pueden declararse dentro de un bloque condicional: se define siempre y el
+   script solo hace algo si la tabla editable está en la página. *@
+@section Scripts {
+<script>
+    (function () {
+        var tabla = document.getElementById('tabla-estructura');
+        if (!tabla) return;
+
+        // Los índices arrancan donde terminó el render del servidor y solo crecen: como cada fila
+        // lleva su propio .Index, borrar en el medio no obliga a renumerar nada.
+        var entIdx = @p.Entregables.Count;
+        var conOrden = @(Model.PuedeReordenarActividades ? "true" : "false");
+        var cols = conOrden ? 9 : 8;   // debe coincidir con el colspan del servidor
+
+        // Los responsables salen de los interesados del proyecto, no del padrón de usuarios: es
+        // lo que hace que la asignación además dé acceso. Si la lista está vacía, el selector
+        // queda con solo «—» y el aviso de abajo explica por qué.
+        var interesados = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.Interesados.Select(i => new { id = i.UsuarioId, nombre = i.Nombre })));
+        var estadosEnt = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Enum.GetValues<EstadoEntregable>().Select(e => new
+            {
+                v = (int)e,
+                t = e == EstadoEntregable.EnProceso ? "En proceso" : e.ToString()
+            })));
+
+        function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+
+        function optsResponsable() {
+            return '<option value="">—</option>' +
+                interesados.map(function (i) {
+                    return '<option value="' + esc(i.id) + '">' + esc(i.nombre) + '</option>';
+                }).join('');
+        }
+
+        // ── Entregables ──────────────────────────────────────────────────
+        window.agregarEntregable = function () {
+            var i = entIdx++;
+            var estadoOpts = estadosEnt.map(function (e) {
+                return '<option value="' + e.v + '">' + esc(e.t) + '</option>';
+            }).join('');
+
+            var tb = document.createElement('tbody');
+            tb.className = 'ent-grupo edt-grupo';
+            tb.setAttribute('data-ent', i);
+            tb.setAttribute('data-nextact', '0');
+            tb.innerHTML =
+                '<tr class="ent-row edt-ent">' +
+                '<input type="hidden" name="Entregables.Index" value="' + i + '" />' +
+                // Id 0 = fila nueva: el comando la inserta al final en vez de actualizar.
+                '<input type="hidden" name="Entregables[' + i + '].Id" value="0" />' +
+                '<input type="hidden" name="Entregables[' + i + '].Descripcion" value="" />' +
+                '<td><div style="display:flex;gap:6px;align-items:flex-start">' +
+                '<button type="button" class="edt-toggle" onclick="alternarGrupo(this)" aria-expanded="true" title="Plegar o desplegar sus actividades"><span class="caret" aria-hidden="true">&#9662;</span></button>' +
+                '<div style="flex:1;min-width:0"><input name="Entregables[' + i + '].Nombre" maxlength="300" style="width:100%;font-weight:600" placeholder="Qué se entrega" aria-label="Nombre del entregable nuevo" />' +
+                '<div class="res-meta" style="margin-top:4px">sin actividades todavía</div></div></div></td>' +
+                '<td><select name="Entregables[' + i + '].ResponsableId" aria-label="Responsable del entregable nuevo">' + optsResponsable() + '</select></td>' +
+                // Las dos columnas de fecha se funden, igual que en las filas del servidor: el
+                // entregable tiene un compromiso de entrega, no una ventana.
+                '<td colspan="2"><label class="cel-lbl">Entrega comprometida</label>' +
+                '<input type="date" name="Entregables[' + i + '].FechaPlan" /></td>' +
+                '<td><select name="Entregables[' + i + '].Estado" aria-label="Estado del entregable nuevo">' + estadoOpts + '</select></td>' +
+                '<td class="cel-calc">se calcula</td>' +
+                // La fila nueva todavía no existe en la base: su fecha la pone el guardado.
+                '<td class="cel-calc" title="Se registra al guardar">—</td>' +
+                // La columna de orden existe si el usuario puede reordenar; el entregable nuevo
+                // todavía no tiene Id, así que va vacía y no participa hasta que se guarde.
+                (conOrden ? '<td></td>' : '') +
+                '<td style="text-align:right"><button type="button" class="hist-del" aria-label="Quitar entregable" onclick="quitarEntregable(this)">&#10005;</button></td>' +
+                '</tr>' +
+                '<tr class="act-add edt-add"><td colspan="' + cols + '">' +
+                '<button type="button" class="btns" style="font-size:12.5px;padding:4px 10px" onclick="agregarActividad(this)">+ Actividad</button>' +
+                '</td></tr>';
+
+            tabla.appendChild(tb);
+            tb.querySelector('input[name$=".Nombre"]').focus();
+        };
+
+        window.quitarEntregable = function (btn) {
+            btn.closest('tbody').remove();
+        };
+
+        // ── Actividades ──────────────────────────────────────────────────
+        window.agregarActividad = function (btn) {
+            var tb = btn.closest('tbody');
+            var i  = tb.getAttribute('data-ent');
+
+            // El próximo índice se guarda en el tbody: las filas del servidor ya ocuparon de 0 a
+            // n-1, y las que se agreguen siguen desde ahí aunque se borren las del medio.
+            var j = parseInt(tb.getAttribute('data-nextact') || tb.querySelectorAll('tr.act-row').length, 10);
+            tb.setAttribute('data-nextact', j + 1);
+
+            var base = 'Entregables[' + i + '].Actividades[' + j + ']';
+            var tr = document.createElement('tr');
+            tr.className = 'act-row edt-act';
+            tr.innerHTML =
+                '<input type="hidden" name="Entregables[' + i + '].Actividades.Index" value="' + j + '" />' +
+                '<input type="hidden" name="' + base + '.Id" value="0" />' +
+                '<input type="hidden" name="' + base + '.Descripcion" value="" />' +
+                '<td><input name="' + base + '.Nombre" maxlength="300" style="width:100%" placeholder="Qué hay que hacer" aria-label="Nombre de la actividad nueva" />' +
+                // La fila nueva puede depender de actividades ya guardadas; ser predecesora,
+                // todavía no. Por eso lleva el botón pero no aparece en el catálogo.
+                '<div class="dep-lista"><button type="button" class="dep-mas" onclick="abrirDependencia(this)" title="Elegir qué actividad tiene que terminar antes que esta">+ depende de…</button></div></td>' +
+                '<td><select name="' + base + '.ResponsableId" aria-label="Responsable de la actividad nueva">' + optsResponsable() + '</select></td>' +
+                '<td><input type="date" name="' + base + '.FechaInicioPlan" aria-label="Inicio planificado" /></td>' +
+                '<td><input type="date" name="' + base + '.FechaFinPlan" aria-label="Fin planificado" /></td>' +
+                '<td><div class="cel-calc" title="Lo fija el porcentaje">Pendiente</div>' +
+                '<label style="display:flex;align-items:center;gap:5px;margin-top:3px;font-size:var(--diger-fs-xs);cursor:pointer" title="Sale del promedio del entregable, sin borrarse">' +
+                '<input type="checkbox" name="' + base + '.Cancelada" value="true" style="width:auto;margin:0" /><span>Cancelada</span></label>' +
+                '<input type="hidden" name="' + base + '.Cancelada" value="false" /></td>' +
+                '<td><div style="display:flex;align-items:center;gap:4px">' +
+                '<input type="number" name="' + base + '.AvancePct" min="0" max="100" step="5" value="0" aria-label="Avance en porcentaje" />' +
+                '<span class="cel-calc">%</span></div></td>' +
+                '<td class="cel-calc" title="Se registra al guardar">—</td>' +
+                (conOrden ? '<td></td>' : '') +
+                '<td style="text-align:right"><button type="button" class="hist-del" aria-label="Quitar actividad" onclick="quitarActividad(this)">&#10005;</button></td>';
+
+            // Si el grupo estaba plegado, la fila nueva no se vería: se despliega para no dejar al
+            // usuario escribiendo en algo invisible.
+            tb.classList.remove('plegado');
+            tb.insertBefore(tr, btn.closest('tr.act-add'));
+            tr.querySelector('input[name$=".Nombre"]').focus();
+        };
+
+        window.quitarActividad = function (btn) {
+            var fila = btn.closest('tr');
+            var id   = fila.getAttribute('data-act');
+            fila.remove();
+
+            // Las dependencias que apuntaban a esta actividad quedarían colgando. El servidor las
+            // suelta igual —no revienta por eso— pero si no se ven desaparecer, el usuario cree
+            // que siguen valiendo y guarda sin enterarse.
+            if (!id) return;
+            [].forEach.call(tabla.querySelectorAll('.dep-chip[data-pre="' + id + '"]'), function (chip) {
+                var lista = chip.parentNode;
+                chip.remove();
+                refrescarLista(lista);
+            });
+        };
+
+        // ── Dependencias ─────────────────────────────────────────────────
+        // Catálogo plano de las actividades YA GUARDADAS del proyecto: son las únicas que pueden
+        // ser predecesoras, porque una fila nueva todavía no tiene Id al que apuntar.
+        var catalogoActs = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            p.ActividadesPlanas
+             .Where(x => x.Actividad.Id > 0)
+             .Select(x => new
+             {
+                 id      = x.Actividad.Id,
+                 nombre  = x.Actividad.Nombre,
+                 ent     = x.Entregable.Nombre,
+                 abierta = x.Actividad.Estado is EstadoActividad.Pendiente or EstadoActividad.EnProceso
+             })));
+
+        var filaDep = null;   // la fila para la que se abrió el diálogo
+
+        // El rótulo «depende de» solo tiene sentido con al menos un chip al lado.
+        function refrescarLista(lista) {
+            if (!lista) return;
+
+            var hay = lista.querySelector('.dep-chip');
+            var rot = lista.querySelector('.dep-rot');
+
+            if (hay && !rot) {
+                rot = document.createElement('span');
+                rot.className = 'dep-rot';
+                rot.setAttribute('aria-hidden', 'true');
+                rot.textContent = 'depende de';
+                lista.insertBefore(rot, lista.firstChild);
+            } else if (!hay && rot) {
+                rot.remove();
+            }
+        }
+
+        window.quitarDependencia = function (btn) {
+            var chip = btn.closest('.dep-chip');
+            var lista = chip.parentNode;
+            chip.remove();
+            refrescarLista(lista);
+        };
+
+        window.abrirDependencia = function (btn) {
+            var dlg = document.getElementById('dlg-dep');
+            var sel = document.getElementById('dlg-dep-sel');
+            if (!dlg || !sel) return;
+
+            filaDep = btn.closest('tr');
+
+            // data-act es null en una fila sin guardar; ahí no hay nada de qué protegerse, porque
+            // una actividad nueva tampoco está en el catálogo.
+            var propio  = filaDep.getAttribute('data-act');
+            var puestas = {};
+            [].forEach.call(filaDep.querySelectorAll('.dep-chip'), function (c) {
+                puestas[c.getAttribute('data-pre')] = true;
+            });
+
+            // Agrupadas por entregable: dos actividades de ramas distintas se pueden llamar igual
+            // y en una lista plana no habría forma de distinguirlas.
+            var porEnt = {}, orden = [];
+            catalogoActs.forEach(function (a) {
+                if (String(a.id) === String(propio)) return;   // no puede depender de sí misma
+                if (puestas[String(a.id)]) return;             // ya está declarada
+                if (!porEnt[a.ent]) { porEnt[a.ent] = []; orden.push(a.ent); }
+                porEnt[a.ent].push(a);
+            });
+
+            sel.innerHTML = orden.map(function (ent) {
+                return '<optgroup label="' + esc(ent) + '">' +
+                    porEnt[ent].map(function (a) {
+                        return '<option value="' + a.id + '" data-abierta="' + (a.abierta ? '1' : '0') + '">' +
+                               esc(a.nombre) + '</option>';
+                    }).join('') + '</optgroup>';
+            }).join('');
+
+            var vacio = orden.length === 0;
+            document.getElementById('dlg-dep-vacio').hidden = !vacio;
+            document.getElementById('dlg-dep-ok').disabled  = vacio;
+            sel.hidden = vacio;
+
+            var nom = filaDep.querySelector('input[name$=".Nombre"]');
+            document.getElementById('dlg-dep-de').textContent =
+                nom && nom.value ? '«' + nom.value + '» no arranca hasta que termine:' : '';
+
+            dlg.showModal();
+            if (!vacio) sel.focus();
+        };
+
+        window.cerrarDependencia = function () {
+            var dlg = document.getElementById('dlg-dep');
+            if (dlg && dlg.open) dlg.close();
+            filaDep = null;
+        };
+
+        window.confirmarDependencia = function () {
+            var sel = document.getElementById('dlg-dep-sel');
+            if (!filaDep || !sel || !sel.value) { cerrarDependencia(); return; }
+
+            var op = sel.options[sel.selectedIndex];
+
+            // El prefijo del campo sale del hidden del Id de la fila: así el chip se postea con el
+            // mismo índice que el resto de la actividad y el JS no tiene que recalcularlo.
+            var idInput = filaDep.querySelector('input[name$=".Id"]');
+            var lista   = filaDep.querySelector('.dep-lista');
+            if (!idInput || !lista) { cerrarDependencia(); return; }
+
+            var base = idInput.getAttribute('name').replace(/\.Id$/, '');
+
+            var chip = document.createElement('span');
+            chip.className = 'dep-chip ' + (op.getAttribute('data-abierta') === '1' ? 'abierta' : 'lista');
+            chip.setAttribute('data-pre', op.value);
+            chip.title = op.parentNode.label || '';
+            chip.innerHTML =
+                '<input type="hidden" name="' + base + '.Predecesoras" value="' + esc(op.value) + '" />' +
+                '<span class="dep-nom">' + esc(op.text) + '</span>' +
+                '<button type="button" class="dep-x" aria-label="Quitar la dependencia" ' +
+                'onclick="quitarDependencia(this)">&#10005;</button>';
+
+            lista.insertBefore(chip, lista.querySelector('.dep-mas'));
+            refrescarLista(lista);
+            cerrarDependencia();
+        };
+
+        // ── Plegar grupos ────────────────────────────────────────────────
+        // Un proyecto desglosado tiene decenas de filas. Plegar es solo visual: las filas siguen
+        // en el DOM —ocultas con CSS, no removidas— así que sus campos se postean igual y guardar
+        // con un grupo plegado no pierde nada.
+        window.alternarGrupo = function (btn) {
+            var tb = btn.closest('tbody');
+            var plegado = tb.classList.toggle('plegado');
+            btn.setAttribute('aria-expanded', plegado ? 'false' : 'true');
+        };
+
+        window.alternarTodos = function () {
+            var grupos = tabla.querySelectorAll('tbody.edt-grupo');
+            if (!grupos.length) return;
+
+            // Si queda alguno abierto, el botón pliega todo; si ya están todos plegados, despliega.
+            var hayAbierto = [].slice.call(grupos).some(function (g) { return !g.classList.contains('plegado'); });
+
+            [].forEach.call(grupos, function (g) {
+                g.classList.toggle('plegado', hayAbierto);
+                var b = g.querySelector('.edt-toggle');
+                if (b) b.setAttribute('aria-expanded', hayAbierto ? 'false' : 'true');
+            });
+
+            var btn = document.getElementById('btn-plegar');
+            if (btn) btn.textContent = hayAbierto ? 'Desplegar todo' : 'Plegar todo';
+        };
+
+        // ── Reordenar ────────────────────────────────────────────────────
+        // Solo mueve el nodo en el DOM. El input OrdenEntregables viaja dentro de la fila, así que
+        // el orden que se postea a «Guardar orden» es exactamente el que quedó en pantalla.
+        window.moverEntregable = function (btn, dir) {
+            var grupo = btn.closest('tbody');
+            var destino = dir < 0 ? grupo.previousElementSibling : grupo.nextElementSibling;
+            if (!destino || destino.tagName !== 'TBODY') return;
+
+            if (dir < 0) tabla.insertBefore(grupo, destino);
+            else         tabla.insertBefore(destino, grupo);
+
+            var aviso = document.getElementById('aviso-orden');
+            if (aviso) aviso.hidden = false;
+
+            // El foco se queda en el botón que se usó, que ahora está en otra posición.
+            var mismo = grupo.querySelector(dir < 0 ? '.orden-mov' : '.orden-mov + .orden-mov');
+            if (mismo) mismo.focus();
+        };
+
+        window.moverActividad = function (btn, dir) {
+            var fila = btn.closest('tr');
+            var destino = dir < 0 ? fila.previousElementSibling : fila.nextElementSibling;
+            if (!destino || !destino.classList.contains('act-row')) return;
+
+            var tb = fila.closest('tbody');
+            if (dir < 0) tb.insertBefore(fila, destino);
+            else         tb.insertBefore(destino, fila);
+
+            var mismo = fila.querySelector(dir < 0 ? '.orden-mov' : '.orden-mov + .orden-mov');
+            if (mismo) mismo.focus();
+        };
+
+        // El orden de las actividades se manda por su propio formulario, con los Ids de un solo
+        // entregable. El dominio exige la lista completa: una actividad recién agregada todavía no
+        // tiene Id, así que primero hay que guardar la ficha.
+        window.guardarOrdenActividades = function (btn, entregableId) {
+            var tb = btn.closest('tbody');
+            var filas = tb.querySelectorAll('tr.act-row');
+            var ids = [];
+            for (var k = 0; k < filas.length; k++) {
+                var id = filas[k].getAttribute('data-act');
+                if (id) ids.push(id);
+            }
+
+            if (ids.length !== filas.length) {
+                alert('Hay actividades sin guardar. Guarde los cambios de la ficha antes de ordenar.');
+                return;
+            }
+
+            var cont = document.getElementById('orden-act-ids');
+            var de   = document.getElementById('orden-act-de');
+            if (!cont || !de) return;
+
+            de.value = entregableId;
+            cont.innerHTML = ids.map(function (id) {
+                return '<input type="hidden" name="OrdenActividades" value="' + esc(id) + '" />';
+            }).join('');
+
+            document.getElementById('form-orden-act').submit();
+        };
+    })();
+
+    // Encadena unidad con área: solo se ofrecen las unidades del área elegida, y al cambiar de
+    // área se limpia la unidad para no dejar una combinación imposible.
+    (function () {
+        var area = document.getElementById('f-area');
+        var unidad = document.getElementById('f-unidad');
+        if (!area || !unidad) return;
+
+        function filtrar() {
+            var sel = area.value;
+            var hayQueLimpiar = false;
+            Array.prototype.forEach.call(unidad.options, function (o) {
+                if (!o.value) return;                       // la opción vacía siempre se ve
+                var visible = !sel || o.dataset.area === sel;
+                o.hidden = !visible;
+                if (!visible && o.selected) hayQueLimpiar = true;
+            });
+            if (hayQueLimpiar) unidad.value = '';
+        }
+
+        area.addEventListener('change', filtrar);
+        filtrar();
+    })();
+
+    // ── Pestañas de la ficha ─────────────────────────────────────────────
+    // El panel inactivo se oculta con [hidden], nunca se remueve: la estructura y los datos del
+    // proyecto los postea el mismo formulario y sacarlos del DOM perdería sus campos al guardar.
+    (function () {
+        var tabs = document.querySelectorAll('.ficha-tabs [role="tab"]');
+        if (!tabs.length) return;
+
+        var paneles = document.querySelectorAll('.tab-panel');
+        var barra   = document.getElementById('barra-guardar');
+
+        // Qué pestaña abre cada ancla. Los enlaces internos y los redirects del servidor siguen
+        // apuntando a #interesados o #riesgos, que hoy comparten pestaña: el mapa es lo que evita
+        // tener que reescribirlos y lo que deja que un enlace viejo siga funcionando.
+        var deAncla = {
+            estructura:  'estructura',
+            cronograma:  'cronograma',
+            ficha:       'datos',
+            bitacora:    'bitacora',
+            documentos:  'documentos',
+            interesados: 'equipo',
+            riesgos:     'equipo',
+            vinculos:    'vinculos',
+            auditoria:   'auditoria'
+        };
+
+        // Solo las dos pestañas que viven dentro del formulario pueden guardar. Dejar la barra a
+        // la vista en Riesgos haría creer que ese botón guarda el riesgo.
+        var conGuardado = { estructura: true, datos: true };
+
+        window.abrirPestana = function (nombre, conFoco) {
+            var existe = false;
+            [].forEach.call(paneles, function (p) {
+                if (p.getAttribute('data-tab') === nombre) existe = true;
+            });
+            if (!existe) return;
+
+            [].forEach.call(tabs, function (t) {
+                var activa = t.getAttribute('data-tab') === nombre;
+                t.setAttribute('aria-selected', activa ? 'true' : 'false');
+                // Tabindex móvil: dentro de un tablist, Tab entra y sale del grupo y las flechas
+                // se mueven adentro. Sin esto habría que tabular cinco veces para pasar de largo.
+                t.tabIndex = activa ? 0 : -1;
+                if (activa && conFoco) t.focus();
+            });
+
+            [].forEach.call(paneles, function (p) {
+                p.hidden = p.getAttribute('data-tab') !== nombre;
+            });
+
+            if (barra) barra.hidden = !conGuardado[nombre];
+        };
+
+        // El hash manda: es lo que usan los enlaces internos y los redirects de cada handler, que
+        // vuelven a la pestaña donde el usuario estaba trabajando en vez de a la primera.
+        function porHash() {
+            var ancla   = (location.hash || '').replace('#', '');
+            var destino = deAncla[ancla];
+
+            // Sin ancla se abre Datos, que es la pestaña de aterrizaje de la ficha.
+            abrirPestana(destino || 'datos');
+
+            if (!destino) return;
+            var el = document.getElementById(ancla);
+            if (el) el.scrollIntoView({ block: 'start' });
+        }
+
+        [].forEach.call(tabs, function (t, i) {
+            t.addEventListener('keydown', function (ev) {
+                var paso = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
+                if (!paso) return;
+
+                ev.preventDefault();
+                var siguiente = tabs[(i + paso + tabs.length) % tabs.length];
+                abrirPestana(siguiente.getAttribute('data-tab'), true);
+            });
+        });
+
+        porHash();
+        window.addEventListener('hashchange', porHash);
+    })();
+
+    // Un campo requerido y vacío que está escondido no se puede enfocar: el navegador cancela el
+    // envío SIN DECIR NADA y el formulario parece no responder. Pasa con dos cosas distintas y las
+    // dos hay que abrirlas — un <details> plegado, y ahora también la pestaña inactiva: «Nombre»
+    // es obligatorio y vive en Datos del proyecto, así que guardar desde Estructura con el nombre
+    // borrado caía justo en este caso.
+    (function () {
+        document.addEventListener('invalid', function (ev) {
+            var panel = ev.target.closest('.tab-panel');
+            if (panel && panel.hidden && window.abrirPestana) {
+                abrirPestana(panel.getAttribute('data-tab'));
+            }
+
+            var det = ev.target.closest('details');
+            if (det && !det.open) det.open = true;
+
+            // El navegador ya calculó a quién enfocar antes de que esto se abriera; se reintenta
+            // después de que el layout exista.
+            setTimeout(function () { ev.target.focus(); }, 0);
+        }, true);   // en captura: el evento invalid no burbujea
+    })();
+
+    // Fuera del bloque anterior: la bitácora existe aunque no haya estructura editable.
+    window.alternarCorreccion = function (id) {
+        var f = document.getElementById('correccion-' + id);
+        if (!f) return;
+        f.hidden = !f.hidden;
+        if (!f.hidden) f.querySelector('textarea').focus();
+    };
+
+    // El formulario de avance cambia según a qué se impute:
+    //  · una actividad  → aparece el porcentaje, que es el único nivel que lleva número;
+    //  · un entregable  → aparece «darlo por cumplido», si sigue abierto;
+    //  · el proyecto    → ni una cosa ni la otra: su avance se calcula.
+    // Al ocultarse, los controles se limpian para que no viajen valores de una selección anterior.
+    window.alternarDestinoAvance = function () {
+        var sel = document.getElementById('a-destino');
+        var campo = document.getElementById('a-pct-campo');
+        var lbl = document.getElementById('a-cerrar-ent');
+        if (!sel || !campo || !lbl) return;
+
+        var op = sel.options[sel.selectedIndex];
+        var tipo = op ? op.getAttribute('data-tipo') : null;
+
+        var esActividad = tipo === 'a';
+        campo.hidden = !esActividad;
+        var pct = document.getElementById('a-pct');
+        if (esActividad) {
+            // Arranca en lo que la actividad lleva hoy: se reporta el acumulado, no el delta.
+            pct.value = op.getAttribute('data-pct') || '0';
+        } else {
+            pct.value = '';
+        }
+
+        var aplica = tipo === 'e' && op.getAttribute('data-cerrado') === '0';
+        lbl.hidden = !aplica;
+        if (!aplica) document.getElementById('a-cerrar').checked = false;
+    };
+    alternarDestinoAvance();
+
+    /* Alta de documentos en lote: dice cuántos archivos van y avisa de las dos reglas que
+       cambian según sean uno o varios, para que no haya que descubrirlas al guardar. */
+    function docLote(input) {
+        var n    = input.files ? input.files.length : 0;
+        var info = document.getElementById("doc-file-info");
+        var tit  = document.getElementById("doc-titulo");
+        var desc = document.getElementById("doc-desc");
+        if (!info) return;
+
+        if (n === 0) {
+            info.textContent = "Puede elegir varios a la vez. Cada archivo se da de alta como un " +
+                               "documento aparte, todos en la misma categoría.";
+        } else if (n === 1) {
+            info.textContent = "1 archivo.";
+        } else {
+            info.textContent = n + " archivos: se crean " + n + " documentos en la misma categoría. " +
+                               "Si escribe un título, cada uno se llamará «Título — nombre del archivo».";
+        }
+
+        if (tit) tit.placeholder = n > 1
+            ? "Prefijo común; vacío, cada documento toma el nombre de su archivo"
+            : "Convenio marco DIGER–SRECI";
+    }
+</script>
+}

@@ -9,6 +9,8 @@
         : Url.Page("/Expedientes/Editor");
     var contactosUrl = Url.Page("/Expedientes/Editor", "Contactos");
     var plantillaUrl = Url.Page("/Expedientes/Editor", "Plantilla");
+    var sigerUrl = Url.Page("/Expedientes/Editor", "BuscarSiger");
+    var sigerDetalleUrl = Url.Page("/Expedientes/Editor", "DetalleSiger");
 }
 <link rel="stylesheet" href="~/css/expediente.css" asp-append-version="true" />
 
@@ -17,31 +19,135 @@
     <div style="display:flex;gap:8px">
         @if (Model.ExpId is int segId)
         {
+            <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@segId" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio al analista y contacto de este expediente?');">
+                <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Recordar</button>
+            </form>
             <a class="btnp" asp-page="/Expedientes/Seguimiento" asp-route-id="@segId">Seguimiento de digitalización</a>
             <a class="btns" asp-page="/Expedientes/Resumen" asp-route-id="@segId">PDF</a>
         }
     </div>
 </div>
 
+@* ── Proyectos vinculados ───────────────────────────────────────────────────
+   Se vincula desde acá además de desde la ficha del proyecto: la misma relación
+   se gestiona por los dos extremos, porque quien trabaja el expediente es quien
+   sabe a qué proyecto responde. *@
+@if (Model.ExpId is int vincExpId)
+{
+    <div style="max-width:1280px;margin:0 auto 1rem;padding:0 1rem">
+        @{
+            var hayProyectosExp = Model.Proyectos.Proyectos.Count > 0 || Model.Proyectos.FueraDeAlcance > 0;
+        }
+        <details class="card vinc-sec" open="@hayProyectosExp">
+            <summary class="vinc-sum">
+                <span style="font-size:1rem;font-weight:600">📁 Proyectos vinculados</span>
+                <span class="vinc-n">@(Model.Proyectos.Proyectos.Count == 0 ? "ninguno" : Model.Proyectos.Proyectos.Count.ToString())</span>
+            </summary>
+
+            @if (Model.Proyectos.Proyectos.Any())
+            {
+                <table class="seg-table">
+                    <thead>
+                        <tr>
+                            <th style="width:130px">Código</th>
+                            <th>Proyecto</th>
+                            <th style="width:120px">Estado</th>
+                            <th style="width:80px">Avance</th>
+                            <th style="width:56px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pr in Model.Proyectos.Proyectos)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-page="/Proyectos/Editor" asp-route-id="@pr.ProyectoId"
+                                       style="font-weight:600;text-decoration:none">@pr.Codigo</a>
+                                </td>
+                                <td style="white-space:normal">
+                                    @pr.Nombre
+                                    @if (!string.IsNullOrWhiteSpace(pr.Nota))
+                                    {
+                                        <div class="res-meta">@pr.Nota</div>
+                                    }
+                                </td>
+                                <td class="res-meta">@pr.Estado</td>
+                                <td class="res-meta">@pr.AvancePct %</td>
+                                <td style="text-align:right">
+                                    @if (Model.PuedeVincular)
+                                    {
+                                        <form method="post" asp-page-handler="DesvincularProyecto"
+                                              asp-route-id="@vincExpId" asp-route-proyectoId="@pr.ProyectoId"
+                                              style="display:inline">
+                                            <input type="hidden" name="VinculoId" value="@pr.VinculoId" />
+                                            <button type="submit" class="btns"
+                                                    title="Quitar el vínculo (el proyecto no se toca)">✕</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="res-meta">Este expediente no está vinculado a ningún proyecto.</p>
+            }
+
+            @if (Model.Proyectos.FueraDeAlcance > 0)
+            {
+                <p class="res-meta" style="margin-top:.6rem">
+                    <strong>@Model.Proyectos.FueraDeAlcance</strong>
+                    proyecto@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") más está@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "n")
+                    vinculado@(Model.Proyectos.FueraDeAlcance == 1 ? "" : "s") pero fuera de su alcance.
+                </p>
+            }
+
+            @if (Model.PuedeVincular && Model.Proyectos.Vinculables.Any())
+            {
+                <form method="post" asp-page-handler="VincularProyecto" asp-route-id="@vincExpId"
+                      style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:1rem">
+                    <div class="field" style="flex:2;min-width:260px;margin:0">
+                        <label for="v-proy-exp">Vincular a un proyecto</label>
+                        <select id="v-proy-exp" name="VinculoProyectoId" required>
+                            <option value="">— Elija un proyecto —</option>
+                            @foreach (var o in Model.Proyectos.Vinculables)
+                            {
+                                <option value="@o.Id">@o.Etiqueta</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" style="flex:2;min-width:200px;margin:0">
+                        <label for="v-nota-exp">Por qué (opcional)</label>
+                        <input id="v-nota-exp" name="VinculoNota" maxlength="400"
+                               placeholder="El proyecto digitaliza este trámite" />
+                    </div>
+                    <button type="submit" class="btnp" style="margin-bottom:.1rem">Vincular</button>
+                </form>
+            }
+        </details>
+    </div>
+}
+
+
 <div class="wrap">
   <aside class="sidebar">
     <div class="sb-hdr">Generales del expediente</div>
     <div class="sbi active" id="sb0" onclick="ir(0)"><div class="sbi-dot"></div>Apertura del expediente</div>
+    <div class="sbi" id="sb5" onclick="ir(5)"><div class="sbi-dot"></div>Infraestructura SOL</div>
+    <div class="sbi" id="sb6" onclick="ir(6)"><div class="sbi-dot"></div>Estado del expediente</div>
 
-    <div class="sb-hdr" style="margin-top:.9rem">Por trámite</div>
+    <div class="sb-hdr" style="margin-top:.9rem">Por trámite <span class="help-tip tip-down" data-tip="Estas secciones se completan por cada trámite del expediente. Use las pestañas para cambiar entre trámites.">?</span></div>
     <div class="sbi" id="sb1" onclick="ir(1)"><div class="sbi-dot"></div>Ficha del trámite</div>
     <div class="sbi" id="sb2" onclick="ir(2)"><div class="sbi-dot"></div>Marco legal y documentación</div>
     <div class="sbi" id="sb3" onclick="ir(3)"><div class="sbi-dot"></div>Proceso actual</div>
     <div class="sbi" id="sb4" onclick="ir(4)"><div class="sbi-dot"></div>Modelo propuesto</div>
-
-    <div class="sb-hdr" style="margin-top:.9rem">Generales del expediente</div>
-    <div class="sbi" id="sb5" onclick="ir(5)"><div class="sbi-dot"></div>Infraestructura SOL</div>
-    <div class="sbi" id="sb6" onclick="ir(6)"><div class="sbi-dot"></div>Estado del expediente</div>
     <div class="sb-div"></div>
     <div class="sb-meta">
       <strong>Institución:</strong> <span id="sb-inst">—</span><br>
       <strong>Expediente:</strong> <span id="sb-codigo">—</span><br>
-      <strong>Analista:</strong> <span id="sb-analista">—</span><br>
+      <strong>Responsable del Acta:</strong> <span id="sb-analista">—</span><br>
       <strong>Apertura:</strong> <span id="sb-fecha">—</span>
     </div>
     <div class="pb-wrap">
@@ -50,18 +156,62 @@
     </div>
   </aside>
 
-  <main class="main" id="form-main">
+  <main class="main @(Model.EsAdmin || (Model.EsContraparte && !Model.EstaBloqueadoContraparte) ? "" : "mode-read-only")" id="form-main">
+    @if (Model.EsContraparte)
+    {
+        if (Model.EstaBloqueadoContraparte)
+        {
+            <div class="alert-error" style="margin-bottom:1rem;padding:.75rem 1rem;border-radius:8px">
+                ⚠️ <strong>Modo solo lectura:</strong> El plazo de entrega para este expediente ha vencido o la ficha ya se encuentra en estado de validación. La edición está inhabilitada.
+            </div>
+        }
+        else
+        {
+            <div style="margin-bottom:1rem;background:#eff6ff;border:1px solid #bfdbfe;padding:.75rem 1rem;border-radius:8px;color:#1e40af;font-size:13.5px">
+                📌 <strong>Llenado de Ficha Institucional:</strong> Ha sido asignado como contraparte responsable para el llenado de esta ficha. Por favor complete la información requerida.
+            </div>
+        }
+    }
+    @if (Model.ExpId is not null)
+    {
+        <div class="exp-fixed-header" id="exp-fixed-header">
+            <div class="efh-top">
+                <div class="efh-ident">
+                    <span class="efh-cod" id="efh-codigo">—</span>
+                    <span class="efh-inst" id="efh-inst">—</span>
+                </div>
+                <div class="efh-meta">
+                    <span class="efh-meta-item"><span class="efh-meta-lbl">Responsable del Acta</span><span id="efh-analista">—</span></span>
+                    <span class="efh-meta-item"><span class="efh-meta-lbl">Apertura</span><span id="efh-fecha">—</span></span>
+                </div>
+            </div>
+            <div class="efh-tram" id="efh-tram" style="display:none">
+                <span class="efh-tram-lbl">Trámite</span>
+                <span class="efh-tram-nombre" id="efh-tram-nombre">—</span>
+            </div>
+        </div>
+    }
+    @if (!Model.EsAdmin)
+    {
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px 18px;border-radius:12px;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13.5px;box-shadow:0 2px 8px rgba(30,64,175,.06)">
+            <span style="font-size:18px">👁️</span>
+            <div>
+                <strong>Modo de Solo Lectura</strong>
+                <div style="font-size:12px;font-weight:400;color:#3b82f6;margin-top:2px">Estás en modo visualización. Los expedientes solo pueden ser editados por un Administrador de la DIGER.</div>
+            </div>
+        </div>
+    }
 
     <!-- ══ SECCIÓN 0: APERTURA ══ -->
     <div class="sec active" id="sec0">
-      <div class="sec-title">Apertura del expediente <span style="font-size:9px;font-weight:400;color:#c0c8d8;letter-spacing:.05em;margin-left:6px">v4.2</span></div>
+      <div class="sec-title">Apertura del expediente <span class="help-tip" data-tip="Datos generales del expediente: institución, responsable del acta y trámites a digitalizar.">?</span> <span style="font-size:9px;font-weight:400;color:#c0c8d8;letter-spacing:.05em;margin-left:6px">v4.2</span></div>
 
       <div class="card accent">
         <div class="ct">Identificación del expediente</div>
         <div class="g2">
           <div class="f">
             <label>Institución <span class="star">*</span></label>
-            <select id="inst" oninput="actualizarMeta();generarCodigo()">
+            <select id="inst" onchange="onInstChange()">
               <option value="">— Seleccione —</option>
               <option>BANHPROVI</option><option>CANATURH / IHT</option><option>CNBS</option>
               <option>CONATEL</option><option>CONSUCOOP</option><option>CONVIVIENDA</option>
@@ -70,7 +220,15 @@
               <option>IP</option><option>SAG</option><option>SECAPPH</option>
               <option>SEN</option><option>SERNA</option><option>SGJD</option>
               <option>SIT</option><option>SRECI</option>
+              <option value="__otra__">Otra — escribir manualmente</option>
             </select>
+            <input type="text" id="inst_otra" placeholder="Nombre o sigla de la institución"
+                   oninput="onInstOtraInput()" style="display:none;margin-top:6px">
+            <label id="inst_otra_reg_wrap" style="display:none;align-items:flex-start;gap:7px;margin-top:7px;font-size:12px;font-weight:500;color:var(--diger-text-secondary, #4a5568);cursor:pointer">
+              <input type="checkbox" id="inst_otra_registrar" style="width:15px;height:15px;margin-top:1px;flex-shrink:0">
+              <span>Registrar esta institución en el catálogo</span>
+            </label>
+            <span class="hint" id="inst_otra_hint" style="display:none">Un expediente nuevo necesita la institución en el catálogo. Sin marcar la casilla, el guardado se rechaza.</span>
           </div>
           <div class="f">
             <label>Fecha de apertura <span class="star">*</span></label>
@@ -83,8 +241,14 @@
         </div>
         <div class="g2">
           <div class="f">
-            <label>Analista DIGER responsable <span class="star">*</span></label>
-            <input type="text" id="analista" placeholder="Nombre completo" oninput="actualizarMeta()">
+            <label>Responsable del Acta <span class="star">*</span></label>
+            <select id="analista" onchange="actualizarMeta()">
+              <option value="">— Seleccione —</option>
+              @foreach (var u in Model.Usuarios)
+              {
+                <option>@u.Nombre</option>
+              }
+            </select>
           </div>
           <div class="f">
             <label>Código de expediente</label>
@@ -102,7 +266,10 @@
           <span class="hint">Define el número de inicio para los códigos</span>
         </div>
         <div id="tramites-nombres-wrap"></div>
-        <button type="button" class="btn-add" onclick="agregarTramiteApertura()">+ Agregar trámite</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn-add" onclick="agregarTramiteApertura()">+ Agregar trámite</button>
+          <button type="button" class="btn-add" style="background:#eff6ff;color:#1455a4;border-color:#bfdbfe" onclick="abrirModalSiger()">📥 Importar desde SIGER</button>
+        </div>
         <span class="hint" style="display:block;margin-top:6px">Agregue tantos trámites como necesite; use ✕ para quitar uno.</span>
       </div>
 
@@ -130,7 +297,7 @@
 
     <!-- ══ SECCIÓN 1: FICHA DEL TRÁMITE ══ -->
     <div class="sec" id="sec1">
-      <div class="sec-title">Ficha del trámite</div>
+      <div class="sec-title">Ficha del trámite <span class="help-tip" data-tip="Datos específicos de cada trámite: nombre oficial, tipo, área responsable, requisitos y costos.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-1" style="display:none"></div>
       <div id="fichas-wrap"></div>
 
@@ -142,7 +309,7 @@
 
     <!-- ══ SECCIÓN 2: MARCO LEGAL ══ -->
     <div class="sec" id="sec2">
-      <div class="sec-title">Marco legal y documentación solicitada</div>
+      <div class="sec-title">Marco legal y documentación solicitada <span class="help-tip" data-tip="Registre los fundamentos legales del trámite y la documentación solicitada a la institución.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-2" style="display:none"></div>
 
       <div class="card accent">
@@ -179,7 +346,7 @@
 
     <!-- ══ SECCIÓN 3: PROCESO ACTUAL ══ -->
     <div class="sec" id="sec3">
-      <div class="sec-title">Proceso actual del trámite</div>
+      <div class="sec-title">Proceso actual del trámite <span class="help-tip" data-tip="Levantamiento del flujo real de actividades: métricas, pasos, documentos internos y observaciones de campo.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-3" style="display:none"></div>
 
       <div class="card">
@@ -229,6 +396,7 @@
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','decision')">Decisión</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('actual','fin')">■ Fin</button>
         </div>
+        <div id="flujo-actual-warnings" class="flow-warnings"></div>
       </div>
 
       <div class="card">
@@ -244,7 +412,7 @@
 
     <!-- ══ SECCIÓN 4: MODELO PROPUESTO ══ -->
     <div class="sec" id="sec4">
-      <div class="sec-title">Modelo propuesto (trámite racionalizado)</div>
+      <div class="sec-title">Modelo propuesto (trámite racionalizado) <span class="help-tip" data-tip="Diseño del trámite digitalizado: comparación antes/después, flujo optimizado y acción propuesta para cada requisito.">?</span></div>
       <div class="tram-tab-bar" id="tram-tabs-4" style="display:none"></div>
 
       <!-- ANTES VS AHORA -->
@@ -282,6 +450,7 @@
         <div class="flow-toggle">
           <button class="ftog active" id="ftog-propuesto-edit" onclick="toggleFlowView('propuesto','edit')">Editar</button>
           <button class="ftog" id="ftog-propuesto-diag" onclick="toggleFlowView('propuesto','diag')">Ver diagrama</button>
+          <button class="ftog" onclick="copiarFlujoActualAPropuesto()" title="Copia todos los pasos del flujo actual como punto de partida">⧉ Copiar flujo actual</button>
         </div>
         <div id="flujo-propuesto-list" class="flow-list"></div>
         <div id="flujo-propuesto-diag" style="display:none"></div>
@@ -291,6 +460,7 @@
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','decision')">Decisión</button>
           <button class="btn-add" style="margin-top:0" onclick="addFlowNode('propuesto','fin')">■ Fin</button>
         </div>
+        <div id="flujo-propuesto-warnings" class="flow-warnings"></div>
       </div>
 
       <!-- REQUISITOS -->
@@ -319,7 +489,7 @@
 
     <!-- ══ SECCIÓN 5: INFRAESTRUCTURA SOL ══ -->
     <div class="sec" id="sec5">
-      <div class="sec-title">Requerimientos mínimos de infraestructura SOL</div>
+      <div class="sec-title">Requerimientos mínimos de infraestructura SOL <span class="help-tip" data-tip="Evaluación de la capacidad tecnológica de la institución para alojar la plataforma SOL. Se completa una sola vez por expediente.">?</span></div>
       <p style="font-size:12px;color:var(--muted);margin:-0.9rem 0 1.2rem">Evaluación de la institución frente a los requerimientos mínimos para alojar la plataforma SOL. Se completa una sola vez por expediente.</p>
 
       <div class="card accent">
@@ -387,7 +557,7 @@
 
     <!-- ══ SECCIÓN 6: ESTADO ══ -->
     <div class="sec" id="sec6">
-      <div class="sec-title">Estado del expediente</div>
+      <div class="sec-title">Estado del expediente <span class="help-tip" data-tip="Control general del avance del expediente, estado por sección y datos de validación y cierre.">?</span></div>
 
       <div class="card accent">
         <div class="ct">Estado general</div>
@@ -434,8 +604,26 @@
       <div class="card">
         <div class="ct">Validaciones y firma de cierre</div>
         <div class="g2">
-          <div class="f"><label>Validado por (DIGER)</label><input type="text" id="validado_diger" placeholder="Nombre completo"></div>
-          <div class="f"><label>Validado por (institución)</label><input type="text" id="validado_inst" placeholder="Nombre completo y cargo"></div>
+          <div class="f">
+            <label>Validado por (DIGER)</label>
+            <select id="validado_diger" onchange="actualizarMeta()">
+              <option value="">— Seleccione —</option>
+              @foreach (var u in Model.Usuarios)
+              {
+                <option>@u.Nombre</option>
+              }
+            </select>
+          </div>
+          <div class="f">
+            <label>Validado por (institución)</label>
+            <select id="validado_inst" onchange="actualizarMeta()">
+              <option value="">— Seleccione —</option>
+              @foreach (var u in Model.Usuarios)
+              {
+                <option>@u.Nombre</option>
+              }
+            </select>
+          </div>
         </div>
         <div class="g2">
           <div class="f"><label>Fecha de validación</label><input type="date" id="fecha_validacion"></div>
@@ -445,7 +633,7 @@
 
       <div class="nav">
         <button class="btn btn-s" onclick="ir(5)">← Anterior</button>
-        @if (User.CanMutate())
+        @if (Model.EsAdmin)
         {
             <button class="btn btn-p" onclick="guardar()">💾 Guardar expediente</button>
         }
@@ -455,9 +643,10 @@
   </main>
 </div>
 
-@if (User.CanMutate())
+@if (Model.EsAdmin)
 {
     <button class="btn-save-float" type="button" onclick="guardar()">💾 Guardar</button>
+    <div class="autosave-ind" id="autosave-ind"><span class="dot"></span><span class="as-txt">Borrador guardado</span></div>
 }
 <div class="toast" id="toast"></div>
 
@@ -465,15 +654,15 @@
 <div id="node-modal" onclick="closeNodeModal()"
      style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
   <div onclick="event.stopPropagation()"
-       style="background:#fff;border-radius:16px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
-    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid #eef1f7">
-      <span id="nm-badge" style="flex:none;width:30px;height:30px;border-radius:50%;background:#1455a4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">1</span>
+       style="background:var(--diger-surface);border-radius:16px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid var(--diger-border-soft)">
+      <span id="nm-badge" style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--diger-blue-mid);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">1</span>
       <div style="flex:1;min-width:0">
-        <div id="nm-tipo" style="font-size:10px;font-weight:800;letter-spacing:.08em;color:#1455a4">PASO</div>
-        <div id="nm-titulo" style="font-size:15px;font-weight:700;color:#0a2d6e">Paso</div>
+        <div id="nm-tipo" style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--diger-blue-strong)">PASO</div>
+        <div id="nm-titulo" style="font-size:15px;font-weight:700;color:var(--diger-blue-title)">Paso</div>
       </div>
       <button type="button" onclick="closeNodeModal()" aria-label="Cerrar"
-              style="flex:none;border:0;background:#f0f4fa;color:#64748b;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
+              style="flex:none;border:0;background:var(--diger-bg-soft);color:var(--diger-text-muted);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
     </div>
     <div style="padding:1.1rem 1.3rem;display:flex;flex-direction:column;gap:.9rem">
       <div><div class="nm-lbl">Responsable</div><div id="nm-responsable" style="font-size:14px">—</div></div>
@@ -491,8 +680,29 @@
 <div id="flow-add-menu"
      style="display:none;position:fixed;z-index:1001;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 12px 32px rgba(10,45,110,.18);padding:5px;min-width:140px"></div>
 
+@* ── Modal buscar e importar trámite SIGER ── *@
+<div id="siger-modal" onclick="cerrarModalSiger()"
+     style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+  <div onclick="event.stopPropagation()"
+       style="background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid #eef1f7">
+      <span style="font-size:18px">📥</span>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:#0a2d6e">Importar trámite desde inventario SIGER</div></div>
+      <button type="button" onclick="cerrarModalSiger()" aria-label="Cerrar"
+              style="flex:none;border:0;background:#f0f4fa;color:#64748b;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
+    </div>
+    <div style="padding:1rem 1.3rem;border-bottom:1px solid #eef1f7">
+      <input type="text" id="siger-buscar" placeholder="Buscar por nombre, código o sigla..." oninput="buscarSigerDebounce()"
+             style="width:100%;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;font-family:inherit">
+    </div>
+    <div id="siger-resultados" style="flex:1;overflow-y:auto;padding:0.5rem 1.3rem;min-height:200px;max-height:50vh">
+      <div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Escriba al menos 2 caracteres para buscar</div>
+    </div>
+  </div>
+</div>
+
 <style>
-  .nm-lbl { font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:2px }
+  .nm-lbl { font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--diger-text-muted);margin-bottom:2px }
 </style>
 
 @section Scripts {
@@ -504,7 +714,12 @@
             indexUrl: '@Url.Page("/Index")',
             contactosUrl: '@contactosUrl',
             plantillaUrl: '@plantillaUrl',
-            plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas))
+            sigerUrl: '@sigerUrl',
+            sigerDetalleUrl: '@sigerDetalleUrl',
+            plantillas: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Plantillas)),
+            esAdmin: @(Model.EsAdmin ? "true" : "false"),
+            usuarios: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                Model.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre })))
         };
         @if (Model.ExpJson is not null)
         {
@@ -512,4 +727,19 @@
         }
     </script>
     <script src="~/js/expediente.js" asp-append-version="true"></script>
+    @if (!Model.EsAdmin)
+    {
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                function disableReadOnlyInputs() {
+                    document.querySelectorAll("#form-main input, #form-main select, #form-main textarea").forEach(function(el) {
+                        el.disabled = true;
+                    });
+                }
+                disableReadOnlyInputs();
+                setTimeout(disableReadOnlyInputs, 300);
+                setTimeout(disableReadOnlyInputs, 1000);
+            });
+        </script>
+    }
 }

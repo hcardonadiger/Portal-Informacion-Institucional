@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
+[Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
 public sealed class TicketsModel(ISender sender, IInstitucionRepository institucionRepo, IUsuarioRepository usuarioRepo, ICurrentUserService currentUser) : PageModel
 {
     public TicketsDashboardDto Data { get; private set; } = default!;
@@ -18,11 +19,8 @@ public sealed class TicketsModel(ISender sender, IInstitucionRepository instituc
         Instituciones = currentUser.EsGlobal ? insts : insts.Where(i => currentUser.InstitucionesAsignadas.Contains(i.Id)).ToList();
 
         // Alcance del técnico: solo sus temas o sus tickets (mismo criterio que la lista y el detalle).
-        AlcanceTecnico =
-            !User.IsInRole(nameof(RolUsuario.Administrador))
-            && !User.IsInRole(nameof(RolUsuario.JefeInstitucion))
-            && !User.IsInRole(nameof(RolUsuario.JefeArea))
-            && !User.IsInRole(nameof(RolUsuario.JefeUnidad));
+        // "No es jefatura" lo decide la capacidad EsSupervisor del rol (tabla Roles).
+        AlcanceTecnico = !currentUser.EsGlobal && !currentUser.EsSupervisor;
 
         IReadOnlyList<int>? temaIds = null;
         Guid? tecnicoId = null;

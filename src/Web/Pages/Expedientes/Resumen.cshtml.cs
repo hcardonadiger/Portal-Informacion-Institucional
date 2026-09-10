@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Expedientes;
 
 [Authorize]
+[Permission("Expedientes", AccionModulo.Ver, "Ver expedientes")]
 public sealed class ResumenModel(ISender sender) : PageModel
 {
     public int ExpedienteId { get; private set; }

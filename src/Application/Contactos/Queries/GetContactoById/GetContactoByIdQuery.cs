@@ -13,6 +13,6 @@ public sealed class GetContactoByIdQueryHandler(IContactoRepository repo)
         var c = await repo.GetByIdAsync(q.Id, ct)
             ?? throw new NotFoundException(nameof(Contacto), q.Id);
 
-        return new ContactoDto(c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen, c.Activo);
+        return new ContactoDto(c.Id, c.Nombre, c.InstitucionId, c.Institucion, c.AreaId, c.Area, c.Cargo, c.Correo, c.Telefono, c.Notas, c.Origen, c.Activo);
     }
 }

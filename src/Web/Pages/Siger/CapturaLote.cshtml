@@ -1,0 +1,127 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Siger.CapturaLoteModel
+@{
+    ViewData["Title"] = "Captura por lotes — SIGER";
+}
+
+<div class="container" style="max-width:1100px">
+    <partial name="_SuccessBanner" />
+    <div class="hist-header">
+        <div>
+            <h2>Captura por lotes <span class="help-tip tip-down" data-tip="Asigna categoría, modalidad, tiempo o costo a varios trámites a la vez, filtrados por institución.">?</span></h2>
+            <p>Selecciona los trámites de una institución y aplica los mismos valores a todos.</p>
+        </div>
+        <a class="btns" asp-page="/Siger/Index">← Inventario</a>
+    </div>
+
+    <form method="get" class="lista-buscar" style="margin-bottom:1rem">
+        <select name="InstitucionId" onchange="this.form.submit()">
+            <option value="">— Todas las instituciones —</option>
+            @foreach (var i in Model.Instituciones)
+            {
+                <option value="@i.Id" selected="@(i.Id == Model.InstitucionId)">@i.Nombre</option>
+            }
+        </select>
+        <label class="chk-label">
+            <input type="checkbox" name="SoloIncompletas" value="true" checked="@Model.SoloIncompletas" onchange="this.form.submit()" />
+            Solo fichas incompletas
+        </label>
+    </form>
+
+    @if (Model.Filas.Count == 0)
+    {
+        <div class="hist-empty">
+            <div class="ico"></div>
+            <p>No hay trámites con ese filtro.</p>
+        </div>
+    }
+    else
+    {
+        <form method="post">
+            <input type="hidden" name="InstitucionId" value="@Model.InstitucionId" />
+            <input type="hidden" name="SoloIncompletas" value="@Model.SoloIncompletas" />
+
+            <div class="card" style="margin-bottom:1rem">
+                <h3 style="margin-top:0">Aplicar a los trámites seleccionados</h3>
+                <p class="res-meta">Deja en blanco lo que no quieras cambiar — no borra lo que ya tenía cada trámite.</p>
+                <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 16px">
+                    <div class="field">
+                        <label>Categoría</label>
+                        <select asp-for="CategoriaId">
+                            <option value="">— No cambiar —</option>
+                            @foreach (var c in Model.Categorias)
+                            {
+                                <option value="@c.Id">@c.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Modalidad</label>
+                        <select asp-for="Modalidad">
+                            <option value="">— No cambiar —</option>
+                            <option value="Virtual">Virtual</option>
+                            <option value="Presencial">Presencial</option>
+                            <option value="Hibrido">Híbrido</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>¿Es gratuito?</label>
+                        <select asp-for="CostoEsGratuito">
+                            <option value="">— No cambiar —</option>
+                            <option value="true">Sí, es gratuito</option>
+                            <option value="false">No, tiene costo</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Tiempo estimado</label>
+                        <input asp-for="TiempoTexto" maxlength="120" placeholder="ej. 5 días hábiles" />
+                    </div>
+                    <div class="field">
+                        <label>Costo</label>
+                        <input asp-for="CostoTexto" maxlength="250" placeholder="ej. Gratuito" />
+                    </div>
+                </div>
+                <button type="submit" class="btnp" style="margin-top:8px" data-confirm="¿Aplicar los cambios a los trámites marcados?">Aplicar a los seleccionados</button>
+            </div>
+
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th style="width:1%"><input type="checkbox" onclick="document.querySelectorAll('.chk-fila').forEach(c=>c.checked=this.checked)" /></th>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Categoría</th>
+                        <th>Modalidad</th>
+                        <th>Tiempo</th>
+                        <th>Costo</th>
+                        <th>Completa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        <tr>
+                            <td><input class="chk-fila" type="checkbox" name="Seleccionados" value="@f.Id" /></td>
+                            <td><span class="res-meta">@f.Codigo</span></td>
+                            <td>@f.Nombre</td>
+                            <td>@(f.CategoriaNombre ?? "—")</td>
+                            <td>@(f.Modalidad ?? "—")</td>
+                            <td>@(f.TiempoTexto ?? "—")</td>
+                            <td>@(f.CostoTexto ?? "—")</td>
+                            <td>
+                                @if (f.FichaCompleta)
+                                {
+                                    <span class="wf-badge wf-completada">Sí</span>
+                                }
+                                else
+                                {
+                                    <span class="wf-badge wf-registrada">No</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </form>
+    }
+</div>

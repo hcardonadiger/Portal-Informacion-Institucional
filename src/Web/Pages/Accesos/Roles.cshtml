@@ -1,0 +1,171 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Accesos.RolesModel
+@{
+    ViewData["Title"] = "Administrar roles";
+    var editando = Model.EnEdicion is not null;
+}
+
+<div class="container" style="max-width:1100px">
+    <partial name="_SuccessBanner" />
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error">@Model.Error</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Administrar roles</h2>
+            <p>El <strong>alcance</strong> define qué datos ve el rol; las <strong>capacidades</strong> reemplazan los chequeos que antes estaban fijos por nombre de rol. Qué puede hacer cada rol se define en <a href="/Accesos/Permisos">Administrar permisos</a>.</p>
+        </div>
+    </div>
+
+    <table class="seg-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Alcance</th>
+                <th>Capacidades</th>
+                <th style="text-align:center">Usuarios</th>
+                <th style="text-align:center">Estado</th>
+                <th style="width:1%"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model.Roles)
+            {
+                <tr>
+                    <td>
+                        <span class="wf-badge wf-activa" style="@(string.IsNullOrWhiteSpace(r.Color) ? "" : $"background:{r.Color};color:#fff;border-color:{r.Color}")">@r.Codigo</span>
+                        @if (r.EsSistema)
+                        {
+                            <span class="hint" title="Rol base del sistema: no se puede eliminar">· sistema</span>
+                        }
+                    </td>
+                    <td>
+                        <a class="seg-inst" asp-page="./Roles" asp-route-editar="@r.Codigo">@r.Nombre</a>
+                        @if (!string.IsNullOrWhiteSpace(r.Descripcion))
+                        {
+                            <div class="hint">@r.Descripcion</div>
+                        }
+                    </td>
+                    <td>@r.NivelAlcance</td>
+                    <td>
+                        @if (r.EsAdministrador)  { <span class="wf-badge">Administrador</span> }
+                        @if (r.EsSoloLectura)    { <span class="wf-badge">Solo lectura</span> }
+                        @if (r.EsSupervisor)     { <span class="wf-badge">Supervisor</span> }
+                        @if (r.EsTecnicoSoporte) { <span class="wf-badge">Soporte</span> }
+                    </td>
+                    <td style="text-align:center" class="res-meta">@r.UsuariosAsignados</td>
+                    <td style="text-align:center">
+                        @if (r.Activo)
+                        {
+                            <span class="wf-badge wf-activa">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="wf-badge" style="background-color:#fee2e2;color:#991b1b;border:1px solid #fca5a5">Inactivo</span>
+                        }
+                    </td>
+                    <td style="white-space:nowrap;text-align:right">
+                        <a class="btns" asp-page="./Roles" asp-route-editar="@r.Codigo" style="font-size:12.5px;padding:6px 12px">Editar</a>
+                        @if (!r.EsSistema && r.UsuariosAsignados == 0)
+                        {
+                            <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                <input type="hidden" name="codigo" value="@r.Codigo" />
+                                <button class="hist-del" type="submit"
+                                        style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
+                                        aria-label="Eliminar rol @r.Nombre"
+                                        data-confirm="¿Eliminar el rol @r.Nombre? Se perderán sus permisos y accesos.">✕</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <form method="post" asp-page-handler="Guardar" asp-route-editar="@Model.EnEdicion" class="card" style="margin-top:1.25rem">
+        <div class="stitle">@(editando ? $"Editar rol · {Model.EnEdicion}" : "Nuevo rol")</div>
+
+        <div class="row2">
+            <div class="field">
+                <label>Código <span style="color:#dc2626">*</span></label>
+                <input name="Codigo" value="@Model.Codigo" readonly="@editando" required
+                       maxlength="60" pattern="[A-Za-z0-9_\-]+" placeholder="Ej. AuditorInterno"
+                       title="Letras, números, guiones y guiones bajos, sin espacios" />
+                <p class="hint" style="margin-top:4px">No se puede cambiar después de crear el rol: viaja en la sesión y en las asignaciones.</p>
+            </div>
+            <div class="field">
+                <label>Nombre <span style="color:#dc2626">*</span></label>
+                <input name="Nombre" value="@Model.Nombre" required maxlength="100" placeholder="Ej. Auditor interno" />
+            </div>
+        </div>
+
+        <div class="row2">
+            <div class="field">
+                <label>Alcance de datos</label>
+                <select name="NivelAlcance">
+                    @foreach (var (nivel, etiqueta) in Diger.TramitesEstado.Web.Pages.Accesos.RolesModel.Niveles)
+                    {
+                        <option value="@nivel" selected="@(Model.NivelAlcance == nivel)">@etiqueta</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label>Color (opcional)</label>
+                <input name="Color" value="@Model.Color" maxlength="20" placeholder="#1A65A3" />
+                <p class="hint" style="margin-top:4px">Se usa en el distintivo del rol en la lista de usuarios.</p>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Descripción (opcional)</label>
+            <input name="Descripcion" value="@Model.Descripcion" maxlength="300" placeholder="Para qué sirve este rol" />
+        </div>
+
+        <div class="field">
+            <label>Capacidades</label>
+            <div style="border:1px solid var(--diger-border);border-radius:var(--diger-radius-sm);padding:.7rem .9rem;background:var(--diger-bg-soft)">
+                <label class="chk">
+                    <input type="checkbox" name="EsAdministrador" value="true" checked="@Model.EsAdministrador" />
+                    <span><strong>Administrador</strong> — acceso total, sin depender de las matrices</span>
+                </label>
+                <label class="chk">
+                    <input type="checkbox" name="EsSoloLectura" value="true" checked="@Model.EsSoloLectura" />
+                    <span><strong>Solo lectura</strong> — no puede crear, editar ni eliminar</span>
+                </label>
+                <label class="chk">
+                    <input type="checkbox" name="EsSupervisor" value="true" checked="@Model.EsSupervisor" />
+                    <span><strong>Supervisor</strong> — ve el trabajo de otros, no solo el propio</span>
+                </label>
+                <label class="chk">
+                    <input type="checkbox" name="EsTecnicoSoporte" value="true" checked="@Model.EsTecnicoSoporte" />
+                    <span><strong>Técnico de soporte</strong> — atiende el chat de soporte</span>
+                </label>
+            </div>
+        </div>
+
+        @if (editando)
+        {
+            <div class="field">
+                <label>Estado</label>
+                <label class="chk">
+                    <input type="checkbox" name="Activo" value="true" checked="@Model.Activo" />
+                    <span>Rol activo</span>
+                </label>
+                <p class="hint" style="margin-top:4px">Un rol inactivo deja de ser asignable y sus usuarios quedan sin capacidades.</p>
+            </div>
+        }
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--diger-border)">
+            <button class="btnp" type="submit">@(editando ? "Guardar cambios" : "Crear rol")</button>
+            @if (editando)
+            {
+                <a class="btns" asp-page="./Roles">Cancelar</a>
+            }
+            <span class="hint">Un rol administrador no puede ser de solo lectura, y siempre debe quedar al menos uno activo.</span>
+        </div>
+    </form>
+</div>
