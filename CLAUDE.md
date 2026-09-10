@@ -77,6 +77,8 @@ Api  →  su propio modelo de lectura      (independiente)
 
 Every request flows through `LoggingBehavior` → `ValidationBehavior` → handler. Handlers receive their repository and `IUnitOfWork` (both implemented by `AppDbContext`) via constructor injection.
 
+**Commands mutate; queries don't.** A command handler takes `IUnitOfWork`, calls `SaveChangesAsync`, and returns the new id (`int`/`Guid`) or `Unit` — never an entity or a full DTO. A query handler never calls `SaveChangesAsync`, and reads with **`.AsNoTracking()`**: without it EF keeps a change-tracking snapshot of every row it hands back, which costs memory on list pages and leaves tracked entities that a later `SaveChangesAsync` in the same scope can persist by accident.
+
 ### Institutional scope (data isolation)
 
 `AppDbContext` applies global EF query filters so users only see records within their scope. Each filter is `!IsDeleted && (<scope>)` — soft-delete (`ISoftDeletable`) is AND-ed into the same filter, so ordinary queries never see soft-deleted rows.
@@ -125,6 +127,20 @@ Idempotency: reuniones/expedientes dedupe on `OrigenExternoId` (unique filtered 
 ### Expediente aggregate
 
 `Expediente` is the most complex aggregate (7 sections, 10 child collections). Child collections are always replaced in bulk: call `LimpiarHijos()` then `Agregar(...)` for each item. The command handler (`ActualizarExpedienteCommand`) and `ExpedienteMapper.Aplicar()` implement this pattern — use the same pattern when adding new child types.
+
+### Front-end (Razor Pages)
+
+Server logic lives in the PageModel (`.cshtml.cs`), markup in the `.cshtml`. Pages call MediatR `ISender`, never repositories.
+
+- **No external CDNs.** jQuery, Chart and SignalR are served from `wwwroot/lib/`; new libraries go there too. The portal runs inside an institutional network where outbound access isn't guaranteed, and a CDN that doesn't answer takes the page's styling or behaviour down with it.
+- **Every `fetch`/AJAX call that writes must carry the antiforgery token.** Read it from the layout's meta tag and send it as a header:
+
+  ```js
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+  fetch(url, { method: 'POST', headers: { 'RequestVerificationToken': csrf } });
+  ```
+
+  Razor Pages validate antiforgery on POST; without the header the call comes back 400 and, from the browser, the failure looks like a server bug.
 
 ### Testing approach
 
