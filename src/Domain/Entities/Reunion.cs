@@ -43,7 +43,21 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     // ── Datos generales ───────────────────────────────────────────
     public DateOnly? Fecha     { get; set; }
     public string?   Hora      { get; set; }
-    public string?   Duracion  { get; set; }
+
+    /// <summary>
+    /// Duración planificada en minutos.
+    ///
+    /// <para>Reemplazó a un campo <c>Duracion</c> de texto libre («2 horas»). El cambio no fue
+    /// cosmético: una reunión sin hora de fin no se puede publicar en ningún calendario —ni Outlook
+    /// ni un archivo .ics aceptan un evento sin <c>end</c>—, y el campo viejo estaba lleno en 1 de
+    /// 45 filas, con el valor «1», que no dice si es una hora o un minuto.</para>
+    ///
+    /// <para>Sigue siendo opcional porque las reuniones importadas no traen el dato y no se puede
+    /// inventar. Para calcular la ventana, use <see cref="DuracionEfectivaMinutos"/>, que aplica el
+    /// valor supuesto en un solo lugar en vez de dejar que cada consumidor elija el suyo.</para>
+    /// </summary>
+    public int?      DuracionMinutos { get; set; }
+
     public string?   Modalidad { get; set; }   // Presencial / Virtual / Híbrida / Otro
     public string?   Lugar     { get; set; }
     public string?   InstitucionId { get; set; } // beneficiaria (opcional; permite "Otro")
@@ -52,6 +66,41 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public string?   Institucion   { get; set; } // snapshot del nombre
     public string?   Tipo      { get; set; }     // Taller / Seminario / Reunión técnica / …
     public bool      EsCapacitacionPlataforma { get; set; }
+
+    // ── Ventana de la reunión (hora de pared) ─────────────────────
+    // Lo que sigue traduce tres campos sueltos —fecha, hora como texto y duración— al par
+    // inicio/fin que exige cualquier calendario. Vive en el dominio y no en quien exporta porque
+    // la regla es de la reunión: si mañana se publica a Outlook, a un .ics y al calendario del
+    // portal, los tres tienen que contestar lo mismo.
+    //
+    // Son horas de PARED, sin zona horaria (DateTimeKind.Unspecified) a propósito: «la reunión es
+    // a las 9:00» es un hecho local. Convertir a un instante absoluto es responsabilidad de quien
+    // conoce la zona configurada, no de la entidad.
+
+    /// <summary>Duración supuesta cuando la reunión no la declara: una hora.</summary>
+    public const int DuracionPredeterminadaMinutos = 60;
+
+    /// <summary>La duración a usar para calcular el fin. Un único lugar donde vive el supuesto.</summary>
+    public int DuracionEfectivaMinutos =>
+        DuracionMinutos > 0 ? DuracionMinutos.Value : DuracionPredeterminadaMinutos;
+
+    /// <summary><see cref="Hora"/> es texto («09:30»); acá se interpreta. Null si está vacía o
+    /// ilegible —no se asume medianoche, porque no es lo mismo «a las 00:00» que «sin hora».</summary>
+    public TimeOnly? HoraInicio =>
+        TimeOnly.TryParse(Hora, out var t) ? t : null;
+
+    /// <summary>Tiene fecha pero no hora: es un evento de día completo, no uno a medianoche.</summary>
+    public bool EsTodoElDia => Fecha is not null && HoraInicio is null;
+
+    public DateTime? InicioLocal =>
+        Fecha is { } f ? f.ToDateTime(HoraInicio ?? TimeOnly.MinValue, DateTimeKind.Unspecified) : null;
+
+    /// <summary>Fin de la ventana. Un evento de día completo termina en la medianoche siguiente,
+    /// que es como lo representan tanto iCalendar como Microsoft Graph.</summary>
+    public DateTime? FinLocal =>
+        InicioLocal is { } i
+            ? (EsTodoElDia ? i.AddDays(1) : i.AddMinutes(DuracionEfectivaMinutos))
+            : null;
 
     // ── Expediente vinculado ──────────────────────────────────────
     public int?    ExpedienteId     { get; set; }

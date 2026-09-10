@@ -1,3 +1,5 @@
+using System.Text;
+using Diger.TramitesEstado.Application.Calendario.Ics;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
 
@@ -123,6 +125,28 @@ public sealed class ActaModel(
             var nombre = $"Registro_{slug}_{fecha}.pdf";
 
             return File(bytes, "application/pdf", nombre);
+        }
+        catch (NotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>
+    /// «Agregar a mi calendario»: descarga la reunión como archivo .ics, que Outlook, Google y Apple
+    /// abren igual. No requiere ninguna integración ni permiso extra —quien puede ver la reunión
+    /// puede llevarse su fecha—.
+    /// </summary>
+    public async Task<IActionResult> OnGetIcsAsync(int id, CancellationToken ct)
+    {
+        // La URL de la ficha viaja dentro de la cita para poder volver al portal desde el
+        // calendario. Se arma acá porque es lo único que conoce el host de esta petición.
+        var url = $"{Request.Scheme}://{Request.Host}{Url.Page("/Reuniones/Acta", new { id })}";
+
+        try
+        {
+            var ics = await sender.Send(new GetIcsReunionQuery(id, url), ct);
+            return File(Encoding.UTF8.GetBytes(ics.Contenido), ArchivoIcs.TipoContenido, ics.NombreArchivo);
         }
         catch (NotFoundException)
         {

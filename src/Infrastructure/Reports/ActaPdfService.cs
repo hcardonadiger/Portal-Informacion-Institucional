@@ -52,7 +52,8 @@ public sealed class ActaPdfService : IActaPdfService
                     Seccion(col, "1", "Datos Generales", body =>
                     {
                         Dato(body, "Fecha", Combinar(fechaTxt, d.Hora, "  •  "));
-                        Dato(body, "Modalidad", Combinar(d.Modalidad, Hay(d.Duracion) ? $"Duración: {d.Duracion}" : null, "  •  "));
+                        Dato(body, "Modalidad", Combinar(d.Modalidad,
+                            DuracionTexto.Formatear(d.DuracionMinutos) is string dur ? $"Duración: {dur}" : null, "  •  "));
                         Dato(body, "Lugar", d.Lugar);
                         Dato(body, "Institución", institucion);
                         Dato(body, "Tipo de evento", d.Tipo);

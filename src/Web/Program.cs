@@ -190,6 +190,10 @@ builder.Services.AddRazorPages(opts =>
     opts.Conventions.AllowAnonymousToFolder("/Cuenta"); // …salvo login/logout
     opts.Conventions.AllowAnonymousToFolder("/Asistencia"); // …y el auto-registro público
     opts.Conventions.AllowAnonymousToPage("/Error");
+    // Feed .ics del calendario personal: lo pide el cliente de calendario sin sesión, y el token de
+    // la URL hace de credencial. Se exime la página y no la carpeta: el resto de /Calendario sí
+    // requiere sesión.
+    opts.Conventions.AllowAnonymousToPage("/Calendario/Feed");
 })
 .AddMvcOptions(options =>
 {

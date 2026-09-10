@@ -37,6 +37,14 @@
         {
             <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
         }
+        @* Solo tiene sentido si hay fecha: sin ella el archivo no llevaría ningún evento. *@
+        @if (Model.Datos.Fecha is not null)
+        {
+            <a class="btns" asp-page-handler="Ics" asp-route-id="@Model.ReunionId"
+               title="Descarga un archivo .ics que Outlook, Google Calendar y Apple abren igual">
+                📅 Agregar a mi calendario
+            </a>
+        }
         <a class="btns" asp-page-handler="Json" asp-route-id="@Model.ReunionId">📄 Exportar JSON</a>
         <a class="btnp" asp-page-handler="Pdf" asp-route-id="@Model.ReunionId">⬇ Descargar PDF</a>
     </div>
@@ -228,7 +236,7 @@
     <section class="acta-meta">
         @if (d.Fecha is not null) { <div><span>Fecha</span>@d.Fecha.Value.ToString("dd 'de' MMMM 'de' yyyy")</div> }
         @if (Hay(d.Hora)) { <div><span>Hora</span>@d.Hora</div> }
-        @if (Hay(d.Duracion)) { <div><span>Duración</span>@d.Duracion</div> }
+        @if (DuracionTexto.Formatear(d.DuracionMinutos) is string dur) { <div><span>Duración</span>@dur</div> }
         @if (Hay(d.Modalidad)) { <div><span>Modalidad</span>@d.Modalidad</div> }
         @if (Hay(d.Tipo)) { <div><span>Tipo</span>@d.Tipo</div> }
         @if (Model.InstitucionesParticipantes.Count == 0 && Hay(Model.InstitucionNombre)) { <div><span>Institución</span>@Model.InstitucionNombre</div> }

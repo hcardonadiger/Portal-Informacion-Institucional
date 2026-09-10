@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MediatR;
+using Diger.TramitesEstado.Application.Calendario.Ics;
 using Diger.TramitesEstado.Application.Usuarios.Commands.ActualizarMiPerfil;
 using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarioById;
 using Diger.TramitesEstado.Application.Common.Interfaces;
@@ -43,6 +44,7 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
         Telefono = dto.Telefono;
 
         CargarContexto();
+        await CargarSuscripcionAsync(ct);
         return Page();
     }
 
@@ -72,6 +74,39 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
             CargarContexto();
             return Page();
         }
+    }
+
+    // ── Suscripción al calendario ────────────────────────────────────────────
+    // El enlace no se crea solo: aparece cuando la persona lo pide. Es un secreto de portador
+    // —quien tenga la URL ve su agenda— y no corresponde generarle uno a quien nunca lo va a usar.
+
+    /// <summary>URL de suscripción, ya armada. Null mientras la persona no la haya pedido.</summary>
+    public string? UrlCalendario { get; private set; }
+
+    private async Task CargarSuscripcionAsync(CancellationToken ct)
+    {
+        var token = await sender.Send(new ObtenerTokenCalendarioQuery(), ct);
+        UrlCalendario = token is { } t
+            ? $"{Request.Scheme}://{Request.Host}{Url.Page("/Calendario/Feed", new { token = t })}"
+            : null;
+    }
+
+    public async Task<IActionResult> OnPostSuscripcionAsync(bool regenerar, CancellationToken ct)
+    {
+        if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
+
+        if (regenerar)
+        {
+            await sender.Send(new RegenerarTokenCalendarioCommand(), ct);
+            TempData["SuccessMessage"] = "Se generó un enlace nuevo. El anterior dejó de funcionar.";
+        }
+        else
+        {
+            await sender.Send(new ObtenerTokenCalendarioCommand(), ct);
+            TempData["SuccessMessage"] = "Enlace de suscripción listo.";
+        }
+
+        return RedirectToPage();
     }
 
     private void CargarContexto()

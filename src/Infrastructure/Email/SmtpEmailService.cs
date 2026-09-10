@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,14 +13,21 @@ public sealed class SmtpEmailService(
 {
     private readonly SmtpSettings _settings = settingsOpt.Value;
 
-    public async Task SendEmailAsync(string to, string subject, string bodyHtml, CancellationToken ct = default)
+    public Task SendEmailAsync(string to, string subject, string bodyHtml, CancellationToken ct = default) =>
+        SendEmailAsync(to, subject, bodyHtml, [], ct);
+
+    public async Task SendEmailAsync(
+        string to, string subject, string bodyHtml,
+        IReadOnlyList<AdjuntoCorreo> adjuntos, CancellationToken ct = default)
     {
         // En ambiente local sin credenciales configuradas, simular envío mediante ILogger
         if (string.IsNullOrWhiteSpace(_settings.Host) ||
             string.IsNullOrWhiteSpace(_settings.Username) ||
             _settings.Username.Contains("ejemplo", StringComparison.OrdinalIgnoreCase))
         {
-            logger.LogWarning("[SMTP MOCK/DEV] Correo a {To} | Asunto: {Subject}\nCuerpo:\n{Body}", to, subject, bodyHtml);
+            logger.LogWarning(
+                "[SMTP MOCK/DEV] Correo a {To} | Asunto: {Subject} | Adjuntos: {Adjuntos}\nCuerpo:\n{Body}",
+                to, subject, string.Join(", ", adjuntos.Select(a => a.Nombre)), bodyHtml);
             return;
         }
 
@@ -32,14 +40,35 @@ public sealed class SmtpEmailService(
             message.Body = bodyHtml;
             message.IsBodyHtml = true;
 
-            using var client = new SmtpClient(_settings.Host, _settings.Port)
+            // Los streams viven hasta después del envío, de ahí que se descarten al final y no
+            // dentro del bucle: MailMessage los lee cuando se serializa el mensaje.
+            var streams = new List<Stream>();
+            try
             {
-                EnableSsl = _settings.EnableSsl,
-                Credentials = new NetworkCredential(_settings.Username, _settings.Password)
-            };
+                foreach (var a in adjuntos)
+                {
+                    var stream = new MemoryStream(a.Contenido);
+                    streams.Add(stream);
+                    message.Attachments.Add(
+                        new Attachment(stream, a.Nombre, a.TipoContenido)
+                        {
+                            TransferEncoding = TransferEncoding.Base64
+                        });
+                }
 
-            await client.SendMailAsync(message, ct);
-            logger.LogInformation("Correo de recuperación enviado exitosamente a {To}", to);
+                using var client = new SmtpClient(_settings.Host, _settings.Port)
+                {
+                    EnableSsl = _settings.EnableSsl,
+                    Credentials = new NetworkCredential(_settings.Username, _settings.Password)
+                };
+
+                await client.SendMailAsync(message, ct);
+                logger.LogInformation("Correo enviado exitosamente a {To}", to);
+            }
+            finally
+            {
+                foreach (var s in streams) s.Dispose();
+            }
         }
         catch (Exception ex)
         {

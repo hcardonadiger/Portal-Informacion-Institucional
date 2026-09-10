@@ -1,0 +1,215 @@
+@page
+@using Diger.TramitesEstado.Application.MiDia.Common
+@model Diger.TramitesEstado.Web.Pages.MiDia.IndexModel
+@{
+    ViewData["Title"] = "Mi día";
+    var d = Model.Datos;
+    var hoy = DateTime.Now;
+
+    // Las franjas se recorren en este orden fijo: es el orden en que se atiende el trabajo, no el
+    // del enum por casualidad. Solo «Más adelante» depende de VerTodo; lo que no tiene fecha se
+    // lista siempre, porque es trabajo abierto y esconderlo dejaría un contador sin lista detrás.
+    var franjas = Model.VerTodo
+        ? new[] { FranjaDia.Atrasado, FranjaDia.Hoy, FranjaDia.Manana, FranjaDia.EstaSemana, FranjaDia.MasAdelante, FranjaDia.SinFecha }
+        : new[] { FranjaDia.Atrasado, FranjaDia.Hoy, FranjaDia.Manana, FranjaDia.EstaSemana, FranjaDia.SinFecha };
+
+    // Fuera de los atributos: un ternario con comillas dobles dentro de un title="" rompe el
+    // parseo de Razor (ya mordió en Mis actividades).
+    string TipAgenda(bool esHoy) => esHoy ? "Reunión de hoy" : "Reunión de los próximos días";
+}
+
+<div class="container" style="max-width:1000px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Mi día</h2>
+            <p>
+                Todo lo que tiene que cerrar hoy, sin importar de qué módulo venga:
+                compromisos de reunión, actividades de proyecto, metas del plan y tickets asignados.
+            </p>
+            @* En su propia línea: pegada al final del párrafo se leía como parte de la frase. *@
+            <p class="res-meta" style="margin-top:-.35rem">@hoy.ToString("dddd d 'de' MMMM 'de' yyyy")</p>
+        </div>
+        <a class="btns" asp-page="/Tableros/MiTablero" style="font-size:13px" title="El detalle por módulo">Mi tablero →</a>
+    </div>
+
+    @* ── Agenda ──────────────────────────────────────────────────────────────
+       Va antes que los pendientes y sin contadores: son citas, no tareas. Lo que la persona
+       necesita saber al abrir la pantalla es cuánto tiempo del día ya está comprometido. *@
+    @if (d.Agenda.Count > 0)
+    {
+        <div class="card dia-agenda">
+            <div class="dia-agenda-tit">
+                <svg class="ico"><use href="#i-calendario"></use></svg>
+                Agenda de los próximos días
+            </div>
+            <div class="dia-agenda-lista">
+                @foreach (var c in d.Agenda)
+                {
+                    <a class="dia-cita @(c.EsHoy ? "es-hoy" : "")" asp-page="/Reuniones/Editor"
+                       asp-route-id="@c.ReunionId" title="@TipAgenda(c.EsHoy)">
+                        <span class="dia-cita-cuando">
+                            @(c.EsHoy ? "Hoy" : c.Fecha.ToString("dd/MM"))
+                            @if (!string.IsNullOrWhiteSpace(c.Hora)) { <text> · @c.Hora</text> }
+                        </span>
+                        <span class="dia-cita-tit">@c.Titulo</span>
+                        @if (!string.IsNullOrWhiteSpace(c.Lugar))
+                        {
+                            <span class="dia-cita-meta">@c.Lugar</span>
+                        }
+                        @if (c.EsOrganizador)
+                        {
+                            <span class="badge badge-secondary">Organiza</span>
+                        }
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    @* ── Contadores ──────────────────────────────────────────────────────────
+       «Sin fecha» se muestra junto a los demás por la misma razón que en Mis actividades: sin él,
+       un cero en atrasados se lee como estar al día cuando puede no haber contra qué medirse. *@
+    <div class="kpi-grid" style="margin-bottom:1rem">
+        <div class="kpi-card @(d.Atrasados > 0 ? "alert" : "ok")" title="Su fecha ya pasó y siguen abiertos">
+            <div class="kpi-num">@d.Atrasados</div><div class="kpi-lbl">Atrasados</div>
+        </div>
+        <div class="kpi-card @(d.ParaHoy > 0 ? "warn" : "ok")" title="Vencen hoy">
+            <div class="kpi-num">@d.ParaHoy</div><div class="kpi-lbl">Hoy</div>
+        </div>
+        <div class="kpi-card" title="Vencen mañana">
+            <div class="kpi-num">@d.ParaManana</div><div class="kpi-lbl">Mañana</div>
+        </div>
+        <div class="kpi-card" title="Vencen dentro de los próximos siete días">
+            <div class="kpi-num">@d.EstaSemana</div><div class="kpi-lbl">Esta semana</div>
+        </div>
+        <div class="kpi-card @(d.SinFecha > 0 ? "warn" : "")" title="Abiertos y sin fecha: no hay contra qué medir el atraso">
+            <div class="kpi-num">@d.SinFecha</div><div class="kpi-lbl">Sin fecha</div>
+        </div>
+        <div class="kpi-card" title="Todo lo que tiene abierto, dentro y fuera del horizonte">
+            <div class="kpi-num">@d.TotalAbiertos</div><div class="kpi-lbl">Abiertos</div>
+        </div>
+    </div>
+
+    @if (d.Ocultos > 0 || Model.VerTodo)
+    {
+        <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+            @if (Model.VerTodo)
+            {
+                <a class="btns" asp-page="/MiDia/Index" style="font-size:12.5px">
+                    Ver solo los próximos siete días
+                </a>
+            }
+            else
+            {
+                <a class="btns" asp-page="/MiDia/Index" asp-route-VerTodo="true" style="font-size:12.5px">
+                    Ver también lo que vence más adelante (@d.Ocultos)
+                </a>
+            }
+        </div>
+    }
+
+    @if (d.TotalAbiertos == 0)
+    {
+        <div class="card">
+            <div class="hist-empty">
+                <div class="ico">✅</div>
+                <p>No tiene nada pendiente a su nombre.</p>
+                <p class="res-meta">
+                    Acá aparecen los compromisos de reunión de los que usted es responsable, las
+                    actividades de proyecto a su cargo, las metas del plan de trabajo del año y los
+                    tickets que le asignaron.
+                </p>
+            </div>
+        </div>
+    }
+    else if (d.Pendientes.Count == 0)
+    {
+        <div class="card">
+            <div class="hist-empty">
+                <div class="ico">✅</div>
+                <p>Nada vence en los próximos siete días.</p>
+                <p class="res-meta">Tiene @d.TotalAbiertos pendiente(s) más adelante.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        foreach (var franja in franjas)
+        {
+            var filas = d.Pendientes.Where(p => p.Franja == franja).ToList();
+            if (filas.Count == 0) { continue; }
+
+            <div class="dia-franja @(franja == FranjaDia.Atrasado ? "atrasada" : "")">
+                <h3 class="dia-franja-tit">
+                    @MiDiaUi.Titulo(franja)
+                    <span class="dia-franja-num">@filas.Count</span>
+                </h3>
+
+                @foreach (var p in filas)
+                {
+                    var (obg, ofg) = MiDiaUi.Color(p.Origen);
+                    <article class="dia-row @(p.Atrasado ? "vencida" : "")">
+                        <div class="dia-row-main">
+                            <div class="dia-row-cab">
+                                <span class="dia-chip" style="background:@obg;color:@ofg">@MiDiaUi.Label(p.Origen)</span>
+                                <span class="dia-ctx">@p.Contexto</span>
+                            </div>
+                            <div class="dia-tit">@p.Titulo</div>
+                            <div class="dia-meta">
+                                <span class="dia-meta-i"><b>Estado</b> @p.Estado</span>
+                                @if (!string.IsNullOrWhiteSpace(p.Detalle))
+                                {
+                                    <span class="dia-meta-i">@p.Detalle</span>
+                                }
+                                @if (p.Fecha is { } f)
+                                {
+                                    <span class="dia-meta-i"><b>Fecha</b> @f.ToString("dd/MM/yyyy")</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="dia-row-acc">
+                            @if (p.Atrasado)
+                            {
+                                <span class="badge badge-danger">@MiDiaUi.Vencimiento(p)</span>
+                            }
+                            else if (p.Fecha is not null)
+                            {
+                                <span class="badge @(p.DiasParaVencer <= 1 ? "badge-warning" : "badge-secondary")">
+                                    @MiDiaUi.Vencimiento(p)
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-secondary" title="No hay fecha contra la cual medir el atraso">
+                                    Sin fecha
+                                </span>
+                            }
+
+                            <a class="btns" asp-page="@p.Pagina" asp-route-id="@p.RefId">@MiDiaUi.Accion(p.Origen)</a>
+
+                            @if (p.PermiteCierreRapido && Model.PuedeCerrarCompromisos)
+                            {
+                                @* Deja el compromiso en revisión, no cumplido: quien no es
+                                   administrador no puede aprobar el suyo, y el comando lo rechazaría. *@
+                                <form method="post" asp-page-handler="Listo" asp-route-id="@p.RefId">
+                                    <input type="hidden" name="VerTodo" value="@Model.VerTodo.ToString().ToLowerInvariant()" />
+                                    <button type="submit" class="btnp dia-btn-listo"
+                                            title="Lo marca como terminado y lo envía a revisión">
+                                        Lo terminé
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    }
+</div>

@@ -5,7 +5,7 @@ public static class ReunionMapper
     public static void Aplicar(Reunion r, ReunionFormDto d, List<AsistenteInput> asistentes, List<AcuerdoInput> acuerdos)
     {
         r.EstablecerTitulo(d.Titulo);
-        r.Fecha = d.Fecha; r.Hora = d.Hora?.Trim(); r.Duracion = d.Duracion?.Trim();
+        r.Fecha = d.Fecha; r.Hora = d.Hora?.Trim(); r.DuracionMinutos = d.DuracionMinutos;
         r.Modalidad = d.Modalidad?.Trim(); r.Lugar = d.Lugar?.Trim();
         r.ExpedienteId = d.ExpedienteId; r.ExpedienteCodigo = d.ExpedienteCodigo?.Trim();
         r.Tipo = d.Tipo?.Trim(); r.EsCapacitacionPlataforma = d.EsCapacitacionPlataforma;
@@ -62,7 +62,7 @@ public static class ReunionMapper
     {
         var datos = new ReunionFormDto
         {
-            Titulo = r.Titulo, Fecha = r.Fecha, Hora = r.Hora, Duracion = r.Duracion,
+            Titulo = r.Titulo, Fecha = r.Fecha, Hora = r.Hora, DuracionMinutos = r.DuracionMinutos,
             Modalidad = r.Modalidad, Lugar = r.Lugar, ExpedienteId = r.ExpedienteId, ExpedienteCodigo = r.ExpedienteCodigo,
             InstitucionesIds = r.InstitucionesParticipantes.OrderBy(x => x.Orden).Select(x => x.InstitucionId).ToList(),
             Tipo = r.Tipo,

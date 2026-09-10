@@ -70,6 +70,47 @@
     </div>
 </div>
 
+@* ── Suscripción al calendario ────────────────────────────────────────────────
+   El enlace aparece solo si la persona lo pide: es un secreto de portador y no corresponde
+   crearle una URL con su agenda a quien nunca la va a usar. *@
+<div class="card" style="margin-top:1rem">
+    <h3 style="margin-top:0">Mi calendario en Outlook</h3>
+    <p class="res-meta">
+        Suscribe tus reuniones a Outlook, Google Calendar o el calendario del celular. Es de solo
+        lectura y se actualiza solo: lo que cambie en el portal aparece ahí sin que hagas nada.
+    </p>
+
+    @if (Model.UrlCalendario is null)
+    {
+        <form method="post" asp-page-handler="Suscripcion">
+            <input type="hidden" name="regenerar" value="false" />
+            <button type="submit" class="btnp">Generar mi enlace de suscripción</button>
+        </form>
+    }
+    else
+    {
+        <div class="field">
+            <label for="url-cal">Enlace de suscripción</label>
+            @* Solo lectura y seleccionable: se copia y se pega en el calendario, no se edita. *@
+            <input id="url-cal" type="text" readonly value="@Model.UrlCalendario"
+                   onclick="this.select()" style="font-family:monospace;font-size:12.5px" />
+        </div>
+
+        <p class="res-meta">
+            En Outlook: <strong>Agregar calendario → Suscribirse desde la web</strong> y pega el enlace.
+            Cualquiera que tenga esta URL puede ver tus reuniones, así que trátala como una contraseña.
+        </p>
+
+        <form method="post" asp-page-handler="Suscripcion"
+              onsubmit="return confirm('Se generará un enlace nuevo y el actual dejará de funcionar. ¿Continuar?');">
+            <input type="hidden" name="regenerar" value="true" />
+            <button type="submit" class="btns" style="font-size:12.5px">
+                Generar un enlace nuevo (invalida el actual)
+            </button>
+        </form>
+    }
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

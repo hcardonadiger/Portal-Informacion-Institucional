@@ -21,6 +21,10 @@ public static class DependencyInjection
         // IMemoryCache: requerido por CachingBehavior para catálogos estáticos.
         services.AddMemoryCache();
 
+        // Singleton: resolver la zona horaria toca el sistema operativo y no cambia en la vida
+        // del proceso.
+        services.AddSingleton<Common.Tiempo.RelojInstitucional>();
+
         return services;
     }
 }

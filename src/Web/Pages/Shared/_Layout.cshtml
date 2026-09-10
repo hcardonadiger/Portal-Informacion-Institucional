@@ -147,6 +147,16 @@
                             las tres primeras. Por eso Proyectos abre su propio grupo en vez de
                             sumarse a Expedientes, que trata de racionalización de trámites.
                         *@
+
+                        @* "Mi día" va primero y fuera de todo grupo: es lo único del menú que no
+                           pregunta por un módulo sino por la persona, y es la pantalla con la que
+                           se empieza la jornada. Sin condición de permiso, igual que Ayuda —solo
+                           muestra trabajo propio, por eso la página lleva [PermisoNoRequerido]—. *@
+                        <div class="nav-group @(EsRuta("/MiDia") ? "on" : "")">
+                            <a class="nav-group-btn" asp-page="/MiDia/Index"
+                               title="Sus pendientes de hoy, de todos los módulos">Mi día</a>
+                        </div>
+
                         @if (puedeExpedientes)
                         {
                             var grpExp = EsRuta("/", "/Expedientes") || EsRuta("/PlanTrabajo") || EsRuta("/Recursos");

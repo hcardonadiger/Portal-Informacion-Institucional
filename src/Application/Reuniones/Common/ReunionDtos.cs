@@ -41,7 +41,7 @@ public sealed class ReunionFormDto
     public string    Titulo    { get; set; } = string.Empty;
     public DateOnly? Fecha     { get; set; }
     public string?   Hora      { get; set; }
-    public string?   Duracion  { get; set; }
+    public int?      DuracionMinutos { get; set; }
     public string?   Modalidad { get; set; }
     public string?   Lugar     { get; set; }
 

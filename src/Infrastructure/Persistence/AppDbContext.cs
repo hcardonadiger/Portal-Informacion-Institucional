@@ -425,6 +425,13 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         b.Property(x => x.PasswordResetToken).HasMaxLength(256);
         b.Property(x => x.PasswordResetTokenExpiration);
         b.HasIndex(x => x.Correo).IsUnique();
+
+        // El feed del calendario se resuelve por token, así que necesita índice. Único y filtrado:
+        // la mayoría de los usuarios no ha pedido el enlace y tiene NULL, y sin el filtro esos NULL
+        // chocarían entre sí en SQL Server.
+        b.HasIndex(x => x.CalendarioToken)
+            .IsUnique()
+            .HasFilter("[CalendarioToken] IS NOT NULL");
     }
 }
 
@@ -469,7 +476,6 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
         b.Property(x => x.Titulo).HasMaxLength(250).IsRequired();
         b.Property(x => x.OrigenExternoId).HasMaxLength(60);
         b.Property(x => x.Hora).HasMaxLength(20);
-        b.Property(x => x.Duracion).HasMaxLength(60);
         b.Property(x => x.Modalidad).HasMaxLength(40);
         b.Property(x => x.Lugar).HasMaxLength(250);
         b.Property(x => x.Institucion).HasMaxLength(120);

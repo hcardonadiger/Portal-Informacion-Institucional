@@ -1,8 +1,13 @@
+using System.Text;
+using Diger.TramitesEstado.Application.Calendario.Ics;
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Common.Models;
+using Diger.TramitesEstado.Application.Common.Tiempo;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual;
 
@@ -142,7 +147,9 @@ public sealed record EnviarRecordatorioReunionCommand(int ReunionId, string? Men
 public sealed class EnviarRecordatorioReunionCommandHandler(
     IApplicationDbContext ctx,
     INotificacionService notifSvc,
-    IEmailService emailSvc)
+    IEmailService emailSvc,
+    RelojInstitucional reloj,
+    IOptions<InstitucionOptions> institucion)
     : IRequestHandler<EnviarRecordatorioReunionCommand, int>
 {
     public async Task<int> Handle(EnviarRecordatorioReunionCommand request, CancellationToken ct)
@@ -155,6 +162,11 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
         int notificados = 0;
         HashSet<string> correosProcesados = [];
         var url = $"/Reuniones/Acta/{reunion.Id}";
+
+        // El .ics se genera una sola vez y se adjunta a todos los correos: es el mismo evento.
+        // Va sin la lista de asistentes —el archivo llega a gente de otras instituciones y no
+        // corresponde repartirles los correos de todos los demás—.
+        var adjuntos = ConstruirAdjuntoIcs(reunion);
 
         foreach (var asist in reunion.Asistentes)
         {
@@ -177,11 +189,29 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
                        $"{msgExtra}" +
                        $"<p><a href='{url}'>Ver Acta / Detalles de la Reunión</a></p>";
 
-            await emailSvc.SendEmailAsync(asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — DIGER", body, ct);
+            await emailSvc.SendEmailAsync(
+                asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — DIGER", body, adjuntos, ct);
         }
 
         await ctx.SaveChangesAsync(ct);
         return Math.Max(1, notificados);
+    }
+
+    /// <summary>
+    /// El archivo de calendario del recordatorio. Vacío si la reunión no tiene fecha: adjuntar un
+    /// .ics sin evento solo confundiría a quien lo abra.
+    /// </summary>
+    private IReadOnlyList<AdjuntoCorreo> ConstruirAdjuntoIcs(Reunion reunion)
+    {
+        if (reunion.Fecha is null) return [];
+
+        var inst    = institucion.Value;
+        var dominio = Uri.TryCreate(inst.SitioWeb, UriKind.Absolute, out var u) ? u.Host : "portal.local";
+
+        var evento = ReunionIcs.Mapear(reunion, reloj, dominio, incluirAsistentes: false);
+        var texto  = IcsWriter.Escribir([evento], $"{inst.NombreCorto}//Portal de Trámites");
+
+        return [new AdjuntoCorreo($"reunion-{reunion.Id}.ics", "text/calendar", Encoding.UTF8.GetBytes(texto))];
     }
 }
 

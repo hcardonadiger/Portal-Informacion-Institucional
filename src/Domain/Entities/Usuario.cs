@@ -13,6 +13,16 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
     public DateTime?  PasswordResetTokenExpiration { get; private set; }
     public bool       Activo       { get; private set; } = true;
 
+    /// <summary>
+    /// Token del enlace de suscripción al calendario personal (formato .ics).
+    ///
+    /// <para>Nulo hasta que la persona pida el enlace: no se le crea a nadie una URL que expone su
+    /// agenda sin que la haya pedido. Es un secreto de portador —quien tenga la URL ve las reuniones
+    /// de esa persona—, igual que el token de auto-registro de asistencia, y por eso se puede
+    /// regenerar para invalidar la anterior.</para>
+    /// </summary>
+    public Guid?      CalendarioToken { get; private set; }
+
     private Usuario() { }
 
     public static Usuario Crear(string nombre, string correo, string passwordHash, string? telefono = null)
@@ -93,4 +103,20 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
 
     public void Desactivar() => Activo = false;
     public void Activar()    => Activo = true;
+
+    /// <summary>Crea el token de suscripción si todavía no existe y lo devuelve. Idempotente: pedir
+    /// el enlace dos veces no invalida el que la persona ya pegó en su calendario.</summary>
+    public Guid AsegurarTokenCalendario()
+    {
+        CalendarioToken ??= Guid.NewGuid();
+        return CalendarioToken.Value;
+    }
+
+    /// <summary>Emite un token nuevo: la URL anterior deja de funcionar. Es el remedio para un
+    /// enlace que se compartió de más.</summary>
+    public Guid RegenerarTokenCalendario()
+    {
+        CalendarioToken = Guid.NewGuid();
+        return CalendarioToken.Value;
+    }
 }

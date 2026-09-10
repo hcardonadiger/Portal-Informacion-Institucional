@@ -80,7 +80,19 @@
         <div class="row3">
           <div class="field"><label>Fecha</label><input asp-for="Datos.Fecha" type="date" /></div>
           <div class="field"><label>Hora</label><input asp-for="Datos.Hora" type="time" /></div>
-          <div class="field"><label>Duración</label><input asp-for="Datos.Duracion" placeholder="2 horas" /></div>
+          @* Antes era texto libre («2 horas»): quedó lleno en 1 de 45 reuniones y con el valor «1»,
+             que no dice si es una hora o un minuto. Una lista corta da un dato utilizable —la hora
+             de fin— sin pedirle más trabajo a quien convoca. *@
+          <div class="field">
+            <label asp-for="Datos.DuracionMinutos">Duración</label>
+            <select asp-for="Datos.DuracionMinutos">
+              <option value="">Sin definir</option>
+              @foreach (var (min, txt) in DuracionTexto.Opciones)
+              {
+                <option value="@min">@txt</option>
+              }
+            </select>
+          </div>
         </div>
         <div class="fg-hdr">Tipo y modalidad <span class="help-tip tip-down" data-tip="El tipo determina las secciones del formulario. Las capacitaciones incluyen secciones adicionales de resultados y evidencia.">?</span></div>
         <div class="row2">
@@ -243,7 +255,7 @@
         </summary>
         <div style="padding:0 16px 16px">
           <p class="hint" style="margin:0 0 8px">Pega aquí el JSON resumido de la transcripción y presiona «Aplicar» para llenar los campos del formulario.</p>
-          <textarea id="cowork-json" rows="6" style="width:100%;font-family:monospace;font-size:12.5px" placeholder='{"titulo":"...","fecha":"YYYY-MM-DD","hora":"HH:MM","duracion":"...","modalidad":"Presencial","lugar":"...","institucion":"...","tipo":"Reunión técnica","objetivo":"...","desarrollo":"...","acuerdos":[{"compromiso":"...","responsable":"...","plazo":"YYYY-MM-DD"}],"documentos":"...","validador_diger":"..."}'></textarea>
+          <textarea id="cowork-json" rows="6" style="width:100%;font-family:monospace;font-size:12.5px" placeholder='{"titulo":"...","fecha":"YYYY-MM-DD","hora":"HH:MM","duracion_minutos":90,"modalidad":"Presencial","lugar":"...","institucion":"...","tipo":"Reunión técnica","objetivo":"...","desarrollo":"...","acuerdos":[{"compromiso":"...","responsable":"...","plazo":"YYYY-MM-DD"}],"documentos":"...","validador_diger":"..."}'></textarea>
           <div style="display:flex;gap:8px;margin-top:8px">
             <button type="button" class="btnp" onclick="aplicarJsonCowork(false)">Aplicar al formulario</button>
             <button type="button" class="btns" onclick="aplicarJsonCowork(true)">Sobreescribir</button>
@@ -923,6 +935,41 @@
             });
         }
 
+  // Opciones válidas del selector de duración, para poder ajustar a la más cercana.
+  var DURACIONES = [@Html.Raw(string.Join(",", DuracionTexto.Opciones.Select(o => o.Minutos)))];
+
+  // La duración del JSON de Cowork llega como texto libre («2 horas», «90 min»), porque así la
+  // escribe quien resume la transcripción. Se interpreta con la MISMA regla que usó la migración
+  // que convirtió el campo viejo: un número suelto de 12 o menos son horas, y más de 12, minutos.
+  // Si no calza con ninguna opción del selector, se ajusta a la más cercana en vez de descartarla.
+  function duracionAMinutos(d){
+    if (d == null) return null;
+    if (typeof d.duracion_minutos === 'number' && d.duracion_minutos > 0) return cercana(d.duracion_minutos);
+
+    var v = d.duracion;
+    if (v == null) return null;
+    if (typeof v === 'number') return cercana(v <= 12 ? v * 60 : v);
+
+    var s = String(v).trim().toLowerCase();
+    if (!s) return null;
+
+    var hm = s.match(/^(\d+)\s*[:h]\s*(\d+)/);            // «1:30», «1h30»
+    if (hm) return cercana(parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10));
+
+    var n = parseFloat(s.replace(',', '.'));
+    if (isNaN(n) || n <= 0) return null;
+
+    if (/\bmin/.test(s))  return cercana(Math.round(n));
+    if (/\bh|hora/.test(s)) return cercana(Math.round(n * 60));
+    return cercana(n <= 12 ? Math.round(n * 60) : Math.round(n));
+  }
+
+  function cercana(min){
+    return DURACIONES.reduce(function(a, b){
+      return Math.abs(b - min) < Math.abs(a - min) ? b : a;
+    });
+  }
+
   // Llena el formulario completo a partir del JSON resumido de una transcripción (Cowork).
   function aplicarJsonCowork(sobreescribir){
     var errBox = document.getElementById('cowork-error');
@@ -939,7 +986,7 @@
     if (!sobreescribir) {
       var camposSimples = [
         ['Datos.Titulo', d.titulo], ['Datos.Fecha', d.fecha], ['Datos.Hora', d.hora],
-        ['Datos.Duracion', d.duracion], ['Datos.Lugar', d.lugar], ['Datos.ObjetivoAgenda', d.objetivo],
+        ['Datos.DuracionMinutos', duracionAMinutos(d)], ['Datos.Lugar', d.lugar], ['Datos.ObjetivoAgenda', d.objetivo],
         ['Datos.DocsRecursos', d.documentos], ['Datos.ValDiger', d.validador_diger]
       ];
       var hayConflicto = false;
@@ -971,7 +1018,7 @@
     setVal('Datos.Titulo', d.titulo);
     setVal('Datos.Fecha', d.fecha);
     setVal('Datos.Hora', d.hora);
-    setVal('Datos.Duracion', d.duracion);
+    setVal('Datos.DuracionMinutos', duracionAMinutos(d));
     setVal('Datos.Lugar', d.lugar);
 
     if (d.modalidad){ initOtro('md', MODALIDADES, d.modalidad); }
