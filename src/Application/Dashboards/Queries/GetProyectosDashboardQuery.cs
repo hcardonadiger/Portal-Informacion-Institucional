@@ -15,11 +15,19 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries;
 /// <param name="AreaIds">Áreas a las que se acota el tablero. <c>null</c> o lista vacía = sin
 /// acotar, que es como se ve el portafolio completo desde el nivel de institución. Es un filtro
 /// de presentación: no sustituye ni relaja el alcance con el que el usuario ve los proyectos.</param>
+/// <param name="DeUsuarioId">Acota a los proyectos donde ese usuario es responsable o figura como
+/// interesado. <c>null</c> = sin acotar. Es el mismo conjunto que devuelve
+/// <c>GetMisProyectosDashboardQuery</c>, para que el tablero de área pueda conmutar entre «toda mi
+/// área» y «solo lo mío» sin estrenar un criterio distinto del que ya usa el nivel Unidad.
+///
+/// <para>Igual que <paramref name="AreaIds"/>, es un filtro de presentación: recorta lo que ya
+/// dejó pasar el alcance, nunca lo amplía.</para></param>
 public sealed record GetProyectosDashboardQuery(
     EstadoProyecto?    Estado        = null,
     Guid?              ResponsableId = null,
     PrioridadProyecto? Prioridad     = null,
-    IReadOnlyList<string>? AreaIds   = null) : IRequest<ProyectosDashboardDto>;
+    IReadOnlyList<string>? AreaIds   = null,
+    Guid?              DeUsuarioId   = null) : IRequest<ProyectosDashboardDto>;
 
 public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetProyectosDashboardQuery, ProyectosDashboardDto>
@@ -40,6 +48,11 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         // Los proyectos sin área quedan fuera cuando sí se filtra — se pidieron esas áreas, no «esas o ninguna».
         if (q.AreaIds is { Count: > 0 } areas)
             baseQuery = baseQuery.Where(p => p.AreaId != null && areas.Contains(p.AreaId));
+        // Responsable o interesado: el mismo predicado que GetMisProyectosDashboardQuery, copiado
+        // a propósito en vez de inventar acá otra definición de «mío» que pudiera divergir.
+        if (q.DeUsuarioId is { } mio)
+            baseQuery = baseQuery.Where(p => p.ResponsableId == mio
+                || ctx.ProyectoInteresados.Any(i => i.ProyectoId == p.Id && i.UsuarioId == mio));
 
         // Una sola pasada a la base: el resto se calcula en memoria sobre esta proyección.
         // El portafolio es de decenas de proyectos, no de miles.
@@ -47,7 +60,7 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             .Select(p => new
             {
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.ResponsableId,
-                p.Estado, p.Prioridad, p.AvancePct, p.FechaFinPlan,
+                p.Estado, p.Prioridad, p.AvancePct, p.FechaFinPlan, p.UnidadId,
                 TotalEntregables       = p.Entregables.Count,
                 EntregablesCompletados = p.Entregables.Count(x => x.Estado == EstadoEntregable.Completado),
                 EntregablesVencidos    = p.Entregables.Count(x => x.FechaPlan.HasValue && x.FechaPlan < hoy
@@ -69,6 +82,17 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         static bool SinLineaBase(DateOnly? fin, EstadoProyecto est) =>
             fin is null && ProyectoEstadoReglas.Abierto(est);
 
+        // Nombres de unidad para el desglose del tablero de área. Se resuelven aparte y no con un
+        // Include: Unidades lleva filtro por institución activa, así que una unidad de otra
+        // institución simplemente no aparece en el diccionario y el nombre queda null — el Id, que
+        // es lo que identifica al grupo, sigue viajando intacto.
+        var unidadIds = filas.Where(p => p.UnidadId != null).Select(p => p.UnidadId!).Distinct().ToList();
+        var nombresUnidad = unidadIds.Count == 0
+            ? new Dictionary<string, string>()
+            : await ctx.Unidades.AsNoTracking()
+                .Where(u => unidadIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.Nombre, ct);
+
         var semaforo = filas
             .Select(p => new ProyectoSemaforoDto(
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.Estado, p.Prioridad, p.AvancePct,
@@ -78,7 +102,9 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                 p.UltimoAvance is null ? null : (int)(DateTime.UtcNow - p.UltimoAvance.Value).TotalDays,
                 ProyectoEstadoReglas.Atrasado(p.FechaFinPlan, p.Estado, hoy),
                 ProyectoEstadoReglas.SinReportar(p.Estado, p.UltimoAvance, corte),
-                SinLineaBase(p.FechaFinPlan, p.Estado)))
+                SinLineaBase(p.FechaFinPlan, p.Estado),
+                p.UnidadId,
+                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var un) ? un : null))
             // Primero lo que exige atención: atrasado, luego desatendido, luego prioridad.
             .OrderByDescending(p => p.Atrasado)
             .ThenByDescending(p => p.SinReportar)

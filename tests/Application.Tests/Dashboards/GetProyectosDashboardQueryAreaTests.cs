@@ -63,6 +63,64 @@ public class GetProyectosDashboardQueryAreaTests : IDisposable
         resultado.Semaforo.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task DeUsuarioIdAcotaAResponsableOInteresado()
+    {
+        await SembrarProyectosAsync();
+
+        var yo = Guid.NewGuid();
+        var siger = await _ctx.Proyectos.SingleAsync(p => p.Codigo == "PRY-2026-20");
+        siger.ResponsableId = yo;
+
+        var gobdigital = await _ctx.Proyectos.SingleAsync(p => p.Codigo == "PRY-2026-21");
+        _ctx.ProyectoInteresados.Add(InteresadoProyecto.Crear(
+            gobdigital.Id, yo, "Yo", RolInteresado.Ejecutor, "Pruebas"));
+        await _ctx.SaveChangesAsync();
+
+        var resultado = await new GetProyectosDashboardQueryHandler(_ctx).Handle(
+            new GetProyectosDashboardQuery(DeUsuarioId: yo), CancellationToken.None);
+
+        // Las dos maneras de ser «mío», y nada más: es el mismo predicado que usa el nivel Unidad.
+        resultado.Semaforo.Select(s => s.Codigo).Should().BeEquivalentTo("PRY-2026-20", "PRY-2026-21");
+    }
+
+    [Fact]
+    public async Task SinDeUsuarioIdNoAcota()
+    {
+        await SembrarProyectosAsync();
+
+        var resultado = await new GetProyectosDashboardQueryHandler(_ctx).Handle(
+            new GetProyectosDashboardQuery(), CancellationToken.None);
+
+        // null significa «sin acotar», no «de nadie»: si se confundieran, el tablero de
+        // institución saldría vacío.
+        resultado.Semaforo.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task LaUnidadViajaEnElSemaforo()
+    {
+        await SembrarProyectosAsync();
+
+        var siger = await _ctx.Proyectos.SingleAsync(p => p.Codigo == "PRY-2026-20");
+        siger.UnidadId = "UNI-A";
+        _ctx.Unidades.Add(Unidad.Crear("UNI-A", "SIGER", "Unidad A"));
+        await _ctx.SaveChangesAsync();
+
+        var resultado = await new GetProyectosDashboardQueryHandler(_ctx).Handle(
+            new GetProyectosDashboardQuery(), CancellationToken.None);
+
+        var conUnidad = resultado.Semaforo.Single(s => s.Codigo == "PRY-2026-20");
+        conUnidad.UnidadId.Should().Be("UNI-A");
+        conUnidad.UnidadNombre.Should().NotBeNull("el catálogo la resuelve");
+
+        // El que no tiene unidad la lleva en null por los dos lados: es lo que permite al tablero
+        // de área separarlo del que sí tiene unidad pero cuyo nombre no resuelve.
+        var sinUnidad = resultado.Semaforo.Single(s => s.Codigo == "PRY-2026-23");
+        sinUnidad.UnidadId.Should().BeNull();
+        sinUnidad.UnidadNombre.Should().BeNull();
+    }
+
     /// <summary>Tres proyectos en tres áreas distintas, más uno sin área asignada.</summary>
     private async Task SembrarProyectosAsync()
     {
