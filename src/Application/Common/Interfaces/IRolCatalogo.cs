@@ -9,6 +9,8 @@ public sealed record RolInfo(
     bool         EsSoloLectura,
     bool         EsSupervisor,
     bool         EsTecnicoSoporte,
+    bool         EsJefeDeArea,
+    bool         EsPmo,
     string?      Color);
 
 /// <summary>

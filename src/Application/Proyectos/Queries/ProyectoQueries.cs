@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Proyectos.Common;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Queries;
 
@@ -27,7 +28,8 @@ public sealed record GetProyectosQuery(
     PrioridadProyecto? Prioridad     = null,
     string?            AreaId        = null,
     string?            UnidadId      = null,
-    SenalProyecto?     Senal         = null) : IRequest<IReadOnlyList<ProyectoListItemDto>>;
+    SenalProyecto?     Senal         = null,
+    AccionProyecto?    Accion        = null) : IRequest<IReadOnlyList<ProyectoListItemDto>>;
 
 public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetProyectosQuery, IReadOnlyList<ProyectoListItemDto>>
@@ -39,6 +41,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
         if (query.Estado is { } estado)   q = q.Where(p => p.Estado == estado);
         if (query.ResponsableId is { } r) q = q.Where(p => p.ResponsableId == r);
         if (query.Prioridad is { } prio)  q = q.Where(p => p.Prioridad == prio);
+        if (query.Accion is { } accion)   q = q.Where(p => p.Accion == accion);
 
         if (!string.IsNullOrWhiteSpace(query.AreaId))   q = q.Where(p => p.AreaId == query.AreaId);
         if (!string.IsNullOrWhiteSpace(query.UnidadId)) q = q.Where(p => p.UnidadId == query.UnidadId);
@@ -71,6 +74,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
                 p.Nombre,
                 p.Responsable,
                 p.Prioridad,
+                p.Accion,
                 p.Estado,
                 p.FechaInicioPlan,
                 p.FechaFinPlan,
@@ -147,7 +151,7 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
 
         return new ProyectoDetailDto(
             p.Id, p.Codigo, p.Nombre, p.Objetivo, p.InstitucionId, p.AreaId, p.UnidadId,
-            p.ResponsableId, p.Responsable, p.Prioridad, p.Estado,
+            p.ResponsableId, p.Responsable, p.Prioridad, p.Accion, p.Estado,
             p.FechaInicioPlan, p.FechaFinPlan, p.FechaInicioReal, p.FechaFinReal,
             p.AvancePct, p.CreatedAt, p.CreatedBy,
             p.Entregables.OrderBy(e => e.Orden)
@@ -230,19 +234,33 @@ public sealed class GetRiesgosProyectoQueryHandler(IApplicationDbContext ctx)
 // ── Interesados ───────────────────────────────────────────────────────────
 public sealed record GetInteresadosProyectoQuery(int ProyectoId) : IRequest<IReadOnlyList<InteresadoProyectoDto>>;
 
-public sealed class GetInteresadosProyectoQueryHandler(IApplicationDbContext ctx)
+public sealed class GetInteresadosProyectoQueryHandler(
+    IApplicationDbContext ctx,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<GetInteresadosProyectoQuery, IReadOnlyList<InteresadoProyectoDto>>
 {
-    public async Task<IReadOnlyList<InteresadoProyectoDto>> Handle(GetInteresadosProyectoQuery query, CancellationToken ct) =>
-        await ctx.ProyectoInteresados.AsNoTracking()
+    public async Task<IReadOnlyList<InteresadoProyectoDto>> Handle(GetInteresadosProyectoQuery query, CancellationToken ct)
+    {
+        var filas = await ctx.ProyectoInteresados.AsNoTracking()
             .Where(i => i.ProyectoId == query.ProyectoId)
             .Join(ctx.Proyectos, i => i.ProyectoId, p => p.Id, (i, _) => i)   // aplica el alcance
             .OrderByDescending(i => i.Influencia)
             .ThenBy(i => i.Rol)
             .ThenBy(i => i.Nombre)
-            .Select(i => new InteresadoProyectoDto(
-                i.Id, i.UsuarioId, i.Nombre, i.Institucion, i.Cargo, i.Correo, i.Rol, i.Influencia, i.Notas))
             .ToListAsync(ct);
+
+        // Removible sale de la MISMA fuente de verdad que la guarda de QuitarInteresadoCommand —el
+        // derecho vigente, no la bandera Automatico— para que la ficha no ofrezca un botón que el
+        // comando va a rechazar. Antes la vista no tenía forma de distinguir y pintaba el ✕ para
+        // todas las filas: el usuario confirmaba y se llevaba una DomainException.
+        var derechoVigente = await sync.CalcularDerechoVigenteAsync(query.ProyectoId, ct);
+
+        return filas
+            .Select(i => new InteresadoProyectoDto(
+                i.Id, i.UsuarioId, i.Nombre, i.Institucion, i.Cargo, i.Correo, i.Rol, i.Influencia,
+                i.Notas, Removible: !derechoVigente.ContainsKey(i.UsuarioId)))
+            .ToList();
+    }
 }
 
 // ── Auditoría del proyecto ────────────────────────────────────────────────

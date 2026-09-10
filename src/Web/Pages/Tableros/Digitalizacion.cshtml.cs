@@ -5,10 +5,10 @@ namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
 [Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
-public sealed class DigitalizacionModel(ISender sender, IInstitucionRepository institucionRepo, ICurrentUserService currentUser, IInformeService informeSvc) : PageModel
+public sealed class DigitalizacionModel(ISender sender, ICurrentUserService currentUser, IInformeService informeSvc) : PageModel
 {
     public DigitalizacionDashboardDto Data { get; private set; } = default!;
-    public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
+    public IReadOnlyList<InstitucionDigitalizacionDto> Instituciones { get; private set; } = [];
     public string? InstitucionId { get; private set; }
     public DateOnly? Desde { get; private set; }
     public DateOnly? Hasta { get; private set; }
@@ -21,7 +21,10 @@ public sealed class DigitalizacionModel(ISender sender, IInstitucionRepository i
         Hasta = hasta;
         Estado = Enum.TryParse<EstadoTramite>(estado, ignoreCase: true, out var est) ? est : null;
 
-        var insts = await institucionRepo.GetAllActivasAsync(ct);
+        // Solo instituciones con algún trámite vigente en digitalización, no el catálogo
+        // completo — una institución sin trámites (p. ej. ARSA si nunca tuvo uno) no debe
+        // aparecer en el filtro.
+        var insts = await sender.Send(new GetInstitucionesConDigitalizacionQuery(), ct);
         Instituciones = currentUser.EsGlobal ? insts : insts.Where(i => currentUser.InstitucionesAsignadas.Contains(i.Id)).ToList();
         Data = await sender.Send(new GetDigitalizacionDashboardQuery(institucionId, Desde, Hasta, Estado), ct);
     }

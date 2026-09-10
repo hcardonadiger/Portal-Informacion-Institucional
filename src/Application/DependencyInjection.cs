@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Behaviors;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +25,8 @@ public static class DependencyInjection
         // Singleton: resolver la zona horaria toca el sistema operativo y no cambia en la vida
         // del proceso.
         services.AddSingleton<Common.Tiempo.RelojInstitucional>();
+
+        services.AddScoped<IInteresadosAutomaticosSync, InteresadosAutomaticosSyncService>();
 
         return services;
     }

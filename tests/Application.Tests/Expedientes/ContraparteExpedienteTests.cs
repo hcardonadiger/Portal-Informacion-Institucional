@@ -26,6 +26,8 @@ internal class FakeContraparteCurrentUser(Guid userId) : ICurrentUserService
     public bool        EsSoloLectura         => false;
     public bool        EsSupervisor          => false;
     public bool        EsTecnicoSoporte      => true;
+    public bool        EsJefeDeArea          => false;
+    public bool        EsPmo                 => false;
     public string?     ActiveInstitucionId   => "CNBS";
     public string?     ActiveAreaId          => null;
     public string?     ActiveUnidadId        => null;

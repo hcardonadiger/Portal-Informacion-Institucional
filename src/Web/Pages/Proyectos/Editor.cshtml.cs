@@ -17,6 +17,7 @@ public sealed class EditorModel(
     ISender sender,
     AccesoModulosService acceso,
     ICurrentUserService currentUser,
+    IProyectoPdfService proyectoPdf,
     IWebHostEnvironment env) : PageModel
 {
     public ProyectoDetailDto Proyecto { get; private set; } = default!;
@@ -59,13 +60,14 @@ public sealed class EditorModel(
     public bool PuedeEditarDocumentos   { get; private set; }
     public bool PuedeArchivarDocumentos { get; private set; }
 
-    /// <summary>El usuario en sesión es el responsable del proyecto. Sin bypass de administrador:
-    /// ver <c>PropiedadProyecto</c> en la capa de aplicación, que es quien realmente lo exige.
+    /// <summary>El usuario en sesión es el responsable del proyecto. Es lo único que habilita a
+    /// corregir la bitácora: esa acción no admite bypass de administrador — ver
+    /// <c>PropiedadProyecto</c> en la capa de aplicación, que es quien realmente lo exige.
     /// Acá solo decide si se pintan los controles, para no ofrecer lo que el comando va a rechazar.</summary>
     public bool EsPropietario { get; private set; }
 
-    /// <summary>Reordenar toca el cronograma: exige el permiso de edición y además ser el dueño.
-    /// Solo tiene sentido con más de un entregable que mover.</summary>
+    /// <summary>Reordenar toca el cronograma: exige el permiso de edición y además ser el dueño
+    /// <b>o</b> administrador. Solo tiene sentido con más de un entregable que mover.</summary>
     public bool PuedeReordenar { get; private set; }
 
     /// <summary>Misma atribución, un nivel más abajo. Va aparte de <see cref="PuedeReordenar"/>
@@ -126,6 +128,7 @@ public sealed class EditorModel(
     [BindProperty] public string?           AreaId          { get; set; }
     [BindProperty] public string?           UnidadId        { get; set; }
     [BindProperty] public PrioridadProyecto Prioridad       { get; set; }
+    [BindProperty] public AccionProyecto?   Accion          { get; set; }
     [BindProperty] public DateOnly?         FechaInicioPlan { get; set; }
     [BindProperty] public DateOnly?         FechaFinPlan    { get; set; }
     [BindProperty] public List<EntregableForm> Entregables  { get; set; } = [];
@@ -237,10 +240,34 @@ public sealed class EditorModel(
         AreaId          = Proyecto.AreaId;
         UnidadId        = Proyecto.UnidadId;
         Prioridad       = Proyecto.Prioridad;
+        Accion          = Proyecto.Accion;
         FechaInicioPlan = Proyecto.FechaInicioPlan;
         FechaFinPlan    = Proyecto.FechaFinPlan;
 
         return Page();
+    }
+
+    /// <summary>
+    /// Descarga la estructura completa del proyecto en PDF.
+    ///
+    /// <para>No lleva permiso propio: reutiliza la carga de la ficha, y esa consulta ya está
+    /// filtrada por alcance —quien no puede abrir el proyecto recibe el mismo NotFound que en
+    /// pantalla—. Pedir una clave aparte cerraría más el documento que la página de la que sale,
+    /// y no hay dato en el PDF que no esté ya a la vista de quien lo pide.</para>
+    /// </summary>
+    public async Task<IActionResult> OnGetPdfAsync(int id, CancellationToken ct)
+    {
+        if (!await CargarAsync(id, ct)) return NotFound();
+
+        var dto = new ProyectoPdfDto(
+            Proyecto, Cronograma, Avances, Interesados, Riesgos, Documentos, Vinculos, Auditoria,
+            InstitucionNombre: Proyecto.InstitucionId,
+            AreaNombre:        Alcance.Areas.FirstOrDefault(a => a.Id == Proyecto.AreaId)?.Nombre,
+            UnidadNombre:      Alcance.Unidades.FirstOrDefault(u => u.Id == Proyecto.UnidadId)?.Nombre);
+
+        var bytes  = proyectoPdf.Generar(dto);
+        var nombre = $"{Proyecto.Codigo}_estructura_{DateTime.Now:yyyyMMdd}.pdf";
+        return File(bytes, "application/pdf", nombre);
     }
 
     // ── Guardar ficha + estructura ──────────────────────────────────────────
@@ -297,6 +324,7 @@ public sealed class EditorModel(
                 ResponsableId,
                 usuarios.FirstOrDefault(u => u.Id == ResponsableId)?.Nombre ?? actual.Responsable,
                 Prioridad,
+                Accion,
                 FechaInicioPlan,
                 FechaFinPlan,
                 entregables), ct);
@@ -933,8 +961,13 @@ public sealed class EditorModel(
         PuedeReportarAvance = mutable && await acceso.PuedeClaveAsync("Proyectos.Avance.Crear", ct);
 
         EsPropietario         = dto.ResponsableId is { } resp && currentUser.UserId == resp;
-        PuedeReordenar        = PuedeEditar && EsPropietario && dto.Entregables.Count > 1;
-        PuedeReordenarActividades = PuedeEditar && EsPropietario;
+
+        // Reordenar sí admite al administrador; corregir la bitácora no. Por eso la condición del
+        // orden va aparte de EsPropietario en vez de ensancharlo: ensancharlo habría abierto de
+        // paso la corrección de la bitácora, que es justo lo que no se quiso abrir.
+        var mandaEnElOrden    = EsPropietario || acceso.EsAdministrador;
+        PuedeReordenar        = PuedeEditar && mandaEnElOrden && dto.Entregables.Count > 1;
+        PuedeReordenarActividades = PuedeEditar && mandaEnElOrden;
         PuedeCorregirBitacora = mutable && EsPropietario
                                 && await acceso.PuedeClaveAsync("Proyectos.Avance.Editar", ct);
 

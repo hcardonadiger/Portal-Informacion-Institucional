@@ -19,7 +19,7 @@ namespace Diger.TramitesEstado.Application.Tests.Permisos;
 internal static class CatalogoFake
 {
     public static RolInfo Rol(string codigo, bool esAdministrador = false, bool esSoloLectura = false) =>
-        new(codigo, codigo, NivelAlcance.Unidad, esAdministrador, esSoloLectura, false, false, null);
+        new(codigo, codigo, NivelAlcance.Unidad, esAdministrador, esSoloLectura, false, false, false, false, null);
 
     public static IRolCatalogo Con(params RolInfo[] roles)
     {

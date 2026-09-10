@@ -3743,6 +3743,33 @@ a.kpi-cell:hover .kpi-cell-arw {
     padding: 0 2px;
 }
 
+/* ── Paginador de cliente (_TablaPaginada) ──────────────────────────────
+   Reusa .pager/.pager-b del paginador de servidor; acá solo va lo propio:
+   el selector de tamaño y el hecho de que los botones son <button> y no <a>. */
+.pager-cli .pager-b {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.pager-size {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+}
+
+.pager-size select {
+    height: 32px;
+    padding: 0 6px;
+    border: 1.5px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    background: var(--diger-surface);
+    color: var(--diger-text-secondary);
+    font-family: inherit;
+    font-size: var(--diger-fs-sm);
+}
+
 /* ── Seguimiento de compromisos ─────────────────────────────── */
 .kpi-link {
     text-decoration: none;

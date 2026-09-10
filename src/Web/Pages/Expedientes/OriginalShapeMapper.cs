@@ -22,7 +22,7 @@ public static class OriginalShapeMapper
                 t,
                 At(o.TramiteNombres, t) ?? G("nombre_tramite") ?? "",
                 G("nombre_corto"), At(o.TramiteAreas, t),
-                G("modalidad"), G("plazo_legal"), G("tercero"), G("tiempo_real"),
+                G("modalidad"), G("plazo_legal"), G("tercero"), G("accion"), G("tiempo_real"),
                 G("metodo_pago"), G("pago_banco"), G("pago_cuenta"), G("tgr_inst"), G("tgr_rubro"), G("tgr_monto"),
                 G("doc_entregado"), G("objetivo"), G("alcance"), G("alcance_obs"), G("descripcion"),
                 G("dirigido"), G("horario"), G("telefono"), G("email_tramite"), G("sitio_web"),
@@ -130,7 +130,8 @@ public static class OriginalShapeMapper
             o.Tramites.Add(new Dictionary<string, string?>
             {
                 ["nombre_tramite"] = t.NombreTramite, ["nombre_corto"] = t.NombreCorto, ["modalidad"] = t.Modalidad,
-                ["plazo_legal"] = t.PlazoLegal, ["tercero"] = t.Tercero, ["tiempo_real"] = t.TiempoReal,
+                ["plazo_legal"] = t.PlazoLegal, ["tercero"] = t.Tercero, ["accion"] = t.Accion,
+                ["tiempo_real"] = t.TiempoReal,
                 ["metodo_pago"] = t.MetodoPago, ["pago_banco"] = t.PagoBanco, ["pago_cuenta"] = t.PagoCuenta,
                 ["tgr_inst"] = t.TgrInst, ["tgr_rubro"] = t.TgrRubro, ["tgr_monto"] = t.TgrMonto,
                 ["doc_entregado"] = t.DocEntregado, ["objetivo"] = t.Objetivo, ["alcance"] = t.Alcance,

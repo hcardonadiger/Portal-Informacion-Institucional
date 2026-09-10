@@ -75,7 +75,7 @@ public static class ExpedienteMapper
                 NombreCorto = t.NombreCorto, AreaResponsable = t.AreaResponsable,
                 FechaCreacion = t.FechaCreacion ?? DateOnly.FromDateTime(DateTime.Now),
                 EstadoTramite = t.EstadoTramite ?? EstadoTramite.Pendiente,
-                Modalidad = t.Modalidad, PlazoLegal = t.PlazoLegal, Tercero = t.Tercero,
+                Modalidad = t.Modalidad, PlazoLegal = t.PlazoLegal, Tercero = t.Tercero, Accion = t.Accion,
                 TiempoReal = t.TiempoReal, MetodoPago = t.MetodoPago, PagoBanco = t.PagoBanco,
                 PagoCuenta = t.PagoCuenta, TgrInst = t.TgrInst, TgrRubro = t.TgrRubro, TgrMonto = t.TgrMonto,
                 DocEntregado = t.DocEntregado, Objetivo = t.Objetivo, Alcance = t.Alcance,
@@ -178,7 +178,7 @@ public static class ExpedienteMapper
         e.ValidadoDiger, e.ValidadoInst, e.FechaValidacion, e.NumActa,
         e.Tramites.OrderBy(t => t.TramiteIndex).Select(t => new TramiteInput(
             t.TramiteIndex, t.NombreTramite, t.NombreCorto, t.AreaResponsable, t.Modalidad, t.PlazoLegal,
-            t.Tercero, t.TiempoReal, t.MetodoPago, t.PagoBanco, t.PagoCuenta, t.TgrInst, t.TgrRubro,
+            t.Tercero, t.Accion, t.TiempoReal, t.MetodoPago, t.PagoBanco, t.PagoCuenta, t.TgrInst, t.TgrRubro,
             t.TgrMonto, t.DocEntregado, t.Objetivo, t.Alcance, t.AlcanceObs, t.Descripcion, t.Dirigido,
             t.Horario, t.Telefono, t.EmailTramite, t.SitioWeb, t.TramiteSigerId,
             t.FechaCreacion, t.EstadoTramite)).ToList(),

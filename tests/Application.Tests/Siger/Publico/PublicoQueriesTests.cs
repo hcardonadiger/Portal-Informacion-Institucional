@@ -26,6 +26,8 @@ internal sealed class FakeScopedCurrentUser : ICurrentUserService
     public bool        EsSoloLectura        => false;
     public bool        EsSupervisor         => false;
     public bool        EsTecnicoSoporte     => false;
+    public bool        EsJefeDeArea         => false;
+    public bool        EsPmo                => false;
     public string?     ActiveInstitucionId  => "INPREMA";
     public string?     ActiveAreaId         => null;
     public string?     ActiveUnidadId       => null;

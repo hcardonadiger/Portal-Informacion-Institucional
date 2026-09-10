@@ -12,31 +12,47 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries;
 /// proyecto puede tener un número creíble y aun así llevar un mes sin que nadie lo toque,
 /// que es justamente lo que mide el indicador de «sin reportar».</para>
 /// </summary>
+/// <param name="AreaIds">Áreas a las que se acota el tablero. <c>null</c> o lista vacía = sin
+/// acotar, que es como se ve el portafolio completo desde el nivel de institución. Es un filtro
+/// de presentación: no sustituye ni relaja el alcance con el que el usuario ve los proyectos.</param>
+/// <param name="DeUsuarioId">Acota a los proyectos donde ese usuario es responsable o figura como
+/// interesado. <c>null</c> = sin acotar. Es el mismo conjunto que devuelve
+/// <c>GetMisProyectosDashboardQuery</c>, para que el tablero de área pueda conmutar entre «toda mi
+/// área» y «solo lo mío» sin estrenar un criterio distinto del que ya usa el nivel Unidad.
+///
+/// <para>Igual que <paramref name="AreaIds"/>, es un filtro de presentación: recorta lo que ya
+/// dejó pasar el alcance, nunca lo amplía.</para></param>
 public sealed record GetProyectosDashboardQuery(
     EstadoProyecto?    Estado        = null,
     Guid?              ResponsableId = null,
-    PrioridadProyecto? Prioridad     = null) : IRequest<ProyectosDashboardDto>;
+    PrioridadProyecto? Prioridad     = null,
+    IReadOnlyList<string>? AreaIds   = null,
+    Guid?              DeUsuarioId   = null) : IRequest<ProyectosDashboardDto>;
 
 public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetProyectosDashboardQuery, ProyectosDashboardDto>
 {
-    /// <summary>Días sin reporte a partir de los cuales un proyecto abierto se marca como
-    /// desatendido. Mismo umbral que usa el listado del módulo, para que no digan cosas
-    /// distintas sobre el mismo proyecto.</summary>
-    private const int DiasSinReporte = 30;
-
     /// <summary>Ventana de «lo que viene» para entregables y actividades por vencer.</summary>
     private const int DiasProximos = 30;
 
     public async Task<ProyectosDashboardDto> Handle(GetProyectosDashboardQuery q, CancellationToken ct)
     {
         var hoy   = DateOnly.FromDateTime(DateTime.UtcNow);
-        var corte = DateTime.UtcNow.AddDays(-DiasSinReporte);
+        var corte = ProyectoEstadoReglas.CorteSinReporte(DateTime.UtcNow);
 
         var baseQuery = ctx.Proyectos.AsNoTracking();
         if (q.Estado is { } e)        baseQuery = baseQuery.Where(p => p.Estado == e);
         if (q.ResponsableId is { } r) baseQuery = baseQuery.Where(p => p.ResponsableId == r);
         if (q.Prioridad is { } pr)    baseQuery = baseQuery.Where(p => p.Prioridad == pr);
+        // Lista vacía = no filtrar: pedir «ninguna área» y ver el portafolio vacío no le sirve a nadie.
+        // Los proyectos sin área quedan fuera cuando sí se filtra — se pidieron esas áreas, no «esas o ninguna».
+        if (q.AreaIds is { Count: > 0 } areas)
+            baseQuery = baseQuery.Where(p => p.AreaId != null && areas.Contains(p.AreaId));
+        // Responsable o interesado: el mismo predicado que GetMisProyectosDashboardQuery, copiado
+        // a propósito en vez de inventar acá otra definición de «mío» que pudiera divergir.
+        if (q.DeUsuarioId is { } mio)
+            baseQuery = baseQuery.Where(p => p.ResponsableId == mio
+                || ctx.ProyectoInteresados.Any(i => i.ProyectoId == p.Id && i.UsuarioId == mio));
 
         // Una sola pasada a la base: el resto se calcula en memoria sobre esta proyección.
         // El portafolio es de decenas de proyectos, no de miles.
@@ -44,7 +60,7 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             .Select(p => new
             {
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.ResponsableId,
-                p.Estado, p.Prioridad, p.AvancePct, p.FechaFinPlan,
+                p.Estado, p.Prioridad, p.AvancePct, p.FechaFinPlan, p.UnidadId,
                 TotalEntregables       = p.Entregables.Count,
                 EntregablesCompletados = p.Entregables.Count(x => x.Estado == EstadoEntregable.Completado),
                 EntregablesVencidos    = p.Entregables.Count(x => x.FechaPlan.HasValue && x.FechaPlan < hoy
@@ -57,20 +73,25 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             })
             .ToListAsync(ct);
 
-        var abiertos = filas.Where(p => p.Estado is EstadoProyecto.Planificado
-                                                 or EstadoProyecto.EnEjecucion
-                                                 or EstadoProyecto.Suspendido).ToList();
+        var abiertos    = filas.Where(p => ProyectoEstadoReglas.Abierto(p.Estado)).ToList();
         var enEjecucion = filas.Where(p => p.Estado == EstadoProyecto.EnEjecucion).ToList();
-
-        static bool Abierto(EstadoProyecto est) =>
-            est is EstadoProyecto.Planificado or EstadoProyecto.EnEjecucion or EstadoProyecto.Suspendido;
-
-        bool Atrasado(DateOnly? fin, EstadoProyecto est) => fin.HasValue && fin < hoy && Abierto(est);
 
         // Un proyecto abierto sin fecha de cierre no está «a tiempo»: está sin comprometer. Se
         // cuenta aparte porque, mezclado con el resto, empuja el indicador de atrasados a cero y
         // hace leer el portafolio como si estuviera al día.
-        static bool SinLineaBase(DateOnly? fin, EstadoProyecto est) => fin is null && Abierto(est);
+        static bool SinLineaBase(DateOnly? fin, EstadoProyecto est) =>
+            fin is null && ProyectoEstadoReglas.Abierto(est);
+
+        // Nombres de unidad para el desglose del tablero de área. Se resuelven aparte y no con un
+        // Include: Unidades lleva filtro por institución activa, así que una unidad de otra
+        // institución simplemente no aparece en el diccionario y el nombre queda null — el Id, que
+        // es lo que identifica al grupo, sigue viajando intacto.
+        var unidadIds = filas.Where(p => p.UnidadId != null).Select(p => p.UnidadId!).Distinct().ToList();
+        var nombresUnidad = unidadIds.Count == 0
+            ? new Dictionary<string, string>()
+            : await ctx.Unidades.AsNoTracking()
+                .Where(u => unidadIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.Nombre, ct);
 
         var semaforo = filas
             .Select(p => new ProyectoSemaforoDto(
@@ -79,9 +100,11 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                 p.TotalActividades, p.ActividadesVencidas,
                 p.FechaFinPlan, p.UltimoAvance,
                 p.UltimoAvance is null ? null : (int)(DateTime.UtcNow - p.UltimoAvance.Value).TotalDays,
-                Atrasado(p.FechaFinPlan, p.Estado),
-                p.Estado == EstadoProyecto.EnEjecucion && (p.UltimoAvance is null || p.UltimoAvance < corte),
-                SinLineaBase(p.FechaFinPlan, p.Estado)))
+                ProyectoEstadoReglas.Atrasado(p.FechaFinPlan, p.Estado, hoy),
+                ProyectoEstadoReglas.SinReportar(p.Estado, p.UltimoAvance, corte),
+                SinLineaBase(p.FechaFinPlan, p.Estado),
+                p.UnidadId,
+                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var un) ? un : null))
             // Primero lo que exige atención: atrasado, luego desatendido, luego prioridad.
             .OrderByDescending(p => p.Atrasado)
             .ThenByDescending(p => p.SinReportar)
@@ -252,13 +275,11 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             Abiertos:         abiertos.Count,
             EnEjecucion:      enEjecucion.Count,
             Cerrados:         filas.Count(p => p.Estado == EstadoProyecto.Cerrado),
-            AvancePromedio:   enEjecucion.Count == 0 ? 0 : (int)Math.Round(enEjecucion.Average(p => p.AvancePct)),
+            AvancePromedio:   ProyectoEstadoReglas.AvancePromedio(enEjecucion.Select(p => p.AvancePct)),
             Atrasados:        semaforo.Count(p => p.Atrasado),
             SinLineaBase:     semaforo.Count(p => p.SinLineaBase),
             // Solo sobre proyectos abiertos: en uno cerrado la diferencia ya no acciona nada.
-            ConDivergencia:   semaforo.Count(p => p.Divergente && p.Estado is EstadoProyecto.Planificado
-                                                                          or EstadoProyecto.EnEjecucion
-                                                                          or EstadoProyecto.Suspendido),
+            ConDivergencia:   semaforo.Count(p => p.Divergente && ProyectoEstadoReglas.Abierto(p.Estado)),
             SinReportar:      semaforo.Count(p => p.SinReportar),
             SinResponsable:   abiertos.Count(p => p.ResponsableId is null),
             EntregablesVencidos: entregablesAtencion.Count(x => x.FechaPlan < hoy),
@@ -300,5 +321,21 @@ public static class Etiquetas
     {
         EstadoActividad.EnProceso => "En proceso",
         _                         => e.ToString()
+    };
+
+    /// <summary>
+    /// Acción de DIGER en el proyecto. Los miembros del enum van sin tilde porque su nombre es
+    /// también el valor guardado en la columna; acá se les pone el acento que corresponde.
+    ///
+    /// <para>Acepta null y devuelve «Sin clasificar»: la acción es opcional, así que la mitad de
+    /// los proyectos —todos los anteriores a este campo— no tiene ninguna, y el listado necesita
+    /// algo que escribir en esa celda.</para>
+    /// </summary>
+    public static string Accion(AccionProyecto? a) => a switch
+    {
+        AccionProyecto.Acompanamiento => "Acompañamiento",
+        AccionProyecto.Digitalizacion => "Digitalización",
+        null                          => "Sin clasificar",
+        _                             => a.ToString()!
     };
 }

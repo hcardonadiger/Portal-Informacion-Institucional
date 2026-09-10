@@ -608,7 +608,7 @@ function seleccionarContacto(sel){
 
 // ── TRAMITES DINÁMICOS ──────────────────────────────────────
 // Campos de la ficha que viven en el DOM (para snapshot al agregar/quitar trámites)
-var FICHA_FIELDS = ['nombre_corto','modalidad','plazo_legal','tercero','tiempo_real','metodo_pago',
+var FICHA_FIELDS = ['nombre_corto','modalidad','plazo_legal','tercero','accion','tiempo_real','metodo_pago',
   'pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto','doc_entregado','objetivo',
   'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web'];
 
@@ -918,7 +918,7 @@ function migrarDatosTramite(i){
   if(isNaN(j) || j < 0 || j >= i) return;
   var codes = getTramCodigos();
 
-  var fieldsToMigrar = ['nombre_corto','modalidad','plazo_legal','tercero',
+  var fieldsToMigrar = ['nombre_corto','modalidad','plazo_legal','tercero','accion',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
     'horario','telefono','email_tramite','sitio_web'];
@@ -1040,6 +1040,9 @@ function fichaHTML(i, nombre, show){
       + '<div class="g2">'
         + '<div class="f"><label>Tercero autorizado</label><select id="tercero_'+i+'"><option value="">— Seleccione —</option><option>Sí</option><option>No</option></select></div>'
         + '<div class="f"><label>Documento que se entrega al ciudadano</label><input type="text" id="doc_entregado_'+i+'" placeholder="Ej: Certificado, constancia, licencia"></div>'
+      + '</div>'
+      + '<div class="g2">'
+        + '<div class="f"><label>Acción</label><select id="accion_'+i+'"><option value="">— Sin clasificar —</option><option>Acompañamiento</option><option>Digitalización</option><option>Soporte</option><option>Desarrollo</option></select></div>'
       + '</div>'
     + '</div>'
     + '<div class="card"><div class="ct">Tiempos y costos</div>'
@@ -1625,7 +1628,7 @@ function recolectar(){
 
   // Tramites
   d.tramites = [];
-  var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero',
+  var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero','accion',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
     'horario','telefono','email_tramite','sitio_web'];
@@ -1920,7 +1923,7 @@ function poblarFormulario(d){
   renderFichasPanels();
 
   // Ficha fields
-  var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero',
+  var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero','accion',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
     'horario','telefono','email_tramite','sitio_web'];

@@ -60,6 +60,7 @@ public static class DependencyInjection
 
         // Acta de reunión (PDF con formato)
         services.AddScoped<IActaPdfService, ActaPdfService>();
+        services.AddScoped<IProyectoPdfService, ProyectoPdfService>();
 
         // Informe de estado del proyecto (PDF, formato PMI)
         services.AddScoped<IInformeProyectoPdfService, InformeProyectoPdfService>();

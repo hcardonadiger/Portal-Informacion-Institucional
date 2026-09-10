@@ -28,6 +28,8 @@ public sealed class RolesModel(ISender sender) : PageModel
     [BindProperty] public bool         EsSoloLectura    { get; set; }
     [BindProperty] public bool         EsSupervisor     { get; set; }
     [BindProperty] public bool         EsTecnicoSoporte { get; set; }
+    [BindProperty] public bool         EsJefeDeArea     { get; set; }
+    [BindProperty] public bool         EsPmo            { get; set; }
     [BindProperty] public bool         Activo           { get; set; } = true;
 
     public static readonly (NivelAlcance Nivel, string Etiqueta)[] Niveles =
@@ -60,6 +62,8 @@ public sealed class RolesModel(ISender sender) : PageModel
         EsSoloLectura    = rol.EsSoloLectura;
         EsSupervisor     = rol.EsSupervisor;
         EsTecnicoSoporte = rol.EsTecnicoSoporte;
+        EsJefeDeArea     = rol.EsJefeDeArea;
+        EsPmo            = rol.EsPmo;
         Activo           = rol.Activo;
     }
 
@@ -74,7 +78,8 @@ public sealed class RolesModel(ISender sender) : PageModel
             {
                 await sender.Send(new CrearRolCommand(
                     Codigo, Nombre, NivelAlcance, Descripcion, Color,
-                    EsAdministrador, EsSoloLectura, EsSupervisor, EsTecnicoSoporte), ct);
+                    EsAdministrador, EsSoloLectura, EsSupervisor, EsTecnicoSoporte,
+                    EsJefeDeArea, EsPmo), ct);
 
                 TempData["SuccessMsg"] = "Rol creado.";
             }
@@ -82,7 +87,8 @@ public sealed class RolesModel(ISender sender) : PageModel
             {
                 await sender.Send(new ActualizarRolCommand(
                     editar, Nombre, NivelAlcance, Descripcion, Color,
-                    EsAdministrador, EsSoloLectura, EsSupervisor, EsTecnicoSoporte, Activo), ct);
+                    EsAdministrador, EsSoloLectura, EsSupervisor, EsTecnicoSoporte, Activo,
+                    EsJefeDeArea, EsPmo), ct);
 
                 TempData["SuccessMsg"] = "Rol actualizado.";
             }

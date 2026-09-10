@@ -17,7 +17,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(opts =>
 {
-    opts.SwaggerDoc("v1", new() { Title = "DIGER — Trámites Estado API", Version = "v1" });
+    opts.SwaggerDoc("v1", new() { Title = $"{Marca.Nombre} API", Version = "v1" });
     var esquemaApiKey = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = ApiKeyAuthenticationOptions.HeaderName,

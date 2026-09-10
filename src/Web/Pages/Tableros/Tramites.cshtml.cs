@@ -8,7 +8,7 @@ namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
 [Authorize]
 [Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
-public sealed class TramitesModel(ISender sender, IInstitucionRepository institucionRepo) : PageModel
+public sealed class TramitesModel(ISender sender) : PageModel
 {
     public TramitesSeguimientoDto Data { get; private set; } = default!;
 
@@ -19,21 +19,26 @@ public sealed class TramitesModel(ISender sender, IInstitucionRepository institu
     public DateOnly? Hasta { get; private set; }
     public EstadoTramite? Estado { get; private set; }
 
-    /// <summary>Instituciones del alcance del usuario, para el desplegable.</summary>
-    public IReadOnlyList<(string Id, string Nombre)> Instituciones { get; private set; } = [];
+    /// <summary>Acción seleccionada en el filtro; null = todas. Puede traer el centinela
+    /// <see cref="FiltroAccion.SinClasificar"/>.</summary>
+    public string? Accion { get; private set; }
 
-    public async Task OnGetAsync(string? institucion, string? banda, DateOnly? desde, DateOnly? hasta, string? estado, CancellationToken ct)
+    /// <summary>Instituciones con algún expediente vigente, para el desplegable — no el catálogo
+    /// completo (ver GetTramitesSeguimientoQueryHandler).</summary>
+    public IReadOnlyList<InstitucionOpcionDto> Instituciones { get; private set; } = [];
+
+    public async Task OnGetAsync(string? institucion, string? banda, DateOnly? desde, DateOnly? hasta, string? estado,
+        string? accion, CancellationToken ct)
     {
         InstitucionId = string.IsNullOrWhiteSpace(institucion) ? null : institucion;
         Banda = Enum.TryParse<BandaAvance>(banda, ignoreCase: true, out var b) ? b : null;
         Desde = desde;
         Hasta = hasta;
         Estado = Enum.TryParse<EstadoTramite>(estado, ignoreCase: true, out var est) ? est : null;
+        Accion = string.IsNullOrWhiteSpace(accion) ? null : accion;
 
-        Data = await sender.Send(new GetTramitesSeguimientoQuery(InstitucionId, Banda, Desde, Hasta, Estado), ct);
-
-        var activas = await institucionRepo.GetAllActivasAsync(ct);
-        Instituciones = activas.Select(i => (i.Id, i.Nombre)).OrderBy(x => x.Nombre).ToList();
+        Data = await sender.Send(new GetTramitesSeguimientoQuery(InstitucionId, Banda, Desde, Hasta, Estado, Accion), ct);
+        Instituciones = Data.Instituciones;
     }
 
     /// <summary>Bitácora completa de un expediente (la consume el modal de notas).</summary>
@@ -97,6 +102,7 @@ public sealed class TramitesModel(ISender sender, IInstitucionRepository institu
             desde       = Request.Query["desde"].ToString(),
             hasta       = Request.Query["hasta"].ToString(),
             estado      = Request.Query["estado"].ToString(),
+            accion      = Request.Query["accion"].ToString(),
         });
     }
 }
