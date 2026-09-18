@@ -246,12 +246,17 @@
                                 </div>
                             </div>
                         }
-                        @* Catálogos: los datos maestros del portal. Se separaron de «Administración»
-                           —que queda con el control de acceso— porque son cosas de distinta naturaleza
-                           y porque cada catálogo nuevo alargaba el menú. Un solo destino, así que enlaza
-                           directo: la portada es la que decide qué tarjetas mostrar, y lo hace con la
-                           clave de cada destino, no con el nombre del rol. Acá basta con preguntar si
-                           alguna es alcanzable, para no ofrecer una portada vacía. *@
+                        @* «Administración» agrupa lo que se administra: los datos maestros, que entran
+                           por la portada de Catálogos, y el control de acceso. Los catálogos no cuelgan
+                           uno por uno como antes —el menú crecía con cada uno— sino detrás de una sola
+                           entrada; la portada decide qué tarjetas mostrar, y lo hace con la clave de
+                           cada destino, no con el nombre del rol.
+
+                           El grupo se abre para el administrador O para quien alcance algún catálogo.
+                           Si dependiera solo de EsAdministrador, los roles que administran un catálogo
+                           sin ser administradores —hoy varios tienen Tickets.Temas.Editar— se quedarían
+                           sin ninguna puerta hacia él en el menú. Adentro, cada entrada se gatea por su
+                           cuenta, así que un rol de esos ve Catálogos y nada más. *@
                         @{
                             var puedeInstituciones = await Acceso.PuedeAsync("Instituciones");
                             var puedeAreas         = await Acceso.PuedeAsync("Areas");
@@ -259,33 +264,32 @@
                             var puedeTemasTicket   = await Acceso.PuedeClaveAsync("Tickets.Temas.Editar");
                             var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar")
                                                   || await Acceso.PuedeClaveAsync("Prioridades.Tickets.Editar");
-                        }
-                        @if (puedeInstituciones || puedeAreas || puedeUnidades || puedeTemasTicket
-                             || puedePrioridades)
-                        {
-                            var grpCatalogos = EsRuta("/Catalogos") || EsRuta("/Instituciones")
-                                            || EsRuta("/Areas") || EsRuta("/Unidades");
-                            <div class="nav-group @(grpCatalogos ? "on" : "")">
-                                <a class="nav-group-btn" asp-page="/Catalogos/Index">Catálogos</a>
-                            </div>
-                        }
 
-                        @* La condición ya no contempla a JefeInstitucion: lo único que ese rol
-                           administraba aquí eran áreas y unidades, que se mudaron a Catálogos.
-                           Dejarlo le habría abierto un menú vacío. *@
-                        @if (Acceso.EsAdministrador)
+                            var puedeCatalogos = puedeInstituciones || puedeAreas || puedeUnidades
+                                              || puedeTemasTicket || puedePrioridades;
+                        }
+                        @if (Acceso.EsAdministrador || puedeCatalogos)
                         {
-                            var grpAdmin = EsRuta("/Usuarios") || EsRuta("/Accesos") || EsRuta("/Admin");
+                            var grpAdmin = EsRuta("/Catalogos") || EsRuta("/Instituciones")
+                                        || EsRuta("/Areas") || EsRuta("/Unidades")
+                                        || EsRuta("/Usuarios") || EsRuta("/Accesos") || EsRuta("/Admin");
                             <div class="nav-group @(grpAdmin ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Administración<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
-                                    <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><svg class="ico"><use href="#i-usuarios"></use></svg>Usuarios</a>
-                                    <a class="nav-item @(EsRuta("/Accesos/Roles") ? "on" : "")" asp-page="/Accesos/Roles"><svg class="ico"><use href="#i-accesos"></use></svg>Roles</a>
-                                    <a class="nav-item @(EsRuta("/Accesos/Permisos") ? "on" : "")" asp-page="/Accesos/Permisos"><svg class="ico"><use href="#i-accesos"></use></svg>Permisos</a>
-                                    @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
-                                    @if (HostEnv.IsDevelopment())
+                                    @if (puedeCatalogos)
                                     {
-                                        <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
+                                        <a class="nav-item @(EsRuta("/Catalogos", "/Instituciones", "/Areas", "/Unidades") ? "on" : "")" asp-page="/Catalogos/Index"><svg class="ico"><use href="#i-recursos"></use></svg>Catálogos</a>
+                                    }
+                                    @if (Acceso.EsAdministrador)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><svg class="ico"><use href="#i-usuarios"></use></svg>Usuarios</a>
+                                        <a class="nav-item @(EsRuta("/Accesos/Roles") ? "on" : "")" asp-page="/Accesos/Roles"><svg class="ico"><use href="#i-accesos"></use></svg>Roles</a>
+                                        <a class="nav-item @(EsRuta("/Accesos/Permisos") ? "on" : "")" asp-page="/Accesos/Permisos"><svg class="ico"><use href="#i-accesos"></use></svg>Permisos</a>
+                                        @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
+                                        @if (HostEnv.IsDevelopment())
+                                        {
+                                            <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
+                                        }
                                     }
                                 </div>
                             </div>

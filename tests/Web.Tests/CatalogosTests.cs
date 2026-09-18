@@ -86,18 +86,43 @@ public sealed class CatalogosTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task El_menu_de_administracion_ya_no_ofrece_los_catalogos()
+    public async Task El_menu_de_administracion_ofrece_la_portada_y_no_los_catalogos_sueltos()
     {
-        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Tableros/Index");
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Ayuda/Index");
 
-        html.Should().Contain(@"href=""/Catalogos""", "el menú tiene que ofrecer la portada nueva");
+        html.Should().Contain(@"href=""/Catalogos""", "la portada se alcanza desde Administración");
 
-        // Los enlaces sueltos se fueron del navbar: ahora se llega por la portada. Se mira en un
-        // tablero —no en la portada, donde sí tienen que estar— y el navbar es lo único de esa
-        // página que podría enlazarlos.
+        // Los enlaces uno por uno se fueron del navbar: ahora se llega por la portada, que es lo
+        // que evita que el menú crezca con cada catálogo nuevo. Se mira en la ayuda —no en la
+        // portada, donde sí tienen que estar— y el navbar es lo único de esa página que podría
+        // enlazarlos.
         html.Should().NotContain(@"href=""/Instituciones""");
         html.Should().NotContain(@"href=""/Areas""");
         html.Should().NotContain(@"href=""/Unidades""");
+    }
+
+    [Fact]
+    public async Task Quien_administra_un_catalogo_sin_ser_administrador_igual_llega_a_el()
+    {
+        // El grupo «Administración» se abría solo para EsAdministrador. Al meter Catálogos ahí
+        // dentro, gatearlo igual habría dejado sin puerta a los roles que administran un catálogo
+        // sin ser administradores —JefeArea tiene Areas.Ver y Unidades.Ver en esta suite—.
+        var html = await _portal.ClienteComo("JefeArea").GetStringAsync("/Ayuda/Index");
+
+        html.Should().Contain(@"href=""/Catalogos""");
+        html.Should().NotContain(@"href=""/Usuarios""", "el control de acceso sigue siendo solo del administrador");
+        html.Should().NotContain(@"href=""/Accesos/Roles""");
+    }
+
+    [Fact]
+    public async Task Quien_no_administra_nada_no_ve_el_menu()
+    {
+        // Consultor no alcanza ningún catálogo ni es administrador: ofrecerle el menú sería
+        // abrirle un desplegable vacío.
+        var html = await _portal.ClienteComo("Consultor").GetStringAsync("/Ayuda/Index");
+
+        html.Should().NotContain(@"href=""/Catalogos""");
+        html.Should().NotContain("Administración<span");
     }
 
     // ── Catálogo de prioridades ───────────────────────────────────
