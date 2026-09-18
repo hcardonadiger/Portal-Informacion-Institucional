@@ -1,4 +1,17 @@
 # Catálogo de prioridades de ticket — script de base de datos
+> ## ⚠ Reemplazado
+>
+> **No corra este script.** Lo sustituye
+> [`2026-09-18_poner_al_dia.md`](2026-09-18_poner_al_dia.md), que hace lo de los cuatro
+> documentos de ese día en una sola pasada.
+>
+> El motivo: éste decidía qué hacer mirando `__EFMigrationsHistory`, y esa fila se escribe al
+> final. Si la corrida moría a la mitad quedaban cambios hechos sin marca de que se hicieron, y
+> volver a intentarlo fallaba de otra manera. El de reemplazo comprueba el estado real de la base
+> en cada paso, así que sirve esté como esté.
+>
+> Se conserva como referencia de qué hizo cada migración.
+
 
 **Migración:** `20260918162251_CatalogoDePrioridadesDeTicket`
 **Fecha:** 2026-09-18
