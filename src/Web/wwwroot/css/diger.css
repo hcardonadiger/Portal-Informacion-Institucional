@@ -5648,12 +5648,14 @@ textarea.form-control { resize: vertical; }
     outline-offset: 2px;
 }
 
+/* html:not([data-theme="light"]) para que un modo claro forzado gane sobre la preferencia del
+   sistema. Acá el único color escrito a mano es el velo del modal; el resto va por tokens. */
 @media (prefers-color-scheme: dark) {
-    .dg-confirm-overlay { background: rgba(0, 0, 0, .55); }
-    .dg-confirm-box { background: var(--diger-surface); box-shadow: var(--diger-shadow-lg); }
-    .dg-confirm-msg { color: var(--diger-text-secondary); }
-    .dg-confirm-cancel { background: var(--diger-border); color: var(--diger-text); border-color: var(--diger-text-slate-dark); }
-    .dg-confirm-cancel:hover { background: var(--diger-text-slate-dark); }
+    html:not([data-theme="light"]) .dg-confirm-overlay { background: rgba(0, 0, 0, .55); }
+    html:not([data-theme="light"]) .dg-confirm-box { background: var(--diger-surface); box-shadow: var(--diger-shadow-lg); }
+    html:not([data-theme="light"]) .dg-confirm-msg { color: var(--diger-text-secondary); }
+    html:not([data-theme="light"]) .dg-confirm-cancel { background: var(--diger-border); color: var(--diger-text); border-color: var(--diger-text-slate-dark); }
+    html:not([data-theme="light"]) .dg-confirm-cancel:hover { background: var(--diger-text-slate-dark); }
 }
 
 
