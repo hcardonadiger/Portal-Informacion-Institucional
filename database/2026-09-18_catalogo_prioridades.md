@@ -23,6 +23,10 @@ actuales se reconozcan solos— más **Q3**, que fue la que motivó el cambio.
 | Baja   | 3     | Gris    | no             |
 | Q3     | 4     | Verde   | no             |
 
+> **Ojo:** este script siembra `Q3` como prioridad. Un script posterior la retira y la vuelve a
+> crear como categoría — ver [`2026-09-18_las_q_son_categorias.md`](2026-09-18_las_q_son_categorias.md).
+> Si va a correr los cuatro seguidos, no haga nada especial: el último deja todo en su lugar.
+
 ## El orden de los pasos importa
 
 La columna vieja se borra **al final**, cuando su contenido ya se trasladó. El andamiaje de EF

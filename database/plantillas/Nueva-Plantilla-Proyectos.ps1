@@ -68,6 +68,11 @@ $usuarios      = Get-Catalogo "SELECT u.Correo + ' — ' + u.Nombre FROM Usuario
 # que se genere ya la ofrece, sin tocar este archivo.
 $prioridades   = Get-Catalogo "SELECT Nombre FROM PrioridadesProyecto WHERE Activo = 1 ORDER BY Orden, Nombre"
 
+# Igual que las prioridades: catálogo administrable, no lista escrita acá. Es donde viven las
+# «Q» —Q3, Q2, Q1— que clasifican de qué trata el proyecto. A diferencia de la prioridad, la
+# categoría es OPCIONAL, así que la columna admite quedar vacía y no lleva asterisco.
+$categorias    = Get-Catalogo "SELECT Nombre FROM CategoriasProyecto WHERE Activo = 1 ORDER BY Orden, Nombre"
+
 if (-not $instituciones) { throw 'El catálogo de instituciones vino vacío: revise la conexión.' }
 if (-not $prioridades)   { throw 'El catálogo de prioridades vino vacío: ¿ya corrió la migración CatalogoDePrioridadesDeProyecto?' }
 
@@ -256,6 +261,7 @@ $cat.Cells.Item(2, 1).Font.Color = $TEXTOGRIS
 
 $listas = [ordered]@{
     'lstPrioridad'    = @{ Titulo = 'Prioridad';        Datos = $prioridades }
+    'lstCategoria'    = @{ Titulo = 'Categoría';        Datos = $categorias }
     'lstAccion'       = @{ Titulo = 'Acción';           Datos = $acciones }
     'lstEstadoProy'   = @{ Titulo = 'Estado proyecto';  Datos = $estadosProyecto }
     'lstEstadoEntr'   = @{ Titulo = 'Estado entregable'; Datos = $estadosEntregable }
@@ -297,20 +303,21 @@ $cat.Application.ActiveWindow.FreezePanes = $true
 $hp = New-Hoja 'Proyectos'
 Set-Encabezado $hp 'Proyectos' `
     'Normalmente una sola fila: se reparte un archivo por proyecto. La Ref («P1») amarra las demás hojas con esta, y no se guarda en el sistema; si llena varios proyectos acá, déle una Ref distinta a cada uno.' `
-    @('Ref *', 'Nombre *', 'Objetivo', 'Institución ejecutora *', 'Área', 'Unidad', 'Responsable (correo)', 'Prioridad *', 'Acción', 'Estado *', 'Inicio planificado', 'Fin planificado', 'Inicio real', 'Fin real') `
-    @(1, 2, 4, 8, 10) `
-    @(8, 42, 52, 20, 26, 26, 30, 11, 16, 14, 15, 15, 14, 14)
+    @('Ref *', 'Nombre *', 'Objetivo', 'Institución ejecutora *', 'Área', 'Unidad', 'Responsable (correo)', 'Prioridad *', 'Categoría', 'Acción', 'Estado *', 'Inicio planificado', 'Fin planificado', 'Inicio real', 'Fin real') `
+    @(1, 2, 4, 8, 11) `
+    @(8, 42, 52, 20, 26, 26, 30, 11, 14, 16, 14, 15, 15, 14, 14)
 
-Set-Ejemplo $hp @('EJEMPLO', 'SOL — Secretaría de Finanzas', 'Habilitar en la plataforma SOL los 6 trámites de mayor demanda de SEFIN.', 'DIGER', 'GOBDIG — GOBIERNO DIGITAL', 'DITRA — DIGITALIZACION DE TRAMITES', 'hcardona@diger.gob.hn', 'Alta', 'Digitalizacion', 'EnEjecucion', '2026-03-02', '2026-11-30', '2026-03-09', '')
+Set-Ejemplo $hp @('EJEMPLO', 'SOL — Secretaría de Finanzas', 'Habilitar en la plataforma SOL los 6 trámites de mayor demanda de SEFIN.', 'DIGER', 'GOBDIG — GOBIERNO DIGITAL', 'DITRA — DIGITALIZACION DE TRAMITES', 'hcardona@diger.gob.hn', 'Alta', 'Q3', 'Digitalizacion', 'EnEjecucion', '2026-03-02', '2026-11-30', '2026-03-09', '')
 
 Set-Lista $hp 4  'lstInstitucion'
 Set-Lista $hp 5  'lstArea'
 Set-Lista $hp 6  'lstUnidad'
 Set-Lista $hp 7  'lstUsuario'
 Set-Lista $hp 8  'lstPrioridad'
-Set-Lista $hp 9  'lstAccion'
-Set-Lista $hp 10 'lstEstadoProy'
-Set-Fecha $hp 11; Set-Fecha $hp 12; Set-Fecha $hp 13; Set-Fecha $hp 14
+Set-Lista $hp 9  'lstCategoria'
+Set-Lista $hp 10 'lstAccion'
+Set-Lista $hp 11 'lstEstadoProy'
+Set-Fecha $hp 12; Set-Fecha $hp 13; Set-Fecha $hp 14; Set-Fecha $hp 15
 
 # El avance del proyecto ya no se declara acá: desde la reestructuración de entregables y
 # actividades lo calcula el árbol —promedio de las actividades, subido por los entregables— y
@@ -422,6 +429,10 @@ $lineas = @(
     @('H', 'La columna «Ref»'),
     @('P', 'Es un identificador que usted inventa («P1») para amarrar las demás hojas con su proyecto. No se guarda en el sistema: existe solo dentro de este archivo. Si llena un solo proyecto, use la misma Ref en todas las filas.'),
     @('P', 'El código real del proyecto (PRY-2026-27) lo asigna el portal. No lo escriba usted.'),
+    @('', ''),
+    @('H', 'Categoría y acción'),
+    @('P', 'Son dos preguntas distintas. La CATEGORÍA dice de qué trata el proyecto —ahí van las Q: Q3, Q2, Q1, tomadas de las rondas de clasificación de la Fórmula 1, con Q3 arriba—. La ACCIÓN dice qué pone DIGER: acompañar, digitalizar, dar soporte o desarrollar.'),
+    @('P', 'Las dos son opcionales y pueden quedar vacías: eso significa que nadie lo clasificó todavía, que es distinto de haber elegido.'),
     @('', ''),
     @('H', 'Institución ejecutora'),
     @('P', 'Es quién EJECUTA el proyecto, no de quién trata. «SOL — CONSUCOOP» lo ejecuta DIGER, así que va DIGER. Esta columna decide quién puede ver el proyecto en el portal: si pone otra institución, DIGER deja de verlo.'),
