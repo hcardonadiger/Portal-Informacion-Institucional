@@ -5,7 +5,7 @@
     ViewData["Title"] = "Prioridades de proyectos";
 }
 
-<div class="container" style="max-width:960px">
+<div class="container" style="max-width:1040px">
     <partial name="_SuccessBanner" />
     @if (TempData["ErrorMsg"] is string terr)
     {
@@ -56,19 +56,23 @@
         }
         else
         {
-            @* Mismo par de clases que el catálogo de temas: .edit-grid es la que estila los
-               controles dentro de una tabla editable. *@
+            @* .edit-grid usa table-layout:fixed, así que la suma de los anchos manda: si se pasa
+               del ancho de la tarjeta, la última columna queda fuera y no se ve —le pasó al botón
+               de eliminar—. El contenedor con overflow-x es la red por debajo: si alguien agrega
+               una columna y vuelve a pasarse, aparece una barra en vez de recortarse en silencio. *@
+            <div style="overflow-x:auto">
             <table class="seg-table edit-grid">
                 <thead>
                     <tr>
                         <th>Nombre</th>
-                        <th style="width:84px">Orden</th>
-                        <th style="width:120px">Color</th>
-                        <th style="width:80px">Activa</th>
-                        <th style="width:92px">Proyectos</th>
-                        <th style="width:130px">Predeterminada</th>
-                        <th style="width:112px"></th>
-                        <th style="width:56px"></th>
+                        <th style="width:72px">Orden</th>
+                        <th style="width:108px">Color</th>
+                        <th style="width:92px">Vista</th>
+                        <th style="width:68px">Activa</th>
+                        <th style="width:84px">Proyectos</th>
+                        <th style="width:96px"></th>
+                        <th style="width:74px">Predet.</th>
+                        <th style="width:52px"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -92,38 +96,47 @@
                                         }
                                     </select>
                                 </td>
-                                <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@p.Activo" /></td>
-                                <td class="res-meta" style="text-align:center">@p.Proyectos</td>
+                                @* Cómo va a verse la insignia en los listados. Tiene columna propia
+                                   porque antes caía bajo el rótulo «Predeterminada» y se leía como
+                                   si esa fila lo fuera. *@
                                 <td style="text-align:center">
                                     <span class="@Etiquetas.ClaseColor(p.Color)" style="padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Nombre</span>
                                 </td>
+                                <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@p.Activo" /></td>
+                                <td class="res-meta" style="text-align:center">@p.Proyectos</td>
                                 <td style="text-align:right">
                                     <button class="btns" type="submit" style="font-size:12.5px;padding:6px 12px">Guardar</button>
                                 </td>
                             </form>
-                            <td style="text-align:right;white-space:nowrap">
-                                @if (!p.EsPredeterminada)
+                            <td style="text-align:center">
+                                @if (p.EsPredeterminada)
+                                {
+                                    <span title="Es la prioridad predeterminada: no se puede eliminar ni desactivar">★</span>
+                                }
+                                else
                                 {
                                     <form method="post" asp-page-handler="Predeterminada" style="display:inline">
                                         <input type="hidden" name="id" value="@p.Id" />
                                         <button class="btns" type="submit" style="font-size:12.5px;padding:6px 10px"
                                                 title="Usar «@p.Nombre» como prioridad inicial de los proyectos nuevos">☆</button>
                                     </form>
+                                }
+                            </td>
+                            <td style="text-align:center">
+                                @if (!p.EsPredeterminada)
+                                {
                                     <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                         <input type="hidden" name="id" value="@p.Id" />
                                         <button class="hist-del" type="submit" aria-label="Eliminar prioridad"
                                                 data-confirm="¿Eliminar la prioridad «@p.Nombre»?">✕</button>
                                     </form>
                                 }
-                                else
-                                {
-                                    <span title="Es la prioridad predeterminada: no se puede eliminar ni desactivar">★</span>
-                                }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
+            </div>
             <p class="res-meta" style="margin-top:.75rem">
                 ★ marca la prioridad que traen los proyectos nuevos. Una prioridad con proyectos
                 asignados no se puede eliminar —desactívela y dejará de ofrecerse, sin cambiarle

@@ -111,6 +111,80 @@ public sealed class CatalogosTests : IAsyncLifetime
         html.Should().Contain("Baja");
     }
 
+    // Invariante barato de una tabla editable. No es el que falló —cuando la insignia de color
+    // cayó bajo el rótulo «Predeterminada» los conteos cuadraban igual, ocho y ocho— pero una
+    // celda de más corre todas las columnas siguientes, y eso sí lo caza.
+    [Theory]
+    [InlineData("/Catalogos/Prioridades")]
+    [InlineData("/Catalogos/PrioridadesTicket")]
+    public async Task Cada_fila_tiene_tantas_celdas_como_encabezados(string ruta)
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync(ruta);
+
+        // El patrón exige que al «th» le siga un espacio o el cierre: «<th» a secas cuenta también
+        // el propio <thead> y deja el conteo una unidad arriba.
+        var encabezados = Regex.Matches(
+            Regex.Match(html, @"<thead>.*?</thead>", RegexOptions.Singleline).Value, @"<th[\s>]").Count;
+        encabezados.Should().BeGreaterThan(0, "la tabla tiene que haberse pintado");
+
+        var cuerpo = Regex.Match(html, @"<tbody>.*?</tbody>", RegexOptions.Singleline).Value;
+        foreach (Match fila in Regex.Matches(cuerpo, @"<tr>.*?</tr>", RegexOptions.Singleline))
+            Regex.Matches(fila.Value, "<td").Count.Should().Be(encabezados,
+                "una celda de más o de menos corre todas las columnas siguientes bajo el rótulo equivocado");
+    }
+
+    // Ésta sí es la que falló. El control de «predeterminada» vivía en una columna sin rótulo, y
+    // bajo el rótulo «Predeterminada» se pintaba la insignia de color: quien leyera la tabla creía
+    // que las cuatro filas eran la predeterminada. Se comprueba por posición, que es como lo lee
+    // una persona: el encabezado N manda sobre la celda N.
+    [Fact]
+    public async Task El_control_de_predeterminada_esta_bajo_su_propio_rotulo()
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Catalogos/Prioridades");
+
+        var encabezados = Regex.Matches(
+                Regex.Match(html, @"<thead>.*?</thead>", RegexOptions.Singleline).Value,
+                @"<th[^>]*>(?<t>.*?)</th>", RegexOptions.Singleline)
+            .Select(m => m.Groups["t"].Value.Trim()).ToList();
+
+        var iPredet = encabezados.FindIndex(t => t.StartsWith("Predet"));
+        var iVista  = encabezados.FindIndex(t => t == "Vista");
+        iPredet.Should().BeGreaterThanOrEqualTo(0, "la columna de la estrella tiene que estar rotulada");
+        iVista.Should().BeGreaterThanOrEqualTo(0, "la muestra del color tiene que tener su propio rótulo");
+
+        var filaMedia = Regex.Match(html, @"<tr>(?:(?!</tr>).)*?value=""Media"".*?</tr>",
+                                    RegexOptions.Singleline).Value;
+        var celdas = Regex.Matches(filaMedia, @"<td[^>]*>(?<c>.*?)</td>", RegexOptions.Singleline)
+            .Select(m => m.Groups["c"].Value).ToList();
+
+        celdas[iPredet].Should().Contain("★", "«Media» es la predeterminada del sembrado");
+        celdas[iVista].Should().Contain("prio-badge", "acá va la muestra de cómo se verá la insignia");
+        celdas[iVista].Should().NotContain("★");
+    }
+
+    [Fact]
+    public async Task La_prioridad_que_nadie_usa_ofrece_su_boton_de_eliminar()
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Catalogos/Prioridades");
+
+        html.Should().Contain("handler=Eliminar");
+        html.Should().Contain("Eliminar prioridad");
+    }
+
+    [Fact]
+    public async Task La_predeterminada_no_ofrece_eliminarla()
+    {
+        // «Media» es la predeterminada del sembrado. Ofrecer el botón para después rechazar el
+        // clic con un mensaje sería prometer algo que el comando no va a hacer.
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Catalogos/Prioridades");
+
+        var filaMedia = Regex.Match(html, @"<tr>(?:(?!</tr>).)*?value=""Media"".*?</tr>",
+                                    RegexOptions.Singleline).Value;
+        filaMedia.Should().NotBeEmpty("la fila de «Media» tiene que estar en la tabla");
+        filaMedia.Should().NotContain("handler=Eliminar");
+        filaMedia.Should().Contain("★");
+    }
+
     [Fact]
     public async Task Sin_el_permiso_no_se_entra()
     {
