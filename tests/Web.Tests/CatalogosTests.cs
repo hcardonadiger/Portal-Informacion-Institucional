@@ -115,6 +115,49 @@ public sealed class CatalogosTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Una_opcion_de_administracion_que_no_es_catalogo_tambien_abre_el_menu()
+    {
+        // El menú miraba «es administrador» para Usuarios, Roles y Permisos, así que un rol con
+        // Usuarios.Ver no veía nada. Ahora cada entrada se gatea con la clave de su destino, que
+        // es la convención del proyecto.
+        await _portal.OtorgarAsync("Empleado", "Usuarios.Ver");
+
+        var html = await _portal.ClienteComo("Empleado").GetStringAsync("/Ayuda/Index");
+
+        html.Should().Contain(@"href=""/Usuarios""");
+        html.Should().NotContain(@"href=""/Accesos/Roles""", "no le otorgamos esa");
+        html.Should().NotContain(@"href=""/Catalogos""", "tampoco administra ningún catálogo");
+    }
+
+    // Cada catálogo tiene que poder devolver a la portada sin pasar por el navbar.
+    [Theory]
+    [InlineData("/Instituciones")]
+    [InlineData("/Areas")]
+    [InlineData("/Unidades")]
+    [InlineData("/Catalogos/Prioridades")]
+    [InlineData("/Catalogos/PrioridadesTicket")]
+    [InlineData("/Tickets/Temas")]
+    public async Task Cada_catalogo_ofrece_su_regreso_a_la_portada(string ruta)
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync(ruta);
+
+        html.Should().Contain("← Catálogos");
+    }
+
+    [Fact]
+    public async Task Quien_solo_puede_ver_no_recibe_el_boton_de_crear()
+    {
+        // La lista pide Ver y el editor pide Editar: ofrecer «+ Nueva» a quien solo puede ver lo
+        // manda a un Forbidden. Áreas y Unidades lo ofrecían sin condición.
+        await _portal.OtorgarAsync("Consultor", "Unidades.Ver");
+
+        var html = await _portal.ClienteComo("Consultor").GetStringAsync("/Unidades");
+
+        html.Should().Contain("← Catálogos");
+        html.Should().NotContain("+ Nueva Unidad");
+    }
+
+    [Fact]
     public async Task Quien_no_administra_nada_no_ve_el_menu()
     {
         // Consultor no alcanza ningún catálogo ni es administrador: ofrecerle el menú sería

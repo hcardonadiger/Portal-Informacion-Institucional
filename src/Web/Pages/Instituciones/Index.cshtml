@@ -16,11 +16,14 @@
             <h2>Catálogo de Instituciones</h2>
             <p>Catálogo de instituciones del Estado</p>
         </div>
-        @* Ver la nota de Usuarios/Index: la lista pide Ver, el editor pide Editar. *@
-        @if (await Acceso.PuedeEditarAsync("Instituciones"))
-        {
-            <a class="btnp" asp-page="/Instituciones/Editor">+ Nueva institución</a>
-        }
+        <div style="display:flex;gap:8px;align-items:center">
+            <a class="btns" asp-page="/Catalogos/Index" style="font-size:13px">← Catálogos</a>
+            @* Ver la nota de Usuarios/Index: la lista pide Ver, el editor pide Editar. *@
+            @if (await Acceso.PuedeEditarAsync("Instituciones"))
+            {
+                <a class="btnp" asp-page="/Instituciones/Editor">+ Nueva institución</a>
+            }
+        </div>
     </div>
 
     <form method="get" class="lista-buscar">

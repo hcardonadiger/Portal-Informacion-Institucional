@@ -267,8 +267,18 @@
 
                             var puedeCatalogos = puedeInstituciones || puedeAreas || puedeUnidades
                                               || puedeTemasTicket || puedePrioridades;
+
+                            // Cada entrada por su propia clave, no por «es administrador». Un rol
+                            // puede tener Usuarios.Ver sin ser administrador, y antes eso no le
+                            // abría nada: el menú miraba la capacidad del rol en vez de mirar el
+                            // permiso de cada destino.
+                            var puedeUsuarios = await Acceso.PuedeAsync("Usuarios");
+                            var puedeRoles    = await Acceso.PuedeAsync("Accesos.Roles");
+                            var puedePermisos = await Acceso.PuedeAsync("Accesos.Permisos");
+                            var puedeMigrar   = HostEnv.IsDevelopment()
+                                             && await Acceso.PuedeClaveAsync("Admin.Migraciones.Crear");
                         }
-                        @if (Acceso.EsAdministrador || puedeCatalogos)
+                        @if (puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeMigrar)
                         {
                             var grpAdmin = EsRuta("/Catalogos") || EsRuta("/Instituciones")
                                         || EsRuta("/Areas") || EsRuta("/Unidades")
@@ -280,16 +290,22 @@
                                     {
                                         <a class="nav-item @(EsRuta("/Catalogos", "/Instituciones", "/Areas", "/Unidades") ? "on" : "")" asp-page="/Catalogos/Index"><svg class="ico"><use href="#i-recursos"></use></svg>Catálogos</a>
                                     }
-                                    @if (Acceso.EsAdministrador)
+                                    @if (puedeUsuarios)
                                     {
                                         <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><svg class="ico"><use href="#i-usuarios"></use></svg>Usuarios</a>
+                                    }
+                                    @if (puedeRoles)
+                                    {
                                         <a class="nav-item @(EsRuta("/Accesos/Roles") ? "on" : "")" asp-page="/Accesos/Roles"><svg class="ico"><use href="#i-accesos"></use></svg>Roles</a>
+                                    }
+                                    @if (puedePermisos)
+                                    {
                                         <a class="nav-item @(EsRuta("/Accesos/Permisos") ? "on" : "")" asp-page="/Accesos/Permisos"><svg class="ico"><use href="#i-accesos"></use></svg>Permisos</a>
-                                        @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
-                                        @if (HostEnv.IsDevelopment())
-                                        {
-                                            <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
-                                        }
+                                    }
+                                    @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
+                                    @if (puedeMigrar)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
                                     }
                                 </div>
                             </div>
