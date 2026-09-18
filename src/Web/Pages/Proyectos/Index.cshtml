@@ -31,12 +31,7 @@
         EstadoProyecto.EnEjecucion => "En ejecución",
         _                          => e.ToString()
     };
-    string PrioCls(PrioridadProyecto p) => p switch
-    {
-        PrioridadProyecto.Alta  => "prio-badge alta",
-        PrioridadProyecto.Media => "prio-badge media",
-        _                       => "prio-badge default"
-    };
+    // La clase de la insignia la trae el catálogo: ver Etiquetas.ClaseColor.
     string BarraCls(int pct) => pct >= 80 ? "bg-success" : pct >= 40 ? "bg-primary" : "bg-warning";
     string Fecha(DateOnly? d) => d?.ToString("dd/MM/yyyy") ?? "—";
 }
@@ -100,11 +95,11 @@
         </div>
         <div class="field" style="min-width:130px">
             <label for="f-prio">Prioridad</label>
-            <select id="f-prio" name="Prioridad">
+            <select id="f-prio" name="PrioridadId">
                 <option value="">— Todas —</option>
-                @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                @foreach (var pr in Model.Prioridades)
                 {
-                    <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
+                    <option value="@pr.Id" selected="@(Model.PrioridadId == pr.Id)">@pr.Nombre</option>
                 }
             </select>
         </div>
@@ -136,7 +131,7 @@
         </div>
         <button class="btns" type="submit">Filtrar</button>
         @if (Model.Estado is not null || Model.ResponsableId is not null || Model.Anio is not null
-             || !string.IsNullOrWhiteSpace(Model.Q) || Model.Prioridad is not null || Model.Senal is not null
+             || !string.IsNullOrWhiteSpace(Model.Q) || Model.PrioridadId is not null || Model.Senal is not null
              || Model.Accion is not null)
         {
             <a class="btns" asp-page="/Proyectos/Index">Limpiar</a>
@@ -179,7 +174,7 @@
                             <div style="font-weight:600">@p.Nombre</div>
                             <div class="res-meta">
                                 @p.Codigo
-                                <span class="@PrioCls(p.Prioridad)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
+                                <span class="@Etiquetas.ClaseColor(p.PrioridadColor)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
                                 @if (p.Accion is { } accion)
                                 {
                                     @* Sin acción no se pinta nada: una insignia «Sin clasificar» en
@@ -286,10 +281,10 @@
                     </div>
                     <div class="field" style="width:140px">
                         <label for="n-prio">Prioridad</label>
-                        <select id="n-prio" name="NuevaPrioridad">
-                            @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                        <select id="n-prio" name="NuevaPrioridadId">
+                            @foreach (var pr in Model.Prioridades)
                             {
-                                <option value="@((int)pr)" selected="@(pr == PrioridadProyecto.Media)">@pr</option>
+                                <option value="@pr.Id" selected="@pr.EsPredeterminada">@pr.Nombre</option>
                             }
                         </select>
                     </div>

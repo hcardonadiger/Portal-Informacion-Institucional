@@ -25,7 +25,7 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries;
 public sealed record GetProyectosDashboardQuery(
     EstadoProyecto?    Estado        = null,
     Guid?              ResponsableId = null,
-    PrioridadProyecto? Prioridad     = null,
+    int?               PrioridadId   = null,
     IReadOnlyList<string>? AreaIds   = null,
     Guid?              DeUsuarioId   = null) : IRequest<ProyectosDashboardDto>;
 
@@ -43,7 +43,7 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         var baseQuery = ctx.Proyectos.AsNoTracking();
         if (q.Estado is { } e)        baseQuery = baseQuery.Where(p => p.Estado == e);
         if (q.ResponsableId is { } r) baseQuery = baseQuery.Where(p => p.ResponsableId == r);
-        if (q.Prioridad is { } pr)    baseQuery = baseQuery.Where(p => p.Prioridad == pr);
+        if (q.PrioridadId is { } pr)  baseQuery = baseQuery.Where(p => p.PrioridadId == pr);
         // Lista vacía = no filtrar: pedir «ninguna área» y ver el portafolio vacío no le sirve a nadie.
         // Los proyectos sin área quedan fuera cuando sí se filtra — se pidieron esas áreas, no «esas o ninguna».
         if (q.AreaIds is { Count: > 0 } areas)
@@ -60,7 +60,9 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             .Select(p => new
             {
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.ResponsableId,
-                p.Estado, p.Prioridad, p.AvancePct, p.FechaFinPlan, p.UnidadId,
+                p.Estado, Prioridad = p.PrioridadRef!.Nombre,
+                PrioridadColor = p.PrioridadRef.Color, PrioridadOrden = p.PrioridadRef.Orden,
+                p.AvancePct, p.FechaFinPlan, p.UnidadId,
                 TotalEntregables       = p.Entregables.Count,
                 EntregablesCompletados = p.Entregables.Count(x => x.Estado == EstadoEntregable.Completado),
                 EntregablesVencidos    = p.Entregables.Count(x => x.FechaPlan.HasValue && x.FechaPlan < hoy
@@ -95,7 +97,8 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
 
         var semaforo = filas
             .Select(p => new ProyectoSemaforoDto(
-                p.Id, p.Codigo, p.Nombre, p.Responsable, p.Estado, p.Prioridad, p.AvancePct,
+                p.Id, p.Codigo, p.Nombre, p.Responsable, p.Estado,
+                p.Prioridad, p.PrioridadColor, p.PrioridadOrden, p.AvancePct,
                 p.TotalEntregables, p.EntregablesCompletados, p.EntregablesVencidos,
                 p.TotalActividades, p.ActividadesVencidas,
                 p.FechaFinPlan, p.UltimoAvance,
@@ -108,7 +111,7 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             // Primero lo que exige atención: atrasado, luego desatendido, luego prioridad.
             .OrderByDescending(p => p.Atrasado)
             .ThenByDescending(p => p.SinReportar)
-            .ThenBy(p => p.Prioridad)
+            .ThenBy(p => p.PrioridadOrden)
             .ThenBy(p => p.Nombre)
             .ToList();
 
@@ -310,6 +313,14 @@ public static class Etiquetas
         EstadoProyecto.EnEjecucion => "En ejecución",
         _                          => e.ToString()
     };
+
+    /// <summary>
+    /// Clase CSS de la insignia de prioridad. Antes cada pantalla traía su propio switch sobre
+    /// el enum Alta/Media/Baja, y las tres tenían que acordarse de agregar el caso nuevo; con el
+    /// catálogo el color lo trae la fila, así que basta con traducirlo a la clase.
+    /// </summary>
+    public static string ClaseColor(ColorEtiqueta c) =>
+        "prio-badge " + c.ToString().ToLowerInvariant();
 
     public static string Entregable(EstadoEntregable e) => e switch
     {

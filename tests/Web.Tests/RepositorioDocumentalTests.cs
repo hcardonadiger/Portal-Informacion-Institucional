@@ -42,6 +42,7 @@ public sealed class RepositorioDocumentalTests : IAsyncLifetime
         await db.SaveChangesAsync();
 
         var proyecto = Proyecto.Crear("PRY-2026-90", "Frente documental");
+        proyecto.PrioridadId = PortalFactory.PrioridadPorDefecto;
         proyecto.InstitucionId = "DIGER";
         db.Proyectos.Add(proyecto);
         await db.SaveChangesAsync();

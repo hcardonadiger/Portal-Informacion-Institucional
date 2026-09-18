@@ -119,6 +119,7 @@ public sealed class TableroProyectosAreaTests : IAsyncLifetime
         static Proyecto Nuevo(string codigo, string nombre, string? unidadId, string areaId = "AREA-DIGER")
         {
             var p = Proyecto.Crear(codigo, nombre);
+            p.PrioridadId = PortalFactory.PrioridadPorDefecto;
             // El filtro de alcance se ancla en la institucion; sin esto no lo ve nadie.
             p.InstitucionId = "DIGER";
             p.UnidadId = unidadId;

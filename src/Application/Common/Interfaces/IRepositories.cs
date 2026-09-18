@@ -217,6 +217,7 @@ public interface IApplicationDbContext
     DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
     DbSet<Proyecto>                Proyectos              { get; }
+    DbSet<PrioridadProyecto>       PrioridadesProyecto    { get; }
     DbSet<EntregableProyecto>      ProyectoEntregables    { get; }
     DbSet<ActividadProyecto>       ProyectoActividades    { get; }
     DbSet<AvanceProyecto>          ProyectoAvances        { get; }

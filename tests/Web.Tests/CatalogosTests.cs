@@ -1,0 +1,175 @@
+using System.Net;
+using System.Text.RegularExpressions;
+using Diger.TramitesEstado.Infrastructure.Persistence;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace Diger.TramitesEstado.Web.Tests;
+
+/// <summary>
+/// La portada de catálogos y el catálogo de prioridades.
+///
+/// <para>La portada no tiene permiso propio: es una lista de enlaces y decide qué mostrar
+/// preguntando por la clave de <b>cada destino</b>. Eso es lo que hay que probar —que no ofrezca
+/// lo que el usuario no puede abrir, y que no esconda lo que sí— porque es la clase de regla que
+/// se rompe en silencio: una tarjeta de más solo se nota cuando alguien hace clic y recibe un
+/// Forbidden.</para>
+/// </summary>
+public sealed class CatalogosTests : IAsyncLifetime
+{
+    private readonly PortalFactory _portal = new();
+
+    public async Task InitializeAsync()
+    {
+        await _portal.PrepararAsync();
+
+        // JefeArea administra áreas y unidades, nada más: es el caso que el navbar viejo
+        // resolvía por nombre de rol y prometía de más.
+        await _portal.OtorgarAsync("JefeArea", "Areas.Ver", "Unidades.Ver");
+        // Consultor queda sin ningún catálogo a propósito.
+    }
+
+    public Task DisposeAsync()
+    {
+        _portal.Dispose();
+        return Task.CompletedTask;
+    }
+
+    // ── Portada ───────────────────────────────────────────────────
+    // Se afirma sobre el destino y no sobre el rótulo: el ayudante de etiquetas convierte
+    // asp-page="/Areas/Index" en href="/Areas", y el texto que sale de una expresión de Razor
+    // —a diferencia del escrito en la plantilla— lleva las tildes como entidad numérica. El
+    // destino es además lo que de verdad importa de una tarjeta.
+    [Fact]
+    public async Task El_administrador_ve_todas_las_tarjetas()
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Catalogos/Index");
+
+        html.Should().Contain(@"href=""/Instituciones""");
+        html.Should().Contain(@"href=""/Areas""");
+        html.Should().Contain(@"href=""/Unidades""");
+        html.Should().Contain(@"href=""/Catalogos/Prioridades""");
+        html.Should().Contain(@"href=""/Tickets/Temas""");
+    }
+
+    [Fact]
+    public async Task Quien_solo_administra_areas_y_unidades_ve_esas_dos_y_no_las_demas()
+    {
+        var html = await _portal.ClienteComo("JefeArea").GetStringAsync("/Catalogos/Index");
+
+        html.Should().Contain(@"href=""/Areas""");
+        html.Should().Contain(@"href=""/Unidades""");
+        html.Should().NotContain(@"href=""/Instituciones""",
+            "no tiene Instituciones.Ver y la tarjeta lo llevaría a un Forbidden");
+        html.Should().NotContain(@"href=""/Catalogos/Prioridades""");
+    }
+
+    [Fact]
+    public async Task Sin_ningun_catalogo_la_portada_lo_dice_en_vez_de_salir_vacia()
+    {
+        var html = await _portal.ClienteComo("Consultor").GetStringAsync("/Catalogos/Index");
+
+        html.Should().Contain("No tiene catálogos asignados para administrar.");
+    }
+
+    [Fact]
+    public async Task La_portada_se_abre_sin_permiso_propio()
+    {
+        // No lleva [Permission]: inventarle una clave obligaría a otorgarla en cada rol que ya
+        // administra algún catálogo, solo para dejarlo pasar por la puerta.
+        var r = await _portal.ClienteComo("Consultor").GetAsync("/Catalogos/Index");
+
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task El_menu_de_administracion_ya_no_ofrece_los_catalogos()
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Tableros/Index");
+
+        html.Should().Contain(@"href=""/Catalogos""", "el menú tiene que ofrecer la portada nueva");
+
+        // Los enlaces sueltos se fueron del navbar: ahora se llega por la portada. Se mira en un
+        // tablero —no en la portada, donde sí tienen que estar— y el navbar es lo único de esa
+        // página que podría enlazarlos.
+        html.Should().NotContain(@"href=""/Instituciones""");
+        html.Should().NotContain(@"href=""/Areas""");
+        html.Should().NotContain(@"href=""/Unidades""");
+    }
+
+    // ── Catálogo de prioridades ───────────────────────────────────
+    [Fact]
+    public async Task La_pantalla_lista_las_prioridades_sembradas()
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Catalogos/Prioridades");
+
+        html.Should().Contain("Alta");
+        html.Should().Contain("Media");
+        html.Should().Contain("Baja");
+    }
+
+    [Fact]
+    public async Task Sin_el_permiso_no_se_entra()
+    {
+        var r = await _portal.ClienteComo("JefeArea").GetAsync("/Catalogos/Prioridades");
+
+        r.StatusCode.Should().NotBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Crear_una_prioridad_la_deja_disponible_para_los_proyectos()
+    {
+        // Es el caso que motivó todo el cambio: agregar «Q3» sin tocar código.
+        var (cliente, token) = await PantallaAsync();
+
+        var r = await cliente.PostAsync("/Catalogos/Prioridades?handler=Crear", new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("__RequestVerificationToken", token),
+            new KeyValuePair<string, string>("Nombre", "Q3"),
+            new KeyValuePair<string, string>("Orden", "4"),
+            new KeyValuePair<string, string>("Color", "3")   // Verde
+        ]));
+
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var creada = await db.PrioridadesProyecto.SingleAsync(p => p.Nombre == "Q3");
+        creada.Activo.Should().BeTrue();
+        creada.Orden.Should().Be(4);
+
+        // Y aparece donde tiene que aparecer: en el desplegable del listado de proyectos.
+        (await cliente.GetStringAsync("/Catalogos/Prioridades")).Should().Contain("Q3");
+    }
+
+    [Fact]
+    public async Task Un_nombre_repetido_se_rechaza_con_su_motivo()
+    {
+        var (cliente, token) = await PantallaAsync();
+
+        var r = await cliente.PostAsync("/Catalogos/Prioridades?handler=Crear", new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("__RequestVerificationToken", token),
+            new KeyValuePair<string, string>("Nombre", "Alta"),
+            new KeyValuePair<string, string>("Orden", "9"),
+            new KeyValuePair<string, string>("Color", "5")
+        ]));
+
+        // Se queda en la página con el motivo a la vista, no redirige como si hubiera funcionado.
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await r.Content.ReadAsStringAsync()).Should().Contain("Ya existe una prioridad llamada");
+    }
+
+    private async Task<(HttpClient Cliente, string Token)> PantallaAsync()
+    {
+        var cliente = _portal.ClienteComo("Administrador");
+        var html = await cliente.GetStringAsync("/Catalogos/Prioridades");
+        var token = Regex.Match(html,
+            """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;
+
+        token.Should().NotBeEmpty();
+        return (cliente, token);
+    }
+}

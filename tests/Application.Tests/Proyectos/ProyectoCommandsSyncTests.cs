@@ -15,6 +15,7 @@ namespace Diger.TramitesEstado.Application.Tests.Proyectos;
 public class ProyectoCommandsSyncTests : IDisposable
 {
     private readonly AppDbContext _ctx;
+    private readonly CatalogoPrioridades _prio;
     private readonly ICurrentUserService _usuario = Substitute.For<ICurrentUserService>();
     private readonly IInteresadosAutomaticosSync _sync = Substitute.For<IInteresadosAutomaticosSync>();
 
@@ -28,6 +29,7 @@ public class ProyectoCommandsSyncTests : IDisposable
         // automática de jerarquía de AppDbContext dejaría el proyecto con AreaId/UnidadId = ""
         // en vez de null. Con eso, «no cambió el alcance» nunca se cumpliría.
         _ctx = new AppDbContext(opts, new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
+        _prio = PrioridadesDePrueba.Sembrar(_ctx);
 
         _usuario.ActiveInstitucionId.Returns("DIGER");
         _usuario.Nombre.Returns("Henry Cardona");
@@ -116,7 +118,7 @@ public class ProyectoCommandsSyncTests : IDisposable
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(
             new ActualizarProyectoCommand(
                 id, "Proyecto de prueba", objetivo, area, unidad, null, responsable,
-                PrioridadProyecto.Media, null, null, null, []),
+                _prio.Media, null, null, null, []),
             CancellationToken.None);
 
     public void Dispose() => _ctx.Dispose();

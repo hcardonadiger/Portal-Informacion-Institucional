@@ -2213,6 +2213,34 @@ tr.contacto-inactivo td {
     color: #5f5e5a;
 }
 
+/* Paleta del catálogo de prioridades (ColorEtiqueta). Las de arriba —critica, alta, media,
+   default— nombran un nivel y las sigue usando el módulo de tickets; estas nombran un color,
+   porque quien administra el catálogo elige cómo se ve «Q3», no qué tan urgente es. */
+.prio-badge.rojo {
+    background: #fcebeb;
+    color: var(--diger-danger-strong);
+}
+
+.prio-badge.naranja {
+    background: #faece7;
+    color: #993c1d;
+}
+
+.prio-badge.azul {
+    background: #e6f1fb;
+    color: #185fa5;
+}
+
+.prio-badge.verde {
+    background: #eaf3de;
+    color: #27500a;
+}
+
+.prio-badge.gris {
+    background: #f1efe8;
+    color: #5f5e5a;
+}
+
 .rol-badge.admin {
     background: #eeedfe;
     color: #3c3489;

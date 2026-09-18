@@ -53,6 +53,7 @@ public sealed class InteresadoAutomaticoDeAreaTests : IAsyncLifetime
         db.AsignacionesUsuario.Add(AsignacionUsuario.Crear(jefe.Id, "DIGER", AreaId, null, "JefeArea"));
 
         var proyecto = Proyecto.Crear(Codigo, "Sistema de expedientes");
+        proyecto.PrioridadId = PortalFactory.PrioridadPorDefecto;
         proyecto.InstitucionId = "DIGER";   // el filtro de alcance se ancla acá
         proyecto.AreaId        = AreaId;
         db.Proyectos.Add(proyecto);

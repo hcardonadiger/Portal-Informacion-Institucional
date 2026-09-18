@@ -1,6 +1,7 @@
 using System.Text;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
+using Diger.TramitesEstado.Application.Proyectos.Prioridades;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
@@ -19,7 +20,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     [BindProperty(SupportsGet = true)] public Guid?              ResponsableId { get; set; }
     [BindProperty(SupportsGet = true)] public int?               Anio          { get; set; }
     [BindProperty(SupportsGet = true)] public string?            Q             { get; set; }
-    [BindProperty(SupportsGet = true)] public PrioridadProyecto? Prioridad     { get; set; }
+    [BindProperty(SupportsGet = true)] public int?               PrioridadId   { get; set; }
     [BindProperty(SupportsGet = true)] public AccionProyecto?    Accion        { get; set; }
     [BindProperty(SupportsGet = true)] public string?            AreaId        { get; set; }
     [BindProperty(SupportsGet = true)] public string?            UnidadId      { get; set; }
@@ -32,13 +33,16 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     [BindProperty] public string?           NuevoNombre     { get; set; }
     [BindProperty] public string?           NuevoObjetivo   { get; set; }
     [BindProperty] public Guid?             NuevoResponsable{ get; set; }
-    [BindProperty] public PrioridadProyecto NuevaPrioridad  { get; set; } = PrioridadProyecto.Media;
+    [BindProperty] public int?              NuevaPrioridadId{ get; set; }
     [BindProperty] public AccionProyecto?   NuevaAccion     { get; set; }
     [BindProperty] public DateOnly?         NuevaFechaInicio{ get; set; }
     [BindProperty] public DateOnly?         NuevaFechaFin   { get; set; }
 
     public IReadOnlyList<ProyectoListItemDto>  Proyectos { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto>  Usuarios  { get; private set; } = [];
+
+    /// <summary>Opciones vivas del catálogo, para el filtro y el alta rápida.</summary>
+    public IReadOnlyList<OpcionPrioridadDto>   Prioridades { get; private set; } = [];
     public bool PuedeCrear { get; private set; }
 
     public async Task OnGetAsync(CancellationToken ct) => await CargarAsync(ct);
@@ -65,7 +69,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
             var id = await sender.Send(new CrearProyectoCommand(
                 NuevoNombre, NuevoObjetivo, AreaId: null, UnidadId: null,
                 ResponsableId: NuevoResponsable, Responsable: responsable,
-                Prioridad: NuevaPrioridad, Accion: NuevaAccion,
+                PrioridadId: NuevaPrioridadId, Accion: NuevaAccion,
                 FechaInicioPlan: NuevaFechaInicio, FechaFinPlan: NuevaFechaFin), ct);
 
             TempData["SuccessMsg"] = "Proyecto creado. Cargue sus entregables y las actividades de cada uno.";
@@ -80,11 +84,12 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
 
     private async Task CargarAsync(CancellationToken ct)
     {
-        Proyectos  = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, Prioridad, AreaId, UnidadId, Senal, Accion), ct);
+        Proyectos  = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, PrioridadId, AreaId, UnidadId, Senal, Accion), ct);
         PuedeCrear = await acceso.PuedeClaveAsync("Proyectos.Crear", ct);
 
         // La lista de usuarios solo hace falta para el filtro y el modal de alta.
         Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
+        Prioridades = await sender.Send(new GetOpcionesPrioridadQuery(), ct);
     }
 
     /// <summary>
@@ -99,7 +104,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     /// </summary>
     public async Task<IActionResult> OnGetExportAsync(CancellationToken ct)
     {
-        var proyectos = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, Prioridad, AreaId, UnidadId, Senal, Accion), ct);
+        var proyectos = await sender.Send(new GetProyectosQuery(Estado, ResponsableId, Anio, Q, PrioridadId, AreaId, UnidadId, Senal, Accion), ct);
 
         var sb = new StringBuilder();
         sb.AppendLine(string.Join(",",
@@ -114,7 +119,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
         foreach (var p in proyectos)
             sb.AppendLine(string.Join(",",
                 Q_(p.Codigo), Q_(p.Nombre), Q_(EstadoTxt(p.Estado)),
-                Q_(EtiquetasProyecto.Accion(p.Accion)), Q_(p.Prioridad.ToString()),
+                Q_(EtiquetasProyecto.Accion(p.Accion)), Q_(p.Prioridad),
                 Q_(p.Responsable ?? "sin asignar"),
                 Q_(F(p.FechaInicioPlan)), Q_(F(p.FechaFinPlan)), Q_(F(p.FechaFinReal)),
                 p.AvancePct.ToString(),

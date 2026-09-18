@@ -35,6 +35,7 @@ public class ProyectosTableroTests : IDisposable
     private async Task<int> SembrarAsync(string codigo, EstadoProyecto estado, DateOnly? finPlan)
     {
         var p = Proyecto.Crear(codigo, $"Proyecto {codigo}");
+        p.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         p.InstitucionId = "DIGER";
         p.FechaFinPlan  = finPlan;
         if (estado != EstadoProyecto.Planificado) p.CambiarEstado(estado, "siembra");

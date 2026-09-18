@@ -124,10 +124,11 @@ public class GetProyectosDashboardQueryAreaTests : IDisposable
     /// <summary>Tres proyectos en tres áreas distintas, más uno sin área asignada.</summary>
     private async Task SembrarProyectosAsync()
     {
-        var siger = Proyecto.Crear("PRY-2026-20", "SIGER"); siger.AreaId = "SIGER";
-        var gobdigital = Proyecto.Crear("PRY-2026-21", "GobDigital"); gobdigital.AreaId = "GOBDIGITAL";
-        var otra = Proyecto.Crear("PRY-2026-22", "Otra"); otra.AreaId = "RRHH";
+        var siger = Proyecto.Crear("PRY-2026-20", "SIGER"); siger.AreaId = "SIGER"; siger.PrioridadId = PrioridadesDePrueba.Media(_ctx);
+        var gobdigital = Proyecto.Crear("PRY-2026-21", "GobDigital"); gobdigital.AreaId = "GOBDIGITAL"; gobdigital.PrioridadId = PrioridadesDePrueba.Media(_ctx);
+        var otra = Proyecto.Crear("PRY-2026-22", "Otra"); otra.AreaId = "RRHH"; otra.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         var sinArea = Proyecto.Crear("PRY-2026-23", "Sin área");
+        sinArea.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         _ctx.Proyectos.AddRange(siger, gobdigital, otra, sinArea);
         await _ctx.SaveChangesAsync();
     }

@@ -43,6 +43,11 @@ public sealed class IndexModel(AccesoModulosService acceso) : PageModel
                 "Dependencias que cuelgan de cada área.",
                 "/Unidades/Index", "i-unidad")),
 
+            ("Prioridades.Proyectos.Editar", new(
+                "Prioridades de proyectos",
+                "Las opciones de prioridad que ofrece la ficha de un proyecto.",
+                "/Catalogos/Prioridades", "i-alerta")),
+
             ("Tickets.Temas.Editar", new(
                 "Temas de tickets",
                 "Categorías de soporte y su tiempo máximo de atención.",

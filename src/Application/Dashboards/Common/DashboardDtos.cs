@@ -213,7 +213,11 @@ public sealed record ProyectoSemaforoDto(
     string            Nombre,
     string?           Responsable,
     EstadoProyecto    Estado,
-    PrioridadProyecto Prioridad,
+    string            Prioridad,
+    ColorEtiqueta     PrioridadColor,
+    /// <summary>Posición en el catálogo. Va en el DTO porque el semáforo ordena por prioridad
+    /// y el nombre no dice cuál pesa más: «Q3» y «Alta» no se ordenan solos.</summary>
+    int               PrioridadOrden,
     /// <summary>Promedio de las actividades del proyecto, subido por los entregables. Ya no lo
     /// declara el responsable: lo calcula el árbol.</summary>
     int               AvancePct,

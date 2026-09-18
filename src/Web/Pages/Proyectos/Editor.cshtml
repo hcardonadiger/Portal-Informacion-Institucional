@@ -811,10 +811,10 @@
                     </div>
                     <div class="field" style="width:150px">
                         <label for="f-prio">Prioridad</label>
-                        <select id="f-prio" name="Prioridad" disabled="@(!Model.PuedeEditar)">
-                            @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                        <select id="f-prio" name="PrioridadId" disabled="@(!Model.PuedeEditar)">
+                            @foreach (var pr in Model.Prioridades)
                             {
-                                <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
+                                <option value="@pr.Id" selected="@(Model.PrioridadId == pr.Id)">@pr.Nombre</option>
                             }
                         </select>
                     </div>

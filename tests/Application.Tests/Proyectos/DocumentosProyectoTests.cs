@@ -62,6 +62,7 @@ public class DocumentosProyectoTests : IDisposable
         ctx.SaveChanges();
 
         var proyecto = Proyecto.Crear("PRY-2026-01", "Frente de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(ctx);
         proyecto.InstitucionId = institucion;
         proyecto.ResponsableId = responsable;
         ctx.Proyectos.Add(proyecto);

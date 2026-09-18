@@ -1,6 +1,7 @@
 using Diger.TramitesEstado.Application.Proyectos.Commands.RegistrarDescargaDocumento;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
+using Diger.TramitesEstado.Application.Proyectos.Prioridades;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
@@ -127,7 +128,10 @@ public sealed class EditorModel(
     [BindProperty] public Guid?             ResponsableId   { get; set; }
     [BindProperty] public string?           AreaId          { get; set; }
     [BindProperty] public string?           UnidadId        { get; set; }
-    [BindProperty] public PrioridadProyecto Prioridad       { get; set; }
+    [BindProperty] public int               PrioridadId     { get; set; }
+
+    /// <summary>Opciones del catálogo para el desplegable de prioridad.</summary>
+    public IReadOnlyList<OpcionPrioridadDto> Prioridades { get; private set; } = [];
     [BindProperty] public AccionProyecto?   Accion          { get; set; }
     [BindProperty] public DateOnly?         FechaInicioPlan { get; set; }
     [BindProperty] public DateOnly?         FechaFinPlan    { get; set; }
@@ -239,7 +243,7 @@ public sealed class EditorModel(
         ResponsableId   = Proyecto.ResponsableId;
         AreaId          = Proyecto.AreaId;
         UnidadId        = Proyecto.UnidadId;
-        Prioridad       = Proyecto.Prioridad;
+        PrioridadId     = Proyecto.PrioridadId;
         Accion          = Proyecto.Accion;
         FechaInicioPlan = Proyecto.FechaInicioPlan;
         FechaFinPlan    = Proyecto.FechaFinPlan;
@@ -323,7 +327,7 @@ public sealed class EditorModel(
                 UnidadId,
                 ResponsableId,
                 usuarios.FirstOrDefault(u => u.Id == ResponsableId)?.Nombre ?? actual.Responsable,
-                Prioridad,
+                PrioridadId,
                 Accion,
                 FechaInicioPlan,
                 FechaFinPlan,
@@ -934,6 +938,11 @@ public sealed class EditorModel(
 
         Proyecto  = dto;
         Avances   = await sender.Send(new GetAvancesProyectoQuery(id), ct);
+
+        // Se pide incluyendo la prioridad actual del proyecto: si se retiró del catálogo, igual
+        // tiene que aparecer en el desplegable. Si no, guardar la ficha sin tocar ese campo le
+        // cambiaría la prioridad al primero de la lista sin que nadie lo pidiera.
+        Prioridades = await sender.Send(new GetOpcionesPrioridadQuery(dto.PrioridadId), ct);
 
         DiasSinReportar = Avances.Count == 0
             ? null

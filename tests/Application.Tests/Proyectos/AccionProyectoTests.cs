@@ -21,6 +21,7 @@ namespace Diger.TramitesEstado.Application.Tests.Proyectos;
 public class AccionProyectoTests : IDisposable
 {
     private readonly AppDbContext _ctx;
+    private readonly CatalogoPrioridades _prio;
     private readonly ICurrentUserService _usuario = Substitute.For<ICurrentUserService>();
 
     // El sync de interesados automáticos no es lo que mide esta suite — solo hace falta para
@@ -33,6 +34,7 @@ public class AccionProyectoTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _ctx = new AppDbContext(opts, new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
+        _prio = PrioridadesDePrueba.Sembrar(_ctx);
         _usuario.Nombre.Returns("Henry Cardona");
     }
 
@@ -128,7 +130,7 @@ public class AccionProyectoTests : IDisposable
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(
             new ActualizarProyectoCommand(
                 id, nombre, null, null, null, null, null,
-                PrioridadProyecto.Media, accion, new DateOnly(2026, 3, 1), null, []),
+                _prio.Media, accion, new DateOnly(2026, 3, 1), null, []),
             CancellationToken.None);
 
     public void Dispose() => _ctx.Dispose();

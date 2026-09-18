@@ -27,6 +27,7 @@ namespace Diger.TramitesEstado.Application.Tests.Proyectos;
 public class ProyectosDependenciasTests : IDisposable
 {
     private readonly AppDbContext _ctx;
+    private readonly CatalogoPrioridades _prio;
     private readonly ICurrentUserService _usuario = Substitute.For<ICurrentUserService>();
     private readonly IInteresadosAutomaticosSync _sync = Substitute.For<IInteresadosAutomaticosSync>();
 
@@ -36,6 +37,7 @@ public class ProyectosDependenciasTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _ctx = new AppDbContext(opts, new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
+        _prio = PrioridadesDePrueba.Sembrar(_ctx);
         _usuario.Nombre.Returns("Henry Ortez");
     }
 
@@ -58,7 +60,7 @@ public class ProyectosDependenciasTests : IDisposable
     private Task GuardarAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "SOL — institución de prueba", null, null, null, null, null,
-            PrioridadProyecto.Media, null, null, null, entregables), CancellationToken.None);
+            _prio.Media, null, null, null, entregables), CancellationToken.None);
 
     private Task<ProyectoDetailDto?> FichaAsync(int id) =>
         new GetProyectoQueryHandler(_ctx).Handle(new GetProyectoQuery(id), CancellationToken.None);

@@ -37,6 +37,14 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
 {
     private SqliteConnection? _conexion;
 
+    /// <summary>
+    /// Id de la prioridad «Media» en la base de pruebas, la que traen los proyectos que arma una
+    /// suite a mano. Constante y no una lectura de la base porque varios ayudantes que construyen
+    /// proyectos son estáticos y no tienen la fábrica a mano. <see cref="PrepararAsync"/> verifica
+    /// que el sembrado efectivamente la deje en este Id.
+    /// </summary>
+    public const int PrioridadPorDefecto = 2;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -103,6 +111,28 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
                     esSoloLectura: true, esSistema: true));
 
             await db.SaveChangesAsync();
+        }
+
+        // El catálogo de prioridades: un proyecto apunta a una fila de acá por llave foránea, así
+        // que sin sembrarlo cualquier suite que cree un proyecto muere con FOREIGN KEY constraint
+        // failed. En producción las deja la migración; acá las deja esto.
+        if (!await db.PrioridadesProyecto.AnyAsync())
+        {
+            var alta  = PrioridadProyecto.Crear("Alta",  1, ColorEtiqueta.Naranja);
+            var media = PrioridadProyecto.Crear("Media", 2, ColorEtiqueta.Azul);
+            var baja  = PrioridadProyecto.Crear("Baja",  3, ColorEtiqueta.Gris);
+            media.FijarPredeterminada(true);
+
+            db.PrioridadesProyecto.AddRange(alta, media, baja);
+            await db.SaveChangesAsync();
+
+            // Se comprueba en vez de darse por supuesto: PrioridadPorDefecto es una constante
+            // —los ayudantes estáticos que arman proyectos no tienen la fábrica a mano— y si el
+            // orden de inserción cambiara, es preferible un mensaje que diga exactamente esto a
+            // un centenar de pruebas cayendo por violación de llave foránea.
+            if (media.Id != PrioridadPorDefecto)
+                throw new InvalidOperationException(
+                    $"El sembrado dejó «Media» con Id {media.Id} y las pruebas esperan {PrioridadPorDefecto}.");
         }
 
         // Usuarios reales: varias páginas (Perfil, por ejemplo) consultan al usuario de la

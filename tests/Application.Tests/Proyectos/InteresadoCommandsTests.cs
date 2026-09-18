@@ -55,6 +55,7 @@ public class InteresadoCommandsTests : IDisposable
     public async Task Quitar_InteresadoManual_SePermite()
     {
         var proyecto = Proyecto.Crear("PRY-2026-98", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
 
@@ -87,6 +88,7 @@ public class InteresadoCommandsTests : IDisposable
         _catalogo.Obtener("JefeArea").Returns(RolJefeDeArea);
 
         var proyecto = Proyecto.Crear(codigo, "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -117,6 +119,7 @@ public class InteresadoCommandsTests : IDisposable
     public async Task Quitar_FilaAutomaticaDeQuienYaNoTieneElDerecho_SePermite()
     {
         var proyecto = Proyecto.Crear("PRY-2026-96", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();

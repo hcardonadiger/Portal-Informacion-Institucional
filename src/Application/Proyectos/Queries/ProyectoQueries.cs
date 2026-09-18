@@ -25,7 +25,7 @@ public sealed record GetProyectosQuery(
     Guid?              ResponsableId = null,
     int?               Anio          = null,
     string?            Q             = null,
-    PrioridadProyecto? Prioridad     = null,
+    int?               PrioridadId   = null,
     string?            AreaId        = null,
     string?            UnidadId      = null,
     SenalProyecto?     Senal         = null,
@@ -40,7 +40,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
 
         if (query.Estado is { } estado)   q = q.Where(p => p.Estado == estado);
         if (query.ResponsableId is { } r) q = q.Where(p => p.ResponsableId == r);
-        if (query.Prioridad is { } prio)  q = q.Where(p => p.Prioridad == prio);
+        if (query.PrioridadId is { } prio) q = q.Where(p => p.PrioridadId == prio);
         if (query.Accion is { } accion)   q = q.Where(p => p.Accion == accion);
 
         if (!string.IsNullOrWhiteSpace(query.AreaId))   q = q.Where(p => p.AreaId == query.AreaId);
@@ -66,14 +66,16 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
         // pinta el semáforo con ellos y no queremos una consulta por fila.
         var filas = await q
             .OrderBy(p => p.Estado == EstadoProyecto.Cerrado || p.Estado == EstadoProyecto.Cancelado)
-            .ThenBy(p => p.Prioridad)
+            .ThenBy(p => p.PrioridadRef!.Orden)
             .ThenBy(p => p.FechaFinPlan ?? DateOnly.MaxValue)
             .Select(p => new ProyectoListItemDto(
                 p.Id,
                 p.Codigo,
                 p.Nombre,
                 p.Responsable,
-                p.Prioridad,
+                p.PrioridadId,
+                p.PrioridadRef!.Nombre,
+                p.PrioridadRef.Color,
                 p.Accion,
                 p.Estado,
                 p.FechaInicioPlan,
@@ -121,6 +123,7 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
         // (AvanceCalculado) y su regla no se traduce a una consulta. Traerlo cargado es también lo
         // que evita tener esa regla escrita una segunda vez acá.
         var p = await ctx.Proyectos.AsNoTracking()
+            .Include(x => x.PrioridadRef)
             .Include(x => x.Entregables).ThenInclude(e => e.Actividades)
                                         .ThenInclude(a => a.Predecesoras)
             .FirstOrDefaultAsync(x => x.Id == query.Id, ct);
@@ -151,7 +154,9 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
 
         return new ProyectoDetailDto(
             p.Id, p.Codigo, p.Nombre, p.Objetivo, p.InstitucionId, p.AreaId, p.UnidadId,
-            p.ResponsableId, p.Responsable, p.Prioridad, p.Accion, p.Estado,
+            p.ResponsableId, p.Responsable,
+            p.PrioridadId, p.PrioridadRef!.Nombre, p.PrioridadRef.Color,
+            p.Accion, p.Estado,
             p.FechaInicioPlan, p.FechaFinPlan, p.FechaInicioReal, p.FechaFinReal,
             p.AvancePct, p.CreatedAt, p.CreatedBy,
             p.Entregables.OrderBy(e => e.Orden)

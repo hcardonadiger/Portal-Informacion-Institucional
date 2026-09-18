@@ -50,6 +50,7 @@ public sealed class PaginacionListasTests : IAsyncLifetime
         for (var i = 1; i <= Sembrados; i++)
         {
             var p = Proyecto.Crear($"PRY-PAG-{i:00}", $"Proyecto paginado {i:00}");
+            p.PrioridadId = PortalFactory.PrioridadPorDefecto;
             p.InstitucionId = "DIGER";   // sin ancla queda fuera del filtro de alcance
             db.Proyectos.Add(p);
         }
@@ -59,6 +60,7 @@ public sealed class PaginacionListasTests : IAsyncLifetime
         // estados vacíos y no probaría el cableado de ninguna. Un proyecto con todo lo que hace
         // falta las enciende a las cuatro.
         var conEstructura = Proyecto.Crear("PRY-PAG-EST", "Proyecto con estructura");
+        conEstructura.PrioridadId = PortalFactory.PrioridadPorDefecto;
         conEstructura.InstitucionId = "DIGER";
 
         var entregable = EntregableProyecto.Crear("Entregable vencido", 1);

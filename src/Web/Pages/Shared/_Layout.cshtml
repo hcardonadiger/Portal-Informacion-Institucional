@@ -257,8 +257,10 @@
                             var puedeAreas         = await Acceso.PuedeAsync("Areas");
                             var puedeUnidades      = await Acceso.PuedeAsync("Unidades");
                             var puedeTemasTicket   = await Acceso.PuedeClaveAsync("Tickets.Temas.Editar");
+                            var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar");
                         }
-                        @if (puedeInstituciones || puedeAreas || puedeUnidades || puedeTemasTicket)
+                        @if (puedeInstituciones || puedeAreas || puedeUnidades || puedeTemasTicket
+                             || puedePrioridades)
                         {
                             var grpCatalogos = EsRuta("/Catalogos") || EsRuta("/Instituciones")
                                             || EsRuta("/Areas") || EsRuta("/Unidades");
