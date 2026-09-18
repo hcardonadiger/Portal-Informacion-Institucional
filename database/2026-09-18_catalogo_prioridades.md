@@ -42,15 +42,164 @@ obligatoria.
 Conviene saber contra qué se está corriendo:
 
 ```sql
--- Qué prioridades hay hoy y cuántos proyectos tiene cada una.
-SELECT Prioridad, COUNT(*) AS Proyectos
-FROM   Proyectos
-GROUP  BY Prioridad
-ORDER  BY Proyectos DESC;
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    CREATE TABLE [PrioridadesProyecto] (
+        [Id] int NOT NULL IDENTITY,
+        [Nombre] nvarchar(40) NOT NULL,
+        [Orden] int NOT NULL DEFAULT 0,
+        [Color] nvarchar(20) NOT NULL,
+        [EsPredeterminada] bit NOT NULL DEFAULT CAST(0 AS bit),
+        [Activo] bit NOT NULL DEFAULT CAST(1 AS bit),
+        [CreatedAt] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(max) NULL,
+        [UpdatedAt] datetime2 NULL,
+        [UpdatedBy] nvarchar(max) NULL,
+        CONSTRAINT [PK_PrioridadesProyecto] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_PrioridadesProyecto_Nombre] ON [PrioridadesProyecto] ([Nombre]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    CREATE INDEX [IX_PrioridadesProyecto_Orden] ON [PrioridadesProyecto] ([Orden]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+
+    EXEC(N'
+    INSERT INTO PrioridadesProyecto (Nombre, Orden, Color, EsPredeterminada, Activo, CreatedAt, CreatedBy)
+    VALUES (''Alta'',  1, ''Naranja'', 0, 1, SYSUTCDATETIME(), ''migracion''),
+           (''Media'', 2, ''Azul'',    1, 1, SYSUTCDATETIME(), ''migracion''),
+           (''Baja'',  3, ''Gris'',    0, 1, SYSUTCDATETIME(), ''migracion''),
+           (''Q3'',    4, ''Verde'',   0, 1, SYSUTCDATETIME(), ''migracion'');
+    ');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    ALTER TABLE [Proyectos] ADD [PrioridadId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+
+    EXEC(N'
+    UPDATE p
+    SET    p.PrioridadId = c.Id
+    FROM   Proyectos p
+    JOIN   PrioridadesProyecto c ON c.Nombre = p.Prioridad;
+    ');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+
+    EXEC(N'
+    UPDATE Proyectos
+    SET    PrioridadId = (SELECT TOP 1 Id FROM PrioridadesProyecto WHERE EsPredeterminada = 1)
+    WHERE  PrioridadId IS NULL;
+    ');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    DECLARE @var0 sysname;
+    SELECT @var0 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Proyectos]') AND [c].[name] = N'PrioridadId');
+    IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [Proyectos] DROP CONSTRAINT [' + @var0 + '];');
+    ALTER TABLE [Proyectos] ALTER COLUMN [PrioridadId] int NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    CREATE INDEX [IX_Proyectos_PrioridadId] ON [Proyectos] ([PrioridadId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    ALTER TABLE [Proyectos] ADD CONSTRAINT [FK_Proyectos_PrioridadesProyecto_PrioridadId] FOREIGN KEY ([PrioridadId]) REFERENCES [PrioridadesProyecto] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    DECLARE @var1 sysname;
+    SELECT @var1 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Proyectos]') AND [c].[name] = N'Prioridad');
+    IF @var1 IS NOT NULL EXEC(N'ALTER TABLE [Proyectos] DROP CONSTRAINT [' + @var1 + '];');
+    ALTER TABLE [Proyectos] DROP COLUMN [Prioridad];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918155856_CatalogoDePrioridadesDeProyecto'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260918155856_CatalogoDePrioridadesDeProyecto', N'9.0.0');
+END;
+
+COMMIT;
+GO
+
 ```
 
 Todo lo que no salga como `Alta`, `Media` o `Baja` va a terminar en `Media`. Si aparece algo más,
 avíseme antes de correrlo y le agrego la fila correspondiente al sembrado.
+
+## Por qué hay EXEC en el script
+
+El archivo es **un solo lote** y SQL Server lo compila entero antes de ejecutar nada, así que las
+instrucciones que tocan la tabla y la columna que el propio script crea no llegaban a compilar:
+fallaba con «Invalid column name» e «Invalid object name». Van dentro de `EXEC(N'...')`, que
+difiere la compilación hasta el momento de ejecutarse — es el mismo recurso que usa EF en sus
+propias operaciones. Por eso las comillas simples aparecen dobladas.
+
+Corriendo por `dotnet ef database update` esto nunca se notaba: EF manda cada operación por
+separado.
 
 ## El script
 

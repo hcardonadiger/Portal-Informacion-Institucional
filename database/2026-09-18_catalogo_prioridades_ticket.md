@@ -36,14 +36,164 @@ que la condición pasó a mirar la columna `EsCritica`. Puede marcar más de una
 ## Antes de correrlo
 
 ```sql
--- Qué prioridades hay hoy y cuántos tickets tiene cada una.
-SELECT Prioridad, COUNT(*) AS Tickets
-FROM   Tickets
-GROUP  BY Prioridad
-ORDER  BY Tickets DESC;
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    CREATE TABLE [PrioridadesTicket] (
+        [Id] int NOT NULL IDENTITY,
+        [Nombre] nvarchar(40) NOT NULL,
+        [Orden] int NOT NULL DEFAULT 0,
+        [Color] nvarchar(20) NOT NULL,
+        [EsCritica] bit NOT NULL DEFAULT CAST(0 AS bit),
+        [EsPredeterminada] bit NOT NULL DEFAULT CAST(0 AS bit),
+        [Activo] bit NOT NULL DEFAULT CAST(1 AS bit),
+        [CreatedAt] datetime2 NOT NULL,
+        [CreatedBy] nvarchar(max) NULL,
+        [UpdatedAt] datetime2 NULL,
+        [UpdatedBy] nvarchar(max) NULL,
+        CONSTRAINT [PK_PrioridadesTicket] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_PrioridadesTicket_Nombre] ON [PrioridadesTicket] ([Nombre]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    CREATE INDEX [IX_PrioridadesTicket_Orden] ON [PrioridadesTicket] ([Orden]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+
+    EXEC(N'
+    INSERT INTO PrioridadesTicket (Nombre, Orden, Color, EsCritica, EsPredeterminada, Activo, CreatedAt, CreatedBy)
+    VALUES (''Critica'', 1, ''Rojo'',    1, 0, 1, SYSUTCDATETIME(), ''migracion''),
+           (''Alta'',    2, ''Naranja'', 0, 0, 1, SYSUTCDATETIME(), ''migracion''),
+           (''Media'',   3, ''Azul'',    0, 1, 1, SYSUTCDATETIME(), ''migracion''),
+           (''Baja'',    4, ''Gris'',    0, 0, 1, SYSUTCDATETIME(), ''migracion'');
+    ');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    ALTER TABLE [Tickets] ADD [PrioridadId] int NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+
+    EXEC(N'
+    UPDATE t
+    SET    t.PrioridadId = c.Id
+    FROM   Tickets t
+    JOIN   PrioridadesTicket c ON c.Nombre = t.Prioridad;
+    ');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+
+    EXEC(N'
+    UPDATE Tickets
+    SET    PrioridadId = (SELECT TOP 1 Id FROM PrioridadesTicket WHERE EsPredeterminada = 1)
+    WHERE  PrioridadId IS NULL;
+    ');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    DECLARE @var0 sysname;
+    SELECT @var0 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Tickets]') AND [c].[name] = N'PrioridadId');
+    IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [Tickets] DROP CONSTRAINT [' + @var0 + '];');
+    ALTER TABLE [Tickets] ALTER COLUMN [PrioridadId] int NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    CREATE INDEX [IX_Tickets_PrioridadId] ON [Tickets] ([PrioridadId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    ALTER TABLE [Tickets] ADD CONSTRAINT [FK_Tickets_PrioridadesTicket_PrioridadId] FOREIGN KEY ([PrioridadId]) REFERENCES [PrioridadesTicket] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    DECLARE @var1 sysname;
+    SELECT @var1 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Tickets]') AND [c].[name] = N'Prioridad');
+    IF @var1 IS NOT NULL EXEC(N'ALTER TABLE [Tickets] DROP CONSTRAINT [' + @var1 + '];');
+    ALTER TABLE [Tickets] DROP COLUMN [Prioridad];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260918162251_CatalogoDePrioridadesDeTicket'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260918162251_CatalogoDePrioridadesDeTicket', N'9.0.0');
+END;
+
+COMMIT;
+GO
+
 ```
 
 Todo lo que no salga como `Baja`, `Media`, `Alta` o `Critica` va a terminar en `Media`.
+
+## Por qué hay EXEC en el script
+
+El archivo es **un solo lote** y SQL Server lo compila entero antes de ejecutar nada, así que las
+instrucciones que tocan la tabla y la columna que el propio script crea no llegaban a compilar:
+fallaba con «Invalid column name» e «Invalid object name». Van dentro de `EXEC(N'...')`, que
+difiere la compilación hasta el momento de ejecutarse — es el mismo recurso que usa EF en sus
+propias operaciones. Por eso las comillas simples aparecen dobladas.
+
+Corriendo por `dotnet ef database update` esto nunca se notaba: EF manda cada operación por
+separado.
 
 ## El script
 

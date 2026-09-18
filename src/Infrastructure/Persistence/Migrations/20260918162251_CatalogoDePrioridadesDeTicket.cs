@@ -57,12 +57,17 @@ namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
             // primero en pantalla, y lo urgente va primero. El nombre se conserva —tildes
             // incluidas, «Critica» era el identificador de C#, no el rótulo— para que el
             // traslado de abajo reconozca los tickets que ya existen.
+            // Dentro de EXEC por lo mismo que la migración de prioridades de proyecto: el script
+            // de producción es un solo lote y se compila entero antes de ejecutarse, así que ni
+            // la tabla ni la columna nuevas existen todavía. Ver la nota extensa allá.
             migrationBuilder.Sql(@"
+EXEC(N'
 INSERT INTO PrioridadesTicket (Nombre, Orden, Color, EsCritica, EsPredeterminada, Activo, CreatedAt, CreatedBy)
-VALUES ('Critica', 1, 'Rojo',    1, 0, 1, SYSUTCDATETIME(), 'migracion'),
-       ('Alta',    2, 'Naranja', 0, 0, 1, SYSUTCDATETIME(), 'migracion'),
-       ('Media',   3, 'Azul',    0, 1, 1, SYSUTCDATETIME(), 'migracion'),
-       ('Baja',    4, 'Gris',    0, 0, 1, SYSUTCDATETIME(), 'migracion');");
+VALUES (''Critica'', 1, ''Rojo'',    1, 0, 1, SYSUTCDATETIME(), ''migracion''),
+       (''Alta'',    2, ''Naranja'', 0, 0, 1, SYSUTCDATETIME(), ''migracion''),
+       (''Media'',   3, ''Azul'',    0, 1, 1, SYSUTCDATETIME(), ''migracion''),
+       (''Baja'',    4, ''Gris'',    0, 0, 1, SYSUTCDATETIME(), ''migracion'');
+');");
 
             migrationBuilder.AddColumn<int>(
                 name: "PrioridadId",
@@ -71,15 +76,19 @@ VALUES ('Critica', 1, 'Rojo',    1, 0, 1, SYSUTCDATETIME(), 'migracion'),
                 nullable: true);
 
             migrationBuilder.Sql(@"
+EXEC(N'
 UPDATE t
 SET    t.PrioridadId = c.Id
 FROM   Tickets t
-JOIN   PrioridadesTicket c ON c.Nombre = t.Prioridad;");
+JOIN   PrioridadesTicket c ON c.Nombre = t.Prioridad;
+');");
 
             migrationBuilder.Sql(@"
+EXEC(N'
 UPDATE Tickets
 SET    PrioridadId = (SELECT TOP 1 Id FROM PrioridadesTicket WHERE EsPredeterminada = 1)
-WHERE  PrioridadId IS NULL;");
+WHERE  PrioridadId IS NULL;
+');");
 
             migrationBuilder.AlterColumn<int>(
                 name: "PrioridadId",
@@ -123,10 +132,12 @@ WHERE  PrioridadId IS NULL;");
             // Una prioridad creada después de esta migración no cabe en el enum de vuelta y
             // aterriza en Media: revertir pierde información.
             migrationBuilder.Sql(@"
+EXEC(N'
 UPDATE t
-SET    t.Prioridad = CASE WHEN c.Nombre IN ('Baja','Media','Alta','Critica') THEN c.Nombre ELSE 'Media' END
+SET    t.Prioridad = CASE WHEN c.Nombre IN (''Baja'',''Media'',''Alta'',''Critica'') THEN c.Nombre ELSE ''Media'' END
 FROM   Tickets t
-JOIN   PrioridadesTicket c ON c.Id = t.PrioridadId;");
+JOIN   PrioridadesTicket c ON c.Id = t.PrioridadId;
+');");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_Tickets_PrioridadesTicket_PrioridadId",

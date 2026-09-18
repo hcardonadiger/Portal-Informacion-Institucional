@@ -54,12 +54,22 @@ namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
             // Las tres que existían como enum, con el mismo nombre para que el traslado de abajo
             // las reconozca, más la Q3 que motivó el catálogo. Media queda de predeterminada
             // porque era el valor por defecto del enum.
+            // Todo lo que toque la tabla o la columna que esta misma migración crea va dentro de
+            // EXEC. Corriendo por «dotnet ef» no haría falta —EF manda cada operación por
+            // separado— pero el script que se genera para producción es UN SOLO LOTE, y SQL
+            // Server lo compila entero antes de ejecutar nada: la columna PrioridadId y la tabla
+            // PrioridadesProyecto todavía no existen en ese momento y el lote muere con
+            // «Invalid column name» e «Invalid object name». EXEC difiere la compilación hasta
+            // que le toca ejecutarse, que es el mismo recurso que usa EF en sus propias
+            // operaciones. Las comillas simples van dobladas por estar dentro de la cadena.
             migrationBuilder.Sql(@"
+EXEC(N'
 INSERT INTO PrioridadesProyecto (Nombre, Orden, Color, EsPredeterminada, Activo, CreatedAt, CreatedBy)
-VALUES ('Alta',  1, 'Naranja', 0, 1, SYSUTCDATETIME(), 'migracion'),
-       ('Media', 2, 'Azul',    1, 1, SYSUTCDATETIME(), 'migracion'),
-       ('Baja',  3, 'Gris',    0, 1, SYSUTCDATETIME(), 'migracion'),
-       ('Q3',    4, 'Verde',   0, 1, SYSUTCDATETIME(), 'migracion');");
+VALUES (''Alta'',  1, ''Naranja'', 0, 1, SYSUTCDATETIME(), ''migracion''),
+       (''Media'', 2, ''Azul'',    1, 1, SYSUTCDATETIME(), ''migracion''),
+       (''Baja'',  3, ''Gris'',    0, 1, SYSUTCDATETIME(), ''migracion''),
+       (''Q3'',    4, ''Verde'',   0, 1, SYSUTCDATETIME(), ''migracion'');
+');");
 
             // Nace aceptando nulos: hay que rellenarla antes de poder exigirla.
             migrationBuilder.AddColumn<int>(
@@ -69,18 +79,22 @@ VALUES ('Alta',  1, 'Naranja', 0, 1, SYSUTCDATETIME(), 'migracion'),
                 nullable: true);
 
             migrationBuilder.Sql(@"
+EXEC(N'
 UPDATE p
 SET    p.PrioridadId = c.Id
 FROM   Proyectos p
-JOIN   PrioridadesProyecto c ON c.Nombre = p.Prioridad;");
+JOIN   PrioridadesProyecto c ON c.Nombre = p.Prioridad;
+');");
 
             // Lo que no casó con ninguna fila —nulo, vacío, o un texto que nadie reconoce— va a
             // la predeterminada. Es preferible a dejarlo en nulo: la columna tiene que quedar
             // obligatoria y un proyecto sin prioridad no se puede listar.
             migrationBuilder.Sql(@"
+EXEC(N'
 UPDATE Proyectos
 SET    PrioridadId = (SELECT TOP 1 Id FROM PrioridadesProyecto WHERE EsPredeterminada = 1)
-WHERE  PrioridadId IS NULL;");
+WHERE  PrioridadId IS NULL;
+');");
 
             migrationBuilder.AlterColumn<int>(
                 name: "PrioridadId",
@@ -126,10 +140,12 @@ WHERE  PrioridadId IS NULL;");
             // revertir pierde información, y es la razón por la que esto no es un camino de ida
             // y vuelta gratis.
             migrationBuilder.Sql(@"
+EXEC(N'
 UPDATE p
-SET    p.Prioridad = CASE WHEN c.Nombre IN ('Alta','Media','Baja') THEN c.Nombre ELSE 'Media' END
+SET    p.Prioridad = CASE WHEN c.Nombre IN (''Alta'',''Media'',''Baja'') THEN c.Nombre ELSE ''Media'' END
 FROM   Proyectos p
-JOIN   PrioridadesProyecto c ON c.Id = p.PrioridadId;");
+JOIN   PrioridadesProyecto c ON c.Id = p.PrioridadId;
+');");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_Proyectos_PrioridadesProyecto_PrioridadId",
