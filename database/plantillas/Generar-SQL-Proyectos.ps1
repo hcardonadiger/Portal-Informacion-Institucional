@@ -15,6 +15,9 @@
     A diferencia de los scripts de carga anteriores, este sí escribe en BitacoraProyecto: una
     carga masiva que no deja rastro es indistinguible de una edición manual.
 
+    OJO: la nota de 2026-08-25 que sigue quedó vencida. Ver el bloque de 2026-09-18 más abajo,
+    junto al throw que hoy corta este script al arrancar.
+
     2026-08-25 — LO QUE CAMBIÓ CON LA EDT:
     · La hoja «Hitos» de la plantilla carga lo que el portal ahora llama ENTREGABLES, en la tabla
       ProyectoEntregables. La hoja conserva su nombre para no invalidar las plantillas ya
@@ -34,8 +37,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Archivo,
-    [string] $Servidor = 'localhost',
-    [string] $BaseDatos = 'DigerTramitesEstado',
+    [string] $Servidor = 'localhost\SQL2025',
+    [string] $BaseDatos = 'GestionGD_TEST',
     [string] $Usuario,
     [string] $Clave,
     [string] $Actor = 'Carga masiva (plantilla Excel)',
@@ -43,6 +46,35 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+<# 2026-09-18 — Este generador quedó atrás del modelo y NO se actualizó todavía.
+
+   Dos cosas lo dejaron fuera de fecha, y ninguna se nota leyendo el código de acá:
+
+   1. Escribe la columna «Proyectos.Prioridad», que ya no existe. La prioridad pasó a ser una
+      llave foránea al catálogo administrable PrioridadesProyecto, así que habría que resolver
+      el nombre contra esa tabla y escribir PrioridadId. Tal como está, el .sql que produce
+      falla con «Invalid column name 'Prioridad'».
+
+   2. La plantilla dejó de tener la hoja «Hitos»: ahora son «Entregables» y, colgando de ellos,
+      «Actividades» —un nivel que este script no conoce—. Además el avance salió de la hoja
+      Proyectos, porque lo calcula el árbol.
+
+   Se corta acá, y no más abajo, para no gastarle veinte minutos de validación a alguien antes
+   de decirle que el resultado no se va a poder correr. Mientras tanto la carga se hace a mano
+   desde el portal, que es como se está trabajando hoy. #>
+throw @'
+Generar-SQL-Proyectos.ps1 está desactualizado y no se puede usar todavía.
+
+La plantilla ya viene con la estructura nueva (Entregables + Actividades) y la prioridad pasó a
+ser un catálogo, pero este generador todavía escribe el modelo viejo: el .sql que produjera
+fallaría contra la base.
+
+Por ahora los proyectos llenados en la plantilla se cargan A MANO desde el portal.
+
+Para reactivarlo hay que: resolver la prioridad contra PrioridadesProyecto y escribir PrioridadId,
+leer la hoja Entregables en vez de Hitos, agregar el manejo de la hoja Actividades, y dejar de
+escribir AvancePct en Proyectos porque ahora lo calcula el arbol.
+'@
 
 $rutaEntrada = (Resolve-Path $Archivo).Path
 if (-not $Salida) {
@@ -120,7 +152,7 @@ function Read-Hoja([string] $Nombre) {
 
 Write-Host 'Leyendo la plantilla...' -ForegroundColor Cyan
 $filasProy = Read-Hoja 'Proyectos'
-$filasHito = Read-Hoja 'Hitos'
+$filasHito = Read-Hoja 'Entregables'
 $filasInt  = Read-Hoja 'Interesados'
 $filasRie  = Read-Hoja 'Riesgos'
 

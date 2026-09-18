@@ -1,15 +1,37 @@
 # Carga de proyectos desde Excel
 
-Dos pasos: se genera una plantilla, la llenan las áreas, y de vuelta se convierte en un script SQL
-que se revisa antes de correr contra la base.
+Se genera una plantilla y la llenan las áreas. Hoy lo que devuelven **se transcribe a mano** en el
+portal; más adelante habrá un botón de importar.
 
 ```
 Nueva-Plantilla-Proyectos.ps1  →  Plantilla_Importacion_Proyectos.xlsx
                                           ↓  (la llena el área)
-Generar-SQL-Proyectos.ps1      →  ../carga_proyectos_<fecha>.sql
-                                          ↓  (se revisa y se corre)
-                                        base
+                                   se captura a mano en el portal
 ```
+
+> **`Generar-SQL-Proyectos.ps1` está fuera de servicio.** Convertía la plantilla llena en un script
+> SQL, pero quedó atrás del modelo: escribe `Proyectos.Prioridad`, columna que desapareció cuando la
+> prioridad pasó a ser el catálogo administrable `PrioridadesProyecto`, y no conoce la hoja
+> `Actividades`. Se corta al arrancar con un mensaje que explica qué le falta. Volver a habilitarlo
+> es un trabajo aparte.
+
+## Un archivo por proyecto
+
+Lo normal es repartir un archivo por proyecto: una sola fila en la hoja `Proyectos` y el resto de las
+hojas referidas a ella. La columna `Ref` sigue existiendo para amarrarlas —use la misma en todas las
+filas—, y permite meter varios proyectos en un mismo archivo si a alguien le conviene.
+
+## Entregable y actividad
+
+Es la distinción que más se confunde, y la plantilla la separa en dos hojas porque el portal la
+separa en dos niveles:
+
+- **Entregable** = QUÉ se entrega. «Fichas técnicas de los 6 trámites».
+- **Actividad** = CÓMO se llega ahí. «Entrevistas con las ventanillas», «Validación con la contraparte».
+
+El avance se captura **solo en las actividades**. El del entregable es el promedio de las suyas y el
+del proyecto el promedio de los entregables, así que ni la hoja `Proyectos` ni la de `Entregables`
+tienen columna de avance: escribir un número ahí solo podía contradecir al calculado.
 
 ## 1. Generar la plantilla
 
@@ -27,7 +49,7 @@ Con autenticación SQL en vez de integrada:
 .\Nueva-Plantilla-Proyectos.ps1 -Usuario sa -Clave '***'
 ```
 
-## 2. Convertir la plantilla llena en SQL
+## 2. Convertir la plantilla llena en SQL (fuera de servicio)
 
 ```powershell
 .\Generar-SQL-Proyectos.ps1 -Archivo 'C:\ruta\llenada.xlsx' -Actor 'Su Nombre'
@@ -39,19 +61,19 @@ Valida primero. Si algo no cuadra **no escribe el .sql** y lista hoja, fila, col
 Hoja      Fila Columna       Problema
 Proyectos    5 Estado        «EnMarcha» no es un valor válido. Use uno de: Planificado, ...
 Proyectos    6 Ref           «P1» está repetida (ya se usó en la fila 5)
-Hitos        5 Ref proyecto  «P9» no aparece en la hoja Proyectos
+Entregables  5 Ref proyecto  «P9» no aparece en la hoja Proyectos
 ```
 
 Revise el `.sql` y córralo:
 
 ```powershell
-sqlcmd -S localhost -d DigerTramitesEstado -i ..\carga_proyectos_20260824_1543.sql
+sqlcmd -S localhostSQL2025 -d GestionGD_TEST -i ..\carga_proyectos_20260824_1543.sql
 ```
 
 ## Cosas que conviene saber
 
 **La columna `Ref` no existe en la base.** Es un identificador que inventa quien llena la plantilla
-(P1, P2…) y sirve solo para amarrar las hojas Hitos, Interesados y Riesgos con su proyecto. El
+(P1, P2…) y sirve solo para amarrar las hojas Entregables, Actividades, Interesados y Riesgos con su proyecto. El
 código real (`PRY-2026-27`) lo asigna el script, correlativo por año, igual que el portal.
 
 **La fila de ejemplo lleva `Ref = EJEMPLO`** y el generador la ignora. No hace falta borrarla.
@@ -66,13 +88,13 @@ necesite reacomodar algo entra por Revisar > Desproteger hoja. Con `-ClaveProtec
 le pone una, pero entonces hay que acordarse de ella — una plantilla protegida con clave olvidada
 no se recupera.
 
-**Es idempotente.** Los proyectos se reconocen por `Nombre`, los hitos e interesados por proyecto +
+**Es idempotente.** Los proyectos se reconocen por `Nombre`, los entregables e interesados por proyecto +
 nombre, y los riesgos por proyecto + descripción. Correr la misma carga dos veces actualiza; no
 duplica. Lo que sí queda dos veces es la entrada en `BitacoraProyecto`, y es a propósito: son dos
 cargas distintas y ambas ocurrieron.
 
 **Los interesados tienen que ser usuarios del portal, y el registro les da acceso.** Quien figure
-como interesado pasa a ver ese proyecto completo —ficha, hitos, bitácora, bloqueos, riesgos y
+como interesado pasa a ver ese proyecto completo —ficha, entregables, actividades, bitácora, riesgos y
 evidencia— aunque sea de otra institución, área o unidad. La hoja no es una lista de contactos: es
 a quién le está abriendo el proyecto. Por eso la columna es un correo elegido de la lista, y alguien
 sin cuenta (BID, PNUD, una cámara) no se puede registrar: primero hay que crearle el usuario.

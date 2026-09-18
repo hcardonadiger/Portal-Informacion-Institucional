@@ -16,8 +16,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Servidor = 'localhost',
-    [string] $BaseDatos = 'DigerTramitesEstado',
+    [string] $Servidor = 'localhost\SQL2025',
+    [string] $BaseDatos = 'GestionGD_TEST',
     [string] $Usuario,
     [string] $Clave,
     [string] $Salida = (Join-Path $PSScriptRoot 'Plantilla_Importacion_Proyectos.xlsx'),
@@ -62,14 +62,26 @@ $areas         = Get-Catalogo "SELECT a.Id + ' — ' + a.Nombre FROM Areas a ORD
 $unidades      = Get-Catalogo "SELECT u.Id + ' — ' + u.Nombre FROM Unidades u ORDER BY u.Nombre"
 $usuarios      = Get-Catalogo "SELECT u.Correo + ' — ' + u.Nombre FROM Usuarios u WHERE u.Activo = 1 ORDER BY u.Nombre"
 
+# 2026-09-18: la prioridad dejó de ser un enum del código y pasó a ser el catálogo administrable
+# PrioridadesProyecto, que se edita en Catálogos › Prioridades de proyectos. Por eso se lee de la
+# base como las instituciones y no se escribe acá: si alguien agrega «Q3», la próxima plantilla
+# que se genere ya la ofrece, sin tocar este archivo.
+$prioridades   = Get-Catalogo "SELECT Nombre FROM PrioridadesProyecto WHERE Activo = 1 ORDER BY Orden, Nombre"
+
 if (-not $instituciones) { throw 'El catálogo de instituciones vino vacío: revise la conexión.' }
+if (-not $prioridades)   { throw 'El catálogo de prioridades vino vacío: ¿ya corrió la migración CatalogoDePrioridadesDeProyecto?' }
 
 # Enums del dominio. Van literales a propósito: son parte del contrato con el código
 # (src/Domain/Enums/Enums.cs, RiesgoProyecto.cs, InteresadoProyecto.cs), no datos de la base,
 # y si alguno cambia tiene que cambiar acá también.
-$prioridades      = @('Alta', 'Media', 'Baja')
-$estadosProyecto  = @('Planificado', 'EnEjecucion', 'Suspendido', 'Cerrado', 'Cancelado')
-$estadosHito      = @('Pendiente', 'EnProceso', 'Completado', 'Cancelado')
+$estadosProyecto   = @('Planificado', 'EnEjecucion', 'Suspendido', 'Cerrado', 'Cancelado')
+$estadosEntregable = @('Pendiente', 'EnProceso', 'Completado', 'Cancelado')
+# La actividad no reusa los del entregable por concordancia: «Actividad: Completado» se lee como
+# un error de tipeo. Es la misma razón por la que el dominio tiene dos enums.
+$estadosActividad  = @('Pendiente', 'EnProceso', 'Completada', 'Cancelada')
+# Qué hace DIGER en el proyecto. Sin tilde: el valor se guarda como texto y ese texto es el
+# identificador de C#; el acento se lo pone el portal al mostrarlo.
+$acciones          = @('Acompanamiento', 'Digitalizacion', 'Soporte', 'Desarrollo')
 $niveles          = @('Alta', 'Media', 'Baja')
 $rolesInteresado  = @('Patrocinador', 'Ejecutor', 'ContraparteTecnica', 'Beneficiario', 'Regulador')
 $categoriasRiesgo = @('Tecnico', 'Institucional', 'Normativo', 'Financiero', 'Operativo', 'Externo')
@@ -244,8 +256,10 @@ $cat.Cells.Item(2, 1).Font.Color = $TEXTOGRIS
 
 $listas = [ordered]@{
     'lstPrioridad'    = @{ Titulo = 'Prioridad';        Datos = $prioridades }
+    'lstAccion'       = @{ Titulo = 'Acción';           Datos = $acciones }
     'lstEstadoProy'   = @{ Titulo = 'Estado proyecto';  Datos = $estadosProyecto }
-    'lstEstadoHito'   = @{ Titulo = 'Estado hito';      Datos = $estadosHito }
+    'lstEstadoEntr'   = @{ Titulo = 'Estado entregable'; Datos = $estadosEntregable }
+    'lstEstadoActiv'  = @{ Titulo = 'Estado actividad'; Datos = $estadosActividad }
     'lstNivel'        = @{ Titulo = 'Nivel';            Datos = $niveles }
     'lstRolInt'       = @{ Titulo = 'Rol interesado';   Datos = $rolesInteresado }
     'lstCatRiesgo'    = @{ Titulo = 'Categoría riesgo'; Datos = $categoriasRiesgo }
@@ -270,7 +284,7 @@ foreach ($nombre in $listas.Keys) {
     for ($i = 0; $i -lt $datos.Count; $i++) { $cat.Cells.Item(5 + $i, $col).Value2 = $datos[$i] }
     $cat.Columns.Item($col).ColumnWidth = 34
 
-    $letra = [char]([int][char]'A' + $col - 1)   # 12 listas: no se pasa de la columna Z
+    $letra = [char]([int][char]'A' + $col - 1)   # 14 listas: no se pasa de la columna Z
     $libro.Names.Add($nombre, "=Catalogos!`$$letra`$5:`$$letra`$$(4 + $datos.Count)") | Out-Null
     $col++
 }
@@ -282,46 +296,74 @@ $cat.Application.ActiveWindow.FreezePanes = $true
 # ── Hoja: Proyectos ──────────────────────────────────────────────────────────
 $hp = New-Hoja 'Proyectos'
 Set-Encabezado $hp 'Proyectos' `
-    'Una fila por proyecto. La Ref es un identificador que usted inventa (P1, P2…) y sirve para amarrar las hojas Hitos, Interesados y Riesgos: no se guarda en el sistema.' `
-    @('Ref *', 'Nombre *', 'Objetivo', 'Institución ejecutora *', 'Área', 'Unidad', 'Responsable (correo)', 'Prioridad *', 'Estado *', 'Inicio planificado', 'Fin planificado', 'Inicio real', 'Fin real', 'Avance %') `
-    @(1, 2, 4, 8, 9) `
-    @(8, 42, 52, 20, 26, 26, 30, 11, 14, 15, 15, 14, 14, 10)
+    'Normalmente una sola fila: se reparte un archivo por proyecto. La Ref («P1») amarra las demás hojas con esta, y no se guarda en el sistema; si llena varios proyectos acá, déle una Ref distinta a cada uno.' `
+    @('Ref *', 'Nombre *', 'Objetivo', 'Institución ejecutora *', 'Área', 'Unidad', 'Responsable (correo)', 'Prioridad *', 'Acción', 'Estado *', 'Inicio planificado', 'Fin planificado', 'Inicio real', 'Fin real') `
+    @(1, 2, 4, 8, 10) `
+    @(8, 42, 52, 20, 26, 26, 30, 11, 16, 14, 15, 15, 14, 14)
 
-Set-Ejemplo $hp @('EJEMPLO', 'SOL — Secretaría de Finanzas', 'Habilitar en la plataforma SOL los 6 trámites de mayor demanda de SEFIN.', 'DIGER', 'GOBDIG — GOBIERNO DIGITAL', 'DITRA — DIGITALIZACION DE TRAMITES', 'hcardona@diger.gob.hn', 'Alta', 'EnEjecucion', '2026-03-02', '2026-11-30', '2026-03-09', '', '35')
+Set-Ejemplo $hp @('EJEMPLO', 'SOL — Secretaría de Finanzas', 'Habilitar en la plataforma SOL los 6 trámites de mayor demanda de SEFIN.', 'DIGER', 'GOBDIG — GOBIERNO DIGITAL', 'DITRA — DIGITALIZACION DE TRAMITES', 'hcardona@diger.gob.hn', 'Alta', 'Digitalizacion', 'EnEjecucion', '2026-03-02', '2026-11-30', '2026-03-09', '')
 
 Set-Lista $hp 4  'lstInstitucion'
 Set-Lista $hp 5  'lstArea'
 Set-Lista $hp 6  'lstUnidad'
 Set-Lista $hp 7  'lstUsuario'
 Set-Lista $hp 8  'lstPrioridad'
-Set-Lista $hp 9  'lstEstadoProy'
-Set-Fecha $hp 10; Set-Fecha $hp 11; Set-Fecha $hp 12; Set-Fecha $hp 13
+Set-Lista $hp 9  'lstAccion'
+Set-Lista $hp 10 'lstEstadoProy'
+Set-Fecha $hp 11; Set-Fecha $hp 12; Set-Fecha $hp 13; Set-Fecha $hp 14
 
-$avance = $hp.Range($hp.Cells.Item(4, 14), $hp.Cells.Item($FILAS_VALIDACION, 14))
-$avance.Validation.Delete()
-$avance.Validation.Add(1, 1, 1, '0', '100') | Out-Null   # xlValidateWholeNumber, entre 0 y 100
-$avance.Validation.ErrorTitle = 'Avance fuera de rango'
-$avance.Validation.ErrorMessage = 'El avance es un entero de 0 a 100.'
+# El avance del proyecto ya no se declara acá: desde la reestructuración de entregables y
+# actividades lo calcula el árbol —promedio de las actividades, subido por los entregables— y
+# pedirlo en la plantilla solo daba pie a que el número escrito contradijera al calculado.
+# Se captura por actividad, en la hoja Actividades.
 
 # Las tres hojas siguientes validan su «Ref proyecto» contra esta columna, así que el nombre
 # tiene que existir antes de que alguna lo mencione: Excel rechaza una validación que apunte
 # a un nombre que todavía no definió.
 $libro.Names.Add('lstRefProyecto', "=Proyectos!`$A`$4:`$A`$$FILAS_VALIDACION") | Out-Null
 
-# ── Hoja: Hitos ──────────────────────────────────────────────────────────────
-$hh = New-Hoja 'Hitos'
-Set-Encabezado $hh 'Hitos' `
-    'Entregables del cronograma. La Ref proyecto tiene que existir en la hoja Proyectos. Si deja el Orden vacío se numeran en el orden en que aparecen acá.' `
-    @('Ref proyecto *', 'Orden', 'Hito *', 'Descripción', 'Fecha planificada', 'Fecha real', 'Estado *', 'Responsable (correo)') `
+# ── Hoja: Entregables ────────────────────────────────────────────────────────
+# Se llamaba «Hitos» hasta 2026-09-18. El nombre cambió con el modelo: un entregable ya no es un
+# punto en el calendario sino algo que se entrega, y cuelga de él una lista de actividades.
+$hh = New-Hoja 'Entregables'
+Set-Encabezado $hh 'Entregables' `
+    'QUÉ se entrega. La Ref proyecto tiene que existir en la hoja Proyectos. Si deja el Orden vacío se numeran en el orden en que aparecen acá. El avance del entregable no se escribe: sale de sus actividades.' `
+    @('Ref proyecto *', 'Orden', 'Entregable *', 'Descripción', 'Fecha planificada', 'Fecha real', 'Estado *', 'Responsable (correo)') `
     @(1, 3, 7) `
     @(14, 8, 46, 54, 17, 15, 13, 30)
 
 Set-Ejemplo $hh @('EJEMPLO','1', 'Levantamiento de los 6 trámites', 'Fichas técnicas validadas con la contraparte de SEFIN.', '2026-04-15', '2026-04-22', 'Completado', 'hcardona@diger.gob.hn')
 
 Set-Lista $hh 1 'lstRefProyecto'
-Set-Lista $hh 7 'lstEstadoHito'
+Set-Lista $hh 7 'lstEstadoEntr'
 Set-Lista $hh 8 'lstUsuario'
 Set-Fecha $hh 5; Set-Fecha $hh 6
+
+# La hoja Actividades valida su «Entregable» contra esta columna, así que el nombre tiene que
+# existir antes de que aquélla lo mencione.
+$libro.Names.Add('lstEntregable', "=Entregables!`$C`$4:`$C`$$FILAS_VALIDACION") | Out-Null
+
+# ── Hoja: Actividades ────────────────────────────────────────────────────────
+$ha = New-Hoja 'Actividades'
+Set-Encabezado $ha 'Actividades' `
+    'CÓMO se llega al entregable. Es el nivel donde se reporta el avance: el porcentaje del entregable es el promedio de sus actividades, y el del proyecto el promedio de los entregables. «Depende de» es el nombre de otra actividad del mismo entregable que tiene que terminar antes.' `
+    @('Ref proyecto *', 'Entregable *', 'Orden', 'Actividad *', 'Descripción', 'Responsable (correo)', 'Inicio planificado', 'Fin planificado', 'Estado *', 'Avance %', 'Inicio real', 'Fin real', 'Depende de') `
+    @(1, 2, 4, 9) `
+    @(14, 46, 8, 46, 50, 30, 17, 16, 14, 10, 14, 14, 40)
+
+Set-Ejemplo $ha @('EJEMPLO', 'Levantamiento de los 6 trámites', '1', 'Entrevistas con las ventanillas de SEFIN', 'Tres sesiones, una por ventanilla.', 'hcardona@diger.gob.hn', '2026-04-01', '2026-04-10', 'Completada', '100', '2026-04-01', '2026-04-09', '')
+
+Set-Lista $ha 1 'lstRefProyecto'
+Set-Lista $ha 2 'lstEntregable'
+Set-Lista $ha 6 'lstUsuario'
+Set-Lista $ha 9 'lstEstadoActiv'
+Set-Fecha $ha 7; Set-Fecha $ha 8; Set-Fecha $ha 11; Set-Fecha $ha 12
+
+$avance = $ha.Range($ha.Cells.Item(4, 10), $ha.Cells.Item($FILAS_VALIDACION, 10))
+$avance.Validation.Delete()
+$avance.Validation.Add(1, 1, 1, '0', '100') | Out-Null   # xlValidateWholeNumber, entre 0 y 100
+$avance.Validation.ErrorTitle = 'Avance fuera de rango'
+$avance.Validation.ErrorMessage = 'El avance es un entero de 0 a 100.'
 
 # ── Hoja: Interesados ────────────────────────────────────────────────────────
 $hi = New-Hoja 'Interesados'
@@ -367,13 +409,19 @@ $lineas = @(
     @('S', 'Portafolio de Gobierno Digital · generada el ' + (Get-Date -Format 'dd/MM/yyyy')),
     @('', ''),
     @('H', 'Qué llenar'),
-    @('P', 'Cuatro hojas: Proyectos, Hitos, Interesados y Riesgos. Solo la primera es obligatoria — un proyecto sin hitos, sin interesados y sin riesgos se importa igual.'),
+    @('P', 'Cinco hojas: Proyectos, Entregables, Actividades, Interesados y Riesgos. Solo la primera es obligatoria — un proyecto sin lo demás se carga igual, aunque queda sin cronograma.'),
+    @('P', 'Normalmente se llena UN proyecto por archivo: una sola fila en la hoja Proyectos, y el resto de las hojas referidas a ella.'),
     @('P', 'Los encabezados en amarillo con asterisco son obligatorios. Los demás pueden quedar vacíos.'),
-    @('P', 'Cada hoja trae una fila de ejemplo en gris, con la Ref «EJEMPLO». Puede borrarla o dejarla: el importador ignora toda fila cuya Ref sea EJEMPLO.'),
+    @('P', 'Cada hoja trae una fila de ejemplo en gris, con la Ref «EJEMPLO». Puede borrarla o dejarla: se ignora toda fila cuya Ref sea EJEMPLO.'),
+    @('', ''),
+    @('H', 'Entregable y actividad no son lo mismo'),
+    @('P', 'El ENTREGABLE es QUÉ se entrega: «Fichas técnicas de los 6 trámites». La ACTIVIDAD es CÓMO se llega a él: «Entrevistas con las ventanillas», «Validación con la contraparte».'),
+    @('P', 'Es la distinción que más se confunde. Si lo que escribió se puede entregar y revisar, es un entregable; si es trabajo que hay que hacer para llegar ahí, es una actividad.'),
+    @('P', 'El avance se reporta SOLO en las actividades. El del entregable es el promedio de las suyas, y el del proyecto el promedio de los entregables: por eso no hay columna de avance ni en Proyectos ni en Entregables.'),
     @('', ''),
     @('H', 'La columna «Ref»'),
-    @('P', 'Es un identificador que usted inventa (P1, P2, P3…) para amarrar los hitos, interesados y riesgos con su proyecto. No se guarda en el sistema: existe solo dentro de este archivo.'),
-    @('P', 'El código real del proyecto (PRY-2026-27) lo asigna el portal al importar. No lo escriba usted.'),
+    @('P', 'Es un identificador que usted inventa («P1») para amarrar las demás hojas con su proyecto. No se guarda en el sistema: existe solo dentro de este archivo. Si llena un solo proyecto, use la misma Ref en todas las filas.'),
+    @('P', 'El código real del proyecto (PRY-2026-27) lo asigna el portal. No lo escriba usted.'),
     @('', ''),
     @('H', 'Institución ejecutora'),
     @('P', 'Es quién EJECUTA el proyecto, no de quién trata. «SOL — CONSUCOOP» lo ejecuta DIGER, así que va DIGER. Esta columna decide quién puede ver el proyecto en el portal: si pone otra institución, DIGER deja de verlo.'),
@@ -381,11 +429,11 @@ $lineas = @(
     @('', ''),
     @('H', 'Formatos'),
     @('P', 'Fechas: año-mes-día (2026-11-30). Las celdas ya vienen con ese formato.'),
-    @('P', 'Avance: número entero de 0 a 100, sin el signo de porcentaje.'),
+    @('P', 'Avance: número entero de 0 a 100, sin el signo de porcentaje. Solo en la hoja Actividades.'),
     @('P', 'Responsable e interesados: elíjalos de la lista desplegable, que trae los correos de los usuarios activos del portal. Si la persona no aparece, hay que crearle el usuario antes de importar.'),
     @('', ''),
     @('H', 'Los interesados dan acceso'),
-    @('P', 'Quien figure como interesado PASA A VER ese proyecto completo —ficha, hitos, bitácora, bloqueos, riesgos y evidencia— aunque sea de otra institución, área o unidad. No es una lista de contactos: es a quién le está abriendo el proyecto.'),
+    @('P', 'Quien figure como interesado PASA A VER ese proyecto completo —ficha, entregables, actividades, bitácora, riesgos y evidencia— aunque sea de otra institución, área o unidad. No es una lista de contactos: es a quién le está abriendo el proyecto.'),
     @('P', 'Por eso solo se admiten usuarios del portal. Un organismo sin cuenta (BID, PNUD, una cámara) no se puede registrar como interesado; si hace falta, primero se le crea el usuario.'),
     @('', ''),
     @('H', 'Listas desplegables'),
