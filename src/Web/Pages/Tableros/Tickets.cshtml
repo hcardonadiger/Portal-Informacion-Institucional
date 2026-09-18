@@ -5,13 +5,23 @@
     ViewData["Title"] = "Tablero de Tickets";
     var d = Model.Data;
     var estados = Enum.GetValues<EstadoTicket>();
-    var prioridades = Enum.GetValues<PrioridadTicket>();
     var t = d.TendenciaCreados;
     string flecha = t.Delta > 0 ? "▲" : t.Delta < 0 ? "▼" : "▬";
     string trendColor = t.Delta > 0 ? "#a32d2d" : t.Delta < 0 ? "#0f6e56" : "#6b7fa3";
     // datos para charts
     var estadoRutas = estados.Select(e => e.ToString()).ToArray();
-    var prioRutas = prioridades.Select(p => p.ToString()).ToArray();
+    // El drill-down baja por Id: con el catálogo el nombre lo edita quien administra, y un
+    // enlace armado con el nombre se rompería al primer cambio.
+    var prioRutas = d.PorPrioridad.Select(p => p.Id).ToArray();
+    // Los colores salen del catálogo, no de una lista fija de cuatro: ahora puede haber más.
+    string HexColor(ColorEtiqueta c) => c switch
+    {
+        ColorEtiqueta.Rojo    => "#c62828",
+        ColorEtiqueta.Naranja => "#d85a30",
+        ColorEtiqueta.Azul    => "#378add",
+        ColorEtiqueta.Verde   => "#3f7d20",
+        _                     => "#888780"
+    };
     var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
 }
 
@@ -138,7 +148,7 @@
   new Chart(document.getElementById('chPrioridad'), {
     type: 'doughnut',
     data: { labels: @J(d.PorPrioridad.Select(x => x.Etiqueta)),
-      datasets: [{ data: @J(d.PorPrioridad.Select(x => x.Cantidad)), backgroundColor: ['#888780','#378add','#d85a30','#c62828'] }] },
+      datasets: [{ data: @J(d.PorPrioridad.Select(x => x.Cantidad)), backgroundColor: @J(d.PorPrioridad.Select(x => HexColor(x.Color))) }] },
     options: { responsive: true, maintainAspectRatio: false, onClick: function(e,els){ if(els.length) drill('/Tickets/Index','prioridad',prioRutas[els[0].index]); } }
   });
 

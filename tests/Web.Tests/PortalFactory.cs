@@ -45,6 +45,13 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
     /// </summary>
     public const int PrioridadPorDefecto = 2;
 
+    /// <summary>
+    /// Id de «Media» en el catálogo de prioridades de ticket. Es 3 y no 2 porque ese catálogo va
+    /// ordenado de lo urgente a lo leve —Crítica, Alta, Media, Baja— y el sembrado respeta ese
+    /// orden. <see cref="PrepararAsync"/> lo verifica.
+    /// </summary>
+    public const int PrioridadTicketPorDefecto = 3;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -133,6 +140,23 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
             if (media.Id != PrioridadPorDefecto)
                 throw new InvalidOperationException(
                     $"El sembrado dejó «Media» con Id {media.Id} y las pruebas esperan {PrioridadPorDefecto}.");
+        }
+
+        // Lo mismo para los tickets, que tienen su propio catálogo.
+        if (!await db.PrioridadesTicket.AnyAsync())
+        {
+            var critica = PrioridadTicket.Crear("Critica", 1, ColorEtiqueta.Rojo, esCritica: true);
+            var alta    = PrioridadTicket.Crear("Alta",    2, ColorEtiqueta.Naranja);
+            var mediaTk = PrioridadTicket.Crear("Media",   3, ColorEtiqueta.Azul);
+            var baja    = PrioridadTicket.Crear("Baja",    4, ColorEtiqueta.Gris);
+            mediaTk.FijarPredeterminada(true);
+
+            db.PrioridadesTicket.AddRange(critica, alta, mediaTk, baja);
+            await db.SaveChangesAsync();
+
+            if (mediaTk.Id != PrioridadTicketPorDefecto)
+                throw new InvalidOperationException(
+                    $"El sembrado dejó «Media» de tickets con Id {mediaTk.Id} y las pruebas esperan {PrioridadTicketPorDefecto}.");
         }
 
         // Usuarios reales: varias páginas (Perfil, por ejemplo) consultan al usuario de la

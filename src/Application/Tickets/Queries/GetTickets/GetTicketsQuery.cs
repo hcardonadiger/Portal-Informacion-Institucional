@@ -4,7 +4,7 @@ namespace Diger.TramitesEstado.Application.Tickets.Queries.GetTickets;
 
 public sealed record GetTicketsQuery(
     EstadoTicket? Estado = null,
-    PrioridadTicket? Prioridad = null,
+    int? PrioridadId = null,
     string? InstitucionId = null,
     Guid? AsignadoAId = null,
     string? Q = null,
@@ -23,7 +23,7 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext ctx)
         var baseq = ctx.Tickets
             .AsNoTracking()
             .Where(t => query.Estado == null || t.Estado == query.Estado)
-            .Where(t => query.Prioridad == null || t.Prioridad == query.Prioridad)
+            .Where(t => query.PrioridadId == null || t.PrioridadId == query.PrioridadId)
             .Where(t => query.InstitucionId == null || t.InstitucionId == query.InstitucionId)
             .Where(t => query.AsignadoAId == null || t.AsignadoAId == query.AsignadoAId);
 
@@ -49,14 +49,15 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext ctx)
 
         var total = await baseq.CountAsync(ct);
         var raw = await baseq
-            // Abiertos primero, luego por prioridad (Crítica→Baja) y más recientes
+            // Abiertos primero, luego por el orden del catálogo de prioridades y más recientes
             .OrderBy(t => t.Estado == EstadoTicket.Cerrado || t.Estado == EstadoTicket.Resuelto)
-            .ThenByDescending(t => t.Prioridad)
+            .ThenBy(t => t.PrioridadRef!.Orden)
             .ThenByDescending(t => t.CreatedAt)
             .Skip((page - 1) * size).Take(size)
             .Select(t => new
             {
-                t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad,
+                t.Id, t.Numero, t.Titulo, t.Estado,
+                t.PrioridadId, Prioridad = t.PrioridadRef!.Nombre, PrioridadColor = t.PrioridadRef.Color,
                 Tema = t.TemaRef != null ? t.TemaRef.Nombre : null,
                 t.TemaOtro,
                 Horas = t.TemaRef != null ? (int?)t.TemaRef.HorasResolucion : null,
@@ -66,7 +67,9 @@ public sealed class GetTicketsQueryHandler(IApplicationDbContext ctx)
 
         // El indicador de vencido para mostrar se calcula en memoria (hora actual).
         var items = raw.Select(t => new TicketListItemDto(
-                t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad, t.Tema, t.TemaOtro, t.Horas,
+                t.Id, t.Numero, t.Titulo, t.Estado,
+                t.PrioridadId, t.Prioridad, t.PrioridadColor,
+                t.Tema, t.TemaOtro, t.Horas,
                 TicketSla.Vencido(t.Estado, t.Horas, t.CreatedAt),
                 t.Institucion, t.AsignadoA, t.CreatedAt, t.NumComentarios))
             .ToList();

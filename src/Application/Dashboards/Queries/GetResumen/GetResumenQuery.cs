@@ -28,7 +28,7 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
         var ticketsAbiertos   = await tickets.CountAsync(t => t.Estado == EstadoTicket.Abierto, ct);
         var ticketsEnProgreso = await tickets.CountAsync(t => t.Estado == EstadoTicket.EnProgreso, ct);
         var ticketsCriticos   = await tickets.CountAsync(t =>
-            t.Prioridad == PrioridadTicket.Critica &&
+            t.PrioridadRef!.EsCritica &&
             (t.Estado == EstadoTicket.Abierto || t.Estado == EstadoTicket.EnProgreso), ct);
 
         var ticketsResueltos = await tickets.CountAsync(t => t.Estado == EstadoTicket.Resuelto, ct);

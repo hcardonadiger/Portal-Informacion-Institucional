@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Tickets.Prioridades;
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
 
 [Authorize]
@@ -10,7 +11,10 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
 
     public EstadoTicket?    Estado    { get; private set; }
-    public PrioridadTicket? Prioridad { get; private set; }
+    public int?             PrioridadId { get; private set; }
+
+    /// <summary>Opciones del catálogo para el filtro.</summary>
+    public IReadOnlyList<OpcionPrioridadTicketDto> Prioridades { get; private set; } = [];
     public string?             InstitucionId { get; private set; }
     public bool             Mias      { get; private set; }
     public bool             MisTemas  { get; private set; }
@@ -23,9 +27,10 @@ public sealed class IndexModel(ISender sender, IInstitucionRepository institucio
     public bool             EsTecnicoRestringido { get; private set; }
     public string           Vista     { get; private set; } = "temas"; // "temas" | "mios"
 
-    public async Task OnGetAsync(EstadoTicket? estado, PrioridadTicket? prioridad, string? institucionId, bool mias, bool misTemas, bool soloVencidos, string? vista, string? q, int? pg, CancellationToken ct)
+    public async Task OnGetAsync(EstadoTicket? estado, int? prioridad, string? institucionId, bool mias, bool misTemas, bool soloVencidos, string? vista, string? q, int? pg, CancellationToken ct)
     {
-        Estado = estado; Prioridad = prioridad; InstitucionId = institucionId; SoloVencidos = soloVencidos; Q = q;
+        Estado = estado; PrioridadId = prioridad; InstitucionId = institucionId; SoloVencidos = soloVencidos; Q = q;
+        Prioridades = await sender.Send(new GetOpcionesPrioridadTicketQuery(prioridad), ct);
         Instituciones = await institucionRepo.GetAllActivasAsync(ct);
 
         // "No es jefatura" ⇒ alcance restringido. Lo decide la capacidad EsSupervisor del

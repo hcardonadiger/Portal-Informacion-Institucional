@@ -42,6 +42,7 @@ public sealed class AppDbContext(
     public DbSet<TicketComentario>         TicketComentarios  { get; init; } = default!;
     public DbSet<CategoriaTicket>          CategoriasTicket   { get; init; } = default!;
     public DbSet<TemaTicket>               TemasTicket        { get; init; } = default!;
+    public DbSet<PrioridadTicket>          PrioridadesTicket  { get; init; } = default!;
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
     public DbSet<Rol>                      Roles                { get; init; } = default!;
@@ -1033,7 +1034,6 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
         b.Property(x => x.Descripcion).HasMaxLength(4000);
         b.Property(x => x.TemaOtro).HasMaxLength(200);
-        b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Institucion).HasMaxLength(120);
         b.Property(x => x.ExpedienteCodigo).HasMaxLength(40);
@@ -1047,6 +1047,12 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         b.HasIndex(x => x.Numero).IsUnique();
         b.HasIndex(x => x.Estado);
         b.HasIndex(x => x.CreatedAt);
+        b.HasIndex(x => x.PrioridadId);
+
+        // El ticket apunta al catálogo de prioridades. Restrict y no Cascade: borrar una
+        // prioridad no puede llevarse por delante los tickets que la tienen.
+        b.HasOne(x => x.PrioridadRef).WithMany()
+            .HasForeignKey(x => x.PrioridadId).OnDelete(DeleteBehavior.Restrict);
 
         b.HasOne<Institucion>().WithMany()
             .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.SetNull);
@@ -1194,6 +1200,25 @@ public sealed class CategoriaTicketConfiguration : IEntityTypeConfiguration<Cate
         b.Property(x => x.Nombre).HasMaxLength(80).IsRequired();
         b.Property(x => x.Activo).HasDefaultValue(true);
         b.HasIndex(x => x.Nombre).IsUnique();
+    }
+}
+
+public sealed class PrioridadTicketConfiguration : IEntityTypeConfiguration<PrioridadTicket>
+{
+    public void Configure(EntityTypeBuilder<PrioridadTicket> b)
+    {
+        b.ToTable("PrioridadesTicket");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(40).IsRequired();
+        b.Property(x => x.Color).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Orden).HasDefaultValue(0);
+        b.Property(x => x.Activo).HasDefaultValue(true);
+        b.Property(x => x.EsPredeterminada).HasDefaultValue(false);
+        b.Property(x => x.EsCritica).HasDefaultValue(false);
+        b.HasIndex(x => x.Nombre).IsUnique();
+        // Ordenar por Orden es lo que hace toda pantalla que la muestre.
+        b.HasIndex(x => x.Orden);
     }
 }
 

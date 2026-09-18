@@ -117,7 +117,8 @@ public sealed class GetVinculosProyectoQueryHandler(IApplicationDbContext ctx)
         var ticketIds = vTickets.Select(x => x.TicketId).ToList();
         var tickets = await ctx.Tickets.AsNoTracking()
             .Where(t => ticketIds.Contains(t.Id))
-            .Select(t => new { t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad, t.AsignadoA, t.CreatedAt })
+            .Select(t => new { t.Id, t.Numero, t.Titulo, t.Estado,
+                               Prioridad = t.PrioridadRef!.Nombre, t.AsignadoA, t.CreatedAt })
             .ToDictionaryAsync(t => t.Id, ct);
 
         var filasReuniones = vReuniones
@@ -151,7 +152,7 @@ public sealed class GetVinculosProyectoQueryHandler(IApplicationDbContext ctx)
             {
                 var t = tickets[v.TicketId];
                 return new TicketVinculadoDto(
-                    v.Id, t.Id, t.Numero, t.Titulo, t.Estado.ToString(), t.Prioridad.ToString(),
+                    v.Id, t.Id, t.Numero, t.Titulo, t.Estado.ToString(), t.Prioridad,
                     t.AsignadoA, t.CreatedAt, v.Nota, v.VinculadoPor, v.VinculadoEn);
             })
             // Los abiertos primero: en un ticket cerrado ya no hay nada que hacer y su lugar es

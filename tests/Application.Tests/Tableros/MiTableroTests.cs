@@ -33,6 +33,7 @@ public class MiTableroTests : IDisposable
 
         // Sembrar ticket donde fakeUser es reportante
         var t = Ticket.Crear("TCK-2026-0001", "Falla en sistema");
+        t.PrioridadId = PrioridadesTicketDePrueba.Media(_ctx);
         t.EstablecerReportante("User Name", fakeUser.Correo, "+504 99998888");
         _ctx.Tickets.Add(t);
 

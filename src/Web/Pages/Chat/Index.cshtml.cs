@@ -167,7 +167,7 @@ public sealed class IndexModel(
             Titulo        = tituloRaw[..Math.Min(200, tituloRaw.Length)],
             Descripcion   = desc,
             TemaId        = detalle.Sesion.TemaId,
-            Prioridad     = PrioridadTicket.Media,
+            // Sin prioridad elegida: el comando resuelve la predeterminada del catálogo.
             InstitucionId = currentUser.ActiveInstitucionId,
         };
 

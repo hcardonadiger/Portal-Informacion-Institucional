@@ -184,6 +184,7 @@ public interface IApplicationDbContext
     DbSet<TicketComentario>         TicketComentarios { get; }
     DbSet<CategoriaTicket>          CategoriasTicket { get; }
     DbSet<TemaTicket>               TemasTicket   { get; }
+    DbSet<PrioridadTicket>          PrioridadesTicket { get; }
     DbSet<UsuarioTema>              UsuarioTemas  { get; }
     DbSet<RolModuloAcceso>          RolModuloAccesos { get; }
     DbSet<Rol>                      Roles            { get; }

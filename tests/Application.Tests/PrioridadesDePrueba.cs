@@ -43,3 +43,35 @@ internal static class PrioridadesDePrueba
     /// <summary>Atajo para el caso común: «denme una prioridad válida para este proyecto».</summary>
     public static int Media(AppDbContext ctx) => Sembrar(ctx).Media;
 }
+
+/// <summary>Los cuatro identificadores del catálogo de prioridades de ticket.</summary>
+internal sealed record CatalogoPrioridadesTicket(int Critica, int Alta, int Media, int Baja);
+
+/// <summary>
+/// El equivalente de <see cref="PrioridadesDePrueba"/> para los tickets. Va aparte porque los dos
+/// catálogos son independientes: el de tickets tiene «Crítica» y la marca que alimenta el
+/// indicador de los tableros.
+/// </summary>
+internal static class PrioridadesTicketDePrueba
+{
+    public static CatalogoPrioridadesTicket Sembrar(AppDbContext ctx)
+    {
+        if (!ctx.PrioridadesTicket.Any())
+        {
+            var critica = PrioridadTicket.Crear("Critica", 1, ColorEtiqueta.Rojo, esCritica: true);
+            var alta    = PrioridadTicket.Crear("Alta",    2, ColorEtiqueta.Naranja);
+            var media   = PrioridadTicket.Crear("Media",   3, ColorEtiqueta.Azul);
+            var baja    = PrioridadTicket.Crear("Baja",    4, ColorEtiqueta.Gris);
+            media.FijarPredeterminada(true);
+
+            ctx.PrioridadesTicket.AddRange(critica, alta, media, baja);
+            ctx.SaveChanges();
+        }
+
+        var filas = ctx.PrioridadesTicket.AsNoTracking().ToDictionary(p => p.Nombre, p => p.Id);
+        return new CatalogoPrioridadesTicket(filas["Critica"], filas["Alta"], filas["Media"], filas["Baja"]);
+    }
+
+    /// <summary>Atajo: «denme una prioridad válida para este ticket».</summary>
+    public static int Media(AppDbContext ctx) => Sembrar(ctx).Media;
+}

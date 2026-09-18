@@ -9,7 +9,8 @@ public sealed class TicketFormDto
     public string?         Descripcion { get; set; }
     public int?            TemaId      { get; set; } // tema/categoría del catálogo administrable
     public string?         TemaOtro    { get; set; }
-    public PrioridadTicket Prioridad   { get; set; } = PrioridadTicket.Media;
+    /// <summary>Id del catálogo PrioridadTicket. 0 = la predeterminada, que resuelve el comando.</summary>
+    public int             PrioridadId { get; set; }
 
     public string? InstitucionId { get; set; }
     public int? ExpedienteId  { get; set; }
@@ -19,7 +20,8 @@ public sealed class TicketFormDto
 }
 
 public sealed record TicketListItemDto(
-    int Id, string Numero, string Titulo, EstadoTicket Estado, PrioridadTicket Prioridad,
+    int Id, string Numero, string Titulo, EstadoTicket Estado,
+    int PrioridadId, string Prioridad, ColorEtiqueta PrioridadColor,
     string? Tema, string? TemaOtro, int? HorasSla, bool SlaVencido, string? Institucion, string? AsignadoA,
     DateTime FechaCreacion, int NumComentarios);
 
@@ -33,7 +35,8 @@ public sealed record AdjuntoDto(int Id, int? ComentarioId, string Nombre, string
 public sealed record TicketDetailDto(
     int Id, string Numero, string Titulo, string? Descripcion,
     string? InstitucionId, string? Institucion, int? ExpedienteId, string? ExpedienteCodigo,
-    int? TemaId, string? Tema, string? TemaOtro, int? HorasSla, PrioridadTicket Prioridad, EstadoTicket Estado,
+    int? TemaId, string? Tema, string? TemaOtro, int? HorasSla,
+    int PrioridadId, string Prioridad, ColorEtiqueta PrioridadColor, EstadoTicket Estado,
 
     string? ReportanteNombre, string? ReportanteCorreo, string? ReportanteTelefono,
     Guid? AsignadoAId, string? AsignadoA, DateTime? FechaResolucion, string? NotaResolucion,

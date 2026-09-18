@@ -45,10 +45,12 @@ public sealed class VinculosTicketProyectoTests : IAsyncLifetime
         db.Proyectos.Add(proyecto);
 
         var propio = Ticket.Crear("TCK-2026-0001", "No carga el listado de expedientes");
+        propio.PrioridadId = PortalFactory.PrioridadTicketPorDefecto;
         propio.InstitucionId = "DIGER";
 
         // El ajeno es de otra institución: el proyecto sí se ve, el ticket no.
         var ajeno = Ticket.Crear("TCK-2026-0002", "Incidencia reservada de CONSUCOOP");
+        ajeno.PrioridadId = PortalFactory.PrioridadTicketPorDefecto;
         ajeno.InstitucionId = "CONSUCOOP";
 
         db.Tickets.AddRange(propio, ajeno);

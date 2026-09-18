@@ -51,6 +51,7 @@ public sealed class CatalogosTests : IAsyncLifetime
         html.Should().Contain(@"href=""/Areas""");
         html.Should().Contain(@"href=""/Unidades""");
         html.Should().Contain(@"href=""/Catalogos/Prioridades""");
+        html.Should().Contain(@"href=""/Catalogos/PrioridadesTicket""");
         html.Should().Contain(@"href=""/Tickets/Temas""");
     }
 
@@ -160,6 +161,42 @@ public sealed class CatalogosTests : IAsyncLifetime
         // Se queda en la página con el motivo a la vista, no redirige como si hubiera funcionado.
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         (await r.Content.ReadAsStringAsync()).Should().Contain("Ya existe una prioridad llamada");
+    }
+
+    // ── Catálogo de prioridades de ticket ─────────────────────────
+    [Fact]
+    public async Task La_pantalla_de_tickets_lista_su_propio_catalogo()
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Catalogos/PrioridadesTicket");
+
+        html.Should().Contain("Critica");
+        html.Should().Contain("Cuenta como crítica",
+            "la marca que alimenta el indicador de los tableros tiene que ser visible y editable");
+    }
+
+    [Fact]
+    public async Task Crear_una_prioridad_de_ticket_marcada_como_critica()
+    {
+        var cliente = _portal.ClienteComo("Administrador");
+        var html = await cliente.GetStringAsync("/Catalogos/PrioridadesTicket");
+        var token = Regex.Match(html,
+            """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;
+
+        var r = await cliente.PostAsync("/Catalogos/PrioridadesTicket?handler=Crear", new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("__RequestVerificationToken", token),
+            new KeyValuePair<string, string>("Nombre", "Bloqueante"),
+            new KeyValuePair<string, string>("Orden", "0"),
+            new KeyValuePair<string, string>("Color", "5"),   // Rojo
+            new KeyValuePair<string, string>("EsCritica", "true")
+        ]));
+
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var creada = await db.PrioridadesTicket.SingleAsync(p => p.Nombre == "Bloqueante");
+        creada.EsCritica.Should().BeTrue();
     }
 
     private async Task<(HttpClient Cliente, string Token)> PantallaAsync()

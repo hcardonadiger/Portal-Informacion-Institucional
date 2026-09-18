@@ -38,7 +38,8 @@ public sealed record ResumenDto(
     IReadOnlyList<AnalistaAvanceDto> DigPorAnalista);
 
 public sealed record ResumenTicketDto(
-    int Id, string Numero, string Titulo, EstadoTicket Estado, PrioridadTicket Prioridad, string? Institucion);
+    int Id, string Numero, string Titulo, EstadoTicket Estado,
+    string Prioridad, ColorEtiqueta PrioridadColor, string? Institucion);
 
 public sealed record SemaforoInstitucionDto(
     string Institucion, int Expedientes,
@@ -51,7 +52,7 @@ public sealed record TicketsDashboardDto(
     int SlaVencidos,
     TendenciaDto TendenciaCreados,
     IReadOnlyList<ConteoDto> PorEstado,
-    IReadOnlyList<ConteoDto> PorPrioridad,
+    IReadOnlyList<ConteoPrioridadDto> PorPrioridad,
     IReadOnlyList<ConteoDto> PorCategoria,
     IReadOnlyList<ConteoDto> PorTema,
     IReadOnlyList<ConteoDto> PorInstitucion,
@@ -59,8 +60,16 @@ public sealed record TicketsDashboardDto(
     IReadOnlyList<SerieMensualDto> ResueltosPorMes,
     IReadOnlyList<TicketAntiguedadDto> AbiertosAntiguos);
 
+/// <summary>
+/// Una barra del gráfico de prioridades. Lleva el Id además del rótulo porque al hacer clic se
+/// baja al listado filtrado, y ese filtro va por Id: con el catálogo, el nombre lo edita quien
+/// administra y un enlace armado con el nombre se rompería al primer cambio.
+/// </summary>
+public sealed record ConteoPrioridadDto(int Id, string Etiqueta, int Cantidad, ColorEtiqueta Color);
+
 public sealed record TicketAntiguedadDto(
-    int Id, string Numero, string Titulo, string? Institucion, int DiasAbierto, PrioridadTicket Prioridad);
+    int Id, string Numero, string Titulo, string? Institucion, int DiasAbierto,
+    string Prioridad, ColorEtiqueta PrioridadColor);
 
 // ── Expedientes ───────────────────────────────────────────────────────────
 public sealed record ExpedientesDashboardDto(

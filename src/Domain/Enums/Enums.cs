@@ -136,13 +136,8 @@ public enum EstadoTicket
     Cerrado    = 4
 }
 
-public enum PrioridadTicket
-{
-    Baja    = 1,
-    Media   = 2,
-    Alta    = 3,
-    Critica = 4
-}
+// La prioridad del ticket dejó de ser un enum fijo: ahora es el catálogo administrable
+// PrioridadTicket (con orden, color, predeterminada y marca de crítica), en Domain.Entities.
 
 // La categoría/tema del ticket dejó de ser un enum fijo: ahora es el catálogo
 // administrable TemaTicket (con SLA en horas), asignable a especialistas.

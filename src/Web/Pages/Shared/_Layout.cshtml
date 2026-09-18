@@ -257,7 +257,8 @@
                             var puedeAreas         = await Acceso.PuedeAsync("Areas");
                             var puedeUnidades      = await Acceso.PuedeAsync("Unidades");
                             var puedeTemasTicket   = await Acceso.PuedeClaveAsync("Tickets.Temas.Editar");
-                            var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar");
+                            var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar")
+                                                  || await Acceso.PuedeClaveAsync("Prioridades.Tickets.Editar");
                         }
                         @if (puedeInstituciones || puedeAreas || puedeUnidades || puedeTemasTicket
                              || puedePrioridades)
