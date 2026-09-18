@@ -6224,3 +6224,62 @@ textarea.form-control { resize: vertical; }
     font-family: inherit; white-space: nowrap;
 }
 .vinc-sum:focus-visible { outline: 2px solid var(--diger-blue, #1d4ed8); outline-offset: 2px; }
+
+/* ── PORTADA DE CATÁLOGOS ───────────────────────────────────── */
+/* Rejilla de tarjetas de /Catalogos. auto-fill y no auto-fit: con pocas tarjetas
+   auto-fit las estira a lo ancho de la fila y quedan desproporcionadas; auto-fill
+   mantiene el ancho de columna y deja el hueco, que es lo que se espera de una
+   portada a la que se le irán agregando catálogos. */
+.cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--diger-space-5);
+}
+
+.cat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+    padding: var(--diger-space-6);
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-lg);
+    box-shadow: var(--diger-shadow-sm);
+    text-decoration: none;
+    transition: box-shadow .25s, transform .25s, border-color .25s;
+}
+
+.cat-card:hover {
+    border-color: var(--diger-blue-strong);
+    box-shadow: 0 8px 28px rgba(10, 45, 110, .12);
+    transform: translateY(-2px);
+}
+
+.cat-card .cat-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--diger-radius-md);
+    background: var(--diger-bg-blue-pale);
+    color: var(--diger-blue-strong);
+    margin-bottom: .25rem;
+}
+
+.cat-card .cat-ico .ico {
+    width: 22px;
+    height: 22px;
+}
+
+.cat-card .cat-titulo {
+    font-weight: 700;
+    color: var(--diger-blue-title);
+}
+
+.cat-card .cat-desc {
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-muted);
+    line-height: 1.45;
+}

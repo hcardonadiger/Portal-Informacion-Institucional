@@ -1,0 +1,35 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Catalogos.IndexModel
+@{
+    ViewData["Title"] = "Catálogos";
+}
+
+<div class="container" style="max-width:1040px">
+    <div class="hist-header">
+        <div>
+            <h2>Catálogos</h2>
+            <p>Datos maestros del portal. Elija el catálogo que desea administrar.</p>
+        </div>
+    </div>
+
+    @if (Model.Tarjetas.Count == 0)
+    {
+        <div class="hist-empty">
+            <div class="ico">🗂️</div>
+            <p>No tiene catálogos asignados para administrar.</p>
+        </div>
+    }
+    else
+    {
+        <div class="cat-grid">
+            @foreach (var t in Model.Tarjetas)
+            {
+                <a class="cat-card" asp-page="@t.Pagina">
+                    <span class="cat-ico"><svg class="ico" aria-hidden="true"><use href="#@t.Icono"></use></svg></span>
+                    <span class="cat-titulo">@t.Titulo</span>
+                    <span class="cat-desc">@t.Descripcion</span>
+                </a>
+            }
+        </div>
+    }
+</div>
