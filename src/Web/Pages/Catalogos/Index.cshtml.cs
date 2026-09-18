@@ -48,6 +48,11 @@ public sealed class IndexModel(AccesoModulosService acceso) : PageModel
                 "Las opciones de prioridad que ofrece la ficha de un proyecto.",
                 "/Catalogos/Prioridades", "i-alerta")),
 
+            ("Categorias.Proyectos.Editar", new(
+                "Categorías de proyectos",
+                "De qué trata cada proyecto. Se elige en la ficha y filtra el listado.",
+                "/Catalogos/Categorias", "i-inventario")),
+
             ("Prioridades.Tickets.Editar", new(
                 "Prioridades de tickets",
                 "Los niveles de urgencia que ofrece un ticket de soporte.",

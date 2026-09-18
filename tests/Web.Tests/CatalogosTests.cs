@@ -52,6 +52,7 @@ public sealed class CatalogosTests : IAsyncLifetime
         html.Should().Contain(@"href=""/Unidades""");
         html.Should().Contain(@"href=""/Catalogos/Prioridades""");
         html.Should().Contain(@"href=""/Catalogos/PrioridadesTicket""");
+        html.Should().Contain(@"href=""/Catalogos/Categorias""");
         html.Should().Contain(@"href=""/Tickets/Temas""");
     }
 
@@ -136,6 +137,7 @@ public sealed class CatalogosTests : IAsyncLifetime
     [InlineData("/Unidades")]
     [InlineData("/Catalogos/Prioridades")]
     [InlineData("/Catalogos/PrioridadesTicket")]
+    [InlineData("/Catalogos/Categorias")]
     [InlineData("/Tickets/Temas")]
     public async Task Cada_catalogo_ofrece_su_regreso_a_la_portada(string ruta)
     {
@@ -184,6 +186,7 @@ public sealed class CatalogosTests : IAsyncLifetime
     // celda de más corre todas las columnas siguientes, y eso sí lo caza.
     [Theory]
     [InlineData("/Catalogos/Prioridades")]
+    [InlineData("/Catalogos/Categorias")]
     [InlineData("/Catalogos/PrioridadesTicket")]
     public async Task Cada_fila_tiene_tantas_celdas_como_encabezados(string ruta)
     {

@@ -118,7 +118,7 @@ public class ProyectoCommandsSyncTests : IDisposable
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(
             new ActualizarProyectoCommand(
                 id, "Proyecto de prueba", objetivo, area, unidad, null, responsable,
-                _prio.Media, null, null, null, []),
+                _prio.Media, null, null, null, null, []),
             CancellationToken.None);
 
     public void Dispose() => _ctx.Dispose();

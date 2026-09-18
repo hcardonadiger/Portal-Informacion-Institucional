@@ -1,6 +1,7 @@
 ﻿using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Services;
 using Diger.TramitesEstado.Application.Proyectos.Prioridades;
+using Diger.TramitesEstado.Application.Proyectos.Categorias;
 // Por Etiquetas: la bitácora escribe los mismos rótulos que el usuario ve en pantalla.
 using Diger.TramitesEstado.Application.Dashboards.Queries;
 
@@ -69,6 +70,7 @@ public sealed record CrearProyectoCommand(
     Guid?             ResponsableId   = null,
     string?           Responsable     = null,
     int?              PrioridadId     = null,
+    int?              CategoriaId     = null,
     AccionProyecto?   Accion          = null,
     DateOnly?         FechaInicioPlan = null,
     DateOnly?         FechaFinPlan    = null) : IRequest<int>;
@@ -95,6 +97,7 @@ public sealed class CrearProyectoCommandHandler(
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
         proyecto.PrioridadId     = await PrioridadProyectoResolver.ResolverAsync(ctx, cmd.PrioridadId, ct);
+        proyecto.CategoriaId     = await CategoriaProyectoResolver.ResolverAsync(ctx, cmd.CategoriaId, ct);
         proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
@@ -140,6 +143,7 @@ public sealed record ActualizarProyectoCommand(
     Guid?             ResponsableId,
     string?           Responsable,
     int               PrioridadId,
+    int?              CategoriaId,
     AccionProyecto?   Accion,
     DateOnly?         FechaInicioPlan,
     DateOnly?         FechaFinPlan,
@@ -173,8 +177,15 @@ public sealed class ActualizarProyectoCommandHandler(
             .Where(p => p.Id == proyecto.PrioridadId || p.Id == prioridadNueva)
             .ToDictionaryAsync(p => p.Id, p => p.Nombre, ct);
 
+        var categoriaNueva = await CategoriaProyectoResolver.ResolverAsync(ctx, cmd.CategoriaId, ct);
+        var nombresCategoria = await ctx.CategoriasProyecto
+            .AsNoTracking()
+            .Where(c => c.Id == proyecto.CategoriaId || c.Id == categoriaNueva)
+            .ToDictionaryAsync(c => c.Id, c => c.Nombre, ct);
+
         // El diff se arma ANTES de tocar nada: después las propiedades ya son las nuevas.
-        var cambiosFicha = DiffFicha(proyecto, cmd, nombre, prioridadNueva, nombresPrioridad);
+        var cambiosFicha = DiffFicha(proyecto, cmd, nombre, prioridadNueva, nombresPrioridad,
+                                     categoriaNueva, nombresCategoria);
 
         // Se compara ANTES de mutar: una vez asignadas, proyecto.AreaId/UnidadId ya son los valores
         // nuevos y la comparación siempre daría "sin cambio".
@@ -191,6 +202,7 @@ public sealed class ActualizarProyectoCommandHandler(
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
         proyecto.PrioridadId     = prioridadNueva;
+        proyecto.CategoriaId     = categoriaNueva;
         proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
@@ -265,9 +277,15 @@ public sealed class ActualizarProyectoCommandHandler(
     /// <summary>Resume qué campos de la ficha cambian, comparando contra el estado actual.</summary>
     private static string DiffFicha(
         Proyecto p, ActualizarProyectoCommand cmd, string nombreLimpio,
-        int prioridadNueva, IReadOnlyDictionary<int, string> nombresPrioridad)
+        int prioridadNueva, IReadOnlyDictionary<int, string> nombresPrioridad,
+        int? categoriaNueva, IReadOnlyDictionary<int, string> nombresCategoria)
     {
         string Prioridad(int id) => nombresPrioridad.TryGetValue(id, out var n) ? n : "sin definir";
+
+        // La categoría es opcional, así que su ausencia es un valor y se escribe como tal: la
+        // bitácora tiene que poder decir «categoría: Digitalización → sin clasificar».
+        string Categoria(int? id) =>
+            id is int i && nombresCategoria.TryGetValue(i, out var n) ? n : "sin clasificar";
 
         var partes = new List<string>();
         var objetivo = string.IsNullOrWhiteSpace(cmd.Objetivo) ? null : cmd.Objetivo.Trim();
@@ -279,6 +297,8 @@ public sealed class ActualizarProyectoCommandHandler(
             partes.Add($"responsable: {p.Responsable ?? "sin asignar"} → {responsable ?? "sin asignar"}");
         if (p.PrioridadId != prioridadNueva)
             partes.Add($"prioridad: {Prioridad(p.PrioridadId)} → {Prioridad(prioridadNueva)}");
+        if (p.CategoriaId != categoriaNueva)
+            partes.Add($"categoría: {Categoria(p.CategoriaId)} → {Categoria(categoriaNueva)}");
         if (p.Accion != cmd.Accion)
             partes.Add($"acción: {Etiquetas.Accion(p.Accion)} → {Etiquetas.Accion(cmd.Accion)}");
 

@@ -130,7 +130,7 @@ public class AccionProyectoTests : IDisposable
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(
             new ActualizarProyectoCommand(
                 id, nombre, null, null, null, null, null,
-                _prio.Media, accion, new DateOnly(2026, 3, 1), null, []),
+                _prio.Media, null, accion, new DateOnly(2026, 3, 1), null, []),
             CancellationToken.None);
 
     public void Dispose() => _ctx.Dispose();

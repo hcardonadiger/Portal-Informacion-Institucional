@@ -60,7 +60,7 @@ public class ProyectosDependenciasTests : IDisposable
     private Task GuardarAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "SOL — institución de prueba", null, null, null, null, null,
-            _prio.Media, null, null, null, entregables), CancellationToken.None);
+            _prio.Media, null, null, null, null, entregables), CancellationToken.None);
 
     private Task<ProyectoDetailDto?> FichaAsync(int id) =>
         new GetProyectoQueryHandler(_ctx).Handle(new GetProyectoQuery(id), CancellationToken.None);

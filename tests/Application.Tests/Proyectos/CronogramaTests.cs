@@ -29,7 +29,7 @@ public class CronogramaTests
 
     private static ProyectoDetailDto Proyecto(params EntregableProyectoDto[] entregables) =>
         new(1, "PRY-2026-01", "Demo", null, "DIGER", null, null, null, null,
-            2, "Media", ColorEtiqueta.Azul, null, EstadoProyecto.EnEjecucion,
+            2, "Media", ColorEtiqueta.Azul, null, null, null, null, EstadoProyecto.EnEjecucion,
             null, null, null, null, 0, DateTime.UtcNow, null, entregables, []);
 
     // ── Escala ────────────────────────────────────────────────────

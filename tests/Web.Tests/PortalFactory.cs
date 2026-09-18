@@ -142,6 +142,15 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
                     $"El sembrado dejó «Media» con Id {media.Id} y las pruebas esperan {PrioridadPorDefecto}.");
         }
 
+        // Una categoría, para que la pantalla del catálogo tenga algo que pintar. No hace falta
+        // para crear proyectos —la categoría es opcional— pero sí para poder mirar su tabla.
+        if (!await db.CategoriasProyecto.AnyAsync())
+        {
+            db.CategoriasProyecto.Add(
+                CategoriaProyecto.Crear("Digitalización de trámites", 1, ColorEtiqueta.Azul));
+            await db.SaveChangesAsync();
+        }
+
         // Lo mismo para los tickets, que tienen su propio catálogo.
         if (!await db.PrioridadesTicket.AnyAsync())
         {

@@ -25,6 +25,7 @@ public class ProyectoPdfServiceTests
             InstitucionId: "DIGER", AreaId: "GOBIERNO-DIGITAL", UnidadId: "DIGITALIZACION",
             ResponsableId: Responsable, Responsable: "Henry Cardona",
             PrioridadId: 1, Prioridad: "Alta", PrioridadColor: ColorEtiqueta.Naranja,
+            CategoriaId: null, Categoria: null, CategoriaColor: null,
             Accion: AccionProyecto.Digitalizacion,
             Estado: EstadoProyecto.EnEjecucion,
             FechaInicioPlan: new DateOnly(2026, 6, 26), FechaFinPlan: new DateOnly(2026, 9, 30),

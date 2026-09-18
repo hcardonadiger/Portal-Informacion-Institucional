@@ -72,6 +72,7 @@ public sealed class AppDbContext(
     public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
     public DbSet<Proyecto>                  Proyectos             { get; init; } = default!;
     public DbSet<PrioridadProyecto>         PrioridadesProyecto   { get; init; } = default!;
+    public DbSet<CategoriaProyecto>         CategoriasProyecto    { get; init; } = default!;
     public DbSet<EntregableProyecto>        ProyectoEntregables   { get; init; } = default!;
     public DbSet<ActividadProyecto>         ProyectoActividades   { get; init; } = default!;
     public DbSet<AvanceProyecto>            ProyectoAvances       { get; init; } = default!;
@@ -1752,6 +1753,22 @@ public sealed class ConciliacionSigerConfiguration : IEntityTypeConfiguration<Co
 }
 
 // ── Seguimiento de proyectos internos ─────────────────────────────────────
+public sealed class CategoriaProyectoConfiguration : IEntityTypeConfiguration<CategoriaProyecto>
+{
+    public void Configure(EntityTypeBuilder<CategoriaProyecto> b)
+    {
+        b.ToTable("CategoriasProyecto");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Color).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Orden).HasDefaultValue(0);
+        b.Property(x => x.Activo).HasDefaultValue(true);
+        b.HasIndex(x => x.Nombre).IsUnique();
+        b.HasIndex(x => x.Orden);
+    }
+}
+
 public sealed class PrioridadProyectoConfiguration : IEntityTypeConfiguration<PrioridadProyecto>
 {
     public void Configure(EntityTypeBuilder<PrioridadProyecto> b)
@@ -1798,6 +1815,12 @@ public sealed class ProyectoConfiguration : IEntityTypeConfiguration<Proyecto>
         b.HasOne(x => x.PrioridadRef).WithMany()
             .HasForeignKey(x => x.PrioridadId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => x.PrioridadId);
+
+        // La categoría sí admite nulo —es opcional— pero se borra con el mismo cuidado: Restrict,
+        // para que quitar una categoría no toque los proyectos que la tienen.
+        b.HasOne(x => x.CategoriaRef).WithMany()
+            .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => x.CategoriaId);
 
         // Filtrado: el índice único va sobre los vivos, porque el borrado es lógico y un código
         // liberado por un borrado tiene que poder reutilizarse.

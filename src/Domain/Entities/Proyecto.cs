@@ -66,6 +66,16 @@ public sealed class Proyecto : BaseAuditableEntity, ISoftDeletable
     public PrioridadProyecto? PrioridadRef { get; set; }
 
     /// <summary>
+    /// De qué trata el proyecto, del catálogo administrable <see cref="Entities.CategoriaProyecto"/>.
+    /// Opcional a propósito, por el mismo motivo que <see cref="Accion"/>: se agregó con el
+    /// portafolio ya cargado, y el null dice «todavía nadie lo clasificó» en vez de inventar una
+    /// clasificación que después no se distinguiría de una declarada.
+    /// </summary>
+    public int? CategoriaId { get; set; }
+
+    public CategoriaProyecto? CategoriaRef { get; set; }
+
+    /// <summary>
     /// Qué hace DIGER en el proyecto: acompañar, digitalizar, dar soporte o desarrollar. Es la
     /// acción, no el tema — «SOL — CONSUCOOP» es acompañamiento aunque trate sobre digitalización.
     ///

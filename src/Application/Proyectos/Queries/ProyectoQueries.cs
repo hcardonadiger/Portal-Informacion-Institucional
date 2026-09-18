@@ -26,6 +26,7 @@ public sealed record GetProyectosQuery(
     int?               Anio          = null,
     string?            Q             = null,
     int?               PrioridadId   = null,
+    int?               CategoriaId   = null,
     string?            AreaId        = null,
     string?            UnidadId      = null,
     SenalProyecto?     Senal         = null,
@@ -41,6 +42,7 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
         if (query.Estado is { } estado)   q = q.Where(p => p.Estado == estado);
         if (query.ResponsableId is { } r) q = q.Where(p => p.ResponsableId == r);
         if (query.PrioridadId is { } prio) q = q.Where(p => p.PrioridadId == prio);
+        if (query.CategoriaId is { } cat)  q = q.Where(p => p.CategoriaId == cat);
         if (query.Accion is { } accion)   q = q.Where(p => p.Accion == accion);
 
         if (!string.IsNullOrWhiteSpace(query.AreaId))   q = q.Where(p => p.AreaId == query.AreaId);
@@ -76,6 +78,9 @@ public sealed class GetProyectosQueryHandler(IApplicationDbContext ctx)
                 p.PrioridadId,
                 p.PrioridadRef!.Nombre,
                 p.PrioridadRef.Color,
+                p.CategoriaId,
+                p.CategoriaRef != null ? p.CategoriaRef.Nombre : null,
+                p.CategoriaRef != null ? (ColorEtiqueta?)p.CategoriaRef.Color : null,
                 p.Accion,
                 p.Estado,
                 p.FechaInicioPlan,
@@ -124,6 +129,7 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
         // que evita tener esa regla escrita una segunda vez acá.
         var p = await ctx.Proyectos.AsNoTracking()
             .Include(x => x.PrioridadRef)
+            .Include(x => x.CategoriaRef)
             .Include(x => x.Entregables).ThenInclude(e => e.Actividades)
                                         .ThenInclude(a => a.Predecesoras)
             .FirstOrDefaultAsync(x => x.Id == query.Id, ct);
@@ -156,6 +162,7 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
             p.Id, p.Codigo, p.Nombre, p.Objetivo, p.InstitucionId, p.AreaId, p.UnidadId,
             p.ResponsableId, p.Responsable,
             p.PrioridadId, p.PrioridadRef!.Nombre, p.PrioridadRef.Color,
+            p.CategoriaId, p.CategoriaRef?.Nombre, p.CategoriaRef?.Color,
             p.Accion, p.Estado,
             p.FechaInicioPlan, p.FechaFinPlan, p.FechaInicioReal, p.FechaFinReal,
             p.AvancePct, p.CreatedAt, p.CreatedBy,

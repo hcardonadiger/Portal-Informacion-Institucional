@@ -113,6 +113,16 @@
                 }
             </select>
         </div>
+        <div class="field" style="min-width:165px">
+            <label for="f-categoria">Categoría</label>
+            <select id="f-categoria" name="CategoriaId">
+                <option value="">— Todas —</option>
+                @foreach (var ca in Model.Categorias)
+                {
+                    <option value="@ca.Id" selected="@(Model.CategoriaId == ca.Id)">@ca.Nombre</option>
+                }
+            </select>
+        </div>
         @* Las señales son las mismas que cuenta el tablero: desde allá se llega acá con una
            puesta, y desde acá se pueden combinar con el resto de los filtros. *@
         <div class="field" style="min-width:175px">
@@ -131,7 +141,7 @@
         </div>
         <button class="btns" type="submit">Filtrar</button>
         @if (Model.Estado is not null || Model.ResponsableId is not null || Model.Anio is not null
-             || !string.IsNullOrWhiteSpace(Model.Q) || Model.PrioridadId is not null || Model.Senal is not null
+             || !string.IsNullOrWhiteSpace(Model.Q) || Model.PrioridadId is not null || Model.CategoriaId is not null || Model.Senal is not null
              || Model.Accion is not null)
         {
             <a class="btns" asp-page="/Proyectos/Index">Limpiar</a>
@@ -180,6 +190,11 @@
                                     @* Sin acción no se pinta nada: una insignia «Sin clasificar» en
                                        cada fila vieja es ruido, y el filtro ya permite encontrarlas. *@
                                     <span class="badge" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@Etiquetas.Accion(accion)</span>
+                                }
+                                @if (p.Categoria is { Length: > 0 } categoria && p.CategoriaColor is { } colorCat)
+                                {
+                                    @* Mismo criterio que la acción: sin categoría no se pinta nada. *@
+                                    <span class="@Etiquetas.ClaseColor(colorCat)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@categoria</span>
                                 }
                                 @if (p.SinReportar)
                                 {
@@ -285,6 +300,16 @@
                             @foreach (var pr in Model.Prioridades)
                             {
                                 <option value="@pr.Id" selected="@pr.EsPredeterminada">@pr.Nombre</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field" style="width:180px">
+                        <label for="n-categoria">Categoría</label>
+                        <select id="n-categoria" name="NuevaCategoriaId">
+                            <option value="">— Sin clasificar —</option>
+                            @foreach (var ca in Model.Categorias)
+                            {
+                                <option value="@ca.Id">@ca.Nombre</option>
                             }
                         </select>
                     </div>

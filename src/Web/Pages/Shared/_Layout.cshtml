@@ -262,11 +262,12 @@
                             var puedeAreas         = await Acceso.PuedeAsync("Areas");
                             var puedeUnidades      = await Acceso.PuedeAsync("Unidades");
                             var puedeTemasTicket   = await Acceso.PuedeClaveAsync("Tickets.Temas.Editar");
+                            var puedeCategorias    = await Acceso.PuedeClaveAsync("Categorias.Proyectos.Editar");
                             var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar")
                                                   || await Acceso.PuedeClaveAsync("Prioridades.Tickets.Editar");
 
                             var puedeCatalogos = puedeInstituciones || puedeAreas || puedeUnidades
-                                              || puedeTemasTicket || puedePrioridades;
+                                              || puedeTemasTicket || puedePrioridades || puedeCategorias;
 
                             // Cada entrada por su propia clave, no por «es administrador». Un rol
                             // puede tener Usuarios.Ver sin ser administrador, y antes eso no le

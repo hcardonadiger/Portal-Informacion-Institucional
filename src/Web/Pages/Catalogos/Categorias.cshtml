@@ -1,0 +1,122 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Catalogos.CategoriasModel
+@{
+    ViewData["Title"] = "Categorías de proyectos";
+    string Clase(ColorEtiqueta c) => "prio-badge " + c.ToString().ToLowerInvariant();
+}
+
+<div class="container" style="max-width:1040px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string terr)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@terr</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Categorías de proyectos</h2>
+            <p>De qué trata el proyecto. Es distinto de la <strong>acción</strong> —qué hacemos nosotros en él— y de la <strong>prioridad</strong> —cuánto pesa—.</p>
+        </div>
+        <a class="btns" asp-page="/Catalogos/Index" style="font-size:13px">← Catálogos</a>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">Nueva categoría</h3>
+        <form method="post" asp-page-handler="Crear" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="margin:0;flex:1;min-width:200px">
+                <label>Nombre <span style="color:#dc2626">*</span></label>
+                <input name="Nombre" value="@Model.Nombre" placeholder="p. ej. Digitalización de trámites" maxlength="60" />
+            </div>
+            <div class="field" style="margin:0;width:110px">
+                <label>Orden</label>
+                <input type="number" name="Orden" min="0" max="999" placeholder="al final" />
+            </div>
+            <div class="field" style="margin:0;width:150px">
+                <label>Color</label>
+                <select name="Color">
+                    @foreach (var c in Enum.GetValues<ColorEtiqueta>())
+                    {
+                        <option value="@((int)c)" selected="@(c == Model.Color)">@c</option>
+                    }
+                </select>
+            </div>
+            <button class="btnp" type="submit" style="margin-bottom:.1rem">Agregar categoría</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">Catálogo</h3>
+        @if (Model.Categorias.Count == 0)
+        {
+            <p class="res-meta">Aún no hay categorías. Mientras no haya ninguna, los proyectos quedan sin clasificar, que es un estado válido.</p>
+        }
+        else
+        {
+            @* .edit-grid usa table-layout:fixed, así que la suma de los anchos manda: si se pasa
+               del ancho de la tarjeta, la última columna queda fuera y no se ve. El contenedor con
+               overflow-x es la red por debajo. *@
+            <div style="overflow-x:auto">
+            <table class="seg-table edit-grid">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th style="width:72px">Orden</th>
+                        <th style="width:108px">Color</th>
+                        <th style="width:150px">Vista</th>
+                        <th style="width:68px">Activa</th>
+                        <th style="width:84px">Proyectos</th>
+                        <th style="width:96px"></th>
+                        <th style="width:52px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Categorias)
+                    {
+                        <tr>
+                            @* El <form> como hijo directo de <tr> no envuelve nada —el parser lo
+                               saca de la pila— pero los controles quedan asociados a él. *@
+                            <form method="post" asp-page-handler="Actualizar">
+                                <input type="hidden" name="id" value="@c.Id" />
+                                <td><input name="nombre" value="@c.Nombre" maxlength="60" style="width:100%" /></td>
+                                <td><input type="number" name="orden" value="@c.Orden" min="0" max="999" style="width:100%" /></td>
+                                <td>
+                                    <select name="color">
+                                        @foreach (var col in Enum.GetValues<ColorEtiqueta>())
+                                        {
+                                            <option value="@((int)col)" selected="@(col == c.Color)">@col</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td style="text-align:center">
+                                    <span class="@Clase(c.Color)" style="padding:1px 8px;font-size:var(--diger-fs-2xs)">@c.Nombre</span>
+                                </td>
+                                <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@c.Activo" /></td>
+                                <td class="res-meta" style="text-align:center">@c.Proyectos</td>
+                                <td style="text-align:right">
+                                    <button class="btns" type="submit" style="font-size:12.5px;padding:6px 12px">Guardar</button>
+                                </td>
+                            </form>
+                            <td style="text-align:center">
+                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button class="hist-del" type="submit" aria-label="Eliminar categoría"
+                                            data-confirm="¿Eliminar la categoría «@c.Nombre»?">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+            <p class="res-meta" style="margin-top:.75rem">
+                La categoría es opcional: un proyecto puede quedar sin clasificar, y eso se distingue
+                de haber elegido. Una categoría con proyectos asignados no se puede eliminar
+                —desactívela y dejará de ofrecerse, sin cambiarle nada a los que ya la tienen—.
+            </p>
+        }
+    </div>
+</div>
