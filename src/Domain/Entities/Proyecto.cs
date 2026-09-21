@@ -55,7 +55,25 @@ public sealed class Proyecto : BaseAuditableEntity, ISoftDeletable
     /// (mismo criterio que <see cref="MetaTramite.Responsable"/>).</summary>
     public string? Responsable   { get; set; }
 
-    public PrioridadProyecto Prioridad { get; set; } = PrioridadProyecto.Media;
+    /// <summary>
+    /// Prioridad del proyecto, tomada del catálogo administrable <see cref="Entities.PrioridadProyecto"/>.
+    /// Era un enum fijo Alta/Media/Baja hasta 2026-09-18; se volvió catálogo porque agregar una
+    /// prioridad no debería costar un despliegue.
+    /// </summary>
+    public int PrioridadId { get; set; }
+
+    /// <summary>Navegación de solo lectura para proyectar nombre y color sin un segundo viaje.</summary>
+    public PrioridadProyecto? PrioridadRef { get; set; }
+
+    /// <summary>
+    /// De qué trata el proyecto, del catálogo administrable <see cref="Entities.CategoriaProyecto"/>.
+    /// Opcional a propósito, por el mismo motivo que <see cref="Accion"/>: se agregó con el
+    /// portafolio ya cargado, y el null dice «todavía nadie lo clasificó» en vez de inventar una
+    /// clasificación que después no se distinguiría de una declarada.
+    /// </summary>
+    public int? CategoriaId { get; set; }
+
+    public CategoriaProyecto? CategoriaRef { get; set; }
 
     /// <summary>
     /// Qué hace DIGER en el proyecto: acompañar, digitalizar, dar soporte o desarrollar. Es la

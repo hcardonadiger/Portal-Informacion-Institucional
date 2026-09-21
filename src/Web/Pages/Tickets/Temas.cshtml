@@ -20,7 +20,13 @@
             <h2>Categorías y temas</h2>
             <p>La <strong>categoría</strong> agrupa varios <strong>temas</strong>; cada tema define su tiempo máximo de atención (en horas).</p>
         </div>
-        <a class="btns" asp-page="/Tickets/Index" style="font-size:13px">← Tickets</a>
+        @* Dos regresos porque se llega por dos caminos: es un catálogo, pero también cuelga del
+           listado de tickets, que es de donde viene quien atiende soporte. Llevarse el de Tickets
+           habría dejado a ese camino sin vuelta. *@
+        <div style="display:flex;gap:8px;align-items:center">
+            <a class="btns" asp-page="/Catalogos/Index" style="font-size:13px">← Catálogos</a>
+            <a class="btns" asp-page="/Tickets/Index" style="font-size:13px">← Tickets</a>
+        </div>
     </div>
 
     @* ── Categorías (nivel superior) ─────────────────────────────── *@

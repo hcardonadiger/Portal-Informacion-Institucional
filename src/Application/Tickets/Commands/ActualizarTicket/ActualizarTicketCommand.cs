@@ -1,6 +1,7 @@
 using FluentValidation;
 using Diger.TramitesEstado.Application.Common.Exceptions;
 using Diger.TramitesEstado.Application.Tickets.Common;
+using Diger.TramitesEstado.Application.Tickets.Prioridades;
 
 namespace Diger.TramitesEstado.Application.Tickets.Commands.ActualizarTicket;
 
@@ -29,7 +30,8 @@ public sealed class ActualizarTicketCommandHandler(
             throw new DomainException("Debe seleccionar una institución dentro de su alcance asignado.");
 
         await NormalizarTemaOtroAsync(d, ct);
-        TicketMapper.Aplicar(t, d);
+        var prioridadId = await PrioridadTicketResolver.ResolverAsync(ctx, d.PrioridadId, ct);
+        TicketMapper.Aplicar(t, d, prioridadId);
 
         t.InstitucionId    = institucionId;
         t.Institucion      = exp?.Institucion

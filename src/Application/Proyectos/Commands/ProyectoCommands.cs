@@ -1,5 +1,7 @@
 ﻿using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Services;
+using Diger.TramitesEstado.Application.Proyectos.Prioridades;
+using Diger.TramitesEstado.Application.Proyectos.Categorias;
 // Por Etiquetas: la bitácora escribe los mismos rótulos que el usuario ve en pantalla.
 using Diger.TramitesEstado.Application.Dashboards.Queries;
 
@@ -67,7 +69,8 @@ public sealed record CrearProyectoCommand(
     string?           UnidadId        = null,
     Guid?             ResponsableId   = null,
     string?           Responsable     = null,
-    PrioridadProyecto Prioridad       = PrioridadProyecto.Media,
+    int?              PrioridadId     = null,
+    int?              CategoriaId     = null,
     AccionProyecto?   Accion          = null,
     DateOnly?         FechaInicioPlan = null,
     DateOnly?         FechaFinPlan    = null) : IRequest<int>;
@@ -93,7 +96,8 @@ public sealed class CrearProyectoCommandHandler(
         proyecto.UnidadId        = string.IsNullOrWhiteSpace(cmd.UnidadId) ? null : cmd.UnidadId.Trim();
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
-        proyecto.Prioridad       = cmd.Prioridad;
+        proyecto.PrioridadId     = await PrioridadProyectoResolver.ResolverAsync(ctx, cmd.PrioridadId, ct);
+        proyecto.CategoriaId     = await CategoriaProyectoResolver.ResolverAsync(ctx, cmd.CategoriaId, ct);
         proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
@@ -138,7 +142,8 @@ public sealed record ActualizarProyectoCommand(
     string?           UnidadId,
     Guid?             ResponsableId,
     string?           Responsable,
-    PrioridadProyecto Prioridad,
+    int               PrioridadId,
+    int?              CategoriaId,
     AccionProyecto?   Accion,
     DateOnly?         FechaInicioPlan,
     DateOnly?         FechaFinPlan,
@@ -161,8 +166,26 @@ public sealed class ActualizarProyectoCommandHandler(
         var nombre = (cmd.Nombre ?? "").Trim();
         if (nombre.Length == 0) throw new DomainException("El proyecto necesita un nombre.");
 
+        // La prioridad se resuelve acá y no en la asignación porque el diff la necesita antes,
+        // y volver a resolverla después sería consultar dos veces lo mismo.
+        var prioridadNueva = await PrioridadProyectoResolver.ResolverAsync(ctx, cmd.PrioridadId, ct);
+
+        // La bitácora la lee una persona: guarda «Alta → Media», no «1 → 2». Por eso el nombre
+        // se busca antes de mutar; después el proyecto ya apunta a la prioridad nueva.
+        var nombresPrioridad = await ctx.PrioridadesProyecto
+            .AsNoTracking()
+            .Where(p => p.Id == proyecto.PrioridadId || p.Id == prioridadNueva)
+            .ToDictionaryAsync(p => p.Id, p => p.Nombre, ct);
+
+        var categoriaNueva = await CategoriaProyectoResolver.ResolverAsync(ctx, cmd.CategoriaId, ct);
+        var nombresCategoria = await ctx.CategoriasProyecto
+            .AsNoTracking()
+            .Where(c => c.Id == proyecto.CategoriaId || c.Id == categoriaNueva)
+            .ToDictionaryAsync(c => c.Id, c => c.Nombre, ct);
+
         // El diff se arma ANTES de tocar nada: después las propiedades ya son las nuevas.
-        var cambiosFicha = DiffFicha(proyecto, cmd, nombre);
+        var cambiosFicha = DiffFicha(proyecto, cmd, nombre, prioridadNueva, nombresPrioridad,
+                                     categoriaNueva, nombresCategoria);
 
         // Se compara ANTES de mutar: una vez asignadas, proyecto.AreaId/UnidadId ya son los valores
         // nuevos y la comparación siempre daría "sin cambio".
@@ -178,7 +201,8 @@ public sealed class ActualizarProyectoCommandHandler(
         proyecto.UnidadId        = string.IsNullOrWhiteSpace(cmd.UnidadId) ? null : cmd.UnidadId.Trim();
         proyecto.ResponsableId   = cmd.ResponsableId;
         proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
-        proyecto.Prioridad       = cmd.Prioridad;
+        proyecto.PrioridadId     = prioridadNueva;
+        proyecto.CategoriaId     = categoriaNueva;
         proyecto.Accion          = cmd.Accion;
         proyecto.FechaInicioPlan = cmd.FechaInicioPlan;
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
@@ -251,8 +275,18 @@ public sealed class ActualizarProyectoCommandHandler(
     }
 
     /// <summary>Resume qué campos de la ficha cambian, comparando contra el estado actual.</summary>
-    private static string DiffFicha(Proyecto p, ActualizarProyectoCommand cmd, string nombreLimpio)
+    private static string DiffFicha(
+        Proyecto p, ActualizarProyectoCommand cmd, string nombreLimpio,
+        int prioridadNueva, IReadOnlyDictionary<int, string> nombresPrioridad,
+        int? categoriaNueva, IReadOnlyDictionary<int, string> nombresCategoria)
     {
+        string Prioridad(int id) => nombresPrioridad.TryGetValue(id, out var n) ? n : "sin definir";
+
+        // La categoría es opcional, así que su ausencia es un valor y se escribe como tal: la
+        // bitácora tiene que poder decir «categoría: Digitalización → sin clasificar».
+        string Categoria(int? id) =>
+            id is int i && nombresCategoria.TryGetValue(i, out var n) ? n : "sin clasificar";
+
         var partes = new List<string>();
         var objetivo = string.IsNullOrWhiteSpace(cmd.Objetivo) ? null : cmd.Objetivo.Trim();
         var responsable = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
@@ -261,7 +295,10 @@ public sealed class ActualizarProyectoCommandHandler(
         if (p.Objetivo != objetivo)            partes.Add("objetivo actualizado");
         if (p.ResponsableId != cmd.ResponsableId)
             partes.Add($"responsable: {p.Responsable ?? "sin asignar"} → {responsable ?? "sin asignar"}");
-        if (p.Prioridad != cmd.Prioridad)      partes.Add($"prioridad: {p.Prioridad} → {cmd.Prioridad}");
+        if (p.PrioridadId != prioridadNueva)
+            partes.Add($"prioridad: {Prioridad(p.PrioridadId)} → {Prioridad(prioridadNueva)}");
+        if (p.CategoriaId != categoriaNueva)
+            partes.Add($"categoría: {Categoria(p.CategoriaId)} → {Categoria(categoriaNueva)}");
         if (p.Accion != cmd.Accion)
             partes.Add($"acción: {Etiquetas.Accion(p.Accion)} → {Etiquetas.Accion(cmd.Accion)}");
 

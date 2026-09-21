@@ -37,6 +37,7 @@ public class EnviarRecordatorioTests : IDisposable
         _ctx.Usuarios.Add(agente);
 
         var t = Ticket.Crear("TCK-2026-9999", "Ticket de prueba");
+        t.PrioridadId = PrioridadesTicketDePrueba.Media(_ctx);
         t.EstablecerReportante("Cliente Test", "cliente@test.com", "+504 99998888");
         t.Asignar(agenteId, "Agente Soporte", "Sistema");
         _ctx.Tickets.Add(t);

@@ -9,11 +9,8 @@
         EstadoTicket.Abierto => "abierto", EstadoTicket.EnProgreso => "enproceso",
         EstadoTicket.Resuelto => "resuelto", _ => "default",
     };
-    string PrioClase(PrioridadTicket p) => p switch
-    {
-        PrioridadTicket.Critica => "critica", PrioridadTicket.Alta => "alta",
-        PrioridadTicket.Media => "media", _ => "default",
-    };
+    // La clase de la insignia sale del color que trae el catálogo, no de un switch por nivel.
+    string PrioClase(ColorEtiqueta c) => c.ToString().ToLowerInvariant();
     string EstadoLbl(EstadoTicket e) => e == EstadoTicket.EnProgreso ? "En progreso" : e.ToString();
     string Tam(long b) => b >= 1048576 ? $"{b / 1048576.0:0.#} MB" : $"{Math.Max(1, (int)(b / 1024))} KB";
     var slaVencido = Diger.TramitesEstado.Application.Tickets.Common.TicketSla.Vencido(t.Estado, t.HorasSla, t.FechaCreacion);
@@ -239,7 +236,7 @@
                 <h3 class="sec-h">Estado</h3>
                 <div style="display:flex;gap:8px;margin-bottom:.9rem">
                     <span class="status-badge @EstadoClase(t.Estado)" style="padding:3px 12px;font-size:13px">@EstadoLbl(t.Estado)</span>
-                    <span class="prio-badge @PrioClase(t.Prioridad)" style="padding:3px 12px;font-size:13px">@t.Prioridad</span>
+                    <span class="prio-badge @PrioClase(t.PrioridadColor)" style="padding:3px 12px;font-size:13px">@t.Prioridad</span>
                 </div>
                 @if (Model.PuedeAtender)
                 {

@@ -186,6 +186,7 @@ public interface IApplicationDbContext
     DbSet<TicketComentario>         TicketComentarios { get; }
     DbSet<CategoriaTicket>          CategoriasTicket { get; }
     DbSet<TemaTicket>               TemasTicket   { get; }
+    DbSet<PrioridadTicket>          PrioridadesTicket { get; }
     DbSet<UsuarioTema>              UsuarioTemas  { get; }
     DbSet<RolModuloAcceso>          RolModuloAccesos { get; }
     DbSet<Rol>                      Roles            { get; }
@@ -221,6 +222,8 @@ public interface IApplicationDbContext
     DbSet<FotoTramiteSiger>        FotosTramiteSiger      { get; }
     DbSet<PropuestaLlenado>        PropuestasLlenado      { get; }
     DbSet<Proyecto>                Proyectos              { get; }
+    DbSet<PrioridadProyecto>       PrioridadesProyecto    { get; }
+    DbSet<CategoriaProyecto>       CategoriasProyecto     { get; }
     DbSet<EntregableProyecto>      ProyectoEntregables    { get; }
     DbSet<ActividadProyecto>       ProyectoActividades    { get; }
     DbSet<AvanceProyecto>          ProyectoAvances        { get; }

@@ -58,6 +58,9 @@ public class InteresadosAutomaticosCicloTests : IDisposable
             _sp.GetRequiredService<IServiceScopeFactory>(), NullLogger<RolCatalogo>.Instance);
 
         _sync = new InteresadosAutomaticosSyncService(_ctx, _catalogo);
+
+        // El comando real resuelve la prioridad contra el catálogo; sin filas no puede crear nada.
+        PrioridadesDePrueba.Sembrar(_ctx);
     }
 
     /// <summary>Rol con la capacidad, usuario asignado al área, catálogo cargado y un proyecto de

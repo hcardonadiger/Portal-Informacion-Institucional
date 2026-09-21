@@ -36,3 +36,8 @@ src/Web/App_Data/uploads/
 .claude/settings.local.json
 # Respaldos y scripts SQL generados localmente (pueden pesar decenas de MB)
 .backups/
+
+# Archivos de bloqueo que Office deja mientras un documento está abierto (~$nombre.xlsx).
+# Viven junto al archivo real —database/plantillas/ tiene la plantilla de proyectos— y
+# aparecen como sin seguimiento cada vez que alguien la abre para revisarla.
+~$*

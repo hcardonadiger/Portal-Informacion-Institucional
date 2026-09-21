@@ -61,11 +61,11 @@
                         <span asp-validation-for="Datos.TemaOtro" class="text-danger"></span>
                     </div>
                     <div class="field">
-                        <label>Prioridad <span class="help-tip" data-tip="Nivel de urgencia. Crítica y Alta se atienden primero. Use Crítica solo para bloqueos totales de la plataforma.">?</span></label>
-                        <select asp-for="Datos.Prioridad">
+                        <label>Prioridad <span class="help-tip" data-tip="Nivel de urgencia. Las prioridades marcadas como críticas se atienden primero y cuentan en el indicador de los tableros. Se administran en Catálogos.">?</span></label>
+                        <select asp-for="Datos.PrioridadId">
                             @foreach (var p in Model.Prioridades)
                             {
-                                <option value="@p">@p</option>
+                                <option value="@p.Id">@p.Nombre</option>
                             }
                         </select>
                     </div>

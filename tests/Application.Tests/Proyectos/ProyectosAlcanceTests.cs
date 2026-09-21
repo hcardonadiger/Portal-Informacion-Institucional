@@ -52,6 +52,7 @@ public class ProyectosAlcanceTests : IDisposable
         foreach (var (codigo, inst, area, unidad, resp) in filas)
         {
             var p = Proyecto.Crear(codigo, $"Proyecto {codigo}");
+            p.PrioridadId = PrioridadesDePrueba.Media(ctx);
             p.InstitucionId = inst;
             p.AreaId        = area;
             p.UnidadId      = unidad;

@@ -45,6 +45,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: true, EsPmo: false, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-01", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -60,6 +61,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
     {
         var exJefe = await SembrarUsuarioAsync("Ex Jefe");
         var proyecto = Proyecto.Crear("PRY-2026-02", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -90,6 +92,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: true, EsPmo: false, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-90", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -119,6 +122,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: true, EsPmo: false, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-91", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -145,6 +149,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: true, EsPmo: false, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-03", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -207,6 +212,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: true, EsPmo: false, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-07", "Proyecto fuera del alcance del actor");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.InstitucionId = "DIGER";
         proyecto.AreaId = "SIGER";
         ctxAcotado.Proyectos.Add(proyecto);
@@ -237,6 +243,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: false, EsPmo: true, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-08", "Proyecto en ambos caminos");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "AREA-X";
         proyecto.UnidadId = "UNIDAD-Y";
         _ctx.Proyectos.Add(proyecto);
@@ -279,6 +286,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: true, EsPmo: false, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-20", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -298,6 +306,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
     {
         var exJefe = await SembrarUsuarioAsync("Ex Jefe");
         var proyecto = Proyecto.Crear("PRY-2026-21", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "GOBDIGITAL";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();
@@ -324,6 +333,7 @@ public class InteresadosAutomaticosSyncTests : IDisposable
             EsJefeDeArea: true, EsPmo: false, Color: null));
 
         var proyecto = Proyecto.Crear("PRY-2026-22", "Proyecto de prueba");
+        proyecto.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         proyecto.AreaId = "SIGER";
         _ctx.Proyectos.Add(proyecto);
         await _ctx.SaveChangesAsync();

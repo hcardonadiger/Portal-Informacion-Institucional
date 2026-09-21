@@ -18,12 +18,7 @@
         EstadoProyecto.Cancelado   => "status-badge vencido",
         _                          => "status-badge default"
     };
-    string PrioCls(PrioridadProyecto p) => p switch
-    {
-        PrioridadProyecto.Alta  => "prio-badge alta",
-        PrioridadProyecto.Media => "prio-badge media",
-        _                       => "prio-badge default"
-    };
+    // La clase de la insignia la trae el catálogo: ver Etiquetas.ClaseColor.
     // El color de la barra sigue el semáforo del proyecto, no el tamaño del número:
     // un 80 % en un proyecto vencido no es una buena noticia.
     string BarraCls(ProyectoSemaforoDto p) =>
@@ -68,11 +63,11 @@
         </div>
         <div class="field" style="min-width:130px">
             <label for="f-prio">Prioridad</label>
-            <select id="f-prio" name="Prioridad" onchange="this.form.submit()">
+            <select id="f-prio" name="PrioridadId" onchange="this.form.submit()">
                 <option value="">Todas</option>
-                @foreach (var p in Enum.GetValues<PrioridadProyecto>())
+                @foreach (var p in Model.Prioridades)
                 {
-                    <option value="@((int)p)" selected="@(Model.Prioridad == p)">@p</option>
+                    <option value="@p.Id" selected="@(Model.PrioridadId == p.Id)">@p.Nombre</option>
                 }
             </select>
         </div>
@@ -171,7 +166,7 @@
                                 <a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@p.Nombre</a>
                                 <div class="res-meta">
                                     @p.Codigo
-                                    <span class="@PrioCls(p.Prioridad)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
+                                    <span class="@Etiquetas.ClaseColor(p.PrioridadColor)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
                                     @* El nombre lleva a la ficha —que es donde se trabaja— y este a los
                                        indicadores del proyecto solo, que es el zoom de esta misma tabla. *@
                                     <a asp-page="/Tableros/Proyecto" asp-route-id="@p.ProyectoId"
