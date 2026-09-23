@@ -355,10 +355,10 @@
 
             @{
                 // La columna de orden solo existe para el responsable del proyecto y para un
-                // administrador: reordenar es de ellos. Con ella la tabla pasa a 8 columnas, y de eso
-                // depende el colspan de las filas de «agregar actividad».
+                // administrador: reordenar es de ellos. De eso depende el colspan de las filas de
+                // «agregar actividad».
                 var conOrden = Model.PuedeReordenarActividades;
-                var cols     = conOrden ? 9 : 8;   // +1 por la columna «Creado»
+                var cols     = conOrden ? 3 : 2;   // cuerpo + orden + quitar
 
                 // Las filas anteriores al 26-08-2026 no tienen fecha: la entidad no llevaba auditoría.
                 // Se muestra un guion en vez de inventarles la fecha de la migración.
@@ -395,27 +395,16 @@
                sentido a la fila que aparece al agregarlo. *@
             @if (p.Entregables.Any() || Model.PuedeEditar)
             {
-                @* .edit-grid además de .seg-table: es la que estila los input/select dentro de las
-                   celdas. Con table-layout:fixed hay que dar anchos en píxeles — width:1% se toma
-                   literal y el contenido desborda. La primera columna va sin ancho y se queda el resto. *@
+                @* Sin <thead>: la fila ya no reparte el dato en columnas comunes, así que no hay
+                   nada que rotular arriba. Cada campo lleva su propio <label class="cel-lbl">, y
+                   ahí se mudaron las explicaciones que antes vivían en los title de los <th>.
+
+                   La tabla se conserva —en vez de pasar a <div>— porque el <tbody> por entregable
+                   es lo que agrupa, pliega y reordena, y todo el script de la estructura trabaja
+                   sobre tbody/tr. Quedan tres celdas: el cuerpo, que se lleva el ancho entero, y
+                   las dos de acciones. *@
                 <div style="overflow-x:auto">
-                <table class="seg-table edit-grid" id="tabla-estructura">
-                    <thead>
-                        <tr>
-                            <th>Entregable / actividad</th>
-                            <th style="width:145px">Responsable</th>
-                            <th style="width:118px" title="Solo las actividades tienen fecha de inicio; en el entregable se muestra la de la primera de ellas">Inicio</th>
-                            <th style="width:118px" title="En la actividad, cuándo debe terminar. En el entregable, la fecha comprometida de entrega">Fin</th>
-                            <th style="width:120px" title="El de la actividad lo fija su porcentaje; el del entregable se elige a mano">Estado</th>
-                            <th style="width:110px" title="Solo se escribe el de la actividad: el del entregable es el promedio">Avance</th>
-                            <th style="width:92px" title="Cuándo se registró la fila en el portal. Vacío en lo cargado antes del 26-08-2026, cuando todavía no se guardaba">Creado</th>
-                            @if (conOrden)
-                            {
-                                <th style="width:66px">Orden</th>
-                            }
-                            <th style="width:42px"></th>
-                        </tr>
-                    </thead>
+                <table class="seg-table edit-grid edt-lista" id="tabla-estructura">
 
                     @for (var i = 0; i < p.Entregables.Count; i++)
                     {
@@ -435,115 +424,132 @@
                                    Sin esto llega null y el comando la interpreta como «vaciar»: cada
                                    guardado de la ficha borraba las descripciones. *@
                                 <input type="hidden" name="Entregables[@i].Descripcion" value="@e.Descripcion" />
-                                <td>
-                                    <div style="display:flex;gap:6px;align-items:flex-start">
+                                <td class="edt-cuerpo">
+                                    @* El nombre se lleva la primera línea entera. Antes compartía fila con
+                                       siete columnas de ancho fijo que sumaban 811 px, así que en un
+                                       contenedor de 990 le quedaban 180 y se leía cortado. *@
+                                    <div class="edt-titulo">
                                         <button type="button" class="edt-toggle" onclick="alternarGrupo(this)"
                                                 aria-expanded="true" title="Plegar o desplegar sus actividades">
                                             <span class="caret" aria-hidden="true">▾</span>
                                         </button>
-                                        <div style="flex:1;min-width:0">
-                                            <input name="Entregables[@i].Nombre" value="@e.Nombre" maxlength="300"
-                                                   style="width:100%;font-weight:600" disabled="@(!Model.PuedeEditar)"
-                                                   aria-label="Nombre del entregable @(i + 1)" />
-                                            <div class="res-meta" style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-                                                @if (e.SinDesglose)
-                                                {
-                                                    <span class="badge badge-secondary" title="Su avance sale del estado, no de trabajo reportado">Sin desglosar</span>
-                                                }
-                                                else
-                                                {
-                                                    <span>@e.ActividadesTerminadas de @e.ActividadesVigentes actividades terminadas</span>
-                                                }
-                                                @if (e.EstaAtrasado)
-                                                {
-                                                    <span class="badge badge-danger">Atrasado</span>
-                                                }
-                                                @if (e.ActividadesAtrasadas > 0)
-                                                {
-                                                    <span class="badge badge-danger">@e.ActividadesAtrasadas vencida@(e.ActividadesAtrasadas == 1 ? "" : "s")</span>
-                                                }
-                                                @if (e.DesbordaElPlan)
-                                                {
-                                                    <span class="badge badge-warning"
-                                                          title="La última actividad termina el @e.FinActividades!.Value.ToString("dd/MM/yyyy"), después de la fecha comprometida">
-                                                        Actividades fuera de plazo
-                                                    </span>
-                                                }
-                                            </div>
-                                        </div>
+                                        <input name="Entregables[@i].Nombre" value="@e.Nombre" maxlength="300"
+                                               class="edt-nombre" disabled="@(!Model.PuedeEditar)"
+                                               placeholder="Qué se entrega"
+                                               aria-label="Nombre del entregable @(i + 1)" />
                                     </div>
-                                </td>
-                                <td>
-                                    <select name="Entregables[@i].ResponsableId" disabled="@(!Model.PuedeEditar)"
-                                            aria-label="Responsable del entregable @(i + 1)">
-                                        <option value="">—</option>
-                                        @foreach (var it in Model.Interesados)
+
+                                    @* Cuánto lleva y qué le anda mal, junto y arriba: es lo que se lee de un
+                                       vistazo al recorrer el árbol, antes de mirarle los campos. *@
+                                    <div class="edt-marcas">
+                                        <div class="edt-barra"
+                                             title="@(e.SinDesglose ? "Sale del estado del entregable: pendiente 0 %, en proceso 50 %, cumplido 100 %" : $"Promedio de sus {e.ActividadesVigentes} actividades vigentes")">
+                                            <div class="progress">
+                                                <div class="progress-bar @BarraCls(e.AvancePct)" style="width:@(e.AvancePct)%"></div>
+                                            </div>
+                                            <strong>@(e.AvancePct)%</strong>
+                                        </div>
+                                        @if (e.SinDesglose)
                                         {
-                                            <option value="@it.UsuarioId" selected="@(e.ResponsableId == it.UsuarioId)">@it.Nombre</option>
-                                        }
-                                        @* El responsable que ya estaba y no figura entre los interesados se
-                                           conserva como opción propia. Si desapareciera del selector, guardar
-                                           la ficha lo borraría sin que nadie lo hubiera decidido — y son los
-                                           que vienen de la carga inicial, cuando la lista no existía. *@
-                                        @if (e.ResponsableId is { } rid && Model.Interesados.All(it => it.UsuarioId != rid))
-                                        {
-                                            <option value="@rid" selected>@(e.Responsable ?? "asignado") · no es interesado</option>
-                                        }
-                                    </select>
-                                </td>
-                                @* Las dos columnas de fecha se funden en una sola celda rotulada: el
-                                   entregable no tiene ventana como la actividad, tiene un compromiso de
-                                   entrega, y con los encabezados compartidos eso no se podía decir. *@
-                                <td colspan="2">
-                                    <label class="cel-lbl" for="e-fin-@i">Entrega comprometida</label>
-                                    <input id="e-fin-@i" type="date" name="Entregables[@i].FechaPlan" value="@Iso(e.FechaPlan)"
-                                           disabled="@(!Model.PuedeEditar)" />
-                                    <div class="cel-calc" style="margin-top:3px">
-                                        @if (e.InicioActividades is { } ini || e.FinActividades is not null)
-                                        {
-                                            <text>
-                                                actividades:
-                                                @(e.InicioActividades?.ToString("dd/MM/yy") ?? "?")
-                                                → @(e.FinActividades?.ToString("dd/MM/yy") ?? "?")
-                                            </text>
-                                        }
-                                        else if (e.FechaReal is { } fr)
-                                        {
-                                            <text>entregado el @fr.ToString("dd/MM/yy")</text>
+                                            <span class="badge badge-secondary" title="Su avance sale del estado, no de trabajo reportado">Sin desglosar</span>
                                         }
                                         else
                                         {
-                                            <text>sin actividades fechadas</text>
+                                            <span class="res-meta">@e.ActividadesTerminadas de @e.ActividadesVigentes actividades terminadas</span>
                                         }
-                                    </div>
-                                    @if (e.FechaReal is { } freal && e.InicioActividades is not null)
-                                    {
-                                        <div class="cel-calc">entregado el @freal.ToString("dd/MM/yy")</div>
-                                    }
-                                </td>
-                                <td>
-                                    <select name="Entregables[@i].Estado" disabled="@(!Model.PuedeEditar)"
-                                            aria-label="Estado del entregable @(i + 1)">
-                                        @foreach (var est in Enum.GetValues<EstadoEntregable>())
+                                        @if (e.EstaAtrasado)
                                         {
-                                            <option value="@((int)est)" selected="@(e.Estado == est)">@(est == EstadoEntregable.EnProceso ? "En proceso" : est.ToString())</option>
+                                            <span class="badge badge-danger">Atrasado</span>
                                         }
-                                    </select>
-                                </td>
-                                <td>
-                                    @* Calculado, no editable: es el promedio de las actividades de abajo. *@
-                                    <div style="display:flex;align-items:center;gap:6px"
-                                         title="@(e.SinDesglose ? "Sale del estado del entregable: pendiente 0 %, en proceso 50 %, cumplido 100 %" : $"Promedio de sus {e.ActividadesVigentes} actividades vigentes")">
-                                        <div class="progress" style="flex:1;height:7px">
-                                            <div class="progress-bar @BarraCls(e.AvancePct)" style="width:@(e.AvancePct)%"></div>
+                                        @if (e.ActividadesAtrasadas > 0)
+                                        {
+                                            <span class="badge badge-danger">@e.ActividadesAtrasadas vencida@(e.ActividadesAtrasadas == 1 ? "" : "s")</span>
+                                        }
+                                        @if (e.DesbordaElPlan)
+                                        {
+                                            <span class="badge badge-warning"
+                                                  title="La última actividad termina el @e.FinActividades!.Value.ToString("dd/MM/yyyy"), después de la fecha comprometida">
+                                                Actividades fuera de plazo
+                                            </span>
+                                        }
+                                    </div>
+
+                                    @* Cada campo con su rótulo: acá viven las explicaciones que antes estaban
+                                       en los title de los <th>, que ya no existen. *@
+                                    <div class="edt-campos">
+                                        <div class="edt-campo">
+                                            <label class="cel-lbl" for="e-resp-@i"
+                                                   title="Se elige entre los interesados del proyecto">Responsable</label>
+                                            <select id="e-resp-@i" name="Entregables[@i].ResponsableId" disabled="@(!Model.PuedeEditar)">
+                                                <option value="">—</option>
+                                                @foreach (var it in Model.Interesados)
+                                                {
+                                                    <option value="@it.UsuarioId" selected="@(e.ResponsableId == it.UsuarioId)">@it.Nombre</option>
+                                                }
+                                                @* El responsable que ya estaba y no figura entre los interesados se
+                                                   conserva como opción propia. Si desapareciera del selector, guardar
+                                                   la ficha lo borraría sin que nadie lo hubiera decidido — y son los
+                                                   que vienen de la carga inicial, cuando la lista no existía. *@
+                                                @if (e.ResponsableId is { } rid && Model.Interesados.All(it => it.UsuarioId != rid))
+                                                {
+                                                    <option value="@rid" selected>@(e.Responsable ?? "asignado") · no es interesado</option>
+                                                }
+                                            </select>
                                         </div>
-                                        <strong style="font-size:var(--diger-fs-xs);width:32px;text-align:right">@(e.AvancePct)%</strong>
+
+                                        @* El entregable no tiene ventana como la actividad: tiene un compromiso
+                                           de entrega. Con encabezados compartidos eso no se podía decir; con el
+                                           rótulo propio del campo, sí. *@
+                                        <div class="edt-campo edt-campo-ancho">
+                                            <label class="cel-lbl" for="e-fin-@i"
+                                                   title="Cuándo se comprometió a entregarlo. Debajo, la ventana que cubren sus actividades">Entrega comprometida</label>
+                                            <input id="e-fin-@i" type="date" name="Entregables[@i].FechaPlan" value="@Iso(e.FechaPlan)"
+                                                   disabled="@(!Model.PuedeEditar)" />
+                                            <div class="cel-calc">
+                                                @if (e.InicioActividades is not null || e.FinActividades is not null)
+                                                {
+                                                    <text>
+                                                        actividades:
+                                                        @(e.InicioActividades?.ToString("dd/MM/yy") ?? "?")
+                                                        → @(e.FinActividades?.ToString("dd/MM/yy") ?? "?")
+                                                    </text>
+                                                }
+                                                else if (e.FechaReal is { } fr)
+                                                {
+                                                    <text>entregado el @fr.ToString("dd/MM/yy")</text>
+                                                }
+                                                else
+                                                {
+                                                    <text>sin actividades fechadas</text>
+                                                }
+                                            </div>
+                                            @if (e.FechaReal is { } freal && e.InicioActividades is not null)
+                                            {
+                                                <div class="cel-calc">entregado el @freal.ToString("dd/MM/yy")</div>
+                                            }
+                                        </div>
+
+                                        <div class="edt-campo">
+                                            <label class="cel-lbl" for="e-est-@i"
+                                                   title="El del entregable se elige a mano; el de la actividad lo fija su porcentaje">Estado</label>
+                                            <select id="e-est-@i" name="Entregables[@i].Estado" disabled="@(!Model.PuedeEditar)">
+                                                @foreach (var est in Enum.GetValues<EstadoEntregable>())
+                                                {
+                                                    <option value="@((int)est)" selected="@(e.Estado == est)">@(est == EstadoEntregable.EnProceso ? "En proceso" : est.ToString())</option>
+                                                }
+                                            </select>
+                                        </div>
+
+                                        <div class="edt-campo edt-campo-angosto">
+                                            <span class="cel-lbl"
+                                                  title="Cuándo se registró la fila en el portal. Vacío en lo cargado antes del 26-08-2026, cuando todavía no se guardaba">Creado</span>
+                                            <div class="cel-calc" title="@CreadoTip(e.CreadoPor)">@Creado(e.CreadoEn)</div>
+                                        </div>
                                     </div>
                                 </td>
-                                <td class="cel-calc" title="@CreadoTip(e.CreadoPor)">@Creado(e.CreadoEn)</td>
                                 @if (conOrden)
                                 {
-                                    <td style="text-align:right;white-space:nowrap">
+                                    <td class="edt-orden">
                                         @if (Model.PuedeReordenar)
                                         {
                                             @* No hace falta mandar el orden aparte: el «Entregables.Index»
@@ -556,7 +562,7 @@
                                         }
                                     </td>
                                 }
-                                <td style="text-align:right">
+                                <td class="edt-quitar">
                                     @if (Model.PuedeEditar)
                                     {
                                         <button type="button" class="hist-del" aria-label="Quitar entregable «@e.Nombre»"
@@ -576,13 +582,16 @@
                                     <input type="hidden" name="Entregables[@i].Actividades.Index" value="@j" />
                                     <input type="hidden" name="Entregables[@i].Actividades[@j].Id" value="@a.Id" />
                                     <input type="hidden" name="Entregables[@i].Actividades[@j].Descripcion" value="@a.Descripcion" />
-                                    <td>
-                                        <input name="Entregables[@i].Actividades[@j].Nombre" value="@a.Nombre" maxlength="300"
-                                               style="width:100%" disabled="@(!Model.PuedeEditar)"
-                                               aria-label="Nombre de la actividad @(j + 1)" />
+                                    <td class="edt-cuerpo edt-cuerpo-act">
+                                        <div class="edt-titulo">
+                                            <input name="Entregables[@i].Actividades[@j].Nombre" value="@a.Nombre" maxlength="300"
+                                                   class="edt-nombre" disabled="@(!Model.PuedeEditar)"
+                                                   placeholder="Qué hay que hacer"
+                                                   aria-label="Nombre de la actividad @(j + 1)" />
+                                        </div>
                                         @if (a.EstaAtrasada || a.NoArrancada || a.EstaCancelada || a.Bloqueada || a.DesfaseIncoherente || a.FechaFinReal is not null)
                                         {
-                                            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">
+                                            <div class="edt-marcas">
                                                 @if (a.EstaAtrasada)
                                                 {
                                                     <span class="badge badge-danger">Vencida</span>
@@ -615,9 +624,9 @@
                                                 }
                                             </div>
                                         }
-                                        @* Las dependencias no tienen columna propia: la tabla ya lleva ocho
-                                           y la mayoría de las actividades no depende de nada. Van bajo el
-                                           nombre, donde solo ocupan lugar cuando existen. *@
+                                        @* Las dependencias van bajo el nombre y no como campo propio: la
+                                           mayoría de las actividades no depende de nada, y así solo ocupan
+                                           lugar cuando existen. *@
                                         @if (a.Predecesoras.Count > 0 || Model.PuedeEditar)
                                         {
                                             <div class="dep-lista">
@@ -649,62 +658,84 @@
                                                 }
                                             </div>
                                         }
-                                    </td>
-                                    <td>
-                                        <select name="Entregables[@i].Actividades[@j].ResponsableId" disabled="@(!Model.PuedeEditar)"
-                                                aria-label="Responsable de la actividad @(j + 1)">
-                                            <option value="">—</option>
-                                            @foreach (var it in Model.Interesados)
-                                            {
-                                                <option value="@it.UsuarioId" selected="@(a.ResponsableId == it.UsuarioId)">@it.Nombre</option>
-                                            }
-                                            @if (a.ResponsableId is { } aRid && Model.Interesados.All(it => it.UsuarioId != aRid))
-                                            {
-                                                <option value="@aRid" selected>@(a.Responsable ?? "asignado") · no es interesado</option>
-                                            }
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input type="date" name="Entregables[@i].Actividades[@j].FechaInicioPlan" value="@Iso(a.FechaInicioPlan)"
-                                               disabled="@(!Model.PuedeEditar)" aria-label="Inicio planificado de la actividad @(j + 1)" />
-                                    </td>
-                                    <td>
-                                        <input type="date" name="Entregables[@i].Actividades[@j].FechaFinPlan" value="@Iso(a.FechaFinPlan)"
-                                               disabled="@(!Model.PuedeEditar)" aria-label="Fin planificado de la actividad @(j + 1)" />
-                                    </td>
-                                    <td>
-                                        @* El estado no se elige: lo deriva el porcentaje. Lo único que se
-                                           decide es cancelarla, que además la saca del promedio. *@
-                                        <div class="cel-calc" title="Lo fija el porcentaje: 0 pendiente, 1-99 en proceso, 100 completada">
-                                            @(a.Estado == EstadoActividad.EnProceso ? "En proceso" : a.Estado.ToString())
+
+                                        @* Una sola línea de campos rotulados: la actividad es la fila que más
+                                           se repite —un entregable puede tener trece— y un bloque alto por
+                                           cada una vuelve el árbol imposible de recorrer. *@
+                                        <div class="edt-campos edt-campos-act">
+                                            <div class="edt-campo">
+                                                <label class="cel-lbl" for="a-resp-@i-@j"
+                                                       title="Se elige entre los interesados del proyecto">Responsable</label>
+                                                <select id="a-resp-@i-@j" name="Entregables[@i].Actividades[@j].ResponsableId"
+                                                        disabled="@(!Model.PuedeEditar)">
+                                                    <option value="">—</option>
+                                                    @foreach (var it in Model.Interesados)
+                                                    {
+                                                        <option value="@it.UsuarioId" selected="@(a.ResponsableId == it.UsuarioId)">@it.Nombre</option>
+                                                    }
+                                                    @if (a.ResponsableId is { } aRid && Model.Interesados.All(it => it.UsuarioId != aRid))
+                                                    {
+                                                        <option value="@aRid" selected>@(a.Responsable ?? "asignado") · no es interesado</option>
+                                                    }
+                                                </select>
+                                            </div>
+
+                                            <div class="edt-campo edt-campo-angosto">
+                                                <label class="cel-lbl" for="a-ini-@i-@j"
+                                                       title="Cuándo debe arrancar. Solo las actividades tienen inicio: el entregable muestra el de la primera de ellas">Inicio</label>
+                                                <input id="a-ini-@i-@j" type="date" name="Entregables[@i].Actividades[@j].FechaInicioPlan"
+                                                       value="@Iso(a.FechaInicioPlan)" disabled="@(!Model.PuedeEditar)" />
+                                            </div>
+
+                                            <div class="edt-campo edt-campo-angosto">
+                                                <label class="cel-lbl" for="a-fin-@i-@j"
+                                                       title="Cuándo debe terminar">Fin</label>
+                                                <input id="a-fin-@i-@j" type="date" name="Entregables[@i].Actividades[@j].FechaFinPlan"
+                                                       value="@Iso(a.FechaFinPlan)" disabled="@(!Model.PuedeEditar)" />
+                                            </div>
+
+                                            <div class="edt-campo edt-campo-angosto">
+                                                <label class="cel-lbl" for="a-pct-@i-@j"
+                                                       title="El único número que se escribe a mano en todo el árbol: de él salen el estado, el avance del entregable y el del proyecto">Avance</label>
+                                                <div class="edt-pct">
+                                                    <input id="a-pct-@i-@j" type="number" name="Entregables[@i].Actividades[@j].AvancePct"
+                                                           min="0" max="100" step="5" value="@a.AvancePct"
+                                                           disabled="@(!Model.PuedeEditar)" />
+                                                    <span class="cel-calc">%</span>
+                                                </div>
+                                            </div>
+
+                                            @* El estado no se elige: lo deriva el porcentaje. Lo único que se
+                                               decide es cancelarla, que además la saca del promedio. *@
+                                            <div class="edt-campo">
+                                                <span class="cel-lbl"
+                                                      title="Lo fija el porcentaje: 0 pendiente, 1-99 en proceso, 100 completada">Estado</span>
+                                                <div class="cel-calc edt-estado">
+                                                    @(a.Estado == EstadoActividad.EnProceso ? "En proceso" : a.Estado.ToString())
+                                                </div>
+                                                @if (Model.PuedeEditar)
+                                                {
+                                                    <label class="edt-cancelada" title="Sale del promedio del entregable, sin borrarse">
+                                                        <input type="checkbox" name="Entregables[@i].Actividades[@j].Cancelada" value="true"
+                                                               checked="@a.EstaCancelada" />
+                                                        <span>Cancelada</span>
+                                                    </label>
+                                                    @* Par obligado del checkbox: sin el hidden, destildarlo no manda
+                                                       nada y el binder deja el valor anterior. *@
+                                                    <input type="hidden" name="Entregables[@i].Actividades[@j].Cancelada" value="false" />
+                                                }
+                                            </div>
+
+                                            <div class="edt-campo edt-campo-angosto">
+                                                <span class="cel-lbl"
+                                                      title="Cuándo se registró la fila en el portal. Vacío en lo cargado antes del 26-08-2026, cuando todavía no se guardaba">Creado</span>
+                                                <div class="cel-calc" title="@CreadoTip(a.CreadoPor)">@Creado(a.CreadoEn)</div>
+                                            </div>
                                         </div>
-                                        @if (Model.PuedeEditar)
-                                        {
-                                            <label style="display:flex;align-items:center;gap:5px;margin-top:3px;font-size:var(--diger-fs-xs);cursor:pointer"
-                                                   title="Sale del promedio del entregable, sin borrarse">
-                                                <input type="checkbox" name="Entregables[@i].Actividades[@j].Cancelada" value="true"
-                                                       checked="@a.EstaCancelada" style="width:auto;margin:0" />
-                                                <span>Cancelada</span>
-                                            </label>
-                                            @* Par obligado del checkbox: sin el hidden, destildarlo no manda
-                                               nada y el binder deja el valor anterior. *@
-                                            <input type="hidden" name="Entregables[@i].Actividades[@j].Cancelada" value="false" />
-                                        }
                                     </td>
-                                    <td>
-                                        <div style="display:flex;align-items:center;gap:4px">
-                                            <input type="number" name="Entregables[@i].Actividades[@j].AvancePct"
-                                                   min="0" max="100" step="5" value="@a.AvancePct"
-                                                   disabled="@(!Model.PuedeEditar)"
-                                                   aria-label="Avance de la actividad @(j + 1) en porcentaje"
-                                                   title="El único número que se escribe a mano en todo el árbol" />
-                                            <span class="cel-calc">%</span>
-                                        </div>
-                                    </td>
-                                    <td class="cel-calc" title="@CreadoTip(a.CreadoPor)">@Creado(a.CreadoEn)</td>
                                     @if (conOrden)
                                     {
-                                        <td style="text-align:right;white-space:nowrap">
+                                        <td class="edt-orden">
                                             @if (e.Actividades.Count > 1)
                                             {
                                                 <button type="button" class="orden-mov" aria-label="Subir «@a.Nombre»"
@@ -714,7 +745,7 @@
                                             }
                                         </td>
                                     }
-                                    <td style="text-align:right">
+                                    <td class="edt-quitar">
                                         @if (Model.PuedeEditar)
                                         {
                                             <button type="button" class="hist-del" aria-label="Quitar actividad «@a.Nombre»"
@@ -2356,7 +2387,7 @@
         // lleva su propio .Index, borrar en el medio no obliga a renumerar nada.
         var entIdx = @p.Entregables.Count;
         var conOrden = @(Model.PuedeReordenarActividades ? "true" : "false");
-        var cols = conOrden ? 9 : 8;   // debe coincidir con el colspan del servidor
+        var cols = conOrden ? 3 : 2;   // debe coincidir con el colspan del servidor
 
         // Los responsables salen de los interesados del proyecto, no del padrón de usuarios: es
         // lo que hace que la asignación además dé acceso. Si la lista está vacía, el selector
@@ -2396,23 +2427,31 @@
                 // Id 0 = fila nueva: el comando la inserta al final en vez de actualizar.
                 '<input type="hidden" name="Entregables[' + i + '].Id" value="0" />' +
                 '<input type="hidden" name="Entregables[' + i + '].Descripcion" value="" />' +
-                '<td><div style="display:flex;gap:6px;align-items:flex-start">' +
+                // Misma forma que la fila del servidor: cuerpo en tres niveles —nombre, avisos,
+                // campos rotulados— y las dos celdas de acciones.
+                '<td class="edt-cuerpo">' +
+                '<div class="edt-titulo">' +
                 '<button type="button" class="edt-toggle" onclick="alternarGrupo(this)" aria-expanded="true" title="Plegar o desplegar sus actividades"><span class="caret" aria-hidden="true">&#9662;</span></button>' +
-                '<div style="flex:1;min-width:0"><input name="Entregables[' + i + '].Nombre" maxlength="300" style="width:100%;font-weight:600" placeholder="Qué se entrega" aria-label="Nombre del entregable nuevo" />' +
-                '<div class="res-meta" style="margin-top:4px">sin actividades todavía</div></div></div></td>' +
-                '<td><select name="Entregables[' + i + '].ResponsableId" aria-label="Responsable del entregable nuevo">' + optsResponsable() + '</select></td>' +
-                // Las dos columnas de fecha se funden, igual que en las filas del servidor: el
-                // entregable tiene un compromiso de entrega, no una ventana.
-                '<td colspan="2"><label class="cel-lbl">Entrega comprometida</label>' +
-                '<input type="date" name="Entregables[' + i + '].FechaPlan" /></td>' +
-                '<td><select name="Entregables[' + i + '].Estado" aria-label="Estado del entregable nuevo">' + estadoOpts + '</select></td>' +
-                '<td class="cel-calc">se calcula</td>' +
-                // La fila nueva todavía no existe en la base: su fecha la pone el guardado.
-                '<td class="cel-calc" title="Se registra al guardar">—</td>' +
-                // La columna de orden existe si el usuario puede reordenar; el entregable nuevo
+                '<input name="Entregables[' + i + '].Nombre" maxlength="300" class="edt-nombre" placeholder="Qué se entrega" aria-label="Nombre del entregable nuevo" />' +
+                '</div>' +
+                '<div class="edt-marcas"><span class="res-meta">sin actividades todavía</span></div>' +
+                '<div class="edt-campos">' +
+                '<div class="edt-campo"><label class="cel-lbl">Responsable</label>' +
+                '<select name="Entregables[' + i + '].ResponsableId" aria-label="Responsable del entregable nuevo">' + optsResponsable() + '</select></div>' +
+                // El entregable tiene un compromiso de entrega, no una ventana como la actividad.
+                '<div class="edt-campo edt-campo-ancho"><label class="cel-lbl">Entrega comprometida</label>' +
+                '<input type="date" name="Entregables[' + i + '].FechaPlan" aria-label="Entrega comprometida del entregable nuevo" /></div>' +
+                '<div class="edt-campo"><label class="cel-lbl">Estado</label>' +
+                '<select name="Entregables[' + i + '].Estado" aria-label="Estado del entregable nuevo">' + estadoOpts + '</select></div>' +
+                // La fila nueva todavía no existe en la base: su fecha la pone el guardado, y su
+                // avance sale recién cuando haya actividades que promediar.
+                '<div class="edt-campo edt-campo-angosto"><span class="cel-lbl">Creado</span>' +
+                '<div class="cel-calc" title="Se registra al guardar">—</div></div>' +
+                '</div></td>' +
+                // La celda de orden existe si el usuario puede reordenar; el entregable nuevo
                 // todavía no tiene Id, así que va vacía y no participa hasta que se guarde.
-                (conOrden ? '<td></td>' : '') +
-                '<td style="text-align:right"><button type="button" class="hist-del" aria-label="Quitar entregable" onclick="quitarEntregable(this)">&#10005;</button></td>' +
+                (conOrden ? '<td class="edt-orden"></td>' : '') +
+                '<td class="edt-quitar"><button type="button" class="hist-del" aria-label="Quitar entregable" onclick="quitarEntregable(this)">&#10005;</button></td>' +
                 '</tr>' +
                 '<tr class="act-add edt-add"><td colspan="' + cols + '">' +
                 '<button type="button" class="btns" style="font-size:12.5px;padding:4px 10px" onclick="agregarActividad(this)">+ Actividad</button>' +
@@ -2443,23 +2482,31 @@
                 '<input type="hidden" name="Entregables[' + i + '].Actividades.Index" value="' + j + '" />' +
                 '<input type="hidden" name="' + base + '.Id" value="0" />' +
                 '<input type="hidden" name="' + base + '.Descripcion" value="" />' +
-                '<td><input name="' + base + '.Nombre" maxlength="300" style="width:100%" placeholder="Qué hay que hacer" aria-label="Nombre de la actividad nueva" />' +
+                '<td class="edt-cuerpo edt-cuerpo-act">' +
+                '<div class="edt-titulo"><input name="' + base + '.Nombre" maxlength="300" class="edt-nombre" placeholder="Qué hay que hacer" aria-label="Nombre de la actividad nueva" /></div>' +
                 // La fila nueva puede depender de actividades ya guardadas; ser predecesora,
                 // todavía no. Por eso lleva el botón pero no aparece en el catálogo.
-                '<div class="dep-lista"><button type="button" class="dep-mas" onclick="abrirDependencia(this)" title="Elegir qué actividad tiene que terminar antes que esta">+ depende de…</button></div></td>' +
-                '<td><select name="' + base + '.ResponsableId" aria-label="Responsable de la actividad nueva">' + optsResponsable() + '</select></td>' +
-                '<td><input type="date" name="' + base + '.FechaInicioPlan" aria-label="Inicio planificado" /></td>' +
-                '<td><input type="date" name="' + base + '.FechaFinPlan" aria-label="Fin planificado" /></td>' +
-                '<td><div class="cel-calc" title="Lo fija el porcentaje">Pendiente</div>' +
-                '<label style="display:flex;align-items:center;gap:5px;margin-top:3px;font-size:var(--diger-fs-xs);cursor:pointer" title="Sale del promedio del entregable, sin borrarse">' +
-                '<input type="checkbox" name="' + base + '.Cancelada" value="true" style="width:auto;margin:0" /><span>Cancelada</span></label>' +
-                '<input type="hidden" name="' + base + '.Cancelada" value="false" /></td>' +
-                '<td><div style="display:flex;align-items:center;gap:4px">' +
-                '<input type="number" name="' + base + '.AvancePct" min="0" max="100" step="5" value="0" aria-label="Avance en porcentaje" />' +
-                '<span class="cel-calc">%</span></div></td>' +
-                '<td class="cel-calc" title="Se registra al guardar">—</td>' +
-                (conOrden ? '<td></td>' : '') +
-                '<td style="text-align:right"><button type="button" class="hist-del" aria-label="Quitar actividad" onclick="quitarActividad(this)">&#10005;</button></td>';
+                '<div class="dep-lista"><button type="button" class="dep-mas" onclick="abrirDependencia(this)" title="Elegir qué actividad tiene que terminar antes que esta">+ depende de…</button></div>' +
+                '<div class="edt-campos edt-campos-act">' +
+                '<div class="edt-campo"><label class="cel-lbl">Responsable</label>' +
+                '<select name="' + base + '.ResponsableId" aria-label="Responsable de la actividad nueva">' + optsResponsable() + '</select></div>' +
+                '<div class="edt-campo edt-campo-angosto"><label class="cel-lbl">Inicio</label>' +
+                '<input type="date" name="' + base + '.FechaInicioPlan" aria-label="Inicio planificado" /></div>' +
+                '<div class="edt-campo edt-campo-angosto"><label class="cel-lbl">Fin</label>' +
+                '<input type="date" name="' + base + '.FechaFinPlan" aria-label="Fin planificado" /></div>' +
+                '<div class="edt-campo edt-campo-angosto"><label class="cel-lbl" title="El único número que se escribe a mano en todo el árbol">Avance</label>' +
+                '<div class="edt-pct"><input type="number" name="' + base + '.AvancePct" min="0" max="100" step="5" value="0" aria-label="Avance en porcentaje" />' +
+                '<span class="cel-calc">%</span></div></div>' +
+                '<div class="edt-campo"><span class="cel-lbl" title="Lo fija el porcentaje">Estado</span>' +
+                '<div class="cel-calc edt-estado">Pendiente</div>' +
+                '<label class="edt-cancelada" title="Sale del promedio del entregable, sin borrarse">' +
+                '<input type="checkbox" name="' + base + '.Cancelada" value="true" /><span>Cancelada</span></label>' +
+                '<input type="hidden" name="' + base + '.Cancelada" value="false" /></div>' +
+                '<div class="edt-campo edt-campo-angosto"><span class="cel-lbl">Creado</span>' +
+                '<div class="cel-calc" title="Se registra al guardar">—</div></div>' +
+                '</div></td>' +
+                (conOrden ? '<td class="edt-orden"></td>' : '') +
+                '<td class="edt-quitar"><button type="button" class="hist-del" aria-label="Quitar actividad" onclick="quitarActividad(this)">&#10005;</button></td>';
 
             // Si el grupo estaba plegado, la fila nueva no se vería: se despliega para no dejar al
             // usuario escribiendo en algo invisible.

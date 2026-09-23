@@ -2504,8 +2504,8 @@ tr.contacto-inactivo td {
     transform: rotate(-90deg);
 }
 
-/* Rótulo dentro de una celda: la fecha del entregable significa otra cosa que las de la
-   actividad, y con los encabezados compartidos no había forma de decirlo. */
+/* Rótulo de un campo. Con la fila en dos niveles cada dato lleva el suyo, y ahí viven las
+   explicaciones que antes estaban en el title de los encabezados de columna. */
 .cel-lbl {
     display: block;
     font-size: var(--diger-fs-2xs);
@@ -2519,6 +2519,154 @@ tr.contacto-inactivo td {
 .cel-calc {
     font-size: var(--diger-fs-xs);
     color: var(--diger-text-secondary);
+}
+
+/* ── EDT: LA FILA COMO FICHA ────────────────────────────────── */
+/* La fila tenía nueve celdas y siete de ellas ancho fijo, que sumaban 811 px: dentro de un
+   contenedor de 990 al nombre le quedaban 180 y se leía cortado. Ahora son tres —el cuerpo,
+   que se lleva todo el ancho, y las dos de acciones— y adentro el dato se ordena en tres
+   niveles: nombre, avisos, campos rotulados. */
+
+.edt-lista td.edt-orden {
+    width: 62px;
+    text-align: right;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.edt-lista td.edt-quitar {
+    width: 40px;
+    text-align: right;
+    vertical-align: top;
+}
+
+.edt-cuerpo {
+    vertical-align: top;
+}
+
+/* Nivel 1: el nombre, a ancho completo. Es el dato por el que se busca la fila. */
+.edt-titulo {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.edt-nombre {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+}
+
+.edt-ent .edt-nombre {
+    font-size: var(--diger-fs-md);
+}
+
+/* Nivel 2: avance y avisos. Lo que se lee de un vistazo al recorrer el árbol. */
+.edt-marcas {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 6px;
+    font-size: var(--diger-fs-xs);
+    color: var(--diger-text-secondary);
+}
+
+.edt-barra {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 190px;
+}
+
+.edt-barra .progress {
+    flex: 1;
+    height: 7px;
+}
+
+.edt-barra strong {
+    font-size: var(--diger-fs-xs);
+    width: 32px;
+    text-align: right;
+}
+
+/* Nivel 3: los campos. Flex y no grid: cada campo declara el ancho que necesita —la entrega
+   comprometida arrastra su glosa, «Creado» es una fecha corta— y al angostarse la pantalla
+   envuelven solos, sin media query que mantener. */
+.edt-campos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-top: 10px;
+}
+
+.edt-campo {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+
+.edt-campo-ancho {
+    flex: 1.6 1 210px;
+}
+
+/* No crece: una fecha o un porcentaje no ganan nada con ancho de sobra, y lo que sobre le
+   sirve más al responsable, que lleva nombres largos. */
+.edt-campo-angosto {
+    flex: 0 1 118px;
+}
+
+/* La actividad se repite decenas de veces dentro de un entregable: sus campos van más
+   apretados para que el árbol siga siendo recorrible. */
+.edt-campos-act {
+    gap: 8px 12px;
+    margin-top: 8px;
+}
+
+.edt-campos-act .edt-campo {
+    flex: 1 1 130px;
+}
+
+.edt-campo .cel-calc {
+    margin-top: 3px;
+}
+
+.edt-pct {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.edt-estado {
+    font-weight: 600;
+    color: var(--diger-text-strong);
+}
+
+.edt-cancelada {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    font-size: var(--diger-fs-xs);
+    cursor: pointer;
+}
+
+/* El width:100% de .edit-grid estira un checkbox a lo ancho de la celda. */
+.edt-cancelada input {
+    width: auto;
+    margin: 0;
+}
+
+/* En teléfono la sangría de la actividad y las celdas de acción se comen el ancho que le
+   falta al nombre, que es justamente lo que se vino a arreglar. */
+@media (max-width: 560px) {
+    .edt-lista td.edt-orden  { width: 46px; }
+    .edt-lista td.edt-quitar { width: 34px; }
+
+    .edt-act > td:first-of-type { padding-left: 22px; }
+    .edt-act > td:first-of-type::before { left: 10px; }
+    .edt-act > td:first-of-type::after  { left: 10px; }
+
+    .edt-barra { flex: 1 1 140px; }
 }
 
 /* ── AYUDAS EN CONTEXTO ─────────────────────────────────────── */
