@@ -2636,6 +2636,13 @@ tr.contacto-inactivo td {
     gap: 4px;
 }
 
+/* El width:100% de .edit-grid deja al input ocupando el campo entero y empuja el «%» fuera,
+   encima del campo de al lado. Con min-width:0 el input cede el lugar que el signo necesita. */
+.edt-pct input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .edt-estado {
     font-weight: 600;
     color: var(--diger-text-strong);
@@ -2659,8 +2666,13 @@ tr.contacto-inactivo td {
 /* En teléfono la sangría de la actividad y las celdas de acción se comen el ancho que le
    falta al nombre, que es justamente lo que se vino a arreglar. */
 @media (max-width: 560px) {
-    .edt-lista td.edt-orden  { width: 46px; }
-    .edt-lista td.edt-quitar { width: 34px; }
+    /* Subir y bajar se apilan: en fila se llevaban 46 px del ancho que le hace falta al
+       nombre, que es justo lo que se vino a arreglar. */
+    .edt-lista td.edt-orden  { width: 28px; }
+    .edt-lista td.edt-quitar { width: 30px; }
+
+    .edt-lista .edt-orden .orden-mov { display: block; }
+    .edt-lista .edt-orden .orden-mov + .orden-mov { margin-left: 0; margin-top: 3px; }
 
     .edt-act > td:first-of-type { padding-left: 22px; }
     .edt-act > td:first-of-type::before { left: 10px; }
