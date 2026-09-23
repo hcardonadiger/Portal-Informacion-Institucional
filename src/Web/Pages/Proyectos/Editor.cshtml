@@ -546,9 +546,9 @@
                                     <td style="text-align:right;white-space:nowrap">
                                         @if (Model.PuedeReordenar)
                                         {
-                                            @* El Id viaja con la fila: al moverla en el DOM se mueve con ella,
-                                               así el orden que se postea es el que se ve. *@
-                                            <input type="hidden" name="OrdenEntregables" value="@e.Id" />
+                                            @* No hace falta mandar el orden aparte: el «Entregables.Index»
+                                               de la fila viaja con ella al moverla en el DOM, y el binder
+                                               arma la lista en ese mismo orden. El orden es la posición. *@
                                             <button type="button" class="orden-mov" aria-label="Subir «@e.Nombre»"
                                                     title="Subir" onclick="moverEntregable(this, -1)">▲</button>
                                             <button type="button" class="orden-mov" aria-label="Bajar «@e.Nombre»"
@@ -730,14 +730,6 @@
                                     <td colspan="@cols">
                                         <button type="button" class="btns" style="font-size:12.5px;padding:4px 10px"
                                                 onclick="agregarActividad(this)">+ Actividad</button>
-                                        @if (conOrden && e.Actividades.Count > 1)
-                                        {
-                                            @* Fuera del formulario de la ficha, con form="…": el reordenamiento
-                                               es de un entregable a la vez y no puede arrastrar los Ids de los
-                                               demás, que están en la misma página. *@
-                                            <button type="button" class="btns" style="font-size:12.5px;padding:4px 10px"
-                                                    onclick="guardarOrdenActividades(this, @e.Id)">Guardar orden</button>
-                                        }
                                         <span class="res-meta" style="margin-left:6px">en «@e.Nombre»</span>
                                     </td>
                                 </tr>
@@ -748,13 +740,16 @@
                 </div>
             }
 
-            @if (Model.PuedeReordenar)
+            @if (Model.PuedeReordenarActividades)
             {
+                @* Se enciende al primer movimiento. Antes decía lo contrario —que «Guardar cambios»
+                   no tocaba el orden— y era cierto: había un botón aparte. Ahora el orden es parte
+                   del formulario y se guarda con todo lo demás. *@
                 <div id="aviso-orden" class="hint warn" hidden style="margin-top:.6rem">
                     <span class="ico" aria-hidden="true">↕️</span>
                     <div>
-                        Movió entregables de lugar. El orden lo guarda <strong>«Guardar orden»</strong>;
-                        «Guardar cambios» nunca lo altera.
+                        Cambió el orden. Queda guardado al apretar <strong>«Guardar cambios»</strong>;
+                        si sale de la página sin guardar, se pierde.
                     </div>
                 </div>
             }
@@ -899,16 +894,10 @@
             @* Pegajosa: la estructura puede tener decenas de filas y el botón no puede vivir solo
                al final de un scroll de tres pantallas. *@
             <div class="guardar-barra" id="barra-guardar">
-                <span class="nota">Guarda la estructura y los datos del proyecto.</span>
+                <span class="nota">Guarda la estructura, el orden y los datos del proyecto.</span>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
-                    @if (Model.PuedeReordenar)
-                    {
-                        @* Mismo formulario, otro handler: el reordenamiento no pasa por el
-                           guardado en bloque de la ficha porque es una acción del propietario. *@
-                        <button type="submit" class="btns" asp-page-handler="ReordenarEntregables" asp-route-id="@p.Id">
-                            Guardar orden
-                        </button>
-                    }
+                    @* Un solo botón. El orden viaja en la posición de las filas del mismo
+                       formulario, así que no hay nada que guardar por separado. *@
                     <button type="submit" class="btnp">Guardar cambios</button>
                 </div>
             </div>
@@ -2333,18 +2322,6 @@
     </section>
 </div>
 
-@* Fuera del formulario de la ficha, a propósito. Reordenar actividades es de un entregable a la
-   vez, y si sus inputs vivieran dentro del formulario grande viajarían también los Ids de los
-   demás entregables — el dominio exige la lista exacta de un entregable y rechazaría la mezcla.
-   Los botones se asocian con este formulario por su atributo form=. *@
-@if (Model.PuedeReordenarActividades)
-{
-    <form method="post" asp-page-handler="ReordenarActividades" asp-route-id="@p.Id" id="form-orden-act" hidden>
-        <input type="hidden" name="OrdenActividadesDe" id="orden-act-de" />
-        <div id="orden-act-ids"></div>
-    </form>
-}
-
 
 @* El selector de dependencias es uno solo para toda la tabla y vive FUERA del formulario de la
    ficha: repetir un <select> con las actividades del proyecto en cada fila serían decenas de miles
@@ -2657,8 +2634,14 @@
         };
 
         // ── Reordenar ────────────────────────────────────────────────────
-        // Solo mueve el nodo en el DOM. El input OrdenEntregables viaja dentro de la fila, así que
-        // el orden que se postea a «Guardar orden» es exactamente el que quedó en pantalla.
+        // Solo mueven el nodo en el DOM, y con eso alcanza: los inputs «…Index» de la fila viajan
+        // dentro de ella, y el binder de ASP.NET arma la colección en el orden en que se postean.
+        // Mover la fila ES cambiar el orden que va a grabar «Guardar cambios».
+        function avisarOrden() {
+            var aviso = document.getElementById('aviso-orden');
+            if (aviso) aviso.hidden = false;
+        }
+
         window.moverEntregable = function (btn, dir) {
             var grupo = btn.closest('tbody');
             var destino = dir < 0 ? grupo.previousElementSibling : grupo.nextElementSibling;
@@ -2667,8 +2650,7 @@
             if (dir < 0) tabla.insertBefore(grupo, destino);
             else         tabla.insertBefore(destino, grupo);
 
-            var aviso = document.getElementById('aviso-orden');
-            if (aviso) aviso.hidden = false;
+            avisarOrden();
 
             // El foco se queda en el botón que se usó, que ahora está en otra posición.
             var mismo = grupo.querySelector(dir < 0 ? '.orden-mov' : '.orden-mov + .orden-mov');
@@ -2684,37 +2666,10 @@
             if (dir < 0) tb.insertBefore(fila, destino);
             else         tb.insertBefore(destino, fila);
 
+            avisarOrden();
+
             var mismo = fila.querySelector(dir < 0 ? '.orden-mov' : '.orden-mov + .orden-mov');
             if (mismo) mismo.focus();
-        };
-
-        // El orden de las actividades se manda por su propio formulario, con los Ids de un solo
-        // entregable. El dominio exige la lista completa: una actividad recién agregada todavía no
-        // tiene Id, así que primero hay que guardar la ficha.
-        window.guardarOrdenActividades = function (btn, entregableId) {
-            var tb = btn.closest('tbody');
-            var filas = tb.querySelectorAll('tr.act-row');
-            var ids = [];
-            for (var k = 0; k < filas.length; k++) {
-                var id = filas[k].getAttribute('data-act');
-                if (id) ids.push(id);
-            }
-
-            if (ids.length !== filas.length) {
-                alert('Hay actividades sin guardar. Guarde los cambios de la ficha antes de ordenar.');
-                return;
-            }
-
-            var cont = document.getElementById('orden-act-ids');
-            var de   = document.getElementById('orden-act-de');
-            if (!cont || !de) return;
-
-            de.value = entregableId;
-            cont.innerHTML = ids.map(function (id) {
-                return '<input type="hidden" name="OrdenActividades" value="' + esc(id) + '" />';
-            }).join('');
-
-            document.getElementById('form-orden-act').submit();
         };
     })();
 

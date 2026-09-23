@@ -390,10 +390,11 @@ public sealed record ProyectoDetailDto(
 /// con identidad nueva, lo que dejaba en NULL el <c>EntregableId</c> de todos los avances imputados
 /// a él (la FK está en SetNull). Es decir: guardar la ficha borraba la imputación de la bitácora.</para>
 ///
-/// <para>No trae <c>Orden</c> a propósito. El orden solo lo cambia el responsable del proyecto,
-/// por <c>ReordenarEntregablesCommand</c>; guardar la ficha conserva el que ya tenían y manda los
-/// nuevos al final. Si el orden viajara acá, cualquiera con permiso de edición podría reordenar y
-/// se saltaría esa restricción.</para>
+/// <para>No trae <c>Orden</c> a propósito: el orden es la <b>posición en la lista</b>. Un número
+/// suelto por fila tendría que mantenerse coherente con esa posición, y bastaría un descuido para
+/// que el formulario dijera una cosa y el número otra. Quién puede reordenar sigue siendo el
+/// responsable o un administrador —lo decide el comando, no este DTO—; para el resto se conserva
+/// el orden vigente y los nuevos van al final.</para>
 ///
 /// <para>Tampoco trae el avance ni la fecha real: el primero se calcula desde las actividades y la
 /// segunda la fija el cierre.</para>
