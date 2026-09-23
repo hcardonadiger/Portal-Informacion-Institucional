@@ -77,11 +77,15 @@ Correrlo dos veces seguidas tiene que decir **0 de 29** la segunda vez.
 
 | Base | Servidor | Creadas | Total |
 |---|---|---|---|
-| `GestionGD_TEST` | `localhost\SQL2025` | 15 | 73 |
+| `GestionGD_Sandbox` | `LP-GD-JAGM\SQL2025` | 15 | 73 |
+| `GestionGD_TEST` | `LP-GD-JAGM\SQL2025` | 15 | 73 |
 | `DigerTramitesEstado_Unificada_Sandbox` | `LP-GD-JAGM\SQLEXPRESS` | 21 | 59 |
 
-La diferencia es sólo que el sandbox tenía menos instituciones de entrada. **No se tocó
-`DigerTramitesEstado_Unificada`**, que es la que va a producción.
+`GestionGD_Sandbox` es a la que apunta hoy `appsettings.Development.json`, así que es la que se
+ve al levantar el portal. El viejo sandbox de SQLEXPRESS se dejó al día por si alguien todavía
+lo usa; tenía menos instituciones de entrada, de ahí las 21.
+
+**No se tocó `GestionGD_Unificada`**, que es la que va a producción.
 
 ## Lo que este script no hace
 
