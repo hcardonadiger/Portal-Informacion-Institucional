@@ -5998,8 +5998,16 @@ textarea.form-control { resize: vertical; }
     background: var(--diger-surface);
 }
 
+/* flex-basis en % dentro de clamp() resuelve mal cuando el ancho del contenedor no es "definido"
+   en el momento del cálculo —pasa con .gantt metido en una tarjeta flexible—: el navegador cae al
+   ancho de contenido, que con los nombres en una sola línea (nowrap) es el de la etiqueta más
+   larga sin cortar. Ahí la columna se comía toda la tarjeta y el Gantt —meses y barras— quedaba
+   con 0 px, invisible. vw no tiene ese problema: siempre resuelve contra el viewport, nunca contra
+   un contenedor "indefinido". */
 .gantt-nombres {
-    flex: 0 0 clamp(190px, 30%, 300px);
+    flex: 0 0 auto;
+    width: clamp(140px, 34vw, 300px);
+    min-width: 0;
     border-right: 1px solid var(--diger-border);
     background: var(--diger-surface);
 }
@@ -6032,7 +6040,7 @@ textarea.form-control { resize: vertical; }
 .gantt-nom.n0 { font-weight: 700; color: var(--diger-text-strong); }
 .gantt-nom.n1 { padding-left: 22px; }
 
-.gantt-scroll { flex: 1; overflow-x: auto; }
+.gantt-scroll { flex: 1; min-width: 0; overflow-x: auto; }
 .gantt-lienzo { position: relative; }
 
 .gantt-eje { position: relative; padding: 0; }

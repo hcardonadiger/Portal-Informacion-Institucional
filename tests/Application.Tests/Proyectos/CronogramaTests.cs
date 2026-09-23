@@ -92,6 +92,27 @@ public class CronogramaTests
     }
 
     [Fact]
+    public void La_ventana_del_proyecto_no_estira_el_eje_hacia_atras_si_el_arbol_ya_tiene_fechas()
+    {
+        // La planificación del proyecto suele arrancar meses antes que su primera actividad real.
+        // Si esa fecha entrara al eje, el Gantt dejaría una franja vacía al principio —el mismo
+        // "vacío atrás" que reportó el usuario— y habría que desplazar el scroll para ver la
+        // primera barra. El eje tiene que salir solo del árbol cuando el árbol ya tiene fechas.
+        var proyecto = new ProyectoDetailDto(
+            1, "PRY-2026-01", "Demo", null, "DIGER", null, null, null, null,
+            2, "Media", ColorEtiqueta.Azul, null, null, null, null, EstadoProyecto.EnEjecucion,
+            new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), null, null, 0, DateTime.UtcNow, null,
+            [Ent("E", null, EstadoEntregable.EnProceso,
+                Act("A", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 20)))],
+            []);
+
+        var c = CronogramaProyecto.Construir(proyecto, Hoy);
+
+        c.Desde.Should().Be(new DateOnly(2026, 8, 1), "el eje arranca donde arranca la actividad, no la planificación del proyecto");
+        c.Hasta.Should().Be(new DateOnly(2026, 8, 31));
+    }
+
+    [Fact]
     public void El_eje_se_estira_para_incluir_lo_que_se_pasa_del_plan()
     {
         // Dibujar solo hasta la fecha comprometida recortaría justamente lo que hay que ver.
