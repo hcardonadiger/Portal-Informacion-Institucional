@@ -7,7 +7,10 @@ namespace Diger.TramitesEstado.Infrastructure.Persistence;
 public sealed class AppDbContext(
     DbContextOptions<AppDbContext> options,
     ICurrentUserService currentUser,
-    IPublisher publisher)
+    IPublisher publisher,
+    // Opcional para no romper a quien construye el contexto a mano —las pruebas lo hacen con tres
+    // argumentos—. Sin él se asume la configuración por omisión, cuya institución de la casa es DIGER.
+    Microsoft.Extensions.Options.IOptions<Application.Common.Models.InstitucionOptions>? institucion = null)
     : DbContext(options), IApplicationDbContext, IUnitOfWork
 {
     public DbSet<Institucion>              Instituciones      { get; init; } = default!;
@@ -99,6 +102,15 @@ public sealed class AppDbContext(
     private readonly NivelAlcance _nivel    = currentUser.NivelAlcance;
     private readonly bool    _esSoloLectura = currentUser.EsSoloLectura;
 
+    /// <summary>El usuario pertenece a la institución que opera el sistema (la casa, DIGER por
+    /// omisión, configurable en la sección "Institucion"). Solo lo usa el filtro de Expediente.</summary>
+    private readonly bool _esInstitucionCasa =
+        !string.IsNullOrWhiteSpace(currentUser.ActiveInstitucionId) &&
+        string.Equals(
+            currentUser.ActiveInstitucionId,
+            (institucion?.Value ?? new Application.Common.Models.InstitucionOptions()).Id,
+            StringComparison.OrdinalIgnoreCase);
+
     protected override void OnModelCreating(ModelBuilder mb)
     {
         mb.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -132,8 +144,17 @@ public sealed class AppDbContext(
         // El ancla `InstitucionId == _activeInst` envuelve TODAS las ramas de rol no-global:
         // sin él, JefeUnidad/JefeArea filtraban solo por Unidad/Área y el `|| == null` dejaba
         // ver registros de otras instituciones (fuga cross-institución). Ver auditoría A-1.
+        //
+        // Con una excepción, que es propia de este agregado: `Expediente.InstitucionId` NO es «de
+        // quién es el dato», sino «de quién son los trámites que se están racionalizando». La casa
+        // —DIGER, configurable en la sección "Institucion"— es quien hace ese trabajo, nunca quien
+        // lo recibe, así que ningún expediente lleva su Id. Con solo el ancla, un empleado de la
+        // casa veía CERO expedientes por más permisos que tuviera: no le faltaba alcance, es que la
+        // condición no podía cumplirse nunca. Por eso su personal ve los expedientes que trabaja.
+        // Esto no abre nada entre instituciones racionalizadas: cada una sigue viendo solo la suya.
         mb.Entity<Expediente>().HasQueryFilter(e => !e.IsDeleted && (
             _alcanceGlobal ||
+            _esInstitucionCasa ||
             (e.InstitucionId == _activeInst && (
                 (_nivel == NivelAlcance.Institucion &&
                     (string.IsNullOrEmpty(_activeArea) || e.AreaId == _activeArea || e.AreaId == null) &&
