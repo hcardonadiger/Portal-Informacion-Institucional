@@ -70,9 +70,13 @@ public static class CronogramaProyecto
         var conFechas  = new List<BarraCronograma>();
         var sinFechas  = new List<BarraCronograma>();
 
-        // 1. Rango. Se toma de todo lo que tenga fecha —actividades, compromisos de entregable y
-        //    la ventana del proyecto— y se redondea a mes completo para que el eje empiece y
-        //    termine en un borde legible.
+        // 1. Rango. Se toma de las fechas del árbol —actividades y compromisos de entregable— y se
+        //    redondea a mes completo para que el eje empiece y termine en un borde legible.
+        //    La ventana propia del proyecto (FechaInicioPlan/FechaFinPlan) NO entra si el árbol ya
+        //    tiene alguna fecha: antes sí entraba siempre, y como la planificación del proyecto suele
+        //    arrancar meses antes que su primera actividad real, el eje se estiraba hacia atrás y
+        //    dejaba una franja vacía al principio —había que desplazar el scroll para ver la primera
+        //    barra—. Solo sirve de respaldo cuando el árbol todavía no tiene ninguna fecha propia.
         var fechas = new List<DateOnly>();
         foreach (var e in p.Entregables)
         {
@@ -83,8 +87,11 @@ public static class CronogramaProyecto
                 if (a.FechaFinPlan    is { } fin) fechas.Add(fin);
             }
         }
-        if (p.FechaInicioPlan is { } pi) fechas.Add(pi);
-        if (p.FechaFinPlan    is { } pf) fechas.Add(pf);
+        if (fechas.Count == 0)
+        {
+            if (p.FechaInicioPlan is { } pi) fechas.Add(pi);
+            if (p.FechaFinPlan    is { } pf) fechas.Add(pf);
+        }
 
         if (fechas.Count == 0)
             return new CronogramaDto(null, null, [], [], TodasSinFecha(p), null);
