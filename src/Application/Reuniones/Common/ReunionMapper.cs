@@ -17,6 +17,7 @@ public static class ReunionMapper
         r.Convocados = d.Convocados; r.PctAsistencia = d.PctAsistencia;
         r.SatisfaccionCalificacion = d.SatisfaccionCalificacion; r.Satisfaccion = d.Satisfaccion?.Trim();
         r.Compromisos = d.Compromisos;
+        r.EncuestaActiva = d.EncuestaActiva;
         r.ValDiger = d.ValDiger?.Trim(); r.ValInst = d.ValInst?.Trim(); r.DocsRecursos = d.DocsRecursos;
         r.Foto1Url = d.Foto1Url?.Trim(); r.Foto1Desc = d.Foto1Desc?.Trim();
         r.Foto2Url = d.Foto2Url?.Trim(); r.Foto2Desc = d.Foto2Desc?.Trim();
@@ -73,6 +74,7 @@ public static class ReunionMapper
             FacNombre = r.FacNombre, FacCargo = r.FacCargo, FacCorreo = r.FacCorreo,
             Convocados = r.Convocados, NumAsistentes = r.Asistentes.Count > 0 ? r.Asistentes.Count : r.NumAsistentes, PctAsistencia = r.PctAsistencia,
             SatisfaccionCalificacion = r.SatisfaccionCalificacion, Satisfaccion = r.Satisfaccion, Compromisos = r.Compromisos,
+            EncuestaActiva = r.EncuestaActiva,
             ValDiger = r.ValDiger, ValInst = r.ValInst, DocsRecursos = r.DocsRecursos,
             Foto1Url = r.Foto1Url, Foto1Desc = r.Foto1Desc, Foto2Url = r.Foto2Url, Foto2Desc = r.Foto2Desc
         };

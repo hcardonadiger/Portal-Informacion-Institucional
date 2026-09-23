@@ -126,6 +126,15 @@
             <span class="hint">Las privadas solo las ve quien las crea.</span>
           </div>
         </div>
+
+        <div class="fg-hdr">Encuesta de satisfacción <span class="help-tip tip-down" data-tip="Al activarla, el cierre pide además la validación de la institución: es quien responde por lo que opinaron los suyos.">?</span></div>
+        <div class="field">
+          <input type="hidden" asp-for="Datos.EncuestaActiva" id="encuesta-val" />
+          <button type="button" id="encuesta-btn" class="enc-btn" aria-pressed="false" onclick="toggleEncuesta()">
+            <span class="enc-dot" aria-hidden="true"></span><span id="encuesta-lbl">Activar encuesta</span>
+          </button>
+          <span class="hint" id="encuesta-hint"></span>
+        </div>
       </div>
 
       @* ── Enlace y QR de auto-registro (disponible tras el primer guardado) ── *@
@@ -391,19 +400,17 @@
     <div class="sec" id="sec4">
       <div class="sec-title"><span class="sec-step-badge">4</span>Cierre</div>
       <div class="card accent">
-        <div class="field">
-          <label>Calificación de satisfacción</label>
-          <div class="tg">
-            @for (int n = 1; n <= 5; n++)
-            {
-                <label class="tp"><input type="radio" asp-for="Datos.SatisfaccionCalificacion" value="@n" /> @n</label>
-            }
-          </div>
-        </div>
-        <div class="field"><label>Comentario de satisfacción <span class="hint">(opcional)</span></label><textarea asp-for="Datos.Satisfaccion" rows="2" placeholder="Comentario sobre la satisfacción de los participantes"></textarea></div>
+        @* La calificación y el comentario de satisfacción ya no se capturan acá: la encuesta se
+           activa desde «Generales». Viajan como ocultos para que lo que ya tengan las reuniones
+           anteriores —y lo que muestra el acta— sobreviva a guardar desde esta pantalla. *@
+        <input type="hidden" asp-for="Datos.SatisfaccionCalificacion" />
+        <input type="hidden" asp-for="Datos.Satisfaccion" />
+        @* La segunda firma solo aparece con la encuesta activa: es la institución quien responde por
+           lo que opinaron los suyos. Se oculta con CSS y no se quita del formulario, para que el
+           valor ya capturado siga viajando si alguien apaga la encuesta y guarda. *@
         <div class="row2">
           <div class="field"><label>Validación DIGER</label><input asp-for="Datos.ValDiger" /></div>
-          <div class="field"><label>Validación institución</label><input asp-for="Datos.ValInst" /></div>
+          <div class="field" id="val-inst-field"><label>Validación institución</label><input asp-for="Datos.ValInst" /></div>
         </div>
         <div class="field"><label>Documentos / recursos <span class="hint">(uno por línea)</span></label><textarea asp-for="Datos.DocsRecursos" rows="2"></textarea></div>
       </div>
@@ -593,6 +600,23 @@
 .dir-result.no-match { color: var(--diger-text-muted); cursor: default; }
 .dir-result.no-match:hover { background: transparent; }
 
+/* ══ Botón de encuesta de satisfacción (Generales) ════════════════ */
+.enc-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--diger-border); background: var(--diger-surface);
+    color: var(--diger-text-muted); font-size: 13px; font-weight: 600;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.enc-btn:hover { border-color: var(--diger-blue-mid); }
+.enc-btn .enc-dot {
+    width: 9px; height: 9px; border-radius: 50%; flex: none;
+    background: var(--diger-border); transition: background .15s, box-shadow .15s;
+}
+.enc-btn.on { background: #e7f6ec; border-color: #b7e0c6; color: #1c7a43; }
+.enc-btn.on .enc-dot { background: #1c9a53; box-shadow: 0 0 0 3px rgba(28,154,83,.18); }
+.enc-btn + .hint { display: block; margin-top: 6px; }
+
 /* ══ Panel «Llenar desde una transcripción» (prompt + ayuda JSON) ══ */
 .cw-aviso {
     background: #fdf6ec; border: 1px solid #f3e2c0; color: #7a5a15;
@@ -723,21 +747,49 @@
     otroSync(k);
   }
 
-  // Muestra/oculta el paso "Capacitación" y otras secciones según el Tipo elegido
-  // (reemplaza al checkbox "Es capacitación").
+  // Muestra/oculta el paso "Capacitación" según el Tipo elegido (reemplaza al checkbox
+  // "Es capacitación").
+  //
+  // La evidencia fotográfica ya NO se esconde acá. Estaba atada a `tipo === 'Capacitación' ||
+  // tipo === 'Taller'`, así que en una reunión técnica —o en una recién abierta, sin tipo— la
+  // tarjeta de fotos sencillamente no aparecía y no había forma de adjuntar la evidencia.
+  // Cualquier reunión puede llevar fotos.
   function toggleTipoVisibility(){
-    var tipo = document.getElementById('tp-sel').value;
     var esCap = getEsCap();
-    var tieneEvidencia = tipo === 'Capacitación' || tipo === 'Taller';
     var sb2 = document.getElementById('sb2');
     if (sb2) sb2.style.display = esCap ? '' : 'none';
     // Si el paso Capacitación queda oculto mientras está activo, regresa a Generales.
     if (!esCap && pasoActual === 2) irPaso(0);
-    var fotoCard = document.getElementById('foto-card');
-    if (fotoCard) fotoCard.style.display = tieneEvidencia ? '' : 'none';
     // El prompt y la ayuda JSON del paso Memoria dependen del tipo: una capacitación
     // pide su propio bloque de objetivo formativo, contenido, asistencia y compromisos.
     coworkRender();
+  }
+
+  // ── Encuesta de satisfacción (botón en Generales) ────────────────
+  // Encenderla es lo que hace que el cierre pida la segunda firma: sin encuesta valida solo la
+  // DIGER; con encuesta valida también la institución, que es quien responde por lo que opinaron
+  // los suyos. El campo de esa segunda firma se oculta con CSS, nunca se quita del formulario,
+  // para que un valor ya capturado no se pierda si alguien apaga la encuesta y guarda.
+  function encuestaActiva(){ return document.getElementById('encuesta-val').value === 'True'; }
+
+  function encuestaRender(){
+    var on  = encuestaActiva();
+    var btn = document.getElementById('encuesta-btn');
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    document.getElementById('encuesta-lbl').textContent = on ? 'Encuesta activa' : 'Activar encuesta';
+    document.getElementById('encuesta-hint').textContent = on
+      ? 'El cierre pedirá también la validación de la institución.'
+      : 'Sin encuesta, el cierre solo pide la validación de la DIGER.';
+    var campo = document.getElementById('val-inst-field');
+    if (campo) campo.style.display = on ? '' : 'none';
+    coworkRender();
+  }
+
+  function toggleEncuesta(){
+    var h = document.getElementById('encuesta-val');
+    h.value = encuestaActiva() ? 'False' : 'True';
+    encuestaRender();
   }
 
   // Foto preview
@@ -1025,9 +1077,11 @@
   ];
   var CW_CAMPOS_CIERRE = [
     ['documentos',                'Cierre · Documentos / recursos'],
-    ['satisfaccion',              'Cierre · Comentario de satisfacción'],
-    ['satisfaccion_calificacion', 'Cierre · Calificación (1 a 5)'],
-    ['validador_diger',           'Cierre · Validación DIGER'],
+    ['validador_diger',           'Cierre · Validación DIGER']
+  ];
+  // Solo con la encuesta encendida: es la única condición bajo la que el cierre pide la segunda
+  // firma, así que pedírsela a la IA cuando no aplica sería pedir un dato que no tiene dónde caer.
+  var CW_CAMPOS_ENCUESTA = [
     ['validador_institucion',     'Cierre · Validación institución']
   ];
 
@@ -1046,12 +1100,14 @@
     '  "pct_asistencia": 80,',
     '  "compromisos": ["Compromiso de seguimiento posterior a la capacitación"],'
   ];
-  var CW_BLOQUE_CIERRE = [
+  var CW_BLOQUE_CIERRE_CON_ENCUESTA = [
     '  "documentos": ["Presentación institucional.pdf", "Lista de asistencia firmada"],',
-    '  "satisfaccion": "Comentario sobre la satisfacción de los participantes",',
-    '  "satisfaccion_calificacion": 4,',
     '  "validador_diger": "Nombre de quien valida por la DIGER",',
     '  "validador_institucion": "Nombre de quien valida por la institución"'
+  ];
+  var CW_BLOQUE_CIERRE_SIN_ENCUESTA = [
+    '  "documentos": ["Presentación institucional.pdf", "Lista de asistencia firmada"],',
+    '  "validador_diger": "Nombre de quien valida por la DIGER"'
   ];
 
   var CW_REGLAS_COMUNES = [
@@ -1065,8 +1121,8 @@
     '   persona o institución tal como se menciona; "plazo" va en formato YYYY-MM-DD y se',
     '   omite si no se acordó una fecha.',
     '5. "documentos" lista los archivos, presentaciones o enlaces mencionados.',
-    '6. "satisfaccion_calificacion" es un entero de 1 a 5 y solo se incluye si la',
-    '   transcripción lo respalda explícitamente.'
+    '6. Los "validador_*" son nombres de personas, no cargos ni instituciones. Omítelos si la',
+    '   transcripción no dice quién valida.'
   ];
   var CW_REGLAS_CAP = [
     '7. Esta actividad es una CAPACITACIÓN: llena también su bloque propio.',
@@ -1096,21 +1152,23 @@
       .join('\n');
   }
 
-  function cwFormato(esCap){
+  function cwFormato(esCap, conEncuesta){
     return ['{']
       .concat(CW_BLOQUE_MEMORIA)
       .concat(esCap ? CW_BLOQUE_CAP : [])
-      .concat(CW_BLOQUE_CIERRE)
+      .concat(conEncuesta ? CW_BLOQUE_CIERRE_CON_ENCUESTA : CW_BLOQUE_CIERRE_SIN_ENCUESTA)
       .concat(['}'])
       .join('\n');
   }
 
-  // Reescribe prompt, formato y lista de campos según el Tipo elegido en «Generales».
+  // Reescribe prompt, formato y lista de campos según lo elegido en «Generales»: el Tipo decide si
+  // hay bloque de capacitación, y la encuesta si se pide la segunda firma.
   function coworkRender(){
     var badge = document.getElementById('cowork-variante');
     if (!badge) return;
     var esCap = getEsCap();
-    var formato = cwFormato(esCap);
+    var conEncuesta = encuestaActiva();
+    var formato = cwFormato(esCap, conEncuesta);
     badge.textContent = esCap ? 'Capacitación' : 'Reunión';
     badge.classList.toggle('cap', esCap);
     document.getElementById('cowork-formato').value = formato;
@@ -1120,6 +1178,7 @@
     CW_CAMPOS_MEMORIA
       .concat(esCap ? CW_CAMPOS_CAP : [])
       .concat(CW_CAMPOS_CIERRE)
+      .concat(conEncuesta ? CW_CAMPOS_ENCUESTA : [])
       .forEach(function(c){
         var li = document.createElement('li');
         var code = document.createElement('code'); code.textContent = c[0];
@@ -1162,15 +1221,16 @@
     catch (e) { errBox.textContent = 'El texto pegado no es un JSON válido.'; errBox.style.display = ''; return; }
 
     var esCap = getEsCap();
+    var conEncuesta = encuestaActiva();
 
     // Única lista de campos escribibles. «Generales» no aparece aquí a propósito.
+    // La satisfacción tampoco: salió del cierre y ahora es la encuesta, que no se captura a mano.
     var campos = [
       ['Datos.ObjetivoAgenda', d.objetivo],
       ['Datos.DocsRecursos',   cwLineas(d.documentos)],
-      ['Datos.Satisfaccion',   d.satisfaccion],
-      ['Datos.ValDiger',       d.validador_diger],
-      ['Datos.ValInst',        d.validador_institucion]
+      ['Datos.ValDiger',       d.validador_diger]
     ];
+    if (conEncuesta) campos.push(['Datos.ValInst', d.validador_institucion]);
     if (esCap) {
       campos.push(
         ['Datos.ObjetivoCap',   d.objetivo_capacitacion],
@@ -1181,10 +1241,6 @@
         ['Datos.PctAsistencia', d.pct_asistencia]
       );
     }
-
-    var calificacion = d.satisfaccion_calificacion == null
-      ? null
-      : String(parseInt(d.satisfaccion_calificacion, 10));
 
     // Sin sobreescribir: si algún campo ya tiene información distinta a la del JSON,
     // se bloquea la acción y se pide usar «Sobreescribir».
@@ -1198,10 +1254,6 @@
       if (d.desarrollo != null) {
         var devActual = (document.getElementById('dev-val').value || '').trim();
         if (devActual !== '' && devActual !== String(d.desarrollo).trim()) hayConflicto = true;
-      }
-      if (calificacion != null) {
-        var marcada = document.querySelector('input[name="Datos.SatisfaccionCalificacion"]:checked');
-        if (marcada && marcada.value !== calificacion) hayConflicto = true;
       }
       if (Array.isArray(d.acuerdos) && d.acuerdos.length &&
           document.querySelectorAll('#acuerdos-list .acuerdo-item').length > 0) {
@@ -1229,11 +1281,6 @@
       aplicados++;
     }
 
-    if (calificacion != null) {
-      var radio = document.querySelector('input[name="Datos.SatisfaccionCalificacion"][value="' + calificacion + '"]');
-      if (radio) { radio.checked = true; aplicados++; }
-    }
-
     if (Array.isArray(d.acuerdos) && d.acuerdos.length) {
       document.getElementById('acuerdos-list').innerHTML = '';
       d.acuerdos.forEach(function (a) {
@@ -1255,6 +1302,12 @@
     var capIgnoradas = esCap ? [] : CW_CAMPOS_CAP
       .map(function(c){ return c[0]; })
       .filter(function(k){ return d[k] != null; });
+    // Dos motivos distintos, dos avisos distintos: la satisfacción salió del cierre para siempre,
+    // y la segunda firma solo no aplica mientras la encuesta esté apagada.
+    var satIgnoradas = ['satisfaccion', 'satisfaccion_calificacion']
+      .filter(function(k){ return d[k] != null; });
+    var encIgnoradas = conEncuesta ? [] : ['validador_institucion']
+      .filter(function(k){ return d[k] != null; });
 
     var msg = aplicados === 0
       ? 'El JSON no traía ningún campo de Memoria, Capacitación ni Cierre.'
@@ -1265,6 +1318,12 @@
     if (capIgnoradas.length) {
       msg += ' Se ignoró ' + capIgnoradas.join(', ') + ': el tipo de esta reunión no es Capacitación.';
     }
+    if (satIgnoradas.length) {
+      msg += ' Se ignoró ' + satIgnoradas.join(', ') + ': la satisfacción ya no se captura en el cierre.';
+    }
+    if (encIgnoradas.length) {
+      msg += ' Se ignoró ' + encIgnoradas.join(', ') + ': la encuesta de esta reunión está apagada.';
+    }
     okBox.textContent = msg;
     okBox.style.display = '';
   }
@@ -1274,6 +1333,9 @@
   document.addEventListener('DOMContentLoaded', function(){
     initOtro('md', MODALIDADES, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.Modalidad ?? "")));
     initOtro('tp', TIPOS, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.Tipo ?? "")));
+    // encuestaRender antes que toggleTipoVisibility: los dos terminan llamando a coworkRender, que
+    // lee el estado de la encuesta, y así el panel JSON nace ya coherente.
+    encuestaRender();
     toggleTipoVisibility();
     renderInstituciones();
     actualizarResponsables();
