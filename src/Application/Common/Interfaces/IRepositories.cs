@@ -16,6 +16,15 @@ public interface IExpedienteRepository
 public interface IInstitucionRepository
 {
     Task<IReadOnlyList<Institucion>>       GetAllActivasAsync(CancellationToken ct = default);
+
+    /// <summary>Todas las instituciones activas del catálogo, saltándose el alcance del usuario.
+    /// El filtro global de <c>Institucion</c> deja ver solo la propia institución, que es lo correcto
+    /// para los datos con alcance pero no para un catálogo del que hay que <em>elegir a quién
+    /// convocar</em>: con el filtro puesto, un usuario no global solo veía la suya en el selector de
+    /// instituciones convocadas y en el auto-registro anónimo la lista salía vacía. Devuelve nombres
+    /// de instituciones —un catálogo público—, no datos de ellas.</summary>
+    Task<IReadOnlyList<Institucion>>       GetActivasParaConvocarAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<Institucion>>       GetAllAsync(CancellationToken ct = default);
     Task<Institucion?>                     GetByIdAsync(string id, CancellationToken ct = default);
     Task<Institucion?>                     GetByIdWithTramitesAsync(string id, CancellationToken ct = default);
