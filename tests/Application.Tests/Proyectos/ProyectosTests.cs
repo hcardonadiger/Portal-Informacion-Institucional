@@ -764,12 +764,10 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Actualizar_NoAlteraElOrdenExistenteYMandaLosNuevosAlFinal()
     {
-        var id  = await ConDuenioYEntregablesAsync();
-        var ids = await IdsPorOrdenAsync(id);
+        var id = await ConDuenioYEntregablesAsync();
 
-        // El responsable reordena; después alguien guarda la ficha.
-        await new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        // El responsable reordena; después alguien que NO puede reordenar guarda la ficha.
+        await GuardarFichaComoAsync(id, await EntregablesMovidosAsync(id, 2, 0, 1), Como(Duenio));
 
         var entrada = (await EntregablesActualesAsync(id)).ToList();
         entrada.Add(new EntregableInput(0, "Cuarto", null, null, EstadoEntregable.Pendiente, null, null, []));
@@ -859,9 +857,25 @@ public class ProyectosTests : IDisposable
             .ToListAsync();
 
     private Task GuardarFichaAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
-        new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Proyecto de prueba", null, null, null, Duenio, "Dueño del proyecto",
+        GuardarFichaComoAsync(id, entregables, _usuario);
+
+    /// <summary>Igual, pero eligiendo quién aprieta «Guardar cambios». Importa desde que el orden
+    /// viaja en la posición de las filas: solo se renumera si ese usuario puede reordenar.</summary>
+    private Task GuardarFichaComoAsync(
+        int id, IReadOnlyList<EntregableInput> entregables,
+        ICurrentUserService usuario, bool sinResponsable = false) =>
+        new ActualizarProyectoCommandHandler(_ctx, usuario, _sync).Handle(new ActualizarProyectoCommand(
+            id, "Proyecto de prueba", null, null, null,
+            sinResponsable ? null : Duenio, sinResponsable ? null : "Dueño del proyecto",
             _prio.Media, null, null, null, null, entregables), CancellationToken.None);
+
+    /// <summary>La estructura vigente con los entregables permutados según las posiciones pedidas,
+    /// que es lo que manda el editor cuando alguien usa las flechas ▲▼.</summary>
+    private async Task<List<EntregableInput>> EntregablesMovidosAsync(int proyectoId, params int[] posiciones)
+    {
+        var actuales = await EntregablesActualesAsync(proyectoId);
+        return posiciones.Select(i => actuales[i]).ToList();
+    }
 
     /// <summary>Le cuelga actividades a un entregable, con su porcentaje ya reportado.</summary>
     private async Task ConActividadesAsync(int proyectoId, int entregableId, params (int Pct, string Nombre)[] actividades)
@@ -960,60 +974,115 @@ public class ProyectosTests : IDisposable
         _ctx.ProyectoEntregables.Where(e => e.ProyectoId == proyectoId)
             .OrderBy(e => e.Orden).Select(e => e.Id).ToArrayAsync();
 
+    // ── Reordenar: ya no tiene comando propio, viaja en el guardado de la ficha ──
+    // El orden es la POSICIÓN de los entregables en la lista que manda el editor. Estas pruebas
+    // sustituyen a las del viejo ReordenarEntregablesCommand, que existía solo porque la pantalla
+    // tenía un botón «Guardar orden» aparte — y que la gente no apretaba.
+
     [Fact]
     public async Task Reordenar_ElPropietarioMueveElUltimoEntregableAlPrincipio()
     {
         var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
-        int[] nuevo = [ids[2], ids[0], ids[1]];
 
-        await new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
+        await GuardarFichaComoAsync(id, await EntregablesMovidosAsync(id, 2, 0, 1), Como(Duenio));
 
-        (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
+        (await IdsPorOrdenAsync(id)).Should().Equal(ids[2], ids[0], ids[1]);
+
+        // Se renumera de 1 en adelante, sin huecos.
         _ctx.ProyectoEntregables.Where(e => e.ProyectoId == id).OrderBy(e => e.Orden)
             .Select(e => e.Orden).Should().Equal(1, 2, 3);
     }
 
     [Fact]
-    public async Task Reordenar_LoRechazaAQuienNoEsElResponsable()
+    public async Task Reordenar_QuedaRegistradoEnLaBitacora()
     {
-        var id  = await ConDuenioYEntregablesAsync();
-        var ids = await IdsPorOrdenAsync(id);
+        var id = await ConDuenioYEntregablesAsync();
 
-        var act = () => new ReordenarEntregablesCommandHandler(_ctx, Como(Ajeno))
-            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        await GuardarFichaComoAsync(id, await EntregablesMovidosAsync(id, 2, 0, 1), Como(Duenio));
 
-        await act.Should().ThrowAsync<DomainException>()
-            .WithMessage("*responsable del proyecto*");
-        (await IdsPorOrdenAsync(id)).Should().Equal(ids);   // no se movió nada
+        var entradas = await _ctx.BitacorasProyecto
+            .Where(b => b.ProyectoId == id && b.Tipo == TipoEventoProyecto.ModificacionEstructura)
+            .Select(b => b.Detalle).ToListAsync();
+
+        entradas.Should().ContainMatch("*reordenados*«Tercero» → «Primero» → «Segundo»*");
     }
 
     [Fact]
-    public async Task Reordenar_UnProyectoSinResponsableNoAdmiteLaAccion()
+    public async Task Reordenar_GuardarSinMoverNadaNoEnsuciaLaBitacora()
     {
-        // Sin responsable no hay contra quién comparar: a quien no es administrador se le rechaza
-        // aunque haya creado el proyecto. El administrador sí pasa — ver la prueba de más abajo.
+        // El guardado manda el orden en cada envío. Si cualquier guardado contara como
+        // reordenamiento, la bitácora se llenaría de ruido en cada corrección de una fecha.
+        var id = await ConDuenioYEntregablesAsync();
+        await LimpiarAuditoriaAsync();
+
+        await GuardarFichaComoAsync(id, await EntregablesActualesAsync(id), Como(Duenio));
+
+        (await _ctx.BitacorasProyecto.Where(b => b.ProyectoId == id).Select(b => b.Detalle).ToListAsync())
+            .Should().NotContainMatch("*reordenados*");
+    }
+
+    [Fact]
+    public async Task Reordenar_UnEntregableNuevoCaeEnLaPosicionEnQueQuedoEnPantalla()
+    {
+        // Antes esto no podía ni plantearse: el comando de reordenar viajaba por Ids y una fila
+        // recién agregada todavía no tiene uno. Por eso ahora el orden va por posición.
+        var id = await ConDuenioYEntregablesAsync();
+
+        var entrada = await EntregablesActualesAsync(id);
+        entrada.Insert(1, new EntregableInput(0, "Intercalado", null, null, EstadoEntregable.Pendiente, null, null, []));
+        await GuardarFichaComoAsync(id, entrada, Como(Duenio));
+
+        (await _ctx.ProyectoEntregables.Where(e => e.ProyectoId == id)
+            .OrderBy(e => e.Orden).Select(e => e.Nombre).ToArrayAsync())
+            .Should().Equal("Primero", "Intercalado", "Segundo", "Tercero");
+    }
+
+    [Fact]
+    public async Task Reordenar_AQuienNoEsElResponsableLeGuardaTodoMenosElOrden()
+    {
+        // No se le rechaza el guardado entero: la pantalla no le ofrece las flechas, así que un
+        // orden distinto solo puede venir de un formulario forjado. Se ignora, y el resto se graba.
+        var id  = await ConDuenioYEntregablesAsync();
+        var ids = await IdsPorOrdenAsync(id);
+
+        var movidos = await EntregablesMovidosAsync(id, 2, 0, 1);
+        movidos[0] = movidos[0] with { Descripcion = "Editado por un ajeno" };
+        await GuardarFichaComoAsync(id, movidos, Como(Ajeno));
+
+        (await IdsPorOrdenAsync(id)).Should().Equal(ids, "el orden quedó como estaba");
+        (await _ctx.ProyectoEntregables.FindAsync(ids[2]))!.Descripcion
+            .Should().Be("Editado por un ajeno", "pero lo demás sí se guardó");
+    }
+
+    [Fact]
+    public async Task Reordenar_EnUnProyectoSinResponsableNoLoMueveQuienNoEsAdministrador()
+    {
+        // Sin responsable no hay contra quién comparar: a quien no es administrador se le conserva
+        // el orden aunque haya creado el proyecto. El administrador sí lo mueve — prueba de abajo.
         var id  = await ConEntregablesAsync(responsable: null);
         var ids = await IdsPorOrdenAsync(id);
 
-        var act = () => new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        await GuardarFichaComoAsync(
+            id, await EntregablesMovidosAsync(id, 2, 0, 1), Como(Duenio), sinResponsable: true);
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*no tiene responsable*");
+        (await IdsPorOrdenAsync(id)).Should().Equal(ids);
     }
 
     [Fact]
-    public async Task Reordenar_ExigeLaListaCompletaDeEntregables()
+    public async Task Reordenar_PonerseDeResponsableEnElMismoGuardadoNoHabilitaElOrden()
     {
-        var id  = await ConDuenioYEntregablesAsync();
+        // La guarda se evalúa contra el responsable que tenía el proyecto, no contra el que trae
+        // este formulario. Si no, cualquiera con permiso de edición se habilitaría en un solo paso.
+        var id  = await ConEntregablesAsync(Ajeno);
         var ids = await IdsPorOrdenAsync(id);
 
-        var act = () => new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarEntregablesCommand(id, [ids[1], ids[0]]), CancellationToken.None);
+        // GuardarFichaComoAsync deja a Duenio de responsable; quien guarda es Duenio, que todavía
+        // no lo era cuando se pintó la pantalla.
+        await GuardarFichaComoAsync(id, await EntregablesMovidosAsync(id, 2, 0, 1), Como(Duenio));
 
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*no corresponde*");
         (await IdsPorOrdenAsync(id)).Should().Equal(ids);
+        (await _ctx.Proyectos.FindAsync(id))!.ResponsableId.Should().Be(Duenio, "el cambio de responsable sí se guardó");
     }
 
     [Fact]
@@ -1023,32 +1092,15 @@ public class ProyectosTests : IDisposable
         var ids = await IdsPorOrdenAsync(id);
         await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"), (0, "Tercera"));
 
-        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
-
-        await new ReordenarActividadesCommandHandler(_ctx, Como(Duenio)).Handle(
-            new ReordenarActividadesCommand(id, ids[0], [actuales[2], actuales[0], actuales[1]]),
-            CancellationToken.None);
+        await GuardarFichaComoAsync(id, await ActividadesMovidasAsync(id, ids[0], 2, 0, 1), Como(Duenio));
 
         (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
             .Should().Equal("Tercera", "Una", "Otra");
     }
 
-    [Fact]
-    public async Task ReordenarActividades_RechazaUnEntregableDeOtroProyecto()
-    {
-        var id    = await ConDuenioYEntregablesAsync();
-        var otro  = await ConDuenioYEntregablesAsync();
-        var ajeno = (await IdsPorOrdenAsync(otro))[0];
-
-        var act = () => new ReordenarActividadesCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarActividadesCommand(id, ajeno, [1]), CancellationToken.None);
-
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*no pertenece*");
-    }
-
     // ── Reordenar: el administrador es la excepción a la guarda de propiedad ──
     // Reordenar es cosmético y reversible, así que admite el bypass. Corregir la bitácora reescribe
-    // un registro histórico y NO lo admite: es lo que separa a estas cuatro pruebas de la última.
+    // un registro histórico y NO lo admite: es lo que separa a estas pruebas de la última.
 
     [Fact]
     public async Task ReordenarActividades_UnAdministradorLasMueveAunqueNoSeaElResponsable()
@@ -1057,11 +1109,7 @@ public class ProyectosTests : IDisposable
         var ids = await IdsPorOrdenAsync(id);
         await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"), (0, "Tercera"));
 
-        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
-
-        await new ReordenarActividadesCommandHandler(_ctx, ComoAdministrador()).Handle(
-            new ReordenarActividadesCommand(id, ids[0], [actuales[2], actuales[0], actuales[1]]),
-            CancellationToken.None);
+        await GuardarFichaComoAsync(id, await ActividadesMovidasAsync(id, ids[0], 2, 0, 1), ComoAdministrador());
 
         (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
             .Should().Equal("Tercera", "Una", "Otra");
@@ -1072,45 +1120,49 @@ public class ProyectosTests : IDisposable
     {
         var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
-        int[] nuevo = [ids[2], ids[0], ids[1]];
 
-        await new ReordenarEntregablesCommandHandler(_ctx, ComoAdministrador())
-            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
+        await GuardarFichaComoAsync(id, await EntregablesMovidosAsync(id, 2, 0, 1), ComoAdministrador());
 
-        (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
+        (await IdsPorOrdenAsync(id)).Should().Equal(ids[2], ids[0], ids[1]);
     }
 
     [Fact]
     public async Task Reordenar_UnAdministradorDesatascaUnProyectoSinResponsable()
     {
         // El caso que motivó abrir la guarda: sin responsable asignado no había quien reordenara,
-        // y el proyecto quedaba con su estructura congelada hasta que alguien editara la ficha.
+        // y el proyecto quedaba con su estructura congelada.
         var id  = await ConEntregablesAsync(responsable: null);
         var ids = await IdsPorOrdenAsync(id);
-        int[] nuevo = [ids[2], ids[0], ids[1]];
 
-        await new ReordenarEntregablesCommandHandler(_ctx, ComoAdministrador())
-            .Handle(new ReordenarEntregablesCommand(id, nuevo), CancellationToken.None);
+        await GuardarFichaComoAsync(
+            id, await EntregablesMovidosAsync(id, 2, 0, 1), ComoAdministrador(), sinResponsable: true);
 
-        (await IdsPorOrdenAsync(id)).Should().Equal(nuevo);
+        (await IdsPorOrdenAsync(id)).Should().Equal(ids[2], ids[0], ids[1]);
     }
 
     [Fact]
-    public async Task ReordenarActividades_SigueRechazandoAlAjenoQueNoEsAdministrador()
+    public async Task ReordenarActividades_SigueSinMoverseParaElAjenoQueNoEsAdministrador()
     {
         var id  = await ConDuenioYEntregablesAsync();
         var ids = await IdsPorOrdenAsync(id);
         await ConActividadesAsync(id, ids[0], (0, "Una"), (0, "Otra"));
 
-        var actuales = await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Id).ToArrayAsync();
+        await GuardarFichaComoAsync(id, await ActividadesMovidasAsync(id, ids[0], 1, 0), Como(Ajeno));
 
-        var act = () => new ReordenarActividadesCommandHandler(_ctx, Como(Ajeno))
-            .Handle(new ReordenarActividadesCommand(id, ids[0], [actuales[1], actuales[0]]),
-                    CancellationToken.None);
-
-        await act.Should().ThrowAsync<DomainException>().WithMessage("*responsable del proyecto*");
         (await _ctx.ProyectoActividades.OrderBy(a => a.Orden).Select(a => a.Nombre).ToArrayAsync())
             .Should().Equal("Una", "Otra");
+    }
+
+    /// <summary>La estructura vigente con las actividades de un entregable permutadas, que es lo
+    /// que manda el editor cuando alguien mueve una fila con ▲▼ dentro de su entregable.</summary>
+    private async Task<List<EntregableInput>> ActividadesMovidasAsync(
+        int proyectoId, int entregableId, params int[] posiciones)
+    {
+        var actuales = await EntregablesActualesAsync(proyectoId);
+        return actuales.Select(e => e.Id != entregableId ? e : e with
+        {
+            Actividades = posiciones.Select(i => e.Actividades[i]).ToList()
+        }).ToList();
     }
 
     [Fact]
@@ -1301,14 +1353,12 @@ public class ProyectosTests : IDisposable
     [Fact]
     public async Task Auditoria_DejaRastroDelReordenamientoYDeLaCorreccion()
     {
-        var id  = await ConDuenioYEntregablesAsync();
-        var ids = await IdsPorOrdenAsync(id);
+        var id = await ConDuenioYEntregablesAsync();
         var avanceId = await new RegistrarAvanceCommandHandler(_ctx, Como(Duenio))
             .Handle(new RegistrarAvanceCommand(id, "Original"), CancellationToken.None);
         await LimpiarAuditoriaAsync();
 
-        await new ReordenarEntregablesCommandHandler(_ctx, Como(Duenio))
-            .Handle(new ReordenarEntregablesCommand(id, [ids[2], ids[0], ids[1]]), CancellationToken.None);
+        await GuardarFichaComoAsync(id, await EntregablesMovidosAsync(id, 2, 0, 1), Como(Duenio));
         await new ActualizarAvanceCommandHandler(_ctx, Como(Duenio))
             .Handle(new ActualizarAvanceCommand(avanceId, "Corregido", null), CancellationToken.None);
 

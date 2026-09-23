@@ -193,6 +193,12 @@ public sealed class ActualizarProyectoCommandHandler(
                proyecto.AreaId   != (string.IsNullOrWhiteSpace(cmd.AreaId)   ? null : cmd.AreaId.Trim())
             || proyecto.UnidadId != (string.IsNullOrWhiteSpace(cmd.UnidadId) ? null : cmd.UnidadId.Trim());
 
+        // También antes de mutar: reordenar sigue siendo del responsable o de un administrador
+        // —aunque ya no tenga botón propio— y se juzga contra el responsable que tenía el proyecto
+        // cuando se pintó la pantalla, no contra el que trae este mismo formulario. Si no, bastaría
+        // con ponerse de responsable en el mismo guardado para habilitarse el reordenamiento.
+        var puedeOrdenar = PropiedadProyecto.PuedeOrdenar(proyecto, currentUser);
+
         proyecto.Nombre          = nombre;
         proyecto.Objetivo        = string.IsNullOrWhiteSpace(cmd.Objetivo) ? null : cmd.Objetivo.Trim();
         // La institución NO se edita desde la ficha: mover un proyecto de institución es
@@ -208,7 +214,7 @@ public sealed class ActualizarProyectoCommandHandler(
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
 
         var interesados = await ResponsablesProyecto.InteresadosAsync(ctx, proyecto.Id, ct);
-        var resultado   = ReconciliarEstructura(proyecto, cmd.Entregables, interesados);
+        var resultado   = ReconciliarEstructura(proyecto, cmd.Entregables, interesados, puedeOrdenar);
 
         // Las actividades que se van arrastran las imputaciones que las apuntan. Hay que soltarlas
         // a mano: su FK es NoAction —no puede ser SetNull sin chocar con el error 1785, ver la
@@ -330,13 +336,20 @@ public sealed class ActualizarProyectoCommandHandler(
     /// silencio todos los avances que la referenciaban. No era un caso borde de "entregable
     /// eliminado": pasaba en cada guardado de la ficha, aunque no se tocara nada.</para>
     ///
-    /// <para>El orden no se toca: los que ya existían conservan el suyo y los nuevos van al final.
-    /// Reordenar es del responsable del proyecto o de un administrador, y tiene su propio comando.</para>
+    /// <para><b>El orden sale de la posición de las filas</b>, no de una lista aparte: la entrada
+    /// llega en el orden en que quedaron en pantalla, y ese es el orden que se graba. Antes había un
+    /// botón «Guardar orden» con su propio comando y la ficha no lo tocaba — dos botones para un
+    /// solo formulario, y el que la gente apretaba era el otro.</para>
+    ///
+    /// <para>Renumerar sigue reservado al responsable o a un administrador: con
+    /// <paramref name="puedeOrdenar"/> en false los que ya existían conservan su orden y los nuevos
+    /// van al final, que es exactamente lo que la pantalla le mostró a quien no puede moverlos.</para>
     /// </summary>
     private static ResultadoEstructura ReconciliarEstructura(
         Proyecto proyecto,
         IReadOnlyList<EntregableInput> entrada,
-        HashSet<Guid> interesados)
+        HashSet<Guid> interesados,
+        bool puedeOrdenar)
     {
         var hoy       = DateOnly.FromDateTime(DateTime.UtcNow);
         var validos   = entrada.Where(e => !string.IsNullOrWhiteSpace(e.Nombre)).ToList();
@@ -371,16 +384,18 @@ public sealed class ActualizarProyectoCommandHandler(
             cambio |= entregable.CambiarEstado(input.Estado);
 
             var (cambioAct, borradasAct, detalle) =
-                ReconciliarActividades(entregable, input.Actividades, interesados, hoy);
+                ReconciliarActividades(entregable, input.Actividades, interesados, hoy, puedeOrdenar);
 
             borradas.AddRange(borradasAct);
             if (detalle is { Length: > 0 }) detalleActividades.Add($"«{entregable.Nombre}» → {detalle}");
             if (cambio || cambioAct) editados++;
         }
 
-        // 3. Los nuevos, al final.
-        var nuevos = validos.Where(e => e.Id <= 0).ToList();
-        var orden  = proyecto.SiguienteOrden();
+        // 3. Los nuevos. Van al final del Orden vigente; si además hay que renumerar, el paso 4 los
+        //    pone en la posición en que quedaron en pantalla.
+        var nuevos  = validos.Where(e => e.Id <= 0).ToList();
+        var creados = new List<EntregableProyecto>(nuevos.Count);
+        var orden   = proyecto.SiguienteOrden();
         foreach (var input in nuevos)
         {
             ResponsablesProyecto.Exigir(
@@ -390,14 +405,34 @@ public sealed class ActualizarProyectoCommandHandler(
             entregable.Definir(
                 input.Nombre, input.Descripcion, input.FechaPlan, input.ResponsableId, input.Responsable);
             entregable.CambiarEstado(input.Estado);
-            ReconciliarActividades(entregable, input.Actividades, interesados, hoy);
+            ReconciliarActividades(entregable, input.Actividades, interesados, hoy, puedeOrdenar);
             proyecto.Agregar(entregable);
+            creados.Add(entregable);
+        }
+
+        // 4. El orden, que es la posición de las filas en el formulario. Se arma recorriendo la
+        //    entrada —no los Ids— porque las filas nuevas todavía no tienen uno.
+        var reordenados = false;
+        if (puedeOrdenar)
+        {
+            var siguienteNuevo = 0;
+            var enOrden = new List<EntregableProyecto>(proyecto.Entregables.Count);
+            foreach (var input in validos)
+            {
+                if (input.Id <= 0) enOrden.Add(creados[siguienteNuevo++]);
+                else if (porId.TryGetValue(input.Id, out var vigente)) enOrden.Add(vigente);
+            }
+
+            reordenados = proyecto.ReordenarEntregables(enOrden);
         }
 
         var partes = new List<string>();
         if (nuevos.Count   > 0) partes.Add($"agregados: {string.Join(", ", nuevos.Select(n => $"«{n.Nombre.Trim()}»"))}");
         if (quitados.Count > 0) partes.Add($"quitados: {string.Join(", ", quitados.Select(q => $"«{q.Nombre}»"))}");
         if (editados       > 0) partes.Add($"{editados} entregable{(editados == 1 ? "" : "s")} modificado{(editados == 1 ? "" : "s")}");
+        if (reordenados)
+            partes.Add("reordenados: " +
+                string.Join(" → ", proyecto.Entregables.OrderBy(e => e.Orden).Select(e => $"«{e.Nombre}»")));
         partes.AddRange(detalleActividades);
 
         return new ResultadoEstructura(string.Join("; ", partes), borradas);
@@ -408,7 +443,8 @@ public sealed class ActualizarProyectoCommandHandler(
         EntregableProyecto entregable,
         IReadOnlyList<ActividadInput> entrada,
         HashSet<Guid> interesados,
-        DateOnly hoy)
+        DateOnly hoy,
+        bool puedeOrdenar)
     {
         var validas   = (entrada ?? []).Where(a => !string.IsNullOrWhiteSpace(a.Nombre)).ToList();
         var idsSiguen = validas.Where(a => a.Id > 0).Select(a => a.Id).ToHashSet();
@@ -436,8 +472,9 @@ public sealed class ActualizarProyectoCommandHandler(
             if (dependencias) conDeps++;
         }
 
-        var nuevas = validas.Where(a => a.Id <= 0).ToList();
-        var orden  = entregable.SiguienteOrdenActividad();
+        var nuevas  = validas.Where(a => a.Id <= 0).ToList();
+        var creadas = new List<ActividadProyecto>(nuevas.Count);
+        var orden   = entregable.SiguienteOrdenActividad();
         foreach (var input in nuevas)
         {
             ResponsablesProyecto.Exigir(
@@ -446,17 +483,34 @@ public sealed class ActualizarProyectoCommandHandler(
             var actividad = ActividadProyecto.Crear(input.Nombre, orden++);
             Aplicar(actividad, input, hoy);
             entregable.Agregar(actividad);
+            creadas.Add(actividad);
+        }
+
+        // El orden, igual que arriba: la posición de las filas dentro del entregable.
+        var reordenadas = false;
+        if (puedeOrdenar)
+        {
+            var siguienteNueva = 0;
+            var enOrden = new List<ActividadProyecto>(entregable.Actividades.Count);
+            foreach (var input in validas)
+            {
+                if (input.Id <= 0) enOrden.Add(creadas[siguienteNueva++]);
+                else if (porId.TryGetValue(input.Id, out var vigente)) enOrden.Add(vigente);
+            }
+
+            reordenadas = entregable.ReordenarActividades(enOrden);
         }
 
         var partes = new List<string>();
         if (nuevas.Count   > 0) partes.Add($"{nuevas.Count} actividad{(nuevas.Count == 1 ? "" : "es")} agregada{(nuevas.Count == 1 ? "" : "s")}");
         if (quitadas.Count > 0) partes.Add($"{quitadas.Count} quitada{(quitadas.Count == 1 ? "" : "s")}");
         if (editadas       > 0) partes.Add($"{editadas} modificada{(editadas == 1 ? "" : "s")}");
+        if (reordenadas)   partes.Add("reordenadas");
         // Aparte de «modificadas», aunque las incluya: cambiar de qué depende una actividad no se
         // ve en ninguna columna de la tabla y sin nombrarlo la auditoría no lo registraría.
         if (conDeps        > 0) partes.Add($"{conDeps} con dependencias cambiadas");
 
-        return (nuevas.Count + quitadas.Count + editadas > 0, borradas, string.Join(", ", partes));
+        return (nuevas.Count + quitadas.Count + editadas > 0 || reordenadas, borradas, string.Join(", ", partes));
     }
 
     /// <summary>
@@ -573,7 +627,7 @@ public sealed class EliminarProyectoCommandHandler(IApplicationDbContext ctx)
 /// Acciones reservadas al responsable del proyecto: reordenar la estructura y corregir la bitácora.
 ///
 /// <para><b>Las dos no tienen el mismo bypass, a propósito.</b> Reordenar admite además al
-/// administrador (<see cref="ExigirParaOrdenar"/>): mover una fila de lugar es cosmético y
+/// administrador (<see cref="PuedeOrdenar"/>): mover una fila de lugar es cosmético y
 /// reversible. Corregir la bitácora no (<see cref="Exigir"/>): reescribe un registro histórico, y
 /// que solo pueda hacerlo el responsable es lo que sostiene la confianza en el historial.</para>
 ///
@@ -586,16 +640,18 @@ internal static class PropiedadProyecto
 {
     /// <summary>Reordenar la estructura: el responsable <b>o</b> un administrador.
     ///
+    /// <para>Pregunta en vez de exigir, a diferencia de <see cref="Exigir"/>: el orden ya no tiene
+    /// acción propia —viaja dentro del guardado de la ficha—, y hacer fallar el guardado entero
+    /// porque quien lo apretó no puede reordenar sería castigar por algo que la pantalla ni
+    /// siquiera le ofreció. Quien no puede, guarda; el orden queda como estaba.</para>
+    ///
     /// <para>El bypass va antes de la validación de responsable, no después: un proyecto sin
     /// responsable asignado es justamente el que queda atascado —nadie puede reordenarlo— y
     /// desatascarlo es lo que se espera del administrador.</para></summary>
-    public static void ExigirParaOrdenar(Proyecto proyecto, ICurrentUserService usuario)
-    {
+    public static bool PuedeOrdenar(Proyecto proyecto, ICurrentUserService usuario) =>
         // EsGlobal es como ICurrentUserService expone la capacidad EsAdministrador del rol.
-        if (usuario.EsGlobal) return;
-
-        Exigir(proyecto, usuario);
-    }
+        usuario.EsGlobal
+        || (proyecto.ResponsableId is { } responsable && usuario.UserId == responsable);
 
     /// <summary>Solo el responsable del proyecto. Sin bypass de administrador.</summary>
     public static void Exigir(Proyecto proyecto, ICurrentUserService usuario)
@@ -608,82 +664,6 @@ internal static class PropiedadProyecto
             throw new DomainException(
                 $"Solo el responsable del proyecto puede realizar esta acción" +
                 (proyecto.Responsable is { Length: > 0 } r ? $" ({r})." : "."));
-    }
-}
-
-// ── Reordenar entregables ─────────────────────────────────────────────────
-/// <summary>Recibe los Ids de los entregables en el orden deseado. Ver
-/// <see cref="Proyecto.ReordenarEntregables"/> para por qué exige la lista completa.</summary>
-public sealed record ReordenarEntregablesCommand(
-    int ProyectoId,
-    IReadOnlyList<int> EntregableIdsEnOrden) : IRequest<Unit>;
-
-public sealed class ReordenarEntregablesCommandHandler(
-    IApplicationDbContext ctx,
-    ICurrentUserService currentUser)
-    : IRequestHandler<ReordenarEntregablesCommand, Unit>
-{
-    public async Task<Unit> Handle(ReordenarEntregablesCommand cmd, CancellationToken ct)
-    {
-        var proyecto = await ctx.Proyectos.Include(p => p.Entregables)
-            .FirstOrDefaultAsync(p => p.Id == cmd.ProyectoId, ct)
-            ?? throw new NotFoundException(nameof(Proyecto), cmd.ProyectoId);
-
-        PropiedadProyecto.ExigirParaOrdenar(proyecto, currentUser);
-
-        if (proyecto.Estado is EstadoProyecto.Cerrado or EstadoProyecto.Cancelado)
-            throw new DomainException($"El proyecto está «{proyecto.Estado}» y ya no admite cambios.");
-
-        proyecto.ReordenarEntregables(cmd.EntregableIdsEnOrden);
-
-        ctx.BitacorasProyecto.Add(BitacoraProyecto.Crear(
-            proyecto.Id, TipoEventoProyecto.ModificacionEstructura,
-            "Se reordenaron los entregables: " +
-            string.Join(" → ", proyecto.Entregables.OrderBy(e => e.Orden).Select(e => $"«{e.Nombre}»")),
-            currentUser.Nombre ?? "—"));
-
-        await ctx.SaveChangesAsync(ct);
-        return Unit.Value;
-    }
-}
-
-// ── Reordenar actividades ─────────────────────────────────────────────────
-/// <summary>Reordena las actividades dentro de un entregable. Misma atribución que reordenar
-/// entregables: el responsable del proyecto o un administrador. Solo mueve actividades <b>dentro</b>
-/// de su entregable; pasarlas a otro no es reordenar, es reasignarlas.</summary>
-public sealed record ReordenarActividadesCommand(
-    int ProyectoId,
-    int EntregableId,
-    IReadOnlyList<int> ActividadIdsEnOrden) : IRequest<Unit>;
-
-public sealed class ReordenarActividadesCommandHandler(
-    IApplicationDbContext ctx,
-    ICurrentUserService currentUser)
-    : IRequestHandler<ReordenarActividadesCommand, Unit>
-{
-    public async Task<Unit> Handle(ReordenarActividadesCommand cmd, CancellationToken ct)
-    {
-        var proyecto = await ProyectoConEstructura.CargarAsync(ctx, cmd.ProyectoId, ct)
-            ?? throw new NotFoundException(nameof(Proyecto), cmd.ProyectoId);
-
-        PropiedadProyecto.ExigirParaOrdenar(proyecto, currentUser);
-
-        if (proyecto.Estado is EstadoProyecto.Cerrado or EstadoProyecto.Cancelado)
-            throw new DomainException($"El proyecto está «{proyecto.Estado}» y ya no admite cambios.");
-
-        var entregable = proyecto.Entregables.FirstOrDefault(e => e.Id == cmd.EntregableId)
-            ?? throw new DomainException("El entregable indicado no pertenece a este proyecto.");
-
-        entregable.ReordenarActividades(cmd.ActividadIdsEnOrden);
-
-        ctx.BitacorasProyecto.Add(BitacoraProyecto.Crear(
-            proyecto.Id, TipoEventoProyecto.ModificacionEstructura,
-            $"Se reordenaron las actividades de «{entregable.Nombre}»: " +
-            string.Join(" → ", entregable.Actividades.OrderBy(a => a.Orden).Select(a => $"«{a.Nombre}»")),
-            currentUser.Nombre ?? "—"));
-
-        await ctx.SaveChangesAsync(ct);
-        return Unit.Value;
     }
 }
 
