@@ -34,6 +34,7 @@
     var total             = d.Asistentes.Count;
 }
 <link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/afiche-qr.css" asp-append-version="true" />
 
 <div class="container" style="max-width:1080px">
     <partial name="_SuccessBanner" />
@@ -132,9 +133,10 @@
         <div class="dash-card">
             <h3>Enlace y QR para participantes</h3>
             <p style="font-size:12.5px;color:#6b7fa3;margin-top:-4px">Comparte el QR o el enlace; cada participante confirma su asistencia desde su teléfono.</p>
-            <div style="display:flex;gap:8px;margin:.6rem 0">
-                <input id="urlBox" value="@Model.PublicUrl" readonly style="flex:1;font-size:12.5px" />
+            <div style="display:flex;gap:8px;margin:.6rem 0;flex-wrap:wrap">
+                <input id="urlBox" value="@Model.PublicUrl" readonly style="flex:1;min-width:200px;font-size:12.5px" />
                 <button class="btns" type="button" onclick="copiar(event)">Copiar</button>
+                <button class="btns" type="button" onclick="compartirEnlace(event)">Compartir</button>
                 <a class="btns" href="@Model.PublicUrl" target="_blank" rel="noopener">Abrir</a>
             </div>
             <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:.5rem">
@@ -142,7 +144,7 @@
                     <img src="@Model.QrDataUri" alt="Código QR de registro" width="110" height="110" style="display:block" />
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px">
-                    <button class="btnp" type="button" onclick="abrirModalQR()">Ver QR</button>
+                    <button class="btnp" type="button" onclick="abrirModalQR()">Ver afiche del QR</button>
                 </div>
             </div>
         </div>
@@ -382,28 +384,40 @@
         }
     </div>
 
-    @* ── Modal QR ─────────────────────────────────────────────────── *@
+    @* ── Modal del afiche del QR ──────────────────────────────────── *@
     <div id="qr-modal-overlay" class="modal-overlay" onclick="if(event.target===this) cerrarModalQR()">
-        <div class="modal-card">
-            <div class="modal-qr-hdr">
-                <img src="@InstOpts.Value.Logo" asp-append-version="true" alt="@InstOpts.Value.NombreCorto" class="modal-qr-logo" />
-                <div class="modal-qr-title">@d.Titulo</div>
-                <div class="modal-qr-sub">
-                    @(d.Fecha?.ToFechaCorta())@(string.IsNullOrWhiteSpace(d.Tipo) ? "" : " · " + d.Tipo)
+        <div class="modal-card modal-card--afiche" role="dialog" aria-modal="true" aria-label="Afiche del código QR de asistencia">
+            <div class="afq-barra">
+                <span class="afq-barra-tit">Afiche del código QR</span>
+                <div class="afq-orient" role="group" aria-label="Orientación del afiche">
+                    <button type="button" class="afq-orient-b is-on" data-orient="vertical"
+                            aria-pressed="true" onclick="orientarAfiche('vertical')">Vertical</button>
+                    <button type="button" class="afq-orient-b" data-orient="apaisado"
+                            aria-pressed="false" onclick="orientarAfiche('apaisado')">Horizontal</button>
                 </div>
+                <button class="afq-x" type="button" onclick="cerrarModalQR()" aria-label="Cerrar">✕</button>
             </div>
-            <div class="modal-qr-box">
-                <img id="qrImg" src="@Model.QrDataUri" alt="Código QR de registro" width="240" height="240" />
+
+            @if (!d.RegistroAbierto)
+            {
+                <p class="afq-aviso">
+                    <span aria-hidden="true">⚠</span>
+                    <span>
+                        <strong>El registro está cerrado</strong>
+                        Quien escanee este código no podrá anotarse. Abra el registro antes de imprimir o compartir el afiche.
+                    </span>
+                </p>
+            }
+
+            <div class="afiche-vista">
+                <partial name="_AficheQr" model="Model.Afiche" />
             </div>
-            <div class="modal-qr-caption">
-                <strong>Escanee el código QR</strong>
-                <span>Abra la cámara de su teléfono y apúntela al código</span>
+
+            <div class="afq-acciones">
+                <button class="btnp" type="button" onclick="compartirEnlace(event)">Compartir enlace</button>
+                <button class="btns" type="button" onclick="imprimirAfiche(event)">Imprimir o guardar PDF</button>
+                <button class="btns" type="button" onclick="descargarQR(event)">Descargar QR (PNG)</button>
             </div>
-            <div class="modal-qr-actions">
-                <button class="btnp" type="button" onclick="descargarQR()">Descargar QR</button>
-                <button class="btns" type="button" onclick="imprimirQR()">Imprimir</button>
-            </div>
-            <button class="btns modal-qr-close" type="button" onclick="cerrarModalQR()">Cerrar</button>
         </div>
     </div>
 </div>
@@ -489,55 +503,189 @@
 
 @section Scripts {
 <script>
-  var URL_REG = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PublicUrl));
-  var TITULO  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data.Titulo));
+  var URL_REG    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PublicUrl));
+  var TITULO     = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data.Titulo));
+  var CSS_AFICHE = '@Url.Content("~/css/afiche-qr.css")';
+  var CSS_FUENTE = 'https://fonts.googleapis.com/css2?family=Poppins:wght@@400;500;600;700;800&display=swap';
+  var ORIENT_CLAVE = 'afiche-qr-orientacion';
 
-  function obtenerQR(){ var i = document.getElementById('qrImg'); return i ? i.src : null; }
-  function abrirModalQR(){ document.getElementById('qr-modal-overlay').classList.add('open'); }
-  function cerrarModalQR(){ document.getElementById('qr-modal-overlay').classList.remove('open'); }
-  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') cerrarModalQR(); });
   function escHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
+  /* ── Modal del afiche ──────────────────────────────────────────────────── */
+  function abrirModalQR(){
+    document.getElementById('qr-modal-overlay').classList.add('open');
+    ajustarTituloAfiche();
+  }
+  function cerrarModalQR(){ document.getElementById('qr-modal-overlay').classList.remove('open'); }
+  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') cerrarModalQR(); });
+
+  /* ── Orientación: vertical para imprimir, horizontal para proyectar ────── */
+  function orientarAfiche(cual){
+    var afiche = document.getElementById('afiche');
+    if (!afiche) return;
+    var apaisado = cual === 'apaisado';
+    afiche.classList.toggle('afiche--apaisado', apaisado);
+    afiche.classList.toggle('afiche--vertical', !apaisado);
+    document.querySelectorAll('.afq-orient-b').forEach(function(b){
+      var activo = b.dataset.orient === cual;
+      b.classList.toggle('is-on', activo);
+      b.setAttribute('aria-pressed', activo ? 'true' : 'false');
+    });
+    try { localStorage.setItem(ORIENT_CLAVE, cual); } catch (e) {}
+    ajustarTituloAfiche();
+  }
+
+  /* El titular es el nombre de la reunión y puede ser largo: se reduce hasta caber en
+     las líneas que el afiche reserva. Se cuenta en líneas, no en píxeles, porque la
+     vista previa va con `zoom` y ahí las alturas en px no son comparables. */
+  function ajustarTituloAfiche(){
+    var afiche = document.getElementById('afiche');
+    var titulo = document.getElementById('aficheTitulo');
+    if (!afiche || !titulo) return;
+
+    afiche.style.removeProperty('--afq-titulo');
+    var est   = getComputedStyle(afiche);
+    var tope  = parseInt(est.getPropertyValue('--afq-titulo-max-lineas'), 10);
+    var base  = parseFloat(est.getPropertyValue('--afq-titulo'));
+    if (!tope || !base) return;
+
+    for (var px = base; px >= 24; px -= 2) {
+      afiche.style.setProperty('--afq-titulo', px + 'px');
+      var alto = parseFloat(getComputedStyle(titulo).lineHeight);
+      if (!alto) return;
+      if (Math.round(titulo.scrollHeight / alto) <= tope) return;
+    }
+  }
+
+  /* ── Portapapeles ──────────────────────────────────────────────────────── */
+  /* navigator.clipboard no existe cuando el portal se sirve por http:// en la red
+     interna, así que hay un segundo camino con execCommand. */
+  async function alPortapapeles(texto){
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(texto);
+        return true;
+      }
+    } catch (e) {}
+    try {
+      var caja = document.createElement('textarea');
+      caja.value = texto;
+      caja.setAttribute('readonly', '');
+      caja.style.cssText = 'position:fixed;top:0;left:-9999px';
+      document.body.appendChild(caja);
+      caja.select();
+      caja.setSelectionRange(0, texto.length);
+      var ok = document.execCommand('copy');
+      document.body.removeChild(caja);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  function avisar(ev, texto){
+    var b = ev && (ev.currentTarget || ev.target);
+    if (!b || !b.dataset) return;
+    if (b.dataset.rotulo === undefined) b.dataset.rotulo = b.textContent;
+    b.textContent = texto;
+    clearTimeout(b._aviso);
+    b._aviso = setTimeout(function(){ b.textContent = b.dataset.rotulo; }, 1800);
+  }
+
   function copiar(ev){
-    navigator.clipboard.writeText(URL_REG).then(function(){
-      var b = ev && ev.target; if(!b) return;
-      var t = b.textContent; b.textContent = '¡Copiado!';
-      setTimeout(function(){ b.textContent = t; }, 1400);
+    alPortapapeles(URL_REG).then(function(ok){
+      avisar(ev, ok ? '¡Copiado!' : 'No se pudo copiar');
     });
   }
-  function descargarQR(){
-    var data = obtenerQR();
-    if (!data) { alert('El QR aún se está generando; intenta de nuevo.'); return; }
+
+  /* ── Compartir ─────────────────────────────────────────────────────────── */
+  async function compartirEnlace(ev){
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: TITULO,
+          text: 'Registro de asistencia · ' + TITULO,
+          url: URL_REG
+        });
+        return;
+      } catch (e) {
+        // Cerrar la hoja de compartir no es un error: no hay nada que avisar.
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    var ok = await alPortapapeles(URL_REG);
+    avisar(ev, ok ? 'Enlace copiado' : 'No se pudo compartir');
+  }
+
+  /* ── Descargas e impresión ─────────────────────────────────────────────── */
+  function nombreArchivo(base){
+    var s = String(TITULO).normalize("NFD").replace(/[^ -~]/g, "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+    return base + '-' + (s || 'reunion');
+  }
+
+  function descargarQR(ev){
+    var img = document.getElementById('aficheQrImg');
+    if (!img || !img.src) { avisar(ev, 'QR no disponible'); return; }
     var a = document.createElement('a');
-    a.href = data; a.download = 'qr-asistencia.png';
+    a.href = img.src;
+    a.download = nombreArchivo('qr') + '.png';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
-  function imprimirQR(){
-    var data = obtenerQR();
-    if (!data) { alert('El QR aún se está generando; intenta de nuevo.'); return; }
+
+  /* Imprime el afiche que se está viendo: clona ese mismo nodo en un iframe que carga
+     la hoja afiche-qr.css. Sin .afiche-vista alrededor, el afiche sale a escala 1, o sea
+     A4 exacto — por eso no hay un segundo diseño para papel. */
+  function imprimirAfiche(ev){
+    var afiche = document.getElementById('afiche');
+    if (!afiche) { avisar(ev, 'Afiche no disponible'); return; }
+    ajustarTituloAfiche();
+
+    var apaisado = afiche.classList.contains('afiche--apaisado');
     var ifr = document.createElement('iframe');
+    ifr.setAttribute('aria-hidden', 'true');
     ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(ifr);
+
     var doc = ifr.contentWindow.document;
     doc.open();
-    doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>QR asistencia<\/title><\/head>'
-      + '<body style="text-align:center;font-family:system-ui;margin:0;padding:24px">'
-      + '<h2 style="color:#0a2d6e">' + escHtml(TITULO) + '<\/h2>'
-      + '<p>Escanea para confirmar tu asistencia<\/p>'
-      + '<img src="' + data + '" style="width:300px;height:300px" />'
-      + '<p style="font-size:12px;color:#666;word-break:break-all">' + escHtml(URL_REG) + '<\/p>'
-      + '<\/body><\/html>');
+    doc.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
+      + '<title>' + escHtml('Afiche QR — ' + TITULO) + '<\/title>'
+      + '<link rel="stylesheet" href="' + CSS_FUENTE + '">'
+      + '<link rel="stylesheet" href="' + CSS_AFICHE + '">'
+      + '<style>html,body{margin:0;padding:0;background:#fff}'
+      + '@@page{size:A4 ' + (apaisado ? 'landscape' : 'portrait') + ';margin:0}<\/style>'
+      + '<\/head><body>' + afiche.outerHTML + '<\/body><\/html>');
     doc.close();
-    var hecho = false;
-    function imprimir(){
-      if (hecho) return; hecho = true;
+
+    var lanzado = false;
+    function lanzar(){
+      if (lanzado) return; lanzado = true;
       try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) {}
-      setTimeout(function(){ document.body.removeChild(ifr); }, 1500);
+      setTimeout(function(){ if (ifr.parentNode) ifr.parentNode.removeChild(ifr); }, 2000);
     }
-    var img = doc.querySelector('img');
-    if (img && !img.complete) { img.onload = imprimir; setTimeout(imprimir, 800); }
-    else { imprimir(); }
+
+    // No se imprime hasta que el QR, el logo y las fuentes estén listos: un afiche
+    // impreso con la fuente de reserva o sin logo es un afiche echado a perder.
+    var esperas = [new Promise(function(r){ ifr.onload = r; setTimeout(r, 1500); })];
+    ['aficheQrImg'].forEach(function(id){
+      var img = doc.getElementById(id);
+      if (img && !img.complete) esperas.push(new Promise(function(r){ img.onload = img.onerror = r; }));
+    });
+    var logo = doc.querySelector('.afiche-logo');
+    if (logo && !logo.complete) esperas.push(new Promise(function(r){ logo.onload = logo.onerror = r; }));
+    if (doc.fonts && doc.fonts.ready) esperas.push(doc.fonts.ready);
+
+    Promise.all(esperas).then(lanzar);
+    setTimeout(lanzar, 4500);   // red de seguridad: el diálogo siempre se abre
   }
+
+  /* Orientación recordada y ajuste inicial del titular. */
+  (function(){
+    var guardada = 'vertical';
+    try { if (localStorage.getItem(ORIENT_CLAVE) === 'apaisado') guardada = 'apaisado'; } catch (e) {}
+    if (guardada === 'apaisado') orientarAfiche('apaisado');
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarTituloAfiche);
+    window.addEventListener('resize', ajustarTituloAfiche);
+  })();
 
   function filtrarContactos(){
     var q = document.getElementById('filtroContactos').value.toLowerCase();

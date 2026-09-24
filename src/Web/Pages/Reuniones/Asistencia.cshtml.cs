@@ -1,16 +1,24 @@
 using System.Text;
+using Diger.TramitesEstado.Application.Common.Extensions;
 using Diger.TramitesEstado.Web.Common;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
 [Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
-public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso) : PageModel
+public sealed class AsistenciaModel(
+    ISender sender,
+    AccesoModulosService acceso,
+    IOptions<InstitucionOptions> institucion) : PageModel
 {
     public bool EsAdmin { get; private set; }
     public AsistenciaAdminDto Data { get; private set; } = default!;
     public string PublicUrl { get; private set; } = "";
     public string QrDataUri { get; private set; } = "";
+
+    /// <summary>Afiche imprimible del QR. Se arma aquí, no en la vista, para que la vista solo dibuje.</summary>
+    public AficheQrVm Afiche { get; private set; } = default!;
 
     // Directorio para la sección "Pre-registro" (contactos de las instituciones participantes)
     public IReadOnlyList<ContactoDto> DirectorioPreregistro { get; private set; } = [];
@@ -29,6 +37,7 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
         Data      = await sender.Send(new GetAsistenciaQuery(id), ct);
         PublicUrl = BuildPublicUrl(Data.Token);
         QrDataUri = QrImagen.DataUri(PublicUrl);
+        Afiche    = ArmarAfiche();
 
         // Correos ya en la lista (para excluirlos del directorio de pre-registro)
         var correosRegistrados = Data.Asistentes
@@ -66,6 +75,35 @@ public sealed class AsistenciaModel(ISender sender, AccesoModulosService acceso)
         {
             DirectorioManual = await sender.Send(new GetContactosQuery(null, Data.Institucion), ct);
         }
+    }
+
+    /// <summary>
+    /// Traduce la reunión a lo que se lee en el afiche. Los campos vacíos no se agregan, así que un
+    /// afiche de una reunión sin lugar ni hora sigue viéndose completo en vez de mostrar guiones.
+    /// </summary>
+    private AficheQrVm ArmarAfiche()
+    {
+        var inst = institucion.Value;
+        var campos = new List<AficheQrCampo>();
+
+        AficheQrVm.Campo(campos, "Fecha", Data.Fecha.ToFechaLargaConDia());
+        AficheQrVm.Campo(campos, "Hora", Data.Hora);
+        AficheQrVm.Campo(campos, "Modalidad", Data.Modalidad);
+        AficheQrVm.Campo(campos, "Lugar", Data.Lugar);
+        AficheQrVm.Campo(campos, "Tipo de reunión", Data.Tipo);
+        AficheQrVm.Campo(campos,
+            Data.InstitucionesNombres.Count > 1 ? "Instituciones convocadas" : "Institución convocada",
+            Data.InstitucionesNombres.Count > 0
+                ? string.Join(" · ", Data.InstitucionesNombres)
+                : Data.Institucion);
+
+        return new AficheQrVm(
+            Data.Titulo,
+            QrImagen.DataUriAfiche(PublicUrl),
+            PublicUrl,
+            inst.Nombre,
+            inst.Logo,
+            campos);
     }
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
