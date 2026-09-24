@@ -1,0 +1,52 @@
+@model Diger.TramitesEstado.Web.Models.AficheQrVm
+@*
+    Afiche del QR de asistencia. Tamaño fijo en píxeles (A4 a 96 ppp) para que lo que se ve en
+    pantalla sea exactamente lo que se imprime: la vista previa solo lo reduce con `zoom`.
+    El mismo nodo se clona para imprimir, así que no hay una segunda copia de este marcado.
+*@
+<div id="afiche" class="afiche afiche--vertical">
+    <div class="afiche-trama" aria-hidden="true"></div>
+
+    <div class="afiche-lienzo">
+        <header class="afiche-hdr">
+            <img class="afiche-logo" src="@Model.Logo" alt="@Model.Institucion" />
+        </header>
+
+        <div class="afiche-intro">
+            <p class="afiche-eyebrow"><span class="afiche-eyebrow-raya" aria-hidden="true"></span>Registro de asistencia</p>
+            <p class="afiche-titulo" id="aficheTitulo">@Model.Titulo</p>
+        </div>
+
+        <figure class="afiche-scan">
+            <div class="afiche-qr">
+                <span class="afiche-mira afiche-mira--si" aria-hidden="true"></span>
+                <span class="afiche-mira afiche-mira--sd" aria-hidden="true"></span>
+                <span class="afiche-mira afiche-mira--ii" aria-hidden="true"></span>
+                <span class="afiche-mira afiche-mira--id" aria-hidden="true"></span>
+                <img id="aficheQrImg" src="@Model.QrDataUri" alt="Código QR para registrar la asistencia" />
+            </div>
+            <figcaption class="afiche-scan-txt">
+                <strong>Escanee el código QR</strong>
+                <span>Abra la cámara de su teléfono y apúntela al código. Se abrirá el formulario de asistencia.</span>
+            </figcaption>
+        </figure>
+
+        @if (Model.Campos.Count > 0)
+        {
+            <dl class="afiche-campos">
+                @foreach (var c in Model.Campos)
+                {
+                    <div class="afiche-campo">
+                        <dt>@c.Etiqueta</dt>
+                        <dd>@c.Valor</dd>
+                    </div>
+                }
+            </dl>
+        }
+
+        <footer class="afiche-pie">
+            <span class="afiche-pie-et">O ingrese desde su navegador</span>
+            <span class="afiche-url">@Model.Url</span>
+        </footer>
+    </div>
+</div>
