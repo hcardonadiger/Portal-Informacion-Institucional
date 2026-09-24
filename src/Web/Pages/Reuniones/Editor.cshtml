@@ -127,7 +127,7 @@
           </div>
         </div>
 
-        <div class="fg-hdr">Encuesta de satisfacción <span class="help-tip tip-down" data-tip="Al activarla, el cierre pide además la validación de la institución: es quien responde por lo que opinaron los suyos.">?</span></div>
+        <div class="fg-hdr">Encuesta de satisfacción <span class="help-tip tip-down" data-tip="Al activarla, el cierre muestra la calificación y el comentario de satisfacción, y pide además la validación de la institución: es quien responde por lo que opinaron los suyos.">?</span></div>
         <div class="field">
           <input type="hidden" asp-for="Datos.EncuestaActiva" id="encuesta-val" />
           <button type="button" id="encuesta-btn" class="enc-btn" aria-pressed="false" onclick="toggleEncuesta()">
@@ -400,11 +400,22 @@
     <div class="sec" id="sec4">
       <div class="sec-title"><span class="sec-step-badge">4</span>Cierre</div>
       <div class="card accent">
-        @* La calificación y el comentario de satisfacción ya no se capturan acá: la encuesta se
-           activa desde «Generales». Viajan como ocultos para que lo que ya tengan las reuniones
-           anteriores —y lo que muestra el acta— sobreviva a guardar desde esta pantalla. *@
-        <input type="hidden" asp-for="Datos.SatisfaccionCalificacion" />
-        <input type="hidden" asp-for="Datos.Satisfaccion" />
+        @* La encuesta se enciende desde «Generales» y es lo que hace aparecer acá la satisfacción.
+           Igual que la segunda firma, se oculta con CSS y nunca se quita del formulario: así lo que
+           ya tengan las reuniones anteriores —y lo que muestra el acta— sobrevive a guardar desde
+           esta pantalla aunque la encuesta esté apagada. *@
+        <div id="encuesta-cierre-field">
+          <div class="field">
+            <label>Calificación de satisfacción</label>
+            <div class="tg">
+              @for (int n = 1; n <= 5; n++)
+              {
+                  <label class="tp"><input type="radio" asp-for="Datos.SatisfaccionCalificacion" value="@n" /> @n</label>
+              }
+            </div>
+          </div>
+          <div class="field"><label>Comentario de satisfacción <span class="hint">(opcional)</span></label><textarea asp-for="Datos.Satisfaccion" rows="2" placeholder="Comentario sobre la satisfacción de los participantes"></textarea></div>
+        </div>
         @* La segunda firma solo aparece con la encuesta activa: es la institución quien responde por
            lo que opinaron los suyos. Se oculta con CSS y no se quita del formulario, para que el
            valor ya capturado siga viajando si alguien apaga la encuesta y guarda. *@
@@ -766,10 +777,11 @@
   }
 
   // ── Encuesta de satisfacción (botón en Generales) ────────────────
-  // Encenderla es lo que hace que el cierre pida la segunda firma: sin encuesta valida solo la
-  // DIGER; con encuesta valida también la institución, que es quien responde por lo que opinaron
-  // los suyos. El campo de esa segunda firma se oculta con CSS, nunca se quita del formulario,
-  // para que un valor ya capturado no se pierda si alguien apaga la encuesta y guarda.
+  // Encenderla es lo que hace aparecer en el cierre la encuesta de satisfacción y la segunda
+  // firma: sin encuesta valida solo la DIGER; con encuesta se califica la satisfacción y valida
+  // también la institución, que es quien responde por lo que opinaron los suyos. Esos campos se
+  // ocultan con CSS, nunca se quitan del formulario, para que un valor ya capturado no se pierda
+  // si alguien apaga la encuesta y guarda.
   function encuestaActiva(){ return document.getElementById('encuesta-val').value === 'True'; }
 
   function encuestaRender(){
@@ -779,10 +791,12 @@
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     document.getElementById('encuesta-lbl').textContent = on ? 'Encuesta activa' : 'Activar encuesta';
     document.getElementById('encuesta-hint').textContent = on
-      ? 'El cierre pedirá también la validación de la institución.'
+      ? 'El cierre mostrará la encuesta de satisfacción y pedirá también la validación de la institución.'
       : 'Sin encuesta, el cierre solo pide la validación de la DIGER.';
     var campo = document.getElementById('val-inst-field');
     if (campo) campo.style.display = on ? '' : 'none';
+    var enc = document.getElementById('encuesta-cierre-field');
+    if (enc) enc.style.display = on ? '' : 'none';
     coworkRender();
   }
 
@@ -1224,7 +1238,8 @@
     var conEncuesta = encuestaActiva();
 
     // Única lista de campos escribibles. «Generales» no aparece aquí a propósito.
-    // La satisfacción tampoco: salió del cierre y ahora es la encuesta, que no se captura a mano.
+    // La satisfacción tampoco: vuelve al cierre bajo la encuesta y se captura a mano — de una
+    // transcripción no se deduce qué tan satisfechos quedaron los asistentes.
     var campos = [
       ['Datos.ObjetivoAgenda', d.objetivo],
       ['Datos.DocsRecursos',   cwLineas(d.documentos)],
