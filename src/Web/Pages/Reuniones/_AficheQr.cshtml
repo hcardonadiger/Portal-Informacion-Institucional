@@ -1,8 +1,8 @@
 @model Diger.TramitesEstado.Web.Models.AficheQrVm
 @*
     Afiche del QR de asistencia. Tamaño fijo en píxeles (A4 a 96 ppp) para que lo que se ve en
-    pantalla sea exactamente lo que se imprime: la vista previa solo lo reduce con `zoom`.
-    El mismo nodo se clona para imprimir, así que no hay una segunda copia de este marcado.
+    pantalla sea exactamente lo que se imprime y lo que se descarga: el mismo nodo se clona para
+    las dos cosas, así que no hay una segunda copia de este marcado.
 *@
 <div id="afiche" class="afiche afiche--vertical">
     <div class="afiche-trama" aria-hidden="true"></div>
@@ -26,8 +26,12 @@
                 <img id="aficheQrImg" src="@Model.QrDataUri" alt="Código QR para registrar la asistencia" />
             </div>
             <figcaption class="afiche-scan-txt">
-                <strong>Escanee el código QR</strong>
-                <span>Abra la cámara de su teléfono y apúntela al código. Se abrirá el formulario de asistencia.</span>
+                <p class="afiche-llamada">Escanee el código QR para inscribirse</p>
+                <ol class="afiche-pasos">
+                    <li>Saque su teléfono y abra la cámara.</li>
+                    <li>Apúntela al código y toque el aviso que aparece.</li>
+                    <li>Llene el formulario y envíelo.</li>
+                </ol>
             </figcaption>
         </figure>
 
@@ -43,10 +47,5 @@
                 }
             </dl>
         }
-
-        <footer class="afiche-pie">
-            <span class="afiche-pie-et">O ingrese desde su navegador</span>
-            <span class="afiche-url">@Model.Url</span>
-        </footer>
     </div>
 </div>

@@ -91,16 +91,10 @@ public sealed class AsistenciaModel(
         AficheQrVm.Campo(campos, "Modalidad", Data.Modalidad);
         AficheQrVm.Campo(campos, "Lugar", Data.Lugar);
         AficheQrVm.Campo(campos, "Tipo de reunión", Data.Tipo);
-        AficheQrVm.Campo(campos,
-            Data.InstitucionesNombres.Count > 1 ? "Instituciones convocadas" : "Institución convocada",
-            Data.InstitucionesNombres.Count > 0
-                ? string.Join(" · ", Data.InstitucionesNombres)
-                : Data.Institucion);
 
         return new AficheQrVm(
             Data.Titulo,
             QrImagen.DataUriAfiche(PublicUrl),
-            PublicUrl,
             inst.Nombre,
             inst.Logo,
             campos);
