@@ -416,7 +416,7 @@
             <div class="afq-acciones">
                 <button class="btnp" type="button" onclick="compartirEnlace(event)">Compartir enlace</button>
                 <button class="btns" type="button" onclick="imprimirAfiche(event)">Imprimir o guardar PDF</button>
-                <button class="btns" type="button" onclick="descargarQR(event)">Descargar QR (PNG)</button>
+                <button class="btns" type="button" onclick="descargarAfiche(event)">Descargar afiche (PNG)</button>
             </div>
         </div>
     </div>
@@ -502,190 +502,13 @@
 </style>
 
 @section Scripts {
+<script src="~/js/afiche-qr.js" asp-append-version="true"></script>
 <script>
-  var URL_REG    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PublicUrl));
-  var TITULO     = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data.Titulo));
-  var CSS_AFICHE = '@Url.Content("~/css/afiche-qr.css")';
-  var CSS_FUENTE = 'https://fonts.googleapis.com/css2?family=Poppins:wght@@400;500;600;700;800&display=swap';
-  var ORIENT_CLAVE = 'afiche-qr-orientacion';
-
-  function escHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-
-  /* ── Modal del afiche ──────────────────────────────────────────────────── */
-  function abrirModalQR(){
-    document.getElementById('qr-modal-overlay').classList.add('open');
-    ajustarTituloAfiche();
-  }
-  function cerrarModalQR(){ document.getElementById('qr-modal-overlay').classList.remove('open'); }
-  document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') cerrarModalQR(); });
-
-  /* ── Orientación: vertical para imprimir, horizontal para proyectar ────── */
-  function orientarAfiche(cual){
-    var afiche = document.getElementById('afiche');
-    if (!afiche) return;
-    var apaisado = cual === 'apaisado';
-    afiche.classList.toggle('afiche--apaisado', apaisado);
-    afiche.classList.toggle('afiche--vertical', !apaisado);
-    document.querySelectorAll('.afq-orient-b').forEach(function(b){
-      var activo = b.dataset.orient === cual;
-      b.classList.toggle('is-on', activo);
-      b.setAttribute('aria-pressed', activo ? 'true' : 'false');
-    });
-    try { localStorage.setItem(ORIENT_CLAVE, cual); } catch (e) {}
-    ajustarTituloAfiche();
-  }
-
-  /* El titular es el nombre de la reunión y puede ser largo: se reduce hasta caber en
-     las líneas que el afiche reserva. Se cuenta en líneas, no en píxeles, porque la
-     vista previa va con `zoom` y ahí las alturas en px no son comparables. */
-  function ajustarTituloAfiche(){
-    var afiche = document.getElementById('afiche');
-    var titulo = document.getElementById('aficheTitulo');
-    if (!afiche || !titulo) return;
-
-    afiche.style.removeProperty('--afq-titulo');
-    var est   = getComputedStyle(afiche);
-    var tope  = parseInt(est.getPropertyValue('--afq-titulo-max-lineas'), 10);
-    var base  = parseFloat(est.getPropertyValue('--afq-titulo'));
-    if (!tope || !base) return;
-
-    for (var px = base; px >= 24; px -= 2) {
-      afiche.style.setProperty('--afq-titulo', px + 'px');
-      var alto = parseFloat(getComputedStyle(titulo).lineHeight);
-      if (!alto) return;
-      if (Math.round(titulo.scrollHeight / alto) <= tope) return;
-    }
-  }
-
-  /* ── Portapapeles ──────────────────────────────────────────────────────── */
-  /* navigator.clipboard no existe cuando el portal se sirve por http:// en la red
-     interna, así que hay un segundo camino con execCommand. */
-  async function alPortapapeles(texto){
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(texto);
-        return true;
-      }
-    } catch (e) {}
-    try {
-      var caja = document.createElement('textarea');
-      caja.value = texto;
-      caja.setAttribute('readonly', '');
-      caja.style.cssText = 'position:fixed;top:0;left:-9999px';
-      document.body.appendChild(caja);
-      caja.select();
-      caja.setSelectionRange(0, texto.length);
-      var ok = document.execCommand('copy');
-      document.body.removeChild(caja);
-      return ok;
-    } catch (e) { return false; }
-  }
-
-  function avisar(ev, texto){
-    var b = ev && (ev.currentTarget || ev.target);
-    if (!b || !b.dataset) return;
-    if (b.dataset.rotulo === undefined) b.dataset.rotulo = b.textContent;
-    b.textContent = texto;
-    clearTimeout(b._aviso);
-    b._aviso = setTimeout(function(){ b.textContent = b.dataset.rotulo; }, 1800);
-  }
-
-  function copiar(ev){
-    alPortapapeles(URL_REG).then(function(ok){
-      avisar(ev, ok ? '¡Copiado!' : 'No se pudo copiar');
-    });
-  }
-
-  /* ── Compartir ─────────────────────────────────────────────────────────── */
-  async function compartirEnlace(ev){
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: TITULO,
-          text: 'Registro de asistencia · ' + TITULO,
-          url: URL_REG
-        });
-        return;
-      } catch (e) {
-        // Cerrar la hoja de compartir no es un error: no hay nada que avisar.
-        if (e && e.name === 'AbortError') return;
-      }
-    }
-    var ok = await alPortapapeles(URL_REG);
-    avisar(ev, ok ? 'Enlace copiado' : 'No se pudo compartir');
-  }
-
-  /* ── Descargas e impresión ─────────────────────────────────────────────── */
-  function nombreArchivo(base){
-    var s = String(TITULO).normalize("NFD").replace(/[^ -~]/g, "")
-      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
-    return base + '-' + (s || 'reunion');
-  }
-
-  function descargarQR(ev){
-    var img = document.getElementById('aficheQrImg');
-    if (!img || !img.src) { avisar(ev, 'QR no disponible'); return; }
-    var a = document.createElement('a');
-    a.href = img.src;
-    a.download = nombreArchivo('qr') + '.png';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  }
-
-  /* Imprime el afiche que se está viendo: clona ese mismo nodo en un iframe que carga
-     la hoja afiche-qr.css. Sin .afiche-vista alrededor, el afiche sale a escala 1, o sea
-     A4 exacto — por eso no hay un segundo diseño para papel. */
-  function imprimirAfiche(ev){
-    var afiche = document.getElementById('afiche');
-    if (!afiche) { avisar(ev, 'Afiche no disponible'); return; }
-    ajustarTituloAfiche();
-
-    var apaisado = afiche.classList.contains('afiche--apaisado');
-    var ifr = document.createElement('iframe');
-    ifr.setAttribute('aria-hidden', 'true');
-    ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(ifr);
-
-    var doc = ifr.contentWindow.document;
-    doc.open();
-    doc.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
-      + '<title>' + escHtml('Afiche QR — ' + TITULO) + '<\/title>'
-      + '<link rel="stylesheet" href="' + CSS_FUENTE + '">'
-      + '<link rel="stylesheet" href="' + CSS_AFICHE + '">'
-      + '<style>html,body{margin:0;padding:0;background:#fff}'
-      + '@@page{size:A4 ' + (apaisado ? 'landscape' : 'portrait') + ';margin:0}<\/style>'
-      + '<\/head><body>' + afiche.outerHTML + '<\/body><\/html>');
-    doc.close();
-
-    var lanzado = false;
-    function lanzar(){
-      if (lanzado) return; lanzado = true;
-      try { ifr.contentWindow.focus(); ifr.contentWindow.print(); } catch (e) {}
-      setTimeout(function(){ if (ifr.parentNode) ifr.parentNode.removeChild(ifr); }, 2000);
-    }
-
-    // No se imprime hasta que el QR, el logo y las fuentes estén listos: un afiche
-    // impreso con la fuente de reserva o sin logo es un afiche echado a perder.
-    var esperas = [new Promise(function(r){ ifr.onload = r; setTimeout(r, 1500); })];
-    ['aficheQrImg'].forEach(function(id){
-      var img = doc.getElementById(id);
-      if (img && !img.complete) esperas.push(new Promise(function(r){ img.onload = img.onerror = r; }));
-    });
-    var logo = doc.querySelector('.afiche-logo');
-    if (logo && !logo.complete) esperas.push(new Promise(function(r){ logo.onload = logo.onerror = r; }));
-    if (doc.fonts && doc.fonts.ready) esperas.push(doc.fonts.ready);
-
-    Promise.all(esperas).then(lanzar);
-    setTimeout(lanzar, 4500);   // red de seguridad: el diálogo siempre se abre
-  }
-
-  /* Orientación recordada y ajuste inicial del titular. */
-  (function(){
-    var guardada = 'vertical';
-    try { if (localStorage.getItem(ORIENT_CLAVE) === 'apaisado') guardada = 'apaisado'; } catch (e) {}
-    if (guardada === 'apaisado') orientarAfiche('apaisado');
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarTituloAfiche);
-    window.addEventListener('resize', ajustarTituloAfiche);
-  })();
+  AficheQr.iniciar({
+    url:    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.PublicUrl)),
+    titulo: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data.Titulo)),
+    css:    '@Url.Content("~/css/afiche-qr.css")'
+  });
 
   function filtrarContactos(){
     var q = document.getElementById('filtroContactos').value.toLowerCase();

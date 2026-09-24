@@ -12,8 +12,8 @@ namespace Diger.TramitesEstado.Web.Tests;
 /// <para>El afiche reemplazó a un modal que solo mostraba el QR con el nombre de la reunión en
 /// letra chica. Lo que se prueba acá es el contrato que hace que sirva como cartel: el titular
 /// es el nombre de la reunión, los datos de la reunión se imprimen como campos, un campo sin
-/// valor no deja una fila vacía, y el QR del afiche es el de resolución de impresión y no el
-/// mismo de la tarjeta.</para>
+/// valor no deja una fila vacía, el QR del afiche es el de resolución de impresión, y lo que
+/// se pidió quitar —la institución convocada y el enlace al pie— sigue afuera.</para>
 ///
 /// <para>Se prueba por HTML renderizado y no por el view model porque el armado vive en un
 /// método privado del PageModel: lo que importa es lo que termina en la página.</para>
@@ -35,6 +35,7 @@ public sealed class AficheQrTests : IAsyncLifetime
 
         var completa = Reunion.Crear("Enlace responsable de encuesta - Grupo 2");
         completa.InstitucionId = "DIGER";
+        completa.Institucion   = "Instituto Nacional de Previsión del Magisterio";
         completa.Fecha     = new DateOnly(2026, 9, 24);
         completa.Hora      = "09:00 a 12:00";
         completa.Modalidad = "Presencial";
@@ -77,6 +78,23 @@ public sealed class AficheQrTests : IAsyncLifetime
         return System.Net.WebUtility.HtmlDecode(html);
     }
 
+    /// <summary>
+    /// Solo el marcado del afiche. Hace falta porque la página también habla de la reunión fuera
+    /// del afiche —la cabecera muestra la institución, la tarjeta muestra el enlace—, así que una
+    /// aserción sobre todo el HTML no distingue "lo quitamos del afiche" de "no está en la página".
+    /// Se corta en la barra de acciones, que es lo primero que viene después del afiche.
+    /// </summary>
+    private static string SoloElAfiche(string html)
+    {
+        var inicio = html.IndexOf("id=\"afiche\"", StringComparison.Ordinal);
+        var fin    = html.IndexOf("afq-acciones", inicio, StringComparison.Ordinal);
+
+        inicio.Should().BeGreaterThan(0, "el afiche debe estar en la página");
+        fin.Should().BeGreaterThan(inicio, "la barra de acciones va después del afiche");
+
+        return html[inicio..fin];
+    }
+
     /// <summary>Contenido base64 del primer data-URI que aparece desde <paramref name="desde"/>.</summary>
     private static string Base64Desde(string html, int desde)
     {
@@ -93,6 +111,20 @@ public sealed class AficheQrTests : IAsyncLifetime
         html.Should().Contain("class=\"afiche-titulo\"",
             "el afiche titula con el nombre de la reunión, que antes iba en letra chica");
         html.Should().Contain("Enlace responsable de encuesta - Grupo 2");
+    }
+
+    [Fact]
+    public async Task El_titular_se_pone_en_mayuscula_por_estilo_y_no_en_el_dato()
+    {
+        var html = await AficheAsync(_completaId);
+        var hoja = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+
+        html.Should().NotContain("ENLACE RESPONSABLE DE ENCUESTA",
+            "el dato guardado no se altera: la mayúscula la pone el CSS");
+
+        var titulo = hoja[hoja.IndexOf(".afiche-titulo {", StringComparison.Ordinal)..];
+        titulo[..titulo.IndexOf('}')].Should().Contain("text-transform: uppercase",
+            "el afiche muestra el nombre de la reunión siempre en mayúscula");
     }
 
     [Fact]
@@ -117,6 +149,35 @@ public sealed class AficheQrTests : IAsyncLifetime
         html.Should().NotContain("<dt>Modalidad</dt>");
         html.Should().NotContain("<dt>Lugar</dt>");
         html.Should().NotContain("<dt>Tipo de reunión</dt>");
+    }
+
+    [Fact]
+    public async Task El_afiche_no_lleva_la_institucion_convocada_ni_el_enlace_al_pie()
+    {
+        var afiche = SoloElAfiche(await AficheAsync(_completaId));
+
+        afiche.Should().NotContain("Institución convocada");
+        afiche.Should().NotContain("Instituciones convocadas");
+        afiche.Should().NotContain("Instituto Nacional de Previsión del Magisterio",
+            "la institución convocada se quitó del afiche aunque la reunión la tenga");
+
+        afiche.Should().NotContain("afiche-pie", "el enlace al pie del afiche se quitó");
+        afiche.Should().NotContain("/Asistencia/Registro",
+            "el afiche ya no imprime el enlace; sigue disponible en la tarjeta de la página");
+    }
+
+    [Fact]
+    public async Task El_afiche_llama_a_inscribirse_y_explica_los_pasos()
+    {
+        var html = await AficheAsync(_completaId);
+
+        html.Should().Contain("Escanee el código QR para inscribirse",
+            "la llamada dice para qué sirve escanear, no solo que se escanee");
+
+        html.Should().Contain("class=\"afiche-pasos\"");
+        html.Should().Contain("Saque su teléfono y abra la cámara");
+        html.Should().Contain("Apúntela al código");
+        html.Should().Contain("Llene el formulario y envíelo");
     }
 
     [Fact]
@@ -151,13 +212,34 @@ public sealed class AficheQrTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task El_afiche_se_puede_compartir_e_imprimir()
+    public async Task Se_puede_compartir_descargar_e_imprimir_el_afiche()
     {
         var html = await AficheAsync(_completaId);
 
         html.Should().Contain("compartirEnlace(event)", "compartir es la acción principal del modal");
+        html.Should().Contain("descargarAfiche(event)", "descargar da el afiche completo, no solo el QR");
+        html.Should().Contain("Descargar afiche");
+        html.Should().NotContain("Descargar QR", "el botón ya no baja el código suelto");
         html.Should().Contain("imprimirAfiche(event)");
         html.Should().Contain("orientarAfiche('apaisado')", "el afiche se imprime vertical y se proyecta horizontal");
-        html.Should().Contain("css/afiche-qr.css", "la hoja del afiche es la misma que usa la ventana de impresión");
+        html.Should().Contain("js/afiche-qr.js");
+        html.Should().Contain("css/afiche-qr.css", "la hoja del afiche es la misma que usan impresión y descarga");
+    }
+
+    [Fact]
+    public async Task La_hoja_del_afiche_usa_la_letra_del_sistema_y_no_una_fuente_web()
+    {
+        var hoja = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+
+        var familia = hoja[hoja.IndexOf("font-family:", StringComparison.Ordinal)..];
+        familia = familia[..familia.IndexOf(';')];
+
+        familia.Should().Contain("'Segoe UI'", "el afiche va en la letra institucional del sistema");
+        familia.Should().NotContain("Poppins",
+            "una fuente web no carga dentro del SVG de la descarga ni sin conexión: el afiche "
+          + "saldría con otra letra de la que se ve en pantalla");
+
+        hoja.Should().NotContain("@import", "el afiche no debe depender de descargar una fuente");
+        hoja.Should().NotContain("fonts.googleapis.com");
     }
 }

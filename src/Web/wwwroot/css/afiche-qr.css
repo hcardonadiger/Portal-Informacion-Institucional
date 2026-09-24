@@ -3,18 +3,24 @@
 
    El afiche mide A4 exacto en píxeles CSS (794 × 1123 a 96 ppp), así que lo que
    se ve en pantalla es lo que sale del papel. La vista previa del modal solo lo
-   encoge con `zoom`; la ventana de impresión carga ESTA misma hoja sin la clase
-   .afiche-vista, por lo que imprime a escala 1. No hay dos diseños que mantener.
+   encoge con `zoom`; la ventana de impresión y la descarga en PNG usan ESTA misma
+   hoja sin la clase .afiche-vista, por lo que salen a escala 1. No hay dos diseños
+   que mantener.
 
    La pieza que organiza el afiche es la banda de escaneo: una franja a sangre, más
-   clara que el fondo, con el QR y la instrucción. Separa el "qué y cuándo" del
-   "haga esto" y, al ser una forma llena, le da al código un lugar en vez de
-   dejarlo flotando sobre el fondo. En apaisado la misma banda se pone de canto y
-   pasa a ser el panel derecho.
+   clara que el fondo, con el QR, la llamada a escanear y los tres pasos. Separa el
+   "qué y cuándo" del "haga esto" y, al ser una forma llena, le da al código un
+   lugar en vez de dejarlo flotando sobre el fondo. En apaisado la misma banda se
+   pone de canto y pasa a ser el panel derecho.
 
    El aire sobrante lo reparte el lienzo con align-content: space-between, de modo
-   que una reunión con pocos datos da un afiche holgado y parejo en vez de un
-   hueco grande en un solo lugar.
+   que una reunión con pocos datos da un afiche holgado y parejo en vez de un hueco
+   grande en un solo lugar.
+
+   La tipografía es Segoe UI, la del sistema en Windows: es la letra institucional
+   y, al no ser una fuente web, el afiche sale idéntico impreso, descargado y sin
+   conexión. El resto del portal sigue en Poppins — el afiche es material oficial
+   y se permite su propia voz.
 
    Todo el color es intencional en la impresión: print-color-adjust: exact evita
    que el navegador "ahorre tinta" y devuelva un afiche blanco.
@@ -34,13 +40,14 @@
     --afq-alto: 1123px;
     --afq-pad-x: 68px;
     --afq-pad-t: 64px;
-    --afq-pad-b: 52px;
+    --afq-pad-b: 56px;
 
-    --afq-titulo: 46px;
+    --afq-titulo: 40px;
     /* El titular se encoge en JS hasta caber en estas líneas. Se mide en líneas y no en
        píxeles porque la vista previa está bajo `zoom` y las alturas en px no son comparables. */
     --afq-titulo-max-lineas: 4;
-    --afq-qr: 288px;
+    --afq-llamada: 30px;
+    --afq-qr: 268px;
     --afq-logo: 54px;
 
     position: relative;
@@ -48,7 +55,7 @@
     width: var(--afq-ancho);
     height: var(--afq-alto);
     overflow: hidden;
-    font-family: 'Poppins', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif;
     color: var(--afq-claro);
     background:
         radial-gradient(78% 58% at 14% -10%, var(--afq-azul-alto) 0%, rgba(2, 57, 94, 0) 64%),
@@ -81,10 +88,7 @@
     height: 100%;
     padding: var(--afq-pad-t) var(--afq-pad-x) var(--afq-pad-b);
     display: grid;
-    grid-template-rows: auto auto auto auto auto;
-    /* El aire sobrante se reparte entre los cinco bloques en vez de acumularse en uno:
-       así la cabecera queda arriba, el pie abajo y una reunión con pocos datos da un
-       afiche holgado y parejo, no un hueco con el QR flotando en medio. */
+    grid-template-rows: auto auto auto auto;
     align-content: space-between;
     row-gap: 30px;
 }
@@ -112,7 +116,7 @@
     margin: 0 0 14px;
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: .24em;
+    letter-spacing: .2em;
     text-transform: uppercase;
     color: var(--afq-acento);
 }
@@ -124,15 +128,17 @@
     background: var(--afq-acento);
 }
 
+/* El nombre de la reunión va en mayúscula por CSS y no en el dato, para no alterar
+   lo que se guardó ni romper el mismo texto en el resto del portal. La versalita
+   necesita un poco de tracking: en caja alta sin aire las letras se empastan. */
 .afiche-titulo {
     margin: 0;
     font-size: var(--afq-titulo);
-    font-weight: 800;
-    line-height: 1.06;
-    letter-spacing: -.025em;
+    font-weight: 700;
+    line-height: 1.14;
+    letter-spacing: .015em;
+    text-transform: uppercase;
     color: var(--afq-papel);
-    /* `pretty` y no `balance`: en un titular de tres o cuatro líneas, balance acorta
-       la medida y deja media columna vacía. */
     text-wrap: pretty;
 }
 
@@ -141,7 +147,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 36px;
     margin: 0 calc(var(--afq-pad-x) * -1);
     padding: 30px var(--afq-pad-x);
     background: linear-gradient(180deg, rgba(10, 92, 143, .3) 0%, rgba(10, 92, 143, .08) 100%);
@@ -169,7 +175,6 @@
     height: 100%;
 }
 
-
 /* La mira: cuatro esquinas que encuadran el QR como el visor de una cámara.
    Dice qué hacer sin una sola palabra. */
 .afiche-mira {
@@ -187,23 +192,57 @@
 .afiche-scan-txt {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 16px;
     min-width: 0;
 }
 
-.afiche-scan-txt strong {
-    font-size: 23px;
+.afiche-llamada {
+    margin: 0;
+    font-size: var(--afq-llamada);
     font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -.01em;
+    line-height: 1.16;
+    letter-spacing: -.005em;
     color: var(--afq-papel);
+    text-wrap: pretty;
 }
 
-.afiche-scan-txt span {
-    font-size: 14px;
+/* Tres pasos numerados. Acá la numeración no decora: es una secuencia real y el
+   orden es la información — saque el teléfono, apunte, llene el formulario. */
+.afiche-pasos {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: afq-paso;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.afiche-pasos li {
+    counter-increment: afq-paso;
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    font-size: 15px;
     font-weight: 400;
-    line-height: 1.5;
-    color: var(--afq-suave);
+    line-height: 1.35;
+    color: var(--afq-claro);
+}
+
+.afiche-pasos li::before {
+    content: counter(afq-paso);
+    flex: none;
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+    border: 1px solid var(--afq-linea-fuerte);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--afq-acento);
 }
 
 /* ── Datos de la reunión ───────────────────────────────────────────────────── */
@@ -215,87 +254,60 @@
 }
 
 .afiche-campo {
-    padding: 13px 0 15px;
+    padding: 14px 0 16px;
     border-top: 1px solid var(--afq-linea-fuerte);
     min-width: 0;
 }
 
 .afiche-campo dt {
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: .16em;
+    letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--afq-suave);
-    opacity: .8;
+    opacity: .85;
 }
 
 .afiche-campo dd {
-    margin: 5px 0 0;
-    font-size: 14px;
+    margin: 6px 0 0;
+    font-size: 18px;
     font-weight: 600;
-    line-height: 1.35;
+    line-height: 1.3;
     color: var(--afq-claro);
-    overflow-wrap: anywhere;
-}
-
-/* ── Pie ───────────────────────────────────────────────────────────────────── */
-.afiche-pie {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding-top: 18px;
-    border-top: 1px solid var(--afq-linea-fuerte);
-}
-
-.afiche-pie-et {
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--afq-suave);
-    opacity: .8;
-}
-
-.afiche-url {
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.4;
-    color: var(--afq-suave);
     overflow-wrap: anywhere;
 }
 
 /* ── Variante apaisada (proyector / 16:9) ──────────────────────────────────── */
 /* Aquí la banda de escaneo se pone de canto: pasa a ser el panel derecho, de borde
-   a borde, y la columna izquierda reparte cabecera, titular, datos y pie. */
+   a borde, y la columna izquierda reparte cabecera, titular y datos. */
 .afiche--apaisado {
     --afq-ancho: 1123px;
     --afq-alto: 794px;
     --afq-pad-x: 64px;
     --afq-pad-t: 54px;
-    --afq-pad-b: 44px;
-    --afq-titulo: 42px;
+    --afq-pad-b: 48px;
+    --afq-titulo: 40px;
     --afq-titulo-max-lineas: 4;
-    --afq-qr: 288px;
+    --afq-llamada: 25px;
+    --afq-qr: 284px;
     --afq-logo: 52px;
 }
 
 .afiche--apaisado .afiche-lienzo {
     grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto 1fr auto;
     column-gap: 56px;
     row-gap: 28px;
     grid-template-areas:
         "hdr    scan"
         "intro  scan"
-        "campos scan"
-        "pie    scan";
+        "campos scan";
 }
 
 .afiche--apaisado .afiche-hdr    { grid-area: hdr; border-bottom: 0; padding-bottom: 0; }
 .afiche--apaisado .afiche-intro  { grid-area: intro; display: flex; flex-direction: column; justify-content: center; }
 .afiche--apaisado .afiche-scan   { grid-area: scan; }
 .afiche--apaisado .afiche-campos { grid-area: campos; }
-.afiche--apaisado .afiche-pie    { grid-area: pie; }
 
 /* El margen negativo derecho iguala el relleno del lienzo, de modo que el panel llega
    al borde del afiche y su contenido queda centrado dentro de lo que se ve. */
@@ -303,7 +315,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 28px;
+    gap: 26px;
     text-align: center;
     margin: calc(var(--afq-pad-t) * -1) calc(var(--afq-pad-x) * -1) calc(var(--afq-pad-b) * -1) 0;
     padding: 0 32px;
@@ -314,24 +326,25 @@
 
 .afiche--apaisado .afiche-scan-txt {
     align-items: center;
-    gap: 6px;
+    gap: 14px;
 }
 
-.afiche--apaisado .afiche-scan-txt strong { font-size: 21px; }
-.afiche--apaisado .afiche-scan-txt span   { font-size: 13px; max-width: 290px; }
+.afiche--apaisado .afiche-llamada  { max-width: 300px; }
+.afiche--apaisado .afiche-pasos    { text-align: left; }
+.afiche--apaisado .afiche-pasos li { font-size: 14px; }
 
 .afiche--apaisado .afiche-campos {
     align-self: end;
     column-gap: 32px;
 }
 
-.afiche--apaisado .afiche-campo    { padding: 11px 0 13px; }
-.afiche--apaisado .afiche-campo dd { font-size: 13.5px; }
+.afiche--apaisado .afiche-campo    { padding: 12px 0 14px; }
+.afiche--apaisado .afiche-campo dd { font-size: 17px; }
 
 /* ── Vista previa dentro del modal ─────────────────────────────────────────── */
 /* `zoom` encoge el afiche con su propia caja, así que no deja huecos en el layout
-   ni obliga a recalcular nada en JS. Solo existe en el modal: la ventana de
-   impresión no lleva .afiche-vista y por eso imprime a tamaño real. */
+   ni obliga a recalcular nada en JS. Solo existe en el modal: la impresión y la
+   descarga no llevan .afiche-vista y por eso salen a tamaño real. */
 .afiche-vista {
     --afq-zoom-vertical: .56;
     --afq-zoom-apaisado: .40;

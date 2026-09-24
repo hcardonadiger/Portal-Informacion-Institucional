@@ -5,16 +5,14 @@ namespace Diger.TramitesEstado.Web.Models;
 /// Es un tipo propio y no el DTO de la reunión porque el afiche solo lleva lo que se lee de lejos:
 /// arma sus campos con <see cref="Campo"/> y los que llegan vacíos no se dibujan.
 /// </summary>
-/// <param name="Titulo">Nombre de la reunión. Es el titular del afiche.</param>
+/// <param name="Titulo">Nombre de la reunión. Es el titular del afiche, que lo muestra en mayúscula.</param>
 /// <param name="QrDataUri">PNG del QR como data-URI, en resolución de impresión.</param>
-/// <param name="Url">Enlace de registro, impreso como alternativa a escanear.</param>
-/// <param name="Institucion">Institución que convoca, para la línea de cabecera.</param>
+/// <param name="Institucion">Institución que convoca; solo alimenta el texto alterno del logo.</param>
 /// <param name="Logo">Ruta del logo institucional; el afiche lo invierte a blanco.</param>
 /// <param name="Campos">Datos de la reunión, ya filtrados y en el orden en que se muestran.</param>
 public sealed record AficheQrVm(
     string Titulo,
     string QrDataUri,
-    string Url,
     string Institucion,
     string Logo,
     IReadOnlyList<AficheQrCampo> Campos)
