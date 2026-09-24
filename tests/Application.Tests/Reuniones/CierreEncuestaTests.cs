@@ -5,8 +5,9 @@ using Xunit;
 
 namespace Diger.TramitesEstado.Application.Tests.Reuniones;
 
-/// <summary>La encuesta de satisfacción se enciende desde «Generales» y es lo que decide si el
-/// cierre pide la segunda firma. Como es un campo propio —y no algo que se deduzca de si ya hay
+/// <summary>La encuesta de satisfacción se enciende desde «Generales» y es lo que hace aparecer
+/// en el cierre la calificación de satisfacción y la segunda firma. Como es un campo propio
+/// —y no algo que se deduzca de si ya hay
 /// respuestas— tiene que sobrevivir el ida y vuelta entre la entidad y el formulario: una encuesta
 /// recién activada todavía no tiene ninguna respuesta, y si se dedujera aparecería apagada al
 /// recargar la pantalla.</summary>
@@ -69,8 +70,10 @@ public class CierreEncuestaTests
     [Fact]
     public void La_satisfaccion_ya_capturada_sobrevive_a_guardar_desde_el_editor()
     {
-        // La calificacion y el comentario salieron del cierre: viajan como campos ocultos para que
-        // lo que muestra el acta de reuniones anteriores no se pierda al volver a guardar.
+        // La calificacion y el comentario se capturan en el cierre, dentro del bloque que enciende
+        // la encuesta. Con la encuesta apagada el bloque se esconde con CSS pero sigue en el
+        // formulario, asi que lo que muestra el acta de reuniones anteriores no se pierde al
+        // volver a guardar.
         var r = Reunion.Crear("Sesion anterior");
         r.SatisfaccionCalificacion = 4;
         r.Satisfaccion = "Muy buena";
@@ -80,5 +83,44 @@ public class CierreEncuestaTests
 
         r.SatisfaccionCalificacion.Should().Be(4);
         r.Satisfaccion.Should().Be("Muy buena");
+    }
+
+    [Fact]
+    public void Con_la_encuesta_activa_la_satisfaccion_capturada_llega_a_la_reunion()
+    {
+        // Es el motivo de ser del boton: encenderlo muestra la calificacion y el comentario en el
+        // cierre. Si no viajaran, activar la encuesta solo agregaria la segunda firma.
+        var r = Reunion.Crear("Sesion de prueba");
+
+        var form = FormBase(encuestaActiva: true);
+        form.SatisfaccionCalificacion = 5;
+        form.Satisfaccion = "Excelente atencion";
+
+        ReunionMapper.Aplicar(r, form, [], []);
+
+        r.EncuestaActiva.Should().BeTrue();
+        r.SatisfaccionCalificacion.Should().Be(5);
+        r.Satisfaccion.Should().Be("Excelente atencion");
+    }
+
+    [Fact]
+    public void Apagar_la_encuesta_no_borra_la_satisfaccion_ya_capturada()
+    {
+        // Mismo trato que la segunda firma: el bloque se oculta con CSS, no se quita del DOM, asi
+        // que su valor sigue viajando. Si se quitara llegaria null y el guardado lo borraria.
+        var r = Reunion.Crear("Sesion de prueba");
+
+        var conEncuesta = FormBase(encuestaActiva: true);
+        conEncuesta.SatisfaccionCalificacion = 3;
+        conEncuesta.Satisfaccion = "Aceptable";
+        ReunionMapper.Aplicar(r, conEncuesta, [], []);
+
+        var (datos, asistentes, acuerdos) = ReunionMapper.ToForm(r);
+        datos.EncuestaActiva = false;
+        ReunionMapper.Aplicar(r, datos, asistentes, acuerdos);
+
+        r.EncuestaActiva.Should().BeFalse();
+        r.SatisfaccionCalificacion.Should().Be(3, "apagar la encuesta esconde la satisfaccion, no la destruye");
+        r.Satisfaccion.Should().Be("Aceptable");
     }
 }
