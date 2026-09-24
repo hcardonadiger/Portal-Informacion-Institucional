@@ -23,7 +23,8 @@ public sealed class PermissionAuthorizationHandler(ICurrentUserService currentUs
             return;
         }
 
-        var permisos = await cache.ObtenerAsync(rolId);
+        var permisos = await cache.ObtenerAsync(
+            rolId, currentUser.ActiveInstitucionId, currentUser.ActiveAreaId, currentUser.ActiveUnidadId);
         if (permisos.Contains(requirement.Clave))
             context.Succeed(requirement);
     }

@@ -47,6 +47,7 @@ public sealed class AppDbContext(
     public DbSet<Rol>                      Roles                { get; init; } = default!;
     public DbSet<Permiso>                  Permisos             { get; init; } = default!;
     public DbSet<RolPermiso>               RolPermisos          { get; init; } = default!;
+    public DbSet<ModuloAmbito>             ModuloAmbitos        { get; init; } = default!;
     public DbSet<PermisoAuditoria>         PermisosAuditoria    { get; init; } = default!;
     public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
     public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
@@ -175,19 +176,28 @@ public sealed class AppDbContext(
             ))
         ));
 
-        // Reuniones: las públicas respetan la jerarquía, las privadas solo las ve el creador.
+        // Reuniones: el ancla es el DUEÑO —el área y la unidad de quien la convocó, que
+        // CrearReunionCommand estampa del creador—, no InstitucionId.
+        //
+        // InstitucionId guarda la CONTRAPARTE, no el dueño: los títulos lo dicen solos
+        // ("Reunión técnica SRECI-DIGER" queda con InstitucionId = SRECI). Anclando ahí, 66 de
+        // las 79 reuniones resultaban invisibles para la misma unidad que las hizo, mientras la
+        // contraparte —que casi nunca tiene usuarios en el portal— era la única que podía verlas.
+        //
+        // AreaId y UnidadId son claves primarias globales, así que identifican la institución
+        // dueña sin necesidad de un campo aparte: GOBDIG solo existe bajo DIGER.
+        //
+        // Respaldo para reuniones sin dueño: se cae al ancla vieja en vez de desaparecer. Sin
+        // esto, una reunión creada por alguien sin área asignada no la vería nadie.
         // Soft-Delete se evalúa primero para corto-circuitar todo el filtro si IsDeleted=true.
         mb.Entity<Reunion>().HasQueryFilter(r => !r.IsDeleted && (
             (r.Visibilidad != VisibilidadReunion.Privada && (
                 _alcanceGlobal ||
-                (r.InstitucionId == _activeInst && (
-                    (_nivel == NivelAlcance.Institucion &&
-                        (string.IsNullOrEmpty(_activeArea) || r.AreaId == _activeArea || r.AreaId == null) &&
-                        (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
-                    (_nivel == NivelAlcance.Area      && (r.AreaId == _activeArea || r.AreaId == null) &&
-                        (string.IsNullOrEmpty(_activeUnidad) || r.UnidadId == _activeUnidad || r.UnidadId == null)) ||
-                    (_nivel == NivelAlcance.Unidad    && (r.UnidadId == _activeUnidad || r.UnidadId == null))
-                ))
+                (r.AreaId == null && r.UnidadId == null && r.InstitucionId == _activeInst) ||
+                (_nivel == NivelAlcance.Unidad      && r.UnidadId != null && r.UnidadId == _activeUnidad) ||
+                (_nivel == NivelAlcance.Area        && r.AreaId   != null && r.AreaId   == _activeArea) ||
+                (_nivel == NivelAlcance.Institucion && r.AreaId   != null &&
+                    Areas.Any(a => a.Id == r.AreaId && a.InstitucionId == _activeInst))
             )) ||
             (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
         ));
@@ -1271,6 +1281,33 @@ public sealed class RolPermisoConfiguration : IEntityTypeConfiguration<RolPermis
         b.Property(x => x.PermisoClave).HasMaxLength(80).IsRequired();
         b.HasIndex(x => new { x.RolId, x.PermisoClave }).IsUnique();
         b.HasOne<Rol>().WithMany().HasForeignKey(x => x.RolId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ModuloAmbitoConfiguration : IEntityTypeConfiguration<ModuloAmbito>
+{
+    public void Configure(EntityTypeBuilder<ModuloAmbito> b)
+    {
+        b.ToTable("ModuloAmbitos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Modulo).HasMaxLength(ModuloAmbito.MaxModulo).IsRequired();
+        b.Property(x => x.InstitucionId).HasMaxLength(50).IsRequired();
+        b.Property(x => x.AreaId).HasMaxLength(50);
+        b.Property(x => x.UnidadId).HasMaxLength(50);
+
+        // Sin filtro de alcance a proposito: es tabla de configuracion y la lee el cache de
+        // permisos desde un scope sin usuario. Filtrarla haria que el cache viera cero filas
+        // y el modulo quedara abierto para todos, que es exactamente lo contrario de restringir.
+        b.HasIndex(x => x.Modulo);
+
+        // HasFilter(null) a proposito: por defecto EF excluye del indice unico las filas con
+        // columnas nulas, y aca esas son justamente las concesiones "toda la institucion"
+        // (AreaId null) y "toda el area" (UnidadId null) — las que mas se van a repetir por
+        // error. SQL Server admite un solo NULL por combinacion, que es la regla que se busca.
+        b.HasIndex(x => new { x.Modulo, x.InstitucionId, x.AreaId, x.UnidadId })
+         .IsUnique()
+         .HasFilter(null);
     }
 }
 

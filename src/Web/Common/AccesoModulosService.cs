@@ -57,7 +57,8 @@ public sealed class AccesoModulosService(
         var rolId = currentUser.Rol;
         if (string.IsNullOrWhiteSpace(rolId)) return false;
 
-        _claves ??= await permisos.ObtenerAsync(rolId, ct);
+        _claves ??= await permisos.ObtenerAsync(
+            rolId, currentUser.ActiveInstitucionId, currentUser.ActiveAreaId, currentUser.ActiveUnidadId, ct);
         return _claves.Contains(clave);
     }
 

@@ -92,6 +92,7 @@
         var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
         var puedeSoporte     = await Acceso.EsSoporteAsync();   // atiende el chat de soporte
         var puedeProyectos   = await Acceso.PuedeAsync(ModulosPortal.Proyectos);
+        var puedeSiger       = await Acceso.PuedeAsync(ModulosPortal.Siger);
 
         var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
         List<AsignacionAuthDto>? asignaciones = null;
@@ -159,7 +160,10 @@
                                 </div>
                             </div>
                         }
-                        @if (puedeExpedientes)
+                        @* SIGER se gatea con su propia clave: las páginas de /Siger ya exigen
+                           Siger.Ver, así que colgarlo de Expedientes mostraba el menú a quien
+                           después recibía «Acceso denegado» al entrar. *@
+                        @if (puedeSiger)
                         {
                             <div class="nav-group @(EsRuta("/Siger") ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">SIGER<span class="nav-caret">&#9662;</span></button>
@@ -264,6 +268,7 @@
                                         <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><svg class="ico"><use href="#i-usuarios"></use></svg>Usuarios</a>
                                         <a class="nav-item @(EsRuta("/Accesos/Roles") ? "on" : "")" asp-page="/Accesos/Roles"><svg class="ico"><use href="#i-accesos"></use></svg>Roles</a>
                                         <a class="nav-item @(EsRuta("/Accesos/Permisos") ? "on" : "")" asp-page="/Accesos/Permisos"><svg class="ico"><use href="#i-accesos"></use></svg>Permisos</a>
+                                        <a class="nav-item @(EsRuta("/Accesos/Modulos") ? "on" : "")" asp-page="/Accesos/Modulos"><svg class="ico"><use href="#i-accesos"></use></svg>Alcance de módulos</a>
                                         @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
                                         @if (HostEnv.IsDevelopment())
                                         {
