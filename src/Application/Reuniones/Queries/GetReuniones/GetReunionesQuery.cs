@@ -2,7 +2,7 @@ namespace Diger.TramitesEstado.Application.Reuniones.Queries.GetReuniones;
 
 public sealed record ReunionListItemDto(
     int Id, string Titulo, DateOnly? Fecha, string? Institucion, string? Tipo, int NumAsistentes,
-    VisibilidadReunion Visibilidad, Guid? HiloId = null);
+    VisibilidadReunion Visibilidad, Guid? HiloId = null, DateTime CreadaEl = default);
 
 /// <summary>Columnas por las que se puede ordenar el listado.</summary>
 public enum OrdenReuniones { Creacion, Fecha, Titulo, Institucion, Tipo, Asistentes }
@@ -11,6 +11,7 @@ public sealed record GetReunionesQuery(
     string? Q = null, int? Page = null, int? Size = null,
     string? Titulo = null, string? Institucion = null, string? Tipo = null,
     DateOnly? FechaDesde = null, DateOnly? FechaHasta = null,
+    DateOnly? CreadaDesde = null, DateOnly? CreadaHasta = null,
     OrdenReuniones Ordenar = OrdenReuniones.Creacion, bool Desc = true)
     : IRequest<PagedResult<ReunionListItemDto>>;
 
@@ -68,12 +69,25 @@ public sealed class GetReunionesQueryHandler(IApplicationDbContext ctx)
             baseq = baseq.Where(r => r.Fecha != null && r.Fecha >= desde);
         if (query.FechaHasta is DateOnly hasta)
             baseq = baseq.Where(r => r.Fecha != null && r.Fecha <= hasta);
+        // CreatedAt lleva hora, así que el rango se compara contra instantes: el día final
+        // cuenta completo (hasta el instante anterior a la medianoche siguiente), si no
+        // quedaría afuera todo lo registrado después de las 00:00 de ese día.
+        if (query.CreadaDesde is DateOnly creadaDesde)
+        {
+            var inicio = creadaDesde.ToDateTime(TimeOnly.MinValue);
+            baseq = baseq.Where(r => r.CreatedAt >= inicio);
+        }
+        if (query.CreadaHasta is DateOnly creadaHasta)
+        {
+            var finExclusivo = creadaHasta.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            baseq = baseq.Where(r => r.CreatedAt < finExclusivo);
+        }
 
         var total = await baseq.CountAsync(ct);
         var items = await Ordenar(baseq, query.Ordenar, query.Desc)
             .Skip((page - 1) * size).Take(size)
             .Select(r => new ReunionListItemDto(
-                r.Id, r.Titulo, r.Fecha, r.Institucion, r.Tipo, r.Asistentes.Count, r.Visibilidad, r.HiloId))
+                r.Id, r.Titulo, r.Fecha, r.Institucion, r.Tipo, r.Asistentes.Count, r.Visibilidad, r.HiloId, r.CreatedAt))
             .ToListAsync(ct);
 
         return new PagedResult<ReunionListItemDto>(items, total, page, size);

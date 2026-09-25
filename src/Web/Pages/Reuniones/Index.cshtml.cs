@@ -14,15 +14,19 @@ public sealed class IndexModel(ISender sender) : PageModel
     public string? FTipo { get; private set; }
     public DateOnly? FDesde { get; private set; }
     public DateOnly? FHasta { get; private set; }
+    public DateOnly? FCreadaDesde { get; private set; }
+    public DateOnly? FCreadaHasta { get; private set; }
     public OrdenReuniones Orden { get; private set; } = OrdenReuniones.Creacion;
     public bool Desc { get; private set; } = true;
 
     /// <summary>Hay filtros aplicados (la búsqueda general no cuenta: tiene su propio "Limpiar").</summary>
     public bool HayFiltros => FTitulo is not null || FInstitucion is not null || FTipo is not null
-                              || FDesde is not null || FHasta is not null;
+                              || FDesde is not null || FHasta is not null
+                              || FCreadaDesde is not null || FCreadaHasta is not null;
 
     public async Task OnGetAsync(string? q, int? pg, string? titulo, string? institucion, string? tipo,
-                                 DateOnly? desde, DateOnly? hasta, string? orden, bool? desc, CancellationToken ct)
+                                 DateOnly? desde, DateOnly? hasta, DateOnly? creadaDesde, DateOnly? creadaHasta,
+                                 string? orden, bool? desc, CancellationToken ct)
     {
         Q = Limpiar(q);
         FTitulo = Limpiar(titulo);
@@ -30,12 +34,15 @@ public sealed class IndexModel(ISender sender) : PageModel
         FTipo = Limpiar(tipo);
         FDesde = desde;
         FHasta = hasta;
+        FCreadaDesde = creadaDesde;
+        FCreadaHasta = creadaHasta;
         // Un valor de orden que no reconocemos cae al de siempre en vez de romper la página:
         // el querystring lo escribe cualquiera.
         Orden = Enum.TryParse<OrdenReuniones>(orden, ignoreCase: true, out var o) ? o : OrdenReuniones.Creacion;
         Desc = desc ?? true;
 
-        var filtros = new GetReunionesQuery(Q, pg, null, FTitulo, FInstitucion, FTipo, FDesde, FHasta, Orden, Desc);
+        var filtros = new GetReunionesQuery(Q, pg, null, FTitulo, FInstitucion, FTipo,
+                                            FDesde, FHasta, FCreadaDesde, FCreadaHasta, Orden, Desc);
         Resultado = await sender.Send(filtros, ct);
         Todas = (await sender.Send(filtros with { Page = 1, Size = 100 }, ct)).Items;
         Opciones = await sender.Send(new GetOpcionesFiltroReunionesQuery(), ct);

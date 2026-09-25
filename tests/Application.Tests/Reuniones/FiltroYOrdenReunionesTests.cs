@@ -136,6 +136,66 @@ public class FiltroYOrdenReunionesTests
     }
 
     [Fact]
+    public async Task FiltraPorRangoDeFechaDeCreacion_ConAmbosExtremosIncluidos()
+    {
+        await using var ctx = NuevoCtx();
+        await SembrarAsync(ctx, "Registrada antes", new DateOnly(2026, 1, 1), new DateTime(2026, 8, 31, 23, 59, 0));
+        await SembrarAsync(ctx, "Registrada el borde inicial", new DateOnly(2026, 1, 2), new DateTime(2026, 9, 1, 0, 1, 0));
+        await SembrarAsync(ctx, "Registrada en medio", new DateOnly(2026, 1, 3), new DateTime(2026, 9, 15, 10, 0, 0));
+        await SembrarAsync(ctx, "Registrada el borde final", new DateOnly(2026, 1, 4), new DateTime(2026, 9, 30, 8, 0, 0));
+        await SembrarAsync(ctx, "Registrada después", new DateOnly(2026, 1, 5), new DateTime(2026, 10, 1, 0, 1, 0));
+
+        var res = await Listar(ctx, new GetReunionesQuery(
+            CreadaDesde: new DateOnly(2026, 9, 1), CreadaHasta: new DateOnly(2026, 9, 30)));
+
+        res.Total.Should().Be(3);
+        res.Items.Select(i => i.Titulo).Should().BeEquivalentTo(
+            ["Registrada el borde inicial", "Registrada en medio", "Registrada el borde final"]);
+    }
+
+    [Fact]
+    public async Task ElUltimoDiaDelRangoDeCreacionCuentaCompleto_NoSoloHastaLaMedianoche()
+    {
+        await using var ctx = NuevoCtx();
+        // CreatedAt lleva hora: comparar contra la fecha pelada dejaría fuera todo lo
+        // registrado después de las 00:00 del último día.
+        await SembrarAsync(ctx, "Registrada al final del día", new DateOnly(2026, 1, 1), new DateTime(2026, 9, 30, 23, 59, 59));
+
+        var res = await Listar(ctx, new GetReunionesQuery(CreadaHasta: new DateOnly(2026, 9, 30)));
+
+        res.Total.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task LosDosRangosDeFechaSeCombinan()
+    {
+        await using var ctx = NuevoCtx();
+        // Reunión vieja cargada tarde: es la que sólo aparece cruzando ambos rangos.
+        await SembrarAsync(ctx, "Reunión de junio registrada en septiembre", new DateOnly(2026, 6, 10), new DateTime(2026, 9, 20));
+        await SembrarAsync(ctx, "Reunión de junio registrada en junio", new DateOnly(2026, 6, 11), new DateTime(2026, 6, 12));
+        await SembrarAsync(ctx, "Reunión de septiembre registrada en septiembre", new DateOnly(2026, 9, 5), new DateTime(2026, 9, 21));
+
+        var res = await Listar(ctx, new GetReunionesQuery(
+            FechaDesde: new DateOnly(2026, 6, 1), FechaHasta: new DateOnly(2026, 6, 30),
+            CreadaDesde: new DateOnly(2026, 9, 1)));
+
+        res.Total.Should().Be(1);
+        res.Items.Single().Titulo.Should().Be("Reunión de junio registrada en septiembre");
+    }
+
+    [Fact]
+    public async Task ElListadoExponeLaFechaDeRegistroDeCadaReunion()
+    {
+        await using var ctx = NuevoCtx();
+        var creadaEl = new DateTime(2026, 9, 24, 16, 48, 10);
+        await SembrarAsync(ctx, "Con registro", new DateOnly(2026, 6, 10), creadaEl);
+
+        var res = await Listar(ctx, new GetReunionesQuery());
+
+        res.Items.Single().CreadaEl.Should().Be(creadaEl);
+    }
+
+    [Fact]
     public async Task CombinaVariosFiltros()
     {
         await using var ctx = NuevoCtx();

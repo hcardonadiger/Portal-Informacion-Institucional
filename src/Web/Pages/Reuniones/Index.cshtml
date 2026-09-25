@@ -38,6 +38,8 @@
         Add("tipo", Model.FTipo);
         Add("desde", Model.FDesde?.ToString("yyyy-MM-dd"));
         Add("hasta", Model.FHasta?.ToString("yyyy-MM-dd"));
+        Add("creadaDesde", Model.FCreadaDesde?.ToString("yyyy-MM-dd"));
+        Add("creadaHasta", Model.FCreadaHasta?.ToString("yyyy-MM-dd"));
         parts.Add("orden=" + col);
         parts.Add("desc=" + (desc ? "true" : "false"));
         return rutaBase + "?" + string.Join("&", parts);
@@ -118,17 +120,19 @@
                         <input type="date" id="f-hasta" name="hasta" value="@Model.FHasta?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Hasta" style="min-width:0" />
                     </div>
                 </div>
+                <div class="field" style="min-width:230px">
+                    <label for="f-creada-desde" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Fecha de registro</label>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <input type="date" id="f-creada-desde" name="creadaDesde" value="@Model.FCreadaDesde?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Registrada desde" style="min-width:0" />
+                        <span style="color:#6b7fa3">–</span>
+                        <input type="date" id="f-creada-hasta" name="creadaHasta" value="@Model.FCreadaHasta?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Registrada hasta" style="min-width:0" />
+                    </div>
+                </div>
                 <div class="field" style="align-self:flex-end;margin-bottom:0;display:flex;gap:6px">
                     <button type="submit" class="btnp">Filtrar</button>
                     @if (Model.HayFiltros)
                     {
                         <a class="btns" href="@rutaBase">✕ Limpiar</a>
-                    }
-                    @if (Model.Orden != OrdenReuniones.Creacion || !Model.Desc)
-                    {
-                        @* Volver al orden por defecto sin tener que soltar los filtros. *@
-                        <a class="btns" href="@OrdenUrl(OrdenReuniones.Creacion)"
-                           title="Volver al orden por fecha y hora de registro">↻ Últimas registradas</a>
                     }
                 </div>
             </form>
@@ -142,13 +146,14 @@
                     <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Institucion)">Institución@(Flecha(OrdenReuniones.Institucion))</a></th>
                     <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Tipo)">Tipo@(Flecha(OrdenReuniones.Tipo))</a> <span class="help-tip tip-down tip-left" data-tip="Clasificación: reunión técnica, capacitación, taller, seguimiento, etc.">?</span></th>
                     <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Asistentes)">Asistentes@(Flecha(OrdenReuniones.Asistentes))</a></th>
+                    <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Creacion)" title="Fecha y hora en que se registró la reunión">Registro@(Flecha(OrdenReuniones.Creacion))</a></th>
                     <th style="width:1%"></th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Resultado.Items.Count == 0)
                 {
-                    <tr><td colspan="6" style="text-align:center;padding:2rem;color:#9aadcc">No se encontraron reuniones con los criterios aplicados.</td></tr>
+                    <tr><td colspan="7" style="text-align:center;padding:2rem;color:#9aadcc">No se encontraron reuniones con los criterios aplicados.</td></tr>
                 }
                 @foreach (var r in Model.Resultado.Items)
                 {
@@ -172,6 +177,7 @@
                             @if (r.NumAsistentes > 0) { <span class="reun-asist-n">@r.NumAsistentes</span> }
                             else { <span class="res-meta">0</span> }
                         </td>
+                        <td class="res-meta reun-registro" style="text-align:center" title="@r.CreadaEl.ToFechaHoraCorta()">@r.CreadaEl.ToFechaCorta()</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
                                style="font-size:12.5px;padding:6px 12px">Acta</a>
@@ -270,6 +276,18 @@
     /* Encabezados ordenables: se leen como encabezado, no como enlace suelto. */
     .th-orden { color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
     .th-orden:hover { text-decoration: underline; }
+    /* La píldora trae white-space: nowrap del CSS global; un nombre largo de institución
+       estiraba la columna y con ella toda la tabla, sacando la página hacia la derecha.
+       Acá se deja bajar de renglón. Sólo en este listado: la píldora se usa también en
+       Asistencia, donde el ancho no molesta. */
+    #reunion-tbl .inst-pill {
+        white-space: normal;
+        display: inline-block;
+        max-width: 190px;
+        line-height: 1.25;
+        text-align: center;
+    }
+    #reunion-tbl .reun-registro { white-space: nowrap; }
 </style>
 <script>
     function toggleVistaReuniones() {

@@ -82,6 +82,40 @@ public sealed class ListadoReunionesEncabezadosTests : IAsyncLifetime
         // encabezado de los botones, ensanchando la columna.
         var html = await ListadoAsync();
 
-        html.Should().NotContain(">Registro");
+        var thead = System.Text.RegularExpressions.Regex.Match(html, "(?s)<thead>.*?</thead>").Value;
+        var encabezados = System.Text.RegularExpressions.Regex.Matches(thead, "(?s)<th[^>]*>(.*?)</th>");
+        var ultimo = System.Text.RegularExpressions.Regex.Replace(
+            encabezados[^1].Groups[1].Value, "<[^>]+>", "").Trim();
+
+        ultimo.Should().BeEmpty("la columna de botones no lleva encabezado");
+    }
+
+    [Fact]
+    public async Task LaTablaMuestraLaFechaDeRegistroDeCadaReunion()
+    {
+        var html = await ListadoAsync();
+
+        html.Should().Contain(">Registro", "la fecha de creación es una columna propia");
+        html.Should().MatchRegex(@"\d{2}-\d{2}-\d{4}", "la fecha de registro sale en formato corto");
+    }
+
+    [Fact]
+    public async Task LaColumnaDeRegistroTambienOrdena()
+    {
+        var html = await ListadoAsync("/Reuniones?orden=Creacion&desc=false");
+
+        html.Should().Contain("▲");
+    }
+
+    [Fact]
+    public async Task ElNombreLargoDeInstitucionPuedeBajarDeRenglon()
+    {
+        // La píldora traía white-space: nowrap del CSS global, así que un nombre como
+        // "SECRETARÍA DE DESARROLLO ECONÓMICO" estiraba la columna y con ella toda la
+        // tabla, metiendo scroll horizontal en la página.
+        var html = await ListadoAsync();
+
+        html.Should().Contain("#reunion-tbl .inst-pill");
+        html.Should().Contain("white-space: normal");
     }
 }
