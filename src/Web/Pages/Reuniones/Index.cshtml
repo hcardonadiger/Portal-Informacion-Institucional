@@ -154,7 +154,9 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var r in grupo.OrderByDescending(r => r.Fecha))
+                                @* Sin reordenar: Model.Todas ya viene por última creación desde el handler,
+                                   y GroupBy conserva ese orden dentro de cada institución. *@
+                                @foreach (var r in grupo)
                                 {
                                     <tr>
                                         <td><a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>

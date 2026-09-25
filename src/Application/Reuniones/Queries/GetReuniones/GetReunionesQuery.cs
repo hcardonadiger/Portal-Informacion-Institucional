@@ -22,8 +22,12 @@ public sealed class GetReunionesQueryHandler(IApplicationDbContext ctx)
                 (r.Tipo != null && r.Tipo.Contains(q)));
 
         var total = await baseq.CountAsync(ct);
+        // Se desglosa por última creación: lo último registrado encabeza la lista, aunque la
+        // reunión sea de una fecha anterior (actas que se cargan días o meses después).
+        // Fecha e Id sólo desempatan dentro de un mismo lote —típicamente una importación,
+        // donde todas las filas comparten CreatedAt— para que ahí sí salgan cronológicas.
         var items = await baseq
-            .OrderByDescending(r => r.Fecha).ThenByDescending(r => r.CreatedAt)
+            .OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Fecha).ThenByDescending(r => r.Id)
             .Skip((page - 1) * size).Take(size)
             .Select(r => new ReunionListItemDto(
                 r.Id, r.Titulo, r.Fecha, r.Institucion, r.Tipo, r.Asistentes.Count, r.Visibilidad, r.HiloId))
