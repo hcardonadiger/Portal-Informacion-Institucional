@@ -84,20 +84,17 @@ public sealed class AsistenciaModel(
     private AficheQrVm ArmarAfiche()
     {
         var inst = institucion.Value;
-        var campos = new List<AficheQrCampo>();
-
-        AficheQrVm.Campo(campos, "Fecha", Data.Fecha.ToFechaLargaConDia());
-        AficheQrVm.Campo(campos, "Hora", Data.Hora);
-        AficheQrVm.Campo(campos, "Modalidad", Data.Modalidad);
-        AficheQrVm.Campo(campos, "Lugar", Data.Lugar);
-        AficheQrVm.Campo(campos, "Tipo de reunión", Data.Tipo);
 
         return new AficheQrVm(
             Data.Titulo,
             QrImagen.DataUriAfiche(PublicUrl),
             inst.Nombre,
             inst.Logo,
-            campos);
+            Tipo:      AficheQrVm.Limpio(Data.Tipo),
+            Fecha:     AficheQrVm.Limpio(Data.Fecha.ToFechaLargaConDia()),
+            Hora:      AficheQrVm.Limpio(Data.Hora),
+            Modalidad: AficheQrVm.Limpio(Data.Modalidad),
+            Lugar:     AficheQrVm.Limpio(Data.Lugar));
     }
 
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)

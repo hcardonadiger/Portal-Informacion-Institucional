@@ -140,15 +140,48 @@ public sealed class AficheQrTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Un_campo_sin_valor_no_deja_fila_vacia()
+    public async Task Un_campo_sin_valor_no_deja_linea_vacia()
     {
-        var html = await AficheAsync(_minimaId);
+        var afiche = SoloElAfiche(await AficheAsync(_minimaId));
 
-        html.Should().Contain("5 de octubre de 2026", "la fecha sí está y debe salir");
-        html.Should().NotContain("<dt>Hora</dt>");
-        html.Should().NotContain("<dt>Modalidad</dt>");
-        html.Should().NotContain("<dt>Lugar</dt>");
-        html.Should().NotContain("<dt>Tipo de reunión</dt>");
+        afiche.Should().Contain("5 de octubre de 2026", "la fecha sí está y debe salir");
+        afiche.Should().NotContain("afiche-cuando",
+            "sin hora ni modalidad, esa línea de la ficha no se dibuja");
+        afiche.Should().NotContain("afiche-lugar",
+            "sin lugar, esa línea de la ficha no se dibuja");
+    }
+
+    [Fact]
+    public async Task La_fecha_va_pegada_al_titulo_y_no_en_una_rejilla_al_pie()
+    {
+        var afiche = SoloElAfiche(await AficheAsync(_completaId));
+
+        // Lo que se prueba es el ORDEN de lectura, que es el cambio: antes fecha, hora y lugar
+        // iban en una rejilla de fichas después del QR, o sea al final. Ahora la ficha va entre
+        // el título y la banda de escaneo, que es donde se busca en un afiche de evento.
+        var titulo = afiche.IndexOf("afiche-titulo", StringComparison.Ordinal);
+        var ficha  = afiche.IndexOf("afiche-ficha", StringComparison.Ordinal);
+        var scan   = afiche.IndexOf("afiche-scan", StringComparison.Ordinal);
+
+        titulo.Should().BeGreaterThan(0);
+        ficha.Should().BeGreaterThan(titulo, "la ficha va después del título");
+        scan.Should().BeGreaterThan(ficha, "la banda de escaneo va después de la ficha");
+
+        afiche.Should().NotContain("afiche-campos", "la rejilla de fichas del pie se eliminó");
+    }
+
+    [Fact]
+    public async Task El_tipo_de_reunion_encabeza_el_afiche_y_sin_tipo_dice_convocatoria()
+    {
+        var conTipo = SoloElAfiche(await AficheAsync(_completaId));
+        var sinTipo = SoloElAfiche(await AficheAsync(_minimaId));
+
+        conTipo.Should().Contain("afiche-kicker");
+        conTipo.Should().Contain("Capacitación",
+            "el tipo de reunión pasó a antetítulo: dice qué convocatoria es antes del nombre");
+
+        sinTipo.Should().Contain("Convocatoria",
+            "sin tipo, el antetítulo cae en lo que el afiche es en cualquier caso");
     }
 
     [Fact]
@@ -175,9 +208,11 @@ public sealed class AficheQrTests : IAsyncLifetime
             "la llamada dice para qué sirve escanear, no solo que se escanee");
 
         html.Should().Contain("class=\"afiche-pasos\"");
-        html.Should().Contain("Saque su teléfono y abra la cámara");
-        html.Should().Contain("Apúntela al código");
-        html.Should().Contain("Llene el formulario y envíelo");
+        html.Should().Contain("Abra la cámara de su teléfono");
+        html.Should().Contain("Apunte al código y toque el aviso");
+        html.Should().Contain("Complete el formulario");
+        html.Should().NotContain("Saque su teléfono",
+            "la instrucción se redactó en un registro más formal para una pieza institucional");
     }
 
     [Fact]

@@ -3,18 +3,49 @@
     Afiche del QR de asistencia. Tamaño fijo en píxeles (A4 a 96 ppp) para que lo que se ve en
     pantalla sea exactamente lo que se imprime y lo que se descarga: el mismo nodo se clona para
     las dos cosas, así que no hay una segunda copia de este marcado.
+
+    El orden de lectura está pensado como el de un afiche de evento, no como el de un formulario:
+    quién convoca, qué convocatoria es, cómo se llama, cuándo y dónde, y recién al final la
+    acción. Por eso la fecha va pegada al título y no en una ficha al pie.
 *@
 <div id="afiche" class="afiche afiche--vertical">
     <div class="afiche-trama" aria-hidden="true"></div>
 
     <div class="afiche-lienzo">
+        @*
+            Solo el logo. Llevaba al lado el nombre de la institución y había que quitarlo: el
+            logo ya rotula «Dirección de Gestión por Resultados» y InstitucionOptions.Nombre dice
+            «Dirección General de Gobierno Digital», así que el membrete mostraba dos nombres
+            distintos de la misma casa. Una pieza oficial no puede firmar de dos maneras.
+        *@
         <header class="afiche-hdr">
             <img class="afiche-logo" src="@Model.Logo" alt="@Model.Institucion" />
         </header>
 
-        <div class="afiche-intro">
-            <p class="afiche-eyebrow"><span class="afiche-eyebrow-raya" aria-hidden="true"></span>Registro de asistencia</p>
+        <div class="afiche-cuerpo">
+            <p class="afiche-kicker">
+                <span class="afiche-kicker-raya" aria-hidden="true"></span>@Model.Antetitulo
+            </p>
+
             <p class="afiche-titulo" id="aficheTitulo">@Model.Titulo</p>
+
+            @if (Model.HayFicha)
+            {
+                <div class="afiche-ficha">
+                    @if (Model.Fecha is not null)
+                    {
+                        <p class="afiche-fecha">@Model.Fecha</p>
+                    }
+                    @if (Model.Cuando is not null)
+                    {
+                        <p class="afiche-cuando">@Model.Cuando</p>
+                    }
+                    @if (Model.Lugar is not null)
+                    {
+                        <p class="afiche-lugar">@Model.Lugar</p>
+                    }
+                </div>
+            }
         </div>
 
         <figure class="afiche-scan">
@@ -28,24 +59,11 @@
             <figcaption class="afiche-scan-txt">
                 <p class="afiche-llamada">Escanee el código QR para inscribirse</p>
                 <ol class="afiche-pasos">
-                    <li>Saque su teléfono y abra la cámara.</li>
-                    <li>Apúntela al código y toque el aviso que aparece.</li>
-                    <li>Llene el formulario y envíelo.</li>
+                    <li>Abra la cámara de su teléfono.</li>
+                    <li>Apunte al código y toque el aviso.</li>
+                    <li>Complete el formulario.</li>
                 </ol>
             </figcaption>
         </figure>
-
-        @if (Model.Campos.Count > 0)
-        {
-            <dl class="afiche-campos">
-                @foreach (var c in Model.Campos)
-                {
-                    <div class="afiche-campo">
-                        <dt>@c.Etiqueta</dt>
-                        <dd>@c.Valor</dd>
-                    </div>
-                }
-            </dl>
-        }
     </div>
 </div>

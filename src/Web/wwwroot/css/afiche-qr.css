@@ -7,19 +7,25 @@
    hoja sin la clase .afiche-vista, por lo que salen a escala 1. No hay dos diseños
    que mantener.
 
-   La pieza que organiza el afiche es la banda de escaneo: una franja a sangre, más
-   clara que el fondo, con el QR, la llamada a escanear y los tres pasos. Separa el
-   "qué y cuándo" del "haga esto" y, al ser una forma llena, le da al código un
-   lugar en vez de dejarlo flotando sobre el fondo. En apaisado la misma banda se
-   pone de canto y pasa a ser el panel derecho.
+   ── Cómo está compuesto ──
+   Tres franjas de arriba abajo, y las tres tocan los bordes: membrete, cuerpo y
+   banda de escaneo. El lienzo no tiene relleno propio —cada franja pone el suyo—,
+   así que la banda queda a sangre sin márgenes negativos.
 
-   El aire sobrante lo reparte el lienzo con align-content: space-between, de modo
-   que una reunión con pocos datos da un afiche holgado y parejo en vez de un hueco
-   grande en un solo lugar.
+   El orden es el de un afiche de evento y no el de un formulario: quién convoca,
+   qué convocatoria es, cómo se llama, cuándo y dónde, y al final la acción. La
+   fecha va pegada al título porque es el segundo dato que alguien busca, no el
+   último; antes vivía en una rejilla al pie, que es donde se pone lo que no
+   importa.
+
+   El ritmo es fijo: la banda mide lo que mide y el cuerpo centra su bloque en lo
+   que sobra. Antes el sobrante se repartía entre todos los bloques, así que dos
+   afiches con distinta cantidad de datos salían con cadencias distintas — mal
+   asunto en una pieza que se ve repetida.
 
    La tipografía es Segoe UI, la del sistema en Windows: es la letra institucional
    y, al no ser una fuente web, el afiche sale idéntico impreso, descargado y sin
-   conexión. El resto del portal sigue en Poppins — el afiche es material oficial
+   conexión. El resto del portal usa otra familia; el afiche es material oficial
    y se permite su propia voz.
 
    Todo el color es intencional en la impresión: print-color-adjust: exact evita
@@ -39,15 +45,15 @@
     --afq-ancho: 794px;
     --afq-alto: 1123px;
     --afq-pad-x: 68px;
-    --afq-pad-t: 64px;
-    --afq-pad-b: 56px;
 
-    --afq-titulo: 40px;
-    /* El titular se encoge en JS hasta caber en estas líneas. Se mide en líneas y no en
-       píxeles porque la vista previa está bajo `zoom` y las alturas en px no son comparables. */
+    /* El titular es el que tiene que llenar la mitad superior: es lo único que se lee de
+       lejos y lo que hace que la pieza no parezca un formulario. Arranca grande y el JS lo
+       encoge hasta caber en las líneas de abajo. Se mide en líneas y no en píxeles porque
+       la vista previa está bajo `zoom` y ahí las alturas en px no son comparables. */
+    --afq-titulo: 64px;
     --afq-titulo-max-lineas: 4;
-    --afq-llamada: 30px;
-    --afq-qr: 268px;
+    --afq-llamada: 27px;
+    --afq-qr: 300px;
     --afq-logo: 54px;
 
     position: relative;
@@ -86,16 +92,13 @@
     position: relative;
     z-index: 1;
     height: 100%;
-    padding: var(--afq-pad-t) var(--afq-pad-x) var(--afq-pad-b);
     display: grid;
-    grid-template-rows: auto auto auto auto;
-    align-content: space-between;
-    row-gap: 30px;
+    grid-template-rows: auto 1fr auto;
 }
 
-/* ── Cabecera ──────────────────────────────────────────────────────────────── */
+/* ── Membrete ──────────────────────────────────────────────────────────────── */
 .afiche-hdr {
-    padding-bottom: 24px;
+    padding: 56px var(--afq-pad-x) 24px;
     border-bottom: 1px solid var(--afq-linea-fuerte);
 }
 
@@ -105,54 +108,103 @@
     display: block;
     height: var(--afq-logo);
     width: auto;
+    flex: none;
     filter: brightness(0) invert(1);
 }
 
-/* ── Titular ───────────────────────────────────────────────────────────────── */
-.afiche-eyebrow {
+/* ── Cuerpo ────────────────────────────────────────────────────────────────── */
+.afiche-cuerpo {
+    padding: 0 var(--afq-pad-x);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.afiche-kicker {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 0 0 14px;
-    font-size: 11px;
+    gap: 14px;
+    margin: 0 0 18px;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: .2em;
+    letter-spacing: .26em;
     text-transform: uppercase;
     color: var(--afq-acento);
 }
 
-.afiche-eyebrow-raya {
-    width: 34px;
+.afiche-kicker-raya {
+    width: 38px;
     height: 2px;
     flex: none;
     background: var(--afq-acento);
 }
 
 /* El nombre de la reunión va en mayúscula por CSS y no en el dato, para no alterar
-   lo que se guardó ni romper el mismo texto en el resto del portal. La versalita
-   necesita un poco de tracking: en caja alta sin aire las letras se empastan. */
+   lo que se guardó ni cambiar el mismo texto en el resto del portal. La caja alta
+   necesita algo de tracking: sin aire las letras se empastan. */
 .afiche-titulo {
     margin: 0;
     font-size: var(--afq-titulo);
     font-weight: 700;
-    line-height: 1.14;
-    letter-spacing: .015em;
+    line-height: 1.1;
+    letter-spacing: .012em;
     text-transform: uppercase;
     color: var(--afq-papel);
     text-wrap: pretty;
 }
 
+/* ── Ficha: cuándo y dónde ─────────────────────────────────────────────────── */
+/* Pegada al título y en tres niveles de peso decrecientes, que es como se lee un
+   afiche de evento: primero la fecha, después el horario, después la dirección. */
+.afiche-ficha {
+    margin-top: 32px;
+    padding-top: 26px;
+    border-top: 2px solid var(--afq-acento);
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    max-width: 92%;
+}
+
+.afiche-fecha {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--afq-papel);
+}
+
+/* En blanco y no en el color de acento: el acento ya lo llevan el antetítulo y la regla
+   de la ficha, y una tercera pieza en cian convertía la jerarquía en un semáforo. */
+.afiche-cuando {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--afq-claro);
+}
+
+.afiche-lugar {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--afq-suave);
+}
+
 /* ── Banda de escaneo ──────────────────────────────────────────────────────── */
+/* Anclada al borde inferior y a sangre: es la zona de acción y conviene que se lea
+   como un pie de pieza, no como un bloque más flotando en la página. */
 .afiche-scan {
-    position: relative;
     display: flex;
     align-items: center;
-    gap: 36px;
-    margin: 0 calc(var(--afq-pad-x) * -1);
-    padding: 30px var(--afq-pad-x);
-    background: linear-gradient(180deg, rgba(10, 92, 143, .3) 0%, rgba(10, 92, 143, .08) 100%);
+    gap: 38px;
+    margin: 0;
+    padding: 40px var(--afq-pad-x) 44px;
+    background: linear-gradient(180deg, rgba(10, 92, 143, .3) 0%, rgba(10, 92, 143, .1) 100%);
     border-top: 1px solid var(--afq-linea-fuerte);
-    border-bottom: 1px solid var(--afq-linea-fuerte);
 }
 
 /* Tarjeta blanca: el único objeto iluminado del afiche. */
@@ -179,20 +231,20 @@
    Dice qué hacer sin una sola palabra. */
 .afiche-mira {
     position: absolute;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border: 3px solid var(--afq-acento);
 }
 
-.afiche-mira--si { top: -13px; left: -13px;  border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
-.afiche-mira--sd { top: -13px; right: -13px; border-left: 0;  border-bottom: 0; border-radius: 0 8px 0 0; }
-.afiche-mira--ii { bottom: -13px; left: -13px;  border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
-.afiche-mira--id { bottom: -13px; right: -13px; border-left: 0;  border-top: 0; border-radius: 0 0 8px 0; }
+.afiche-mira--si { top: -14px; left: -14px;  border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+.afiche-mira--sd { top: -14px; right: -14px; border-left: 0;  border-bottom: 0; border-radius: 0 8px 0 0; }
+.afiche-mira--ii { bottom: -14px; left: -14px;  border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
+.afiche-mira--id { bottom: -14px; right: -14px; border-left: 0;  border-top: 0; border-radius: 0 0 8px 0; }
 
 .afiche-scan-txt {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 18px;
     min-width: 0;
 }
 
@@ -200,14 +252,14 @@
     margin: 0;
     font-size: var(--afq-llamada);
     font-weight: 700;
-    line-height: 1.16;
+    line-height: 1.18;
     letter-spacing: -.005em;
     color: var(--afq-papel);
     text-wrap: pretty;
 }
 
 /* Tres pasos numerados. Acá la numeración no decora: es una secuencia real y el
-   orden es la información — saque el teléfono, apunte, llene el formulario. */
+   orden es la información — abrir la cámara, apuntar, enviar. */
 .afiche-pasos {
     margin: 0;
     padding: 0;
@@ -215,14 +267,14 @@
     counter-reset: afq-paso;
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 10px;
 }
 
 .afiche-pasos li {
     counter-increment: afq-paso;
     display: flex;
     align-items: flex-start;
-    gap: 11px;
+    gap: 12px;
     font-size: 15px;
     font-weight: 400;
     line-height: 1.35;
@@ -245,82 +297,49 @@
     color: var(--afq-acento);
 }
 
-/* ── Datos de la reunión ───────────────────────────────────────────────────── */
-.afiche-campos {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 36px;
-    margin: 0;
-}
-
-.afiche-campo {
-    padding: 14px 0 16px;
-    border-top: 1px solid var(--afq-linea-fuerte);
-    min-width: 0;
-}
-
-.afiche-campo dt {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    color: var(--afq-suave);
-    opacity: .85;
-}
-
-.afiche-campo dd {
-    margin: 6px 0 0;
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 1.3;
-    color: var(--afq-claro);
-    overflow-wrap: anywhere;
-}
-
 /* ── Variante apaisada (proyector / 16:9) ──────────────────────────────────── */
-/* Aquí la banda de escaneo se pone de canto: pasa a ser el panel derecho, de borde
-   a borde, y la columna izquierda reparte cabecera, titular y datos. */
+/* La banda se pone de canto: pasa a ser el panel derecho, de borde a borde, y la
+   columna izquierda conserva el mismo orden de lectura. */
 .afiche--apaisado {
     --afq-ancho: 1123px;
     --afq-alto: 794px;
     --afq-pad-x: 64px;
-    --afq-pad-t: 54px;
-    --afq-pad-b: 48px;
-    --afq-titulo: 40px;
+    --afq-titulo: 54px;
     --afq-titulo-max-lineas: 4;
-    --afq-llamada: 25px;
-    --afq-qr: 284px;
+    --afq-llamada: 24px;
+    --afq-qr: 320px;
     --afq-logo: 52px;
 }
 
 .afiche--apaisado .afiche-lienzo {
-    grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-rows: auto 1fr auto;
-    column-gap: 56px;
-    row-gap: 28px;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    grid-template-rows: auto 1fr;
     grid-template-areas:
         "hdr    scan"
-        "intro  scan"
-        "campos scan";
+        "cuerpo scan";
 }
 
-.afiche--apaisado .afiche-hdr    { grid-area: hdr; border-bottom: 0; padding-bottom: 0; }
-.afiche--apaisado .afiche-intro  { grid-area: intro; display: flex; flex-direction: column; justify-content: center; }
+.afiche--apaisado .afiche-hdr    { grid-area: hdr; padding: 46px var(--afq-pad-x) 22px 0; margin-left: var(--afq-pad-x); }
+/* Centrado, pero con el titular a cuatro líneas: el bloque crece y el sobrante se reparte
+   arriba y abajo en vez de acumularse en un rectángulo vacío. Con tres líneas el titular se
+   encogía y dejaba un cuarto de la diapositiva sin nada. */
+.afiche--apaisado .afiche-cuerpo {
+    grid-area: cuerpo;
+    /* Sin relleno inferior: con él, «centrado» centraba dentro de un alto recortado y el
+       bloque subía la mitad de ese relleno, dejando más vacío abajo que arriba. */
+    padding: 0 0 0 var(--afq-pad-x);
+}
 .afiche--apaisado .afiche-scan   { grid-area: scan; }
-.afiche--apaisado .afiche-campos { grid-area: campos; }
 
-/* El margen negativo derecho iguala el relleno del lienzo, de modo que el panel llega
-   al borde del afiche y su contenido queda centrado dentro de lo que se ve. */
 .afiche--apaisado .afiche-scan {
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 26px;
     text-align: center;
-    margin: calc(var(--afq-pad-t) * -1) calc(var(--afq-pad-x) * -1) calc(var(--afq-pad-b) * -1) 0;
-    padding: 0 32px;
-    background: linear-gradient(196deg, rgba(10, 92, 143, .34) 0%, rgba(10, 92, 143, .06) 100%);
-    border: 0;
+    padding: 0 40px;
+    background: linear-gradient(196deg, rgba(10, 92, 143, .34) 0%, rgba(10, 92, 143, .08) 100%);
+    border-top: 0;
     border-left: 1px solid var(--afq-linea-fuerte);
 }
 
@@ -333,13 +352,10 @@
 .afiche--apaisado .afiche-pasos    { text-align: left; }
 .afiche--apaisado .afiche-pasos li { font-size: 14px; }
 
-.afiche--apaisado .afiche-campos {
-    align-self: end;
-    column-gap: 32px;
-}
-
-.afiche--apaisado .afiche-campo    { padding: 12px 0 14px; }
-.afiche--apaisado .afiche-campo dd { font-size: 17px; }
+.afiche--apaisado .afiche-ficha  { margin-top: 28px; padding-top: 22px; max-width: 100%; }
+.afiche--apaisado .afiche-fecha  { font-size: 23px; }
+.afiche--apaisado .afiche-cuando { font-size: 17px; }
+.afiche--apaisado .afiche-lugar  { font-size: 15px; }
 
 /* ── Vista previa dentro del modal ─────────────────────────────────────────── */
 /* `zoom` encoge el afiche con su propia caja, así que no deja huecos en el layout
