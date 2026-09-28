@@ -5,7 +5,7 @@ namespace Diger.TramitesEstado.Web.Security;
 
 /// <summary>
 /// Traslada a las claves nuevas las concesiones que los roles tenían bajo <c>Siger.*</c>
-/// antes de que el trabajo de Honduras Simple se separara del inventario, el 3 de septiembre
+/// antes de que el trabajo de Honduras Fácil se separara del inventario, el 3 de septiembre
 /// de 2026.
 ///
 /// <b>Sin esto, la separación le quita el trabajo a todo el mundo el día del despliegue.</b>
@@ -77,7 +77,7 @@ public sealed class MigracionHondurasSimpleService(
             if (nuevos.Count == 0)
             {
                 logger.LogWarning(
-                    "Traslado a Honduras Simple omitido: el catálogo todavía no tiene ninguna clave nueva. " +
+                    "Traslado a Honduras Fácil omitido: el catálogo todavía no tiene ninguna clave nueva. " +
                     "¿Se registró este servicio antes de PermissionCatalogSyncService?");
                 return;
             }
@@ -88,7 +88,7 @@ public sealed class MigracionHondurasSimpleService(
                 // Base recién creada: no hay nada que trasladar y PermisosSeedService ya se
                 // encargó de repartir lo que corresponde. No se firma la bitácora, para que
                 // el traslado siga disponible si esta base se puebla después.
-                logger.LogInformation("Traslado a Honduras Simple omitido: la matriz de permisos está vacía.");
+                logger.LogInformation("Traslado a Honduras Fácil omitido: la matriz de permisos está vacía.");
                 return;
             }
 
@@ -116,20 +116,20 @@ public sealed class MigracionHondurasSimpleService(
 
             if (trasladadas == 0)
             {
-                logger.LogInformation("Traslado a Honduras Simple: no había concesiones de Siger.* que trasladar.");
+                logger.LogInformation("Traslado a Honduras Fácil: no había concesiones de Siger.* que trasladar.");
                 return;
             }
 
             await ctx.SaveChangesAsync(ct);
             logger.LogInformation(
-                "Traslado a Honduras Simple: {N} concesiones copiadas desde las claves viejas de Siger.", trasladadas);
+                "Traslado a Honduras Fácil: {N} concesiones copiadas desde las claves viejas de Siger.", trasladadas);
         }
         catch (Exception ex)
         {
             // Igual que la siembra: no se tumba el arranque. Si esto falla, la matriz de
-            // Honduras Simple queda vacía y el administrador la llena en /Accesos/Permisos —
+            // Honduras Fácil queda vacía y el administrador la llena en /Accesos/Permisos —
             // molesto, pero visible. Tumbar el portal entero no lo sería.
-            logger.LogError(ex, "No se pudieron trasladar las concesiones a Honduras Simple.");
+            logger.LogError(ex, "No se pudieron trasladar las concesiones a Honduras Fácil.");
         }
     }
 

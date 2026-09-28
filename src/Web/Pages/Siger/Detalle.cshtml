@@ -5,7 +5,7 @@
     ViewData["Title"] = Model.Tramite.Codigo + " — " + Model.Tramite.Nombre;
     var t = Model.Tramite;
     // Detalle se queda en SIGER porque es de consulta. Editar y eliminar se fueron con
-    // Honduras Simple, asi que se preguntan por su permiso y son dos, no uno: borrar una
+    // Honduras Fácil, asi que se preguntan por su permiso y son dos, no uno: borrar una
     // ficha del inventario no es lo mismo que corregirla.
     var puedeEditarFicha   = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
     var puedeEliminarFicha = await Acceso.PuedeEliminarAsync(ModulosPortal.HondurasSimple);

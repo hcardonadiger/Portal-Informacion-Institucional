@@ -2,7 +2,7 @@
 @model Diger.TramitesEstado.Web.Pages.Siger.OriginalModel
 @inject AccesoModulosService Acceso
 @{
-    // El archivo del original se fue a Honduras Simple: solo se ofrece a quien puede entrar.
+    // El archivo del original se fue a Honduras Fácil: solo se ofrece a quien puede entrar.
     var puedeArchivar = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
     var esOriginal = Model.Version == Diger.TramitesEstado.Domain.Entities.OrigenFoto.VersionOriginal;
     ViewData["Title"] = esOriginal ? "Original de SIGER" : $"Versión {Model.Version}";

@@ -118,7 +118,7 @@ Existen solo en el sandbox y comparten la contraseña `Pruebas#2026`:
 | Correo | Rol | Para qué |
 |---|---|---|
 | `inventario.cowork@diger.gob.hn` | Consultor | El perfil de fuera: solo debe alcanzar el inventario |
-| `operador.cowork@diger.gob.hn` | Jefe de Área | Hace el trabajo de Honduras Simple. **No es administrador** |
+| `operador.cowork@diger.gob.hn` | Jefe de Área | Hace el trabajo de Honduras Fácil. **No es administrador** |
 | `admin.cowork@diger.gob.hn` | Administrador | Solo para abrir y cerrar permisos |
 
 Si se rehace el sandbox con `-Rehacer`, esos tres usuarios **se pierden** junto con la copia.

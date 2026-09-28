@@ -3,7 +3,7 @@
 @inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Inventario de Tramites SIGER";
-    // Estas tres puertas ya no son de SIGER: llevan a Honduras Simple. Se preguntan por su
+    // Estas tres puertas ya no son de SIGER: llevan a Honduras Fácil. Se preguntan por su
     // permiso, no por el del inventario, o quien solo consulta veria botones que le van a
     // cerrar la puerta en la cara.
     var puedeVerFichas    = await Acceso.PuedeAsync(ModulosPortal.HondurasSimple);

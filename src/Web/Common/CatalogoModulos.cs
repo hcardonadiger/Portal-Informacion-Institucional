@@ -27,7 +27,7 @@ public static class CatalogoModulos
 
     /// <summary>Áreas en el mismo orden en que aparecen los grupos del navbar.</summary>
     public static readonly IReadOnlyList<string> Areas =
-        ["Expedientes", "SIGER", "Honduras Simple", "Proyectos", "Tableros", "Agenda", "Soporte", "Administración", SinClasificar];
+        ["Expedientes", "SIGER", "Honduras Fácil", "Proyectos", "Tableros", "Agenda", "Soporte", "Administración", SinClasificar];
 
     private static readonly Dictionary<string, (string Etiqueta, string Area, int Orden)> Mapa =
         new(StringComparer.OrdinalIgnoreCase)
@@ -43,13 +43,13 @@ public static class CatalogoModulos
             // "Siger.Editar", la separación volvió a ser decorativa.
             ["Siger"]                       = ("Inventario y observatorio",    "SIGER", 10),
 
-            // ── Honduras Simple ──────────────────────────────────────────
+            // ── Honduras Fácil ──────────────────────────────────────────
             // Lo que colgaba de SIGER y escribía. Se separó el 3 de septiembre de 2026 porque
             // el inventario va a abrirse a terceros y este trabajo no.
-            ["HondurasSimple"]              = ("Fichas",                       "Honduras Simple", 10),
-            ["HondurasSimple.Llenado"]      = ("Llenado asistido",             "Honduras Simple", 11),
-            ["HondurasSimple.Conciliacion"] = ("Conciliación",                 "Honduras Simple", 12),
-            ["HondurasSimple.Publicacion"]  = ("Publicado en Honduras Simple", "Honduras Simple", 13),
+            ["HondurasSimple"]              = ("Fichas",                       "Honduras Fácil", 10),
+            ["HondurasSimple.Llenado"]      = ("Llenado asistido",             "Honduras Fácil", 11),
+            ["HondurasSimple.Conciliacion"] = ("Conciliación",                 "Honduras Fácil", 12),
+            ["HondurasSimple.Publicacion"]  = ("Publicado en Honduras Fácil", "Honduras Fácil", 13),
 
             // ── Proyectos ────────────────────────────────────────────────
             // Grupo propio y no bajo Expedientes: ahí viven los instrumentos de

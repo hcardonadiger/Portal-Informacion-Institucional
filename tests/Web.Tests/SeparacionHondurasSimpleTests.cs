@@ -6,7 +6,7 @@ namespace Diger.TramitesEstado.Web.Tests;
 
 /// <summary>
 /// El invariante por el que existe la separación del 3 de septiembre de 2026: quien solo tiene
-/// el inventario SIGER no alcanza el trabajo de Honduras Simple.
+/// el inventario SIGER no alcanza el trabajo de Honduras Fácil.
 ///
 /// El inventario va a abrirse a gente de fuera. Antes, darle "Siger.Ver" a alguien le daba de
 /// paso la conciliación, la publicación, el llenado y la edición de fichas, porque las siete
@@ -25,7 +25,7 @@ public sealed class SeparacionHondurasSimpleTests : IAsyncLifetime
         // "Consultor" hace de gente de fuera: el inventario y nada más.
         await _portal.OtorgarAsync("Consultor", "Siger.Ver");
 
-        // "JefeArea" hace del equipo de Honduras Simple: el trabajo, y también el inventario
+        // "JefeArea" hace del equipo de Honduras Fácil: el trabajo, y también el inventario
         // porque se llega a las fichas desde él.
         await _portal.OtorgarAsync("JefeArea",
             "Siger.Ver",

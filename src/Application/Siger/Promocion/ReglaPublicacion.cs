@@ -1,7 +1,7 @@
 namespace Diger.TramitesEstado.Application.Siger.Promocion;
 
 /// <summary>
-/// Cuándo el estado de una ficha SIGER <b>sugiere</b> que ya se puede publicar en Honduras Simple.
+/// Cuándo el estado de una ficha SIGER <b>sugiere</b> que ya se puede publicar en Honduras Fácil.
 /// </summary>
 /// <remarks>
 /// <para>

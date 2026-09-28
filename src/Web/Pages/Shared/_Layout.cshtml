@@ -126,7 +126,7 @@
         var puedeProyectos   = await Acceso.PuedeAsync(ModulosPortal.Proyectos);
         var puedeSiger       = await Acceso.PuedeAsync(ModulosPortal.Siger);
 
-        // Honduras Simple se calcula una vez y no cuatro veces dentro del menú: son cuatro
+        // Honduras Fácil se calcula una vez y no cuatro veces dentro del menú: son cuatro
         // módulos distintos y el grupo tiene que aparecer si el usuario alcanza cualquiera de
         // ellos. Gatearlo solo con "HondurasSimple.Ver" escondería el menú entero a quien
         // únicamente publica, que es un rol perfectamente razonable.
@@ -224,7 +224,7 @@
                         @if (puedeHondurasSimple)
                         {
                             <div class="nav-group @(EsRuta("/HondurasSimple") ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Honduras Simple<span class="nav-caret">&#9662;</span></button>
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Honduras Fácil<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
                                     @if (hsConciliacion)
                                     {

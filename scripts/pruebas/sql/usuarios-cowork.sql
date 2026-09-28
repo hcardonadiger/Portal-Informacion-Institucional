@@ -1,4 +1,4 @@
--- Los tres usuarios del recorrido de la separacion de Honduras Simple.
+-- Los tres usuarios del recorrido de la separacion de Honduras Fácil.
 --
 -- Hacen falta porque la separacion no se ve en una pantalla: se ve en lo que alcanza cada
 -- quien. Con un solo usuario -y menos si es administrador, que se salta la tabla de permisos
@@ -62,7 +62,7 @@ WHERE u.Correo LIKE '%.cowork@diger.gob.hn'
 ORDER BY u.Correo;
 
 -- ---------------------------------------------------------------------------
--- El operador necesita las ocho llaves de Honduras Simple.
+-- El operador necesita las ocho llaves de Honduras Fácil.
 --
 -- El traslado que corre al encender copia una por una las concesiones que el rol
 -- tenia bajo SIGER. Jefe de Area tenia cuatro: Ver, Editar, Eliminar y Conciliacion.

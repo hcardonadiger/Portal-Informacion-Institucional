@@ -2,19 +2,19 @@
 @model Diger.TramitesEstado.Web.Pages.HondurasSimple.PublicacionModel
 @inject AccesoModulosService Acceso
 @{
-    ViewData["Title"] = "Publicado en Honduras Simple";
+    ViewData["Title"] = "Publicado en Honduras Fácil";
     var puedePublicar = await Acceso.PuedeClaveAsync("HondurasSimple.Publicacion.Editar");
 }
 
 <div class="container">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
         <a class="btns" asp-page="/Siger/Index" style="font-size:13px">← Inventario</a>
-        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Publicado en Honduras Simple</h2>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">Publicado en Honduras Fácil</h2>
     </div>
 
     <div class="card" style="margin-bottom:1rem">
         <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
-            Esto es exactamente lo que el ciudadano ve en Honduras Simple.
+            Esto es exactamente lo que el ciudadano ve en Honduras Fácil.
             <strong>@Model.Publicadas</strong> de <strong>@Model.TotalFichas</strong> fichas están
             publicadas; hay <strong>@Model.Candidatas</strong> candidatas esperando decisión.
             Publicar es un acto deliberado: nada sale al público por sí solo.
@@ -26,7 +26,7 @@
         @{
             var tabs = new (string Key, string Label, int Count)[]
             {
-                (PublicacionModel.TabPublicadas, "En Honduras Simple", Model.Publicadas),
+                (PublicacionModel.TabPublicadas, "En Honduras Fácil", Model.Publicadas),
                 (PublicacionModel.TabCandidatas, "Candidatas",       Model.Candidatas),
                 (PublicacionModel.TabTodas,      "Todo el inventario", Model.TotalFichas)
             };
@@ -84,7 +84,7 @@
             {
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:.6rem;flex-wrap:wrap">
                     <button class="btnp" type="submit" asp-page-handler="Publicar">Publicar seleccionadas</button>
-                    <button class="btns" type="submit" asp-page-handler="Quitar">Quitar de Honduras Simple</button>
+                    <button class="btns" type="submit" asp-page-handler="Quitar">Quitar de Honduras Fácil</button>
                     <span class="res-meta">Quitar despublica; la ficha se queda entera en el inventario.</span>
                 </div>
             }
@@ -155,7 +155,7 @@
         <h3 class="sec-h">Sobre los avisos</h3>
         <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
             Un aviso <strong>no impide publicar</strong>. Señala que el estado de la ficha es
-            distinto de Aprobado o Completo, o que le faltan campos que Honduras Simple enseñará
+            distinto de Aprobado o Completo, o que le faltan campos que Honduras Fácil enseñará
             con un guion. Se decidió a propósito que al ciudadano le sirve más ver el trámite
             incompleto —saber que existe y quién lo atiende— que no encontrarlo.
         </p>

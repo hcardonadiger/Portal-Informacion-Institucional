@@ -114,7 +114,7 @@ public sealed class DetalleModel(IApplicationDbContext ctx, ISender sender) : Pa
     }
 
     // La pagina se queda en SIGER porque es de consulta, pero borrar no lo es: su permiso
-    // se fue con el resto del trabajo de Honduras Simple. Quien solo tiene Siger.Ver lee la
+    // se fue con el resto del trabajo de Honduras Fácil. Quien solo tiene Siger.Ver lee la
     // ficha y no puede tocarla.
     [Permission("HondurasSimple", AccionModulo.Eliminar, "Eliminar fichas SIGER")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
