@@ -3,7 +3,7 @@
     Despliega en IIS los tres sistemas de DIGER, cada uno en su propio sitio.
 
 .DESCRIPTION
-    PortalDigital (portal interno), la API publica v1 y HondurasAgil (portal ciudadano)
+    PortalDigital (portal interno), la API publica v1 y HondurasFacil (portal ciudadano)
     conviven en el mismo servidor, en tres sitios y tres grupos de aplicaciones separados.
 
     Separados a proposito: la API es publica y el portal interno no debe compartir proceso
@@ -25,7 +25,7 @@
                     -ClaveApi (Read-Host 'Clave de la API' -AsSecureString) `
                     -HostPortal 'tramites.diger.gob.hn' `
                     -HostApi    'api.diger.gob.hn' `
-                    -HostVentanilla 'hondurasagil.gob.hn'
+                    -HostVentanilla 'hondurasfacil.gob.hn'
 
 .NOTES
     Requiere PowerShell ELEVADO. Documentacion completa: DESPLIEGUE.md, misma carpeta.
@@ -41,7 +41,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $ServidorSql,
     [string] $BasePortal      = 'TramitesEstado',
-    [string] $BaseVentanilla  = 'VentanillaDigital_Net',
+    [string] $BaseVentanilla  = 'HondurasFacil',
 
     # SecureString a proposito: asi la clave no queda en el historial de PowerShell.
     [System.Security.SecureString] $ClaveApi,
@@ -59,7 +59,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'
 
-$script:Fallos = \()
+$script:Fallos = @()
 
 function Escribir-Paso  { param($t) Write-Host ""; Write-Host "-- $t" -ForegroundColor Cyan }
 function Escribir-Ok    { param($t) Write-Host "   [ok]    $t" -ForegroundColor Green }
@@ -94,11 +94,11 @@ function Verificar-Requisitos {
         Escribir-Mal 'Falta WebAdministration. Instale IIS con las herramientas de administracion.'
     }
 
-    # Hacen falta LOS DOS SDK: PortalDigital es .NET 9 y HondurasAgil .NET 10.
+    # Hacen falta LOS DOS SDK: PortalDigital es .NET 9 y HondurasFacil .NET 10.
     # Es el error mas facil de cometer en este despliegue.
     if (Get-Command dotnet -ErrorAction SilentlyContinue) {
         $sdks = & dotnet --list-sdks
-        foreach ($v in \('9', '10')) {
+        foreach ($v in @('9', '10')) {
             if ($sdks -match "^$v\.") { Escribir-Ok "SDK de .NET $v presente" }
             else { Escribir-Mal "Falta el SDK de .NET $v - no se podra publicar uno de los tres proyectos." }
         }
@@ -107,8 +107,8 @@ function Verificar-Requisitos {
     }
 
     # Sin el Hosting Bundle, IIS devuelve 500.30 y el navegador no dice que falta.
-    $runtimes = if (Get-Command dotnet -ErrorAction SilentlyContinue) { & dotnet --list-runtimes } else { \() }
-    foreach ($v in \('9', '10')) {
+    $runtimes = if (Get-Command dotnet -ErrorAction SilentlyContinue) { & dotnet --list-runtimes } else { @() }
+    foreach ($v in @('9', '10')) {
         if ($runtimes -match "^Microsoft\.AspNetCore\.App $v\.") {
             Escribir-Ok "Runtime de ASP.NET Core $v presente"
         } else {
@@ -127,19 +127,19 @@ function Verificar-Requisitos {
         Escribir-Mal 'No se puede comprobar AspNetCoreModuleV2: IIS no esta instalado en esta maquina.'
     }
 
-    foreach ($r in \(\{n='PortalDigital'; p=$RepoPortal}, \{n='HondurasAgil'; p=$RepoVentanilla})) {
+    foreach ($r in @(@{n='PortalDigital'; p=$RepoPortal}, @{n='HondurasFacil'; p=$RepoVentanilla})) {
         if (Test-Path $r.p) { Escribir-Ok "Repositorio de $($r.n): $($r.p)" }
         else { Escribir-Mal "No existe el repositorio de $($r.n) en $($r.p)." }
     }
 
-    foreach ($b in \($BasePortal, $BaseVentanilla)) {
+    foreach ($b in @($BasePortal, $BaseVentanilla)) {
         $cs = "Server=$ServidorSql;Database=master;Trusted_Connection=True;TrustServerCertificate=True;Connect Timeout=10;"
         try {
             $cn = New-Object System.Data.SqlClient.SqlConnection $cs
             $cn.Open()
             $cmd = $cn.CreateCommand()
-            $cmd.CommandText = "SELECT COUNT(*) FROM sys.databases WHERE name = \n"
-            [void]$cmd.Parameters.AddWithValue('\n', $b)
+            $cmd.CommandText = "SELECT COUNT(*) FROM sys.databases WHERE name = @n"
+            [void]$cmd.Parameters.AddWithValue('@n', $b)
             $existe = [int]$cmd.ExecuteScalar()
             $cn.Close()
             if ($existe -gt 0) { Escribir-Ok "Base '$b' accesible en $ServidorSql" }
@@ -276,17 +276,17 @@ function Asegurar-VariableDeEntorno {
 
     # Aqui viven los secretos (P-03). No es un archivo de la carpeta de publicacion,
     # asi que no se va en un despliegue ni acaba en el repositorio.
-    $filtro = "system.applicationHost/applicationPools/add[\name='$Pool']/environmentVariables"
+    $filtro = "system.applicationHost/applicationPools/add[@name='$Pool']/environmentVariables"
 
     # Idempotencia: quitar antes de poner. Anadir dos veces la misma variable deja la
     # configuracion de IIS invalida.
     try {
         Remove-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' `
-            -filter $filtro -name '.' -AtElement \{name=$Nombre} -ErrorAction SilentlyContinue
+            -filter $filtro -name '.' -AtElement @{name=$Nombre} -ErrorAction SilentlyContinue
     } catch { }
 
     Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' `
-        -filter $filtro -name '.' -value \{name=$Nombre; value=$Valor}
+        -filter $filtro -name '.' -value @{name=$Nombre; value=$Valor}
 
     Escribir-Ok "Variable '$Nombre' fijada en '$Pool'"
 }
@@ -328,7 +328,7 @@ function Asegurar-Sitio {
 # =============================================================================
 
 function Probar-Humo {
-    param([string]$Url, [string]$Nombre, [int]$Min = 200, [int]$Max = 399, [hashtable]$Cabeceras = \{})
+    param([string]$Url, [string]$Nombre, [int]$Min = 200, [int]$Max = 399, [hashtable]$Cabeceras = @{})
 
     try {
         $r = Invoke-WebRequest -Uri $Url -Headers $Cabeceras -UseBasicParsing `
@@ -347,7 +347,7 @@ function Probar-Humo {
 # =============================================================================
 
 Write-Host ""
-Write-Host "DESPLIEGUE DIGER - PortalDigital / API v1 / HondurasAgil" -ForegroundColor White
+Write-Host "DESPLIEGUE DIGER - PortalDigital / API v1 / HondurasFacil" -ForegroundColor White
 Write-Host "Servidor SQL: $ServidorSql" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -363,11 +363,11 @@ $claveTexto = Convertir-Clave $ClaveApi
 
 $destinoPortal     = Join-Path $RaizPublicacion 'portaldigital'
 $destinoApi        = Join-Path $RaizPublicacion 'api'
-$destinoVentanilla = Join-Path $RaizPublicacion 'hondurasagil'
+$destinoVentanilla = Join-Path $RaizPublicacion 'hondurasfacil'
 
 $poolPortal     = 'DIGER_PortalDigital'
 $poolApi        = 'DIGER_ApiPublica'
-$poolVentanilla = 'DIGER_HondurasAgil'
+$poolVentanilla = 'DIGER_HondurasFacil'
 
 $csPortal     = "Server=$ServidorSql;Database=$BasePortal;Trusted_Connection=True;TrustServerCertificate=True;"
 $csVentanilla = "Server=$ServidorSql;Database=$BaseVentanilla;Trusted_Connection=True;TrustServerCertificate=True;"
@@ -376,13 +376,13 @@ $csVentanilla = "Server=$ServidorSql;Database=$BaseVentanilla;Trusted_Connection
 # con dos sitios ya parados.
 $tmpPortal     = Publicar-Aplicacion (Join-Path $RepoPortal     'src\Web\Diger.TramitesEstado.Web.csproj') 'PortalDigital'
 $tmpApi        = Publicar-Aplicacion (Join-Path $RepoPortal     'src\Api\Diger.TramitesEstado.Api.csproj') 'ApiPublica'
-$tmpVentanilla = Publicar-Aplicacion (Join-Path $RepoVentanilla 'src\Web\Diger.VentanillaDigital.Web.csproj') 'HondurasAgil'
+$tmpVentanilla = Publicar-Aplicacion (Join-Path $RepoVentanilla 'src\Web\Diger.VentanillaDigital.Web.csproj') 'HondurasFacil'
 
 Migrar-Base $RepoPortal     'src\Infrastructure' 'src\Web' $BasePortal     'PortalDigital'
-Migrar-Base $RepoVentanilla 'src\Infrastructure' 'src\Web' $BaseVentanilla 'HondurasAgil'
+Migrar-Base $RepoVentanilla 'src\Infrastructure' 'src\Web' $BaseVentanilla 'HondurasFacil'
 
 Escribir-Paso 'Grupos de aplicaciones'
-foreach ($p in \($poolPortal, $poolApi, $poolVentanilla)) { Asegurar-GrupoDeAplicaciones $p }
+foreach ($p in @($poolPortal, $poolApi, $poolVentanilla)) { Asegurar-GrupoDeAplicaciones $p }
 
 Escribir-Paso 'Variables de entorno (aqui viven los secretos)'
 Asegurar-VariableDeEntorno $poolPortal     'ASPNETCORE_ENVIRONMENT' 'Production'
@@ -397,21 +397,21 @@ Asegurar-VariableDeEntorno $poolVentanilla 'ConnectionStrings__DefaultConnection
 Asegurar-VariableDeEntorno $poolVentanilla 'PortalDigital__BaseUrl' `
     $(if ($HostApi) { "https://$HostApi" } else { "http://localhost:$PuertoApi" })
 Asegurar-VariableDeEntorno $poolVentanilla 'PortalDigital__ApiKey' $claveTexto
-# HondurasAgil no debe migrar su base sola al arrancar: eso lo hace este script.
+# HondurasFacil no debe migrar su base sola al arrancar: eso lo hace este script.
 Asegurar-VariableDeEntorno $poolVentanilla 'DatabaseInitialization__Enabled' 'false'
 
 Escribir-Paso 'Instalando archivos'
 Instalar-Publicacion $tmpPortal     $destinoPortal     $poolPortal     'PortalDigital'
 Instalar-Publicacion $tmpApi        $destinoApi        $poolApi        'ApiPublica'
-Instalar-Publicacion $tmpVentanilla $destinoVentanilla $poolVentanilla 'HondurasAgil'
+Instalar-Publicacion $tmpVentanilla $destinoVentanilla $poolVentanilla 'HondurasFacil'
 
 Escribir-Paso 'Sitios de IIS'
 Asegurar-Sitio 'DIGER - PortalDigital' $poolPortal     $destinoPortal     $PuertoPortal     $HostPortal
 Asegurar-Sitio 'DIGER - API v1'        $poolApi        $destinoApi        $PuertoApi        $HostApi
-Asegurar-Sitio 'DIGER - HondurasAgil'  $poolVentanilla $destinoVentanilla $PuertoVentanilla $HostVentanilla
+Asegurar-Sitio 'DIGER - HondurasFacil'  $poolVentanilla $destinoVentanilla $PuertoVentanilla $HostVentanilla
 
 Escribir-Paso 'Arrancando'
-foreach ($p in \($poolPortal, $poolApi, $poolVentanilla)) {
+foreach ($p in @($poolPortal, $poolApi, $poolVentanilla)) {
     if ((Get-WebAppPoolState -Name $p).Value -ne 'Started') { Start-WebAppPool -Name $p }
     Escribir-Ok "Grupo '$p' en marcha"
 }
@@ -426,11 +426,11 @@ $baseVentanilla = if ($HostVentanilla) { "http://$HostVentanilla" } else { "http
 Probar-Humo "$baseApi/api/v1/salud" 'API - salud' 200 200
 # Sin clave debe ser 401. Si contesta 200, la autenticacion NO esta puesta.
 Probar-Humo "$baseApi/api/v1/tramites" 'API - rechaza sin clave' 401 401
-Probar-Humo "$baseApi/api/v1/tramites?tamano=1" 'API - catalogo con clave' 200 200 \{ 'X-Api-Key' = $claveTexto }
+Probar-Humo "$baseApi/api/v1/tramites?tamano=1" 'API - catalogo con clave' 200 200 @{ 'X-Api-Key' = $claveTexto }
 # Swagger NO debe estar publicado en produccion.
 Probar-Humo "$baseApi/swagger/v1/swagger.json" 'API - Swagger cerrado' 404 404
 Probar-Humo $basePortal     'PortalDigital' 200 399
-Probar-Humo $baseVentanilla 'HondurasAgil'  200 399
+Probar-Humo $baseVentanilla 'HondurasFacil'  200 399
 
 Write-Host ""
 if ($script:Fallos.Count -eq 0) {
@@ -438,7 +438,7 @@ if ($script:Fallos.Count -eq 0) {
     Write-Host ""
     Write-Host "  PortalDigital  $basePortal"
     Write-Host "  API v1         $baseApi/api/v1/salud"
-    Write-Host "  HondurasAgil   $baseVentanilla"
+    Write-Host "  HondurasFacil   $baseVentanilla"
     Write-Host ""
     Write-Host "Falta a mano: certificados HTTPS y enlaces del 443, y el puerto de" -ForegroundColor Yellow
     Write-Host "autenticacion por certificado de PortalDigital. Ver DESPLIEGUE.md." -ForegroundColor Yellow

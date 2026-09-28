@@ -1,4 +1,4 @@
-# Despliegue en IIS — PortalDigital, API v1 y HondurasÁgil
+# Despliegue en IIS — PortalDigital, API v1 y Honduras Fácil
 
 Los tres sistemas conviven en el mismo servidor, **cada uno en su propio sitio de IIS y su
 propio grupo de aplicaciones**. Separados a propósito: la API es pública y el portal interno
@@ -8,7 +8,14 @@ no debe compartir proceso con ella. Si uno se recicla o se cae, los otros dos si
 |---|---|---|---|---|
 | PortalDigital (interno) | `src/Web` | .NET 9 | `DIGER - PortalDigital` | `DIGER_PortalDigital` |
 | API pública v1 | `src/Api` | .NET 9 | `DIGER - API v1` | `DIGER_ApiPublica` |
-| HondurasÁgil (ciudadano) | `src/Web` de `VentanillaDigital.Net` | .NET 10 | `DIGER - HondurasAgil` | `DIGER_HondurasAgil` |
+| Honduras Fácil (ciudadano) | `src/Web` de `VentanillaDigital.Net` | .NET 10 | `DIGER - HondurasFacil` | `DIGER_HondurasFacil` |
+
+> **¿Solo hay que poner Honduras Fácil?** Gestión Digital y su API ya están en producción,
+> así que no hace falta —ni conviene— volver a desplegarlos para eso. Honduras Fácil tiene su
+> propio script en su repositorio: `honduras-agil\despliegue\Desplegar-HondurasFacil.ps1`,
+> con su `LEEME.md`. Instala solo ese sitio, prueba la clave contra la API antes de tocar
+> nada y termina esperando a que llegue el catálogo. Este script de aquí es para montar los
+> tres desde cero en un servidor vacío.
 
 ---
 
@@ -35,7 +42,7 @@ El script lo hace por usted. Solo hay que saber que ese paso existe y por qué.
 |---|---|
 | IIS con herramientas de administración | El script usa el módulo `WebAdministration` |
 | **Hosting Bundle de ASP.NET Core 9** | PortalDigital y la API |
-| **Hosting Bundle de ASP.NET Core 10** | HondurasÁgil |
+| **Hosting Bundle de ASP.NET Core 10** | Honduras Fácil |
 | SDK de .NET 9 y de .NET 10 | Para publicar. Si publica en otra máquina, en el servidor bastan los Hosting Bundle |
 | PowerShell **elevado** | Crea sitios, grupos y permisos |
 | Acceso a SQL Server | Con autenticación de Windows desde la cuenta que ejecuta |
@@ -66,7 +73,7 @@ Ejecútelo así la primera vez, en el servidor real.
     -RepoVentanilla  'C:\DIGER\Aplicativos\VentanillaDigital.Net' `
     -HostPortal      'tramites.diger.gob.hn' `
     -HostApi         'api.diger.gob.hn' `
-    -HostVentanilla  'hondurasagil.gob.hn'
+    -HostVentanilla  'hondurasfacil.gob.hn'
 ```
 
 `-ClaveApi` se pide con `Read-Host -AsSecureString` a propósito: así **la clave no queda en
@@ -160,7 +167,7 @@ hay que llevarle los cambios de este trabajo, use el otro script — **y sabe de
 |---|---|---|
 | 1 | Respalda las dos bases. Sin respaldo no sigue | Respalda otra vez: revertir también es un cambio |
 | 2 | Crea el usuario de **solo lectura** de la API y comprueba que lee y no escribe | Quita las variables de sincronización |
-| 3 | Crea las nueve tablas `Portal*` en HondurasÁgil | Borra esas nueve tablas |
+| 3 | Crea las nueve tablas `Portal*` en Honduras Fácil | Borra esas nueve tablas |
 | 4 | Fija las variables de entorno de IIS | Quita el usuario de solo lectura |
 | 5 | Reinicia los grupos y comprueba que la API responde | Reinicia los grupos |
 
@@ -269,16 +276,16 @@ En desarrollo son dos puertos (49175 el normal, 49176 el de certificado). En pro
 que replicar esa separación con dos enlaces, y activar la negociación de certificado de
 cliente **solo en el segundo**.
 
-### 3. Encender la sincronización de HondurasÁgil
+### 3. Encender la sincronización de Honduras Fácil
 
-HondurasÁgil trae el interruptor de origen **apagado**. Enciéndalo cuando la API sirva fichas
+Honduras Fácil trae el interruptor de origen **apagado**. Enciéndalo cuando la API sirva fichas
 completas. **Antes no**: hoy `?soloFichasCompletas=true` devuelve muy pocas, y encenderlo
 demasiado pronto deja el portal más vacío que ahora.
 
 ### 4. Un cortafuegos delante de la API
 
 La API lleva clave y límite de peticiones, pero está pensada para **un solo consumidor
-conocido**. Si HondurasÁgil vive en el mismo servidor, lo más sencillo y lo más seguro es no
+conocido**. Si Honduras Fácil vive en el mismo servidor, lo más sencillo y lo más seguro es no
 publicar la API a Internet en absoluto y dejarla accesible solo desde el propio servidor.
 
 ---
