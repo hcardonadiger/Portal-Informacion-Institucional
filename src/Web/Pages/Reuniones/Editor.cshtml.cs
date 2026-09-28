@@ -17,12 +17,16 @@ public sealed class EditorModel(
     public IReadOnlyList<ContactoDto> ContactosDirectorio { get; private set; } = [];
     public string? InstitucionActivaId { get; private set; }
 
-    private async Task<IReadOnlyList<Institucion>> InstitucionesEnAlcanceAsync(CancellationToken ct)
-    {
-        var insts = await institucionRepo.GetAllActivasAsync(ct);
-        return currentUser.EsGlobal ? insts
-            : insts.Where(i => currentUser.InstitucionesAsignadas.Contains(i.Id)).ToList();
-    }
+    /// <summary>Todas las instituciones activas, sin acotar por el alcance del usuario. Convocar
+    /// no es "ver": un usuario no global igual tiene que poder invitar a cualquier institución a
+    /// una reunión, no solo a la suya —antes esto se filtraba como si fuera un dato con alcance,
+    /// y solo aparecía la propia institución al crear una reunión desde un usuario no admin.
+    ///
+    /// Quitar ese filtro de acá no bastaba: el recorte de verdad estaba una capa más abajo, en el
+    /// filtro global de EF sobre Institucion, así que `GetAllActivasAsync` ya llegaba con una sola
+    /// fila desde la base. Por eso se pide explícitamente la variante que se lo salta.</summary>
+    private async Task<IReadOnlyList<Institucion>> InstitucionesEnAlcanceAsync(CancellationToken ct) =>
+        await institucionRepo.GetActivasParaConvocarAsync(ct);
 
     [BindProperty] public ReunionFormDto      Datos      { get; set; } = new();
     [BindProperty] public List<AsistenteInput> Asistentes { get; set; } = [];

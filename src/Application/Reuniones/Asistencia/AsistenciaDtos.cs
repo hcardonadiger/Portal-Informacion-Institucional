@@ -23,7 +23,10 @@ public sealed record AsistenciaAdminDto(
     int ReunionId, string Titulo, Guid Token, bool RegistroAbierto,
     int? Convocados, string? InstitucionId, string? Institucion,
     DateOnly? Fecha, string? Tipo,
-    IReadOnlyList<string> InstitucionesNombres, IReadOnlyList<AsistenteVm> Asistentes);
+    IReadOnlyList<string> InstitucionesNombres, IReadOnlyList<AsistenteVm> Asistentes,
+    // Hora, modalidad y lugar solo alimentan el afiche del QR: es lo que un participante
+    // necesita leer del cartel antes de escanear.
+    string? Hora = null, string? Modalidad = null, string? Lugar = null);
 
 public sealed record AsistenteVm(
     int Id, string Nombre, string? Cargo, string? Institucion, string? Departamento,

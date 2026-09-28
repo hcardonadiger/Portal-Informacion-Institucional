@@ -86,6 +86,12 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public string? Compromisos   { get; set; } // uno por línea
 
     // ── Validación y evidencias ───────────────────────────────────
+    /// <summary>La reunión levanta encuesta de satisfacción. Se enciende desde «Generales» y es lo
+    /// que decide si el cierre pide una segunda firma: sin encuesta valida solo la DIGER; con
+    /// encuesta valida también la institución, que es quien responde por lo que opinaron los suyos.
+    /// Es un campo propio y no se deduce de si hay respuestas: una encuesta recién activada todavía
+    /// no tiene ninguna, y al recargar la pantalla aparecería apagada.</summary>
+    public bool    EncuestaActiva { get; set; }
     public string? ValDiger    { get; set; }
     public string? ValInst     { get; set; }
     public string? DocsRecursos { get; set; }

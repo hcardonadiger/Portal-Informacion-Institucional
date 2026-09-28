@@ -142,7 +142,9 @@ public sealed class FichaProyectoTests : IAsyncLifetime
     {
         var html = await FichaAsync();
 
-        html.Should().Contain(">Creado</th>");
+        // El rótulo va pegado al dato, no en un encabezado de columna: la fila se reorganizó en
+        // tres niveles —nombre, avisos, campos rotulados— y la tabla ya no tiene <thead>.
+        html.Should().Contain(">Creado</span>");
 
         // El proyecto de esta prueba se siembra ahora, así que su actividad SÍ tiene fecha real.
         // Las 191 del portafolio son anteriores a que la entidad llevara auditoría y salen con
@@ -154,22 +156,29 @@ public sealed class FichaProyectoTests : IAsyncLifetime
     public async Task El_colspan_del_JS_sigue_al_del_servidor()
     {
         // La tabla la pintan dos lugares: Razor para lo que ya existe y el JS para las filas que
-        // se agregan en el navegador. Agregar una columna y olvidar uno de los dos desalinea la
-        // tabla sin que nada falle. Acá se comparan los dos números en el HTML servido.
+        // se agregan en el navegador. Cambiar el recuento de celdas y olvidar uno de los dos
+        // desalinea la tabla sin que nada falle. Acá se comparan los dos números en el HTML
+        // servido, y además contra las celdas que la fila del servidor realmente emite.
         var html = await FichaAsync();
 
-        var columnas = Regex.Matches(html, @"<th[ >]").Count;
-        columnas.Should().BeGreaterThan(0);
-
-        // El JS declara su propio recuento; tiene que coincidir con el colspan que emite Razor.
         var colspanRazor = Regex.Match(html, @"act-add[^>]*>\s*<td colspan=""(\d+)""").Groups[1].Value;
         var colspanJs    = Regex.Match(html, @"var cols = conOrden \? (\d+) : (\d+);");
 
         colspanRazor.Should().NotBeEmpty();
         colspanJs.Success.Should().BeTrue("el script declara el recuento de columnas");
 
-        // El rol de la prueba no puede reordenar, así que aplica la rama sin la columna «Orden».
+        // El rol de la prueba no puede reordenar, así que aplica la rama sin la celda «Orden».
         colspanJs.Groups[2].Value.Should().Be(colspanRazor,
             "si no coinciden, las filas que agrega el navegador quedan corridas respecto de las del servidor");
+
+        // Y el colspan tiene que describir la fila de verdad: se cuentan las celdas de la primera
+        // fila de entregable servida por Razor. Sin esto los dos números pueden coincidir entre sí
+        // y estar los dos mal.
+        var filaEnt = Regex.Match(html, @"<tr class=""ent-row edt-ent"">(.*?)</tr>", RegexOptions.Singleline);
+        filaEnt.Success.Should().BeTrue("la estructura sirve al menos un entregable");
+
+        Regex.Matches(filaEnt.Groups[1].Value, @"<td[ >]").Count
+             .Should().Be(int.Parse(colspanRazor),
+                 "el colspan de «+ Actividad» tiene que cubrir exactamente las celdas de la fila");
     }
 }

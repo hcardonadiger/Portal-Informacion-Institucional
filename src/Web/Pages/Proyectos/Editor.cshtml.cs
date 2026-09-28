@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Application.Proyectos.Commands.RegistrarDescargaDocumento;
+﻿using Diger.TramitesEstado.Application.Proyectos.Commands.RegistrarDescargaDocumento;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Categorias;
@@ -223,16 +223,6 @@ public sealed class EditorModel(
         return VolverA(id);
     }
 
-    // ── Reordenar ───────────────────────────────────────────────────────────
-    /// <summary>Ids de los entregables en el orden en que quedaron en pantalla. Se manda la lista
-    /// completa: el dominio rechaza un subconjunto (ver Proyecto.ReordenarEntregables).</summary>
-    [BindProperty] public List<int> OrdenEntregables { get; set; } = [];
-
-    /// <summary>Entregable cuyas actividades se están reordenando, y sus Ids en orden. Viaja uno
-    /// por vez: se reordena dentro de un entregable, no el árbol entero.</summary>
-    [BindProperty] public int       OrdenActividadesDe { get; set; }
-    [BindProperty] public List<int> OrdenActividades   { get; set; } = [];
-
     // ── Corregir una entrada de la bitácora ─────────────────────────────────
     [BindProperty] public int     CorreccionAvanceId    { get; set; }
     [BindProperty] public string? CorreccionDescripcion { get; set; }
@@ -429,38 +419,6 @@ public sealed class EditorModel(
         catch (NotFoundException)  { return NotFound(); }
 
         return VolverA(id, "bitacora");
-    }
-
-    // ── Reordenar entregables ───────────────────────────────────────────────
-    // Handler propio en vez de colgarse del guardado de la ficha: mover un entregable es una acción
-    // del dueño y no debería exigir que además tenga la ficha entera en un estado válido.
-    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
-    public async Task<IActionResult> OnPostReordenarEntregablesAsync(int id, CancellationToken ct)
-    {
-        try
-        {
-            await sender.Send(new ReordenarEntregablesCommand(id, OrdenEntregables), ct);
-            TempData["SuccessMsg"] = "Orden de los entregables actualizado.";
-        }
-        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
-        catch (NotFoundException)  { return NotFound(); }
-
-        return VolverA(id, "estructura");
-    }
-
-    // ── Reordenar actividades ───────────────────────────────────────────────
-    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
-    public async Task<IActionResult> OnPostReordenarActividadesAsync(int id, CancellationToken ct)
-    {
-        try
-        {
-            await sender.Send(new ReordenarActividadesCommand(id, OrdenActividadesDe, OrdenActividades), ct);
-            TempData["SuccessMsg"] = "Orden de las actividades actualizado.";
-        }
-        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
-        catch (NotFoundException)  { return NotFound(); }
-
-        return VolverA(id, "estructura");
     }
 
     // ── Corregir una entrada de la bitácora ─────────────────────────────────

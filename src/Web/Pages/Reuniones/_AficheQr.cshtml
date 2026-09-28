@@ -1,0 +1,51 @@
+@model Diger.TramitesEstado.Web.Models.AficheQrVm
+@*
+    Afiche del QR de asistencia. Tamaño fijo en píxeles (A4 a 96 ppp) para que lo que se ve en
+    pantalla sea exactamente lo que se imprime y lo que se descarga: el mismo nodo se clona para
+    las dos cosas, así que no hay una segunda copia de este marcado.
+*@
+<div id="afiche" class="afiche afiche--vertical">
+    <div class="afiche-trama" aria-hidden="true"></div>
+
+    <div class="afiche-lienzo">
+        <header class="afiche-hdr">
+            <img class="afiche-logo" src="@Model.Logo" alt="@Model.Institucion" />
+        </header>
+
+        <div class="afiche-intro">
+            <p class="afiche-eyebrow"><span class="afiche-eyebrow-raya" aria-hidden="true"></span>Registro de asistencia</p>
+            <p class="afiche-titulo" id="aficheTitulo">@Model.Titulo</p>
+        </div>
+
+        <figure class="afiche-scan">
+            <div class="afiche-qr">
+                <span class="afiche-mira afiche-mira--si" aria-hidden="true"></span>
+                <span class="afiche-mira afiche-mira--sd" aria-hidden="true"></span>
+                <span class="afiche-mira afiche-mira--ii" aria-hidden="true"></span>
+                <span class="afiche-mira afiche-mira--id" aria-hidden="true"></span>
+                <img id="aficheQrImg" src="@Model.QrDataUri" alt="Código QR para registrar la asistencia" />
+            </div>
+            <figcaption class="afiche-scan-txt">
+                <p class="afiche-llamada">Escanee el código QR para inscribirse</p>
+                <ol class="afiche-pasos">
+                    <li>Saque su teléfono y abra la cámara.</li>
+                    <li>Apúntela al código y toque el aviso que aparece.</li>
+                    <li>Llene el formulario y envíelo.</li>
+                </ol>
+            </figcaption>
+        </figure>
+
+        @if (Model.Campos.Count > 0)
+        {
+            <dl class="afiche-campos">
+                @foreach (var c in Model.Campos)
+                {
+                    <div class="afiche-campo">
+                        <dt>@c.Etiqueta</dt>
+                        <dd>@c.Valor</dd>
+                    </div>
+                }
+            </dl>
+        }
+    </div>
+</div>

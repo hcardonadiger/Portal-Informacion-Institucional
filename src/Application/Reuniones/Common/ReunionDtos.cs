@@ -80,6 +80,7 @@ public sealed class ReunionFormDto
     public string? Satisfaccion  { get; set; }
     public string? Compromisos   { get; set; }
 
+    public bool    EncuestaActiva { get; set; }
     public string? ValDiger     { get; set; }
     public string? ValInst      { get; set; }
     public string? DocsRecursos { get; set; }

@@ -3427,6 +3427,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<bool>("EncuestaActiva")
+                        .HasColumnType("bit");
+
                     b.Property<string>("EpCargo")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");

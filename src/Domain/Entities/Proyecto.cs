@@ -250,32 +250,35 @@ public sealed class Proyecto : BaseAuditableEntity, ISoftDeletable
     public int SiguienteOrden() => _entregables.Count == 0 ? 1 : _entregables.Max(e => e.Orden) + 1;
 
     /// <summary>
-    /// Reordena los entregables según la secuencia de Ids recibida, renumerando
-    /// <see cref="EntregableProyecto.Orden"/> de 1 en adelante.
+    /// Renumera <see cref="EntregableProyecto.Orden"/> de 1 en adelante siguiendo la secuencia
+    /// recibida. Devuelve si la secuencia <b>difiere</b> de la que estaba —no si algún número
+    /// cambió—: cerrar los huecos que deja un entregable borrado renumera, pero no es un
+    /// reordenamiento y no tiene por qué aparecer como tal en la bitácora.
     ///
-    /// <para>Exige la lista <b>completa</b> de entregables del proyecto, no un subconjunto:
+    /// <para><b>Recibe los entregables, no sus Ids.</b> El orden llega por la posición de las filas
+    /// del formulario de la ficha, y ahí conviven filas ya guardadas con filas recién agregadas que
+    /// todavía tienen Id 0 — una lista de Ids no podría nombrarlas.</para>
+    ///
+    /// <para>Exige la secuencia <b>completa</b> de entregables vigentes, no un subconjunto:
     /// reordenar con una parte dejaría a los ausentes con un Orden arbitrario respecto de los
-    /// movidos, y el cronograma pasaría a mentir sin que nadie lo note. Si la lista no calza
-    /// exactamente con los entregables vigentes —porque alguien agregó o borró uno en otra
-    /// pestaña— se rechaza el reordenamiento en vez de aplicarlo a medias.</para>
+    /// movidos, y el cronograma pasaría a mentir sin que nadie lo note.</para>
     /// </summary>
-    public void ReordenarEntregables(IReadOnlyList<int> idsEnOrden)
+    public bool ReordenarEntregables(IReadOnlyList<EntregableProyecto> enOrden)
     {
-        if (idsEnOrden is null || idsEnOrden.Count == 0)
-            throw new DomainException("No se recibió el orden de los entregables.");
-
-        if (idsEnOrden.Distinct().Count() != idsEnOrden.Count)
-            throw new DomainException("El orden recibido trae entregables repetidos.");
-
-        if (!_entregables.Select(e => e.Id).ToHashSet().SetEquals(idsEnOrden))
+        if (enOrden is null || enOrden.Count != _entregables.Count
+            || enOrden.Distinct().Count() != enOrden.Count
+            || !enOrden.All(_entregables.Contains))
             throw new DomainException(
                 "El orden recibido no corresponde a los entregables actuales del proyecto. " +
                 "Recargue la página y vuelva a intentarlo.");
 
-        var porId = _entregables.ToDictionary(e => e.Id);
+        var cambio = !_entregables.OrderBy(e => e.Orden).SequenceEqual(enOrden);
+
         var orden = 0;
-        foreach (var id in idsEnOrden)
-            porId[id].Orden = ++orden;
+        foreach (var entregable in enOrden)
+            entregable.Orden = ++orden;
+
+        return cambio;
     }
 }
 
@@ -455,25 +458,24 @@ public sealed class EntregableProyecto : BaseAuditableEntity
                 fines.Count   == 0 ? null : fines.Max());
     }
 
-    /// <summary>Mismo contrato que <see cref="Proyecto.ReordenarEntregables"/>: la lista completa
-    /// de actividades del entregable, o no se aplica.</summary>
-    public void ReordenarActividades(IReadOnlyList<int> idsEnOrden)
+    /// <summary>Mismo contrato que <see cref="Proyecto.ReordenarEntregables"/>, un nivel más abajo:
+    /// la secuencia completa de actividades del entregable, o no se aplica.</summary>
+    public bool ReordenarActividades(IReadOnlyList<ActividadProyecto> enOrden)
     {
-        if (idsEnOrden is null || idsEnOrden.Count == 0)
-            throw new DomainException("No se recibió el orden de las actividades.");
-
-        if (idsEnOrden.Distinct().Count() != idsEnOrden.Count)
-            throw new DomainException("El orden recibido trae actividades repetidas.");
-
-        if (!_actividades.Select(a => a.Id).ToHashSet().SetEquals(idsEnOrden))
+        if (enOrden is null || enOrden.Count != _actividades.Count
+            || enOrden.Distinct().Count() != enOrden.Count
+            || !enOrden.All(_actividades.Contains))
             throw new DomainException(
                 $"El orden recibido no corresponde a las actividades de «{Nombre}». " +
                 "Recargue la página y vuelva a intentarlo.");
 
-        var porId = _actividades.ToDictionary(a => a.Id);
+        var cambio = !_actividades.OrderBy(a => a.Orden).SequenceEqual(enOrden);
+
         var orden = 0;
-        foreach (var id in idsEnOrden)
-            porId[id].Orden = ++orden;
+        foreach (var actividad in enOrden)
+            actividad.Orden = ++orden;
+
+        return cambio;
     }
 
     public const int MaxNombre      = 300;

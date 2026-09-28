@@ -44,37 +44,22 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    @* ───────────────────────────────────────────────────────────────────────────────
-       2026-09-18 — MODO OSCURO DESHABILITADO TEMPORALMENTE. Este es el interruptor.
-
-       Se fija «light» en el <html> antes de cargar las hojas de estilo, que es lo que
-       tapa de un golpe las dos vías automáticas: la preferencia del sistema operativo
-       y la que el navegador de cada quien tuviera guardada de antes. Gana porque
-       :root[data-theme="light"] (tokens.css) tiene más especificidad que el :root del
-       bloque @media, y porque los tres bloques oscuros con reglas propias —panel de
-       notificaciones acá abajo, modal de confirmación en diger.css y Cronograma—
-       llevan la guarda html:not([data-theme="light"]).
-
-       Lo guardado en localStorage NO se borra a propósito: el día que se reactive,
-       cada quien recupera el tema que tenía.
-
-       PARA RESTAURAR: descomentar la lectura de abajo, quitar el display:none de
-       #themeToggleBtn (más abajo en este archivo) y listo. Las guardas de los tres
-       bloques pueden quedarse: corrigen un fallo anterior —elegir claro a mano no
-       aclaraba esas reglas— y no estorban con el modo oscuro activo.
-       ─────────────────────────────────────────────────────────────────────────────── *@
-    <script>
-        document.documentElement.setAttribute('data-theme', 'light');
-        // (function () {
-        //     try {
-        //         var saved = localStorage.getItem('diger-theme');
-        //         if (saved === 'dark' || saved === 'light') {
-        //             document.documentElement.setAttribute('data-theme', saved);
-        //         }
-        //     } catch (e) { }
-        // })();
-    </script>
     <meta charset="UTF-8" />
+    @* ───────────────────────────────────────────────────────────────────────────────
+       2026-09-24 — MODO OSCURO ELIMINADO. El portal es claro y nada más.
+
+       Antes acá iba un <script> que escribía data-theme="light" en el <html>. Era un
+       interruptor temporal (2026-09-18) y funcionaba, pero dejaba el login y el
+       registro de asistencia por QR —ambos públicos— dependiendo de que el JavaScript
+       corriera antes de pintar. Si no corría, el CSS oscuro seguía ahí y un teléfono
+       en modo oscuro los pintaba oscuros.
+
+       Ya no hay CSS oscuro que tapar: se borraron los bloques de tokens.css,
+       diger.css, Cronograma.cshtml y el de este archivo. Queda este <meta>, que es
+       declarativo y no necesita JavaScript: le dice al navegador que use su tema
+       claro para <select>, barras de desplazamiento y selectores de fecha.
+       ─────────────────────────────────────────────────────────────────────────────── *@
+    <meta name="color-scheme" content="light" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="@(_instBranding?.Color ?? "#02395e")" />
     <title>@ViewData["Title"] — @Marca.Nombre</title>
@@ -371,7 +356,6 @@
                         @* Oculto mientras el modo oscuro esté deshabilitado: un botón que no hace
                            nada es peor que no tenerlo. Se oculta en vez de borrarse para que
                            reactivarlo sea quitar el style. Ver el interruptor en el <head>. *@
-                        <button type="button" class="header-icon" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Cambiar a modo oscuro" title="Cambiar tema" style="display:none">🌙</button>
                         <div class="notif-wrap" id="notifWrap">
                             <button type="button" class="header-icon notif-btn" onclick="toggleNotifPanel(event)" title="Notificaciones" aria-haspopup="true">
                                 &#128276;
@@ -586,44 +570,20 @@
     background: var(--diger-bg-soft); flex: none;
 }
 .notif-ver-todas:hover { background: var(--diger-blue-light); }
-@* Mismo criterio que los otros dos bloques oscuros del portal: html:not([data-theme="light"])
-   para que un modo claro forzado gane sobre la preferencia del sistema. Acá todas las reglas
-   van por tokens y ya se aclaraban solas, pero se guarda igual para que apagar el modo oscuro
-   sea una sola operacion uniforme y no haya que recordar cuál bloque hacía falta. *@
-@@media (prefers-color-scheme: dark) {
-    html:not([data-theme="light"]) .notif-panel { background: var(--diger-surface); border-color: var(--diger-border); }
-    html:not([data-theme="light"]) .notif-item:hover { background: var(--diger-bg); }
-    html:not([data-theme="light"]) .ni-titulo { color: var(--diger-text); }
-    html:not([data-theme="light"]) .notif-panel-title { color: var(--diger-text-strong); }
-    html:not([data-theme="light"]) .ni-check,
-    html:not([data-theme="light"]) .ni-go { background: var(--diger-bg); border-color: var(--diger-border); }
-    html:not([data-theme="light"]) .notif-ver-todas { background: var(--diger-surface); color: var(--diger-cyan); }
-}
+@* Acá vivía la variante oscura del panel de notificaciones. Eliminada el 2026-09-24
+   con el resto del modo oscuro; ver la nota en tokens.css. *@
 </style>
 <script>
 (function() {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
-    // ── Tema claro/oscuro ────────────────────────────────────────────
-    function temaActual() {
-        const attr = document.documentElement.getAttribute('data-theme');
-        if (attr === 'dark' || attr === 'light') return attr;
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    function sincronizarBotonTema() {
-        const btn = document.getElementById('themeToggleBtn');
-        if (!btn) return;
-        const oscuro = temaActual() === 'dark';
-        btn.textContent = oscuro ? '☀️' : '🌙';
-        btn.setAttribute('aria-label', oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
-    }
-    window.toggleTheme = function () {
-        const siguiente = temaActual() === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', siguiente);
-        try { localStorage.setItem('diger-theme', siguiente); } catch (e) { }
-        sincronizarBotonTema();
-    };
-    sincronizarBotonTema();
+    // ── Limpieza del tema guardado ───────────────────────────────────
+    // El toggle de tema guardaba la elección en localStorage bajo 'diger-theme'.
+    // Al quitar el modo oscuro ya nadie lee esa clave, pero sigue alojada en el
+    // navegador de quien la haya usado: una pestaña por equipo y por perfil. Esto
+    // la borra en la primera visita para no dejar rastro de una función que ya no
+    // existe. Se puede eliminar de acá cuando haya pasado tiempo suficiente.
+    try { localStorage.removeItem('diger-theme'); } catch (e) { }
 
     window.toggleNotifPanel = function(e) {
         e?.stopPropagation();

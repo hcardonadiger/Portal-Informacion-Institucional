@@ -53,6 +53,17 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
             .AsNoTracking()
             .ToListAsync(ct);
 
+    /// <summary>El único IgnoreQueryFilters del catálogo de instituciones. Es seguro: el filtro de
+    /// Institucion es solo de alcance (`_alcanceGlobal || i.Id == _activeInst`), no lleva soft-delete,
+    /// así que saltárselo no resucita registros borrados. El `Activo` se conserva.</summary>
+    public async Task<IReadOnlyList<Institucion>> GetActivasParaConvocarAsync(CancellationToken ct = default) =>
+        await ctx.Instituciones
+            .IgnoreQueryFilters()
+            .Where(i => i.Activo)
+            .OrderBy(i => i.Nombre)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<Institucion>> GetAllAsync(CancellationToken ct = default) =>
         await ctx.Instituciones
             .OrderBy(i => i.Nombre)

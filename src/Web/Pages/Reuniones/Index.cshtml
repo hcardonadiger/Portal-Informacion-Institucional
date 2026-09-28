@@ -18,6 +18,33 @@
     ViewData["Title"] = "Reuniones y Asistencias";
     var puedeGestionar = await Acceso.PuedeEditarAsync("Reuniones");
     var puedeEliminar  = await Acceso.PuedeEliminarAsync("Reuniones");
+
+    // Una página con bloque @functions no resuelve `Context`, así que la ruta base se arma
+    // con Url.Page y se captura; sirve además para el enlace de "Limpiar".
+    var rutaBase = Url.Page("/Reuniones/Index");
+
+    // Enlace de ordenamiento de un encabezado: conserva los filtros vigentes y vuelve a la
+    // página 1, porque con otro orden el número de página anterior ya no significa lo mismo.
+    Func<OrdenReuniones, string> OrdenUrl = col =>
+    {
+        var activa = Model.Orden == col;
+        // Primer clic: ascendente, salvo fecha y creación, donde lo reciente arriba es lo útil.
+        var desc = activa ? !Model.Desc : col is OrdenReuniones.Fecha or OrdenReuniones.Creacion;
+        var parts = new List<string>();
+        void Add(string k, string? v) { if (!string.IsNullOrEmpty(v)) parts.Add($"{k}={Uri.EscapeDataString(v)}"); }
+        Add("q", Model.Q);
+        Add("titulo", Model.FTitulo);
+        Add("institucion", Model.FInstitucion);
+        Add("tipo", Model.FTipo);
+        Add("desde", Model.FDesde?.ToString("yyyy-MM-dd"));
+        Add("hasta", Model.FHasta?.ToString("yyyy-MM-dd"));
+        Add("creadaDesde", Model.FCreadaDesde?.ToString("yyyy-MM-dd"));
+        Add("creadaHasta", Model.FCreadaHasta?.ToString("yyyy-MM-dd"));
+        parts.Add("orden=" + col);
+        parts.Add("desc=" + (desc ? "true" : "false"));
+        return rutaBase + "?" + string.Join("&", parts);
+    };
+    Func<OrdenReuniones, string> Flecha = col => Model.Orden == col ? (Model.Desc ? " ▼" : " ▲") : "";
 }
 
 <div class="container" style="max-width:1040px">
@@ -42,49 +69,92 @@
         @if (!string.IsNullOrEmpty(Model.Q)) { <a class="btns" asp-page="/Reuniones/Index">Limpiar</a> }
     </form>
 
-    @if (Model.Resultado.Total == 0)
+    @* El vacío grande es sólo para "no hay nada registrado". Si el vacío viene de un filtro,
+       hay que seguir mostrando la barra: si no, el usuario queda sin forma de deshacerlo. *@
+    @if (Model.Resultado.Total == 0 && !Model.HayFiltros && string.IsNullOrEmpty(Model.Q))
     {
         <div class="hist-empty">
             <div class="ico"></div>
-            <p>@(string.IsNullOrEmpty(Model.Q) ? "No hay reuniones registradas." : "Sin resultados para la búsqueda.")</p>
+            <p>No hay reuniones registradas.</p>
         </div>
     }
     else
     {
         <div id="vista-lista">
-                <div class="seg-filters" id="reunion-filters">
-            <div class="field" style="min-width:220px;flex:1">
-                <label style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Buscar</label>
-                <input type="text" id="f-titulo" placeholder="Título de la reunión…" class="field-input" oninput="filtrarReuniones()" />
-            </div>
-            <div class="field" style="min-width:180px">
-                <label style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Institución</label>
-                <select id="f-institucion" class="field-input" onchange="filtrarReuniones()">
-                    <option value="">Todas</option>
-                </select>
-            </div>
-            <div class="field" style="min-width:150px">
-                <label style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Tipo</label>
-                <select id="f-tipo" class="field-input" onchange="filtrarReuniones()">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-            <div class="field" style="align-self:flex-end;margin-bottom:0">
-                <button type="button" class="btns" onclick="limpiarFiltros()">✕ Limpiar</button>
-            </div>
-        </div><table class="seg-table" id="reunion-tbl">
+            @* El filtro va al servidor: alcanza todas las reuniones, no sólo la página en pantalla. *@
+            <form method="get" class="seg-filters" id="reunion-filters">
+                @if (!string.IsNullOrEmpty(Model.Q)) { <input type="hidden" name="q" value="@Model.Q" /> }
+                <input type="hidden" name="orden" value="@Model.Orden" />
+                <input type="hidden" name="desc" value="@(Model.Desc ? "true" : "false")" />
+                <div class="field" style="min-width:200px;flex:1">
+                    <label for="f-titulo" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Título</label>
+                    <input type="text" id="f-titulo" name="titulo" value="@Model.FTitulo" placeholder="Título de la reunión…" class="field-input" />
+                </div>
+                <div class="field" style="min-width:170px">
+                    <label for="f-institucion" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Institución</label>
+                    <select id="f-institucion" name="institucion" class="field-input">
+                        <option value="">Todas</option>
+                        @foreach (var i in Model.Opciones.Instituciones)
+                        {
+                            <option value="@i" selected="@(i == Model.FInstitucion)">@i</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="min-width:150px">
+                    <label for="f-tipo" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Tipo</label>
+                    <select id="f-tipo" name="tipo" class="field-input">
+                        <option value="">Todos</option>
+                        @foreach (var t in Model.Opciones.Tipos)
+                        {
+                            <option value="@t" selected="@(t == Model.FTipo)">@t</option>
+                        }
+                    </select>
+                </div>
+                @* Desde y hasta comparten un solo campo: como dos rótulos sueltos, la barra
+                   se partía en dos renglones. *@
+                <div class="field" style="min-width:230px">
+                    <label for="f-desde" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Fecha de reunión</label>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <input type="date" id="f-desde" name="desde" value="@Model.FDesde?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Desde" style="min-width:0" />
+                        <span style="color:#6b7fa3">–</span>
+                        <input type="date" id="f-hasta" name="hasta" value="@Model.FHasta?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Hasta" style="min-width:0" />
+                    </div>
+                </div>
+                <div class="field" style="min-width:230px">
+                    <label for="f-creada-desde" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Fecha de registro</label>
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <input type="date" id="f-creada-desde" name="creadaDesde" value="@Model.FCreadaDesde?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Registrada desde" style="min-width:0" />
+                        <span style="color:#6b7fa3">–</span>
+                        <input type="date" id="f-creada-hasta" name="creadaHasta" value="@Model.FCreadaHasta?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Registrada hasta" style="min-width:0" />
+                    </div>
+                </div>
+                <div class="field" style="align-self:flex-end;margin-bottom:0;display:flex;gap:6px">
+                    <button type="submit" class="btnp">Filtrar</button>
+                    @if (Model.HayFiltros)
+                    {
+                        <a class="btns" href="@rutaBase">✕ Limpiar</a>
+                    }
+                </div>
+            </form>
+            <table class="seg-table" id="reunion-tbl">
             <thead>
                 <tr>
-                    <th>Título</th>
-                    <th style="text-align:center">Fecha</th>
-                    <th style="text-align:center">Institución</th>
-                    <th style="text-align:center">Tipo <span class="help-tip tip-down tip-left" data-tip="Clasificación: reunión técnica, capacitación, taller, seguimiento, etc.">?</span></th>
-                    <th style="text-align:center">Asistentes</th>
+                    @* La flecha va como @(...) —expresión explícita—: escrita pegada al texto,
+                       Razor lee "Título@Flecha" como una dirección de correo y la imprime literal. *@
+                    <th><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Titulo)">Título@(Flecha(OrdenReuniones.Titulo))</a></th>
+                    <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Fecha)">Fecha@(Flecha(OrdenReuniones.Fecha))</a></th>
+                    <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Institucion)">Institución@(Flecha(OrdenReuniones.Institucion))</a></th>
+                    <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Tipo)">Tipo@(Flecha(OrdenReuniones.Tipo))</a> <span class="help-tip tip-down tip-left" data-tip="Clasificación: reunión técnica, capacitación, taller, seguimiento, etc.">?</span></th>
+                    <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Asistentes)">Asistentes@(Flecha(OrdenReuniones.Asistentes))</a></th>
+                    <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Creacion)" title="Fecha y hora en que se registró la reunión">Registro@(Flecha(OrdenReuniones.Creacion))</a></th>
                     <th style="width:1%"></th>
                 </tr>
             </thead>
             <tbody>
-                <tr id="reunion-empty" style="display:none"><td colspan="6" style="text-align:center;padding:2rem;color:#9aadcc">No se encontraron reuniones con los filtros aplicados.</td></tr>
+                @if (Model.Resultado.Items.Count == 0)
+                {
+                    <tr><td colspan="7" style="text-align:center;padding:2rem;color:#9aadcc">No se encontraron reuniones con los criterios aplicados.</td></tr>
+                }
                 @foreach (var r in Model.Resultado.Items)
                 {
                     <tr>
@@ -107,6 +177,7 @@
                             @if (r.NumAsistentes > 0) { <span class="reun-asist-n">@r.NumAsistentes</span> }
                             else { <span class="res-meta">0</span> }
                         </td>
+                        <td class="res-meta reun-registro" style="text-align:center" title="@r.CreadaEl.ToFechaHoraCorta()">@r.CreadaEl.ToFechaCorta()</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@r.Id"
                                style="font-size:12.5px;padding:6px 12px">Acta</a>
@@ -154,7 +225,9 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var r in grupo.OrderByDescending(r => r.Fecha))
+                                @* Sin reordenar: Model.Todas ya viene por última creación desde el handler,
+                                   y GroupBy conserva ese orden dentro de cada institución. *@
+                                @foreach (var r in grupo)
                                 {
                                     <tr>
                                         <td><a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
@@ -200,47 +273,23 @@
         border-radius: 20px; font-size: 12px; font-weight: 700;
     }
     .grupo-inst-hdr { display: flex; align-items: center; gap: 10px; }
+    /* Encabezados ordenables: se leen como encabezado, no como enlace suelto. */
+    .th-orden { color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
+    .th-orden:hover { text-decoration: underline; }
+    /* La píldora trae white-space: nowrap del CSS global; un nombre largo de institución
+       estiraba la columna y con ella toda la tabla, sacando la página hacia la derecha.
+       Acá se deja bajar de renglón. Sólo en este listado: la píldora se usa también en
+       Asistencia, donde el ancho no molesta. */
+    #reunion-tbl .inst-pill {
+        white-space: normal;
+        display: inline-block;
+        max-width: 190px;
+        line-height: 1.25;
+        text-align: center;
+    }
+    #reunion-tbl .reun-registro { white-space: nowrap; }
 </style>
 <script>
-    (function () {
-        // Populate dropdowns — inst text is inside .inst-pill, still readable via textContent
-        const rows = Array.from(document.querySelectorAll('#reunion-tbl tbody tr'));
-        const fill = (id, idx) => {
-            const sel = document.getElementById(id);
-            const vals = [...new Set(rows.map(r => r.children[idx]?.textContent.trim()).filter(v => v && v !== '—'))].sort();
-            vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
-        };
-        fill('f-institucion', 2);
-        fill('f-tipo', 3);
-    })();
-
-    function filtrarReuniones() {
-        const titulo = document.getElementById('f-titulo').value.trim().toLowerCase();
-        const inst   = document.getElementById('f-institucion').value;
-        const tipo   = document.getElementById('f-tipo').value;
-        const rows   = document.querySelectorAll('#reunion-tbl tbody tr');
-        let visible  = 0;
-        rows.forEach(r => {
-            const tit  = r.children[0]?.textContent.trim().toLowerCase() ?? '';
-            const rinst = r.children[2]?.textContent.trim() ?? '';
-            const rtipo = r.children[3]?.textContent.trim() ?? '';
-            const ok = (!titulo || tit.includes(titulo))
-                    && (!inst   || rinst === inst)
-                    && (!tipo   || rtipo === tipo);
-            r.style.display = ok ? '' : 'none';
-            if (ok) visible++;
-        });
-        const empty = document.getElementById('reunion-empty');
-        if (empty) empty.style.display = visible === 0 ? '' : 'none';
-    }
-
-    function limpiarFiltros() {
-        document.getElementById('f-titulo').value = '';
-        document.getElementById('f-institucion').value = '';
-        document.getElementById('f-tipo').value = '';
-        filtrarReuniones();
-    }
-
     function toggleVistaReuniones() {
         var lista = document.getElementById('vista-lista');
         var agrupada = document.getElementById('vista-agrupada');

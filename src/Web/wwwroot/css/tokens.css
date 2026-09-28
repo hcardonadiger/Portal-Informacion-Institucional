@@ -141,117 +141,32 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Modo oscuro (agregado 2026-08-07, ver DESIGN.md "Deuda conocida").
-   Redefine solo los tokens semánticos de arriba (bg/surface/text/border/
-   sombras) — la marca (--diger-blue/gold/cyan) NO cambia entre modos,
-   mismo criterio que el sitio público.
+   Paleta clara — única del portal.
 
-   La paleta no se inventó de cero: son los MISMOS grises "slate" que ya
-   usaban, sin tokenizar, tres bloques `@media (prefers-color-scheme:
-   dark)` que ya existían (el modal de confirmación en diger.css, el panel
-   de notificaciones en _Layout.cshtml, y Expedientes/Cronograma.cshtml)
-   — se homologó el valor en vez de inventar uno nuevo, y esos tres
-   bloques ahora referencian estos tokens.
+   El modo oscuro (agregado 2026-08-07, apagado con un interruptor
+   temporal el 2026-09-18) se eliminó el 2026-09-24. Se quitaron los
+   bloques `@media (prefers-color-scheme: dark)` y `[data-theme="dark"]`
+   de este archivo, de diger.css, de _Layout.cshtml y de
+   Expedientes/Cronograma.cshtml, junto con el botón y el JS del toggle.
 
-   Se activa automáticamente por preferencia del sistema operativo
-   (@media). El selector [data-theme] queda listo para un toggle manual
-   futuro (todavía no existe ningún botón en la UI que lo setee) — hasta
-   entonces, [data-theme="dark"] no tiene ningún efecto por sí solo.
+   El motivo es el login y la página que abre el QR de asistencia: hasta
+   hoy salían claras solo porque _Layout escribía data-theme="light" por
+   JavaScript antes de las hojas de estilo. Es decir, dependían de que el
+   JS corriera. Un teléfono en modo oscuro que lo bloqueara —o que lo
+   ejecutara tarde— pintaba oscuro el registro de asistencia, que es
+   público y lo abre gente de fuera. Ahora son claros por construcción.
+
+   Este bloque era `:root[data-theme="light"]` y pasó a `:root` tal cual:
+   los valores son los mismos que el portal ya venía mostrando, así que
+   no cambia el aspecto de ninguna página. Va después del :root de
+   arriba a propósito —lo pisa— hasta que ambos se fusionen.
+
+   El valor `color-scheme: light` es la otra mitad del arreglo: le dice
+   al navegador que use su tema claro para <select>, <option>, barras de
+   desplazamiento y selectores de fecha, controles que el CSS de la
+   página no alcanza a estilar.
    ══════════════════════════════════════════════════════════════════ */
-@media (prefers-color-scheme: dark) {
-    :root {
-        /* Le dice al navegador que use SU tema oscuro nativo para <select>/
-           <option>, scrollbars, date pickers, etc. — controles que el CSS
-           de la página no puede estilar bien (ej. las opciones de un
-           <select> seguían con texto negro sobre fondo oscuro sin esto). */
-        color-scheme: dark;
-
-        --diger-bg:          #0f172a;
-        --diger-bg-soft:     #0f172a;
-        --diger-surface:     #1e293b;
-        --diger-border:      #334155;
-        --diger-border-soft: #1e293b;
-
-        --diger-text:           #e2e8f0;
-        --diger-text-strong:    #f1f5f9;
-        --diger-text-secondary: #cbd5e1;
-        --diger-text-muted:     #94a3b8;
-        --diger-text-faint:     #64748b;
-        --diger-text-slate-dark: #94a3b8;
-
-        --diger-bg-blue:      #1a2942;
-        --diger-bg-blue-alt:  #17223a;
-        --diger-bg-blue-pale: #1c2a45;
-        --diger-blue-light:   #1e3a5f;
-
-        /* Los tres siguientes eran texto oscuro (navy/rojo/ámbar) sobre
-           fondo claro — invisibles tal cual sobre fondo oscuro, así que
-           se aclaran. Valores tomados de los mismos tres bloques dark ya
-           existentes que motivaron esta paleta (.cron-central-info,
-           .cron-venc, .cron-prox), no inventados de cero. */
-        --diger-blue-title:    #93c5fd;
-        --diger-blue-strong:   #60a5fa;
-        --diger-danger-strong: #fca5a5;
-        --diger-warning-strong: #fde68a;
-        --diger-success-strong: #6ee7b7;
-        --diger-danger-text:   #fca5a5;
-
-        /* --diger-success/-warning/-danger (base, SIN -strong/-bg) se
-           dejan constantes a propósito — a diferencia de -strong, se usan
-           mucho como background/border sólido (puntos de estado, círculos
-           de flujo, botones .dg-confirm-ok) donde SÍ hace falta que se
-           queden saturados en oscuro. Solo -bg (el fondo pálido del badge)
-           y -strong (el texto que va sobre ese fondo) son theme-aware. */
-        --diger-success-bg:  #064e3b;
-        --diger-warning-bg:  #78350f;
-        --diger-danger-bg:   #7f1d1d;
-
-        --diger-shadow-sm: 0 1px 3px rgba(0,0,0,.3);
-        --diger-shadow-md: 0 6px 20px rgba(0,0,0,.35);
-        --diger-shadow-lg: 0 12px 40px rgba(0,0,0,.4);
-    }
-}
-
-:root[data-theme="dark"] {
-    color-scheme: dark;
-
-    --diger-bg:          #0f172a;
-    --diger-bg-soft:     #0f172a;
-    --diger-surface:     #1e293b;
-    --diger-border:      #334155;
-    --diger-border-soft: #1e293b;
-
-    --diger-text:           #e2e8f0;
-    --diger-text-strong:    #f1f5f9;
-    --diger-text-secondary: #cbd5e1;
-    --diger-text-muted:     #94a3b8;
-    --diger-text-faint:     #64748b;
-    --diger-text-slate-dark: #94a3b8;
-
-    --diger-bg-blue:      #1a2942;
-    --diger-bg-blue-alt:  #17223a;
-    --diger-bg-blue-pale: #1c2a45;
-    --diger-blue-light:   #1e3a5f;
-
-    --diger-blue-title:    #93c5fd;
-    --diger-blue-strong:   #60a5fa;
-    --diger-danger-strong: #fca5a5;
-    --diger-warning-strong: #fde68a;
-    --diger-success-strong: #6ee7b7;
-    --diger-danger-text:   #fca5a5;
-
-    --diger-success-bg:  #064e3b;
-    --diger-warning-bg:  #78350f;
-    --diger-danger-bg:   #7f1d1d;
-
-    --diger-shadow-sm: 0 1px 3px rgba(0,0,0,.3);
-    --diger-shadow-md: 0 6px 20px rgba(0,0,0,.35);
-    --diger-shadow-lg: 0 12px 40px rgba(0,0,0,.4);
-}
-
-/* Fuerza modo claro aunque el sistema operativo esté en oscuro — para
-   cuando exista el toggle manual. */
-:root[data-theme="light"] {
+:root {
     color-scheme: light;
 
     --diger-bg:          #eef1f7;
