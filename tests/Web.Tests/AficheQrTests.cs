@@ -242,4 +242,66 @@ public sealed class AficheQrTests : IAsyncLifetime
         hoja.Should().NotContain("@import", "el afiche no debe depender de descargar una fuente");
         hoja.Should().NotContain("fonts.googleapis.com");
     }
+
+    /// <summary>Bloque de una regla CSS por su selector, sin las llaves.</summary>
+    private static string Regla(string hoja, string selector)
+    {
+        var inicio = hoja.IndexOf(selector + " {", StringComparison.Ordinal);
+        inicio.Should().BeGreaterThan(0, $"la hoja debe declarar {selector}");
+
+        inicio += selector.Length + 2;
+        return hoja[inicio..hoja.IndexOf('}', inicio)];
+    }
+
+    /// <summary>Valor en px de una variable o propiedad dentro de un bloque CSS.</summary>
+    private static double Px(string bloque, string propiedad)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(
+            bloque, System.Text.RegularExpressions.Regex.Escape(propiedad) + @"\s*:\s*([\d.]+)px");
+
+        m.Success.Should().BeTrue($"{propiedad} debe estar declarada en px");
+        return double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    [Fact]
+    public async Task Los_datos_de_la_reunion_se_ven_como_tarjetas_y_no_como_lineas_sueltas()
+    {
+        var hoja = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+        var campo = Regla(hoja, ".afiche-campo");
+
+        campo.Should().Contain("background", "cada dato es una tarjeta con cuerpo, no una línea al aire");
+        campo.Should().Contain("border-radius");
+        campo.Should().Contain("padding");
+        campo.Should().NotContain("border-top: 1px",
+            "la tarjeta reemplazó a la línea superior que antes separaba los datos");
+
+        Regla(hoja, ".afiche-campos").Should().Contain("gap",
+            "las tarjetas se separan entre sí en las dos direcciones, no solo entre columnas");
+    }
+
+    [Fact]
+    public async Task La_letra_del_afiche_se_lee_de_pie_frente_a_la_pared()
+    {
+        // El afiche se pega en una pared y se lee a un par de metros: los pasos y el valor de cada
+        // dato eran los dos textos que quedaban cortos. Los mínimos son el piso acordado, no el
+        // valor exacto, para poder afinar el diseño sin tener que reescribir la prueba.
+        var hoja     = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+        var vertical = Regla(hoja, ".afiche");
+        var apaisado = Regla(hoja, ".afiche--apaisado");
+
+        Px(vertical, "--afq-titulo").Should().BeGreaterThanOrEqualTo(46);
+        Px(vertical, "--afq-llamada").Should().BeGreaterThanOrEqualTo(34);
+        Px(vertical, "--afq-paso").Should().BeGreaterThanOrEqualTo(19);
+        Px(vertical, "--afq-dato").Should().BeGreaterThanOrEqualTo(24);
+        Px(vertical, "--afq-etiqueta").Should().BeGreaterThanOrEqualTo(13);
+
+        Px(apaisado, "--afq-paso").Should().BeGreaterThanOrEqualTo(17);
+        Px(apaisado, "--afq-dato").Should().BeGreaterThanOrEqualTo(21);
+
+        // Los tamaños viven en variables: el apaisado los redefine en un solo lugar en vez de
+        // repetir reglas por elemento.
+        Regla(hoja, ".afiche-pasos li").Should().Contain("var(--afq-paso)");
+        Regla(hoja, ".afiche-campo dd").Should().Contain("var(--afq-dato)");
+        Regla(hoja, ".afiche-campo dt").Should().Contain("var(--afq-etiqueta)");
+    }
 }
