@@ -1,12 +1,22 @@
 using Microsoft.AspNetCore.Authorization;
+using ModelContextProtocol;
 
 namespace Diger.TramitesEstado.Web.Mcp;
 
 /// <summary>
-/// Lanzada cuando una herramienta MCP se pide sin el permiso que exige. El SDK la convierte
-/// en un resultado de error legible para el modelo, en vez de un 500 sin explicación.
+/// Lanzada cuando una herramienta MCP se pide sin el permiso que exige.
+///
+/// <para>Hereda de <see cref="McpException"/> y no de <see cref="Exception"/> a secas por una
+/// razón concreta: ante una excepción común el SDK responde «An error occurred invoking
+/// 'x'» y se traga el mensaje —comprobado—, de modo que el agente sabe que algo falló pero
+/// no qué permiso le falta ni a quién pedírselo. <c>McpException</c> es el tipo que el
+/// protocolo sí transmite al cliente.</para>
+///
+/// <para>Quedarse en el mensaje genérico no era una molestia estética: un agente que no
+/// distingue «no tiene permiso» de «el servidor falló» reintenta la llamada en lugar de
+/// decirle a la persona qué tiene que pedir.</para>
 /// </summary>
-public sealed class McpPermisoDenegadoException(string mensaje) : Exception(mensaje);
+public sealed class McpPermisoDenegadoException(string mensaje) : McpException(mensaje);
 
 /// <summary>
 /// La puerta de los permisos para las herramientas MCP.

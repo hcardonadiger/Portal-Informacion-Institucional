@@ -135,6 +135,37 @@ public sealed class McpPermisosTests : IAsyncLifetime
         await accion.Should().NotThrowAsync();
     }
 
+    /// <summary>
+    /// Regresión, cazada probando el servidor contra la base real. La denegación heredaba de
+    /// <see cref="Exception"/> y el SDK respondía «An error occurred invoking 'crear_proyecto'»
+    /// tragándose el mensaje: el agente sabía que algo falló, pero no qué permiso le faltaba
+    /// ni a quién pedírselo, así que reintentaba en vez de decírselo a la persona.
+    /// <see cref="McpException"/> es el tipo que el protocolo sí transmite al cliente.
+    /// </summary>
+    [Fact]
+    public void La_denegacion_viaja_al_cliente_y_no_se_queda_en_el_servidor()
+    {
+        typeof(McpPermisoDenegadoException)
+            .Should().BeAssignableTo<ModelContextProtocol.McpException>(
+                "si deja de serlo, el mensaje vuelve a perderse y nadie se entera hasta usarlo");
+    }
+
+    /// <summary>El mensaje tiene que nombrar la clave y decir dónde se pide: es lo que el
+    /// agente le va a repetir a la persona.</summary>
+    [Fact]
+    public async Task El_mensaje_de_denegacion_nombra_la_clave_y_donde_pedirla()
+    {
+        var accion = async () => await ComoRolAsync("Empleado", async p =>
+        {
+            await p.ExigirAsync("Tickets.Eliminar");
+            return true;
+        });
+
+        var error = await accion.Should().ThrowAsync<McpPermisoDenegadoException>();
+        error.WithMessage("*Tickets.Eliminar*");
+        error.WithMessage("*Accesos*");
+    }
+
     [Fact]
     public async Task PuedeAsync_responde_sin_lanzar_para_armar_el_catalogo()
     {
