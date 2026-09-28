@@ -207,6 +207,16 @@ public sealed record ProyectosDashboardDto(
     int ReportesTotal,
     IReadOnlyList<ConteoDto>          PorEstado,
     IReadOnlyList<ConteoDto>          PorResponsable,
+
+    /// <summary>Cuántos proyectos hay en cada categoría temática, en el orden del catálogo —el mismo
+    /// del desplegable que filtra— y no por conteo.
+    ///
+    /// <para>Solo trae las categorías que alguien usó, más un balde final «Sin categoría» cuando
+    /// queda algún proyecto sin clasificar. Ese balde es lo que hace que el desglose sume lo mismo
+    /// que el semáforo: sin él, un portafolio a medio clasificar se lee como si le faltaran
+    /// proyectos.</para></summary>
+    IReadOnlyList<ConteoDto>          PorCategoria,
+
     IReadOnlyList<SerieMensualDto>    ReportesPorMes,
     IReadOnlyList<ProyectoSemaforoDto>    Semaforo,
     IReadOnlyList<EntregableAtencionDto>  Entregables,
@@ -256,7 +266,18 @@ public sealed record ProyectoSemaforoDto(
     /// <see cref="UnidadId"/> tenga valor</b>: el catálogo de unidades lleva filtro por institución
     /// activa y una unidad de otra institución no se resuelve. Por eso quien agrupe debe hacerlo
     /// por el Id y nunca por este nombre.</para></summary>
-    string?           UnidadNombre = null)
+    string?           UnidadNombre = null,
+
+    /// <summary>Categoría temática del proyecto, para la insignia de la fila. <c>null</c> cuando
+    /// nadie lo clasificó —la categoría es opcional— y entonces la vista no pinta nada: una
+    /// insignia «Sin clasificar» en cada fila vieja es ruido, y para encontrarlas está el
+    /// filtro.</summary>
+    string?           Categoria = null,
+
+    /// <summary>Color con que el catálogo pinta esa categoría. Viaja junto al nombre porque la
+    /// insignia se arma con los dos, y va nullable por lo mismo que <see cref="Categoria"/>:
+    /// sin categoría no hay color que pintar.</summary>
+    ColorEtiqueta?    CategoriaColor = null)
 {
     /// <summary>Entregables cerrados sobre el total: lo que está efectivamente entregado, frente
     /// a <see cref="AvancePct"/>, que promedia el trabajo reportado en las actividades.</summary>

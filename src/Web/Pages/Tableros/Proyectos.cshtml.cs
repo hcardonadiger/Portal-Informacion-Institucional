@@ -1,5 +1,6 @@
 using Diger.TramitesEstado.Application.Areas.Queries;
 using Diger.TramitesEstado.Application.Dashboards.Queries;
+using Diger.TramitesEstado.Application.Proyectos.Categorias;
 using Diger.TramitesEstado.Application.Proyectos.Prioridades;
 using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
@@ -23,14 +24,21 @@ public sealed class ProyectosModel(ISender sender, ICurrentUserService currentUs
     [BindProperty(SupportsGet = true)] public EstadoProyecto?    Estado        { get; set; }
     [BindProperty(SupportsGet = true)] public Guid?              ResponsableId { get; set; }
     [BindProperty(SupportsGet = true)] public int?               PrioridadId   { get; set; }
+    [BindProperty(SupportsGet = true)] public int?               CategoriaId   { get; set; }
 
     /// <summary>Opciones del catálogo para el filtro. Incluye la seleccionada aunque se haya
     /// retirado, por la misma razón que las áreas inactivas: si no, el recorte quedaría puesto
     /// y sin forma de quitarlo desde el propio desplegable.</summary>
     public IReadOnlyList<OpcionPrioridadDto> Prioridades { get; private set; } = [];
+
+    /// <summary>Categorías temáticas —las «Q»— para el desplegable. Mismo criterio que las
+    /// prioridades: incluye la seleccionada aunque se haya retirado del catálogo, porque si no el
+    /// recorte quedaría puesto y sin forma de quitarlo desde la propia lista.</summary>
+    public IReadOnlyList<OpcionCategoriaDto> Categorias { get; private set; } = [];
     [BindProperty(SupportsGet = true)] public string[]?          AreaIds       { get; set; }
 
     public bool HayFiltro => Estado is not null || ResponsableId is not null || PrioridadId is not null
+                           || CategoriaId is not null
                            || (AreaIds?.Length ?? 0) > 0;
 
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
@@ -68,7 +76,21 @@ public sealed class ProyectosModel(ISender sender, ICurrentUserService currentUs
             .Where(id => areas.Any(a => a.Id == id))
             .ToArray();
 
-        Data     = await sender.Send(new GetProyectosDashboardQuery(Estado, ResponsableId, PrioridadId, AreaIds), ct);
+        // Las categorías se resuelven ANTES de consultar, por lo mismo que las áreas: una que el
+        // catálogo no conoce —teclada en la URL, o borrada— se descarta en vez de aplicarse. No es
+        // una fuga (el filtro interseca sobre un IQueryable ya recortado por el alcance) sino una
+        // pantalla que mentía: aplicada, el tablero salía vacío, sin ninguna opción marcada en el
+        // desplegable y sin más pista que el botón «Limpiar».
+        //
+        // Una categoría retirada SÍ sobrevive a este descarte: GetOpcionesCategoriaQuery la
+        // devuelve cuando viene pedida por IncluirId, así que una URL guardada de cuando seguía
+        // activa sigue recortando, con su opción visible y deseleccionable.
+        Categorias = await sender.Send(new GetOpcionesCategoriaQuery(CategoriaId), ct);
+        if (CategoriaId is { } pedida && Categorias.All(c => c.Id != pedida))
+            CategoriaId = null;
+
+        Data     = await sender.Send(new GetProyectosDashboardQuery(
+            Estado, ResponsableId, PrioridadId, AreaIds, CategoriaId: CategoriaId), ct);
         Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         Prioridades = await sender.Send(new GetOpcionesPrioridadQuery(PrioridadId), ct);
 

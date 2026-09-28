@@ -22,12 +22,21 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries;
 ///
 /// <para>Igual que <paramref name="AreaIds"/>, es un filtro de presentación: recorta lo que ya
 /// dejó pasar el alcance, nunca lo amplía.</para></param>
+/// <param name="CategoriaId">Acota a una categoría temática del catálogo
+/// <c>CategoriasProyecto</c> —las «Q», las tres rondas de clasificación—. <c>null</c> = sin
+/// acotar, y eso es lo que significa: <b>no</b> «los que no tienen categoría». Confundirlo dejaría
+/// el tablero vacío para quien todavía no ha clasificado su portafolio, que es el caso normal
+/// porque la categoría es opcional.
+///
+/// <para>Va al final de la lista de parámetros, y no junto a <paramref name="PrioridadId"/> donde
+/// se leería mejor: las llamadas posicionales que ya existen quedarían corriendo un argumento.</para></param>
 public sealed record GetProyectosDashboardQuery(
     EstadoProyecto?    Estado        = null,
     Guid?              ResponsableId = null,
     int?               PrioridadId   = null,
     IReadOnlyList<string>? AreaIds   = null,
-    Guid?              DeUsuarioId   = null) : IRequest<ProyectosDashboardDto>;
+    Guid?              DeUsuarioId   = null,
+    int?               CategoriaId   = null) : IRequest<ProyectosDashboardDto>;
 
 public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetProyectosDashboardQuery, ProyectosDashboardDto>
@@ -44,6 +53,9 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         if (q.Estado is { } e)        baseQuery = baseQuery.Where(p => p.Estado == e);
         if (q.ResponsableId is { } r) baseQuery = baseQuery.Where(p => p.ResponsableId == r);
         if (q.PrioridadId is { } pr)  baseQuery = baseQuery.Where(p => p.PrioridadId == pr);
+        // Los proyectos sin clasificar quedan fuera cuando sí se filtra: se pidió esa categoría,
+        // no «esa o ninguna» — el mismo criterio con que las áreas tratan al proyecto sin área.
+        if (q.CategoriaId is { } cat)  baseQuery = baseQuery.Where(p => p.CategoriaId == cat);
         // Lista vacía = no filtrar: pedir «ninguna área» y ver el portafolio vacío no le sirve a nadie.
         // Los proyectos sin área quedan fuera cuando sí se filtra — se pidieron esas áreas, no «esas o ninguna».
         if (q.AreaIds is { Count: > 0 } areas)
@@ -62,6 +74,11 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.ResponsableId,
                 p.Estado, Prioridad = p.PrioridadRef!.Nombre,
                 PrioridadColor = p.PrioridadRef.Color, PrioridadOrden = p.PrioridadRef.Orden,
+                // Categoría opcional: el LEFT JOIN la deja en null cuando nadie la clasificó, y ese
+                // null es un dato —«todavía nadie lo clasificó»— no un hueco que haya que rellenar.
+                Categoria      = p.CategoriaRef == null ? null : p.CategoriaRef.Nombre,
+                CategoriaColor = p.CategoriaRef == null ? (ColorEtiqueta?)null : p.CategoriaRef.Color,
+                CategoriaOrden = p.CategoriaRef == null ? (int?)null : p.CategoriaRef.Orden,
                 p.AvancePct, p.FechaFinPlan, p.UnidadId,
                 TotalEntregables       = p.Entregables.Count,
                 EntregablesCompletados = p.Entregables.Count(x => x.Estado == EstadoEntregable.Completado),
@@ -107,7 +124,8 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                 ProyectoEstadoReglas.SinReportar(p.Estado, p.UltimoAvance, corte),
                 SinLineaBase(p.FechaFinPlan, p.Estado),
                 p.UnidadId,
-                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var un) ? un : null))
+                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var un) ? un : null,
+                p.Categoria, p.CategoriaColor))
             // Primero lo que exige atención: atrasado, luego desatendido, luego prioridad.
             .OrderByDescending(p => p.Atrasado)
             .ThenByDescending(p => p.SinReportar)
@@ -261,6 +279,26 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             .OrderByDescending(c => c.Cantidad).ThenBy(c => c.Etiqueta)
             .ToList();
 
+        // ── Desglose por categoría ───────────────────────────────────────────
+        // Ordenado por el orden del catálogo, no por conteo ni alfabéticamente: el desglose tiene
+        // que leerse igual que el desplegable que lo filtra (Q3 primero, como la ronda final de la
+        // F1). Solo aparecen las categorías que alguien usó — una barra en cero por cada fila del
+        // catálogo es ruido, y el catálogo es administrable.
+        //
+        // Los no clasificados van en su propio balde y de últimos. Sin él el desglose sumaría menos
+        // que el semáforo y se leería como si faltaran proyectos; y no va entre las demás porque no
+        // es una clasificación, es su ausencia. Desaparece solo cuando no queda ninguno.
+        var porCategoria = filas
+            .Where(p => p.Categoria != null)
+            .GroupBy(p => new { p.Categoria, p.CategoriaOrden })
+            .OrderBy(g => g.Key.CategoriaOrden).ThenBy(g => g.Key.Categoria)
+            .Select(g => new ConteoDto(g.Key.Categoria!, g.Count()))
+            .ToList();
+
+        var sinCategoria = filas.Count(p => p.Categoria == null);
+        if (sinCategoria > 0)
+            porCategoria.Add(new ConteoDto(Etiquetas.SinCategoria, sinCategoria));
+
         var todosAvances = await ctx.ProyectoAvances.AsNoTracking()
             .Where(a => idsFiltrados.Contains(a.ProyectoId))
             .Select(a => new { a.Fecha })
@@ -295,6 +333,7 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             ReportesTotal:    filas.Sum(p => p.Reportes),
             PorEstado:        porEstado,
             PorResponsable:   porResponsable,
+            PorCategoria:     porCategoria,
             ReportesPorMes:   serie,
             Semaforo:         semaforo,
             Entregables:      entregablesAtencion,
@@ -308,6 +347,13 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
 /// tablero y el listado no se contradigan.</summary>
 public static class Etiquetas
 {
+    /// <summary>
+    /// Balde de los proyectos que nadie clasificó, en el desglose por categoría del tablero. Es una
+    /// constante y no un literal repetido porque la vista lo compara para pintarlo distinto —ámbar,
+    /// como «Sin asignar»— y dos textos que tienen que coincidir no deberían estar escritos dos veces.
+    /// </summary>
+    public const string SinCategoria = "Sin categoría";
+
     public static string Estado(EstadoProyecto e) => e switch
     {
         EstadoProyecto.EnEjecucion => "En ejecución",
