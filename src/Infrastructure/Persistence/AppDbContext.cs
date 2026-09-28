@@ -17,6 +17,7 @@ public sealed class AppDbContext(
     public DbSet<Area>                     Areas              { get; init; } = default!;
     public DbSet<Unidad>                   Unidades           { get; init; } = default!;
     public DbSet<AsignacionUsuario>        AsignacionesUsuario{ get; init; } = default!;
+    public DbSet<TokenAccesoMcp>           TokensAccesoMcp    { get; init; } = default!;
     public DbSet<Movimiento>               Movimientos        { get; init; } = default!;
     public DbSet<Prefijo>                  Prefijos           { get; init; } = default!;
     public DbSet<TramiteDefinicion>        TramitesDefinicion { get; init; } = default!;
@@ -1159,6 +1160,30 @@ public sealed class AsignacionUsuarioConfiguration : IEntityTypeConfiguration<As
         b.HasIndex(x => new { x.UsuarioId, x.InstitucionId, x.AreaId, x.UnidadId }).IsUnique();
         b.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<Institucion>().WithMany().HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class TokenAccesoMcpConfiguration : IEntityTypeConfiguration<TokenAccesoMcp>
+{
+    public void Configure(EntityTypeBuilder<TokenAccesoMcp> b)
+    {
+        b.ToTable("TokensAccesoMcp");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedNever(); // el GUID lo pone el dominio
+        b.Property(x => x.Nombre).HasMaxLength(120).IsRequired();
+        b.Property(x => x.Prefijo).HasMaxLength(32).IsRequired();
+        b.Property(x => x.HashSha256).HasMaxLength(64).IsRequired();
+
+        // Único porque es la clave de búsqueda de la autenticación: encontrar la fila por
+        // prefijo es lo que evita hashear el token contra cada candidato de la tabla.
+        b.HasIndex(x => x.Prefijo).IsUnique();
+        b.HasIndex(x => x.UsuarioId);
+
+        b.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+
+        // La asignación NO va en cascada: borrarla debe dejar el token huérfano y que la
+        // autenticación lo rechace por contexto inexistente, no desaparecer la evidencia
+        // de que el token existió. Sin FK declarada para no forzar ese borrado.
     }
 }
 

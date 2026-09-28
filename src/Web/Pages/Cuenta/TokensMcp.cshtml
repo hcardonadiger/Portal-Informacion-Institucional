@@ -1,0 +1,136 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Cuenta.TokensMcpModel
+@inject Diger.TramitesEstado.Web.Common.AccesoModulosService Acceso
+@{
+    ViewData["Title"] = "Tokens de acceso";
+    Layout = "_CuentaLayout";
+
+    var puedeCrear   = await Acceso.PuedeClaveAsync("TokensMcp.Crear");
+    var puedeRevocar = await Acceso.PuedeClaveAsync("TokensMcp.Eliminar");
+
+    // Vía ViewContext y no Context: en este repo `Context` no resuelve dentro del bloque
+    // de código de la vista.
+    var peticion = ViewContext.HttpContext.Request;
+    var urlMcp   = $"{peticion.Scheme}://{peticion.Host}/mcp";
+}
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert alert-error">@Model.Error</div>
+}
+@if (!string.IsNullOrEmpty(Model.Aviso) && string.IsNullOrEmpty(Model.TokenNuevo))
+{
+    <div class="alert alert-ok">@Model.Aviso</div>
+}
+
+@if (!string.IsNullOrEmpty(Model.TokenNuevo))
+{
+    <div class="card" style="border-left:4px solid #b45309">
+        <h3 class="cuenta-card-title">Su token nuevo</h3>
+        <p><strong>Cópielo ahora.</strong> Se guarda cifrado: al salir de esta página no vuelve a mostrarse y no hay forma de recuperarlo. Si lo pierde, revoque este y genere otro.</p>
+
+        <pre style="white-space:pre-wrap;word-break:break-all;background:#0f172a;color:#e2e8f0;padding:.85rem;border-radius:6px">@Model.TokenNuevo</pre>
+
+        <p style="margin-top:1rem">Para conectarlo a Claude Code, ejecute en su terminal:</p>
+        <pre style="white-space:pre-wrap;word-break:break-all;background:#0f172a;color:#e2e8f0;padding:.85rem;border-radius:6px">claude mcp add --transport http portal-gd @urlMcp --header "Authorization: Bearer @Model.TokenNuevo"</pre>
+
+        <p class="text-muted" style="margin-top:.75rem">Trátelo como su contraseña: quien lo tenga puede actuar en el portal con su nombre, su institución y sus permisos.</p>
+    </div>
+}
+
+<div class="card">
+    <h3 class="cuenta-card-title">Tokens de acceso MCP</h3>
+    <p class="text-muted">
+        Un token le permite a un asistente de IA consultar y actualizar proyectos en su nombre.
+        Actúa siempre con <strong>su</strong> institución, <strong>su</strong> alcance y
+        <strong>sus</strong> permisos: no puede hacer nada que usted no pueda hacer desde el portal.
+    </p>
+
+    @if (Model.Tokens.Count == 0)
+    {
+        <p class="text-muted">Todavía no tiene ninguno.</p>
+    }
+    else
+    {
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Prefijo</th>
+                    <th>Contexto</th>
+                    <th>Creado</th>
+                    <th>Último uso</th>
+                    <th>Vence</th>
+                    <th>Estado</th>
+                    @if (puedeRevocar) { <th></th> }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var t in Model.Tokens)
+            {
+                <tr>
+                    <td>@t.Nombre</td>
+                    <td><code>@t.Prefijo…</code></td>
+                    <td>@t.InstitucionId@(t.AreaId is null ? "" : " · " + t.AreaId)@(t.UnidadId is null ? "" : " · " + t.UnidadId) — @t.Rol</td>
+                    <td>@t.CreadoUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td>@(t.UltimoUsoUtc is null ? "Nunca" : t.UltimoUsoUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))</td>
+                    <td>@(t.ExpiraUtc is null ? "Sin vencimiento" : t.ExpiraUtc.Value.ToLocalTime().ToString("dd/MM/yyyy"))</td>
+                    <td>@t.Estado</td>
+                    @if (puedeRevocar)
+                    {
+                        <td>
+                            @if (t.EstaVigente)
+                            {
+                                <form method="post" asp-page-handler="Revocar" asp-route-id="@t.Id"
+                                      onsubmit="return confirm('¿Revocar este token? Lo que lo esté usando dejará de funcionar.');">
+                                    <button type="submit" class="btnp btnp-danger">Revocar</button>
+                                </form>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (puedeCrear)
+{
+    <div class="card">
+        <h3 class="cuenta-card-title">Generar uno nuevo</h3>
+
+        <form method="post" asp-page-handler="Generar">
+            <div class="field">
+                <label>Nombre</label>
+                <input asp-for="Nombre" placeholder="Claude Code — laptop" maxlength="120" required />
+                <span class="text-muted">Para reconocerlo después y saber cuál revocar.</span>
+            </div>
+
+            @if (Model.Asignaciones.Count > 1)
+            {
+                <div class="field">
+                    <label>Contexto</label>
+                    <select asp-for="AsignacionId" required>
+                        <option value="">— Elija uno —</option>
+                        @foreach (var a in Model.Asignaciones)
+                        {
+                            <option value="@a.Id">@a.Etiqueta</option>
+                        }
+                    </select>
+                    <span class="text-muted">El token actuará siempre en este contexto y no puede cambiarlo después.</span>
+                </div>
+            }
+
+            <div class="field">
+                <label>Vigencia (días)</label>
+                <input asp-for="DiasVigencia" type="number" min="1" max="3650" />
+                <span class="text-muted">Déjelo vacío para que no venza, aunque conviene que venza.</span>
+            </div>
+
+            <div style="margin-top:1.5rem">
+                <button type="submit" class="btnp">Generar token</button>
+            </div>
+        </form>
+    </div>
+}

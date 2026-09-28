@@ -4,6 +4,7 @@ using Diger.TramitesEstado.Infrastructure;
 using Diger.TramitesEstado.Infrastructure.Persistence;
 using Diger.TramitesEstado.Web.Hubs;
 using Diger.TramitesEstado.Web.Middleware;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
@@ -141,7 +142,12 @@ builder.Services
         // que antes lo perdían y dejaban la sesión sin poder cerrarse desde el nombre de
         // dominio. Ver CookieDeSesionPorHost.
         opts.CookieManager = new CookieDeSesionPorHost();
-    });
+    })
+    // Segundo esquema, solo para /mcp: token Bearer en vez de cookie. La cookie sigue
+    // siendo el esquema por defecto, así que el portal web no cambia en nada. Ver
+    // McpTokenAuthenticationHandler.
+    .AddScheme<AuthenticationSchemeOptions, Diger.TramitesEstado.Web.Security.McpTokenAuthenticationHandler>(
+        Diger.TramitesEstado.Web.Security.McpTokenAuthenticationHandler.Scheme, null);
 
 // Todas las policies estáticas que vivían aquí (PuedeAdministrarCatalogo,
 // PuedeGestionarContactos, PuedeGestionarTickets, PuedeAdministrarUsuarios,
@@ -194,6 +200,20 @@ builder.Services.AddScoped<Diger.TramitesEstado.Web.Common.IInstitucionBrandingS
                             Diger.TramitesEstado.Web.Common.InstitucionBrandingService>();
 builder.Services.AddExceptionHandler<WebExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+// ── Servidor MCP ──────────────────────────────────────────────────────────
+// Expone un subconjunto del portal como herramientas para un agente (Claude). Stateless
+// porque se despliega en IIS y no hay estado de sesión que compartir entre peticiones.
+// Las herramientas despachan a los mismos handlers de MediatR que usan las páginas.
+builder.Services.AddScoped<Diger.TramitesEstado.Web.Mcp.McpPermisos>();
+builder.Services
+    .AddMcpServer(opts =>
+    {
+        opts.ServerInfo = new() { Name = "portal-gestion-digital", Version = "1.0.0" };
+    })
+    .WithHttpTransport(opts => opts.Stateless = true)
+    .WithTools<Diger.TramitesEstado.Web.Mcp.ProyectosTools>()
+    .WithTools<Diger.TramitesEstado.Web.Mcp.VinculadosTools>();
 
 var app = builder.Build();
 
@@ -269,6 +289,14 @@ app.UseAuthorization();
 app.UseExceptionHandler();
 app.MapRazorPages();
 app.MapHub<SoporteHub>("/hubs/soporte");
+
+// El esquema va explícito: las convenciones AuthorizeFolder("/") solo alcanzan a Razor
+// Pages, así que sin esto el endpoint quedaría anónimo. Y si cayera en el esquema por
+// defecto, un 401 respondería con el HTML de /Cuenta/Login en vez de un 401 de verdad.
+app.MapMcp("/mcp")
+   .RequireAuthorization(p => p
+        .AddAuthenticationSchemes(Diger.TramitesEstado.Web.Security.McpTokenAuthenticationHandler.Scheme)
+        .RequireAuthenticatedUser());
 
 await app.RunAsync();
 

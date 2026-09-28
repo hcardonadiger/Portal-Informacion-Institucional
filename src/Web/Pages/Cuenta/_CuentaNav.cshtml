@@ -1,10 +1,19 @@
+@inject Diger.TramitesEstado.Web.Common.AccesoModulosService Acceso
 @{
     string cur = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
     string Cls(string p) => string.Equals(cur, p, StringComparison.OrdinalIgnoreCase)
         ? "cuenta-nav-link on" : "cuenta-nav-link";
+
+    // Gateado por la clave de su destino: los tokens no son autoservicio para todos, se
+    // otorgan desde Accesos.
+    var verTokens = await Acceso.PuedeClaveAsync("TokensMcp.Ver");
 }
 <nav class="cuenta-nav">
     <a class="@Cls("/Cuenta/Perfil")" asp-page="/Cuenta/Perfil">Perfil</a>
     <a class="@Cls("/Cuenta/Contrasena")" asp-page="/Cuenta/Contrasena">Contraseña</a>
     <a class="@Cls("/Cuenta/Certificado")" asp-page="/Cuenta/Certificado">Certificado digital</a>
+    @if (verTokens)
+    {
+        <a class="@Cls("/Cuenta/TokensMcp")" asp-page="/Cuenta/TokensMcp">Tokens de acceso</a>
+    }
 </nav>

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using MediatR;
 using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 using Diger.TramitesEstado.Infrastructure.Security;
+using Diger.TramitesEstado.Web.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
@@ -60,29 +61,8 @@ public sealed class LoginCertificadoModel(ISender sender, IConfiguration config)
 
     private async Task<IActionResult> SignInUsuarioAsync(UsuarioAuthDto usuario, string? returnUrl)
     {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-            new(AppClaims.UserId,          usuario.Id.ToString()),
-            new(ClaimTypes.Name,           usuario.Nombre),
-            new(ClaimTypes.Email,          usuario.Correo)
-        };
-        
-        if (usuario.Asignaciones.Count > 0)
-        {
-            var asignacionesJson = JsonSerializer.Serialize(usuario.Asignaciones);
-            claims.Add(new Claim(AppClaims.AsignacionesJson, asignacionesJson));
-
-            var active = usuario.Asignaciones[0];
-            claims.Add(new Claim(ClaimTypes.Role,           active.Rol));
-            claims.Add(new Claim(AppClaims.ActiveRol,       active.Rol));
-            claims.Add(new Claim(AppClaims.ActiveInstitucion, active.InstitucionId));
-            if (active.AreaId != null) claims.Add(new Claim(AppClaims.ActiveArea, active.AreaId));
-            if (active.UnidadId != null) claims.Add(new Claim(AppClaims.ActiveUnidad, active.UnidadId));
-        }
-        // Sin asignaciones no se emite claim de rol — ver la nota equivalente en Login.cshtml.cs.
-
-        var identity  = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        // Mismos claims que el login por contraseña, del mismo sitio — ver SesionClaimsFactory.
+        var identity  = SesionClaimsFactory.Crear(usuario, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
         await HttpContext.SignInAsync(

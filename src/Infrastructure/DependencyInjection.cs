@@ -93,6 +93,7 @@ public static class DependencyInjection
         // Seguridad / identidad
         services.AddHttpContextAccessor();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<ITokenMcpHasher, TokenMcpHasher>();
         services.TryAddScoped<ICurrentUserService, CurrentUserService>();
 
         return services;

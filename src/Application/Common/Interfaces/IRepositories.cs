@@ -161,6 +161,28 @@ public interface IPasswordHasher
     bool   Verify(string password, string hash);
 }
 
+/// <summary>
+/// Genera y verifica los tokens del servidor MCP.
+///
+/// Deliberadamente NO reusa <see cref="IPasswordHasher"/>. Ese es PBKDF2 con 100.000
+/// iteraciones, que es lo correcto para una contraseña que una persona eligió y que
+/// por lo tanto vive en algún diccionario: el estiramiento compra tiempo contra la
+/// fuerza bruta. Un token es un secreto aleatorio de 256 bits — no hay diccionario que
+/// estirar, el estiramiento no compra nada, y se pagaría en CADA petición MCP.
+/// </summary>
+public interface ITokenMcpHasher
+{
+    /// <summary>Emite un token nuevo. El valor completo se devuelve una sola vez;
+    /// de la base solo vuelve a salir el prefijo.</summary>
+    (string Token, string Prefijo, string Hash) Generar();
+
+    /// <summary>Extrae el prefijo de un token presentado, o null si no tiene la forma
+    /// esperada. Sirve para localizar la fila antes de verificar nada.</summary>
+    string? LeerPrefijo(string token);
+
+    bool Verificar(string hashAlmacenado, string tokenPresentado);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken ct = default);
@@ -201,6 +223,7 @@ public interface IApplicationDbContext
     DbSet<RolPermiso>               RolPermisos      { get; }
     DbSet<PermisoAuditoria>         PermisosAuditoria { get; }
     DbSet<AsignacionUsuario>        AsignacionesUsuario { get; }
+    DbSet<TokenAccesoMcp>           TokensAccesoMcp     { get; }
     DbSet<Area>                     Areas               { get; }
     DbSet<Unidad>                   Unidades            { get; }
     DbSet<Movimiento>               Movimientos         { get; }
