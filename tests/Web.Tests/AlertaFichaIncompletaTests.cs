@@ -125,7 +125,9 @@ public sealed class AlertaFichaIncompletaTests : IAsyncLifetime
     {
         var html = await LeerAsync($"/Siger/Detalle/{_idIncompleta}");
 
-        html.Should().Contain("Esta ficha está incompleta y por eso no se publica.");
+        html.Should().Contain("Esta ficha está incompleta: no sale en el Portal de Trámites y Servicios.");
+        html.Should().Contain("En Honduras Fácil sí se puede publicar",
+            "el aviso decía «no se publica» a secas, y en Honduras Fácil una ficha incompleta se publica igual");
         html.Should().Contain("<li><strong>categoría</strong></li>");
         html.Should().Contain("<li><strong>tiempo</strong></li>");
         html.Should().Contain("<li><strong>costo</strong></li>");
@@ -148,7 +150,8 @@ public sealed class AlertaFichaIncompletaTests : IAsyncLifetime
         var html = await LeerAsync($"/HondurasSimple/Editor?id={_idIncompleta}");
 
         html.Should().Contain("Falta capturar: categoría, tiempo, costo.");
-        html.Should().Contain("el trámite no se publica");
+        html.Should().Contain("el trámite no sale en el Portal de Trámites y Servicios");
+        html.Should().Contain("En Honduras Fácil sí se puede publicar");
     }
 
     [Fact]
@@ -157,5 +160,15 @@ public sealed class AlertaFichaIncompletaTests : IAsyncLifetime
         var html = await LeerAsync($"/HondurasSimple/Editor?id={_idCompleta}");
 
         html.Should().Contain("La ficha pública está completa.");
+    }
+
+    [Fact]
+    public async Task El_inventario_dice_de_que_portal_habla_el_aviso()
+    {
+        var html = await LeerAsync("/Siger");
+
+        html.Should().Contain("Ninguna de ellas sale en el Portal de Trámites y Servicios");
+        html.Should().Contain("en Honduras Fácil sí se pueden publicar",
+            "el aviso del inventario hacía creer que una ficha incompleta tampoco llega a Honduras Fácil");
     }
 }
