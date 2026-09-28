@@ -65,7 +65,6 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
 
     private async Task CargarAsync(CancellationToken ct)
     {
-        Instituciones = await ctx.Instituciones.AsNoTracking().Where(i => i.Activo).OrderBy(i => i.Nombre).ToListAsync(ct);
         Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
         var categoriaNombres = Categorias.ToDictionary(c => c.Id, c => c.Nombre);
 
@@ -73,6 +72,18 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
         // de contenido se editan en el expediente que las tiene, y escribirlos acá sería trabajo
         // que el siguiente pase desde ese expediente borraría sin dejar rastro.
         var q = ctx.TramitesSiger.AsNoTracking().SinBloqueadas(ctx.Tramites.AsNoTracking()).AsQueryable();
+
+        // El selector sale de las fichas, no del catálogo. El catálogo de instituciones pasa por el
+        // filtro de alcance y, fuera del rol Administrador, solo deja ver la institución propia: un
+        // técnico de DIGER encontraba «DIGER» y nada más, aunque la lista de abajo —que no pasa por
+        // ese filtro— le enseñara las fichas de INPREMA. Esconder los nombres no protegía nada; solo
+        // rompía el filtro. Por eso se ignora aquí, y solo aquí. Y se ofrecen únicamente las que
+        // tienen fichas capturables: elegir una sin ellas dejaría la lista en blanco.
+        var conFichas = q.Where(t => t.InstitucionId != null).Select(t => t.InstitucionId!).Distinct();
+        Instituciones = await ctx.Instituciones.AsNoTracking().IgnoreQueryFilters()
+            .Where(i => i.Activo && conFichas.Contains(i.Id))
+            .OrderBy(i => i.Nombre).ToListAsync(ct);
+
         if (!string.IsNullOrWhiteSpace(InstitucionId))
             q = q.Where(t => t.InstitucionId == InstitucionId);
 
