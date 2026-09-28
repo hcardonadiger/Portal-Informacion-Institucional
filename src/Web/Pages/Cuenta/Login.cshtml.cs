@@ -28,7 +28,7 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/")
                 return LocalRedirect(returnUrl);
 
-            return RedirectToPage("/Tableros/Index");
+            return RedirectToPage("/Inicio");
         }
 
         ReturnUrl = returnUrl;
@@ -111,6 +111,6 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/")
             return LocalRedirect(returnUrl);
 
-        return RedirectToPage("/Tableros/Index");
+        return RedirectToPage("/Inicio");
     }
 }

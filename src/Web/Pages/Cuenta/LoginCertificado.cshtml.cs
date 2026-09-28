@@ -96,7 +96,7 @@ public sealed class LoginCertificadoModel(ISender sender, IConfiguration config)
             ? "/Cuenta/Perfil?sinAsignacion=true"
             : !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) && returnUrl != "/"
                 ? returnUrl
-                : "/Tableros/Index";
+                : "/Inicio";
 
         // Si estamos en localhost y acabamos en el puerto 49176, lo mejor es forzar la vuelta al puerto normal
         var host = Request.Host.Host;

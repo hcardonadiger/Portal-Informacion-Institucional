@@ -16,11 +16,11 @@ public sealed class CambiarFiltroJerarquiaModel : PageModel
     {
         var identity = User.Identity as ClaimsIdentity;
         if (identity == null)
-            return RedirectToPage("/Tableros/Index");
+            return RedirectToPage("/Inicio");
 
         var rol = identity.FindFirst(AppClaims.ActiveRol)?.Value;
         if (rol != "JefeInstitucion" && rol != "JefeArea")
-            return RedirectToPage("/Tableros/Index");
+            return RedirectToPage("/Inicio");
 
         string? finalAreaId = areaId;
         if (rol == "JefeArea")
@@ -51,6 +51,6 @@ public sealed class CambiarFiltroJerarquiaModel : PageModel
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             return LocalRedirect(returnUrl);
 
-        return RedirectToPage("/Tableros/Index");
+        return RedirectToPage("/Inicio");
     }
 }

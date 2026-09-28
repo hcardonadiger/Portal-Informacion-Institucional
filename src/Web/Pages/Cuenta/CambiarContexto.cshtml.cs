@@ -18,11 +18,11 @@ public sealed class CambiarContextoModel : PageModel
     {
         var identity = User.Identity as ClaimsIdentity;
         if (identity == null)
-            return RedirectToPage("/Tableros/Index");
+            return RedirectToPage("/Inicio");
 
         var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
         if (string.IsNullOrWhiteSpace(asignacionesJson))
-            return RedirectToPage("/Tableros/Index");
+            return RedirectToPage("/Inicio");
 
         List<AsignacionAuthDto>? asignaciones = null;
         try
@@ -32,7 +32,7 @@ public sealed class CambiarContextoModel : PageModel
         catch { }
 
         if (asignaciones == null || indiceSeleccionado < 0 || indiceSeleccionado >= asignaciones.Count)
-            return RedirectToPage("/Tableros/Index");
+            return RedirectToPage("/Inicio");
 
         var active = asignaciones[indiceSeleccionado];
 
@@ -64,6 +64,6 @@ public sealed class CambiarContextoModel : PageModel
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             return LocalRedirect(returnUrl);
 
-        return RedirectToPage("/Tableros/Index");
+        return RedirectToPage("/Inicio");
     }
 }
