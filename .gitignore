@@ -41,3 +41,8 @@ src/Web/App_Data/uploads/
 # Viven junto al archivo real —database/plantillas/ tiene la plantilla de proyectos— y
 # aparecen como sin seguimiento cada vez que alguien la abre para revisarla.
 ~$*
+
+# Los worktrees de Claude viven dentro del repo: 21 copias de la solucion que
+# Visual Studio escanea y que nunca deben entrar a un commit.
+.claude/worktrees/
+.playwright-mcp/

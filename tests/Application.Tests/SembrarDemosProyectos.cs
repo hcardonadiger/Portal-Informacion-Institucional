@@ -114,6 +114,15 @@ public class SembrarDemosProyectos
 
         await LimpiarAsync(ctx);
 
+        // Prioridad dejó de ser un enum: ahora es catalogo administrable, así que el id sale de
+        // las filas activas y no de un cast. Si el catalogo esta vacio no hay demo que sembrar.
+        var prioridades = await ctx.PrioridadesProyecto.AsNoTracking()
+            .Where(x => x.Activo)
+            .OrderByDescending(x => x.EsPredeterminada).ThenBy(x => x.Orden).ThenBy(x => x.Nombre)
+            .Select(x => x.Id)
+            .ToListAsync();
+        Assert.NotEmpty(prioridades);
+
         var i = 0;
         foreach (var unidad in porUnidad)
         {
@@ -145,7 +154,7 @@ public class SembrarDemosProyectos
                     dueño:    dueño,
                     interesados: invitados,
                     estructura:  Plantilla(i),
-                    prioridad:   (PrioridadProyecto)((i % 3) + 1),
+                    prioridadId: prioridades[i % prioridades.Count],
                     accion:      (AccionProyecto)((i % 4) + 1));
             }
         }
@@ -171,7 +180,7 @@ public class SembrarDemosProyectos
         Persona dueño,
         List<(Persona P, RolInteresado Rol, NivelCualitativo Inf)> interesados,
         (string Ent, int DiasPlan, (string Act, int Ini, int Fin, int Pct)[] Acts)[] estructura,
-        PrioridadProyecto prioridad,
+        int prioridadId,
         AccionProyecto accion)
     {
         var p = Proyecto.Crear(codigo, nombre, objetivo);
@@ -180,7 +189,7 @@ public class SembrarDemosProyectos
         p.UnidadId        = dueño.Unidad;
         p.ResponsableId   = dueño.Id;
         p.Responsable     = dueño.Nombre;
-        p.Prioridad       = prioridad;
+        p.PrioridadId     = prioridadId;
         p.Accion          = accion;
         p.FechaInicioPlan = hoy.AddDays(-45);
         p.FechaFinPlan    = hoy.AddDays(72);
