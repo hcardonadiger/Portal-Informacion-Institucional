@@ -1,0 +1,124 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Accesos.ModulosModel
+@inject AccesoModulosService Acceso
+@{
+    ViewData["Title"] = "Alcance de los módulos";
+    var puedeEditar = await Acceso.PuedeClaveAsync("Accesos.Modulos.Editar");
+}
+
+<div class="container" style="max-width:1100px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert alert-error">@err</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Alcance de los módulos</h2>
+            <p>
+                Define <strong>dónde</strong> está disponible cada módulo. Lo que puede hacer cada
+                rol dentro de él se configura en <a asp-page="/Accesos/Permisos">Permisos</a>, y las
+                dos condiciones se aplican juntas.
+            </p>
+        </div>
+    </div>
+
+    <div class="alert alert-warn" style="margin-bottom:20px">
+        Un módulo <strong>sin restricciones lo ve todo el mundo</strong>. Al limitarlo a un área o a
+        una unidad, deja de verlo quien esté fuera — aunque su rol tenga la clave.
+    </div>
+
+    @foreach (var grupo in Model.Grupos)
+    {
+        <div class="stitle" style="margin:22px 0 8px">@grupo.Key</div>
+        <div style="overflow-x:auto">
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th style="width:32%">Módulo</th>
+                        <th>Disponible para</th>
+                        @if (puedeEditar) { <th style="width:36%">Agregar alcance</th> }
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var m in grupo)
+                {
+                    <tr>
+                        <td style="@(m.Info.EsSubmodulo ? "padding-left:28px" : "")">
+                            @m.Info.Etiqueta
+                            <div class="hint">@m.Info.Clave</div>
+                        </td>
+                        <td>
+                            @if (!m.Limitado)
+                            {
+                                <span class="badge badge-light">Todos</span>
+                            }
+                            else
+                            {
+                                @foreach (var c in m.Concesiones)
+                                {
+                                    <span class="badge badge-info" style="margin:0 5px 4px 0;display:inline-block">
+                                        @(Model.Etiqueta(c))
+                                        @if (puedeEditar)
+                                        {
+                                            <form method="post" asp-page-handler="Quitar" style="display:inline">
+                                                <input type="hidden" name="id" value="@c.Id" />
+                                                <button type="submit" title="Quitar este alcance"
+                                                        style="border:0;background:none;padding:0 0 0 5px;cursor:pointer;color:inherit;font-weight:700">&times;</button>
+                                            </form>
+                                        }
+                                    </span>
+                                }
+                            }
+                        </td>
+                        @if (puedeEditar)
+                        {
+                            <td>
+                                <form method="post" asp-page-handler="Agregar" class="fila-alcance">
+                                    <input type="hidden" name="modulo" value="@m.Info.Clave" />
+                                    <select name="areaId" required onchange="filtrarUnidades(this)">
+                                        <option value="">— Área —</option>
+                                        @foreach (var a in Model.Areas)
+                                        {
+                                            <option value="@a.Id">@a.Nombre</option>
+                                        }
+                                    </select>
+                                    <select name="unidadId">
+                                        <option value="">Toda el área</option>
+                                        @foreach (var u in Model.Unidades)
+                                        {
+                                            <option value="@u.Id" data-area="@u.PadreId">@u.Nombre</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btns">Limitar</button>
+                                </form>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<style>
+    .fila-alcance { display:flex; gap:6px; align-items:center; flex-wrap:wrap }
+    .fila-alcance select { min-width:132px; max-width:180px; font-size:13px; padding:5px 6px }
+</style>
+
+<script>
+    // La unidad tiene que pertenecer al área elegida: ofrecer todas invita a guardar una
+    // combinación que el dominio después rechaza.
+    function filtrarUnidades(sel) {
+        var form = sel.closest('form');
+        var unidades = form.querySelector('select[name="unidadId"]');
+        var area = sel.value;
+        unidades.value = '';
+        Array.from(unidades.options).forEach(function (o) {
+            if (!o.value) return;
+            o.hidden = area !== '' && o.dataset.area !== area;
+        });
+    }
+</script>

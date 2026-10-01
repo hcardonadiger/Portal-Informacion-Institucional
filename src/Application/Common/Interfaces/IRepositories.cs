@@ -221,6 +221,7 @@ public interface IApplicationDbContext
     DbSet<Rol>                      Roles            { get; }
     DbSet<Permiso>                  Permisos         { get; }
     DbSet<RolPermiso>               RolPermisos      { get; }
+    DbSet<ModuloAmbito>             ModuloAmbitos    { get; }
     DbSet<PermisoAuditoria>         PermisosAuditoria { get; }
     DbSet<AsignacionUsuario>        AsignacionesUsuario { get; }
     DbSet<TokenAccesoMcp>           TokensAccesoMcp     { get; }

@@ -18,4 +18,8 @@ public static class ModulosPortal
     public const string Tickets     = "Tickets";
     public const string Contactos   = "Contactos";
     public const string Proyectos   = "Proyectos";
+
+    // SIGER se gateaba con la clave de Expedientes, asi que no habia forma de dar uno sin el
+    // otro — justo lo que pide separar Expedientes (una unidad) de SIGER (una unidad y un area).
+    public const string Siger       = "Siger";
 }

@@ -250,7 +250,9 @@ public class PermissionAuthorizationHandlerTests
         var resultado = await EjecutarAsync(handler, "Cualquier.Permiso");
 
         resultado.HasSucceeded.Should().BeTrue();
-        await cache.DidNotReceive().ObtenerAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await cache.DidNotReceive().ObtenerAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -259,7 +261,8 @@ public class PermissionAuthorizationHandlerTests
         var currentUser = Substitute.For<ICurrentUserService>();
         currentUser.Rol.Returns("JefeArea");
         var cache = Substitute.For<IPermissionCache>();
-        cache.ObtenerAsync("JefeArea", Arg.Any<CancellationToken>())
+        cache.ObtenerAsync("JefeArea", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                   Arg.Any<CancellationToken>())
              .Returns(Task.FromResult(new HashSet<string> { "Tickets.Editar" }));
 
         var handler = new PermissionAuthorizationHandler(currentUser, cache);
@@ -275,7 +278,8 @@ public class PermissionAuthorizationHandlerTests
         var currentUser = Substitute.For<ICurrentUserService>();
         currentUser.Rol.Returns("Consultor");
         var cache = Substitute.For<IPermissionCache>();
-        cache.ObtenerAsync("Consultor", Arg.Any<CancellationToken>())
+        cache.ObtenerAsync("Consultor", Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                   Arg.Any<CancellationToken>())
              .Returns(Task.FromResult(new HashSet<string>()));
 
         var handler = new PermissionAuthorizationHandler(currentUser, cache);

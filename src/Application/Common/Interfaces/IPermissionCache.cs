@@ -10,7 +10,17 @@ namespace Diger.TramitesEstado.Application.Common.Interfaces;
 /// </summary>
 public interface IPermissionCache
 {
-    Task<HashSet<string>> ObtenerAsync(string rolId, CancellationToken ct = default);
+    /// <summary>
+    /// Claves efectivas del rol dentro de un ámbito: las de la matriz rol×permiso, menos las de
+    /// los módulos que <c>ModuloAmbitos</c> haya limitado a otras áreas o unidades.
+    ///
+    /// <para>El ámbito es parte de la pregunta y no un filtro posterior a propósito: el navbar y
+    /// <c>PermissionAuthorizationHandler</c> llaman los dos acá, así que componer en un solo
+    /// lugar es lo que impide que el menú y el bloqueo real se contradigan.</para>
+    /// </summary>
+    Task<HashSet<string>> ObtenerAsync(
+        string rolId, string? institucionId, string? areaId, string? unidadId,
+        CancellationToken ct = default);
 
     /// <summary>Invalida la entrada de un rol — llamar justo después de guardar cambios
     /// en la matriz de permisos de ese rol.</summary>
