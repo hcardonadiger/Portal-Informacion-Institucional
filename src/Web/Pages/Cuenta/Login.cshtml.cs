@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Diger.TramitesEstado.Infrastructure.Security;
+using Diger.TramitesEstado.Web.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
@@ -68,33 +69,9 @@ public sealed class LoginModel(ISender sender, IConfiguration config) : PageMode
     }
     private async Task<IActionResult> SignInUsuarioAsync(UsuarioAuthDto usuario, string? returnUrl)
     {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-            new(AppClaims.UserId,          usuario.Id.ToString()),
-            new(ClaimTypes.Name,           usuario.Nombre),
-            new(ClaimTypes.Email,          usuario.Correo)
-        };
-        
-        if (usuario.Asignaciones.Count > 0)
-        {
-            var asignacionesJson = JsonSerializer.Serialize(usuario.Asignaciones);
-            claims.Add(new Claim(AppClaims.AsignacionesJson, asignacionesJson));
-
-            // Set the first assignment as the active context by default
-            var active = usuario.Asignaciones[0];
-            claims.Add(new Claim(ClaimTypes.Role,           active.Rol));
-            claims.Add(new Claim(AppClaims.ActiveRol,       active.Rol));
-            claims.Add(new Claim(AppClaims.ActiveInstitucion, active.InstitucionId));
-            if (active.AreaId != null) claims.Add(new Claim(AppClaims.ActiveArea, active.AreaId));
-            if (active.UnidadId != null) claims.Add(new Claim(AppClaims.ActiveUnidad, active.UnidadId));
-        }
-        // Sin asignaciones no se emite claim de rol: la cuenta entra sin capacidades y sin
-        // alcance, y CurrentUserService la trata como no resuelta (fail-closed). Antes se
-        // emitía un rol "Empleado" inventado, que le daba acceso real a quien nadie configuró.
-        // Lo único que queda accesible es el autoservicio: perfil, contraseña y ayuda.
-
-        var identity  = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        // El armado de los claims vive en SesionClaimsFactory porque lo comparten este
+        // login, el de certificado y el servidor MCP — ver la nota de esa clase.
+        var identity  = SesionClaimsFactory.Crear(usuario, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
         await HttpContext.SignInAsync(

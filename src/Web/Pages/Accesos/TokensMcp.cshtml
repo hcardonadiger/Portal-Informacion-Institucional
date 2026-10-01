@@ -1,0 +1,81 @@
+@page
+@using Diger.TramitesEstado.Web.Pages.Accesos
+@model TokensMcpAdminModel
+@inject Diger.TramitesEstado.Web.Common.AccesoModulosService Acceso
+@{
+    ViewData["Title"] = "Tokens de acceso MCP";
+    var puedeRevocar = await Acceso.PuedeClaveAsync("TokensMcp.Admin.Eliminar");
+}
+
+<div class="container" style="max-width:1100px">
+    <div class="hist-header">
+        <div>
+            <h2>Tokens de acceso MCP</h2>
+            <p>
+                Credenciales que permiten a un asistente de IA actuar en el portal con la identidad
+                de su dueño. Cada una hereda la institución, el alcance y los permisos de esa persona.
+            </p>
+        </div>
+    </div>
+    <p class="hint">
+        <a asp-page="./Permisos">← Administrar permisos</a>
+        &nbsp;·&nbsp;
+        <a asp-page="./Roles">Administrar roles</a>
+        &nbsp;·&nbsp;
+        <a asp-page="./Auditoria">Bitácora de permisos</a>
+    </p>
+
+    @if (!string.IsNullOrEmpty(Model.Error)) { <div class="alert alert-error">@Model.Error</div> }
+    @if (!string.IsNullOrEmpty(Model.Aviso)) { <div class="alert alert-ok">@Model.Aviso</div> }
+
+    @if (Model.Tokens.Count == 0)
+    {
+        <p class="hint">No hay ningún token emitido en el portal.</p>
+    }
+    else
+    {
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Nombre del token</th>
+                    <th>Prefijo</th>
+                    <th>Contexto</th>
+                    <th>Creado</th>
+                    <th>Último uso</th>
+                    <th>Vence</th>
+                    <th>Estado</th>
+                    @if (puedeRevocar) { <th></th> }
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var fila in Model.Tokens)
+            {
+                var t = fila.Token;
+                <tr>
+                    <td>@fila.UsuarioNombre<br /><span class="text-muted">@fila.UsuarioCorreo</span></td>
+                    <td>@t.Nombre</td>
+                    <td><code>@t.Prefijo…</code></td>
+                    <td>@t.InstitucionId@(t.AreaId is null ? "" : " · " + t.AreaId)@(t.UnidadId is null ? "" : " · " + t.UnidadId) — @t.Rol</td>
+                    <td>@t.CreadoUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td>@(t.UltimoUsoUtc is null ? "Nunca" : t.UltimoUsoUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))</td>
+                    <td>@(t.ExpiraUtc is null ? "Sin vencimiento" : t.ExpiraUtc.Value.ToLocalTime().ToString("dd/MM/yyyy"))</td>
+                    <td>@t.Estado</td>
+                    @if (puedeRevocar)
+                    {
+                        <td>
+                            @if (t.EstaVigente)
+                            {
+                                <form method="post" asp-page-handler="Revocar" asp-route-id="@t.Id"
+                                      onsubmit="return confirm('¿Revocar este token? Lo que lo esté usando dejará de funcionar.');">
+                                    <button type="submit" class="btnp btnp-danger">Revocar</button>
+                                </form>
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
