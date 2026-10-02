@@ -197,9 +197,16 @@ public sealed class FichaProyectoTests : IAsyncLifetime
         html.Should().Contain("pv.enlazar(form", "las reglas se registran en el formulario de la ficha");
         html.Should().Contain("prevalidacion.js", "el motor lo sirve el layout");
 
-        // Las tres reglas que cubren lo que el comando y el dominio rechazan al guardar.
+        // Las reglas que cubren lo que el comando y el dominio rechazan al guardar.
         html.Should().Contain("El cierre planificado (");
         html.Should().Contain("necesita un nombre.");
         html.Should().Contain("la fecha de fin no puede ser anterior a la de inicio.");
+
+        // El círculo de dependencias es el otro rechazo que cuesta el árbol entero, y el diálogo
+        // de «+ depende de…» no lo impide: solo descarta la propia actividad y las ya declaradas.
+        html.Should().Contain("Las dependencias forman un círculo",
+            "sin esta regla, cerrar un círculo entre dos filas borra la sesión de edición");
+        html.Should().Contain("depende de una actividad que ya no está en la ",
+            "la dependencia huérfana vuelve por el mismo camino");
     }
 }

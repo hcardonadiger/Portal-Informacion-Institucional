@@ -2995,8 +2995,101 @@
                     });
                 });
                 return problemas;
-            }
+            },
+
+            // Dependencias: que ninguna apunte fuera de la estructura y que no formen un círculo.
+            // Es el espejo de DependenciasProyecto.Validar, y hacía falta de verdad: el diálogo de
+            // «+ depende de…» solo descarta la propia actividad y las ya declaradas, así que cerrar
+            // un círculo entre dos filas es cuestión de dos clics. Guardarlo costaba el árbol
+            // entero —comprobado en pantalla—, porque el rechazo vuelve por redirect.
+            reglaDependencias
         ]);
+
+        /* El grafo tal como está en pantalla. Solo las filas guardadas participan: para cerrar un
+           círculo hay que ser predecesora de alguien, y solo se puede depender de una actividad que
+           ya tiene Id —el mismo motivo por el que el dominio deja fuera a las filas nuevas. */
+        function grafo() {
+            var nodos = {};
+            [].forEach.call(form.querySelectorAll('tr.act-row[data-act]'), function (fila) {
+                var id = fila.getAttribute('data-act');
+                if (!id || id === '0') return;
+                nodos[id] = {
+                    id: id,
+                    fila: fila,
+                    campo: fila.querySelector('input[name$=".Nombre"]'),
+                    nombre: comoSeLlama(fila, 'una actividad'),
+                    pre: [].map.call(fila.querySelectorAll('input[name$=".Predecesoras"]'),
+                                     function (p) { return p.value; })
+                };
+            });
+            return nodos;
+        }
+
+        function reglaDependencias() {
+            var nodos = grafo();
+            var problemas = [];
+
+            // Primero las huérfanas: una dependencia que apunta a una fila que ya no está. Si se
+            // dejara para el recorrido, el ciclo nunca se detectaría y el mensaje sería el otro.
+            Object.keys(nodos).forEach(function (id) {
+                nodos[id].pre.forEach(function (idPre) {
+                    if (nodos[idPre]) return;
+                    problemas.push({
+                        campo: nodos[id].campo,
+                        mensaje: nodos[id].nombre + ' depende de una actividad que ya no está en la ' +
+                                 'estructura. Quite esa dependencia o recargue la página.'
+                    });
+                });
+            });
+            if (problemas.length) return problemas;
+
+            // DFS de tres colores, igual que DependenciasProyecto.DetectarCiclo.
+            var EN_PILA = 1, TERMINADA = 2;
+            var estado = {}, camino = [];
+
+            function visitar(nodo) {
+                estado[nodo.id] = EN_PILA;
+                camino.push(nodo);
+
+                for (var i = 0; i < nodo.pre.length; i++) {
+                    var previa = nodos[nodo.pre[i]];
+                    if (!previa) continue;
+
+                    var color = estado[previa.id] || 0;
+                    if (color === EN_PILA) { camino.push(previa); return true; }
+                    if (color !== TERMINADA && visitar(previa)) return true;
+                }
+
+                camino.pop();
+                estado[nodo.id] = TERMINADA;
+                return false;
+            }
+
+            var ids = Object.keys(nodos);
+            for (var k = 0; k < ids.length; k++) {
+                var nodo = nodos[ids[k]];
+                if ((estado[nodo.id] || 0) !== 0) continue;
+                if (!visitar(nodo)) continue;
+
+                // El camino trae la cola que llega al círculo; se recorta desde donde reaparece el
+                // nodo que lo cerró, para que el aviso nombre solo a los implicados.
+                var cierre = camino[camino.length - 1];
+                var desde  = 0;
+                for (var m = 0; m < camino.length; m++) {
+                    if (camino[m].id === cierre.id) { desde = m; break; }
+                }
+                var nombres = camino.slice(desde).map(function (n) { return n.nombre; });
+
+                return {
+                    campo: cierre.campo,
+                    mensaje: 'Las dependencias forman un círculo y ninguna de esas actividades ' +
+                             'podría arrancar: ' + nombres.join(' espera a ') +
+                             '. Quite una de esas dependencias.'
+                };
+            }
+
+            return null;
+        }
     })();
 </script>
 }
