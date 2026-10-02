@@ -1,4 +1,4 @@
-﻿/* ═══════════════════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════════════════
    Diagnóstico de una base desplegada — qué le falta para correr el código de hoy
    ───────────────────────────────────────────────────────────────────────────────────────
    NO MODIFICA NADA. Solo lee catálogos del sistema y cuenta. Se puede correr en producción
@@ -45,20 +45,21 @@ WITH Modelo(Tabla) AS (SELECT * FROM (VALUES
         (N'FlujoNodos'), (N'FundamentosLegales'), (N'InfraChecklist'),
         (N'InfraCondiciones'), (N'InfraPerfiles'), (N'Instituciones'),
         (N'LevantamientoDocumentos'), (N'LevantamientoEquipo'), (N'LevantamientoTramites'),
-        (N'Levantamientos'), (N'LugaresAtencionSiger'), (N'Movimientos'),
-        (N'NotasSeguimientoExpediente'), (N'Notificaciones'), (N'PasosSiger'),
-        (N'Permisos'), (N'PermisosAuditoria'), (N'PlanTrabajo'),
-        (N'PlanTrabajoMetas'), (N'PlantillaFundamentosLegales'), (N'PlantillaRequisitos'),
-        (N'PlantillasTramite'), (N'Prefijos'), (N'PrioridadesProyecto'),
-        (N'PrioridadesTicket'), (N'ProyectoActividades'), (N'ProyectoAvances'),
-        (N'ProyectoDependenciasActividad'), (N'ProyectoDocumentoDescargas'), (N'ProyectoDocumentoVersiones'),
-        (N'ProyectoDocumentos'), (N'ProyectoEntregables'), (N'ProyectoExpedientes'),
-        (N'ProyectoInteresados'), (N'ProyectoReuniones'), (N'ProyectoRiesgos'),
-        (N'ProyectoTickets'), (N'Proyectos'), (N'Recursos'),
-        (N'RequisitosSiger'), (N'ReunionInstituciones'), (N'Reuniones'),
-        (N'RolModuloAccesos'), (N'RolPermisos'), (N'Roles'),
-        (N'TareasDigitalizacionSiger'), (N'TemasTicket'), (N'TicketAdjuntos'),
-        (N'TicketComentarios'), (N'TicketTramites'), (N'Tickets'),
+        (N'Levantamientos'), (N'LugaresAtencionSiger'), (N'ModuloAmbitos'),
+        (N'Movimientos'), (N'NotasSeguimientoExpediente'), (N'Notificaciones'),
+        (N'PasosSiger'), (N'Permisos'), (N'PermisosAuditoria'),
+        (N'PlanTrabajo'), (N'PlanTrabajoMetas'), (N'PlantillaFundamentosLegales'),
+        (N'PlantillaRequisitos'), (N'PlantillasTramite'), (N'Prefijos'),
+        (N'PrioridadesProyecto'), (N'PrioridadesTicket'), (N'ProyectoActividades'),
+        (N'ProyectoAvances'), (N'ProyectoDependenciasActividad'), (N'ProyectoDocumentoDescargas'),
+        (N'ProyectoDocumentoVersiones'), (N'ProyectoDocumentos'), (N'ProyectoEntregables'),
+        (N'ProyectoExpedientes'), (N'ProyectoInteresados'), (N'ProyectoReuniones'),
+        (N'ProyectoRiesgos'), (N'ProyectoTickets'), (N'Proyectos'),
+        (N'Recursos'), (N'RequisitosSiger'), (N'ReunionAdjuntos'),
+        (N'ReunionInstituciones'), (N'Reuniones'), (N'RolModuloAccesos'),
+        (N'RolPermisos'), (N'Roles'), (N'TareasDigitalizacionSiger'),
+        (N'TemasTicket'), (N'TicketAdjuntos'), (N'TicketComentarios'),
+        (N'TicketTramites'), (N'Tickets'), (N'TokensAccesoMcp'),
         (N'TramiteRequisitos'), (N'TramitesDefinicion'), (N'TramitesSiger'),
         (N'Unidades'), (N'UsuarioTemas'), (N'Usuarios')
     ) v(Tabla))
@@ -82,20 +83,21 @@ WITH Modelo(Tabla) AS (SELECT * FROM (VALUES
         (N'FlujoNodos'), (N'FundamentosLegales'), (N'InfraChecklist'),
         (N'InfraCondiciones'), (N'InfraPerfiles'), (N'Instituciones'),
         (N'LevantamientoDocumentos'), (N'LevantamientoEquipo'), (N'LevantamientoTramites'),
-        (N'Levantamientos'), (N'LugaresAtencionSiger'), (N'Movimientos'),
-        (N'NotasSeguimientoExpediente'), (N'Notificaciones'), (N'PasosSiger'),
-        (N'Permisos'), (N'PermisosAuditoria'), (N'PlanTrabajo'),
-        (N'PlanTrabajoMetas'), (N'PlantillaFundamentosLegales'), (N'PlantillaRequisitos'),
-        (N'PlantillasTramite'), (N'Prefijos'), (N'PrioridadesProyecto'),
-        (N'PrioridadesTicket'), (N'ProyectoActividades'), (N'ProyectoAvances'),
-        (N'ProyectoDependenciasActividad'), (N'ProyectoDocumentoDescargas'), (N'ProyectoDocumentoVersiones'),
-        (N'ProyectoDocumentos'), (N'ProyectoEntregables'), (N'ProyectoExpedientes'),
-        (N'ProyectoInteresados'), (N'ProyectoReuniones'), (N'ProyectoRiesgos'),
-        (N'ProyectoTickets'), (N'Proyectos'), (N'Recursos'),
-        (N'RequisitosSiger'), (N'ReunionInstituciones'), (N'Reuniones'),
-        (N'RolModuloAccesos'), (N'RolPermisos'), (N'Roles'),
-        (N'TareasDigitalizacionSiger'), (N'TemasTicket'), (N'TicketAdjuntos'),
-        (N'TicketComentarios'), (N'TicketTramites'), (N'Tickets'),
+        (N'Levantamientos'), (N'LugaresAtencionSiger'), (N'ModuloAmbitos'),
+        (N'Movimientos'), (N'NotasSeguimientoExpediente'), (N'Notificaciones'),
+        (N'PasosSiger'), (N'Permisos'), (N'PermisosAuditoria'),
+        (N'PlanTrabajo'), (N'PlanTrabajoMetas'), (N'PlantillaFundamentosLegales'),
+        (N'PlantillaRequisitos'), (N'PlantillasTramite'), (N'Prefijos'),
+        (N'PrioridadesProyecto'), (N'PrioridadesTicket'), (N'ProyectoActividades'),
+        (N'ProyectoAvances'), (N'ProyectoDependenciasActividad'), (N'ProyectoDocumentoDescargas'),
+        (N'ProyectoDocumentoVersiones'), (N'ProyectoDocumentos'), (N'ProyectoEntregables'),
+        (N'ProyectoExpedientes'), (N'ProyectoInteresados'), (N'ProyectoReuniones'),
+        (N'ProyectoRiesgos'), (N'ProyectoTickets'), (N'Proyectos'),
+        (N'Recursos'), (N'RequisitosSiger'), (N'ReunionAdjuntos'),
+        (N'ReunionInstituciones'), (N'Reuniones'), (N'RolModuloAccesos'),
+        (N'RolPermisos'), (N'Roles'), (N'TareasDigitalizacionSiger'),
+        (N'TemasTicket'), (N'TicketAdjuntos'), (N'TicketComentarios'),
+        (N'TicketTramites'), (N'Tickets'), (N'TokensAccesoMcp'),
         (N'TramiteRequisitos'), (N'TramitesDefinicion'), (N'TramitesSiger'),
         (N'Unidades'), (N'UsuarioTemas'), (N'Usuarios')
     ) v(Tabla))
@@ -106,8 +108,8 @@ FROM    Modelo;
 PRINT '';
 PRINT '════════════════ 3. Columnas que hay que vigilar aparte ════════════════';
 PRINT 'Las tres primeras no las crea ninguna migración: sus archivos quedaron sin el';
-PRINT 'atributo [Migration], así que EF no los ve. El modelo sí las usa. La cuarta es la';
-PRINT 'migración más nueva del código.';
+PRINT 'atributo [Migration], así que EF no los ve. El modelo sí las usa. La cuarta viene de';
+PRINT 'la migración 20260923223127; las tablas nuevas se vigilan en las secciones 1 y 2.';
 
 SELECT  v.Tabla, v.Columna, v.Origen,
         CASE WHEN OBJECT_ID(QUOTENAME(v.Tabla), 'U') IS NULL THEN 'NO EXISTE LA TABLA'
@@ -226,7 +228,10 @@ BEGIN
             (N'20260918162251_CatalogoDePrioridadesDeTicket'),
             (N'20260918191759_CatalogoDeCategoriasDeProyecto'),
             (N'20260918193137_LasQSonCategoriasNoPrioridades'),
-            (N'20260923223127_AddReunionEncuestaActiva')
+            (N'20260908161947_AgregarModuloAmbito'),
+            (N'20260923223127_AddReunionEncuestaActiva'),
+            (N'20260928160056_AddTokenAccesoMcp'),
+            (N'20261002162236_AddReunionAdjuntos')
         ) v(Id))
     SELECT  c.Id AS MigracionFaltante
     FROM    Codigo c
@@ -310,7 +315,10 @@ BEGIN
             (N'20260918162251_CatalogoDePrioridadesDeTicket'),
             (N'20260918191759_CatalogoDeCategoriasDeProyecto'),
             (N'20260918193137_LasQSonCategoriasNoPrioridades'),
-            (N'20260923223127_AddReunionEncuestaActiva')
+            (N'20260908161947_AgregarModuloAmbito'),
+            (N'20260923223127_AddReunionEncuestaActiva'),
+            (N'20260928160056_AddTokenAccesoMcp'),
+            (N'20261002162236_AddReunionAdjuntos')
         ) v(Id))
     SELECT  h.MigrationId AS SoloEnLaBase
     FROM    __EFMigrationsHistory h
@@ -325,6 +333,10 @@ DECLARE @tablasFaltan      int = 0;
 DECLARE @migracionesFaltan int = 0;
 DECLARE @faltan0918        int = 0;
 DECLARE @columnasFaltan    int = 0;
+/* Las tres tablas que el script del 2026-10-02 sabe crear. Se cuentan aparte porque sí
+   tienen remedio con un script: sin separarlas, una base que simplemente no ha corrido ese
+   script dispararía el «PARE» de abajo, que es para atrasos que ningún script arregla. */
+DECLARE @tablasFaltan1002  int = 0;
 DECLARE @hayHistorial      bit = CASE WHEN OBJECT_ID(N'[__EFMigrationsHistory]', 'U') IS NULL
                                       THEN 0 ELSE 1 END;
 
@@ -340,25 +352,29 @@ DECLARE @hayHistorial      bit = CASE WHEN OBJECT_ID(N'[__EFMigrationsHistory]',
         (N'FlujoNodos'), (N'FundamentosLegales'), (N'InfraChecklist'),
         (N'InfraCondiciones'), (N'InfraPerfiles'), (N'Instituciones'),
         (N'LevantamientoDocumentos'), (N'LevantamientoEquipo'), (N'LevantamientoTramites'),
-        (N'Levantamientos'), (N'LugaresAtencionSiger'), (N'Movimientos'),
-        (N'NotasSeguimientoExpediente'), (N'Notificaciones'), (N'PasosSiger'),
-        (N'Permisos'), (N'PermisosAuditoria'), (N'PlanTrabajo'),
-        (N'PlanTrabajoMetas'), (N'PlantillaFundamentosLegales'), (N'PlantillaRequisitos'),
-        (N'PlantillasTramite'), (N'Prefijos'), (N'PrioridadesProyecto'),
-        (N'PrioridadesTicket'), (N'ProyectoActividades'), (N'ProyectoAvances'),
-        (N'ProyectoDependenciasActividad'), (N'ProyectoDocumentoDescargas'), (N'ProyectoDocumentoVersiones'),
-        (N'ProyectoDocumentos'), (N'ProyectoEntregables'), (N'ProyectoExpedientes'),
-        (N'ProyectoInteresados'), (N'ProyectoReuniones'), (N'ProyectoRiesgos'),
-        (N'ProyectoTickets'), (N'Proyectos'), (N'Recursos'),
-        (N'RequisitosSiger'), (N'ReunionInstituciones'), (N'Reuniones'),
-        (N'RolModuloAccesos'), (N'RolPermisos'), (N'Roles'),
-        (N'TareasDigitalizacionSiger'), (N'TemasTicket'), (N'TicketAdjuntos'),
-        (N'TicketComentarios'), (N'TicketTramites'), (N'Tickets'),
+        (N'Levantamientos'), (N'LugaresAtencionSiger'), (N'ModuloAmbitos'),
+        (N'Movimientos'), (N'NotasSeguimientoExpediente'), (N'Notificaciones'),
+        (N'PasosSiger'), (N'Permisos'), (N'PermisosAuditoria'),
+        (N'PlanTrabajo'), (N'PlanTrabajoMetas'), (N'PlantillaFundamentosLegales'),
+        (N'PlantillaRequisitos'), (N'PlantillasTramite'), (N'Prefijos'),
+        (N'PrioridadesProyecto'), (N'PrioridadesTicket'), (N'ProyectoActividades'),
+        (N'ProyectoAvances'), (N'ProyectoDependenciasActividad'), (N'ProyectoDocumentoDescargas'),
+        (N'ProyectoDocumentoVersiones'), (N'ProyectoDocumentos'), (N'ProyectoEntregables'),
+        (N'ProyectoExpedientes'), (N'ProyectoInteresados'), (N'ProyectoReuniones'),
+        (N'ProyectoRiesgos'), (N'ProyectoTickets'), (N'Proyectos'),
+        (N'Recursos'), (N'RequisitosSiger'), (N'ReunionAdjuntos'),
+        (N'ReunionInstituciones'), (N'Reuniones'), (N'RolModuloAccesos'),
+        (N'RolPermisos'), (N'Roles'), (N'TareasDigitalizacionSiger'),
+        (N'TemasTicket'), (N'TicketAdjuntos'), (N'TicketComentarios'),
+        (N'TicketTramites'), (N'Tickets'), (N'TokensAccesoMcp'),
         (N'TramiteRequisitos'), (N'TramitesDefinicion'), (N'TramitesSiger'),
         (N'Unidades'), (N'UsuarioTemas'), (N'Usuarios')
     ) v(Tabla))
 SELECT @tablasFaltan = SUM(CASE WHEN OBJECT_ID(QUOTENAME(Tabla), 'U') IS NULL THEN 1 ELSE 0 END)
 FROM   Modelo;
+
+SELECT @tablasFaltan1002 = SUM(CASE WHEN OBJECT_ID(QUOTENAME(Tabla), 'U') IS NULL THEN 1 ELSE 0 END)
+FROM   (VALUES (N'ModuloAmbitos'), (N'TokensAccesoMcp'), (N'ReunionAdjuntos')) v(Tabla);
 
 SELECT @columnasFaltan = SUM(CASE WHEN OBJECT_ID(QUOTENAME(v.Tabla), 'U') IS NOT NULL
                                    AND COL_LENGTH(v.Tabla, v.Columna) IS NULL THEN 1 ELSE 0 END)
@@ -439,7 +455,10 @@ BEGIN
             (N'20260918162251_CatalogoDePrioridadesDeTicket'),
             (N'20260918191759_CatalogoDeCategoriasDeProyecto'),
             (N'20260918193137_LasQSonCategoriasNoPrioridades'),
-            (N'20260923223127_AddReunionEncuestaActiva')
+            (N'20260908161947_AgregarModuloAmbito'),
+            (N'20260923223127_AddReunionEncuestaActiva'),
+            (N'20260928160056_AddTokenAccesoMcp'),
+            (N'20261002162236_AddReunionAdjuntos')
         ) v(Id))
     SELECT @migracionesFaltan = COUNT(*),
            @faltan0918 = SUM(CASE WHEN c.Id LIKE N'20260918%' THEN 1 ELSE 0 END)
@@ -458,10 +477,11 @@ FROM (
     WHERE  @hayHistorial = 0
     UNION ALL
     SELECT 2,
-           N'PARE: faltan ' + CAST(@tablasFaltan AS nvarchar(10))
-         + N' tablas completas (ver sección 1). Esta base está muy atrasada; los scripts de '
-         + N'«poner al día» agregan columnas, no módulos enteros. Avise antes de seguir.'
-    WHERE  ISNULL(@tablasFaltan, 0) > 0
+           N'PARE: faltan ' + CAST(ISNULL(@tablasFaltan, 0) - ISNULL(@tablasFaltan1002, 0) AS nvarchar(10))
+         + N' tablas completas que ningún script de esta carpeta crea (ver sección 1). Esta base '
+         + N'está muy atrasada; los scripts de «poner al día» agregan columnas, no módulos '
+         + N'enteros. Avise antes de seguir.'
+    WHERE  (ISNULL(@tablasFaltan, 0) - ISNULL(@tablasFaltan1002, 0)) > 0
     UNION ALL
     SELECT 3,
            N'Corra primero database\2026-09-18_poner_al_dia.sql (faltan '
@@ -477,6 +497,20 @@ FROM (
                                      WHERE h.MigrationId = N'20260923223127_AddReunionEncuestaActiva'))
     UNION ALL
     SELECT 5,
+           N'Corra database\2026-10-02_poner_al_dia.sql (faltan tablas o migraciones de MCP, '
+         + N'ámbito de módulos o adjuntos de reunión). Después de correrlo queda UNA cosa a '
+         + N'mano: otorgar las claves TokensMcp.* en /Accesos/Permisos al rol que deba emitir '
+         + N'tokens MCP.'
+    WHERE  ISNULL(@tablasFaltan1002, 0) > 0
+        OR EXISTS (SELECT 1 FROM (VALUES
+                     (N'20260908161947_AgregarModuloAmbito'),
+                     (N'20260928160056_AddTokenAccesoMcp'),
+                     (N'20261002162236_AddReunionAdjuntos')) m(Id)
+                   WHERE @hayHistorial = 1
+                     AND NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory h
+                                     WHERE h.MigrationId = m.Id))
+    UNION ALL
+    SELECT 6,
            N'Nada que hacer: esta base ya corre el código de hoy.'
     WHERE  @hayHistorial = 1
       AND  ISNULL(@tablasFaltan, 0) = 0
