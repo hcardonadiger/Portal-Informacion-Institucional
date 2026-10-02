@@ -262,7 +262,9 @@
     @* La estructura va primero y la ficha después, al revés que antes: a un proyecto abierto se
        entra a mirar y mover el desglose, no a corregirle el nombre. Las dos siguen en el mismo
        formulario porque las guarda el mismo comando. *@
-    <form method="post" asp-page-handler="Guardar" asp-route-id="@p.Id">
+    @* El id lo usa la prevalidación: es el formulario cuyas reglas de fecha y de nombre se revisan
+       antes de postear, para no perder el árbol entero por una ventana invertida. *@
+    <form method="post" asp-page-handler="Guardar" asp-route-id="@p.Id" id="form-ficha">
         @* Cada pestaña es una <section> que se oculta con [hidden], NO se saca del DOM: la
            estructura y los datos del proyecto los postea el mismo formulario, y un panel removido
            dejaría de mandar sus campos. Es el mismo criterio con que se pliegan los grupos de la
@@ -2906,5 +2908,188 @@
             ? "Prefijo común; vacío, cada documento toma el nombre de su archivo"
             : "Convenio marco DIGER–SRECI";
     }
+
+    /* ── Revisión previa al guardado ──────────────────────────────────────────
+       Guardar la ficha es un solo POST con el árbol entero. Hasta ahora, si el
+       comando rechazaba cualquier cosa —una ventana que termina antes de
+       empezar, una actividad sin nombre— el handler dejaba el mensaje en
+       TempData y redirigía: la página se volvía a pintar desde la base y el
+       trabajo de toda la sesión de edición se perdía, sin que el mensaje dijera
+       siquiera de qué fila hablaba.
+
+       Estas reglas son las mismas que el comando y el dominio aplican del otro
+       lado (ActualizarProyectoCommand, ActividadProyecto.Definir,
+       EntregableProyecto.Definir), escritas acá para que el envío no salga
+       cuando ya se sabe que va a ser rechazado. El servidor sigue validando: es
+       la autoridad, y acá no se puede comprobar nada que dependa de la base. */
+    (function () {
+        var form = document.getElementById('form-ficha');
+        if (!form || !window._dgPrevalidar) return;
+
+        var pv = window._dgPrevalidar;
+
+        function dmy(iso) {
+            var p = (iso || '').split('-');
+            return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+        }
+
+        /* Cómo nombrar la fila en el aviso. Con nombre se la cita como lo hace el dominio —entre
+           comillas— y si todavía no lo tiene, por su posición: decir «actividad sin nombre» no
+           ayudaría a encontrarla entre veinte. */
+        function comoSeLlama(fila, deRespaldo) {
+            var inp = fila.querySelector('input[name$=".Nombre"]');
+            var nom = inp && inp.value ? inp.value.trim() : '';
+            return nom ? '«' + nom + '»' : deRespaldo;
+        }
+
+        function fecha(fila, sufijo) {
+            return fila.querySelector('input[name$=".' + sufijo + '"]');
+        }
+
+        pv.enlazar(form, [
+            // Ventana del proyecto. El campo marcado es el cierre: es el que se corrige.
+            function () {
+                var ini = document.getElementById('f-ini');
+                var fin = document.getElementById('f-fin');
+                if (!ini || !fin || !ini.value || !fin.value || fin.value >= ini.value) return null;
+                return {
+                    campo: fin,
+                    mensaje: 'El cierre planificado (' + dmy(fin.value) + ') no puede ser anterior ' +
+                             'al inicio planificado (' + dmy(ini.value) + ').'
+                };
+            },
+
+            // Entregables: el nombre, que es lo único que el dominio les exige. La entrega
+            // comprometida puede quedar fuera de la ventana del proyecto sin que nadie la rechace,
+            // así que acá tampoco se inventa una regla que el servidor no tiene.
+            function () {
+                var problemas = [];
+                [].forEach.call(form.querySelectorAll('tbody.ent-grupo'), function (grupo, i) {
+                    var fila = grupo.querySelector('tr.ent-row');
+                    if (!fila) return;
+                    var p = pv.exigido(fila.querySelector('input[name$=".Nombre"]'),
+                                       'Entregable ' + (i + 1) + ': necesita un nombre.');
+                    if (p) problemas.push(p);
+                });
+                return problemas;
+            },
+
+            // Actividades: nombre obligatorio y ventana coherente. Se recorre por grupo para poder
+            // decir a qué entregable pertenece la fila cuando todavía no tiene nombre.
+            function () {
+                var problemas = [];
+                [].forEach.call(form.querySelectorAll('tbody.ent-grupo'), function (grupo, i) {
+                    [].forEach.call(grupo.querySelectorAll('tr.act-row'), function (fila, j) {
+                        var ubicacion = 'Actividad ' + (j + 1) + ' del entregable ' + (i + 1);
+                        var quien     = comoSeLlama(fila, ubicacion);
+
+                        var sinNombre = pv.exigido(fila.querySelector('input[name$=".Nombre"]'),
+                                                   ubicacion + ': necesita un nombre.');
+                        if (sinNombre) problemas.push(sinNombre);
+
+                        var mala = pv.rangoFechas(
+                            fecha(fila, 'FechaInicioPlan'),
+                            fecha(fila, 'FechaFinPlan'),
+                            quien + ': la fecha de fin no puede ser anterior a la de inicio.');
+                        if (mala) problemas.push(mala);
+                    });
+                });
+                return problemas;
+            },
+
+            // Dependencias: que ninguna apunte fuera de la estructura y que no formen un círculo.
+            // Es el espejo de DependenciasProyecto.Validar, y hacía falta de verdad: el diálogo de
+            // «+ depende de…» solo descarta la propia actividad y las ya declaradas, así que cerrar
+            // un círculo entre dos filas es cuestión de dos clics. Guardarlo costaba el árbol
+            // entero —comprobado en pantalla—, porque el rechazo vuelve por redirect.
+            reglaDependencias
+        ]);
+
+        /* El grafo tal como está en pantalla. Solo las filas guardadas participan: para cerrar un
+           círculo hay que ser predecesora de alguien, y solo se puede depender de una actividad que
+           ya tiene Id —el mismo motivo por el que el dominio deja fuera a las filas nuevas. */
+        function grafo() {
+            var nodos = {};
+            [].forEach.call(form.querySelectorAll('tr.act-row[data-act]'), function (fila) {
+                var id = fila.getAttribute('data-act');
+                if (!id || id === '0') return;
+                nodos[id] = {
+                    id: id,
+                    fila: fila,
+                    campo: fila.querySelector('input[name$=".Nombre"]'),
+                    nombre: comoSeLlama(fila, 'una actividad'),
+                    pre: [].map.call(fila.querySelectorAll('input[name$=".Predecesoras"]'),
+                                     function (p) { return p.value; })
+                };
+            });
+            return nodos;
+        }
+
+        function reglaDependencias() {
+            var nodos = grafo();
+            var problemas = [];
+
+            // Primero las huérfanas: una dependencia que apunta a una fila que ya no está. Si se
+            // dejara para el recorrido, el ciclo nunca se detectaría y el mensaje sería el otro.
+            Object.keys(nodos).forEach(function (id) {
+                nodos[id].pre.forEach(function (idPre) {
+                    if (nodos[idPre]) return;
+                    problemas.push({
+                        campo: nodos[id].campo,
+                        mensaje: nodos[id].nombre + ' depende de una actividad que ya no está en la ' +
+                                 'estructura. Quite esa dependencia o recargue la página.'
+                    });
+                });
+            });
+            if (problemas.length) return problemas;
+
+            // DFS de tres colores, igual que DependenciasProyecto.DetectarCiclo.
+            var EN_PILA = 1, TERMINADA = 2;
+            var estado = {}, camino = [];
+
+            function visitar(nodo) {
+                estado[nodo.id] = EN_PILA;
+                camino.push(nodo);
+
+                for (var i = 0; i < nodo.pre.length; i++) {
+                    var previa = nodos[nodo.pre[i]];
+                    if (!previa) continue;
+
+                    var color = estado[previa.id] || 0;
+                    if (color === EN_PILA) { camino.push(previa); return true; }
+                    if (color !== TERMINADA && visitar(previa)) return true;
+                }
+
+                camino.pop();
+                estado[nodo.id] = TERMINADA;
+                return false;
+            }
+
+            var ids = Object.keys(nodos);
+            for (var k = 0; k < ids.length; k++) {
+                var nodo = nodos[ids[k]];
+                if ((estado[nodo.id] || 0) !== 0) continue;
+                if (!visitar(nodo)) continue;
+
+                // El camino trae la cola que llega al círculo; se recorta desde donde reaparece el
+                // nodo que lo cerró, para que el aviso nombre solo a los implicados.
+                var cierre = camino[camino.length - 1];
+                var desde  = 0;
+                for (var m = 0; m < camino.length; m++) {
+                    if (camino[m].id === cierre.id) { desde = m; break; }
+                }
+                var nombres = camino.slice(desde).map(function (n) { return n.nombre; });
+
+                return {
+                    campo: cierre.campo,
+                    mensaje: 'Las dependencias forman un círculo y ninguna de esas actividades ' +
+                             'podría arrancar: ' + nombres.join(' espera a ') +
+                             '. Quite una de esas dependencias.'
+                };
+            }
+
+            return null;
+        }
+    })();
 </script>
 }

@@ -518,6 +518,9 @@
         @RenderBody()
     }
     <script src="~/js/diger.js" asp-append-version="true"></script>
+    @* Antes de la sección Scripts: las páginas enganchan sus reglas desde ahí y necesitan que
+       _dgPrevalidar ya exista. *@
+    <script src="~/js/prevalidacion.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 <style>
 /* ── Notificaciones: campana + panel ───────────────────────────────── */

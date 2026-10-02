@@ -271,17 +271,27 @@
 
 @if (Model.PuedeCrear)
 {
-    <div id="modal-nuevo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+    @* El modal llega abierto cuando se vuelve de un rechazo: ahí su contenido es el que la persona
+       había escrito, y cerrarlo sería tirarlo. Ver IndexModel.ErrorAlta. *@
+    <div id="modal-nuevo" style="display:@(Model.ReabrirAlta ? "flex" : "none");position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
         <div class="card" style="width:520px;max-width:95vw">
             <h3 class="sec-h">Nuevo proyecto</h3>
-            <form method="post" asp-page-handler="Crear">
+            @* El motivo del rechazo va DENTRO del modal: puesto en la página quedaría detrás del
+               fondo oscuro, visible solo después de cerrar lo que hay que corregir. *@
+            @if (Model.ErrorAlta is { } motivo)
+            {
+                <div class="alert-error" role="alert" style="margin-bottom:.75rem">@motivo</div>
+            }
+            <form method="post" asp-page-handler="Crear" id="form-nuevo">
+                @* Cada control repite lo que trae el modelo: es lo que hace que un rechazo no borre
+                   lo escrito. Vacíos en el alta normal, porque el modelo llega vacío. *@
                 <div class="field">
                     <label for="n-nombre">Nombre <span style="color:var(--diger-danger)">*</span></label>
-                    <input id="n-nombre" name="NuevoNombre" maxlength="300" required placeholder="p. ej. Digitalización de trámites — fase 2" />
+                    <input id="n-nombre" name="NuevoNombre" value="@Model.NuevoNombre" maxlength="300" required placeholder="p. ej. Digitalización de trámites — fase 2" />
                 </div>
                 <div class="field">
                     <label for="n-obj">Objetivo</label>
-                    <textarea id="n-obj" name="NuevoObjetivo" rows="2" maxlength="2000" placeholder="Qué se busca lograr"></textarea>
+                    <textarea id="n-obj" name="NuevoObjetivo" rows="2" maxlength="2000" placeholder="Qué se busca lograr">@Model.NuevoObjetivo</textarea>
                 </div>
                 <div style="display:flex;gap:12px;flex-wrap:wrap">
                     <div class="field" style="flex:1;min-width:190px">
@@ -290,16 +300,18 @@
                             <option value="">— Sin asignar —</option>
                             @foreach (var u in Model.Usuarios)
                             {
-                                <option value="@u.Id">@u.Nombre</option>
+                                <option value="@u.Id" selected="@(Model.NuevoResponsable == u.Id)">@u.Nombre</option>
                             }
                         </select>
                     </div>
                     <div class="field" style="width:140px">
                         <label for="n-prio">Prioridad</label>
+                        @* La predeterminada del catálogo solo manda en el alta limpia: si se vuelve de
+                           un rechazo, la elegida es la que la persona había puesto. *@
                         <select id="n-prio" name="NuevaPrioridadId">
                             @foreach (var pr in Model.Prioridades)
                             {
-                                <option value="@pr.Id" selected="@pr.EsPredeterminada">@pr.Nombre</option>
+                                <option value="@pr.Id" selected="@(Model.NuevaPrioridadId is { } elegida ? elegida == pr.Id : pr.EsPredeterminada)">@pr.Nombre</option>
                             }
                         </select>
                     </div>
@@ -309,7 +321,7 @@
                             <option value="">— Sin clasificar —</option>
                             @foreach (var ca in Model.Categorias)
                             {
-                                <option value="@ca.Id">@ca.Nombre</option>
+                                <option value="@ca.Id" selected="@(Model.NuevaCategoriaId == ca.Id)">@ca.Nombre</option>
                             }
                         </select>
                     </div>
@@ -319,7 +331,7 @@
                             <option value="">— Sin clasificar —</option>
                             @foreach (var ac in Enum.GetValues<AccionProyecto>())
                             {
-                                <option value="@((int)ac)">@Etiquetas.Accion(ac)</option>
+                                <option value="@((int)ac)" selected="@(Model.NuevaAccion == ac)">@Etiquetas.Accion(ac)</option>
                             }
                         </select>
                     </div>
@@ -327,11 +339,11 @@
                 <div style="display:flex;gap:12px;flex-wrap:wrap">
                     <div class="field" style="flex:1;min-width:160px">
                         <label for="n-ini">Inicio planificado</label>
-                        <input id="n-ini" type="date" name="NuevaFechaInicio" />
+                        <input id="n-ini" type="date" name="NuevaFechaInicio" value="@Model.NuevaFechaInicio?.ToString("yyyy-MM-dd")" />
                     </div>
                     <div class="field" style="flex:1;min-width:160px">
                         <label for="n-fin">Cierre planificado</label>
-                        <input id="n-fin" type="date" name="NuevaFechaFin" />
+                        <input id="n-fin" type="date" name="NuevaFechaFin" value="@Model.NuevaFechaFin?.ToString("yyyy-MM-dd")" />
                     </div>
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">
@@ -353,6 +365,21 @@
         if (!m) return;
         m.addEventListener('click', function (e) { if (e.target === this) this.style.display = 'none'; });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.style.display = 'none'; });
+
+        /* El cierre planificado no puede caer antes del inicio. Es la regla de
+           CrearProyectoCommand, revisada acá para que no haya que escribir el alta dos veces:
+           antes el rechazo llegaba por redirect y el modal volvía en blanco. */
+        var form = document.getElementById('form-nuevo');
+        if (!form || !window._dgPrevalidar) return;
+
+        window._dgPrevalidar.enlazar(form, [
+            function () {
+                return window._dgPrevalidar.rangoFechas(
+                    document.getElementById('n-ini'),
+                    document.getElementById('n-fin'),
+                    'El cierre planificado no puede ser anterior al inicio planificado.');
+            }
+        ]);
     })();
 </script>
 }
