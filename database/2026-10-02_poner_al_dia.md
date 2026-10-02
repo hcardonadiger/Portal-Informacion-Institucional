@@ -5,17 +5,22 @@ que ya subieron otras personas**. Todo es aditivo: crea tres tablas que no exist
 ni borra una sola fila de las que ya están. Se puede correr las veces que haga falta — la segunda
 corrida no hace nada.
 
-## Los cuatro archivos, en orden
+## Los cinco archivos, en orden
 
 | # | Archivo | Qué hace | ¿Modifica? |
 |---|---|---|---|
 | 1 | `00_diagnostico.sql` | Dice en qué estado está la base y **qué hay que correr** | No |
-| 2 | `2026-09-18_poner_al_dia.sql` | Catálogos de prioridades y categorías | Sí |
-| 3 | `2026-09-24_poner_al_dia.sql` | Encuesta en el cierre + tres columnas que ninguna migración crea | Sí |
-| 4 | `2026-10-02_poner_al_dia.sql` | **Este.** Ámbito de módulos, tokens MCP y adjuntos de reunión | Sí |
+| 2 | `2026-09-04_poner_al_dia.sql` | Seis columnas en cinco tablas — **incluye `Usuarios.IsDeleted`, sin la cual nadie inicia sesión** | Sí |
+| 3 | `2026-09-18_poner_al_dia.sql` | Catálogos de prioridades y categorías | Sí |
+| 4 | `2026-09-24_poner_al_dia.sql` | Encuesta en el cierre + tres columnas que ninguna migración crea | Sí |
+| 5 | `2026-10-02_poner_al_dia.sql` | **Este.** Ámbito de módulos, tokens MCP y adjuntos de reunión | Sí |
 
 **Corra siempre el 1 primero.** Su última sección dice, con nombre y apellido, cuáles de los
 otros hacen falta. Si dice «Nada que hacer», terminó.
+
+El del 2026-09-04 es el más nuevo de la carpeta aunque su fecha sea la más vieja: se escribió el
+2026-10-02, al comparar el respaldo real de producción y descubrir que **cinco migraciones no las
+cubría ningún script**. `2026-09-04_poner_al_dia.md` cuenta esa comparación con números.
 
 ## Cómo correrlos
 
@@ -216,5 +221,14 @@ esa base:
 | `00_diagnostico.sql` después | `TablasFaltantes 0 · ColumnasFaltantes 0 · MigracionesSinRegistrar 0` → «Nada que hacer» |
 | El script, otra vez | No hizo nada; historial en **76 filas**, sin duplicar |
 
-Ese cuarto escenario es el que vale: es la base desplegada, con su esquema y su historial, no una
-base de juguete.
+Ese cuarto escenario era el mejor que había **antes** de tener el respaldo de producción.
+
+**5. Contra el respaldo real de producción.** Ese mismo 2026-10-02 se restauró `GestionGD 2.bak`
+—la base desplegada— y se corrió la cadena completa de cuatro scripts sobre ella. Resultado: el
+esquema quedó en **1335 objetos idénticos** a los que espera el código, **ninguna tabla de datos
+perdió una fila** (38 956 → 38 979, y las 23 de diferencia son el historial y los tres catálogos
+nuevos), y el diagnóstico pasó a «Nada que hacer». Los números están en
+`2026-09-04_poner_al_dia.md`, que es donde vive la comparación completa.
+
+Ahí se vio también que producción le faltaban **13 migraciones, no 3** — de ahí que exista el
+script del 2026-09-04.

@@ -108,8 +108,9 @@ FROM    Modelo;
 PRINT '';
 PRINT '════════════════ 3. Columnas que hay que vigilar aparte ════════════════';
 PRINT 'Las tres primeras no las crea ninguna migración: sus archivos quedaron sin el';
-PRINT 'atributo [Migration], así que EF no los ve. El modelo sí las usa. La cuarta viene de';
-PRINT 'la migración 20260923223127; las tablas nuevas se vigilan en las secciones 1 y 2.';
+PRINT 'atributo [Migration], así que EF no los ve. El modelo sí las usa. Las demás sí vienen';
+PRINT 'de migraciones, y el «Origen» dice de cuál. Las tablas que faltan por completo se ven';
+PRINT 'en las secciones 1 y 2.';
 
 SELECT  v.Tabla, v.Columna, v.Origen,
         CASE WHEN OBJECT_ID(QUOTENAME(v.Tabla), 'U') IS NULL THEN 'NO EXISTE LA TABLA'
@@ -119,7 +120,15 @@ FROM (VALUES
         (N'Asistentes',    N'EsPreregistro',  N'fuera de migración (AddPreregistroAsistente)'),
         (N'Asistentes',    N'Confirmado',     N'fuera de migración (AddPreregistroAsistente)'),
         (N'Instituciones', N'Color',          N'fuera de migración (AddInstitucionBranding)'),
-        (N'Reuniones',     N'EncuestaActiva', N'migración 20260923223127')
+        (N'Reuniones',     N'EncuestaActiva', N'migración 20260923223127'),
+        /* Las seis del 2026-09-04. Usuarios.IsDeleted es la más urgente: sin ella EF falla
+           en cada consulta de Usuarios y nadie inicia sesión. */
+        (N'Roles',               N'EsJefeDeArea', N'migración 20260902215804'),
+        (N'Roles',               N'EsPmo',        N'migración 20260902215804'),
+        (N'Proyectos',           N'Accion',       N'migración 20260902215902'),
+        (N'ProyectoInteresados', N'Automatico',   N'migración 20260902221131'),
+        (N'ExpedienteTramites',  N'Accion',       N'migración 20260903175629'),
+        (N'Usuarios',            N'IsDeleted',    N'migración 20260904173357 (sin ella no hay login)')
      ) v(Tabla, Columna, Origen);
 
 PRINT '';
@@ -337,6 +346,10 @@ DECLARE @columnasFaltan    int = 0;
    tienen remedio con un script: sin separarlas, una base que simplemente no ha corrido ese
    script dispararía el «PARE» de abajo, que es para atrasos que ningún script arregla. */
 DECLARE @tablasFaltan1002  int = 0;
+/* Las tres tablas que crea el script del 2026-09-18, por la misma razón. */
+DECLARE @tablasFaltan0918  int = 0;
+/* Las seis columnas que agrega el script del 2026-09-04. */
+DECLARE @columnasFaltan0904 int = 0;
 DECLARE @hayHistorial      bit = CASE WHEN OBJECT_ID(N'[__EFMigrationsHistory]', 'U') IS NULL
                                       THEN 0 ELSE 1 END;
 
@@ -375,6 +388,18 @@ FROM   Modelo;
 
 SELECT @tablasFaltan1002 = SUM(CASE WHEN OBJECT_ID(QUOTENAME(Tabla), 'U') IS NULL THEN 1 ELSE 0 END)
 FROM   (VALUES (N'ModuloAmbitos'), (N'TokensAccesoMcp'), (N'ReunionAdjuntos')) v(Tabla);
+
+SELECT @tablasFaltan0918 = SUM(CASE WHEN OBJECT_ID(QUOTENAME(Tabla), 'U') IS NULL THEN 1 ELSE 0 END)
+FROM   (VALUES (N'PrioridadesProyecto'), (N'PrioridadesTicket'), (N'CategoriasProyecto')) v(Tabla);
+
+SELECT @columnasFaltan0904 = SUM(CASE WHEN OBJECT_ID(QUOTENAME(v.Tabla), 'U') IS NOT NULL
+                                       AND COL_LENGTH(v.Tabla, v.Columna) IS NULL THEN 1 ELSE 0 END)
+FROM (VALUES (N'Roles',               N'EsJefeDeArea'),
+             (N'Roles',               N'EsPmo'),
+             (N'Proyectos',           N'Accion'),
+             (N'ProyectoInteresados', N'Automatico'),
+             (N'ExpedienteTramites',  N'Accion'),
+             (N'Usuarios',            N'IsDeleted')) v(Tabla, Columna);
 
 SELECT @columnasFaltan = SUM(CASE WHEN OBJECT_ID(QUOTENAME(v.Tabla), 'U') IS NOT NULL
                                    AND COL_LENGTH(v.Tabla, v.Columna) IS NULL THEN 1 ELSE 0 END)
@@ -466,9 +491,10 @@ BEGIN
     WHERE  NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory h WHERE h.MigrationId = c.Id);
 END;
 
-SELECT  ISNULL(@tablasFaltan, 0)      AS TablasFaltantes,
-        ISNULL(@columnasFaltan, 0)    AS ColumnasFaltantes,
-        ISNULL(@migracionesFaltan, 0) AS MigracionesSinRegistrar;
+SELECT  ISNULL(@tablasFaltan, 0)       AS TablasFaltantes,
+        ISNULL(@columnasFaltan, 0)     AS ColumnasFaltantes,
+        ISNULL(@columnasFaltan0904, 0) AS ColumnasDel0904,
+        ISNULL(@migracionesFaltan, 0)  AS MigracionesSinRegistrar;
 
 SELECT  Orden, Recomendacion
 FROM (
@@ -477,18 +503,27 @@ FROM (
     WHERE  @hayHistorial = 0
     UNION ALL
     SELECT 2,
-           N'PARE: faltan ' + CAST(ISNULL(@tablasFaltan, 0) - ISNULL(@tablasFaltan1002, 0) AS nvarchar(10))
+           N'PARE: faltan ' + CAST(ISNULL(@tablasFaltan, 0) - ISNULL(@tablasFaltan1002, 0)
+                                                           - ISNULL(@tablasFaltan0918, 0) AS nvarchar(10))
          + N' tablas completas que ningún script de esta carpeta crea (ver sección 1). Esta base '
          + N'está muy atrasada; los scripts de «poner al día» agregan columnas, no módulos '
          + N'enteros. Avise antes de seguir.'
-    WHERE  (ISNULL(@tablasFaltan, 0) - ISNULL(@tablasFaltan1002, 0)) > 0
+    WHERE  (ISNULL(@tablasFaltan, 0) - ISNULL(@tablasFaltan1002, 0)
+                                     - ISNULL(@tablasFaltan0918, 0)) > 0
     UNION ALL
     SELECT 3,
-           N'Corra primero database\2026-09-18_poner_al_dia.sql (faltan '
+           N'Corra PRIMERO database\2026-09-04_poner_al_dia.sql: faltan '
+         + CAST(@columnasFaltan0904 AS nvarchar(10))
+         + N' de sus seis columnas. Si entre ellas está Usuarios.IsDeleted, hoy NADIE PUEDE '
+         + N'INICIAR SESIÓN contra el código nuevo: EF la pide en cada consulta de Usuarios.'
+    WHERE  ISNULL(@columnasFaltan0904, 0) > 0
+    UNION ALL
+    SELECT 4,
+           N'Corra luego database\2026-09-18_poner_al_dia.sql (faltan '
          + CAST(@faltan0918 AS nvarchar(10)) + N' migraciones de esa fecha).'
     WHERE  ISNULL(@faltan0918, 0) > 0
     UNION ALL
-    SELECT 4,
+    SELECT 5,
            N'Corra database\2026-09-24_poner_al_dia.sql (faltan columnas o la migración de la encuesta).'
     WHERE  ISNULL(@columnasFaltan, 0) > 0
         OR EXISTS (SELECT 1 FROM (VALUES (1)) x(v)
@@ -496,7 +531,7 @@ FROM (
                      AND NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory h
                                      WHERE h.MigrationId = N'20260923223127_AddReunionEncuestaActiva'))
     UNION ALL
-    SELECT 5,
+    SELECT 6,
            N'Corra database\2026-10-02_poner_al_dia.sql (faltan tablas o migraciones de MCP, '
          + N'ámbito de módulos o adjuntos de reunión). Después de correrlo queda UNA cosa a '
          + N'mano: otorgar las claves TokensMcp.* en /Accesos/Permisos al rol que deba emitir '
@@ -510,11 +545,12 @@ FROM (
                      AND NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory h
                                      WHERE h.MigrationId = m.Id))
     UNION ALL
-    SELECT 6,
+    SELECT 7,
            N'Nada que hacer: esta base ya corre el código de hoy.'
     WHERE  @hayHistorial = 1
       AND  ISNULL(@tablasFaltan, 0) = 0
       AND  ISNULL(@columnasFaltan, 0) = 0
+      AND  ISNULL(@columnasFaltan0904, 0) = 0
       AND  ISNULL(@migracionesFaltan, 0) = 0
 ) r
 ORDER BY Orden;
