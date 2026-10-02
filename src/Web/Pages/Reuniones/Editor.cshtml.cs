@@ -101,9 +101,20 @@ public sealed class EditorModel(
     ///
     /// <para>Las filas sin destino —ni archivo nuevo ni URL— se descartan acá mismo: son renglones
     /// que alguien agregó y dejó en blanco.</para>
+    ///
+    /// <para><b>La clase no se le cree al formulario.</b> <c>Clase</c> y <c>Url</c> viajan en el
+    /// POST, asi que una fila podia llegar diciendo «yo soy un archivo» con una ruta que nadie
+    /// subio: bastaba apuntar a cualquier archivo de <c>App_Data/uploads</c> —la carpeta de todo el
+    /// portal, no la de esta reunion— y bajarlo despues por <c>Acta?handler=Adjunto</c>, saltandose
+    /// el alcance del modulo dueno del archivo. Aca la clase la decide el servidor: es archivo si
+    /// se acaba de subir uno, o si la ruta ya estaba guardada <b>en esta misma reunion</b>
+    /// (<paramref name="archivosDeLaReunion"/>, leido de la base). Lo demas es enlace, y como
+    /// enlace pasa por <c>NormalizarEnlace</c>, que solo acepta http/https absolutas.</para>
     /// </summary>
     private async Task<List<ReunionAdjuntoInput>> ConvertirAdjuntosAsync(
-        List<AdjuntoFormInput> filas, SeccionAdjuntoReunion seccion, CancellationToken ct)
+        List<AdjuntoFormInput> filas, SeccionAdjuntoReunion seccion,
+        Dictionary<string, (string? Nombre, long Tamano)> archivosDeLaReunion,
+        CancellationToken ct)
     {
         var salida = new List<ReunionAdjuntoInput>();
 
@@ -116,9 +127,24 @@ public sealed class EditorModel(
                 fila.NombreArchivo = subido.nombre;
                 fila.Tamano        = subido.tamano;
                 if (string.IsNullOrWhiteSpace(fila.Titulo)) fila.Titulo = subido.nombre;
+                archivosDeLaReunion[subido.url] = (subido.nombre, subido.tamano);
             }
 
             if (string.IsNullOrWhiteSpace(fila.Url)) continue;
+
+            var esArchivo = archivosDeLaReunion.TryGetValue(fila.Url, out var guardado);
+
+            // Una fila que dice ser archivo sin serlo se descarta en vez de degradarse a enlace:
+            // una ruta de disco no es una direccion http y rebotaria en el dominio con un mensaje
+            // que no le explica nada a quien esta capturando.
+            if (!esArchivo && fila.Clase == ClaseAdjuntoReunion.Archivo) continue;
+
+            fila.Clase = esArchivo ? ClaseAdjuntoReunion.Archivo : ClaseAdjuntoReunion.Enlace;
+            if (esArchivo)
+            {
+                fila.NombreArchivo = guardado.Nombre;
+                fila.Tamano        = guardado.Tamano;
+            }
 
             salida.Add(new ReunionAdjuntoInput
             {
@@ -126,13 +152,39 @@ public sealed class EditorModel(
                 Clase         = fila.Clase,
                 Titulo        = fila.Titulo ?? string.Empty,
                 Descripcion   = fila.Descripcion,
-                NombreArchivo = fila.NombreArchivo,
+                NombreArchivo = esArchivo ? fila.NombreArchivo : null,
                 Url           = fila.Url,
-                Tamano        = fila.Tamano
+                Tamano        = esArchivo ? fila.Tamano : 0
             });
         }
 
         return salida;
+    }
+
+    /// <summary>Rutas de archivo que esta reunion <b>ya tiene guardadas</b>, leidas de la base y no
+    /// del formulario, con el nombre y el tamano con que se guardaron. Es la lista blanca contra la
+    /// que se valida una fila que dice ser archivo. En una reunion nueva esta vacia: ahi lo unico
+    /// que puede ser archivo es lo que se acaba de subir.</summary>
+    private async Task<Dictionary<string, (string? Nombre, long Tamano)>> ArchivosYaGuardadosAsync(
+        int? id, CancellationToken ct)
+    {
+        var mapa = new Dictionary<string, (string? Nombre, long Tamano)>(StringComparer.Ordinal);
+        if (id is null) return mapa;
+
+        try
+        {
+            var datos = (await sender.Send(new GetReunionByIdQuery(id.Value), ct)).Datos;
+            foreach (var a in datos.Adjuntos)
+                if (a.Clase == ClaseAdjuntoReunion.Archivo && !string.IsNullOrWhiteSpace(a.Url))
+                    mapa[a.Url!] = (a.NombreArchivo, a.Tamano);
+        }
+        catch (NotFoundException)
+        {
+            // Fuera de alcance: no hay archivo propio que reconocer, y el comando de guardado
+            // fallara por su cuenta un momento despues.
+        }
+
+        return mapa;
     }
 
     public string? Error { get; set; }
@@ -235,10 +287,12 @@ public sealed class EditorModel(
         var f1 = await GuardarFotoAsync(Foto1File, ct); if (f1 is not null) Datos.Foto1Url = f1;
         var f2 = await GuardarFotoAsync(Foto2File, ct); if (f2 is not null) Datos.Foto2Url = f2;
 
+        var archivos = await ArchivosYaGuardadosAsync(id, ct);
+
         Datos.Adjuntos =
         [
-            .. await ConvertirAdjuntosAsync(AdjuntosDoc, SeccionAdjuntoReunion.Documento, ct),
-            .. await ConvertirAdjuntosAsync(AdjuntosEvi, SeccionAdjuntoReunion.Evidencia, ct)
+            .. await ConvertirAdjuntosAsync(AdjuntosDoc, SeccionAdjuntoReunion.Documento, archivos, ct),
+            .. await ConvertirAdjuntosAsync(AdjuntosEvi, SeccionAdjuntoReunion.Evidencia, archivos, ct)
         ];
 
         if (id is null)

@@ -38,6 +38,8 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
     private int _otraReunionId;
     private int _adjuntoDocId;
     private int _adjuntoAjenoId;
+    private string _urlPropia = "";
+    private string _urlAjena  = "";
     private readonly List<string> _sembrados = [];
 
     private const string EnlaceOneDrive = "https://digerhn-my.sharepoint.com/:v:/g/personal/abc/XYZ?e=aB1cD2";
@@ -64,6 +66,11 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
         _adjuntoAjenoId = await db.Set<ReunionAdjunto>()
             .Where(a => a.ReunionId == _otraReunionId && a.Clase == ClaseAdjuntoReunion.Archivo)
             .Select(a => a.Id).FirstAsync();
+
+        _urlPropia = await db.Set<ReunionAdjunto>()
+            .Where(a => a.Id == _adjuntoDocId).Select(a => a.Url).FirstAsync();
+        _urlAjena = await db.Set<ReunionAdjunto>()
+            .Where(a => a.Id == _adjuntoAjenoId).Select(a => a.Url).FirstAsync();
     }
 
     /// <summary>Crea una reunión con un archivo real en disco y un enlace externo.</summary>
@@ -420,5 +427,68 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         r.Content.Headers.ContentType!.MediaType.Should().Be("application/pdf");
+    }
+
+    // ── La clase del adjunto la decide el servidor ────────────────────────
+
+    /// <summary>
+    /// El cierre por el que se colaba un archivo ajeno. <c>Clase</c> y <c>Url</c> viajan en el POST,
+    /// así que no alcanzaba con pedir el archivo por Id: bastaba <b>inscribir</b> en la propia
+    /// reunión una fila que dijera «archivo» con la ruta de otra —todos los módulos escriben en la
+    /// misma carpeta de subidas— y bajarla después con un Id que sí era propio. El cercado de ruta
+    /// de <c>ArchivosProtegidos</c> no lo veía: la ruta nunca salía de la carpeta.
+    /// </summary>
+    [Fact]
+    public async Task Una_fila_que_dice_ser_archivo_con_la_ruta_de_otra_reunion_no_se_guarda()
+    {
+        var (cliente, token) = await EditorConTokenAsync();
+
+        using var form = new MultipartFormDataContent();
+        CamposBase(form, token);
+        form.Add(new StringContent("0"), "AdjuntosDoc.Index");
+        form.Add(new StringContent("Archivo"), "AdjuntosDoc[0].Clase");
+        form.Add(new StringContent("Acta de la otra reunión"), "AdjuntosDoc[0].Titulo");
+        form.Add(new StringContent("robado.pdf"), "AdjuntosDoc[0].NombreArchivo");
+        form.Add(new StringContent(_urlAjena), "AdjuntosDoc[0].Url");
+        form.Add(new StringContent("23"), "AdjuntosDoc[0].Tamano");
+
+        var r = await cliente.PostAsync($"/Reuniones/Editor/{_reunionId}", form);
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await db.Set<ReunionAdjunto>().Where(a => a.ReunionId == _reunionId).ToListAsync())
+            .Should().NotContain(a => a.Url == _urlAjena,
+                "una ruta que esta reunión nunca guardó no se adopta porque el formulario lo diga");
+    }
+
+    /// <summary>La otra cara: el archivo que la reunión <b>sí</b> tenía vuelve en el POST como una
+    /// fila sin <c>IFormFile</c> —el navegador no puede repoblar un selector de archivos— y tiene
+    /// que sobrevivir al guardado. Sin esto, la corrección de arriba borraría los adjuntos de
+    /// cualquiera que entre a corregir una coma.</summary>
+    [Fact]
+    public async Task El_archivo_que_ya_estaba_sobrevive_a_un_guardado_sin_volver_a_subirlo()
+    {
+        var (cliente, token) = await EditorConTokenAsync();
+
+        using var form = new MultipartFormDataContent();
+        CamposBase(form, token);
+        form.Add(new StringContent("0"), "AdjuntosDoc.Index");
+        form.Add(new StringContent("Archivo"), "AdjuntosDoc[0].Clase");
+        form.Add(new StringContent("Acta firmada"), "AdjuntosDoc[0].Titulo");
+        form.Add(new StringContent("Acta firmada.pdf"), "AdjuntosDoc[0].NombreArchivo");
+        form.Add(new StringContent(_urlPropia), "AdjuntosDoc[0].Url");
+        form.Add(new StringContent("23"), "AdjuntosDoc[0].Tamano");
+
+        var r = await cliente.PostAsync($"/Reuniones/Editor/{_reunionId}", form);
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var guardados = await db.Set<ReunionAdjunto>()
+            .Where(a => a.ReunionId == _reunionId).ToListAsync();
+
+        guardados.Should().ContainSingle(a => a.Url == _urlPropia);
+        guardados.Single(a => a.Url == _urlPropia).Clase.Should().Be(ClaseAdjuntoReunion.Archivo);
     }
 }
