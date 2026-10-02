@@ -58,8 +58,16 @@ public sealed class ActaModel(
             Proyectos  = await sender.Send(new GetProyectosDeReunionQuery(id), ct);
             PuedeVincular = await acceso.PuedeEditarAsync("Proyectos", ct);
 
+            // Se agrupa con el MISMO comparador que lleva el diccionario. Con el comparador por
+            // omisión —sensible a mayúsculas— "DIGER" y "Diger" salían como dos grupos que después
+            // colapsaban en una sola clave OrdinalIgnoreCase, y el volcado reventaba con
+            // «An item with the same key has already been added». Eso tumbaba el acta completa:
+            // 500 en la página y, con ella, el botón de descarga del PDF. La institución es texto
+            // libre en el auto-registro por QR, así que la variante de capitalización aparece sola
+            // en cuanto se registran varios participantes.
             var porNombre = Asistentes
-                .GroupBy(a => string.IsNullOrWhiteSpace(a.Institucion) ? "(sin institución)" : a.Institucion!.Trim())
+                .GroupBy(a => string.IsNullOrWhiteSpace(a.Institucion) ? "(sin institución)" : a.Institucion!.Trim(),
+                         StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
 
             var desglose = new List<(string, int)>();
