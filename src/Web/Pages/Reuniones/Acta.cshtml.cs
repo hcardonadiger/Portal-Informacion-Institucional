@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Application.Proyectos.Commands;
+﻿using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
@@ -113,6 +113,42 @@ public sealed class ActaModel(
         if (ruta is null) return NotFound();
 
         return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(ruta));
+    }
+
+    /// <summary>
+    /// Sirve un documento adjunto de la reunión.
+    ///
+    /// <para><b>Por Id y no por ruta.</b> La tentación era pasar la ruta del archivo en la URL y
+    /// dejar que <see cref="ArchivosProtegidos"/> comprobara que no se saliera de la carpeta de
+    /// subidas. No alcanza: esa comprobación impide leer <c>appsettings.json</c>, pero no impide
+    /// que alguien con acceso a una reunión pida el adjunto —o la foto— de otra con solo cambiar la
+    /// ruta, porque todos los módulos escriben en la misma carpeta. Pidiendo el Id, el adjunto
+    /// tiene que pertenecer a <b>esta</b> reunión, que ya se resolvió con la consulta normal y por
+    /// lo tanto pasó por el filtro de alcance.</para>
+    ///
+    /// <para>Los enlaces externos no pasan por acá: son un <c>href</c> directo en el acta. El
+    /// portal no guarda su contenido, así que no tiene nada que servir.</para>
+    /// </summary>
+    public async Task<IActionResult> OnGetAdjuntoAsync(int id, int adjuntoId, CancellationToken ct)
+    {
+        ReunionFormDto datos;
+        try { datos = (await sender.Send(new GetReunionByIdQuery(id), ct)).Datos; }
+        catch (NotFoundException) { return NotFound(); }
+
+        var adj = datos.Adjuntos.FirstOrDefault(a =>
+            a.Id == adjuntoId && a.Clase == ClaseAdjuntoReunion.Archivo);
+        if (adj is null) return NotFound();
+
+        var ruta = ArchivosProtegidos.Resolver(env, adj.Url);
+        if (ruta is null) return NotFound();
+
+        // Sale como binario (ver ArchivosProtegidos.TipoContenido) pero con el nombre original:
+        // el GUID del disco no le dice nada a quien lo baja.
+        var nombre = string.IsNullOrWhiteSpace(adj.NombreArchivo)
+            ? Path.GetFileName(ruta)
+            : adj.NombreArchivo!;
+
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(ruta), nombre);
     }
 
     public async Task<IActionResult> OnGetPdfAsync(int id, CancellationToken ct)
@@ -254,3 +290,7 @@ public sealed class ActaModel(
         return RedirectToPage(new { id });
     }
 }
+
+/// <summary>Lo que necesita la parcial <c>_ActaAdjunto</c>: el adjunto y la reunión a la que
+/// pertenece, que es lo que hace resoluble el enlace de descarga.</summary>
+public sealed record ActaAdjuntoVm(int ReunionId, ReunionAdjuntoInput Adjunto);

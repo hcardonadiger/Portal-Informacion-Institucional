@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Application;
+﻿using Diger.TramitesEstado.Application;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Infrastructure;
 using Diger.TramitesEstado.Infrastructure.Persistence;
@@ -32,7 +32,11 @@ var uploadsMaxFormValueMb = builder.Configuration.GetValue("Uploads:MaxFormValue
 Diger.TramitesEstado.Web.Common.UploadsConfig.TicketsMaxBytes =
     builder.Configuration.GetValue("Uploads:TicketsMaxMb", 10) * 1024L * 1024L;
 Diger.TramitesEstado.Web.Common.UploadsConfig.ReunionesMaxBytes =
-    builder.Configuration.GetValue("Uploads:ReunionesMaxMb", 5) * 1024L * 1024L;
+    builder.Configuration.GetValue("Uploads:ReunionesMaxMb", 20) * 1024L * 1024L;
+// 20 y no los 5 de antes: desde 2026-10-02 este tope ya no gobierna solo las dos fotos
+// del acta, sino también los documentos adjuntos del cierre, y un PDF escaneado de pocas
+// páginas pasa de 5 MB con facilidad. Sigue muy por debajo de Uploads:MaxRequestMb (50),
+// así que no hay que tocar Kestrel ni IIS. Lo que no quepa va a OneDrive como enlace.
 if (builder.Configuration.GetSection("Uploads:ExtensionesPermitidas").Get<string[]>() is { Length: > 0 } extsDoc)
     Diger.TramitesEstado.Web.Common.UploadsConfig.ExtensionesPermitidas = extsDoc;
 if (builder.Configuration.GetSection("Uploads:ExtensionesImagenesPermitidas").Get<string[]>() is { Length: > 0 } extsImg)

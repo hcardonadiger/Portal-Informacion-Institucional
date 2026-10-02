@@ -1,4 +1,4 @@
-namespace Diger.TramitesEstado.Web.Pages.Reuniones;
+﻿namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
 [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
@@ -34,6 +34,17 @@ public sealed class EditorModel(
     [BindProperty] public IFormFile?          Foto1File  { get; set; }
     [BindProperty] public IFormFile?          Foto2File  { get; set; }
 
+    /// <summary>Filas de «Documentos y recursos»: archivos subidos al portal y enlaces externos.</summary>
+    [BindProperty] public List<AdjuntoFormInput> AdjuntosDoc { get; set; } = [];
+    /// <summary>Filas de enlaces de «Evidencia fotográfica y de video». Solo enlaces: el video no
+    /// se sube —ver <see cref="ReunionAdjunto"/>— y las dos fotos siguen siendo Foto1/Foto2.</summary>
+    [BindProperty] public List<AdjuntoFormInput> AdjuntosEvi { get; set; } = [];
+
+    /// <summary>Tope por archivo, en MB, para mostrarlo en pantalla junto al botón de subir.</summary>
+    public int    AdjuntoMaxMb  => (int)(UploadsConfig.ReunionesMaxBytes / (1024 * 1024));
+    /// <summary>Valor del atributo <c>accept</c> del selector de archivos.</summary>
+    public string AdjuntoAccept => string.Join(",", UploadsConfig.ExtensionesPermitidas);
+
     /// <summary>Guarda una imagen subida en wwwroot/uploads/reuniones y devuelve su ruta relativa.</summary>
     private async Task<string?> GuardarFotoAsync(IFormFile? file, CancellationToken ct)
     {
@@ -49,6 +60,79 @@ public sealed class EditorModel(
         await using (var fs = System.IO.File.Create(Path.Combine(dir, nombre)))
             await file.CopyToAsync(fs, ct);
         return $"/uploads/reuniones/{nombre}";
+    }
+
+    /// <summary>
+    /// Guarda un documento adjunto en la misma carpeta que las fotos y devuelve su ruta relativa.
+    ///
+    /// <para>Separado de <see cref="GuardarFotoAsync"/> porque acá la lista de extensiones es la
+    /// general del portal —PDF, Word, Excel, PowerPoint, texto, ZIP— y no solo imágenes. El tope de
+    /// tamaño sí es el mismo: lo que no quepa va a OneDrive como enlace, que es justamente la razón
+    /// por la que esta pantalla ofrece las dos cosas.</para>
+    /// </summary>
+    private async Task<(string url, string nombre, long tamano)?> GuardarDocumentoAsync(IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return null;
+        if (file.Length > UploadsConfig.ReunionesMaxBytes)
+            throw new DomainException(
+                $"«{file.FileName}» pesa más de {AdjuntoMaxMb} MB. Súbalo a OneDrive y pegue acá el enlace.");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!UploadsConfig.ExtensionesPermitidas.Contains(ext))
+            throw new DomainException(
+                $"No se permiten archivos «{ext}». Formatos aceptados: {string.Join(", ", UploadsConfig.ExtensionesPermitidas)}.");
+
+        var dir = Path.Combine(env.ContentRootPath, "App_Data", "uploads", "reuniones");
+        Directory.CreateDirectory(dir);
+        var nombre = $"{Guid.NewGuid():N}{ext}";
+        await using (var fs = System.IO.File.Create(Path.Combine(dir, nombre)))
+            await file.CopyToAsync(fs, ct);
+
+        return ($"/uploads/reuniones/{nombre}", Path.GetFileName(file.FileName), file.Length);
+    }
+
+    /// <summary>
+    /// Convierte las filas de una tarjeta en lo que entiende la capa Application.
+    ///
+    /// <para><b>Escribe de vuelta en la fila</b> lo que resultó de subir el archivo. No es un
+    /// efecto colateral descuidado: si más adelante algo falla y la página se vuelve a pintar, el
+    /// navegador no puede repoblar un <c>&lt;input type=file&gt;</c>, así que sin esto el archivo
+    /// que la persona acaba de subir desaparecería de la pantalla aunque ya esté en disco.</para>
+    ///
+    /// <para>Las filas sin destino —ni archivo nuevo ni URL— se descartan acá mismo: son renglones
+    /// que alguien agregó y dejó en blanco.</para>
+    /// </summary>
+    private async Task<List<ReunionAdjuntoInput>> ConvertirAdjuntosAsync(
+        List<AdjuntoFormInput> filas, SeccionAdjuntoReunion seccion, CancellationToken ct)
+    {
+        var salida = new List<ReunionAdjuntoInput>();
+
+        foreach (var fila in filas)
+        {
+            if (await GuardarDocumentoAsync(fila.Archivo, ct) is { } subido)
+            {
+                fila.Clase         = ClaseAdjuntoReunion.Archivo;
+                fila.Url           = subido.url;
+                fila.NombreArchivo = subido.nombre;
+                fila.Tamano        = subido.tamano;
+                if (string.IsNullOrWhiteSpace(fila.Titulo)) fila.Titulo = subido.nombre;
+            }
+
+            if (string.IsNullOrWhiteSpace(fila.Url)) continue;
+
+            salida.Add(new ReunionAdjuntoInput
+            {
+                Seccion       = seccion,
+                Clase         = fila.Clase,
+                Titulo        = fila.Titulo ?? string.Empty,
+                Descripcion   = fila.Descripcion,
+                NombreArchivo = fila.NombreArchivo,
+                Url           = fila.Url,
+                Tamano        = fila.Tamano
+            });
+        }
+
+        return salida;
     }
 
     public string? Error { get; set; }
@@ -79,6 +163,7 @@ public sealed class EditorModel(
             Datos      = d.Datos;
             Asistentes = d.Asistentes;
             Acuerdos   = d.Acuerdos;
+            RepartirAdjuntos(d.Datos);
             return Page();
         }
         catch (NotFoundException)
@@ -150,10 +235,60 @@ public sealed class EditorModel(
         var f1 = await GuardarFotoAsync(Foto1File, ct); if (f1 is not null) Datos.Foto1Url = f1;
         var f2 = await GuardarFotoAsync(Foto2File, ct); if (f2 is not null) Datos.Foto2Url = f2;
 
+        Datos.Adjuntos =
+        [
+            .. await ConvertirAdjuntosAsync(AdjuntosDoc, SeccionAdjuntoReunion.Documento, ct),
+            .. await ConvertirAdjuntosAsync(AdjuntosEvi, SeccionAdjuntoReunion.Evidencia, ct)
+        ];
+
         if (id is null)
             return await sender.Send(new CrearReunionCommand(Datos, Asistentes, Acuerdos), ct);
 
         await sender.Send(new ActualizarReunionCommand(id.Value, Datos, Asistentes, Acuerdos), ct);
         return id.Value;
     }
+
+    /// <summary>Reparte los adjuntos que trae la reunión en las dos tarjetas del cierre, que es
+    /// como se editan. Se hace acá y no en el mapper porque la separación es de pantalla: en la
+    /// base es una sola tabla distinguida por <c>Seccion</c>.</summary>
+    private void RepartirAdjuntos(ReunionFormDto datos)
+    {
+        AdjuntosDoc = Filas(datos, SeccionAdjuntoReunion.Documento);
+        AdjuntosEvi = Filas(datos, SeccionAdjuntoReunion.Evidencia);
+
+        static List<AdjuntoFormInput> Filas(ReunionFormDto d, SeccionAdjuntoReunion s) =>
+            d.Adjuntos.Where(a => a.Seccion == s).Select(a => new AdjuntoFormInput
+            {
+                Clase         = a.Clase,
+                Titulo        = a.Titulo,
+                Descripcion   = a.Descripcion,
+                NombreArchivo = a.NombreArchivo,
+                Url           = a.Url,
+                Tamano        = a.Tamano
+            }).ToList();
+    }
 }
+
+/// <summary>Una fila de las listas de documentos o de evidencia, tal como viaja en el formulario.
+/// Es la versión Web de <see cref="ReunionAdjuntoInput"/>: igual, más el archivo que se está subiendo —que
+/// no puede vivir en la capa Application— y sin <c>Seccion</c>, que lo determina en qué lista
+/// llegó.</summary>
+public sealed class AdjuntoFormInput
+{
+    public ClaseAdjuntoReunion Clase { get; set; } = ClaseAdjuntoReunion.Enlace;
+
+    public string? Titulo        { get; set; }
+    public string? Descripcion   { get; set; }
+    public string? NombreArchivo { get; set; }
+    public string? Url           { get; set; }
+    public long    Tamano        { get; set; }
+
+    /// <summary>Archivo recién elegido. <c>null</c> en una fila que ya tenía su archivo subido o
+    /// que es un enlace.</summary>
+    public IFormFile? Archivo { get; set; }
+}
+
+/// <summary>Lo que necesita la parcial <c>_AdjuntoFila</c> para pintar una fila: en qué lista va
+/// (<paramref name="Prefijo"/> = <c>AdjuntosDoc</c> o <c>AdjuntosEvi</c>), con qué índice, y los
+/// formatos que acepta el selector de archivos.</summary>
+public sealed record AdjuntoFilaVm(string Prefijo, int Indice, AdjuntoFormInput Fila, string Accept);

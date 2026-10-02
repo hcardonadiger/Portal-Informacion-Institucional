@@ -1,4 +1,4 @@
-namespace Diger.TramitesEstado.Application.Reuniones.Common;
+﻿namespace Diger.TramitesEstado.Application.Reuniones.Common;
 
 // Clases mutables para enlace de modelo (Razor) y transporte al comando.
 public sealed class AsistenteInput
@@ -36,6 +36,36 @@ public sealed class AcuerdoInput
     public string?          NotaSeguimiento   { get; set; }
 }
 
+/// <summary>Una fila de la lista de documentos o de evidencia adicional del cierre.
+///
+/// <para>Viaja de ida y vuelta: al cargar el editor se llena desde <see cref="ReunionAdjunto"/>,
+/// y al guardar vuelve con lo que haya quedado en pantalla. En los archivos ya subidos,
+/// <see cref="Url"/> y <see cref="NombreArchivo"/> regresan tal cual para que reemplazar los hijos
+/// en bloque no pierda el archivo que ya está en disco.</para></summary>
+public sealed class ReunionAdjuntoInput
+{
+    /// <summary>Id de la fila guardada; 0 en una fila que todavía no se ha guardado.
+    ///
+    /// <para>Es por acá que el acta pide un archivo —<c>?handler=Adjunto&amp;adjuntoId=…</c>— y no
+    /// por su ruta. La diferencia importa: con la ruta en la URL, cualquiera con acceso a una
+    /// reunión podría pedir el archivo de otra con solo cambiarla, porque la única defensa sería
+    /// que la ruta no se salga de la carpeta de subidas. Con el Id, el handler exige que el
+    /// adjunto sea de <b>esa</b> reunión, que ya pasó por el filtro de alcance.</para>
+    ///
+    /// <para>Al guardar no se usa: los hijos se reemplazan en bloque y las filas nacen con Id
+    /// nuevo.</para></summary>
+    public int Id { get; set; }
+
+    public SeccionAdjuntoReunion Seccion { get; set; } = SeccionAdjuntoReunion.Documento;
+    public ClaseAdjuntoReunion   Clase   { get; set; } = ClaseAdjuntoReunion.Enlace;
+
+    public string  Titulo        { get; set; } = string.Empty;
+    public string? Descripcion   { get; set; }
+    public string? NombreArchivo { get; set; }
+    public string? Url           { get; set; }
+    public long    Tamano        { get; set; }
+}
+
 public sealed class ReunionFormDto
 {
     public string    Titulo    { get; set; } = string.Empty;
@@ -60,9 +90,9 @@ public sealed class ReunionFormDto
     public string? ObjetivoAgenda { get; set; }
     public string? Desarrollo     { get; set; }
 
+    /// <summary>Tema de la capacitación. Solo lo llena el importador de Supabase —ninguna
+    /// pantalla lo captura— y se muestra en la memoria del acta.</summary>
     public string? Tema        { get; set; }
-    public string? ObjetivoCap  { get; set; }
-    public string? Contenido    { get; set; }
 
     public string? EpNombre { get; set; }
     public string? EpCargo  { get; set; }
@@ -88,6 +118,12 @@ public sealed class ReunionFormDto
     public string? Foto1Desc { get; set; }
     public string? Foto2Url  { get; set; }
     public string? Foto2Desc { get; set; }
+
+    /// <summary>Documentos y enlaces del cierre, de las dos tarjetas. Va adentro del formulario
+    /// —y no como parámetro aparte del comando, al estilo de Asistentes y Acuerdos— porque la
+    /// capa Web ya resolvió lo suyo antes de llegar acá: subió los archivos a disco y acá llegan
+    /// como ruta. Así ningún comando cambió de firma.</summary>
+    public List<ReunionAdjuntoInput> Adjuntos { get; set; } = [];
 }
 
 /// <summary>Referencia liviana (id + nombre) a una institución convocada a una reunión.</summary>

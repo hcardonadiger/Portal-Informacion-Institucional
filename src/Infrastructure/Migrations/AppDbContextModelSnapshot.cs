@@ -3655,6 +3655,58 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Reuniones", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ReunionAdjunto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Clase")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("NombreArchivo")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReunionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Seccion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<long>("Tamano")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReunionId", "Seccion", "Orden");
+
+                    b.ToTable("ReunionAdjuntos", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ReunionInstitucion", b =>
                 {
                     b.Property<int>("Id")
@@ -5253,6 +5305,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ReunionAdjunto", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Reunion", null)
+                        .WithMany("Adjuntos")
+                        .HasForeignKey("ReunionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ReunionInstitucion", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Institucion", null)
@@ -5553,6 +5614,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Reunion", b =>
                 {
                     b.Navigation("Acuerdos");
+
+                    b.Navigation("Adjuntos");
 
                     b.Navigation("Asistentes");
 

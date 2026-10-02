@@ -1,4 +1,4 @@
-namespace Diger.TramitesEstado.Domain.Entities;
+﻿namespace Diger.TramitesEstado.Domain.Entities;
 
 /// <summary>
 /// Reunión o capacitación documentada (acta + asistencia + acuerdos).
@@ -103,10 +103,14 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     // ── Hijos ─────────────────────────────────────────────────────
     private readonly List<Asistente>          _asistentes  = [];
     private readonly List<AcuerdoReunion>     _acuerdos    = [];
+    private readonly List<ReunionAdjunto>     _adjuntos    = [];
     private readonly List<ReunionInstitucion> _institucionesParticipantes = [];
 
     public IReadOnlyCollection<Asistente>          Asistentes             => _asistentes.AsReadOnly();
     public IReadOnlyCollection<AcuerdoReunion>     Acuerdos               => _acuerdos.AsReadOnly();
+    /// <summary>Archivos y enlaces del cierre: documentos de respaldo y evidencia adicional.
+    /// Ver <see cref="ReunionAdjunto"/> para por que los videos van como enlace y no como archivo.</summary>
+    public IReadOnlyCollection<ReunionAdjunto>     Adjuntos               => _adjuntos.AsReadOnly();
     /// <summary>Instituciones convocadas a la reunión (acumulables). La primera agregada
     /// se conserva como <see cref="InstitucionId"/>/<see cref="Institucion"/> (institución principal),
     /// usada para el alcance institucional, el acta y el tablero.</summary>
@@ -130,9 +134,10 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 
     public void MarcarActualizada() => AddDomainEvent(new ReunionUpdatedEvent(Id));
 
-    public void LimpiarHijos() { _asistentes.Clear(); _acuerdos.Clear(); }
+    public void LimpiarHijos() { _asistentes.Clear(); _acuerdos.Clear(); _adjuntos.Clear(); }
     public void Agregar(Asistente a)      => _asistentes.Add(a);
     public void Agregar(AcuerdoReunion a) => _acuerdos.Add(a);
+    public void Agregar(ReunionAdjunto a) => _adjuntos.Add(a);
 
     /// <summary>Vacía la lista de instituciones convocadas (reemplazo en bloque).</summary>
     public void LimpiarInstituciones() => _institucionesParticipantes.Clear();
@@ -192,6 +197,123 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     {
         var a = _asistentes.FirstOrDefault(x => x.Id == asistenteId);
         if (a is not null) { _asistentes.Remove(a); NumAsistentes = _asistentes.Count; }
+    }
+}
+
+/// <summary>
+/// Archivo o enlace que respalda una reunión: un documento del cierre o evidencia adicional.
+///
+/// <para><b>Por qué el enlace es una clase y no una carencia.</b> El portal guarda documentos
+/// —actas firmadas, presentaciones, hojas de cálculo— porque pesan poco y conviene que vivan con
+/// la reunión. El video no: un clip de celular se come en una sola reunión lo que cien documentos,
+/// y el disco del servidor es el mismo que sostiene la base. Así que el video —y cualquier archivo
+/// pesado— se deja en OneDrive y acá se guarda solo su enlace. De ahí que
+/// <see cref="ClaseAdjuntoReunion"/> sea parte del modelo y no un detalle de la pantalla: una fila
+/// tiene <see cref="Url"/> apuntando dentro de <c>/uploads/reuniones</c> o apuntando afuera, y el
+/// acta las pinta distinto —las primeras pasan por un handler con sesión, las segundas son un
+/// <c>href</c> que se abre en otra pestaña.</para>
+///
+/// <para>Se reemplazan en bloque como el resto de los hijos de <see cref="Reunion"/>:
+/// <see cref="Reunion.LimpiarHijos"/> y luego <see cref="Reunion.Agregar(ReunionAdjunto)"/>.</para>
+/// </summary>
+public sealed class ReunionAdjunto : BaseEntity
+{
+    public int ReunionId { get; set; }
+    public int Orden     { get; set; }
+
+    /// <summary>En qué tarjeta del cierre se captura y se muestra.</summary>
+    public SeccionAdjuntoReunion Seccion { get; private set; }
+    /// <summary>Archivo guardado en el portal o enlace externo.</summary>
+    public ClaseAdjuntoReunion   Clase   { get; private set; }
+
+    /// <summary>Lo que se lee en la lista y en el acta. Obligatorio: una fila sin nombre es una
+    /// fila que nadie va a abrir.</summary>
+    public string  Titulo        { get; private set; } = default!;
+    public string? Descripcion   { get; private set; }
+
+    /// <summary>Nombre original del archivo subido; <c>null</c> en los enlaces.</summary>
+    public string? NombreArchivo { get; private set; }
+
+    /// <summary>Ruta relativa dentro de <c>/uploads/reuniones</c> en los archivos, o la dirección
+    /// externa en los enlaces.</summary>
+    public string  Url           { get; private set; } = default!;
+
+    /// <summary>Tamaño en bytes del archivo subido; 0 en los enlaces (el portal no los guarda).</summary>
+    public long    Tamano        { get; private set; }
+
+    private ReunionAdjunto() { }
+
+    /// <summary>Adjunto de archivo. <paramref name="url"/> es la ruta que devolvió el guardado en
+    /// disco, no una dirección que haya escrito nadie.</summary>
+    public static ReunionAdjunto ParaArchivo(
+        SeccionAdjuntoReunion seccion, int orden,
+        string titulo, string? descripcion,
+        string nombreArchivo, string url, long tamano)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombreArchivo);
+        ArgumentException.ThrowIfNullOrWhiteSpace(url);
+
+        return new ReunionAdjunto
+        {
+            Seccion       = seccion,
+            Clase         = ClaseAdjuntoReunion.Archivo,
+            Orden         = orden,
+            Titulo        = ExigirTitulo(titulo),
+            Descripcion   = Limpiar(descripcion),
+            NombreArchivo = nombreArchivo.Trim(),
+            Url           = url.Trim(),
+            Tamano        = tamano < 0 ? 0 : tamano
+        };
+    }
+
+    /// <summary>Adjunto de enlace. La dirección la escribe una persona, así que se valida acá:
+    /// ver <see cref="NormalizarEnlace"/>.</summary>
+    public static ReunionAdjunto ParaEnlace(
+        SeccionAdjuntoReunion seccion, int orden,
+        string titulo, string? descripcion, string? url) =>
+        new()
+        {
+            Seccion     = seccion,
+            Clase       = ClaseAdjuntoReunion.Enlace,
+            Orden       = orden,
+            Titulo      = ExigirTitulo(titulo),
+            Descripcion = Limpiar(descripcion),
+            Url         = NormalizarEnlace(url),
+            Tamano      = 0
+        };
+
+    private static string ExigirTitulo(string titulo)
+    {
+        if (string.IsNullOrWhiteSpace(titulo))
+            throw new DomainException("Cada documento o enlace necesita un nombre.");
+        return titulo.Trim();
+    }
+
+    private static string? Limpiar(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>
+    /// Valida y normaliza la dirección de un enlace.
+    ///
+    /// <para><b>Esto no es cosmética.</b> El acta pinta esta dirección dentro de un <c>href</c>, y
+    /// el acta la ven más personas de las que pueden editar la reunión. Un <c>javascript:</c>
+    /// guardado acá se ejecuta en el navegador de quien la abra, y un <c>file:</c> o una ruta de red
+    /// apuntan al equipo del lector y no al origen que quiso quien lo escribió. Solo pasan
+    /// <c>http</c> y <c>https</c> absolutas.</para>
+    /// </summary>
+    public static string NormalizarEnlace(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            throw new DomainException("El enlace no puede quedar vacío. Pegue la dirección completa, por ejemplo https://…");
+
+        var limpia = url.Trim();
+
+        if (!Uri.TryCreate(limpia, UriKind.Absolute, out var uri))
+            throw new DomainException($"«{limpia}» no es una dirección válida. Pegue la dirección completa, incluyendo https://");
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            throw new DomainException($"Solo se aceptan enlaces http o https; «{uri.Scheme}» no se permite.");
+
+        return uri.ToString();
     }
 }
 

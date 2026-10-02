@@ -1,4 +1,4 @@
-namespace Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
+﻿namespace Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
 
 public sealed class ExpedienteRepository(AppDbContext ctx) : IExpedienteRepository
 {
@@ -156,8 +156,9 @@ public sealed class ReunionRepository(AppDbContext ctx) : IReunionRepository
         ctx.Reuniones
             .Include(r => r.Asistentes)
             .Include(r => r.Acuerdos)
+            .Include(r => r.Adjuntos)
             .Include(r => r.InstitucionesParticipantes)
-            .AsSplitQuery()  // evita el producto cartesiano Asistentes × Acuerdos × Instituciones
+            .AsSplitQuery()  // evita el producto cartesiano Asistentes × Acuerdos × Adjuntos × Instituciones
             .FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public Task<Reunion?> GetByTokenWithAsistentesAsync(Guid token, CancellationToken ct = default) =>

@@ -1,0 +1,62 @@
+@model Diger.TramitesEstado.Web.Pages.Reuniones.AdjuntoFilaVm
+@*
+    Una fila de las listas de «Documentos y recursos» o de «Evidencia fotográfica y de video».
+
+    Existe como parcial porque las dos tarjetas capturan exactamente lo mismo y solo cambia el
+    prefijo del nombre del campo (AdjuntosDoc / AdjuntosEvi). El marcado equivalente para las filas
+    que se agregan en caliente vive en el JavaScript de Editor.cshtml — esa duplicación es la que ya
+    tienen los asistentes y los acuerdos de esta misma pantalla, y se mantiene por consistencia.
+
+    El hidden «.Index» no es decorativo: al quitar una fila del medio los índices quedan con huecos,
+    y sin él el enlace de modelo corta la lista en el primer faltante.
+*@
+@{
+    var p = Model.Prefijo;
+    var i = Model.Indice;
+    var a = Model.Fila;
+    var esArchivo = a.Clase == Diger.TramitesEstado.Domain.Enums.ClaseAdjuntoReunion.Archivo;
+}
+<div class="adj-item" data-clase="@(esArchivo ? "Archivo" : "Enlace")">
+    <input type="hidden" name="@(p).Index" value="@i" />
+    <input type="hidden" name="@(p)[@i].Clase" value="@(esArchivo ? "Archivo" : "Enlace")" />
+
+    <div class="adj-hdr">
+        <span class="adj-ico" aria-hidden="true">@(esArchivo ? "📄" : "🔗")</span>
+        <input name="@(p)[@i].Titulo" class="adj-titulo" value="@a.Titulo"
+               placeholder="@(esArchivo ? "Nombre del documento…" : "Nombre de lo que enlaza…")" />
+        <button type="button" class="asi-del" onclick="quitarAdjunto(this)"
+                title="@(esArchivo ? "Quitar documento" : "Quitar enlace")">✕</button>
+    </div>
+
+    @if (esArchivo)
+    {
+        <div class="adj-campos">
+            <div class="adj-archivo">
+                <input type="file" name="@(p)[@i].Archivo" accept="@Model.Accept" />
+                @if (!string.IsNullOrWhiteSpace(a.Url))
+                {
+                    <span class="adj-actual" title="Archivo guardado en el portal">
+                        @(string.IsNullOrWhiteSpace(a.NombreArchivo) ? "archivo guardado" : a.NombreArchivo)
+                        @if (a.Tamano > 0)
+                        {
+                            <text> · @(Math.Max(1, a.Tamano / 1024)) KB</text>
+                        }
+                    </span>
+                    <span class="hint">Elija otro archivo solo si quiere reemplazarlo.</span>
+                }
+            </div>
+            <input type="hidden" name="@(p)[@i].Url" value="@a.Url" />
+            <input type="hidden" name="@(p)[@i].NombreArchivo" value="@a.NombreArchivo" />
+            <input type="hidden" name="@(p)[@i].Tamano" value="@a.Tamano" />
+            <input name="@(p)[@i].Descripcion" value="@a.Descripcion" placeholder="Descripción (opcional)" />
+        </div>
+    }
+    else
+    {
+        <div class="adj-campos">
+            <input name="@(p)[@i].Url" type="url" inputmode="url" value="@a.Url"
+                   placeholder="https://… (pegue acá el enlace de OneDrive)" />
+            <input name="@(p)[@i].Descripcion" value="@a.Descripcion" placeholder="Descripción (opcional)" />
+        </div>
+    }
+</div>

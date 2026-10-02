@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Diger.TramitesEstado.Application.Reuniones.Common;
 using QuestPDF;
 using QuestPDF.Fluent;
@@ -96,7 +96,7 @@ public sealed class ActaPdfService : IActaPdfService
                     }
 
                     // ── 3. Objetivo de la reunión ────────────────────────────
-                    var objetivo = PrimeraNoVacia(d.ObjetivoAgenda, d.ObjetivoCap);
+                    var objetivo = d.ObjetivoAgenda;
                     if (Hay(objetivo))
                         Seccion(col, "3", "Objetivo de la Reunión", body =>
                             body.Item().Text(objetivo).Justify());
@@ -146,19 +146,32 @@ public sealed class ActaPdfService : IActaPdfService
                     }
 
                     // ── 6. Documentos y recursos ─────────────────────────────
-                    var docs = Lineas(d.DocsRecursos);
-                    if (docs.Count > 0)
+                    // Tres fuentes en una sola sección: el texto libre de siempre, los archivos
+                    // adjuntos y los enlaces. Los archivos van por su nombre y no por su ruta: la
+                    // ruta es interna y en papel no sirve de nada. Los enlaces sí llevan la
+                    // dirección completa, que es lo único que hace útil un video en un PDF.
+                    var docs = Lineas(d.DocsRecursos)
+                        .Select(l => (Texto: l, Url: (string?)null))
+                        .Concat(Adjuntos(d, SeccionAdjuntoReunion.Documento))
+                        .ToList();
+                    var evidencias = Adjuntos(d, SeccionAdjuntoReunion.Evidencia);
+
+                    if (docs.Count > 0 || evidencias.Count > 0)
                         Seccion(col, "6", "Documentos y Recursos", body =>
                         {
-                            if (docs.Count == 1)
-                                body.Item().Text(docs[0]).Justify();
+                            if (docs.Count == 1 && docs[0].Url is null)
+                                body.Item().Text(docs[0].Texto).Justify();
                             else
-                                foreach (var l in docs)
-                                    body.Item().Row(r =>
-                                    {
-                                        r.ConstantItem(12).Text("•").FontColor(AzulMed);
-                                        r.RelativeItem().Text(l);
-                                    });
+                                foreach (var it in docs)
+                                    Vineta(body, it.Texto, it.Url);
+
+                            if (evidencias.Count > 0)
+                            {
+                                body.Item().PaddingTop(8).Text("Evidencia en enlaces")
+                                    .FontSize(10).Bold().FontColor(Azul);
+                                foreach (var it in evidencias)
+                                    Vineta(body, it.Texto, it.Url);
+                            }
                         });
 
                     // ── Cierre ───────────────────────────────────────────────
@@ -210,6 +223,36 @@ public sealed class ActaPdfService : IActaPdfService
         tbl.Cell().Background(bg).BorderBottom(0.5f).BorderColor("#e2e8f0").Padding(4);
 
     // ── Helpers de datos ───────────────────────────────────────────────────────
+    /// <summary>Una viñeta de la sección de documentos. Si trae dirección, se imprime abajo en
+    /// gris: en papel el enlace tiene que poder teclearse, así que va completo y no abreviado.</summary>
+    private static void Vineta(ColumnDescriptor body, string texto, string? url)
+    {
+        body.Item().PaddingBottom(url is null ? 0 : 3).Row(r =>
+        {
+            r.ConstantItem(12).Text("•").FontColor(AzulMed);
+            r.RelativeItem().Column(c =>
+            {
+                c.Item().Text(texto);
+                if (url is not null)
+                    c.Item().Text(url).FontSize(7.5f).FontColor(GrisTenue);
+            });
+        });
+    }
+
+    /// <summary>Los adjuntos de una tarjeta, listos para imprimir: el archivo por su nombre
+    /// original y el enlace con su dirección debajo.</summary>
+    private static List<(string Texto, string? Url)> Adjuntos(ReunionFormDto d, SeccionAdjuntoReunion seccion) =>
+        d.Adjuntos
+            .Where(a => a.Seccion == seccion && !string.IsNullOrWhiteSpace(a.Url))
+            .Select(a =>
+            {
+                var texto = Combinar(a.Titulo, a.Descripcion, " — ") ?? a.Titulo;
+                return a.Clase == ClaseAdjuntoReunion.Archivo
+                    ? (Texto: Hay(a.NombreArchivo) ? $"{texto} ({a.NombreArchivo})" : texto, Url: (string?)null)
+                    : (Texto: texto, Url: a.Url);
+            })
+            .ToList();
+
     private static bool Hay(string? s) => !string.IsNullOrWhiteSpace(s);
     private static string Ni(string? s) => string.IsNullOrWhiteSpace(s) ? "—" : s.Trim();
 

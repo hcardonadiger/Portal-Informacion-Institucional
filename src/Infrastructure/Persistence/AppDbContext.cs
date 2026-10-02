@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Diger.TramitesEstado.Infrastructure.Persistence;
@@ -564,8 +564,42 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
             .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Acuerdos).WithOne()
             .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Adjuntos).WithOne()
+            .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.InstitucionesParticipantes).WithOne()
             .HasForeignKey(x => x.ReunionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>
+/// Documentos y enlaces del cierre de una reunión.
+///
+/// <para><c>Seccion</c> y <c>Clase</c> se guardan como texto y no como número: estas filas se leen
+/// a mano cuando algo no cuadra en un despliegue, y un <c>Evidencia</c>/<c>Enlace</c> legible vale
+/// más que un 2. Es el mismo criterio que ya sigue <c>Reuniones.Visibilidad</c>.</para>
+///
+/// <para>El índice compuesto es por el que se listan: todo lo de una reunión, agrupado por tarjeta
+/// y en el orden en que se capturó.</para>
+/// </summary>
+public sealed class ReunionAdjuntoConfiguration : IEntityTypeConfiguration<ReunionAdjunto>
+{
+    public void Configure(EntityTypeBuilder<ReunionAdjunto> b)
+    {
+        b.ToTable("ReunionAdjuntos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+
+        b.Property(x => x.Seccion).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Clase).HasConversion<string>().HasMaxLength(20).IsRequired();
+
+        b.Property(x => x.Titulo).HasMaxLength(250).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(500);
+        b.Property(x => x.NombreArchivo).HasMaxLength(260);
+        // 1000 y no 600 como Foto1Url: un enlace de OneDrive compartido trae token en el query
+        // string y pasa largo de los 600 que alcanzan para una ruta local.
+        b.Property(x => x.Url).HasMaxLength(1000).IsRequired();
+
+        b.HasIndex(x => new { x.ReunionId, x.Seccion, x.Orden });
     }
 }
 

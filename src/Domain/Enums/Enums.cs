@@ -1,4 +1,4 @@
-namespace Diger.TramitesEstado.Domain.Enums;
+﻿namespace Diger.TramitesEstado.Domain.Enums;
 
 // ── Rol del usuario interno DIGER ─────────────────────────────────────────
 // Los roles ya NO son este enum: viven en la tabla Roles y se administran desde
@@ -182,6 +182,24 @@ public enum VisibilidadReunion
 {
     Publica = 1, // visible para las instituciones dentro del alcance
     Privada = 2  // visible solo para quien la creó
+}
+
+/// <summary>Tarjeta del cierre de la reunión a la que pertenece un adjunto.</summary>
+public enum SeccionAdjuntoReunion
+{
+    /// <summary>«Documentos y recursos»: archivos de respaldo y enlaces a material de la reunión.</summary>
+    Documento = 1,
+    /// <summary>«Evidencia fotográfica y de video»: acompaña a las dos fotos del acta.</summary>
+    Evidencia = 2
+}
+
+/// <summary>Si el adjunto es un archivo guardado en el portal o un enlace a un servicio externo.</summary>
+public enum ClaseAdjuntoReunion
+{
+    /// <summary>Archivo subido al portal; vive en App_Data/uploads/reuniones y se sirve por handler.</summary>
+    Archivo = 1,
+    /// <summary>Enlace externo (OneDrive, SharePoint, YouTube…). El portal no guarda el contenido.</summary>
+    Enlace  = 2
 }
 
 // ── Plan de trabajo anual por institución ─────────────────────────────────

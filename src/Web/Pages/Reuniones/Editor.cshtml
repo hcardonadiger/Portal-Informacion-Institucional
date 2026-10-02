@@ -1,4 +1,4 @@
-@page "{id:int?}"
+﻿@page "{id:int?}"
 @model Diger.TramitesEstado.Web.Pages.Reuniones.EditorModel
 @functions {
     static string AsistIni(string? nombre)
@@ -49,7 +49,7 @@
       </div>
       <div class="sbi" id="sb2" onclick="irPaso(2)" style="display:none">
         <div class="sbi-num">+</div>
-        <div class="sbi-info"><span class="sbi-label">Capacitación</span><span class="sbi-sub">Detalle adicional</span></div>
+        <div class="sbi-info"><span class="sbi-label">Capacitación</span><span class="sbi-sub">Asistencia y compromisos</span></div>
       </div>
       <div class="sbi" id="sb4" onclick="irPaso(4)">
         <div class="sbi-num">4</div>
@@ -358,17 +358,10 @@
     @* ══ PASO 2: CAPACITACIÓN (solo si Tipo = Capacitación) ══ *@
     <div class="sec" id="sec2">
       <div class="sec-title"><span class="sec-step-badge">+</span>Capacitación</div>
-      <div class="card accent">
-          <div class="ct">Detalle de capacitación</div>
-          <div class="field">
-              <label>Objetivo de la capacitación</label>
-              <textarea asp-for="Datos.ObjetivoCap" rows="2"></textarea>
-          </div>
-          <div class="field">
-              <label>Contenido <span class="hint">(un punto por línea)</span></label>
-              <textarea asp-for="Datos.Contenido" rows="4"></textarea>
-          </div>
-      </div>
+      @* «Detalle de capacitación» —objetivo formativo y contenido— se quitó el 2026-10-02: repetía
+         lo que el paso Memoria ya pide como «Objetivo de la reunión» y «Desarrollo», y la gente
+         terminaba escribiendo dos veces lo mismo. El paso queda con lo que sí es propio de una
+         capacitación: sus cifras de asistencia y sus compromisos de seguimiento. *@
 
       @* ── Resultados de la capacitación ────────────────────────── *@
       <div class="card accent">
@@ -423,10 +416,45 @@
           <div class="field"><label>Validación DIGER</label><input asp-for="Datos.ValDiger" /></div>
           <div class="field" id="val-inst-field"><label>Validación institución</label><input asp-for="Datos.ValInst" /></div>
         </div>
-        <div class="field"><label>Documentos / recursos <span class="hint">(uno por línea)</span></label><textarea asp-for="Datos.DocsRecursos" rows="2"></textarea></div>
       </div>
+
+      @* ── Documentos y recursos ──────────────────────────────────
+         Tres cosas en una tarjeta, de lo más suelto a lo más formal: las menciones de texto libre
+         que ya existían, los archivos que el portal guarda, y los enlaces a lo que vive afuera. *@
+      <div class="card accent" id="docs-card">
+        <div class="ct">Documentos y recursos</div>
+        <div class="field">
+          <label>Menciones en el acta <span class="hint">(uno por línea)</span></label>
+          <textarea asp-for="Datos.DocsRecursos" rows="2"
+                    placeholder="Material mencionado durante la reunión que no necesita adjuntarse…"></textarea>
+        </div>
+
+        <div class="adj-nota">
+          <strong>¿Videos o archivos pesados?</strong>
+          No se suben al portal. Súbalos a <b>OneDrive</b>, copie el enlace para compartir y péguelo
+          acá con <b>«+ Agregar enlace»</b>. Así la grabación de una reunión no consume el espacio
+          del servidor, que es el mismo donde vive la base de datos.
+          <span class="adj-nota-ojo">Revise que el enlace quede compartido con la institución: si se
+          queda restringido a su cuenta, quien abra el acta verá un «no tiene acceso».</span>
+          Al portal súbale solo documentos de hasta @Model.AdjuntoMaxMb MB
+          (PDF, Word, Excel, PowerPoint, texto, ZIP e imágenes).
+        </div>
+
+        <div id="adj-doc-list">
+          @for (var i = 0; i < Model.AdjuntosDoc.Count; i++)
+          {
+            @await Html.PartialAsync("_AdjuntoFila",
+                new AdjuntoFilaVm("AdjuntosDoc", i, Model.AdjuntosDoc[i], Model.AdjuntoAccept))
+          }
+        </div>
+        <div class="adj-acciones">
+          <button type="button" class="btns" onclick="addAdjunto('doc','Archivo')">+ Agregar archivo</button>
+          <button type="button" class="btns" onclick="addAdjunto('doc','Enlace')">+ Agregar enlace</button>
+        </div>
+      </div>
+
       <div class="card accent" id="foto-card">
-        <div class="ct">Evidencia fotográfica</div>
+        <div class="ct">Evidencia fotográfica y de video</div>
         <div class="row2">
           <div class="field"><label>Foto 1</label>
             <div class="foto-up">
@@ -444,6 +472,23 @@
             <input asp-for="Datos.Foto2Desc" placeholder="Descripción foto 2" style="margin-top:6px" />
             <input type="hidden" asp-for="Datos.Foto2Url" />
           </div>
+        </div>
+
+        @* Los dos cupos de foto se quedan como estaban —son los que salen en el acta y en el PDF—
+           y el video entra por enlace. Ver ReunionAdjunto para el porqué. *@
+        <div class="adj-sub">
+          <span class="adj-sub-t">Videos y evidencia adicional</span>
+          <span class="hint">Pegue el enlace de OneDrive de cada video o carpeta de fotos.</span>
+        </div>
+        <div id="adj-evi-list">
+          @for (var i = 0; i < Model.AdjuntosEvi.Count; i++)
+          {
+            @await Html.PartialAsync("_AdjuntoFila",
+                new AdjuntoFilaVm("AdjuntosEvi", i, Model.AdjuntosEvi[i], Model.AdjuntoAccept))
+          }
+        </div>
+        <div class="adj-acciones">
+          <button type="button" class="btns" onclick="addAdjunto('evi','Enlace')">+ Agregar enlace</button>
         </div>
       </div>
       <div class="nav">
@@ -593,6 +638,43 @@
     .ac-meta { flex-direction: column; }
     .ac-meta .field[style*="width:160px"] { width: 100% !important; }
 }
+
+/* ══ Adjuntos: documentos y enlaces del cierre ════════════════════ */
+.adj-nota {
+    border: 1.5px solid var(--diger-border);
+    border-left: 4px solid var(--diger-blue-mid);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: var(--diger-bg-soft);
+    font-size: 12.5px; line-height: 1.6; color: var(--diger-text-muted);
+}
+.adj-nota strong { color: var(--diger-text); }
+.adj-nota-ojo { display: block; margin: 4px 0; }
+.adj-item {
+    border: 1.5px solid var(--diger-border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: var(--diger-bg-soft);
+    transition: border-color .15s, box-shadow .15s;
+}
+.adj-item:focus-within { border-color: var(--diger-blue-mid); background: var(--diger-surface); box-shadow: 0 2px 8px rgba(20,85,164,.07); }
+.adj-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.adj-ico { font-size: 15px; flex: none; line-height: 1; }
+.adj-titulo { flex: 1; min-width: 0; }
+.adj-campos { display: flex; flex-direction: column; gap: 6px; }
+.adj-campos input[type=url], .adj-campos input[type=text], .adj-campos input:not([type]) { width: 100%; box-sizing: border-box; }
+.adj-archivo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.adj-archivo input[type=file] { flex: 1 1 220px; min-width: 0; font-size: 12.5px; }
+.adj-actual {
+    font-size: 12px; font-weight: 700; color: var(--diger-blue-mid);
+    background: var(--diger-surface); border: 1px solid var(--diger-border);
+    border-radius: 6px; padding: 2px 8px; max-width: 100%; overflow-wrap: anywhere;
+}
+.adj-acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: .6rem; }
+.adj-sub { margin-top: 16px; padding-top: 12px; border-top: 1.5px dashed var(--diger-border); }
+.adj-sub-t { display: block; font-size: 11px; font-weight: 800; color: var(--diger-text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
 
 /* ══ Directory search dropdown ═══════════════════════════════════ */
 .dir-search-wrap { position: relative; }
@@ -1056,6 +1138,49 @@
             actualizarResponsables();
         }
 
+        // ── Adjuntos ──────────────────────────────────────────────────────────
+        // Un contador por lista. Nunca se reusa un índice al quitar una fila: los huecos los
+        // resuelven los hidden «.Index» que pinta la parcial _AdjuntoFila y que acá se replican.
+        var adjIdx = { doc: @Model.AdjuntosDoc.Count, evi: @Model.AdjuntosEvi.Count };
+        var ADJ_PREFIJO = { doc: 'AdjuntosDoc', evi: 'AdjuntosEvi' };
+        var ADJ_ACCEPT  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AdjuntoAccept));
+
+        function addAdjunto(lista, clase) {
+            const p = ADJ_PREFIJO[lista];
+            const i = adjIdx[lista]++;
+            const esArchivo = clase === 'Archivo';
+            const div = document.createElement('div');
+            div.className = 'adj-item';
+            div.dataset.clase = clase;
+
+            const cuerpo = esArchivo
+                ? `<div class="adj-campos">` +
+                    `<div class="adj-archivo"><input type="file" name="${p}[${i}].Archivo" accept="${ADJ_ACCEPT}" /></div>` +
+                    `<input type="hidden" name="${p}[${i}].Url" value="" />` +
+                    `<input type="hidden" name="${p}[${i}].NombreArchivo" value="" />` +
+                    `<input type="hidden" name="${p}[${i}].Tamano" value="0" />` +
+                    `<input name="${p}[${i}].Descripcion" placeholder="Descripción (opcional)" />` +
+                  `</div>`
+                : `<div class="adj-campos">` +
+                    `<input name="${p}[${i}].Url" type="url" inputmode="url" placeholder="https://… (pegue acá el enlace de OneDrive)" />` +
+                    `<input name="${p}[${i}].Descripcion" placeholder="Descripción (opcional)" />` +
+                  `</div>`;
+
+            div.innerHTML =
+                `<input type="hidden" name="${p}.Index" value="${i}" />` +
+                `<input type="hidden" name="${p}[${i}].Clase" value="${clase}" />` +
+                `<div class="adj-hdr">` +
+                  `<span class="adj-ico" aria-hidden="true">${esArchivo ? '📄' : '🔗'}</span>` +
+                  `<input name="${p}[${i}].Titulo" class="adj-titulo" placeholder="${esArchivo ? 'Nombre del documento…' : 'Nombre de lo que enlaza…'}" />` +
+                  `<button type="button" class="asi-del" onclick="quitarAdjunto(this)" title="Quitar">✕</button>` +
+                `</div>` + cuerpo;
+
+            document.getElementById('adj-' + lista + '-list').appendChild(div);
+            div.querySelector('.adj-titulo').focus();
+        }
+
+        function quitarAdjunto(btn) { btn.closest('.adj-item').remove(); }
+
         function renumerarAcuerdos() {
             document.querySelectorAll('#acuerdos-list .ac-num').forEach(function (el, idx) {
                 el.textContent = idx + 1;
@@ -1082,8 +1207,6 @@
     ['acuerdos[]',   'Memoria · Acuerdos y compromisos']
   ];
   var CW_CAMPOS_CAP = [
-    ['objetivo_capacitacion', 'Capacitación · Objetivo'],
-    ['contenido',             'Capacitación · Contenido'],
     ['convocados',            'Capacitación · Convocados'],
     ['num_asistentes',        'Capacitación · Nº asistentes'],
     ['pct_asistencia',        'Capacitación · % asistencia'],
@@ -1107,8 +1230,6 @@
     '  ],'
   ];
   var CW_BLOQUE_CAP = [
-    '  "objetivo_capacitacion": "Objetivo formativo de la capacitación",',
-    '  "contenido": ["Tema impartido 1", "Tema impartido 2"],',
     '  "convocados": 30,',
     '  "num_asistentes": 24,',
     '  "pct_asistencia": 80,',
@@ -1139,9 +1260,9 @@
     '   transcripción no dice quién valida.'
   ];
   var CW_REGLAS_CAP = [
-    '7. Esta actividad es una CAPACITACIÓN: llena también su bloque propio.',
-    '   "objetivo_capacitacion" es el objetivo formativo (qué debían aprender), distinto del',
-    '   "objetivo" de la sesión. "contenido" son los temas efectivamente impartidos.',
+    '7. Esta actividad es una CAPACITACIÓN: llena también su bloque propio. NO devuelvas un',
+    '   objetivo ni un contenido aparte para la capacitación: lo formativo va en "objetivo" y',
+    '   los temas impartidos en "desarrollo", que es donde los lee el acta.',
     '8. "convocados" y "num_asistentes" son enteros; "pct_asistencia" es un entero de 0 a 100',
     '   y solo se calcula si tienes ambas cifras. "compromisos" son los acuerdos de',
     '   seguimiento posteriores a la capacitación (replicar, entregar material, evaluar).'
@@ -1248,8 +1369,6 @@
     if (conEncuesta) campos.push(['Datos.ValInst', d.validador_institucion]);
     if (esCap) {
       campos.push(
-        ['Datos.ObjetivoCap',   d.objetivo_capacitacion],
-        ['Datos.Contenido',     cwLineas(d.contenido)],
         ['Datos.Compromisos',   cwLineas(d.compromisos)],
         ['Datos.Convocados',    d.convocados],
         ['Datos.NumAsistentes', d.num_asistentes],
@@ -1321,6 +1440,8 @@
     // y la segunda firma solo no aplica mientras la encuesta esté apagada.
     var satIgnoradas = ['satisfaccion', 'satisfaccion_calificacion']
       .filter(function(k){ return d[k] != null; });
+    var capViejas = ['objetivo_capacitacion', 'contenido']
+      .filter(function(k){ return d[k] != null; });
     var encIgnoradas = conEncuesta ? [] : ['validador_institucion']
       .filter(function(k){ return d[k] != null; });
 
@@ -1335,6 +1456,9 @@
     }
     if (satIgnoradas.length) {
       msg += ' Se ignoró ' + satIgnoradas.join(', ') + ': la satisfacción ya no se captura en el cierre.';
+    }
+    if (capViejas.length) {
+      msg += ' Se ignoró ' + capViejas.join(', ') + ': el detalle de capacitación se quitó; use «objetivo» y «desarrollo».';
     }
     if (encIgnoradas.length) {
       msg += ' Se ignoró ' + encIgnoradas.join(', ') + ': la encuesta de esta reunión está apagada.';

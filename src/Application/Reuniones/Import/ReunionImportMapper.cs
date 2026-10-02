@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 using Diger.TramitesEstado.Application.Reuniones.Common;
 
@@ -35,8 +35,6 @@ public static class ReunionImportMapper
             Desarrollo     = Cut(Str(cap, "mem_desarrollo"), 4000),
 
             Tema        = Cut(Str(cap, "tema"),     250),
-            ObjetivoCap = Cut(Str(cap, "objetivo"), 2000),
-            Contenido   = Cut(JoinLines(cap, "contenido"), 4000),
 
             EpNombre = Cut(Str(cap, "ep_nombre"), 150),
             EpCargo  = Cut(Str(cap, "ep_cargo"),  150),

@@ -1,0 +1,41 @@
+@model Diger.TramitesEstado.Web.Pages.Reuniones.ActaAdjuntoVm
+@*
+    Un documento o un enlace dentro del acta.
+
+    Los dos casos se ven parecidos pero no son la misma cosa, y por eso no comparten el href:
+
+    · El archivo vive en el portal y se pide al handler «Adjunto» de esta misma página, que resuelve
+      la reunión con la consulta normal antes de tocar el disco. Quien no puede ver la reunión
+      tampoco baja su adjunto. Ver ArchivosProtegidos para por qué no se sirve por ruta directa.
+
+    · El enlace sale del portal. Lleva rel="noopener noreferrer" —la pestaña destino no debe poder
+      tocar la que la abrió— y se imprime el destino debajo: el acta se lee también en papel, y en
+      pantalla nadie debería hacer clic a ciegas en una dirección que escribió otra persona.
+      El esquema ya quedó validado al guardar (ReunionAdjunto.NormalizarEnlace); esto es lo que lo
+      hace legible, no lo que lo hace seguro.
+*@
+@{
+    var a = Model.Adjunto;
+    var esArchivo = a.Clase == Diger.TramitesEstado.Domain.Enums.ClaseAdjuntoReunion.Archivo;
+}
+<li>
+    @if (esArchivo)
+    {
+        <a href="@Url.Page("/Reuniones/Acta", "Adjunto", new { id = Model.ReunionId, adjuntoId = a.Id })">@a.Titulo</a>
+        <span class="adj-tipo">archivo</span>
+        @if (!string.IsNullOrWhiteSpace(a.NombreArchivo))
+        {
+            <span class="adj-dest">@a.NombreArchivo</span>
+        }
+    }
+    else
+    {
+        <a href="@a.Url" target="_blank" rel="noopener noreferrer">@a.Titulo</a>
+        <span class="adj-tipo">enlace</span>
+        <span class="adj-dest">@a.Url</span>
+    }
+    @if (!string.IsNullOrWhiteSpace(a.Descripcion))
+    {
+        <span class="adj-nota">@a.Descripcion</span>
+    }
+</li>
