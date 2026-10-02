@@ -1061,6 +1061,60 @@ tr.contacto-inactivo td {
     display: block;
 }
 
+/* ── PREVALIDACIÓN (prevalidacion.js) ─────────────────────────────
+   El aviso del campo que no cumple una condición, dicho donde está el campo y
+   no en una pantalla recargada. Ver la cabecera de prevalidacion.js. */
+.pv-invalido {
+    /* !important porque los controles de las tablas del editor traen su propio borde con más
+       especificidad, y acá el borde es el que dice cuál de veinte fechas es la que falla. */
+    border-color: var(--diger-danger) !important;
+    box-shadow: 0 0 0 3px var(--diger-danger-bg);
+}
+
+.pv-msg {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: var(--diger-danger-text);
+}
+
+/* Una columna de fecha mide 130 px: el aviso se partiría en cinco líneas de dos palabras. Al
+   campo que falla se le deja crecer, y solo mientras falla. */
+.edt-campo.pv-con-error {
+    flex-basis: 215px;
+}
+
+.pv-resumen {
+    margin-bottom: var(--diger-space-3);
+}
+
+.pv-resumen ul {
+    margin: .35rem 0 0;
+    padding-left: 1.15rem;
+}
+
+.pv-resumen li {
+    margin-top: 2px;
+}
+
+/* El resumen lleva al campo: cada línea es el mismo texto del aviso, pero clickeable. Hace falta
+   porque el campo que falla puede estar en otra pestaña del mismo formulario. */
+.pv-ir {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.pv-ir:hover {
+    text-decoration: none;
+}
+
 /* ── CONTEXTUAL HELP TOOLTIPS ─────────────────────────────────── */
 .help-tip {
     display: inline-flex;

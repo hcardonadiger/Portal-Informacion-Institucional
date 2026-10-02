@@ -181,4 +181,25 @@ public sealed class FichaProyectoTests : IAsyncLifetime
              .Should().Be(int.Parse(colspanRazor),
                  "el colspan de «+ Actividad» tiene que cubrir exactamente las celdas de la fila");
     }
+
+    [Fact]
+    public async Task El_formulario_de_la_ficha_llega_enganchado_a_la_prevalidacion()
+    {
+        // Guardar la ficha es un solo POST con el árbol entero, y el handler contesta un rechazo
+        // con un redirect: la pantalla se vuelve a pintar desde la base y la sesión de edición se
+        // pierde. Por eso las reglas que se pueden decidir en el navegador —ventana invertida,
+        // nombre vacío— se revisan antes de postear. Si este enganche se cae, el síntoma vuelve sin
+        // que nada deje de compilar.
+        var html = await FichaAsync();
+
+        html.Should().Contain("id=\"form-ficha\"", "es por este id que se engancha el formulario");
+        html.Should().Contain("_dgPrevalidar", "sin esto no hay revisión previa");
+        html.Should().Contain("pv.enlazar(form", "las reglas se registran en el formulario de la ficha");
+        html.Should().Contain("prevalidacion.js", "el motor lo sirve el layout");
+
+        // Las tres reglas que cubren lo que el comando y el dominio rechazan al guardar.
+        html.Should().Contain("El cierre planificado (");
+        html.Should().Contain("necesita un nombre.");
+        html.Should().Contain("la fecha de fin no puede ser anterior a la de inicio.");
+    }
 }

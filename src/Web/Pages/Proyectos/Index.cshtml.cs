@@ -51,16 +51,33 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     public IReadOnlyList<OpcionCategoriaDto>   Categorias  { get; private set; } = [];
     public bool PuedeCrear { get; private set; }
 
+    /// <summary>
+    /// El rechazo del alta rápida, dicho dentro del propio modal.
+    ///
+    /// <para>Antes esto iba a <c>TempData["ErrorMsg"]</c> con un redirect detrás, y el redirect era
+    /// el problema: la página se volvía a pintar vacía y lo que la persona acababa de escribir en el
+    /// modal —nombre, objetivo, fechas— se perdía. Había que teclearlo todo otra vez para enterarse,
+    /// quizá, del siguiente error. Ahora el handler devuelve la misma página: las propiedades
+    /// enlazadas conservan lo escrito, el modal se vuelve a abrir con los valores puestos y el
+    /// mensaje aparece adentro, no detrás del fondo oscuro.</para>
+    ///
+    /// <para>La mayoría de estos rechazos ya no debería llegar: el formulario los revisa en el
+    /// navegador antes de postear (ver <c>prevalidacion.js</c>). Esto es la red para lo que el
+    /// navegador no puede saber.</para>
+    /// </summary>
+    public string? ErrorAlta { get; private set; }
+
+    /// <summary>Si el modal de alta tiene que llegar abierto. Lo pide el único caso en que vale:
+    /// volver de un rechazo con lo escrito todavía en pantalla.</summary>
+    public bool ReabrirAlta => ErrorAlta is not null;
+
     public async Task OnGetAsync(CancellationToken ct) => await CargarAsync(ct);
 
     [Permission("Proyectos", AccionModulo.Crear, "Crear proyectos")]
     public async Task<IActionResult> OnPostCrearAsync(CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(NuevoNombre))
-        {
-            TempData["ErrorMsg"] = "El proyecto necesita un nombre.";
-            return RedirectToPage();
-        }
+            return await VolverAlAltaAsync("El proyecto necesita un nombre.", ct);
 
         try
         {
@@ -83,9 +100,17 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
         }
         catch (DomainException ex)
         {
-            TempData["ErrorMsg"] = ex.Message;
-            return RedirectToPage();
+            return await VolverAlAltaAsync(ex.Message, ct);
         }
+    }
+
+    /// <summary>Vuelve al listado con el modal de alta abierto, su contenido intacto y el motivo del
+    /// rechazo adentro. Recarga el listado porque <see cref="Page"/> no pasa por <c>OnGet</c>.</summary>
+    private async Task<IActionResult> VolverAlAltaAsync(string motivo, CancellationToken ct)
+    {
+        ErrorAlta = motivo;
+        await CargarAsync(ct);
+        return Page();
     }
 
     private async Task CargarAsync(CancellationToken ct)

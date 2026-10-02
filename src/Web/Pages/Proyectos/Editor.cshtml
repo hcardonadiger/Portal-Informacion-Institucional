@@ -262,7 +262,9 @@
     @* La estructura va primero y la ficha después, al revés que antes: a un proyecto abierto se
        entra a mirar y mover el desglose, no a corregirle el nombre. Las dos siguen en el mismo
        formulario porque las guarda el mismo comando. *@
-    <form method="post" asp-page-handler="Guardar" asp-route-id="@p.Id">
+    @* El id lo usa la prevalidación: es el formulario cuyas reglas de fecha y de nombre se revisan
+       antes de postear, para no perder el árbol entero por una ventana invertida. *@
+    <form method="post" asp-page-handler="Guardar" asp-route-id="@p.Id" id="form-ficha">
         @* Cada pestaña es una <section> que se oculta con [hidden], NO se saca del DOM: la
            estructura y los datos del proyecto los postea el mismo formulario, y un panel removido
            dejaría de mandar sus campos. Es el mismo criterio con que se pliegan los grupos de la
@@ -2906,5 +2908,95 @@
             ? "Prefijo común; vacío, cada documento toma el nombre de su archivo"
             : "Convenio marco DIGER–SRECI";
     }
+
+    /* ── Revisión previa al guardado ──────────────────────────────────────────
+       Guardar la ficha es un solo POST con el árbol entero. Hasta ahora, si el
+       comando rechazaba cualquier cosa —una ventana que termina antes de
+       empezar, una actividad sin nombre— el handler dejaba el mensaje en
+       TempData y redirigía: la página se volvía a pintar desde la base y el
+       trabajo de toda la sesión de edición se perdía, sin que el mensaje dijera
+       siquiera de qué fila hablaba.
+
+       Estas reglas son las mismas que el comando y el dominio aplican del otro
+       lado (ActualizarProyectoCommand, ActividadProyecto.Definir,
+       EntregableProyecto.Definir), escritas acá para que el envío no salga
+       cuando ya se sabe que va a ser rechazado. El servidor sigue validando: es
+       la autoridad, y acá no se puede comprobar nada que dependa de la base. */
+    (function () {
+        var form = document.getElementById('form-ficha');
+        if (!form || !window._dgPrevalidar) return;
+
+        var pv = window._dgPrevalidar;
+
+        function dmy(iso) {
+            var p = (iso || '').split('-');
+            return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+        }
+
+        /* Cómo nombrar la fila en el aviso. Con nombre se la cita como lo hace el dominio —entre
+           comillas— y si todavía no lo tiene, por su posición: decir «actividad sin nombre» no
+           ayudaría a encontrarla entre veinte. */
+        function comoSeLlama(fila, deRespaldo) {
+            var inp = fila.querySelector('input[name$=".Nombre"]');
+            var nom = inp && inp.value ? inp.value.trim() : '';
+            return nom ? '«' + nom + '»' : deRespaldo;
+        }
+
+        function fecha(fila, sufijo) {
+            return fila.querySelector('input[name$=".' + sufijo + '"]');
+        }
+
+        pv.enlazar(form, [
+            // Ventana del proyecto. El campo marcado es el cierre: es el que se corrige.
+            function () {
+                var ini = document.getElementById('f-ini');
+                var fin = document.getElementById('f-fin');
+                if (!ini || !fin || !ini.value || !fin.value || fin.value >= ini.value) return null;
+                return {
+                    campo: fin,
+                    mensaje: 'El cierre planificado (' + dmy(fin.value) + ') no puede ser anterior ' +
+                             'al inicio planificado (' + dmy(ini.value) + ').'
+                };
+            },
+
+            // Entregables: el nombre, que es lo único que el dominio les exige. La entrega
+            // comprometida puede quedar fuera de la ventana del proyecto sin que nadie la rechace,
+            // así que acá tampoco se inventa una regla que el servidor no tiene.
+            function () {
+                var problemas = [];
+                [].forEach.call(form.querySelectorAll('tbody.ent-grupo'), function (grupo, i) {
+                    var fila = grupo.querySelector('tr.ent-row');
+                    if (!fila) return;
+                    var p = pv.exigido(fila.querySelector('input[name$=".Nombre"]'),
+                                       'Entregable ' + (i + 1) + ': necesita un nombre.');
+                    if (p) problemas.push(p);
+                });
+                return problemas;
+            },
+
+            // Actividades: nombre obligatorio y ventana coherente. Se recorre por grupo para poder
+            // decir a qué entregable pertenece la fila cuando todavía no tiene nombre.
+            function () {
+                var problemas = [];
+                [].forEach.call(form.querySelectorAll('tbody.ent-grupo'), function (grupo, i) {
+                    [].forEach.call(grupo.querySelectorAll('tr.act-row'), function (fila, j) {
+                        var ubicacion = 'Actividad ' + (j + 1) + ' del entregable ' + (i + 1);
+                        var quien     = comoSeLlama(fila, ubicacion);
+
+                        var sinNombre = pv.exigido(fila.querySelector('input[name$=".Nombre"]'),
+                                                   ubicacion + ': necesita un nombre.');
+                        if (sinNombre) problemas.push(sinNombre);
+
+                        var mala = pv.rangoFechas(
+                            fecha(fila, 'FechaInicioPlan'),
+                            fecha(fila, 'FechaFinPlan'),
+                            quien + ': la fecha de fin no puede ser anterior a la de inicio.');
+                        if (mala) problemas.push(mala);
+                    });
+                });
+                return problemas;
+            }
+        ]);
+    })();
 </script>
 }
