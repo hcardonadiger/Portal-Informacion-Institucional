@@ -56,6 +56,22 @@ PARES_AA = [
     ("#7acbdd", "#02395e", "celeste sobre header navy"),
     ("#02395e", "#7acbdd", "navy sobre avatar celeste"),
     ("#b45309", "#ffffff", "estado privado sobre blanco"),
+    # Pares que salen de C#, no del CSS: CalendarioUi.cs y CompromisoUi.cs
+    # devuelven (fondo, texto) y ningun token CSS los alcanza. Van aqui para
+    # que un cambio de valor no pueda bajar de AA sin que nadie se entere.
+    ("#02395e", "#e6f1fb", "calendario: reunion"),
+    ("#712b13", "#faece7", "calendario: ticket creado"),
+    ("#085041", "#e1f5ee", "calendario: respuesta a ticket"),
+    ("#3c3489", "#eeedfe", "calendario: cambio de estado"),
+    ("#444441", "#f1efe8", "calendario: asignacion"),
+    ("#633806", "#faeeda", "calendario: expediente"),
+    ("#02395e", "#e6f1fb", "compromiso: pendiente"),
+    ("#854f0b", "#faeeda", "compromiso: en progreso"),
+    ("#6b21a8", "#f3e8ff", "compromiso: en revision"),
+    ("#27500a", "#eaf3de", "compromiso: cumplido"),
+    ("#5b21b6", "#ede9fe", "compromiso: reprogramado"),
+    ("#5f5e5a", "#f1efe8", "compromiso: otro"),
+    ("#a32d2d", "#fcebeb", "compromiso: vencido"),
 ]
 
 

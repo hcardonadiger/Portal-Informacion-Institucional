@@ -22,7 +22,9 @@ public static class CompromisoUi
     /// <summary>Colores (fondo, texto) para la píldora de estado.</summary>
     public static (string bg, string fg) Color(EstadoCompromiso e) => e switch
     {
-        EstadoCompromiso.Pendiente    => ("#e6f1fb", "#0c447c"),
+        // Pendiente es el estado neutro y se pinta con el azul institucional;
+        // los demás son estados con su propia familia de color.
+        EstadoCompromiso.Pendiente    => ("#e6f1fb", "#02395e"),
         EstadoCompromiso.EnProgreso   => ("#faeeda", "#854f0b"),
         EstadoCompromiso.EnRevision   => ("#f3e8ff", "#6b21a8"),
         EstadoCompromiso.Cumplido     => ("#eaf3de", "#27500a"),

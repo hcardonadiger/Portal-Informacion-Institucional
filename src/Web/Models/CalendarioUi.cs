@@ -11,11 +11,15 @@ public sealed record EventoUi(string IconoId, string Color, string Fondo, string
 public static class CalendarioUi
 {
     // Cada tipo sale de una rampa distinta y suma un ícono propio: antes Reunión
-    // (#1455a4) y Respuesta a ticket (#185fa5) eran el mismo azul a simple vista, y
-    // el color era la única codificación — a 8px los puntos no se distinguían.
+    // y Respuesta a ticket eran el mismo azul a simple vista, y el color era la
+    // única codificación — a 8px los puntos no se distinguían.
+    //
+    // Reunión es el único tipo que representa marca, así que lleva los hex del
+    // Manual de Marca (pág. 09). Los demás son estados, no marca: conservan su
+    // familia de color porque su trabajo es distinguirse entre sí.
     public static EventoUi Evento(TipoEventoCalendario t) => t switch
     {
-        TipoEventoCalendario.Reunion            => new("i-reunion",     "#185fa5", "#e6f1fb", "#0c447c", "Reunión"),
+        TipoEventoCalendario.Reunion            => new("i-reunion",     "#1a65a3", "#e6f1fb", "#02395e", "Reunión"),
         TipoEventoCalendario.TicketCreado       => new("i-ticket-mas",  "#993c1d", "#faece7", "#712b13", "Ticket creado"),
         TipoEventoCalendario.TicketRespuesta    => new("i-respuesta",   "#0f6e56", "#e1f5ee", "#085041", "Respuesta a ticket"),
         TipoEventoCalendario.TicketCambioEstado => new("i-estado",      "#534ab7", "#eeedfe", "#3c3489", "Cambio de estado"),
