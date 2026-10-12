@@ -16,7 +16,7 @@ body {
 }
 
 :focus-visible {
-    outline: 2px solid var(--diger-blue, #1d4ed8);
+    outline: 2px solid var(--diger-blue, #02395e);
     outline-offset: 2px;
 }
 :focus:not(:focus-visible) {
@@ -38,7 +38,10 @@ body {
     padding: 2rem 1rem 3rem;
 }
 
-/* ── ENCABEZADO DE PÁGINA (Manual de Marca: navy + subrayado dorado) ── */
+/* ── ENCABEZADO DE PÁGINA ─────────────────────────────────────────────
+   El subrayado iba en dorado y el comentario lo atribuía al Manual de
+   Marca. El manual no tiene dorado. Sobre fondo claro el acento es el
+   azul medio: el celeste ahí da 1.84 y se vería lavado. */
 /* .pg-title es el mismo título; lo usan Chat y Notificaciones. */
 .page-title,
 .pg-title {
@@ -46,7 +49,7 @@ body {
     font-weight: 700;
     font-size: 1.6rem;
     line-height: 1.2;
-    border-bottom: 3px solid var(--diger-gold);
+    border-bottom: 3px solid var(--diger-blue-mid);
     padding-bottom: .45rem;
     margin-bottom: .5rem;
     display: inline-block;
@@ -1252,13 +1255,14 @@ tr.contacto-inactivo td {
     color: #fff;
 }
 
-/* Header azul gobierno con línea dorada */
+/* Header navy con línea celeste. Sobre navy el acento es el celeste:
+   rinde 6.52 contra el fondo, mientras el azul medio se perdería. */
 .app-header {
     position: sticky;
     top: 0;
     z-index: 100;
     background: var(--diger-blue);
-    border-bottom: 3px solid var(--diger-gold);
+    border-bottom: 3px solid var(--diger-celeste);
     box-shadow: 0 2px 10px rgba(2, 42, 69, .18);
 }
 
@@ -1504,9 +1508,12 @@ tr.contacto-inactivo td {
     background: rgba(255, 255, 255, .12);
 }
 
-/* Avatar dorado en el header (Manual de Marca) */
+/* Avatar del header: fondo celeste con texto navy. Texto blanco sobre
+   celeste daría 1.84 y no alcanza AA; así da 6.52. El color va explícito
+   porque .side-avatar trae color:#fff y aquí hay que invertirlo. */
 .user-menu-btn .side-avatar {
-    background: var(--diger-gold);
+    background: var(--diger-celeste);
+    color: var(--diger-blue);
 }
 
 .user-menu-meta {
@@ -1923,10 +1930,10 @@ tr.contacto-inactivo td {
     min-width: 0;
 }
 
-/* Footer institucional (navy + línea dorada superior) */
+/* Footer institucional (navy + línea celeste superior) */
 .diger-footer {
     background: var(--diger-blue);
-    border-top: 3px solid var(--diger-gold);
+    border-top: 3px solid var(--diger-celeste);
     color: rgba(255, 255, 255, .8);
     margin-top: 2rem;
 }
@@ -1950,7 +1957,7 @@ tr.contacto-inactivo td {
 }
 
 .diger-footer-inner a:hover {
-    color: var(--diger-gold-light);
+    color: var(--diger-celeste);
 }
 
 .app-topbar {
@@ -4412,9 +4419,9 @@ a.kpi-cell:hover .kpi-cell-arw {
     color: #3d6fa8;
 }
 
-/* Reunión privada: se distingue con el dorado institucional */
+/* Reunión privada: estado, no marca. Vive en la capa función. */
 .cal-chip.priv {
-    border-left-color: var(--diger-gold);
+    border-left-color: var(--diger-privado);
 }
 
 .cal-chip.priv:hover {
@@ -4568,7 +4575,7 @@ a.kpi-cell:hover .kpi-cell-arw {
 }
 
 .cal-dia-item.priv {
-    border-left-color: var(--diger-gold);
+    border-left-color: var(--diger-privado);
 }
 
 .cal-dia-item.priv:hover {
@@ -4585,7 +4592,7 @@ a.kpi-cell:hover .kpi-cell-arw {
 }
 
 .cal-dia-item.priv .cal-dia-hora {
-    color: var(--diger-gold);
+    color: var(--diger-privado);
 }
 
 .cal-dia-body {
