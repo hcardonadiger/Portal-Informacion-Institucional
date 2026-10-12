@@ -534,7 +534,7 @@
       datasets: [{
         data: @J(d.PorEstado.Select(x => x.Cantidad)),
         // Orden fijo del enum: Planificado, En ejecución, Suspendido, Cerrado, Cancelado.
-        backgroundColor: ['#888780', '#1455a4', '#ef9f27', '#1d9e75', '#a32d2d']
+        backgroundColor: ['#888780', '#1a65a3', '#ef9f27', '#1d9e75', '#a32d2d']
       }]
     },
     options: { responsive: true, maintainAspectRatio: false }
@@ -544,7 +544,7 @@
     type: 'bar',
     data: {
       labels: @J(d.ReportesPorMes.Select(x => x.Mes)),
-      datasets: [{ label: 'Reportes', data: @J(d.ReportesPorMes.Select(x => x.Cantidad)), backgroundColor: '#1455a4' }]
+      datasets: [{ label: 'Reportes', data: @J(d.ReportesPorMes.Select(x => x.Cantidad)), backgroundColor: '#1a65a3' }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,

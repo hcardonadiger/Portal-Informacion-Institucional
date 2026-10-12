@@ -32,12 +32,12 @@
             <div class="obs-sub">@((int)Math.Round(100.0 * d.Aprobados / d.Total))% del total</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-num" style="color:#1455a4">@d.ConDiagrama</div>
+            <div class="kpi-num" style="color:var(--diger-blue-mid)">@d.ConDiagrama</div>
             <div class="kpi-lbl">Con diagrama</div>
             <div class="obs-sub">@((int)Math.Round(100.0 * d.ConDiagrama / d.Total))% documentados</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-num" style="color:#b45309">@d.ConEnlace</div>
+            <div class="kpi-num" style="color:var(--diger-warning)">@d.ConEnlace</div>
             <div class="kpi-lbl">Con enlace en portal</div>
             <div class="obs-sub">@((int)Math.Round(100.0 * d.ConEnlace / d.Total))% publicados</div>
         </div>
@@ -74,7 +74,7 @@
                     @foreach (var f in focos.OrderByDescending(x => x.cnt))
                     {
                         var pct = (int)Math.Round(100.0 * f.cnt / d.Total);
-                        var barColor = pct > 30 ? "#dc2626" : pct > 15 ? "#ef9f27" : "#1455a4";
+                        var barColor = pct > 30 ? "var(--diger-danger)" : pct > 15 ? "#ef9f27" : "var(--diger-blue-mid)";
                         <tr>
                             <td style="font-weight:600;white-space:nowrap">@f.nombre</td>
                             <td style="font-size:12px;color:var(--diger-text-muted)">@f.desc</td>
@@ -123,9 +123,9 @@
                             else { @inst.Sigla }
                         </span>
                         <div class="digi-inst-bar-wrap">
-                            <div class="bar-track"><div class="bar-fill" style="width:@pct%;background:#1455a4"></div></div>
+                            <div class="bar-track"><div class="bar-fill" style="width:@pct%;background:var(--diger-blue-mid)"></div></div>
                         </div>
-                        <span class="digi-inst-pct" style="color:#1455a4">@inst.Cantidad</span>
+                        <span class="digi-inst-pct" style="color:var(--diger-blue-mid)">@inst.Cantidad</span>
                         <span class="digi-inst-meta">@pctTotal%</span>
                     </div>
                 }
@@ -141,7 +141,7 @@
             <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
                 @foreach (var c in d.Completitud.OrderBy(x => x.Pct))
                 {
-                    var barColor = c.Pct >= 90 ? "#2f7d32" : c.Pct >= 60 ? "#1455a4" : c.Pct >= 30 ? "#ef9f27" : "#dc2626";
+                    var barColor = c.Pct >= 90 ? "#2f7d32" : c.Pct >= 60 ? "var(--diger-blue-mid)" : c.Pct >= 30 ? "#ef9f27" : "var(--diger-danger)";
                     <div class="digi-inst-row">
                         <span class="digi-inst-name">@c.Campo</span>
                         <div class="digi-inst-bar-wrap">
@@ -251,7 +251,7 @@
       labels: @J(d.PorEstado.Select(e => e.Estado)),
       datasets: [{
         data: @J(d.PorEstado.Select(e => e.Cantidad)),
-        backgroundColor: ['#94a3b8','#2f7d32','#1455a4','#ef9f27'],
+        backgroundColor: ['#94a3b8','#2f7d32','#1a65a3','#ef9f27'],
         borderWidth: 2, borderColor: '#fff'
       }]
     },
@@ -270,7 +270,7 @@
       labels: @J(d.CargaDocumental.Select(c => c.Etiqueta)),
       datasets: [{
         data: @J(d.CargaDocumental.Select(c => c.Cantidad)),
-        backgroundColor: ['#94a3b8','#2f7d32','#1455a4','#ef9f27','#dc2626'],
+        backgroundColor: ['#94a3b8','#2f7d32','#1a65a3','#ef9f27','#dc2626'],
         borderRadius: 4, barThickness: 36
       }]
     },

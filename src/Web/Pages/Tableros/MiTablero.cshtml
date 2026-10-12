@@ -12,30 +12,30 @@
 
         return e switch
         {
-            EstadoCompromiso.Pendiente    => ("#fefce8", "#854f0b", "Pendiente"),
+            EstadoCompromiso.Pendiente    => ("#fefce8", "var(--diger-warning-strong)", "Pendiente"),
             EstadoCompromiso.EnProgreso   => ("#eff6ff", "#1e40af", "En progreso"),
             EstadoCompromiso.EnRevision   => ("#faf5ff", "#6b21a8", "En revisión"),
             EstadoCompromiso.Reprogramado => ("#fff7ed", "#c2410c", "Reprogramado"),
             EstadoCompromiso.Cumplido     => ("#f0fdf4", "#166534", "Cumplido"),
-            EstadoCompromiso.Cancelado    => ("#f1f5f9", "#475569", "Cancelado"),
-            _                             => ("#f1f5f9", "#475569", e.ToString())
+            EstadoCompromiso.Cancelado    => ("#f1f5f9", "var(--diger-text-slate-dark)", "Cancelado"),
+            _                             => ("#f1f5f9", "var(--diger-text-slate-dark)", e.ToString())
         };
     }
 
     (string bg, string fg) EstadoTicketColor(EstadoTicket e) => e switch
     {
-        EstadoTicket.Abierto    => ("#eff6ff", "#1d4ed8"),
+        EstadoTicket.Abierto    => ("#eff6ff", "var(--diger-blue-mid)"),
         EstadoTicket.EnProgreso => ("#fefce8", "#a16207"),
-        EstadoTicket.Resuelto   => ("#f0fdf4", "#15803d"),
-        EstadoTicket.Cerrado    => ("#f1f5f9", "#475569"),
-        _                       => ("#f1f5f9", "#475569")
+        EstadoTicket.Resuelto   => ("#f0fdf4", "var(--diger-success)"),
+        EstadoTicket.Cerrado    => ("#f1f5f9", "var(--diger-text-slate-dark)"),
+        _                       => ("#f1f5f9", "var(--diger-text-slate-dark)")
     };
 }
 
 <div class="container" style="max-width:1180px">
     <div class="hist-header" style="margin-bottom:1.5rem">
         <div>
-            <h2 style="margin:0;font-size:22px;color:#0a2d6e">Mi Tablero Personal</h2>
+            <h2 style="margin:0;font-size:22px;color:var(--diger-blue)">Mi Tablero Personal</h2>
             <p style="margin:4px 0 0 0;font-size:13.5px;color:#64748b">
                 Consolidado de sus compromisos, reuniones, tickets de soporte y expedientes asignados.
             </p>
@@ -74,7 +74,7 @@
     </div>
 
     @* ── PESTAÑAS NAVEGABLES ──────────────────────────────────── *@
-    <div style="display:flex;gap:8px;border-bottom:2px solid #e2e8f0;margin-bottom:1.25rem">
+    <div style="display:flex;gap:8px;border-bottom:2px solid var(--diger-border);margin-bottom:1.25rem">
         <button type="button" class="tab-btn active" id="btn-tab-comp" onclick="mostrarSeccion('tab-comp')">
             📋 Mis Compromisos (@d.Compromisos.Count)
         </button>
@@ -93,7 +93,7 @@
     <div id="tab-comp" class="tab-content active">
         <div class="card" style="padding:1.2rem">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Compromisos y Acuerdos</h3>
+                <h3 style="margin:0;font-size:16px;color:var(--diger-blue)">Mis Compromisos y Acuerdos</h3>
                 <a class="btns" asp-page="/Reuniones/Compromisos" style="font-size:12px">Ver todos los compromisos del portal →</a>
             </div>
 
@@ -125,7 +125,7 @@
                                     <div style="font-weight:600;color:#0f172a;margin-bottom:2px">@c.Compromiso</div>
                                     <div style="font-size:12px;color:#64748b">📌 @c.ReunionTitulo</div>
                                 </td>
-                                <td style="font-size:13px;color:#475569">@(c.Institucion ?? "—")</td>
+                                <td style="font-size:13px;color:var(--diger-text-slate-dark)">@(c.Institucion ?? "—")</td>
                                 <td style="font-size:13px;color:#334155">
                                     @(c.Plazo?.ToString("dd/MM/yyyy") ?? "Sin fecha")
                                 </td>
@@ -149,7 +149,7 @@
     <div id="tab-reun" class="tab-content" style="display:none">
         <div class="card" style="padding:1.2rem">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Reuniones y Convocatorias</h3>
+                <h3 style="margin:0;font-size:16px;color:var(--diger-blue)">Mis Reuniones y Convocatorias</h3>
                 <a class="btns" asp-page="/Reuniones/Index" style="font-size:12px">Ir a Reuniones →</a>
             </div>
 
@@ -177,14 +177,14 @@
                         {
                             <tr>
                                 <td>
-                                    <div style="font-weight:700;color:#0a2d6e">@(r.Fecha?.ToString("dd/MM/yyyy") ?? "Sin fecha")</div>
+                                    <div style="font-weight:700;color:var(--diger-blue)">@(r.Fecha?.ToString("dd/MM/yyyy") ?? "Sin fecha")</div>
                                     <div style="font-size:11.5px;color:#64748b">@(r.Hora ?? "—")</div>
                                 </td>
                                 <td>
                                     <div style="font-weight:600;color:#0f172a">@r.Titulo</div>
                                     <div style="font-size:12px;color:#64748b">👥 @r.NumAsistentes asistentes</div>
                                 </td>
-                                <td style="font-size:13px;color:#475569">@(r.Lugar ?? "Por definir")</td>
+                                <td style="font-size:13px;color:var(--diger-text-slate-dark)">@(r.Lugar ?? "Por definir")</td>
                                 <td>
                                     @if (r.EsOrganizador)
                                     {
@@ -192,11 +192,11 @@
                                     }
                                     else if (r.Confirmada)
                                     {
-                                        <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700">Asistencia confirmada</span>
+                                        <span class="badge" style="background:var(--diger-success-bg);color:var(--diger-success);font-weight:700">Asistencia confirmada</span>
                                     }
                                     else
                                     {
-                                        <span class="badge" style="background:#fef3c7;color:#b45309">Convocado</span>
+                                        <span class="badge" style="background:var(--diger-warning-bg);color:var(--diger-warning)">Convocado</span>
                                     }
                                 </td>
                                 <td>
@@ -214,7 +214,7 @@
     <div id="tab-tick" class="tab-content" style="display:none">
         <div class="card" style="padding:1.2rem">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Tickets de Soporte</h3>
+                <h3 style="margin:0;font-size:16px;color:var(--diger-blue)">Mis Tickets de Soporte</h3>
                 <a class="btns" asp-page="/Tickets/Index" style="font-size:12px">Ir a Soporte →</a>
             </div>
 
@@ -243,7 +243,7 @@
                             var tc = EstadoTicketColor(t.Estado);
                             <tr>
                                 <td>
-                                    <a asp-page="/Tickets/Detalle" asp-route-id="@t.Id" style="font-weight:700;color:#1455a4;text-decoration:none">
+                                    <a asp-page="/Tickets/Detalle" asp-route-id="@t.Id" style="font-weight:700;color:var(--diger-blue-mid);text-decoration:none">
                                         @t.Numero
                                     </a>
                                 </td>
@@ -253,7 +253,7 @@
                                     </a>
                                     <div style="font-size:11.5px;color:#64748b">Actualizado: @((t.FechaActualizacion ?? t.FechaCreacion).ToString("dd/MM/yyyy HH:mm"))</div>
                                 </td>
-                                <td style="font-size:13px;color:#475569">@t.TemaNombre</td>
+                                <td style="font-size:13px;color:var(--diger-text-slate-dark)">@t.TemaNombre</td>
                                 <td>
                                     <span style="background:@tc.bg;color:@tc.fg;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700">
                                         @t.Estado
@@ -274,7 +274,7 @@
     <div id="tab-exp" class="tab-content" style="display:none">
         <div class="card" style="padding:1.2rem">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 style="margin:0;font-size:16px;color:#0a2d6e">Mis Expedientes Asignados</h3>
+                <h3 style="margin:0;font-size:16px;color:var(--diger-blue)">Mis Expedientes Asignados</h3>
                 <a class="btns" asp-page="/Index" style="font-size:12px">Ver todos los expedientes →</a>
             </div>
 
@@ -302,7 +302,7 @@
                         {
                             <tr>
                                 <td>
-                                    <a asp-page="/Expedientes/Editor" asp-route-id="@e.Id" style="font-weight:700;color:#1455a4;text-decoration:none">
+                                    <a asp-page="/Expedientes/Editor" asp-route-id="@e.Id" style="font-weight:700;color:var(--diger-blue-mid);text-decoration:none">
                                         @e.Codigo
                                     </a>
                                 </td>
@@ -310,11 +310,11 @@
                                     <div style="font-weight:600;color:#0f172a">@e.TramiteNombre</div>
                                     <div style="font-size:11.5px;color:#64748b">Creado: @e.FechaCreacion.ToString("dd/MM/yyyy")</div>
                                 </td>
-                                <td style="font-size:13px;color:#475569">@e.Institucion</td>
+                                <td style="font-size:13px;color:var(--diger-text-slate-dark)">@e.Institucion</td>
                                 <td>
                                     <div style="display:flex;align-items:center;gap:8px">
-                                        <div style="flex:1;background:#e2e8f0;border-radius:6px;height:8px;overflow:hidden">
-                                            <div style="background:#1455a4;height:100%;width:@e.PorcentajeAvance%"></div>
+                                        <div style="flex:1;background:var(--diger-border);border-radius:6px;height:8px;overflow:hidden">
+                                            <div style="background:var(--diger-blue-mid);height:100%;width:@e.PorcentajeAvance%"></div>
                                         </div>
                                         <span style="font-size:12px;font-weight:700;color:#0f172a">@e.PorcentajeAvance%</span>
                                     </div>
@@ -343,10 +343,10 @@
       cursor: pointer;
       transition: all .15s ease;
   }
-  .tab-btn:hover { color: #0a2d6e; }
+  .tab-btn:hover { color: var(--diger-blue); }
   .tab-btn.active {
-      color: #0a2d6e;
-      border-bottom-color: #1455a4;
+      color: var(--diger-blue);
+      border-bottom-color: var(--diger-blue-mid);
   }
 </style>
 

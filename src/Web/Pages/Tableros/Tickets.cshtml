@@ -7,7 +7,7 @@
     var estados = Enum.GetValues<EstadoTicket>();
     var t = d.TendenciaCreados;
     string flecha = t.Delta > 0 ? "▲" : t.Delta < 0 ? "▼" : "▬";
-    string trendColor = t.Delta > 0 ? "#a32d2d" : t.Delta < 0 ? "#0f6e56" : "#6b7fa3";
+    string trendColor = t.Delta > 0 ? "var(--diger-danger-strong)" : t.Delta < 0 ? "#0f6e56" : "var(--diger-text-muted)";
     // datos para charts
     var estadoRutas = estados.Select(e => e.ToString()).ToArray();
     // El drill-down baja por Id: con el catálogo el nombre lo edita quien administra, y un
@@ -70,7 +70,7 @@
         <div class="dash-card"><h3>Por tema</h3><div style="position:relative;height:230px"><canvas id="chTema"></canvas></div></div>
         <div class="dash-card">
             <h3>Por institución</h3>
-            @if (!d.PorInstitucion.Any()) { <p style="font-size:13px;color:#6b7fa3">Sin datos.</p> }
+            @if (!d.PorInstitucion.Any()) { <p style="font-size:13px;color:var(--diger-text-muted)">Sin datos.</p> }
             else
             {
                 var mI = Math.Max(1, d.PorInstitucion.Max(x => x.Cantidad));
@@ -89,7 +89,7 @@
 
     <div class="dash-card" style="margin-top:16px">
         <h3>Tickets abiertos más antiguos</h3>
-        @if (!d.AbiertosAntiguos.Any()) { <p style="font-size:13px;color:#6b7fa3">No hay tickets abiertos.</p> }
+        @if (!d.AbiertosAntiguos.Any()) { <p style="font-size:13px;color:var(--diger-text-muted)">No hay tickets abiertos.</p> }
         else
         {
             <table class="seg-table">
@@ -102,7 +102,7 @@
                             <td><a class="seg-inst" asp-page="/Tickets/Detalle" asp-route-id="@x.Id">@x.Titulo</a></td>
                             <td class="res-meta">@(x.Institucion ?? "—")</td>
                             <td class="res-meta">@x.Prioridad</td>
-                            <td style="text-align:right;font-weight:700;color:@(x.DiasAbierto >= 7 ? "#a32d2d" : "#0a2d6e")">@x.DiasAbierto</td>
+                            <td style="text-align:right;font-weight:700;color:@(x.DiasAbierto >= 7 ? "var(--diger-danger-strong)" : "var(--diger-blue)")">@x.DiasAbierto</td>
                         </tr>
                     }
                 </tbody>
@@ -128,7 +128,7 @@
     type: 'line',
     data: { labels: @J(d.CreadosPorMes.Select(x => x.Mes)),
       datasets: [
-        { label: 'Creados', data: @J(d.CreadosPorMes.Select(x => x.Cantidad)), borderColor: '#1455a4', backgroundColor: 'rgba(20,85,164,.12)', fill: true, tension: .3 },
+        { label: 'Creados', data: @J(d.CreadosPorMes.Select(x => x.Cantidad)), borderColor: '#1a65a3', backgroundColor: 'rgba(26,101,163,.12)', fill: true, tension: .3 },
         { label: 'Resueltos', data: @J(d.ResueltosPorMes.Select(x => x.Cantidad)), borderColor: '#2f7d32', backgroundColor: 'rgba(47,125,50,.10)', fill: true, tension: .3 }
       ] },
     options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }

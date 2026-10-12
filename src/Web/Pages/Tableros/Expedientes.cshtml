@@ -52,7 +52,7 @@
         <div class="dash-card"><h3>Por estado</h3><div style="position:relative;height:240px"><canvas id="chEstado"></canvas></div></div>
         <div class="dash-card">
             <h3>Por institución</h3>
-            @if (!d.PorInstitucion.Any()) { <p style="font-size:13px;color:#6b7fa3">Sin datos.</p> }
+            @if (!d.PorInstitucion.Any()) { <p style="font-size:13px;color:var(--diger-text-muted)">Sin datos.</p> }
             else
             {
                 var mI = Math.Max(1, d.PorInstitucion.Max(x => x.Cantidad));
@@ -75,7 +75,7 @@
   new Chart(document.getElementById('chMes'), {
     type: 'bar',
     data: { labels: @J(d.CreadosPorMes.Select(x => x.Mes)),
-      datasets: [{ label: 'Creados', data: @J(d.CreadosPorMes.Select(x => x.Cantidad)), backgroundColor: '#1455a4' }] },
+      datasets: [{ label: 'Creados', data: @J(d.CreadosPorMes.Select(x => x.Cantidad)), backgroundColor: '#1a65a3' }] },
     options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
   });
   new Chart(document.getElementById('chEstado'), {

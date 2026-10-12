@@ -19,7 +19,7 @@
                 <a class="btns" asp-page="/Siger/Editor" asp-route-id="@t.Id">Editar</a>
                 <form method="post" asp-page-handler="Eliminar" asp-route-id="@t.Id"
                       onsubmit="return confirm('Eliminar este tramite?')">
-                    <button class="btns" style="color:#dc2626" type="submit">Eliminar</button>
+                    <button class="btns" style="color:var(--diger-danger)" type="submit">Eliminar</button>
                 </form>
             }
             <a class="btns" asp-page="/Siger/Index">Volver al listado</a>
@@ -43,7 +43,7 @@
                     @if (t.InstitucionId != null)
                     {
                         <a asp-page="/Instituciones/Editor" asp-route-id="@t.InstitucionId"
-                           style="color:#1455a4;font-weight:600">@t.Institucion</a>
+                           style="color:var(--diger-blue-mid);font-weight:600">@t.Institucion</a>
                         <span style="color:var(--diger-text-muted)">(@t.Sigla)</span>
                     }
                     else
@@ -127,7 +127,7 @@
         @if (!string.IsNullOrWhiteSpace(t.ObservacionesDiger))
         {
             <h4 style="margin:1rem 0 .5rem">Observaciones DIGER</h4>
-            <p style="white-space:pre-line;color:#b45309">@t.ObservacionesDiger</p>
+            <p style="white-space:pre-line;color:var(--diger-warning)">@t.ObservacionesDiger</p>
         }
     </div>
 
@@ -369,7 +369,7 @@
     }
     .detail-lbl {
         font-weight: 600;
-        color: var(--diger-text-muted, #6b7fa3);
+        color: var(--diger-text-muted, var(--diger-text-muted));
         min-width: 160px;
         flex-shrink: 0;
     }

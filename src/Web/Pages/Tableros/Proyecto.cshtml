@@ -185,7 +185,7 @@
                     }
                     @if (d.ActEnProceso > 0)
                     {
-                        <div style="flex:@d.ActEnProceso;background:#1455a4" title="@d.ActEnProceso en proceso"></div>
+                        <div style="flex:@d.ActEnProceso;background:var(--diger-blue-mid)" title="@d.ActEnProceso en proceso"></div>
                     }
                     @if (d.ActPendientes > 0)
                     {
@@ -194,7 +194,7 @@
                 </div>
                 <div style="display:flex;gap:18px;flex-wrap:wrap">
                     <span class="res-meta"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2f7d32;margin-right:5px"></span><strong>@d.ActTerminadas</strong> terminadas</span>
-                    <span class="res-meta"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#1455a4;margin-right:5px"></span><strong>@d.ActEnProceso</strong> en proceso</span>
+                    <span class="res-meta"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--diger-blue-mid);margin-right:5px"></span><strong>@d.ActEnProceso</strong> en proceso</span>
                     <span class="res-meta"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#888780;margin-right:5px"></span><strong>@d.ActPendientes</strong> pendientes</span>
                 </div>
                 <p class="res-meta" style="margin-top:.7rem">
@@ -398,7 +398,7 @@
             type: 'bar',
             data: {
               labels: @J(d.Ritmo.Select(r => r.Etiqueta)),
-              datasets: [{ label: 'Reportes', data: @J(d.Ritmo.Select(r => r.Reportes)), backgroundColor: '#1455a4', borderRadius: 4 }]
+              datasets: [{ label: 'Reportes', data: @J(d.Ritmo.Select(r => r.Reportes)), backgroundColor: '#1a65a3', borderRadius: 4 }]
             },
             options: {
               responsive: true, maintainAspectRatio: false,

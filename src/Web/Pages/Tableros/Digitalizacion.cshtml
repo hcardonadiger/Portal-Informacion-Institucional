@@ -82,7 +82,7 @@
                 @foreach (var inst in d.PorInstitucion)
                 {
                     var pct = (int)Math.Round(inst.AvancePromedio * 100);
-                    var barColor = pct >= 100 ? "#2f7d32" : pct >= 50 ? "#1455a4" : pct >= 25 ? "#ef9f27" : "#888780";
+                    var barColor = pct >= 100 ? "#2f7d32" : pct >= 50 ? "var(--diger-blue-mid)" : pct >= 25 ? "#ef9f27" : "#888780";
                     <div class="digi-inst-row">
                         <span class="digi-inst-name">@inst.Institucion</span>
                         <div class="digi-inst-bar-wrap">
@@ -202,7 +202,7 @@
       labels: distLabels,
       datasets: [{
         data: @J(d.DistribucionAvance.Select(x => x.Cantidad)),
-        backgroundColor: ['#c4c3bc', '#ef9f27', '#1455a4', '#2f7d32'],
+        backgroundColor: ['#c4c3bc', '#ef9f27', '#1a65a3', '#2f7d32'],
         borderRadius: 4,
         barThickness: 40
       }]
@@ -232,7 +232,7 @@
       datasets: [{
         label: 'Avance promedio %',
         data: etapaResumen.map(function(e) { return e.pct; }),
-        backgroundColor: etapaResumen.map(function(e) { return e.pct >= 99.99 ? '#2f7d32' : e.pct >= 50 ? '#1455a4' : e.pct > 0 ? '#ef9f27' : '#c4c3bc'; }),
+        backgroundColor: etapaResumen.map(function(e) { return e.pct >= 99.99 ? '#2f7d32' : e.pct >= 50 ? '#1a65a3' : e.pct > 0 ? '#ef9f27' : '#c4c3bc'; }),
         borderRadius: 4,
         barThickness: 20
       }]
@@ -272,7 +272,7 @@
     var cCero = _etapaItems.filter(function(t) { return clasificar(t) === 'cero'; }).length;
 
     document.getElementById('etapa-detalle-kpis').innerHTML =
-      kpiBadge('todos', _etapaItems.length, 'Todos', '#0a2d6e', '#e8edf5') +
+      kpiBadge('todos', _etapaItems.length, 'Todos', '#02395e', '#e8edf5') +
       kpiBadge('ok', cOk, 'Completados', '#2f7d32', '#e8f5e9') +
       kpiBadge('proceso', cProc, 'En proceso', '#ef9f27', '#fff3e0') +
       kpiBadge('cero', cCero, 'No iniciados', '#888780', '#f5f5f4');
@@ -313,10 +313,10 @@
     }
     var html = '';
     filtered.forEach(function(t) {
-      var barColor = t.pct >= 99.99 ? '#2f7d32' : t.pct >= 50 ? '#1455a4' : t.pct > 0 ? '#ef9f27' : '#888780';
+      var barColor = t.pct >= 99.99 ? '#2f7d32' : t.pct >= 50 ? '#1a65a3' : t.pct > 0 ? '#ef9f27' : '#888780';
       html += '<tr>' +
         '<td>' + esc(t.institucion) + '</td>' +
-        '<td style="font-weight:600;color:#0a2d6e">' + esc(t.tramite) + '</td>' +
+        '<td style="font-weight:600;color:#02395e">' + esc(t.tramite) + '</td>' +
         '<td style="font-size:12px;color:var(--diger-text-muted)">' + (t.analista || '—') + '</td>' +
         '<td><div style="display:flex;align-items:center;gap:8px">' +
           '<div class="bar-track" style="flex:1"><div class="bar-fill" style="width:' + Math.max(t.pct, 1) + '%;background:' + barColor + '"></div></div>' +
@@ -348,10 +348,10 @@
     } else {
       var html = '';
       items.forEach(function(t) {
-        var barColor = t.pct >= 99.99 ? '#2f7d32' : t.pct >= 50 ? '#1455a4' : t.pct > 0 ? '#ef9f27' : '#888780';
+        var barColor = t.pct >= 99.99 ? '#2f7d32' : t.pct >= 50 ? '#1a65a3' : t.pct > 0 ? '#ef9f27' : '#888780';
         html += '<tr>' +
           '<td>' + esc(t.institucion) + '</td>' +
-          '<td style="font-weight:600;color:#0a2d6e">' + esc(t.tramite) + '</td>' +
+          '<td style="font-weight:600;color:#02395e">' + esc(t.tramite) + '</td>' +
           '<td style="font-size:12px;color:var(--diger-text-muted)">' + (t.analista || '—') + '</td>' +
           '<td><div style="display:flex;align-items:center;gap:8px">' +
             '<div class="bar-track" style="flex:1"><div class="bar-fill" style="width:' + Math.max(t.pct, 1) + '%;background:' + barColor + '"></div></div>' +
