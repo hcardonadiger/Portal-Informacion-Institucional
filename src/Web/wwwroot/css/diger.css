@@ -2293,146 +2293,540 @@ tr.contacto-inactivo td {
     color: var(--diger-danger-text);
 }
 
-/* ── ESTADO SIN BURBUJA ───────────────────────────────────────────────
-   Las burbujas de color compiten entre sí: en una columna de siete filas,
-   siete rectángulos de colores distintos pesan más que el dato que llevan
-   dentro, y la vista va a las burbujas antes que a la institución.
+/* ══════════════════════════════════════════════════════════════════════
+   LISTA CON CRUD — tabla de expedientes
 
-   Tampoco un punto de color: el punto junto a la etiqueta es el gesto más
-   repetido de todo panel de control moderno, y era justo lo que hacía que
-   la tabla se leyera como plantilla. El estado va como rótulo breve en
-   versalitas, con el color en la propia letra. Lee como un registro, no
-   como un tablero.
+   Cambios a partir del diagnóstico de 2026-10-12. El criterio de fondo:
+   la tabla es lo dominante, la cabecera compacta y sin decoración extra,
+   y se conserva la identidad del portal (navy, fondo celeste, Manrope).
+   No es un look nuevo: es la misma marca, mejor ordenada.
+   ══════════════════════════════════════════════════════════════════════ */
 
-   No sustituye a .wf-badge: esa se queda como está en los otros once sitios
-   donde se usa. Si esto convence, se migran uno por uno a propósito. */
-.wf-estado {
-    display: inline-block;
-    font-size: var(--diger-fs-2xs);
-    font-weight: 700;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    /* El color lo pone cada variante; este es el neutro por si falta. */
-    color: var(--diger-text-slate-dark);
+/* ── FRANJA DE TRABAJO: búsqueda y filtros juntos ─────────────────────
+   Antes la búsqueda era una fila y los filtros otra, y los filtros usaban
+   el mismo azul relleno que "+ Nuevo expediente". Eso los hacía competir
+   con la acción principal y parecer navegación. Van juntos en una sola
+   franja: son herramientas de trabajo sobre la misma lista. */
+.franja-trabajo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
 }
 
-.wf-estado.wf-registrada  { color: var(--diger-text-slate-dark); }
-.wf-estado.wf-asignada    { color: var(--diger-blue-mid); }
-.wf-estado.wf-enproceso   { color: var(--diger-warning); }
-.wf-estado.wf-completada  { color: var(--diger-success); }
-.wf-estado.wf-cancelada   { color: var(--diger-danger-text); }
-
-/* Las variantes traen fondo propio pensado para la burbuja; aquí estorban. */
-.wf-estado.wf-registrada,
-.wf-estado.wf-asignada,
-.wf-estado.wf-enproceso,
-.wf-estado.wf-completada,
-.wf-estado.wf-cancelada {
-    background: none;
-    padding: 0;
+.franja-buscar {
+    flex: 1 1 320px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
-/* Una marca secundaria (Legado, Posible duplicado) sí conserva forma de
-   etiqueta: es una excepción y debe notarse como tal, no confundirse con
-   el estado principal. */
-.wf-marca {
+.franja-buscar input[type="search"] {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    background: var(--diger-bg-soft);
+    font-size: var(--diger-fs-sm);
+    font-family: inherit;
+    color: var(--diger-text);
+}
+
+.franja-buscar input[type="search"]:focus {
+    outline: none;
+    border-color: var(--diger-blue-mid);
+    box-shadow: var(--diger-ring);
+}
+
+.franja-sep {
+    width: 1px;
+    align-self: stretch;
+    background: var(--diger-border);
+}
+
+/* ── CHIPS DE FILTRO ──────────────────────────────────────────────────
+   Borde y fondo tenue, nunca el relleno del botón principal: un filtro no
+   es una acción. El activo se distingue por tinta y borde, no por un
+   bloque de color que compita con "+ Nuevo expediente".
+
+   Llevan conteo porque un filtro que no dice cuánto trae obliga a
+   pulsarlo para averiguarlo. */
+.chips-filtro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.chip-filtro {
     display: inline-flex;
     align-items: center;
-    font-size: var(--diger-fs-2xs);
-    font-weight: 600;
-    letter-spacing: .03em;
-    padding: 2px 7px;
-    margin-left: 6px;
-    border-radius: 4px;
+    gap: 7px;
+    padding: 6px 12px;
     border: 1px solid var(--diger-border);
-    color: var(--diger-text-muted);
-    background: none;
-    white-space: nowrap;
+    border-radius: var(--diger-radius-pill);
+    background: var(--diger-surface);
+    color: var(--diger-text-secondary);
+    font-size: var(--diger-fs-sm);
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color var(--diger-transition), color var(--diger-transition);
 }
 
-/* ── TABLA MODERNA ────────────────────────────────────────────────────
-   Modificador, no reemplazo: .seg-table se usa en 41 páginas y cambiarla
-   de golpe tocaría mucho más de lo pedido. Se aplica donde se quiera, de
-   una en una.
+.chip-filtro:hover {
+    border-color: var(--diger-blue-mid);
+    color: var(--diger-blue-mid);
+}
 
-   El criterio: menos cromo y más aire. Fuera la caja con sombra y el
-   encabezado con fondo —ese relleno azul hacía que la cabecera pesara más
-   que los datos—. Queda una regla fina bajo el encabezado, filas altas y
-   un separador tenue. Lo que estructura es el espacio, no las líneas. */
+.chip-filtro:focus-visible {
+    outline: 2px solid var(--diger-blue);
+    outline-offset: 2px;
+}
+
+.chip-filtro.on {
+    border-color: var(--diger-blue);
+    background: var(--diger-blue-light);
+    color: var(--diger-blue);
+    font-weight: 700;
+}
+
+.chip-conteo {
+    font-family: var(--diger-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--diger-fs-2xs);
+    padding: 1px 6px;
+    border-radius: var(--diger-radius-pill);
+    background: var(--diger-bg);
+    color: var(--diger-text-muted);
+}
+
+.chip-filtro.on .chip-conteo {
+    background: var(--diger-surface);
+    color: var(--diger-blue);
+}
+
+/* ── GRUPO DE ACCIONES SECUNDARIAS ────────────────────────────────────
+   "Vista por institución" y "Plantillas" parecían botones sueltos con el
+   mismo peso que la acción principal. Van como grupo tenue y unido: se
+   leen como un conmutador de vista, no como tres acciones iguales. */
+.acciones-sec {
+    display: inline-flex;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    overflow: hidden;
+    background: var(--diger-surface);
+}
+
+.acciones-sec > * {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    padding: 7px 14px;
+    font-size: var(--diger-fs-sm);
+    font-weight: 500;
+    color: var(--diger-text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.acciones-sec > * + * {
+    border-left: 1px solid var(--diger-border);
+}
+
+.acciones-sec > *:hover {
+    background: var(--diger-bg-blue-alt);
+    color: var(--diger-blue);
+}
+
+.acciones-sec > *:focus-visible {
+    outline: 2px solid var(--diger-blue);
+    outline-offset: -2px;
+}
+
+/* ── CONTENEDOR DE LA TABLA ───────────────────────────────────────────
+   Las filas flotaban sobre el fondo sin contención. Borde fino y
+   encabezado con cuerpo; sin sombra decorativa. */
+.tabla-caja {
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md);
+    overflow: hidden;
+    background: var(--diger-surface);
+}
+
+/* ── TABLA ────────────────────────────────────────────────────────────
+   Modificador, no reemplazo: .seg-table se usa en 41 páginas. */
 .seg-table.tabla-moderna {
     background: none;
     border-radius: 0;
     box-shadow: none;
     overflow: visible;
-    border-collapse: separate;
-    border-spacing: 0;
+    border-collapse: collapse;
+    margin: 0;
 }
 
-/* Todo centrado, encabezados incluidos: así cada rótulo cae justo sobre su
-   columna. Antes los encabezados iban a la izquierda y los datos cortos al
-   centro, y la fila de títulos no coincidía con lo que había debajo. */
-.seg-table.tabla-moderna th,
-.seg-table.tabla-moderna td {
-    text-align: center;
-}
-
+/* Encabezado con cuerpo, que es lo que lo separa del contenido. */
 .seg-table.tabla-moderna th {
-    background: none;
-    border-bottom: 1.5px solid var(--diger-border);
-    color: var(--diger-text-muted);
+    background: var(--diger-bg-blue);
+    border-bottom: 1px solid var(--diger-border);
+    text-align: left;
+    color: var(--diger-text-secondary);
     font-size: var(--diger-fs-2xs);
     font-weight: 700;
-    letter-spacing: .1em;
-    padding: 10px 12px 11px;
+    letter-spacing: .08em;
+    padding: 11px 14px;
     white-space: nowrap;
 }
 
+/* Filas de 52-60px: la tabla existe para comparar muchos registros, y a
+   100px de alto caben tres en pantalla. */
 .seg-table.tabla-moderna td {
     border-top: 0;
     border-bottom: 1px solid var(--diger-border-soft);
-    /* Más apretado que la primera versión: una tabla de registros densa se
-       lee mejor que una aireada, y el aire excesivo era parte de lo que la
-       hacía parecer plantilla. */
-    padding: 11px 12px;
+    padding: 10px 14px;
+    text-align: left;
     color: var(--diger-text);
+    vertical-align: middle;
 }
 
 .seg-table.tabla-moderna tbody tr:last-child td {
     border-bottom: 0;
 }
 
+/* El hover tiñe la fila entera, no una celda: toda la fila es el registro. */
 .seg-table.tabla-moderna tbody tr:hover td {
     background: var(--diger-bg-blue-alt);
 }
 
-/* Las columnas de dato puro —código, conteo, fecha— van en monoespaciada.
-   No es decoración: con cifras tabulares y todo centrado, las columnas
-   quedan a plomo en vez de bailar fila a fila. Y da al conjunto aire de
-   registro institucional, que es lo contrario de un panel genérico. */
-.seg-table.tabla-moderna td.col-dato {
-    font-family: var(--diger-font-mono);
+/* Números a la derecha: así se comparan de un vistazo recorriendo la
+   columna, y con cifras tabulares los dígitos quedan a plomo. */
+.seg-table.tabla-moderna th.col-num,
+.seg-table.tabla-moderna td.col-num {
+    text-align: right;
     font-variant-numeric: tabular-nums;
-    font-size: var(--diger-fs-sm);
-    color: var(--diger-text-secondary);
     white-space: nowrap;
 }
 
-/* El nombre de la institución es la entrada del registro: manda. */
-.seg-table.tabla-moderna td.col-clave {
-    font-weight: 700;
+.seg-table.tabla-moderna td.col-num {
+    font-family: var(--diger-font-mono);
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
 }
 
-/* La columna de acciones no lleva rótulo visible pero sí necesita uno para
-   lectores de pantalla, y sin ancho propio se come 234px de la fila. */
 .seg-table.tabla-moderna th.col-acciones {
     width: 1%;
 }
 
 .seg-table.tabla-moderna td.col-acciones {
     white-space: nowrap;
+    text-align: right;
 }
 
+/* ── CELDA DE INSTITUCIÓN ─────────────────────────────────────────────
+   A la izquierda, que es por donde el ojo recorre una columna. La sigla
+   manda y el nombre largo va debajo, atenuado y acotado a dos líneas:
+   los expedientes legados guardan el nombre completo —"SRECI - Secretaría
+   de Relaciones Exteriores y Cooperación Internacional"— y centrado se
+   partía en cinco líneas, con filas de 100px.
+
+   El código va aquí abajo y no en columna propia: repetía la sigla que ya
+   está arriba, y una columna que repite otra es una columna de menos. */
+.celda-inst {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    max-width: 330px;
+}
+
+/* Sigla y código en el mismo renglón: en renglones separados la celda se iba
+   a tres líneas y la fila a ~72px, por encima de los 52-60 que pide una tabla
+   pensada para comparar muchos registros. */
+.celda-inst-top {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    min-width: 0;
+}
+
+.inst-sigla {
+    font-weight: 700;
+    color: var(--diger-blue);
+    text-decoration: none;
+    font-size: var(--diger-fs-sm);
+}
+
+.inst-sigla:hover {
+    text-decoration: underline;
+}
+
+.inst-nombre {
+    font-size: var(--diger-fs-2xs);
+    color: var(--diger-text-muted);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.inst-cod {
+    font-family: var(--diger-font-mono);
+    font-size: var(--diger-fs-2xs);
+    color: var(--diger-text-slate);
+    letter-spacing: -.01em;
+    white-space: nowrap;
+}
+
+/* ── PÍLDORA DE ESTADO ────────────────────────────────────────────────
+   Vuelve la píldora, ahora con color semántico y a un solo renglón. La
+   marca "Legado" ya no se repite en cada fila cuando el filtro Legados
+   está activo: ahí es redundante, lo dice el filtro. */
+.est-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--diger-radius-pill);
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.est-pill.wf-registrada  { background: var(--diger-border);        color: var(--diger-text-slate-dark); }
+.est-pill.wf-asignada    { background: var(--diger-blue-light);    color: var(--diger-blue-mid); }
+.est-pill.wf-enproceso   { background: var(--diger-warning-bg);    color: var(--diger-warning-strong); }
+.est-pill.wf-completada  { background: var(--diger-success-bg);    color: var(--diger-success); }
+.est-pill.wf-cancelada   { background: var(--diger-danger-bg);     color: var(--diger-danger-text); }
+
+/* Marca secundaria: excepción, no estado. Contorno, no relleno. */
+.est-marca {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 600;
+    padding: 2px 7px;
+    margin-left: 5px;
+    border-radius: 4px;
+    border: 1px solid var(--diger-border);
+    color: var(--diger-text-muted);
+    white-space: nowrap;
+}
+
+/* ── RESPONSABLE SIN ASIGNAR ──────────────────────────────────────────
+   "(Sin asignar)" repetido en cada fila con la misma tinta que un nombre
+   real hace ruido. Atenuado y en cursiva se lee como lo que es: un hueco,
+   no un dato. */
+.sin-asignar {
+    color: var(--diger-text-slate);
+    font-style: italic;
+    font-size: var(--diger-fs-sm);
+}
+
+/* ── ACCIONES DE FILA ─────────────────────────────────────────────────
+   "Seguimiento" es la acción habitual y se queda visible. "Editar" y
+   "Eliminar" pasan a un menú: tener la X de borrar al mismo peso que una
+   acción segura, repetida en cada fila, es pedir un accidente.
+
+   Va con <details>/<summary>, que el portal ya usa en otros sitios: sin
+   JavaScript, se abre con teclado y se cierra con Escape. */
+.fila-menu {
+    display: inline-block;
+    position: relative;
+}
+
+.fila-menu > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 5px 9px;
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-sm);
+    line-height: 1;
+    user-select: none;
+}
+
+.fila-menu > summary::-webkit-details-marker { display: none; }
+
+.fila-menu > summary:hover {
+    border-color: var(--diger-blue-mid);
+    color: var(--diger-blue-mid);
+}
+
+.fila-menu > summary:focus-visible {
+    outline: 2px solid var(--diger-blue);
+    outline-offset: 2px;
+}
+
+.fila-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 30;
+    min-width: 168px;
+    padding: 5px;
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    box-shadow: var(--diger-shadow-md);
+    text-align: left;
+}
+
+.fila-menu-panel a,
+.fila-menu-panel button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 11px;
+    border: 0;
+    border-radius: 5px;
+    background: none;
+    font-size: var(--diger-fs-sm);
+    font-family: inherit;
+    color: var(--diger-text);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.fila-menu-panel a:hover,
+.fila-menu-panel button:hover {
+    background: var(--diger-bg-blue-alt);
+}
+
+.fila-menu-panel a:focus-visible,
+.fila-menu-panel button:focus-visible {
+    outline: 2px solid var(--diger-blue);
+    outline-offset: -2px;
+}
+
+/* La destructiva va separada por una línea y en rojo: distinta en sitio y
+   en color, para que no se pulse por inercia. */
+.fila-menu-sep {
+    height: 1px;
+    margin: 5px 3px;
+    background: var(--diger-border);
+}
+
+.fila-menu-panel button.peligro {
+    color: var(--diger-danger-text);
+}
+
+.fila-menu-panel button.peligro:hover {
+    background: var(--diger-danger-bg);
+}
+
+/* ── MÓVIL: la tabla pasa a fichas ────────────────────────────────────
+   Siete columnas no caben en un teléfono. Cada fila se vuelve una ficha
+   de registro con sus rótulos, en vez de obligar a desplazar en
+   horizontal. */
+@media (max-width: 760px) {
+    /* El globo del tooltip se centra sobre el "?" y, cuando ese "?" está cerca
+       del borde, sobresale. Aunque va posicionado, cuenta para el ancho
+       desplazable de la página: en un teléfono arrastraba 50px de
+       desplazamiento horizontal. No es un defecto de esta pantalla —lo tiene
+       el componente y aparece donde haya un "?"— pero aquí se nota.
+
+       overflow-x: clip y no hidden: clip no crea contexto de desplazamiento,
+       así que no rompe position:sticky ni el anclaje por #id. El globo se
+       recorta en el borde en vez de alargar la página. */
+    .container {
+        overflow-x: clip;
+    }
+
+    /* La cabecera es flex y no envolvía: el subtítulo no cabía y arrastraba
+       desplazamiento horizontal. Se deja envolver y las acciones pasan debajo
+       del título. */
+    .hist-header {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .hist-header > div:first-child {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .hist-header p {
+        overflow-wrap: anywhere;
+    }
+
+    .tabla-caja {
+        border: 0;
+        background: none;
+    }
+
+    /* display:none y no la técnica de ocultar fuera de pantalla: con position
+       absolute las celdas del encabezado siguen midiendo su ancho natural y
+       arrastraban 50px de desplazamiento horizontal, que es justo lo que las
+       fichas vienen a evitar. No se pierde nada para lectores de pantalla:
+       al pasar la tabla a display:block el navegador ya descarta el rol de
+       tabla, y cada celda lleva su rótulo en data-rotulo. */
+    .seg-table.tabla-moderna thead {
+        display: none;
+    }
+
+    .seg-table.tabla-moderna,
+    .seg-table.tabla-moderna tbody,
+    .seg-table.tabla-moderna tr,
+    .seg-table.tabla-moderna td {
+        display: block;
+        width: auto;
+    }
+
+    .seg-table.tabla-moderna tbody tr {
+        background: var(--diger-surface);
+        border: 1px solid var(--diger-border);
+        border-radius: var(--diger-radius-md);
+        margin-bottom: 10px;
+        padding: 4px 2px;
+    }
+
+    .seg-table.tabla-moderna td {
+        border-bottom: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 12px;
+        text-align: right;
+    }
+
+    /* El rótulo de columna se recupera del atributo, ya que la cabecera
+       está oculta. */
+    .seg-table.tabla-moderna td[data-rotulo]::before {
+        content: attr(data-rotulo);
+        font-size: var(--diger-fs-2xs);
+        font-weight: 700;
+        letter-spacing: .07em;
+        color: var(--diger-text-muted);
+        text-align: left;
+        flex: none;
+    }
+
+    .seg-table.tabla-moderna td.col-inst {
+        display: block;
+        text-align: left;
+        border-bottom: 1px solid var(--diger-border-soft);
+        padding-bottom: 10px;
+    }
+
+    .celda-inst { max-width: none; }
+
+    /* En pantalla estrecha, sigla y código pueden no caber en un renglón. */
+    .celda-inst-top { flex-wrap: wrap; gap: 2px 9px; }
+
+    .seg-table.tabla-moderna td.col-num { text-align: right; }
+    .seg-table.tabla-moderna td.col-acciones { justify-content: flex-end; }
+}
+
+/* ── TICKET / USUARIO BADGES (estado, prioridad, rol) ───────── */
 /* ── TICKET / USUARIO BADGES (estado, prioridad, rol) ───────── */
 .status-badge,
 .prio-badge,

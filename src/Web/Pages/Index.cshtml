@@ -24,15 +24,20 @@
             <h2>Expedientes de Digitalización</h2>
             <p>Expedientes de trámites nuevos por institución <span class="help-tip tip-down" data-tip="Cada expediente documenta el proceso de digitalización de uno o más trámites de una institución, desde el levantamiento hasta la validación final.">?</span></p>
         </div>
-        <div style="display:flex;gap:8px">
-            <button type="button" class="btns" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
-            @* Cada enlace se gatea con la clave de SU destino, no con la de esta página:
-               plantillas vive en el módulo de administración y pide otra clave, así que
-               mostrarlo junto a "nuevo expediente" llevaba a un Forbidden. *@
-            @if (await Acceso.PuedeClaveAsync("Admin.PlantillasTramite.Ver"))
-            {
-                <a class="btns" asp-page="/Admin/PlantillasTramite">Plantillas de trámite</a>
-            }
+        @* La acción principal es la única con relleno. Las dos secundarias van
+           como grupo unido: se leen como un conmutador de vista, no como tres
+           acciones del mismo peso. *@
+        <div style="display:flex;gap:10px;align-items:center">
+            <div class="acciones-sec">
+                <button type="button" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
+                @* Cada enlace se gatea con la clave de SU destino, no con la de esta página:
+                   plantillas vive en el módulo de administración y pide otra clave, así que
+                   mostrarlo junto a "nuevo expediente" llevaba a un Forbidden. *@
+                @if (await Acceso.PuedeClaveAsync("Admin.PlantillasTramite.Ver"))
+                {
+                    <a asp-page="/Admin/PlantillasTramite">Plantillas</a>
+                }
+            </div>
             @if (puedeGestionar)
             {
                 <a class="btnp" asp-page="/Expedientes/Editor">+ Nuevo expediente</a>
@@ -40,17 +45,37 @@
         </div>
     </div>
 
-    <form method="get" class="lista-buscar">
-        <input type="search" name="q" value="@Model.Q" placeholder="Buscar por código, institución, responsable del acta o trámite…" />
-        @if (Model.Legado.HasValue) { <input type="hidden" name="legado" value="@Model.Legado.Value" /> }
-        <button class="btns" type="submit">Buscar</button>
-        @if (!string.IsNullOrEmpty(Model.Q)) { <a class="btns" asp-page="/Index" asp-route-legado="@Model.Legado">Limpiar</a> }
-    </form>
+    @* Búsqueda y filtros en una sola franja: son herramientas sobre la misma
+       lista, no dos cosas distintas. Los chips llevan conteo porque un filtro
+       que no dice cuánto trae obliga a pulsarlo para averiguarlo. *@
+    <div class="franja-trabajo">
+        <form method="get" class="franja-buscar">
+            <input type="search" name="q" value="@Model.Q" placeholder="Buscar por código, institución, responsable o trámite…" aria-label="Buscar expedientes" />
+            @if (Model.Legado.HasValue) { <input type="hidden" name="legado" value="@Model.Legado.Value" /> }
+            <button class="btns" type="submit">Buscar</button>
+            @if (!string.IsNullOrEmpty(Model.Q))
+            {
+                <a class="btns" asp-page="/Index" asp-route-legado="@Model.Legado" title="Quitar la búsqueda">Limpiar</a>
+            }
+        </form>
 
-    <div style="display:flex;gap:6px;margin:-4px 0 14px">
-        <a class="btns@(Model.Legado is null ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q">Todos</a>
-        <a class="btns@(Model.Legado == false ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="False">Nuevos (desde abr-2026)</a>
-        <a class="btns@(Model.Legado == true ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="True">Legados <span class="help-tip tip-down" data-tip="Expedientes con fecha de apertura anterior a abril de 2026 (o sin fecha de apertura). No cuentan en los tableros porque no tienen seguimiento confiable en la nueva metodología.">?</span></a>
+        <div class="franja-sep" aria-hidden="true"></div>
+
+        <div class="chips-filtro" role="group" aria-label="Filtrar por periodo">
+            <a class="chip-filtro@(Model.Legado is null ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q"
+               aria-current="@(Model.Legado is null ? "true" : null)">
+                Todos <span class="chip-conteo">@Model.ConteoTodos</span>
+            </a>
+            <a class="chip-filtro@(Model.Legado == false ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="False"
+               aria-current="@(Model.Legado == false ? "true" : null)">
+                Nuevos <span class="chip-conteo">@Model.ConteoNuevos</span>
+            </a>
+            <a class="chip-filtro@(Model.Legado == true ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="True"
+               aria-current="@(Model.Legado == true ? "true" : null)"
+               title="Expedientes con fecha de apertura anterior a abril de 2026 (o sin fecha). No cuentan en los tableros porque no tienen seguimiento confiable en la nueva metodología.">
+                Legados <span class="chip-conteo">@Model.ConteoLegados</span>
+            </a>
+        </div>
     </div>
 
     @if (Model.Resultado.Total == 0)
@@ -72,19 +97,22 @@
         <div id="vista-lista">
         @* .tabla-moderna es un modificador: .seg-table se usa en 41 páginas y
            cambiarla de golpe tocaría mucho más que esta pantalla.
-           Todo va centrado, encabezados incluidos, para que cada rótulo caiga
-           justo sobre su columna. "Responsable" a secas, sin "del Acta": con
-           el texto largo el encabezado se partía en dos líneas y desalineaba
-           la fila de títulos. *@
+
+           Reestructurada según el diagnóstico de 2026-10-12. El Código deja de
+           tener columna propia —repetía la sigla que ya está en Institución— y
+           baja como línea secundaria. Siete columnas pasan a seis.
+
+           data-rotulo alimenta el rótulo de cada celda en móvil, donde la
+           cabecera se oculta y la fila se vuelve ficha. *@
+        <div class="tabla-caja">
         <table class="seg-table tabla-moderna">
             <thead>
                 <tr>
                     <th>Institución</th>
-                    <th>Código</th>
                     <th>Estado <span class="help-tip tip-down" data-tip="Fase actual: Exploración → Levantamiento → Modelado → Validación → Cerrado.">?</span></th>
                     <th>Responsable</th>
-                    <th>Trámites <span class="help-tip tip-down tip-left" data-tip="Cantidad de trámites incluidos en este expediente. Pase el cursor sobre el número para ver los nombres.">?</span></th>
-                    <th>Apertura</th>
+                    <th class="col-num">Trámites</th>
+                    <th class="col-num">Apertura</th>
                     <th class="col-acciones"><span class="sr-only">Acciones</span></th>
                 </tr>
             </thead>
@@ -93,47 +121,80 @@
                 {
                     var w = Wf(e.Estado);
                     var tooltip = e.TramiteNombres.Any() ? string.Join(" · ", e.TramiteNombres) : "Sin trámites";
+                    var sigla = (e.InstitucionId ?? e.Institucion ?? "—").Trim();
+                    var nombre = (e.Institucion ?? "").Trim();
                     <tr>
-                        <td class="col-clave">
-                            <a class="seg-inst" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Institucion</a>
+                        <td class="col-inst">
+                            @* La sigla manda y el nombre largo va debajo, acotado a dos
+                               líneas: los legados guardan el nombre completo y sin
+                               acotar ocupaban cinco renglones. El nombre entero queda
+                               en el title, al alcance del cursor. *@
+                            <div class="celda-inst">
+                                <span class="celda-inst-top">
+                                    <a class="inst-sigla" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@sigla</a>
+                                    <span class="inst-cod">@e.Codigo</span>
+                                </span>
+                                @if (!string.IsNullOrWhiteSpace(nombre) && !string.Equals(nombre, sigla, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <span class="inst-nombre" title="@nombre">@nombre</span>
+                                }
+                            </div>
                         </td>
-                        <td class="col-dato">@e.Codigo</td>
-                        <td>
-                            @* El estado ni burbuja ni punto de color: rótulo breve en
-                               versalitas con el color en la propia letra. Legado y
-                               duplicado sí conservan forma de etiqueta porque son
-                               excepciones y deben notarse como tales. *@
-                            <span class="wf-estado @w.cls">@w.txt</span>
-                            @if (e.EsLegado)
+                        <td data-rotulo="Estado">
+                            <span class="est-pill @w.cls">@w.txt</span>
+                            @* "Legado" solo cuando el filtro no lo implica ya: dentro de
+                               la vista Legados, repetirlo en cada fila es ruido. *@
+                            @if (e.EsLegado && Model.Legado != true)
                             {
-                                <span class="wf-marca" title="Fecha de apertura anterior a abril de 2026 (o sin fecha de apertura). No cuenta en los tableros.">Legado</span>
+                                <span class="est-marca" title="Fecha de apertura anterior a abril de 2026 (o sin fecha de apertura). No cuenta en los tableros.">Legado</span>
                             }
                             @if (e.EsPosibleDuplicado)
                             {
-                                <span class="wf-marca" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">⚠ Duplicado</span>
+                                <span class="est-marca" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">⚠ Duplicado</span>
                             }
                         </td>
-                        <td>@e.Analista</td>
-                        <td class="col-dato" title="@tooltip">@e.NumTramites</td>
-                        <td class="col-dato">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
+                        <td data-rotulo="Responsable">
+                            @if (string.IsNullOrWhiteSpace(e.Analista) || e.Analista.Trim() == "(Sin asignar)")
+                            {
+                                <span class="sin-asignar">Sin asignar</span>
+                            }
+                            else
+                            {
+                                @e.Analista
+                            }
+                        </td>
+                        <td class="col-num" data-rotulo="Trámites" title="@tooltip">@e.NumTramites</td>
+                        <td class="col-num" data-rotulo="Apertura">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
                         <td class="col-acciones">
+                            @* Seguimiento se queda visible: es la acción habitual.
+                               Editar y Eliminar pasan al menú — tener la X de borrar al
+                               mismo peso que una acción segura, repetida en cada fila,
+                               es pedir un accidente. <details> y no JavaScript: el
+                               portal ya usa ese patrón, abre con teclado y cierra con
+                               Escape. *@
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
-                            <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
-                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Editar" : "Ver")</a>
-                            @if (puedeEliminar)
-                            {
-                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
-                                    <input type="hidden" name="id" value="@e.Id" />
-                                    <button class="hist-del" type="submit" style="margin-left:4px"
-                                            aria-label="Eliminar expediente" data-confirm="¿Eliminar este expediente?">✕</button>
-                                </form>
-                            }
+                            <details class="fila-menu">
+                                <summary aria-label="Más acciones para @e.Codigo" title="Más acciones">⋯</summary>
+                                <div class="fila-menu-panel">
+                                    <a asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@(puedeGestionar ? "Editar expediente" : "Ver expediente")</a>
+                                    @if (puedeEliminar)
+                                    {
+                                        <div class="fila-menu-sep"></div>
+                                        <form method="post" asp-page-handler="Eliminar">
+                                            <input type="hidden" name="id" value="@e.Id" />
+                                            <button class="peligro" type="submit"
+                                                    data-confirm="¿Eliminar el expediente @e.Codigo? Esta acción no se puede deshacer.">Eliminar expediente</button>
+                                        </form>
+                                    }
+                                </div>
+                            </details>
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
+        </div>
 
         <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
         </div>
