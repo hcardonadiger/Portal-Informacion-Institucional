@@ -3,7 +3,7 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(10, 45, 110, .45);
+    background: rgba(2, 57, 94, .45);
     z-index: 1000;
     align-items: center;
     justify-content: center;
@@ -18,7 +18,7 @@
     padding: 24px;
     max-width: 380px;
     width: 100%;
-    box-shadow: 0 20px 60px rgba(10, 45, 110, .25);
+    box-shadow: 0 20px 60px rgba(2, 57, 94, .25);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -49,23 +49,23 @@
     min-width: 0;
     font-size: 13px;
     font-weight: 700;
-    color: var(--diger-blue-title, #0a2d6e);
+    color: var(--diger-blue-title, var(--diger-blue));
 }
 .afq-x {
     flex: none;
     width: 30px;
     height: 30px;
-    border: 1px solid var(--diger-border, #e2e8f0);
+    border: 1px solid var(--diger-border, var(--diger-border));
     border-radius: 8px;
     background: #fff;
-    color: var(--diger-text-muted, #6b7fa3);
+    color: var(--diger-text-muted, var(--diger-text-muted));
     font-size: 13px;
     line-height: 1;
     cursor: pointer;
 }
 .afq-x:hover {
-    background: var(--diger-bg, #eef1f7);
-    color: var(--diger-blue-title, #0a2d6e);
+    background: var(--diger-bg, var(--diger-bg));
+    color: var(--diger-blue-title, var(--diger-blue));
 }
 
 /* Selector de orientación: dos pestañas, porque el afiche se imprime en vertical
@@ -75,7 +75,7 @@
     display: flex;
     padding: 2px;
     gap: 2px;
-    background: var(--diger-bg, #eef1f7);
+    background: var(--diger-bg, var(--diger-bg));
     border-radius: 9px;
 }
 .afq-orient-b {
@@ -86,15 +86,15 @@
     font: inherit;
     font-size: 11.5px;
     font-weight: 600;
-    color: var(--diger-text-muted, #6b7fa3);
+    color: var(--diger-text-muted, var(--diger-text-muted));
     cursor: pointer;
 }
 .afq-orient-b:hover {
-    color: var(--diger-blue-title, #0a2d6e);
+    color: var(--diger-blue-title, var(--diger-blue));
 }
 .afq-orient-b.is-on {
     background: #fff;
-    color: var(--diger-blue-title, #0a2d6e);
+    color: var(--diger-blue-title, var(--diger-blue));
     box-shadow: 0 1px 3px rgba(2, 57, 94, .18);
 }
 
