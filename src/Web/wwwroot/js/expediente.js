@@ -1,11 +1,25 @@
 // Persistencia: portal .NET (SQL Server) — sin Supabase.
 // El servidor inyecta window.__EXP__ (datos a editar) y window.__EXPMETA__ ({id, postUrl, token, indexUrl}).
+// Lee un token de color del CSS, para no duplicar la paleta en JS.
+// Si el token no existe devuelve el respaldo, de modo que un token mal
+// escrito degrada a un color razonable en vez de pintar transparente.
+// Hace falta solo donde var() no resuelve: en un atributo de SVG
+// (fill, stroke) el navegador no interpreta custom properties. En las
+// cadenas que arman HTML con style="" si se usa var() directamente.
+function tokenColor(nombre, respaldo) {
+  var v = getComputedStyle(document.documentElement)
+    .getPropertyValue(nombre).trim();
+  return v || respaldo;
+}
+var AZUL     = tokenColor('--diger-blue',     '#02395e');
+var AZUL_MED = tokenColor('--diger-blue-mid', '#1a65a3');
+
 var expCache = [];
 var currentIdx = null;
 var tramiteCount = 1;
 var activeTram = 0;
 var TRAM_COLORS = [
-  {bg:'#dde9ff',fg:'#1455a4'},{bg:'#ede9fe',fg:'#6d28d9'},{bg:'#dcfce7',fg:'#15803d'},
+  {bg:'#dde9ff',fg:'#1a65a3'},{bg:'#ede9fe',fg:'#6d28d9'},{bg:'#dcfce7',fg:'#15803d'},
   {bg:'#fff7ed',fg:'#c2410c'},{bg:'#fce7f3',fg:'#be185d'},{bg:'#ecfeff',fg:'#0e7490'},
   {bg:'#fef9c3',fg:'#92400e'},{bg:'#ffe4e6',fg:'#be123c'},{bg:'#f0fdf4',fg:'#166534'},
   {bg:'#fdf4ff',fg:'#7e22ce'}
@@ -621,7 +635,7 @@ function tramRowHTML(i){
   if(window.__EXPMETA__ && window.__EXPMETA__.plantillas){
     window.__EXPMETA__.plantillas.forEach(function(p){ opts += '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; });
   }
-  var sigerBadge = (_sigerIds[i]) ? ' <span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1455a4;padding:1px 6px;border-radius:4px;vertical-align:middle">SIGER</span>' : '';
+  var sigerBadge = (_sigerIds[i]) ? ' <span style="font-size:10px;font-weight:700;background:#dbeafe;color:var(--diger-blue-mid);padding:1px 6px;border-radius:4px;vertical-align:middle">SIGER</span>' : '';
   return '<div class="tram-row" style="flex-direction:row;align-items:flex-start;gap:10px;flex-wrap:wrap">'
     + '<div class="f" style="flex:1;min-width:250px"><label>Trámite ' + (i+1) + ' <span class="star">*</span>'
     + sigerBadge + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
@@ -714,7 +728,7 @@ function actualizarBadgesSiger(){
       if(!existing){
         var badge = document.createElement('span');
         badge.className = 'siger-badge';
-        badge.style.cssText = 'font-size:10px;font-weight:700;background:#dbeafe;color:#1455a4;padding:1px 6px;border-radius:4px;vertical-align:middle;margin-left:4px';
+        badge.style.cssText = 'font-size:10px;font-weight:700;background:#dbeafe;color:var(--diger-blue-mid);padding:1px 6px;border-radius:4px;vertical-align:middle;margin-left:4px';
         badge.textContent = 'SIGER';
         var star = label.querySelector('.star');
         if(star) star.after(badge);
@@ -763,8 +777,8 @@ async function buscarSiger(){
     items.forEach(function(it){
       html += '<div class="siger-item" onclick=\'seleccionarSiger('+JSON.stringify(it).replace(/'/g,"&#39;")+')\' style="padding:10px 0;border-bottom:1px solid #f1f5f9;cursor:pointer">'
         + '<div style="display:flex;gap:8px;align-items:baseline">'
-        + '<span style="font-size:11px;font-weight:700;color:#1455a4;white-space:nowrap">'+escHtml(it.codigo)+'</span>'
-        + '<span style="font-size:14px;font-weight:600;color:#0a2d6e">'+escHtml(it.nombre)+'</span>'
+        + '<span style="font-size:11px;font-weight:700;color:var(--diger-blue-mid);white-space:nowrap">'+escHtml(it.codigo)+'</span>'
+        + '<span style="font-size:14px;font-weight:600;color:var(--diger-blue)">'+escHtml(it.nombre)+'</span>'
         + '</div>'
         + '<div style="font-size:12px;color:#64748b;margin-top:2px">'+escHtml(it.institucion||'')+(it.sigla?' · '+escHtml(it.sigla):'')+'</div>'
         + (it.objetivo ? '<div style="font-size:11.5px;color:#94a3b8;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(it.objetivo.substring(0,120))+'</div>' : '')
@@ -2176,7 +2190,7 @@ function renderFlowSVG(key){
 
   /* ── LAYOUT CON CARRILES: referencia Visio/Bizagi y el diagrama institucional ── */
   var fills={inicio:'#dcfce7',fin:'#dbeafe',decision:'#fef9ec',paso:'#eef3ff'};
-  var strks={inicio:'#16a34a',fin:'#2563eb',decision:'#d97706',paso:'#1455a4'};
+  var strks={inicio:'#16a34a',fin:'#2563eb',decision:'#d97706',paso:AZUL_MED};
   var NW={inicio:112,fin:112,decision:86,paso:140};
   var NH={inicio:30,fin:30,decision:72,paso:42};
   var LT=9, LANE_W=210, MLEFT=20, HEADER_H=38, ROW_H=110;
@@ -2212,7 +2226,7 @@ function renderFlowSVG(key){
 
   var els=[];
   els.push('<defs>'
-    +'<marker id="aB" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1455a4"/></marker>'
+    +'<marker id="aB" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="'+AZUL_MED+'"/></marker>'
     +'<marker id="aA" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" fill="#d97706"/></marker>'
     +'<filter id="fs"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.09"/></filter>'
     +'</defs>');
@@ -2231,7 +2245,7 @@ function renderFlowSVG(key){
     var fromY=cy[pi]+nhh(data[pi].tipo||'paso'), toY=cy[ci]-nhh(data[ci].tipo||'paso');
     var midY=Math.round((fromY+toY)/2);
     var d='M'+cx[pi]+' '+fromY+' V'+midY+' H'+cx[ci]+' V'+toY;
-    els.push('<path d="'+d+'" fill="none" stroke="#1455a4" stroke-width="1.5" marker-end="url(#aB)"/>');
+    els.push('<path d="'+d+'" fill="none" stroke="'+AZUL_MED+'" stroke-width="1.5" marker-end="url(#aB)"/>');
   }
 
   /* Retornos en el margen derecho, fuera de los carriles para no cruzar actividades. */
@@ -2276,7 +2290,7 @@ function renderFlowSVG(key){
     var tl=wrapText(step.titulo||(TIPO_LABELS[tipo]||'Paso'),maxC).slice(0,tipo==='decision'?3:2);
     var ty=ncy-((tl.length-1)*LT/2);
     tl.forEach(function(ln,li){
-      els.push('<text x="'+ncx+'" y="'+(ty+li*LT)+'" text-anchor="middle" dominant-baseline="middle" font-size="9" font-weight="700" fill="#0a2d6e" font-family="Segoe UI,sans-serif" style="pointer-events:none">'+escHtml(ln)+'</text>');
+      els.push('<text x="'+ncx+'" y="'+(ty+li*LT)+'" text-anchor="middle" dominant-baseline="middle" font-size="9" font-weight="700" fill="'+AZUL+'" font-family="Segoe UI,sans-serif" style="pointer-events:none">'+escHtml(ln)+'</text>');
     });
 
     /* Botón "+" para agregar nodos — no aparece en FIN */
@@ -2305,7 +2319,7 @@ function showNodeModal(key, idx){
   if(!step) return;
   nodeModalCtx = {key:key, idx:idx};
   var tipo = step.tipo||'paso';
-  var colors={inicio:'#16a34a',fin:'#2563eb',decision:'#d97706',paso:'#1455a4'};
+  var colors={inicio:'#16a34a',fin:'#2563eb',decision:'#d97706',paso:AZUL_MED};
   var labels={inicio:'INICIO',fin:'FIN',decision:'DECISIÓN',paso:'PASO'};
   document.getElementById('nm-badge').textContent = (idx+1);
   document.getElementById('nm-badge').style.background = colors[tipo]||colors.paso;

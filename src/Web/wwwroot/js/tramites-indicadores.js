@@ -4,7 +4,23 @@
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const STATUS = { finalizada:'Finalizadas', en_proceso:'En proceso', sin_iniciar:'Sin iniciar', vencida:'Vencidas', pendiente:'Pendientes' };
   const COMPLIANCE = { dentro_plazo:'Dentro del plazo', fuera_plazo:'Fuera del plazo', sin_informacion:'Sin información suficiente' };
-  const COLORS = ['#1455a4','#17825c','#d97706','#dc2626','#7c3aed','#0891b2','#64748b'];
+  // Lee un token de color del CSS, para no duplicar la paleta en JS.
+  // Si el token no existe devuelve el respaldo, de modo que un token mal
+  // escrito degrada a un color razonable en vez de pintar transparente.
+  // Hace falta porque Chart.js necesita un color de verdad: un var() le
+  // llega como texto y no pinta nada.
+  function tokenColor(nombre, respaldo) {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue(nombre).trim();
+    return v || respaldo;
+  }
+
+  const AZUL_MED = tokenColor('--diger-blue-mid', '#1a65a3');
+
+  // Paleta de series. No es marca: su trabajo es distinguir, no representar,
+  // y colapsarla a tres azules dejaria las series indistinguibles. El primero
+  // si es el azul del manual, para que la serie principal lea institucional.
+  const COLORS = [AZUL_MED,'#17825c','#d97706','#dc2626','#7c3aed','#0891b2','#64748b'];
   let source, charts = {}, page = 1, sort = { key:'total', dir:-1 }, detailChart;
 
   const avg = xs => { xs = xs.filter(Number.isFinite); return xs.length ? xs.reduce((a,b) => a+b,0) / xs.length : null; };
@@ -56,16 +72,16 @@
 
   function renderCharts(rows, institutions) {
     const top=[...institutions].sort((a,b)=>b.total-a.total).slice(0,12);
-    updateChart('ti-requests-chart','bar',top.map(x=>x.sigla),[{label:'Solicitudes',data:top.map(x=>x.total),backgroundColor:'#1455a4'}],{indexAxis:'y',plugins:{legend:{display:false}}});
+    updateChart('ti-requests-chart','bar',top.map(x=>x.sigla),[{label:'Solicitudes',data:top.map(x=>x.total),backgroundColor:AZUL_MED}],{indexAxis:'y',plugins:{legend:{display:false}}});
     updateChart('ti-procedures-chart','bar',top.map(x=>x.sigla),[{label:'Trámites únicos',data:top.map(x=>x.procedures),backgroundColor:'#17825c'}],{plugins:{legend:{display:false}}});
     const valid=institutions.filter(x=>x.expectedAvg!==null || x.realAvg!==null).sort((a,b)=>b.total-a.total).slice(0,12);
-    updateChart('ti-days-chart','bar',valid.map(x=>x.sigla),[{label:'Días estimados',data:valid.map(x=>x.expectedAvg),backgroundColor:'#1455a4'},{label:'Días reales',data:valid.map(x=>x.realAvg),backgroundColor:'#d97706'}]);
+    updateChart('ti-days-chart','bar',valid.map(x=>x.sigla),[{label:'Días estimados',data:valid.map(x=>x.expectedAvg),backgroundColor:AZUL_MED},{label:'Días reales',data:valid.map(x=>x.realAvg),backgroundColor:'#d97706'}]);
     const yearly=$('ti-trend-view').value==='yearly', trend=new Map();
     rows.forEach(r=>{ const k=yearly?String(r.anio||'Sin fecha'):`${r.anio||'Sin fecha'}-${String(r.mes||0).padStart(2,'0')}`; trend.set(k,(trend.get(k)||0)+1); });
     const trendItems=[...trend].sort((a,b)=>a[0].localeCompare(b[0]));
-    updateChart('ti-trend-chart','line',trendItems.map(([k])=>yearly?k:(k.endsWith('-00')?'Sin mes':`${MONTHS[Number(k.slice(-2))-1]} ${k.slice(0,4)}`)),[{label:'Solicitudes',data:trendItems.map(([,v])=>v),borderColor:'#1455a4',backgroundColor:'rgba(20,85,164,.12)',fill:true,tension:.25}],{scales:{y:{beginAtZero:true,ticks:{precision:0}}}});
+    updateChart('ti-trend-chart','line',trendItems.map(([k])=>yearly?k:(k.endsWith('-00')?'Sin mes':`${MONTHS[Number(k.slice(-2))-1]} ${k.slice(0,4)}`)),[{label:'Solicitudes',data:trendItems.map(([,v])=>v),borderColor:AZUL_MED,backgroundColor:'rgba(26,101,163,.12)',fill:true,tension:.25}],{scales:{y:{beginAtZero:true,ticks:{precision:0}}}});
     const count=(field, keys)=>keys.map(k=>rows.filter(r=>r[field]===k).length);
-    updateChart('ti-status-chart','doughnut',Object.keys(STATUS).map(k=>STATUS[k]),[{label:'Solicitudes',data:count('estado',Object.keys(STATUS)),backgroundColor:['#17825c','#1455a4','#64748b','#dc2626','#7c3aed']}]);
+    updateChart('ti-status-chart','doughnut',Object.keys(STATUS).map(k=>STATUS[k]),[{label:'Solicitudes',data:count('estado',Object.keys(STATUS)),backgroundColor:['#17825c',AZUL_MED,'#64748b','#dc2626','#7c3aed']}]);
     updateChart('ti-compliance-chart','doughnut',Object.keys(COMPLIANCE).map(k=>COMPLIANCE[k]),[{label:'Solicitudes',data:count('cumplimiento',Object.keys(COMPLIANCE)),backgroundColor:['#17825c','#dc2626','#94a3b8']}]);
   }
 
@@ -86,7 +102,7 @@
     const procedureRows=[...perProcedure].map(([key,records])=>({key, s:stats(records)})).sort((a,b)=>b.s.total-a.s.total);
     $('#ti-detail-table tbody').innerHTML=procedureRows.map(({key,s})=>{const [code,name]=key.split('|'); return `<tr><td>${escape(code)}</td><td>${escape(name)}</td><td>${integer(s.total)}</td><td>${number(s.expectedAvg)}</td><td>${number(s.realAvg)}</td><td>${number(s.offsetAvg)}</td><td>${integer(s.finished)}</td><td>${integer(s.total-s.finished)}</td><td>${percent(s.onTime)}</td></tr>`;}).join('') || '<tr><td colspan="9" class="ti-empty">Sin datos.</td></tr>';
     const monthly=new Map(); rows.forEach(r=>{const k=`${r.anio||'Sin fecha'}-${String(r.mes||0).padStart(2,'0')}`;monthly.set(k,(monthly.get(k)||0)+1);}); const series=[...monthly].sort((a,b)=>a[0].localeCompare(b[0]));
-    detailChart?.destroy(); detailChart=new Chart($('ti-detail-chart'),{type:'line',data:{labels:series.map(([k])=>k),datasets:[{label:'Solicitudes',data:series.map(([,v])=>v),borderColor:'#1455a4',tension:.25}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+    detailChart?.destroy(); detailChart=new Chart($('ti-detail-chart'),{type:'line',data:{labels:series.map(([k])=>k),datasets:[{label:'Solicitudes',data:series.map(([,v])=>v),borderColor:AZUL_MED,tension:.25}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
     $('ti-detail').showModal();
   }
 
