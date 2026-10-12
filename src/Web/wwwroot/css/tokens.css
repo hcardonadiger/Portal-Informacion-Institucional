@@ -96,9 +96,9 @@
     --diger-radius-pill: 20px;
 
     /* Sombras */
-    --diger-shadow-sm: 0 2px 8px rgba(10,45,110,.06);
-    --diger-shadow-md: 0 6px 20px rgba(10,45,110,.12);
-    --diger-shadow-lg: 0 4px 14px rgba(10,45,110,.3);
+    --diger-shadow-sm: 0 2px 8px rgba(2,57,94,.06);
+    --diger-shadow-md: 0 6px 20px rgba(2,57,94,.12);
+    --diger-shadow-lg: 0 4px 14px rgba(2,57,94,.3);
 
     /* Anillo de foco (agregado 2026-08-07) — el "glow" que ya usan .field,
        .edit-grid, .lista-buscar, .form-control/.form-select y
@@ -107,7 +107,7 @@
        el más común de los cinco (4px/.1). No es el mismo caso que
        .step-item.active o .seg-etapa-destacada — esos son estados activos
        persistentes, no de foco de teclado, y quedan con su rgba() propio. */
-    --diger-ring: 0 0 0 4px rgba(20, 85, 164, .1);
+    --diger-ring: 0 0 0 4px rgba(26, 101, 163, .1);
 
     /* Transición estándar (la mayoría de las reglas ya usa .2s/.22s/.25s) */
     --diger-transition: .2s;
@@ -224,7 +224,7 @@
     --diger-warning-bg:  #fef3c7;
     --diger-danger-bg:   #fee2e2;
 
-    --diger-shadow-sm: 0 2px 8px rgba(10,45,110,.06);
-    --diger-shadow-md: 0 6px 20px rgba(10,45,110,.12);
-    --diger-shadow-lg: 0 4px 14px rgba(10,45,110,.3);
+    --diger-shadow-sm: 0 2px 8px rgba(2,57,94,.06);
+    --diger-shadow-md: 0 6px 20px rgba(2,57,94,.12);
+    --diger-shadow-lg: 0 4px 14px rgba(2,57,94,.3);
 }
