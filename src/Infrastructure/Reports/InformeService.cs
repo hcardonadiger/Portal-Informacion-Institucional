@@ -24,6 +24,7 @@ public sealed class InformeService : IInformeService
     public byte[] GenerarPdf(InformeInstitucionDto dto)
     {
         Settings.License = LicenseType.Community;
+        FuentesMarca.Registrar();
 
         var periodo = dto.Desde is not null || dto.Hasta is not null
             ? $"{dto.Desde?.ToString("dd/MM/yyyy") ?? "–"} al {dto.Hasta?.ToString("dd/MM/yyyy") ?? "–"}"
@@ -35,7 +36,7 @@ public sealed class InformeService : IInformeService
             {
                 page.Size(PageSizes.Letter.Landscape());
                 page.Margin(1.5f, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
+                page.DefaultTextStyle(x => x.FontSize(9).FontFamily(FuentesMarca.Familia));
 
                 // ── Encabezado ─────────────────────────────────────────────
                 page.Header().Column(col =>
@@ -47,9 +48,9 @@ public sealed class InformeService : IInformeService
                             c.Item().Text("GOBIERNO DE LA REPÚBLICA DE HONDURAS")
                                 .FontSize(7).FontColor("#666666");
                             c.Item().Text(Marca.Nombre)
-                                .FontSize(12).Bold().FontColor("#1a3a5c");
+                                .FontSize(12).Bold().FontColor("#02395e");
                             c.Item().Text("Informe de Estado por Institución")
-                                .FontSize(10).FontColor("#2e6da4");
+                                .FontSize(10).FontColor("#1a65a3");
                         });
                         row.ConstantItem(160).AlignRight().Column(c =>
                         {
@@ -59,7 +60,7 @@ public sealed class InformeService : IInformeService
                                 .FontSize(7).FontColor("#555555");
                         });
                     });
-                    col.Item().PaddingTop(4).LineHorizontal(1).LineColor("#2e6da4");
+                    col.Item().PaddingTop(4).LineHorizontal(1).LineColor("#1a65a3");
                 });
 
                 // ── Contenido ──────────────────────────────────────────────
@@ -67,7 +68,7 @@ public sealed class InformeService : IInformeService
                 {
                     // Institución
                     col.Item().Text(dto.InstitucionNombre)
-                        .FontSize(11).Bold().FontColor("#1a3a5c");
+                        .FontSize(11).Bold().FontColor("#02395e");
 
                     col.Item().PaddingTop(6).Table(tbl =>
                     {
@@ -88,7 +89,7 @@ public sealed class InformeService : IInformeService
                             tbl.Cell().Background(bg).Padding(4).Column(c =>
                             {
                                 c.Item().Text(label).FontSize(7).FontColor("#444444");
-                                c.Item().Text(valor).FontSize(13).Bold().FontColor("#1a3a5c");
+                                c.Item().Text(valor).FontSize(13).Bold().FontColor("#02395e");
                             });
                         }
 
@@ -103,7 +104,7 @@ public sealed class InformeService : IInformeService
                     });
 
                     col.Item().PaddingTop(10).Text("Detalle de Expedientes")
-                        .FontSize(9).Bold().FontColor("#1a3a5c");
+                        .FontSize(9).Bold().FontColor("#02395e");
 
                     col.Item().PaddingTop(4).Table(tbl =>
                     {
@@ -119,7 +120,7 @@ public sealed class InformeService : IInformeService
 
                         // Cabecera
                         static IContainer HeaderCell(IContainer c) =>
-                            c.Background("#2e6da4").Padding(4);
+                            c.Background("#1a65a3").Padding(4);
 
                         tbl.Header(h =>
                         {
@@ -174,7 +175,7 @@ public sealed class InformeService : IInformeService
 
                                     tbl.Cell().Background(rowBgSub)
                                         .PaddingVertical(2).PaddingRight(3)
-                                        .Text($"{t.AvancePct}%").FontSize(7).FontColor("#2e6da4");
+                                        .Text($"{t.AvancePct}%").FontSize(7).FontColor("#1a65a3");
                                 }
                             }
                         }
@@ -282,7 +283,7 @@ public sealed class InformeService : IInformeService
             var cell = wsExp.Cell(1, i + 1);
             cell.Value = hdrs[i];
             cell.Style.Font.Bold = true;
-            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#2e6da4");
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1a65a3");
             cell.Style.Font.FontColor = XLColor.White;
         }
 
@@ -318,7 +319,7 @@ public sealed class InformeService : IInformeService
             var cell = wsTr.Cell(1, i + 1);
             cell.Value = hdrsTr[i];
             cell.Style.Font.Bold = true;
-            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#2e6da4");
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1a65a3");
             cell.Style.Font.FontColor = XLColor.White;
         }
 

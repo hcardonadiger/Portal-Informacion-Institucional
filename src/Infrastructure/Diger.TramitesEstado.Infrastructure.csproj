@@ -13,6 +13,15 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <!-- Tipografía del Manual de Marca DIGER (pág. 08), embarcada porque
+       QuestPDF con licencia Community no descarga fuentes. Poppins se
+       distribuye bajo SIL Open Font License, que permite la redistribución;
+       la licencia viaja en Reports/Fuentes/OFL.txt. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Reports\Fuentes\Poppins-Medium.ttf" />
+    <EmbeddedResource Include="Reports\Fuentes\Poppins-ExtraBold.ttf" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Application\Diger.TramitesEstado.Application.csproj" />
     <ProjectReference Include="..\Domain\Diger.TramitesEstado.Domain.csproj" />

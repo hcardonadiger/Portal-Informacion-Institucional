@@ -116,4 +116,29 @@ public class ProyectoPdfServiceTests
 
         EsPdf(bytes).Should().BeTrue();
     }
+
+    /// <summary>
+    /// El informe sale de la institución con la marca encima, así que la tipografía
+    /// del Manual de Marca no es cosmética. Hasta 2026-10-12 salía en Arial.
+    ///
+    /// Esto no mira el PDF: lee el nombre de la fuente que el documento embebe. Es lo
+    /// que falla en silencio si alguien quita el EmbeddedResource del .csproj o
+    /// renombra el .ttf — el registro se cae, QuestPDF usa su fuente por defecto y el
+    /// documento sigue generándose igual de bien, solo que con otra letra.
+    /// </summary>
+    [Fact]
+    public void Generar_ElDocumentoEmbebeLaTipografiaDeMarca()
+    {
+        var cronograma = CronogramaProyecto.Construir(ProyectoCon(), new DateOnly(2026, 9, 2));
+
+        var bytes = new ProyectoPdfService().Generar(DtoCon(ProyectoCon(), cronograma));
+
+        // Los nombres de fuente viajan en texto dentro del PDF, aunque el contenido
+        // vaya comprimido: basta buscar la familia en los bytes crudos.
+        var texto = System.Text.Encoding.Latin1.GetString(bytes);
+        texto.Should().Contain("Poppins",
+            "el PDF debe embeber la tipografía del Manual de Marca, no la de respaldo");
+        texto.Should().NotContain("Arial",
+            "Arial no es tipografía de marca y era lo que el acta y los informes usaban");
+    }
 }

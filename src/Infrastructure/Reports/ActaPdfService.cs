@@ -14,8 +14,11 @@ namespace Diger.TramitesEstado.Infrastructure.Reports;
 /// </summary>
 public sealed class ActaPdfService : IActaPdfService
 {
-    private const string Azul     = "#1a3a5c";
-    private const string AzulMed  = "#2e6da4";
+    // Paleta del Manual de Marca DIGER (pág. 09). Antes eran azules propios
+    // del reporte (#1a3a5c, #2e6da4), parecidos a los del portal pero
+    // distintos: el acta sale de la institución y no podía ir con otra marca.
+    private const string Azul     = "#02395e";   // azul oscuro
+    private const string AzulMed  = "#1a65a3";   // azul medio
     private const string Gris     = "#666666";
     private const string GrisTenue = "#888888";
     private const string Linea    = "#d7e0ea";
@@ -23,6 +26,7 @@ public sealed class ActaPdfService : IActaPdfService
     public byte[] Generar(ActaPdfDto dto)
     {
         Settings.License = LicenseType.Community;
+        FuentesMarca.Registrar();
 
         var d = dto.Datos;
         var institucion = PrimeraNoVacia(dto.InstitucionNombre, d.InstitucionId);
@@ -36,7 +40,7 @@ public sealed class ActaPdfService : IActaPdfService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(2f, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial").FontColor("#1c2333").LineHeight(1.35f));
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily(FuentesMarca.Familia).FontColor("#1a1a1a").LineHeight(1.35f));
 
                 page.Content().Column(col =>
                 {

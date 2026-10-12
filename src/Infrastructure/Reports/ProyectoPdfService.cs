@@ -22,8 +22,8 @@ namespace Diger.TramitesEstado.Infrastructure.Reports;
 /// </summary>
 public sealed class ProyectoPdfService : IProyectoPdfService
 {
-    private const string Azul      = "#1a3a5c";
-    private const string AzulMed   = "#2e6da4";
+    private const string Azul      = "#02395e";
+    private const string AzulMed   = "#1a65a3";
     private const string Gris      = "#666666";
     private const string GrisTenue = "#888888";
 
@@ -40,6 +40,7 @@ public sealed class ProyectoPdfService : IProyectoPdfService
     public byte[] Generar(ProyectoPdfDto dto)
     {
         Settings.License = LicenseType.Community;
+        FuentesMarca.Registrar();
 
         var p = dto.Proyecto;
 
@@ -50,7 +51,7 @@ public sealed class ProyectoPdfService : IProyectoPdfService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(1.8f, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily("Arial").FontColor("#1c2333").LineHeight(1.3f));
+                page.DefaultTextStyle(x => x.FontSize(9.5f).FontFamily(FuentesMarca.Familia).FontColor("#1a1a1a").LineHeight(1.3f));
 
                 Encabezado(page, p);
                 PieDePagina(page, p);
@@ -72,7 +73,7 @@ public sealed class ProyectoPdfService : IProyectoPdfService
             {
                 page.Size(PageSizes.A4.Landscape());
                 page.Margin(1.5f, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily("Arial").FontColor("#1c2333"));
+                page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily(FuentesMarca.Familia).FontColor("#1a1a1a"));
 
                 Encabezado(page, p);
                 PieDePagina(page, p);
