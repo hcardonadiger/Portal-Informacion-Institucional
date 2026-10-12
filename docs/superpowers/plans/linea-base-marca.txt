@@ -1,0 +1,65 @@
+[1] Colores prohibidos
+    80 hallazgo(s)
+[2] Pertenencia de tono (<=8 grados)
+    --diger-blue             #02395e    0.0 grados  ok (azul oscuro)
+    --diger-blue-dark        #022a45    0.0 grados  ok (azul oscuro)
+    --diger-blue-mid         #1455a4    5.8 grados  ok (azul medio)
+    --diger-blue-light       #e8f0ff  tinte claro, exento
+    --diger-blue-pale        #c8d5ee   12.3 grados  FALLA
+    --diger-cyan             #7acbdd    0.0 grados  ok (celeste)
+    --diger-blue-title       #0a2d6e   11.8 grados  FALLA
+    --diger-blue-strong      #0c447c    2.8 grados  ok (azul medio)
+[3] Contraste WCAG AA (4.5:1)
+    azul oscuro sobre blanco           12.00  ok
+    azul oscuro sobre fondo            10.61  ok
+    azul medio sobre blanco             6.11  ok
+    azul medio sobre fondo              5.40  ok
+    blanco sobre header navy           12.00  ok
+    celeste sobre header navy           6.52  ok
+    navy sobre avatar celeste           6.52  ok
+    estado privado sobre blanco         5.02  ok
+[4] Censo de literales hex
+    css: 242   vistas: 889   total: 1131
+
+RESULTADO: 82 fallo(s)
+  - src\Web\wwwroot\css\diger.css: #1d4ed8 - indigo, tono ajeno por 17 grados
+  - src\Web\wwwroot\css\expediente.css: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\wwwroot\css\modal.css: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\wwwroot\css\tokens.css: #ad8411 - dorado institucional (no existe en el Manual de Marca)
+  - src\Web\wwwroot\css\tokens.css: #c79621 - dorado claro (no existe en el Manual de Marca)
+  - src\Web\wwwroot\css\tokens.css: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\wwwroot\css\tokens.css: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\wwwroot\css\tokens.css: #0c447c - azul sin anclar al hex del manual
+  - src\Web\Pages\Admin\ImportarExpedientes.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Admin\ImportarReuniones.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Admin\MigrarSupabase.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Areas\Editor.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Asistencia\Registro.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Ayuda\Index.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Ayuda\Index.cshtml: #1d4ed8 - indigo, tono ajeno por 17 grados
+  - src\Web\Pages\Ayuda\Index.cshtml: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\Pages\Contactos\Editor.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Contactos\Index.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Contactos\Index.cshtml: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\Pages\Cuenta\AccessDenied.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Cuenta\Certificado.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Cuenta\Login.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Cuenta\Login.cshtml: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\Pages\Cuenta\LoginCertificado.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Cuenta\OlvidarPassword.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Cuenta\RestablecerPassword.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Cuenta\VerificarCertificado.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Cuenta\VincularCertificado.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Error.cshtml: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\Pages\Expedientes\Cronograma.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Expedientes\Editor.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Expedientes\Editor.cshtml: #1d4ed8 - indigo, tono ajeno por 17 grados
+  - src\Web\Pages\Expedientes\Editor.cshtml: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\Pages\Expedientes\Resumen.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Expedientes\Seguimiento.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Instituciones\Editor.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Instituciones\Index.cshtml: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  - src\Web\Pages\PlanTrabajo\Editor.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Recursos\Index.cshtml: #0a2d6e - azul violaceo, tono ajeno por 12 grados
+  - src\Web\Pages\Recursos\Index.cshtml: #1455a4 - azul que reclamaba ser el corporativo sin serlo
+  ... y 42 mas
