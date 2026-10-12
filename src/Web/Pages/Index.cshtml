@@ -70,15 +70,18 @@
     else
     {
         <div id="vista-lista">
-        <table class="seg-table">
+        @* .tabla-moderna es un modificador: .seg-table se usa en 41 páginas y
+           cambiarla de golpe tocaría mucho más que esta pantalla. col-centro
+           marca las columnas de dato corto, que son las que se centran. *@
+        <table class="seg-table tabla-moderna">
             <thead>
                 <tr>
                     <th>Institución</th>
                     <th>Código</th>
-                    <th>Estado <span class="help-tip tip-down" data-tip="Fase actual: Exploración → Levantamiento → Modelado → Validación → Cerrado.">?</span></th>
+                    <th class="col-centro">Estado <span class="help-tip tip-down" data-tip="Fase actual: Exploración → Levantamiento → Modelado → Validación → Cerrado.">?</span></th>
                     <th>Responsable del Acta</th>
-                    <th style="text-align:center">Trámites <span class="help-tip tip-down tip-left" data-tip="Cantidad de trámites incluidos en este expediente. Pase el cursor sobre el número para ver los nombres.">?</span></th>
-                    <th>Apertura</th>
+                    <th class="col-centro">Trámites <span class="help-tip tip-down tip-left" data-tip="Cantidad de trámites incluidos en este expediente. Pase el cursor sobre el número para ver los nombres.">?</span></th>
+                    <th class="col-centro">Apertura</th>
                     <th style="width:1%"></th>
                 </tr>
             </thead>
@@ -92,20 +95,23 @@
                             <a class="seg-inst" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Institucion</a>
                         </td>
                         <td><span class="res-meta dg-cod">@e.Codigo</span></td>
-                        <td>
-                            <span class="wf-badge @w.cls">@w.txt</span>
+                        <td class="col-centro">
+                            @* El estado deja de ser burbuja: el color pasa a un punto y el
+                               texto a tinta normal. Legado y duplicado sí conservan forma de
+                               etiqueta porque son excepciones y deben notarse como tales. *@
+                            <span class="wf-estado @w.cls">@w.txt</span>
                             @if (e.EsLegado)
                             {
-                                <span class="wf-badge wf-cancelada" title="Fecha de apertura anterior a abril de 2026 (o sin fecha de apertura). No cuenta en los tableros.">Legado</span>
+                                <span class="wf-marca" title="Fecha de apertura anterior a abril de 2026 (o sin fecha de apertura). No cuenta en los tableros.">Legado</span>
                             }
                             @if (e.EsPosibleDuplicado)
                             {
-                                <span class="wf-badge wf-cancelada" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">⚠ Posible duplicado</span>
+                                <span class="wf-marca" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">⚠ Duplicado</span>
                             }
                         </td>
                         <td>@e.Analista</td>
-                        <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                        <td class="res-meta dg-fecha">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
+                        <td class="col-centro" title="@tooltip">@e.NumTramites</td>
+                        <td class="res-meta dg-fecha col-centro">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>

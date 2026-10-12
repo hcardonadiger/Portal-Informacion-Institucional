@@ -2293,6 +2293,124 @@ tr.contacto-inactivo td {
     color: var(--diger-danger-text);
 }
 
+/* ── ESTADO SIN BURBUJA ───────────────────────────────────────────────
+   Las burbujas de color compiten entre sí: en una columna de siete filas,
+   siete rectángulos de colores distintos pesan más que el dato que llevan
+   dentro, y la vista va a las burbujas antes que a la institución.
+
+   Aquí el color sigue codificando el estado —hace falta— pero reducido a
+   un punto. El texto queda en tinta normal y legible, y la columna deja de
+   parecer un semáforo.
+
+   No sustituye a .wf-badge: esa se queda como está en los otros once sitios
+   donde se usa. Si esto convence, se migran uno por uno a propósito. */
+.wf-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: var(--diger-fs-sm);
+    font-weight: 500;
+    color: var(--diger-text-strong);
+    white-space: nowrap;
+}
+
+.wf-estado::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex: none;
+    /* El color lo pone cada variante; este es el neutro por si falta. */
+    background: var(--diger-text-slate);
+}
+
+.wf-estado.wf-registrada::before  { background: var(--diger-text-slate); }
+.wf-estado.wf-asignada::before    { background: var(--diger-blue-mid); }
+.wf-estado.wf-enproceso::before   { background: var(--diger-warning); }
+.wf-estado.wf-completada::before  { background: var(--diger-success); }
+.wf-estado.wf-cancelada::before   { background: var(--diger-danger); }
+
+/* Las variantes traen fondo propio pensado para la burbuja; aquí estorban. */
+.wf-estado.wf-registrada,
+.wf-estado.wf-asignada,
+.wf-estado.wf-enproceso,
+.wf-estado.wf-completada,
+.wf-estado.wf-cancelada {
+    background: none;
+    padding: 0;
+}
+
+/* Una marca secundaria (Legado, Posible duplicado) sí conserva forma de
+   etiqueta: es una excepción y debe notarse como tal, no confundirse con
+   el estado principal. */
+.wf-marca {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 600;
+    letter-spacing: .03em;
+    padding: 2px 7px;
+    margin-left: 6px;
+    border-radius: 4px;
+    border: 1px solid var(--diger-border);
+    color: var(--diger-text-muted);
+    background: none;
+    white-space: nowrap;
+}
+
+/* ── TABLA MODERNA ────────────────────────────────────────────────────
+   Modificador, no reemplazo: .seg-table se usa en 41 páginas y cambiarla
+   de golpe tocaría mucho más de lo pedido. Se aplica donde se quiera, de
+   una en una.
+
+   El criterio: menos cromo y más aire. Fuera la caja con sombra y el
+   encabezado con fondo —ese relleno azul hacía que la cabecera pesara más
+   que los datos—. Queda una regla fina bajo el encabezado, filas altas y
+   un separador tenue. Lo que estructura es el espacio, no las líneas. */
+.seg-table.tabla-moderna {
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.seg-table.tabla-moderna th {
+    background: none;
+    border-bottom: 1.5px solid var(--diger-border);
+    color: var(--diger-text-muted);
+    font-size: var(--diger-fs-2xs);
+    font-weight: 600;
+    letter-spacing: .09em;
+    padding: 10px 14px 12px;
+}
+
+.seg-table.tabla-moderna td {
+    border-top: 0;
+    border-bottom: 1px solid var(--diger-border-soft);
+    padding: 15px 14px;
+    color: var(--diger-text);
+}
+
+.seg-table.tabla-moderna tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.seg-table.tabla-moderna tbody tr:hover td {
+    background: var(--diger-bg-blue-alt);
+}
+
+/* Centrado parcial: solo las columnas de dato corto y ancho parejo, donde
+   centrar ordena. Institución, código y responsable se quedan a la
+   izquierda porque el ojo recorre una columna por su borde izquierdo y con
+   nombres de largo desigual el centrado obliga a buscar dónde empieza cada
+   fila. */
+.seg-table.tabla-moderna th.col-centro,
+.seg-table.tabla-moderna td.col-centro {
+    text-align: center;
+}
+
 /* ── TICKET / USUARIO BADGES (estado, prioridad, rol) ───────── */
 .status-badge,
 .prio-badge,
