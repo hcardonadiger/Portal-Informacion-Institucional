@@ -49,7 +49,7 @@
     min-width: 0;
     font-size: 13px;
     font-weight: 700;
-    color: var(--diger-blue-title, var(--diger-blue));
+    color: var(--diger-blue);
 }
 .afq-x {
     flex: none;
@@ -65,7 +65,7 @@
 }
 .afq-x:hover {
     background: var(--diger-bg, var(--diger-bg));
-    color: var(--diger-blue-title, var(--diger-blue));
+    color: var(--diger-blue);
 }
 
 /* Selector de orientación: dos pestañas, porque el afiche se imprime en vertical
@@ -90,11 +90,11 @@
     cursor: pointer;
 }
 .afq-orient-b:hover {
-    color: var(--diger-blue-title, var(--diger-blue));
+    color: var(--diger-blue);
 }
 .afq-orient-b.is-on {
     background: #fff;
-    color: var(--diger-blue-title, var(--diger-blue));
+    color: var(--diger-blue);
     box-shadow: 0 1px 3px rgba(2, 57, 94, .18);
 }
 

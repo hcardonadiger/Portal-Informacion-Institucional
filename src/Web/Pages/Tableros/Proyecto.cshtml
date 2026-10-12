@@ -353,7 +353,7 @@
                                 @if (a.FechaFinPlan is { } f)
                                 {
                                     var dias = Math.Abs(f.DayNumber - hoy.DayNumber);
-                                    <span style="font-weight:700;color:@(f < hoy ? "var(--diger-danger-text)" : "var(--diger-blue-title)")">@Fecha(f)</span>
+                                    <span style="font-weight:700;color:@(f < hoy ? "var(--diger-danger-text)" : "var(--diger-blue)")">@Fecha(f)</span>
                                     <div class="res-meta">@(f < hoy ? $"hace {dias} d" : dias == 0 ? "hoy" : $"en {dias} d")</div>
                                 }
                                 else

@@ -48,7 +48,7 @@
                     @foreach (var p in d.Proyectos)
                     {
                         <tr>
-                            <td><a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@p.Nombre</a>
+                            <td><a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue);text-decoration:none">@p.Nombre</a>
                                 <div class="res-meta">@p.Codigo</div></td>
                             @* UnidadNombre puede venir null aunque UnidadId tenga valor: Unidades lleva
                                query filter por institución activa y el nombre no siempre se resuelve.

@@ -16,15 +16,45 @@ pasada — ver "Deuda conocida" más abajo.
 Todas las variables usan el prefijo `--diger-` para no colisionar con las de
 `expediente.css`. Se cargan antes de `diger.css` en `_Layout.cshtml`.
 
+### 1.1 Tres capas, cada una con su regla (2026-10-12)
+
+El defecto de origen no era ningún color concreto: era que **no existía
+frontera entre color de marca y color de interfaz**. Por eso un dorado pudo
+instalarse en el header invocando al Manual de Marca —en el que no aparece—
+sin que nadie pudiera contradecirlo con una regla. La paleta declara tres
+capas:
+
+| Capa | Qué contiene | Regla que la gobierna |
+|---|---|---|
+| **Marca** | Los tres colores del manual (pág. 09) | Literales exactos, inmodificables, con la página citada. No se derivan ni se ajustan. |
+| **Derivada** | Sombras y tintes para hover, degradados, pills, bordes | Tono dentro de **±8°** de un color de marca. Es una prueba que corre, no un criterio que se discute. |
+| **Función** | Neutros de texto y borde; verde, ámbar y rojo de estado | Fuera del manual **a propósito**, y prohibidos en cualquier elemento que represente al logo. |
+
+La capa función está fuera del manual porque el manual norma una identidad
+gráfica, no una interfaz de datos: **un error no se puede señalar en azul**.
+
+**Regla de acento:** celeste sobre fondo navy, azul medio sobre fondo claro.
+Nunca al revés — el celeste rinde 6.52 sobre el navy del header pero cae a
+1.84 sobre blanco, donde se vería lavado.
+
+**Quien lo vigila es `scripts/verificar_marca.py`**, que falla con código de
+salida 1 mientras algo incumpla. Comprueba colores prohibidos (en hex y en
+`rgb()`/`rgba()`, que es la misma cosa escrita en decimal), pertenencia de
+tono, contraste AA de cada par declarado, y el censo de literales. Recorre
+las cuatro superficies: `wwwroot/css`, `Pages/**/*.cshtml`, `wwwroot/js` y
+los `.cs` que pintan color.
+
+### 1.2 Tabla de tokens
+
 | Token | Valor | Uso típico |
 |---|---|---|
-| `--diger-blue` | `#02395e` | Color de marca (azul gobierno, Manual de Marca 2026) — botones primarios, enlaces, foco |
-| `--diger-blue-dark` | `#022a45` | Texto de énfasis (títulos, montos), degradados, hover |
-| `--diger-blue-light` | `#e8f0ff` | Fondos suaves (pills activos, badges, topnav-rol) |
-| `--diger-blue-pale` | `#c8d5ee` | Bordes suaves sobre fondo azul claro |
-| `--diger-gold` | `#ad8411` | Acento institucional — subrayado de títulos, realces de marca |
-| `--diger-gold-light` | `#c79621` | Dorado claro — degradados de acento |
-| `--diger-cyan` | `#7acbdd` | Acento secundario (cian) |
+| `--diger-blue` | `#02395e` | **Capa marca** — azul oscuro del manual (pág. 09), tono 204°. Botones primarios, enlaces, foco, títulos |
+| `--diger-blue-mid` | `#1a65a3` | **Capa marca** — azul medio corporativo, tono 207°. Acento sobre fondo claro |
+| `--diger-celeste` | `#7acbdd` | **Capa marca** — celeste, tono 191°. Acento sobre fondo navy (header, pie, avatar). Antes se llamaba `--diger-cyan` |
+| `--diger-blue-dark` | `#022a45` | Capa derivada — sombra de `--diger-blue`, tono 204°. Degradados, hover |
+| `--diger-blue-light` | `#e8f5ff` | Capa derivada — tinte. Era `#e8f0ff`, violáceo a 219° |
+| `--diger-blue-pale` | `#c8ddee` | Capa derivada — borde suave. Era `#c8d5ee`, violáceo a 219° |
+| `--diger-privado` | `#b45309` | Capa función — reunión privada en el calendario. **Es estado, no marca**: antes usaba el dorado y el CSS lo llamaba "institucional" |
 | `--diger-border` | `#e2e8f0` | Borde por defecto de cards, inputs, tablas |
 | `--diger-text` | `#1a1a1a` | Texto principal |
 | `--diger-text-secondary` | `#4a5568` | Labels, texto secundario |
@@ -39,8 +69,8 @@ Todas las variables usan el prefijo `--diger-` para no colisionar con las de
 | `--diger-danger-strong` | `#a32d2d` | Rojo alterno (agregado 2026-08-07) — NO es alias de `--diger-danger-text`, hex distinto a propósito, ver "Deuda conocida" |
 | `--diger-warning-strong` | `#854f0b` | Ámbar alterno (agregado 2026-08-07), mismo criterio que arriba |
 | `--diger-success-strong` | `#15803d` | Verde alterno. **Faltaba en `:root`** hasta 2026-08-13: solo estaba en `@media dark`, `[data-theme=dark]` y `[data-theme=light]`, así que con la preferencia del sistema en claro y sin elección explícita quedaba sin valor — el patrón que advierte la regla de abajo |
-| `--diger-blue-title` | `#0a2d6e` | Azul de títulos/encabezados (agregado 2026-08-07) — distinto de `--diger-blue`/`--diger-blue-dark` |
-| `--diger-blue-strong` | `#0c447c` | Azul alterno (agregado 2026-08-07) |
+| ~~`--diger-blue-title`~~ | — | **Eliminado 2026-10-12.** Valía `#0a2d6e`, un azul violáceo a 12° del manual. Sus 78 usos pasaron a `--diger-blue` |
+| ~~`--diger-blue-strong`~~ | — | **Eliminado 2026-10-12.** Valía `#0c447c`. Sus 89 usos pasaron a `--diger-blue-mid` |
 | `--diger-text-strong` | `#2d3748` | Texto oscuro alterno, más suave que `--diger-text` (agregado 2026-08-07) |
 | `--diger-text-slate` | `#94a3b8` | Gris-azulado para íconos/labels secundarios (agregado 2026-08-07) |
 | `--diger-text-slate-dark` | `#475569` | Variante más oscura de `--diger-text-slate` (agregado 2026-08-07) |
@@ -161,12 +191,51 @@ de usarlo suelto en `diger.css`.
   tenían token y se agregaron como nuevos (ver tabla de la sección 1) — a
   propósito **sin fusionarlos** con tokens de valor distinto que ya
   existían, para no arriesgar el contraste de texto sin poder verlo
-  renderizado. Quedan ~96 hex distintos sin tocar, casi todos de 1-3 usos
+  renderizado.
+  - **Bloqueo levantado (2026-10-12).** Esa frase —"sin poder verlo
+    renderizado"— frenó la fusión durante dos meses, y era un bloqueo
+    legítimo mientras el contraste se juzgara a ojo. Ya no hace falta
+    verlo: `scripts/verificar_marca.py` lo mide con la fórmula WCAG. Los
+    cinco colapsos de azul se midieron antes de aplicarlos y pasan AA o
+    AAA (`#0a2d6e`→`#02395e` 13.02→12.00 AAA; `#1455a4`→`#1a65a3`
+    7.33→6.11; `#0c447c`→`#1a65a3` 9.84→6.11; `#1d4ed8`→`#1a65a3`
+    6.70→6.11), y los 14 pares que salen de C# están en `PARES_AA`, el
+    más ajustado en 5.64. **Nadie tiene que volver a frenarse por esta
+    razón: si hay duda de contraste, se corre el guardián.**
+  - Lo que **no** se fusionó, y tampoco por falta de medición: los ~65
+    literales de la capa función (verdes, rojos, ámbares, grises, cianes
+    de estado). Están a más de 8° de tono de cualquier color del manual y
+    colapsarlos contra un azul de marca rompería la distinción que
+    existen para hacer. Quedan documentados como capa función, que es
+    distinto de quedar sin documentar.
+  Quedan ~96 hex distintos sin tocar, casi todos de 1-3 usos
   — screenshots-tap final, no vale la pena forzarlos a un token para tan
   poco volumen. El sistema de "semáforo" (`.sem-rojo`/`.sem-naranja`/etc.,
   con sus propios `--sem-fondo`/`--sem-texto`/`--sem-solido` locales) ahora
   referencia `--diger-danger-strong`/`--diger-warning-strong` en el
   `--sem-texto` en vez de repetir el hex.
+- **Las cuatro superficies que no son CSS (2026-10-12).** La auditoría de
+  color de 2026-08-07 solo miró `wwwroot/css` y las vistas. Faltaban cuatro
+  sitios que también pintan marca, con ~200 literales más, y conviene
+  dejarlos nombrados para que la próxima auditoría no los vuelva a pasar
+  por alto:
+  - **JavaScript** (`expediente.js`, `tramites-indicadores.js`). Tres
+    contextos y solo uno admite token: una cadena que arma HTML con
+    `style=""` sí acepta `var()`; un **atributo de SVG** (`fill`, `stroke`)
+    y la **configuración de Chart.js** no — ahí el `var()` llega como texto
+    y no pinta. Para esos dos se usa `tokenColor()`, que lee el token del
+    CSS con un respaldo.
+  - **Modelos de UI en C#** (`CalendarioUi.cs`, `CompromisoUi.cs`).
+    Devuelven `(fondo, texto)` desde C#, donde ningún token CSS llega. Sus
+    14 pares están en `PARES_AA` del guardián.
+  - **Reportes PDF** (`ActaPdfService`, `InformeService`,
+    `ProyectoPdfService`). Salían en **Arial**: documentos oficiales que
+    salen de la institución con la marca encima. Ahora embarcan Poppins
+    como `EmbeddedResource` (QuestPDF Community no descarga fuentes) y lo
+    cubre una prueba que lee el nombre de la fuente embebida en el PDF.
+  - **Colores de rol en la base** (`Roles.Color`). Único cambio de datos;
+    va por `database/2026-10-12_poner_al_dia.sql`, idempotente, porque las
+    bases desplegadas se actualizan corriendo SQL a mano.
 - **Bug real de contraste en modo oscuro, encontrado por el usuario y corregido (2026-08-07).** El primer intento de modo oscuro dejaba `--diger-blue`/`--diger-blue-dark`/`--diger-blue-mid` sin cambiar entre temas (criterio "la marca no cambia") — pero esos tres tokens se usan como `color:` (texto) en ~100 declaraciones repartidas por todo `diger.css` (nombres de institución, títulos, montos), no solo como fondo/borde. Navy oscuro sobre fondo ahora-oscuro daba contraste real de **1.0–2.4:1** (medido con la fórmula WCAG, no a ojo — el mínimo aceptable es 4.5:1). Capturado en vivo por el usuario con una captura de pantalla real del portal.
   - Fix: los usos de `color:` (nunca los de `background`/`border`) de esos tres tokens se re-enrutaron por sed a `--diger-blue-title`/`--diger-blue-strong` (ya con buen contraste en oscuro, 5.75–9.9:1) — `background`/`border-color` de los mismos tokens quedaron intactos, la marca sigue igual ahí.
   - Segunda vuelta de verificación (barrido de contraste con fondo heredado, no solo el del propio nodo) encontró 2 casos más: `--diger-blue-light` como fondo de badge nunca se hizo theme-aware pese a que el texto que llevaba encima sí, y `.chat-widget-panel` tenía `background:#fff` literal sin tokenizar. Ambos corregidos.

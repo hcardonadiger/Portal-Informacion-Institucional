@@ -27,6 +27,15 @@ RAIZ = Path(__file__).resolve().parent.parent
 CSS = RAIZ / "src" / "Web" / "wwwroot" / "css"
 VISTAS = RAIZ / "src" / "Web" / "Pages"
 
+# Las cuatro superficies que la auditoria inicial no cubria. Pintan marca
+# igual que el CSS, pero ningun token CSS las alcanza: aqui el color viaja
+# en una cadena de JavaScript o en una constante de C#. Mientras el guardian
+# no las recorrio, el verde era real pero acotado — y se leia como si el
+# plan hubiera terminado.
+JS = RAIZ / "src" / "Web" / "wwwroot" / "js"
+MODELOS = RAIZ / "src" / "Web" / "Models"
+REPORTES = RAIZ / "src" / "Infrastructure" / "Reports"
+
 # -- Manual de Marca DIGER, pag. 09 -------------------------------------
 MANUAL = {
     "azul oscuro": "#02395e",
@@ -118,6 +127,13 @@ def archivos_vista() -> list[Path]:
     return sorted(VISTAS.rglob("*.cshtml"))
 
 
+def archivos_codigo() -> list[Path]:
+    """JavaScript y C# que pintan color. Se excluyen los .ttf embarcados."""
+    return (sorted(JS.glob("*.js"))
+            + sorted(MODELOS.glob("*Ui.cs"))
+            + sorted(REPORTES.glob("*.cs")))
+
+
 def literales(texto: str) -> list[str]:
     return [m.lower() for m in re.findall(r"#[0-9a-fA-F]{6}\b", texto)]
 
@@ -143,20 +159,24 @@ def funciones_rgb(texto: str) -> list[str]:
     return hallados
 
 
-def censo() -> tuple[int, int]:
+def censo() -> tuple[int, int, int]:
     en_css = sum(len(literales(f.read_text(encoding="utf-8", errors="replace")))
                  for f in archivos_css())
     en_vistas = sum(len(literales(f.read_text(encoding="utf-8", errors="replace")))
                     for f in archivos_vista())
-    return en_css, en_vistas
+    en_codigo = sum(len(literales(f.read_text(encoding="utf-8", errors="replace")))
+                    for f in archivos_codigo())
+    return en_css, en_vistas, en_codigo
 
 
 def censo_rgb() -> tuple[int, int]:
     en_css = sum(len(funciones_rgb(f.read_text(encoding="utf-8", errors="replace").lower()))
                  for f in archivos_css())
-    en_vistas = sum(len(funciones_rgb(f.read_text(encoding="utf-8", errors="replace").lower()))
-                    for f in archivos_vista())
-    return en_css, en_vistas
+    # Vistas y codigo van juntos: en ambos el color viaja en una cadena y la
+    # distincion no aporta nada al leer el informe.
+    en_resto = sum(len(funciones_rgb(f.read_text(encoding="utf-8", errors="replace").lower()))
+                   for f in archivos_vista() + archivos_codigo())
+    return en_css, en_resto
 
 
 def main() -> int:
@@ -165,16 +185,17 @@ def main() -> int:
                     help="solo el censo de literales hex")
     args = ap.parse_args()
 
-    css_n, vistas_n = censo()
+    css_n, vistas_n, codigo_n = censo()
     if args.censo:
-        print(f"literales hex -> css: {css_n}  vistas: {vistas_n}  total: {css_n + vistas_n}")
+        print(f"literales hex -> css: {css_n}  vistas: {vistas_n}  "
+              f"codigo: {codigo_n}  total: {css_n + vistas_n + codigo_n}")
         return 0
 
     fallos: list[str] = []
 
     # -- 1. Colores prohibidos ------------------------------------------
     print("[1] Colores prohibidos")
-    for archivo in archivos_css() + archivos_vista():
+    for archivo in archivos_css() + archivos_vista() + archivos_codigo():
         texto = archivo.read_text(encoding="utf-8", errors="replace").lower()
         rel = archivo.relative_to(RAIZ)
         for hex_, motivo in PROHIBIDOS.items():
@@ -225,10 +246,11 @@ def main() -> int:
     # avance del plan es que baje monotonamente. Los rgb/rgba van en su propia
     # cuenta para no mover ese numero bajo los pies de nadie.
     print("[4] Censo de literales hex")
-    print(f"    css: {css_n}   vistas: {vistas_n}   total: {css_n + vistas_n}")
-    rgb_css, rgb_vistas = censo_rgb()
-    print(f"    prohibidos como rgb/rgba -> css: {rgb_css}   vistas: {rgb_vistas}"
-          f"   total: {rgb_css + rgb_vistas}")
+    print(f"    css: {css_n}   vistas: {vistas_n}   codigo: {codigo_n}"
+          f"   total: {css_n + vistas_n + codigo_n}")
+    rgb_css, rgb_resto = censo_rgb()
+    print(f"    prohibidos como rgb/rgba -> css: {rgb_css}   vistas y codigo: {rgb_resto}"
+          f"   total: {rgb_css + rgb_resto}")
 
     print()
     if fallos:

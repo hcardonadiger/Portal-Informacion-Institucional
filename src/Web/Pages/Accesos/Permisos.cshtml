@@ -103,7 +103,7 @@
         @if (Model.Rol is not null)
         {
             <div class="card">
-                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--diger-radius-sm);margin-bottom:1rem;background:@(Model.Rol.EsSoloLectura ? "var(--diger-warning-bg)" : "var(--diger-bg-blue)");color:@(Model.Rol.EsSoloLectura ? "var(--diger-warning-strong)" : "var(--diger-blue-strong)")">
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--diger-radius-sm);margin-bottom:1rem;background:@(Model.Rol.EsSoloLectura ? "var(--diger-warning-bg)" : "var(--diger-bg-blue)");color:@(Model.Rol.EsSoloLectura ? "var(--diger-warning-strong)" : "var(--diger-blue-mid)")">
                     <span>
                         Alcance <strong>@Model.Rol.NivelAlcance</strong>
                         @if (Model.Rol.EsSoloLectura)

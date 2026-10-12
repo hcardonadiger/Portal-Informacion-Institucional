@@ -165,7 +165,7 @@
                     {
                         <tr>
                             <td>
-                                <a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@p.Nombre</a>
+                                <a asp-page="/Proyectos/Editor" asp-route-id="@p.ProyectoId" style="font-weight:600;color:var(--diger-blue);text-decoration:none">@p.Nombre</a>
                                 <div class="res-meta">
                                     @p.Codigo
                                     <span class="@Etiquetas.ClaseColor(p.PrioridadColor)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
@@ -360,7 +360,7 @@
                             <td class="res-meta">@(a.Responsable ?? "—")</td>
                             <td class="res-meta">@(a.AvancePct)%</td>
                             <td style="text-align:right;white-space:nowrap">
-                                <span style="font-weight:700;color:@(vencida ? "var(--diger-danger-text)" : "var(--diger-blue-title)")">@Fecha(a.FechaFinPlan)</span>
+                                <span style="font-weight:700;color:@(vencida ? "var(--diger-danger-text)" : "var(--diger-blue)")">@Fecha(a.FechaFinPlan)</span>
                                 <div class="res-meta">@(vencida ? $"hace {dias} d" : dias == 0 ? "hoy" : $"en {dias} d")</div>
                             </td>
                         </tr>
@@ -455,7 +455,7 @@
                             <td class="res-meta">@(e.AvancePct)%</td>
                             <td class="res-meta">@Etiquetas.Entregable(e.Estado)</td>
                             <td style="text-align:right;white-space:nowrap">
-                                <span style="font-weight:700;color:@(vencido ? "var(--diger-danger-text)" : "var(--diger-blue-title)")">@Fecha(e.FechaPlan)</span>
+                                <span style="font-weight:700;color:@(vencido ? "var(--diger-danger-text)" : "var(--diger-blue)")">@Fecha(e.FechaPlan)</span>
                                 <div class="res-meta">@(vencido ? $"hace {dias} d" : dias == 0 ? "hoy" : $"en {dias} d")</div>
                             </td>
                         </tr>
@@ -484,7 +484,7 @@
             {
                 <div class="hist-item" style="display:block">
                     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
-                        <a asp-page="/Proyectos/Editor" asp-route-id="@b.ProyectoId" style="font-weight:600;color:var(--diger-blue-title);text-decoration:none">@b.Proyecto</a>
+                        <a asp-page="/Proyectos/Editor" asp-route-id="@b.ProyectoId" style="font-weight:600;color:var(--diger-blue);text-decoration:none">@b.Proyecto</a>
                         <span class="res-meta">@b.Autor · @b.Fecha.ToLocalTime().ToString("dd/MM/yyyy")</span>
                     </div>
                     <p style="margin:.35rem 0 0;font-size:var(--diger-fs-sm)">@b.Texto</p>

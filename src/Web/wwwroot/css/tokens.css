@@ -31,12 +31,6 @@
     --diger-blue-light: #e8f5ff;   /* tinte  — antes #e8f0ff, violáceo a 219° */
     --diger-blue-pale:  #c8ddee;   /* borde  — antes #c8d5ee, violáceo a 219° */
 
-    /* Obsoletos: repuntados a la capa marca para que pinten el color
-       correcto incluso donde todavía nadie migró sus usos. Se eliminan
-       en la tarea 12, cuando el guardián confirme que no queda ninguna
-       referencia. No agregar usos nuevos. */
-    --diger-blue-title:  var(--diger-blue);
-    --diger-blue-strong: var(--diger-blue-mid);
 
     --diger-border: #e2e8f0;
     --diger-text: #1a1a1a;
@@ -210,11 +204,6 @@
     --diger-bg-blue-pale: #f0f4ff;
     --diger-blue-light:   #e8f5ff;
 
-    /* Obsoletos, repuntados a la capa marca. Este bloque pisa al :root de
-       arriba, asi que si aqui quedaran los hex viejos el repunte no serviria
-       de nada. Se eliminan en la tarea 12. */
-    --diger-blue-title:    var(--diger-blue);
-    --diger-blue-strong:   var(--diger-blue-mid);
     --diger-danger-strong: #a32d2d;
     --diger-warning-strong: #854f0b;
     --diger-success-strong: #15803d;
