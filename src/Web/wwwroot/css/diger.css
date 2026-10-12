@@ -1048,18 +1048,34 @@ tr.contacto-inactivo td {
     box-shadow: var(--diger-shadow-sm);
 }
 
+/* Es un <button> y no un <div> con onclick: plegar y desplegar una institución
+   tiene que poder hacerse con teclado, y un div no recibe foco ni responde a
+   Enter. Se le quitan los adornos de botón para que siga leyéndose como el
+   encabezado de la tarjeta. */
 .grupo-inst-hdr {
     display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
     padding: 14px 16px;
     cursor: pointer;
     user-select: none;
     background: var(--diger-bg-blue);
+    border: 0;
+    border-radius: 0;
+    font-family: inherit;
+    font-size: inherit;
+    text-align: left;
+    color: inherit;
 }
 
 .grupo-inst-hdr:hover {
     background: #eef2fc;
+}
+
+.grupo-inst-hdr:focus-visible {
+    outline: 2px solid var(--diger-blue);
+    outline-offset: -2px;
 }
 
 .grupo-inst-hdr strong {

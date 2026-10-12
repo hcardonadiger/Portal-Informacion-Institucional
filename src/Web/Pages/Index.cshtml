@@ -34,7 +34,10 @@
            acciones del mismo peso. *@
         <div style="display:flex;gap:10px;align-items:center">
             <div class="acciones-sec">
-                <button type="button" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
+                @* La agrupada es la que abre: ahí la institución es el título de
+                   la tarjeta y la tabla no tiene que repetirla en cada fila, que
+                   es lo que apretaba la vista de lista. El botón ofrece la otra. *@
+                <button type="button" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista de lista</button>
                 @* Cada enlace se gatea con la clave de SU destino, no con la de esta página:
                    plantillas vive en el módulo de administración y pide otra clave, así que
                    mostrarlo junto a "nuevo expediente" llevaba a un Forbidden. *@
@@ -99,7 +102,7 @@
     }
     else
     {
-        <div id="vista-lista">
+        <div id="vista-lista" style="display:none">
         @* .tabla-moderna es un modificador: .seg-table se usa en 41 páginas y
            cambiarla de golpe tocaría mucho más que esta pantalla.
 
@@ -227,26 +230,34 @@
         <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
         </div>
 
-        @* ── Vista agrupada por institución ───────────────────────── *@
-        <div id="vista-agrupada" style="display:none">
+        @* ── Vista agrupada por institución ─────────────────────────────
+           Es la vista que abre primero. La institución pasa a ser el título
+           de la tarjeta, así que la tabla de dentro no la repite en cada
+           fila: por eso cabe sin apretar y sin nombres partidos en cinco
+           renglones, que era el problema de la lista.
+
+           Lleva el mismo tratamiento que la lista —"Legado" como estado,
+           código en monoespaciada, menú de fila con la destructiva aparte—
+           para que las dos vistas no diverjan. *@
+        <div id="vista-agrupada">
             @foreach (var grupo in Model.Todos.GroupBy(e => e.Institucion ?? "Sin institución").OrderBy(g => g.Key))
             {
                 <div class="grupo-inst">
-                    <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
+                    <button type="button" class="grupo-inst-hdr" onclick="toggleGrupoInst(this)" aria-expanded="true">
                         <strong>@grupo.Key</strong>
                         <span class="grupo-inst-badge">@grupo.Count() expediente@(grupo.Count() == 1 ? "" : "s")</span>
-                        <span class="grupo-inst-chevron">▾</span>
-                    </div>
+                        <span class="grupo-inst-chevron" aria-hidden="true">▾</span>
+                    </button>
                     <div class="grupo-inst-body">
-                        <table class="seg-table">
+                        <table class="seg-table tabla-moderna">
                             <thead>
                                 <tr>
                                     <th>Código</th>
                                     <th>Estado</th>
-                                    <th>Responsable del Acta</th>
-                                    <th style="text-align:center">Trámites</th>
-                                    <th>Apertura</th>
-                                    <th style="width:1%"></th>
+                                    <th>Responsable</th>
+                                    <th class="col-num">Trámites</th>
+                                    <th class="col-num">Apertura</th>
+                                    <th class="col-acciones"><span class="sr-only">Acciones</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -255,34 +266,56 @@
                                     var w = Wf(e.Estado);
                                     var tooltip = e.TramiteNombres.Any() ? string.Join(" · ", e.TramiteNombres) : "Sin trámites";
                                     <tr>
-                                        <td><a class="seg-inst dg-cod" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a></td>
-                                        <td>
-                            <span class="wf-badge @w.cls">@w.txt</span>
-                            @if (e.EsLegado)
-                            {
-                                <span class="wf-badge wf-cancelada" title="Fecha de apertura anterior a abril de 2026 (o sin fecha de apertura). No cuenta en los tableros.">Legado</span>
-                            }
-                            @if (e.EsPosibleDuplicado)
-                            {
-                                <span class="wf-badge wf-cancelada" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">⚠ Posible duplicado</span>
-                            }
-                        </td>
-                                        <td>@e.Analista</td>
-                                        <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                                        <td class="res-meta dg-fecha">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
-                                        <td style="white-space:nowrap;text-align:right">
+                                        <td class="col-dato">
+                                            <a class="inst-sigla" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a>
+                                        </td>
+                                        <td data-rotulo="Estado">
+                                            @if (e.EsLegado && !TieneResponsable(e.Analista))
+                                            {
+                                                <span class="est-pill est-legado" title="Expediente anterior a abril de 2026. No tiene seguimiento confiable en la nueva metodología y no cuenta en los tableros.">Legado</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="est-pill @w.cls">@w.txt</span>
+                                            }
+                                            @if (e.EsPosibleDuplicado)
+                                            {
+                                                <span class="est-aviso" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">
+                                                    <span aria-hidden="true">⚠</span>
+                                                    <span class="sr-only">Posible duplicado de @string.Join(", ", e.DuplicadoDeCodigos)</span>
+                                                </span>
+                                            }
+                                        </td>
+                                        <td data-rotulo="Responsable">
+                                            @if (TieneResponsable(e.Analista))
+                                            {
+                                                @e.Analista
+                                            }
+                                            else
+                                            {
+                                                <span class="sin-asignar">Sin asignar</span>
+                                            }
+                                        </td>
+                                        <td class="col-num" data-rotulo="Trámites" title="@tooltip">@e.NumTramites</td>
+                                        <td class="col-num" data-rotulo="Apertura">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
+                                        <td class="col-acciones">
                                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
-                                            <a class="btns" asp-page="/Expedientes/Editor" asp-route-id="@e.Id"
-                                               style="font-size:12.5px;padding:6px 12px;margin-left:4px">@(puedeGestionar ? "Abrir" : "Ver")</a>
-                                            @if (puedeEliminar)
-                                            {
-                                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
-                                                    <input type="hidden" name="id" value="@e.Id" />
-                                                    <button class="hist-del" type="submit" style="margin-left:4px"
-                                                            aria-label="Eliminar expediente" data-confirm="¿Eliminar este expediente?">✕</button>
-                                                </form>
-                                            }
+                                            <details class="fila-menu">
+                                                <summary aria-label="Más acciones para @e.Codigo" title="Más acciones">⋯</summary>
+                                                <div class="fila-menu-panel">
+                                                    <a asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@(puedeGestionar ? "Editar expediente" : "Ver expediente")</a>
+                                                    @if (puedeEliminar)
+                                                    {
+                                                        <div class="fila-menu-sep"></div>
+                                                        <form method="post" asp-page-handler="Eliminar">
+                                                            <input type="hidden" name="id" value="@e.Id" />
+                                                            <button class="peligro" type="submit"
+                                                                    data-confirm="¿Eliminar el expediente @e.Codigo? Esta acción no se puede deshacer.">Eliminar expediente</button>
+                                                        </form>
+                                                    }
+                                                </div>
+                                            </details>
                                         </td>
                                     </tr>
                                 }
@@ -297,11 +330,14 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        // La agrupada es la de salida, asi que solo hay que actuar cuando el
+        // usuario eligio expresamente la lista. Antes era al reves y la
+        // comparacion con 'true' cubria el caso contrario.
         var agrupada = sessionStorage.getItem('vistaExpedientesAgrupada');
-        if (agrupada === 'true') {
-            document.getElementById('vista-lista').style.display = 'none';
-            document.getElementById('vista-agrupada').style.display = '';
-            document.getElementById('btn-toggle-vista').textContent = 'Vista de lista';
+        if (agrupada === 'false') {
+            document.getElementById('vista-agrupada').style.display = 'none';
+            document.getElementById('vista-lista').style.display = '';
+            document.getElementById('btn-toggle-vista').textContent = 'Vista por institución';
         }
     });
 
@@ -322,5 +358,8 @@
         var abierto = body.style.display !== 'none';
         body.style.display = abierto ? 'none' : '';
         chevron.style.transform = abierto ? 'rotate(-90deg)' : 'rotate(0deg)';
+        // El encabezado es un boton: quien navegue con lector de pantalla tiene
+        // que oir si la institucion esta desplegada o no.
+        hdr.setAttribute('aria-expanded', abierto ? 'false' : 'true');
     }
 </script>
