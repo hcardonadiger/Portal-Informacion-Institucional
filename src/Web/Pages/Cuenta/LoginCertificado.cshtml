@@ -7,7 +7,7 @@
 
 <div class="container" style="max-width:440px">
     <div class="card" style="margin-top:2rem;text-align:center">
-        <h2 style="color:#0a2d6e;font-size:20px;margin-bottom:1rem">Autenticación con Certificado</h2>
+        <h2 style="color:var(--diger-blue);font-size:20px;margin-bottom:1rem">Autenticación con Certificado</h2>
         
         @if (!string.IsNullOrEmpty(Model.Error))
         {
@@ -19,8 +19,8 @@
         else
         {
             <div id="loadingUI">
-                <p style="color:#6b7fa3;font-size:16px;margin-bottom:1rem;">Verificando tu certificado digital...</p>
-                <div class="spinner" style="margin: 0 auto 1rem auto; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0a2d6e; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="color:var(--diger-text-muted);font-size:16px;margin-bottom:1rem;">Verificando tu certificado digital...</p>
+                <div class="spinner" style="margin: 0 auto 1rem auto; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--diger-blue); border-radius: 50%; animation: spin 1s linear infinite;"></div>
                 <p style="color:#999;font-size:12px;">Por favor, espera un momento. Serás redirigido automáticamente.</p>
             </div>
 

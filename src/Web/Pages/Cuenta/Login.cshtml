@@ -38,14 +38,14 @@
     .lg { min-height: 100vh; }
     .login-logo { width: 100%; max-width: 300px; height: auto; margin: 0 auto 1.15rem; display: block; }
     /* El margen inferior sustituye el aire que antes daba el subtítulo. */
-    .login-title { color: #0a2d6e; font-size: 30px; font-weight: 700; line-height: 1.25; margin: 0 0 1.35rem; text-align: center; }
+    .login-title { color: var(--diger-blue); font-size: 30px; font-weight: 700; line-height: 1.25; margin: 0 0 1.35rem; text-align: center; }
     .login-btn { width: 100%; justify-content: center; box-sizing: border-box; padding: 15px 20px; font-size: 18px; border-radius: var(--diger-radius-md); }
     form .login-btn { margin-top: .5rem; }
     .login-alt { margin-top: 1.6rem; }
-    .login-divider { display: flex; align-items: center; text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 1.1rem; }
-    .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+    .login-divider { display: flex; align-items: center; text-align: center; color: var(--diger-text-slate); font-size: 14px; margin-bottom: 1.1rem; }
+    .login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--diger-border); }
     .login-divider span { padding: 0 .8rem; white-space: nowrap; }
-    .login-link { font-size: 14.5px; color: #0a2d6e; text-decoration: none; }
+    .login-link { font-size: 14.5px; color: var(--diger-blue); text-decoration: none; }
 
     /* Campos: .field vive en diger.css (global), así que la escala mayor
        se acota al login para no alterar el resto del portal. */
@@ -61,7 +61,7 @@
        sí se descargaría, ~198 KB inútiles en móvil). */
     .lg-brand {
         background: url('@Url.Content("~/img/login_brand.jpg")') center / cover no-repeat,
-                    linear-gradient(150deg, #02395e, #1455a4);
+                    linear-gradient(150deg, var(--diger-blue), var(--diger-blue-mid));
     }
 
     .lg-formwrap { display: flex; align-items: center; justify-content: center; padding: 2.5rem; background: #fff; }

@@ -7,7 +7,7 @@
 
 <div class="container" style="max-width:440px">
     <div class="card" style="margin-top:2rem;text-align:center">
-        <h2 style="color:#0a2d6e;font-size:20px;margin-bottom:1rem">Vinculación de Certificado</h2>
+        <h2 style="color:var(--diger-blue);font-size:20px;margin-bottom:1rem">Vinculación de Certificado</h2>
         
         @if (!string.IsNullOrEmpty(Model.Error))
         {
@@ -18,23 +18,23 @@
         }
         else if (!string.IsNullOrEmpty(Model.Thumbprint))
         {
-            <p style="color:#6b7fa3;font-size:14px;margin-bottom:1.5rem">Por favor, verifica la información del certificado antes de vincularlo a tu cuenta.</p>
+            <p style="color:var(--diger-text-muted);font-size:14px;margin-bottom:1.5rem">Por favor, verifica la información del certificado antes de vincularlo a tu cuenta.</p>
             
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:1.5rem;text-align:left;margin-bottom:1.5rem">
+            <div style="background:#f8fafc;border:1px solid var(--diger-border);border-radius:8px;padding:1.5rem;text-align:left;margin-bottom:1.5rem">
                 <div class="field" style="margin-bottom:0.75rem">
-                    <label style="font-size:12px;color:#6b7fa3;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Titular</label>
-                    <div style="font-weight:600;color:#0a2d6e;font-size:14px">@Model.Subject</div>
+                    <label style="font-size:12px;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Titular</label>
+                    <div style="font-weight:600;color:var(--diger-blue);font-size:14px">@Model.Subject</div>
                 </div>
                 <div class="field" style="margin-bottom:0.75rem">
-                    <label style="font-size:12px;color:#6b7fa3;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Emisor</label>
-                    <div style="font-weight:600;color:#0a2d6e;font-size:14px">@Model.Issuer</div>
+                    <label style="font-size:12px;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Emisor</label>
+                    <div style="font-weight:600;color:var(--diger-blue);font-size:14px">@Model.Issuer</div>
                 </div>
                 <div class="field" style="margin-bottom:0.75rem">
-                    <label style="font-size:12px;color:#6b7fa3;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Válido hasta</label>
-                    <div style="font-weight:600;color:#0a2d6e;font-size:14px">@Model.ValidTo</div>
+                    <label style="font-size:12px;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Válido hasta</label>
+                    <div style="font-weight:600;color:var(--diger-blue);font-size:14px">@Model.ValidTo</div>
                 </div>
                 <div class="field" style="margin-bottom:0">
-                    <label style="font-size:12px;color:#6b7fa3;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Huella (Thumbprint)</label>
+                    <label style="font-size:12px;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Huella (Thumbprint)</label>
                     <div style="font-family:monospace;color:#1e429f;font-size:12px;background:#e1effe;padding:4px 8px;border-radius:4px;display:inline-block">@Model.Thumbprint</div>
                 </div>
             </div>

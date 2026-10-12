@@ -14,10 +14,10 @@
         var ext = System.IO.Path.GetExtension(nombreArchivo)?.ToLowerInvariant() ?? "";
         return ext switch
         {
-            ".pdf"  => ("📄", "#fee2e2"),
+            ".pdf"  => ("📄", "var(--diger-danger-bg)"),
             ".doc" or ".docx" => ("📝", "#e0f2fe"),
-            ".xls" or ".xlsx" or ".csv" => ("📊", "#dcfce7"),
-            ".zip" or ".rar" or ".7z"  => ("📦", "#fef3c7"),
+            ".xls" or ".xlsx" or ".csv" => ("📊", "var(--diger-success-bg)"),
+            ".zip" or ".rar" or ".7z"  => ("📦", "var(--diger-warning-bg)"),
             ".png" or ".jpg" or ".jpeg" => ("🖼️", "#f3e8ff"),
             _ => ("📎", "#f1f5f9")
         };
@@ -38,7 +38,7 @@
     @* ── ENCABEZADO PRINCIPAL ─────────────────────────────────────── *@
     <div class="hist-header" style="margin-bottom:1.5rem">
         <div>
-            <h2 style="margin:0;font-size:22px;color:#0a2d6e">Recursos y Plantillas Oficiales</h2>
+            <h2 style="margin:0;font-size:22px;color:var(--diger-blue)">Recursos y Plantillas Oficiales</h2>
             <p style="margin:4px 0 0 0;font-size:13.5px;color:#64748b">
                 Repositorio centralizado de documentos, guías de usuario, plantillas reutilizables y formatos oficiales de la DIGER.
             </p>
@@ -114,12 +114,12 @@
                         
                         @if (!string.IsNullOrWhiteSpace(r.Descripcion))
                         {
-                            <p style="margin:0 0 10px 0;font-size:13px;color:#475569;line-height:1.45">@r.Descripcion</p>
+                            <p style="margin:0 0 10px 0;font-size:13px;color:var(--diger-text-slate-dark);line-height:1.45">@r.Descripcion</p>
                         }
 
                         <div style="font-size:11.5px;color:#64748b;margin-bottom:12px">
                             📎 <span style="font-weight:600;color:#334155">@r.ArchivoNombre</span> • @FormatoTamano(r.ArchivoTamano)
-                            <div style="font-size:11px;color:#94a3b8;margin-top:2px">Publicado: @r.CreatedAt.ToString("dd/MM/yyyy")</div>
+                            <div style="font-size:11px;color:var(--diger-text-slate);margin-top:2px">Publicado: @r.CreatedAt.ToString("dd/MM/yyyy")</div>
                         </div>
                     </div>
 
@@ -155,7 +155,7 @@
     <div id="modalRecurso" class="modal-backdrop" style="display:none">
         <div class="modal-card" style="max-width:520px;padding:1.5rem">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 style="margin:0;font-size:17px;color:#0a2d6e" id="modalTituloLabel">Nuevo Recurso / Plantilla</h3>
+                <h3 style="margin:0;font-size:17px;color:var(--diger-blue)" id="modalTituloLabel">Nuevo Recurso / Plantilla</h3>
                 <button type="button" onclick="cerrarModalRecurso()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#64748b">&times;</button>
             </div>
 
@@ -205,13 +205,13 @@
       border-radius: 20px;
       font-size: 12.5px;
       font-weight: 600;
-      color: #475569;
+      color: var(--diger-text-slate-dark);
       background: #f1f5f9;
       text-decoration: none;
       transition: all .15s ease;
   }
-  .cat-pill:hover { background: #e2e8f0; color: #0f172a; }
-  .cat-pill.active { background: #1455a4; color: #ffffff; }
+  .cat-pill:hover { background: var(--diger-border); color: #0f172a; }
+  .cat-pill.active { background: var(--diger-blue-mid); color: #ffffff; }
 
   .form-input, .form-select {
       width: 100%;

@@ -7,7 +7,7 @@
 
 <div class="container" style="max-width:440px">
     <div class="card" style="margin-top:2rem;text-align:center">
-        <h2 style="color:#0a2d6e;font-size:20px;margin-bottom:1rem">Verificación de Seguridad</h2>
+        <h2 style="color:var(--diger-blue);font-size:20px;margin-bottom:1rem">Verificación de Seguridad</h2>
         
         @if (!string.IsNullOrEmpty(Model.Error))
         {
@@ -18,7 +18,7 @@
         }
         else
         {
-            <p style="color:#6b7fa3;font-size:14px">Verificando tu certificado digital...</p>
+            <p style="color:var(--diger-text-muted);font-size:14px">Verificando tu certificado digital...</p>
         }
     </div>
 </div>

@@ -25,14 +25,14 @@
 
 @if (!string.IsNullOrEmpty(Model.TokenNuevo))
 {
-    <div class="card" style="border-left:4px solid #b45309">
+    <div class="card" style="border-left:4px solid var(--diger-warning)">
         <h3 class="cuenta-card-title">Su token nuevo</h3>
         <p><strong>Cópielo ahora.</strong> Se guarda cifrado: al salir de esta página no vuelve a mostrarse y no hay forma de recuperarlo. Si lo pierde, revoque este y genere otro.</p>
 
-        <pre style="white-space:pre-wrap;word-break:break-all;background:#0f172a;color:#e2e8f0;padding:.85rem;border-radius:6px">@Model.TokenNuevo</pre>
+        <pre style="white-space:pre-wrap;word-break:break-all;background:#0f172a;color:var(--diger-border);padding:.85rem;border-radius:6px">@Model.TokenNuevo</pre>
 
         <p style="margin-top:1rem">Para conectarlo a Claude Code, ejecute en su terminal:</p>
-        <pre style="white-space:pre-wrap;word-break:break-all;background:#0f172a;color:#e2e8f0;padding:.85rem;border-radius:6px">claude mcp add --transport http portal-gd @urlMcp --header "Authorization: Bearer @Model.TokenNuevo"</pre>
+        <pre style="white-space:pre-wrap;word-break:break-all;background:#0f172a;color:var(--diger-border);padding:.85rem;border-radius:6px">claude mcp add --transport http portal-gd @urlMcp --header "Authorization: Bearer @Model.TokenNuevo"</pre>
 
         <p class="text-muted" style="margin-top:.75rem">Trátelo como su contraseña: quien lo tenga puede actuar en el portal con su nombre, su institución y sus permisos.</p>
     </div>
