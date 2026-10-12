@@ -115,7 +115,9 @@
             </div>
             <div class="field">
                 <label>Color (opcional)</label>
-                <input name="Color" value="@Model.Color" maxlength="20" placeholder="var(--diger-blue-mid)" />
+@* El placeholder es un ejemplo de lo que hay que teclear, no un valor que se
+   pinte: aqui va un hex, porque es lo que el campo guarda. *@
+                <input name="Color" value="@Model.Color" maxlength="20" placeholder="#1A65A3" />
                 <p class="hint" style="margin-top:4px">Se usa en el distintivo del rol en la lista de usuarios.</p>
             </div>
         </div>

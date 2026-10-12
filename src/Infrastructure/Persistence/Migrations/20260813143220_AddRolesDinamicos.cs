@@ -67,12 +67,12 @@ namespace Diger.TramitesEstado.Infrastructure.Persistence.Migrations
                 columns: new[] { "Id", "Nombre", "Descripcion", "Color", "NivelAlcance", "EsAdministrador", "EsSoloLectura", "EsSupervisor", "EsTecnicoSoporte", "Activo", "EsSistema", "CreatedAt" },
                 values: new object[,]
                 {
-                    { "Administrador",   "Administrador",       "Gestiona usuarios y todo el portal.",        "#3c3489", "Global",      true,  false, true,  true,  true, true, SeedFecha },
-                    { "JefeInstitucion", "Jefe de Institución", "Gestiona toda su institución.",              "#0c447c", "Institucion", false, false, true,  true,  true, true, SeedFecha },
-                    { "JefeArea",        "Jefe de Área",        "Gestiona toda su área.",                     "#1a5fa0", "Area",        false, false, true,  true,  true, true, SeedFecha },
-                    { "JefeUnidad",      "Jefe de Unidad",      "Gestiona toda su unidad.",                   "#1b5e20", "Unidad",      false, false, true,  true,  true, true, SeedFecha },
-                    { "Empleado",        "Empleado",            "Gestiona sus propios datos en su unidad.",   "#085041", "Unidad",      false, false, false, true,  true, true, SeedFecha },
-                    { "Consultor",       "Consultor",           "Solo lectura, sin permiso para mutar datos.", "#6d4c00", "Unidad",      false, true,  false, false, true, true, SeedFecha },
+                    { "Administrador",   "Administrador",       "Gestiona usuarios y todo el portal.",        "#02395e", "Global",      true,  false, true,  true,  true, true, SeedFecha },
+                    { "JefeInstitucion", "Jefe de Institución", "Gestiona toda su institución.",              "#0c5278", "Institucion", false, false, true,  true,  true, true, SeedFecha },
+                    { "JefeArea",        "Jefe de Área",        "Gestiona toda su área.",                     "#1a65a3", "Area",        false, false, true,  true,  true, true, SeedFecha },
+                    { "JefeUnidad",      "Jefe de Unidad",      "Gestiona toda su unidad.",                   "#15803d", "Unidad",      false, false, true,  true,  true, true, SeedFecha },
+                    { "Empleado",        "Empleado",            "Gestiona sus propios datos en su unidad.",   "#0f6e56", "Unidad",      false, false, false, true,  true, true, SeedFecha },
+                    { "Consultor",       "Consultor",           "Solo lectura, sin permiso para mutar datos.", "#b45309", "Unidad",      false, true,  false, false, true, true, SeedFecha },
                 });
 
             // ── 3. Rol → RolId, conservando los datos ─────────────────────────
