@@ -2298,37 +2298,30 @@ tr.contacto-inactivo td {
    siete rectángulos de colores distintos pesan más que el dato que llevan
    dentro, y la vista va a las burbujas antes que a la institución.
 
-   Aquí el color sigue codificando el estado —hace falta— pero reducido a
-   un punto. El texto queda en tinta normal y legible, y la columna deja de
-   parecer un semáforo.
+   Tampoco un punto de color: el punto junto a la etiqueta es el gesto más
+   repetido de todo panel de control moderno, y era justo lo que hacía que
+   la tabla se leyera como plantilla. El estado va como rótulo breve en
+   versalitas, con el color en la propia letra. Lee como un registro, no
+   como un tablero.
 
    No sustituye a .wf-badge: esa se queda como está en los otros once sitios
    donde se usa. Si esto convence, se migran uno por uno a propósito. */
 .wf-estado {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    font-size: var(--diger-fs-sm);
-    font-weight: 500;
-    color: var(--diger-text-strong);
+    display: inline-block;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
     white-space: nowrap;
-}
-
-.wf-estado::before {
-    content: '';
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    flex: none;
     /* El color lo pone cada variante; este es el neutro por si falta. */
-    background: var(--diger-text-slate);
+    color: var(--diger-text-slate-dark);
 }
 
-.wf-estado.wf-registrada::before  { background: var(--diger-text-slate); }
-.wf-estado.wf-asignada::before    { background: var(--diger-blue-mid); }
-.wf-estado.wf-enproceso::before   { background: var(--diger-warning); }
-.wf-estado.wf-completada::before  { background: var(--diger-success); }
-.wf-estado.wf-cancelada::before   { background: var(--diger-danger); }
+.wf-estado.wf-registrada  { color: var(--diger-text-slate-dark); }
+.wf-estado.wf-asignada    { color: var(--diger-blue-mid); }
+.wf-estado.wf-enproceso   { color: var(--diger-warning); }
+.wf-estado.wf-completada  { color: var(--diger-success); }
+.wf-estado.wf-cancelada   { color: var(--diger-danger-text); }
 
 /* Las variantes traen fondo propio pensado para la burbuja; aquí estorban. */
 .wf-estado.wf-registrada,
@@ -2376,20 +2369,32 @@ tr.contacto-inactivo td {
     border-spacing: 0;
 }
 
+/* Todo centrado, encabezados incluidos: así cada rótulo cae justo sobre su
+   columna. Antes los encabezados iban a la izquierda y los datos cortos al
+   centro, y la fila de títulos no coincidía con lo que había debajo. */
+.seg-table.tabla-moderna th,
+.seg-table.tabla-moderna td {
+    text-align: center;
+}
+
 .seg-table.tabla-moderna th {
     background: none;
     border-bottom: 1.5px solid var(--diger-border);
     color: var(--diger-text-muted);
     font-size: var(--diger-fs-2xs);
-    font-weight: 600;
-    letter-spacing: .09em;
-    padding: 10px 14px 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    padding: 10px 12px 11px;
+    white-space: nowrap;
 }
 
 .seg-table.tabla-moderna td {
     border-top: 0;
     border-bottom: 1px solid var(--diger-border-soft);
-    padding: 15px 14px;
+    /* Más apretado que la primera versión: una tabla de registros densa se
+       lee mejor que una aireada, y el aire excesivo era parte de lo que la
+       hacía parecer plantilla. */
+    padding: 11px 12px;
     color: var(--diger-text);
 }
 
@@ -2401,14 +2406,31 @@ tr.contacto-inactivo td {
     background: var(--diger-bg-blue-alt);
 }
 
-/* Centrado parcial: solo las columnas de dato corto y ancho parejo, donde
-   centrar ordena. Institución, código y responsable se quedan a la
-   izquierda porque el ojo recorre una columna por su borde izquierdo y con
-   nombres de largo desigual el centrado obliga a buscar dónde empieza cada
-   fila. */
-.seg-table.tabla-moderna th.col-centro,
-.seg-table.tabla-moderna td.col-centro {
-    text-align: center;
+/* Las columnas de dato puro —código, conteo, fecha— van en monoespaciada.
+   No es decoración: con cifras tabulares y todo centrado, las columnas
+   quedan a plomo en vez de bailar fila a fila. Y da al conjunto aire de
+   registro institucional, que es lo contrario de un panel genérico. */
+.seg-table.tabla-moderna td.col-dato {
+    font-family: var(--diger-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-secondary);
+    white-space: nowrap;
+}
+
+/* El nombre de la institución es la entrada del registro: manda. */
+.seg-table.tabla-moderna td.col-clave {
+    font-weight: 700;
+}
+
+/* La columna de acciones no lleva rótulo visible pero sí necesita uno para
+   lectores de pantalla, y sin ancho propio se come 234px de la fila. */
+.seg-table.tabla-moderna th.col-acciones {
+    width: 1%;
+}
+
+.seg-table.tabla-moderna td.col-acciones {
+    white-space: nowrap;
 }
 
 /* ── TICKET / USUARIO BADGES (estado, prioridad, rol) ───────── */
@@ -5846,6 +5868,23 @@ textarea.form-control { resize: vertical; }
 .py-4  { padding-top: 1.5rem; padding-bottom: 1.5rem; }
 .text-center  { text-align: center; }
 .text-end     { text-align: right; }
+
+/* Texto solo para lectores de pantalla. Hace falta donde una columna no
+   lleva rótulo visible —la de acciones— pero quien navega con lector sí
+   necesita saber qué hay en ella. No se usa display:none ni
+   visibility:hidden: eso lo oculta también al lector, que es lo contrario
+   de lo que se busca. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 .fw-semibold  { font-weight: 600; }
 .fw-bold      { font-weight: 700; }
 .align-middle { vertical-align: middle; }
