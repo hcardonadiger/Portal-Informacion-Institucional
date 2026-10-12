@@ -1,5 +1,51 @@
 # Normalización de marca DIGER — Plan de implementación
 
+> ## ✅ EJECUTADO — 2026-10-12
+>
+> Las 12 tareas están aplicadas. `python scripts/verificar_marca.py` devuelve
+> **código de salida 0**: *«el portal respeta el Manual de Marca»*. Censo de
+> literales 1 131 → 908 (cubriendo ahora cuatro superficies, no dos), colores
+> prohibidos 82 → 0, `rgb()`/`rgba()` prohibidos 55 → 0, 832 pruebas verdes.
+>
+> **Dónde el plan no se siguió al pie de la letra, y por qué.** Las casillas
+> no se marcan una a una porque seis pasos se adaptaron a propósito:
+>
+> 1. **Tarea 2, pasos 1 y 5 se contradecían.** El texto de comentario que el
+>    paso 1 dicta contiene `#ad8411`, y el guardián prohíbe ese literal también
+>    dentro de un comentario, así que el paso 5 («los fallos de `tokens.css`
+>    desaparecen») era inalcanzable. Se escribe `ad8411` sin almohadilla.
+> 2. **Tarea 4 añade un segundo criterio.** El plan manda colapsar todo literal
+>    a ≤8° de tono, pero el tono ignora la luminosidad: por tono, un tinte casi
+>    blanco y el navy son el mismo color. Se exige además que el literal sea
+>    perceptualmente indistinguible de su token (separación ≤4). De 85 literales
+>    distintos en `diger.css` se sustituyeron los del mapa obligatorio y 4 en
+>    familia; los 15 en familia pero lejos en color quedan anotados como
+>    candidatos a token derivado nuevo, no colapsados.
+> 3. **Tarea 3, paso 5 se limitó a su línea.** Hay 8 fallbacks `var(--diger-blue,
+>    #1d4ed8)`, no uno. Los 7 restantes se hicieron en la tarea 4, que es donde
+>    el plan los asigna. Toman `#02395e` —el valor del token para el que son
+>    fallback— y no el azul medio del mapa: un fallback que no coincide con su
+>    token no sirve de nada.
+> 4. **Tarea 11 corrige el mapa del plan.** Dejaba `JefeInstitucion` y
+>    `JefeArea` en el mismo `#1a65a3`: dos badges idénticos en un control cuyo
+>    único trabajo es distinguir roles. `JefeInstitucion` toma `#0c5278` (a 3°
+>    del azul oscuro) y `JefeArea` conserva el hex exacto del manual.
+> 5. **El script SQL del plan no corría.** `PRINT CONCAT` con una subconsulta
+>    dentro aborta el lote con *«Subqueries are not allowed in this context»*.
+>    El conteo pasa a una variable.
+> 6. **Tarea 12, paso 1 estaba bloqueado.** Asumía que no quedarían usos de los
+>    tokens obsoletos, y quedaban 167: ninguna tarea anterior los migraba, porque
+>    las tareas 4-6 iban de literales, no de referencias a token.
+>
+> **Alcance añadido fuera del plan, aprobado aparte:** el guardián detectaba
+> solo hex y era ciego a `rgb()`/`rgba()`, que es el mismo color en decimal.
+> Había 55 así. Sin esa ampliación, el plan habría cerrado «en verde» con el
+> color prohibido vivo en 55 sitios.
+>
+> **Sigue pendiente** lo registrado al final de este documento: los logos (falta
+> el arte oficial), los 32 logos institucionales de `logos.pptx`, y
+> `InstitucionOptions.Nombre`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Que el portal cumpla el Manual de Marca DIGER en color y tipografía, sin cambiar su estructura.
