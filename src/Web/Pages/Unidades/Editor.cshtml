@@ -8,7 +8,7 @@
 <div class="container" style="max-width:620px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
         <a class="btns" asp-page="./Index" style="font-size:13px">← Volver</a>
-        <h2 style="margin:0;font-size:18px;color:#0a2d6e">@ViewData["Title"]</h2>
+        <h2 style="margin:0;font-size:18px;color:var(--diger-blue)">@ViewData["Title"]</h2>
     </div>
 
     <form method="post" class="card">
@@ -18,11 +18,11 @@
         {
             <div class="row2">
                 <div class="field">
-                    <label>ID (Código Único) <span style="color:#dc2626">*</span></label>
+                    <label>ID (Código Único) <span style="color:var(--diger-danger)">*</span></label>
                     <input asp-for="Id" style="text-transform: uppercase;" required placeholder="Ej: UNID-01" />
                 </div>
                 <div class="field">
-                    <label>Área <span style="color:#dc2626">*</span></label>
+                    <label>Área <span style="color:var(--diger-danger)">*</span></label>
                     <select asp-for="AreaId" required>
                         <option value="">Seleccione...</option>
                         @foreach (var area in Model.Areas)
@@ -50,7 +50,7 @@
         }
 
         <div class="field">
-            <label>Nombre de la Unidad <span style="color:#dc2626">*</span></label>
+            <label>Nombre de la Unidad <span style="color:var(--diger-danger)">*</span></label>
             <input asp-for="Nombre" required placeholder="Nombre completo de la unidad" />
         </div>
 

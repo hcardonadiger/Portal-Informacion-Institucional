@@ -7,7 +7,7 @@
 <div class="container" style="max-width:620px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
         <a class="btns" asp-page="/Instituciones/Index" style="font-size:13px">← Volver</a>
-        <h2 style="margin:0;font-size:18px;color:#0a2d6e">@ViewData["Title"]</h2>
+        <h2 style="margin:0;font-size:18px;color:var(--diger-blue)">@ViewData["Title"]</h2>
     </div>
 
     @if (!string.IsNullOrEmpty(Model.Error))
@@ -21,7 +21,7 @@
         @if (Model.InstId is null)
         {
             <div class="field">
-                <label>Id (Siglas) de la institución <span style="color:#dc2626">*</span></label>
+                <label>Id (Siglas) de la institución <span style="color:var(--diger-danger)">*</span></label>
                 <input asp-for="Id" placeholder="Ej: CNBS" />
                 <span asp-validation-for="Id" class="hint error"></span>
                 <span class="hint">Identificador único en mayúsculas (ej. CNBS). No se puede cambiar después.</span>
@@ -33,7 +33,7 @@
         }
 
         <div class="field">
-            <label>Nombre de la institución <span style="color:#dc2626">*</span></label>
+            <label>Nombre de la institución <span style="color:var(--diger-danger)">*</span></label>
             <input asp-for="Nombre" placeholder="Ej: Comisión Nacional de Bancos y Seguros" />
             <span asp-validation-for="Nombre" class="hint error"></span>
         </div>
@@ -49,7 +49,7 @@
 
         @* ── Identidad visual ── *@
         <div style="border-top:1px solid var(--diger-border);margin:16px 0 14px;padding-top:14px">
-            <div style="font-size:12px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Identidad visual</div>
+            <div style="font-size:12px;font-weight:700;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Identidad visual</div>
             <div class="row2" style="gap:14px">
                 <div class="field">
                     <label>Nombre corto / sigla</label>
@@ -60,7 +60,7 @@
                     <label>Color institucional</label>
                     <div style="display:flex;gap:8px;align-items:center">
                         <input type="color" asp-for="Color" id="color-picker" style="width:44px;height:38px;padding:2px;border-radius:6px;border:1.5px solid var(--diger-border);cursor:pointer" />
-                        <input asp-for="Color" id="color-hex" placeholder="#02395e" maxlength="7"
+                        <input asp-for="Color" id="color-hex" placeholder="var(--diger-blue)" maxlength="7"
                                style="flex:1;font-family:monospace;font-size:13px"
                                oninput="syncColor('hex')" />
                     </div>

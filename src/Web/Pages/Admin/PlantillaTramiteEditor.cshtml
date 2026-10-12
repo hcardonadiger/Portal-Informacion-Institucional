@@ -21,7 +21,7 @@
     <form method="post">
         <div class="card">
             <div class="row2">
-                <div class="field"><label>Nombre del trámite <span style="color:#dc2626">*</span></label>
+                <div class="field"><label>Nombre del trámite <span style="color:var(--diger-danger)">*</span></label>
                     <input asp-for="Nombre" placeholder="Ej: Registro de marca" maxlength="300" /></div>
                 @if (Model.PlantillaId is not null)
                 {

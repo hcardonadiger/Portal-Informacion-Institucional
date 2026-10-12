@@ -34,7 +34,7 @@
         <h3 class="sec-h">Categorías</h3>
         <form method="post" asp-page-handler="CrearCategoria" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
             <div class="field" style="margin:0;flex:1;min-width:220px">
-                <label>Nueva categoría <span style="color:#dc2626">*</span></label>
+                <label>Nueva categoría <span style="color:var(--diger-danger)">*</span></label>
                 <input name="NombreCategoria" value="@Model.NombreCategoria" placeholder="p. ej. Plataforma SOL" maxlength="80" />
             </div>
             <button class="btnp" type="submit" style="margin-bottom:.1rem">Agregar categoría</button>
@@ -91,7 +91,7 @@
         <h3 class="sec-h">Temas</h3>
         <form method="post" asp-page-handler="Crear" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
             <div class="field" style="margin:0;flex:1;min-width:180px">
-                <label>Nombre <span style="color:#dc2626">*</span></label>
+                <label>Nombre <span style="color:var(--diger-danger)">*</span></label>
                 <input name="Nombre" value="@Model.Nombre" placeholder="p. ej. Error en plataforma" maxlength="80" />
             </div>
             <div class="field" style="margin:0;width:190px">

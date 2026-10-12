@@ -65,7 +65,7 @@
                         }
                         else
                         {
-                            <span class="wf-badge" style="background-color:#fee2e2;color:#991b1b;border:1px solid #fca5a5">Inactivo</span>
+                            <span class="wf-badge" style="background-color:var(--diger-danger-bg);color:#991b1b;border:1px solid #fca5a5">Inactivo</span>
                         }
                     </td>
                     <td style="white-space:nowrap;text-align:right">
@@ -75,7 +75,7 @@
                             <form method="post" asp-page-handler="Eliminar" style="display:inline">
                                 <input type="hidden" name="codigo" value="@r.Codigo" />
                                 <button class="hist-del" type="submit"
-                                        style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
+                                        style="font-size:11px;padding:4px 8px;color:var(--diger-danger);border-color:#fecaca;background:#fef2f2"
                                         aria-label="Eliminar rol @r.Nombre"
                                         data-confirm="¿Eliminar el rol @r.Nombre? Se perderán sus permisos y accesos.">✕</button>
                             </form>
@@ -91,14 +91,14 @@
 
         <div class="row2">
             <div class="field">
-                <label>Código <span style="color:#dc2626">*</span></label>
+                <label>Código <span style="color:var(--diger-danger)">*</span></label>
                 <input name="Codigo" value="@Model.Codigo" readonly="@editando" required
                        maxlength="60" pattern="[A-Za-z0-9_\-]+" placeholder="Ej. AuditorInterno"
                        title="Letras, números, guiones y guiones bajos, sin espacios" />
                 <p class="hint" style="margin-top:4px">No se puede cambiar después de crear el rol: viaja en la sesión y en las asignaciones.</p>
             </div>
             <div class="field">
-                <label>Nombre <span style="color:#dc2626">*</span></label>
+                <label>Nombre <span style="color:var(--diger-danger)">*</span></label>
                 <input name="Nombre" value="@Model.Nombre" required maxlength="100" placeholder="Ej. Auditor interno" />
             </div>
         </div>
@@ -115,7 +115,7 @@
             </div>
             <div class="field">
                 <label>Color (opcional)</label>
-                <input name="Color" value="@Model.Color" maxlength="20" placeholder="#1A65A3" />
+                <input name="Color" value="@Model.Color" maxlength="20" placeholder="var(--diger-blue-mid)" />
                 <p class="hint" style="margin-top:4px">Se usa en el distintivo del rol en la lista de usuarios.</p>
             </div>
         </div>

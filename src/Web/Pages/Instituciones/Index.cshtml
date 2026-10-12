@@ -65,12 +65,12 @@
                             @if (i.TramitesSiger > 0)
                             {
                                 <a asp-page="/Siger/Index" asp-route-Institucion="@i.Id"
-                                   style="color:#1455a4;font-weight:700;text-decoration:none"
+                                   style="color:var(--diger-blue-mid);font-weight:700;text-decoration:none"
                                    title="Ver trámites SIGER de esta institución">@i.TramitesSiger</a>
                             }
                             else
                             {
-                                <span style="color:#94a3b8">0</span>
+                                <span style="color:var(--diger-text-slate)">0</span>
                             }
                         </td>
                         <td style="text-align:center" class="res-meta">@i.Expedientes</td>

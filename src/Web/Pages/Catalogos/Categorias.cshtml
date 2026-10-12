@@ -28,7 +28,7 @@
         <h3 class="sec-h">Nueva categoría</h3>
         <form method="post" asp-page-handler="Crear" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
             <div class="field" style="margin:0;flex:1;min-width:200px">
-                <label>Nombre <span style="color:#dc2626">*</span></label>
+                <label>Nombre <span style="color:var(--diger-danger)">*</span></label>
                 <input name="Nombre" value="@Model.Nombre" placeholder="p. ej. Digitalización de trámites" maxlength="60" />
             </div>
             <div class="field" style="margin:0;width:110px">

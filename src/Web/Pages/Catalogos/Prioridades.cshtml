@@ -28,7 +28,7 @@
         <h3 class="sec-h">Nueva prioridad</h3>
         <form method="post" asp-page-handler="Crear" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
             <div class="field" style="margin:0;flex:1;min-width:180px">
-                <label>Nombre <span style="color:#dc2626">*</span></label>
+                <label>Nombre <span style="color:var(--diger-danger)">*</span></label>
                 <input name="Nombre" value="@Model.Nombre" placeholder="p. ej. Q3" maxlength="40" />
             </div>
             <div class="field" style="margin:0;width:110px">

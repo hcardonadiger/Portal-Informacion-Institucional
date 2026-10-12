@@ -28,19 +28,19 @@
     @* ── KPIs ──────────────────────────────────────────────────── *@
     <div class="row2" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem">
         <div class="card" style="margin:0;text-align:center">
-            <div style="font-size:26px;font-weight:800;color:#0a2d6e">@Model.TotalContactos</div>
+            <div style="font-size:26px;font-weight:800;color:var(--diger-blue)">@Model.TotalContactos</div>
             <div class="prog-label">Contactos</div>
         </div>
         <div class="card" style="margin:0;text-align:center">
-            <div style="font-size:26px;font-weight:800;color:#1455a4">@Model.TotalInstituciones</div>
+            <div style="font-size:26px;font-weight:800;color:var(--diger-blue-mid)">@Model.TotalInstituciones</div>
             <div class="prog-label">Instituciones</div>
         </div>
         <div class="card" style="margin:0;text-align:center">
-            <div style="font-size:26px;font-weight:800;color:#15803d">@Model.TotalManuales</div>
+            <div style="font-size:26px;font-weight:800;color:var(--diger-success)">@Model.TotalManuales</div>
             <div class="prog-label">Agregados manualmente</div>
         </div>
         <div class="card" style="margin:0;text-align:center">
-            <div style="font-size:26px;font-weight:800;color:#b45309">@Model.TotalInactivos</div>
+            <div style="font-size:26px;font-weight:800;color:var(--diger-warning)">@Model.TotalInactivos</div>
             <div class="prog-label">Dados de baja</div>
         </div>
     </div>
@@ -99,7 +99,7 @@
                         var rowClass = c.Activo ? "" : "contacto-inactivo";
                         <tr class="@rowClass">
                             <td>
-                                <div style="font-weight:700;color:#0a2d6e">
+                                <div style="font-weight:700;color:var(--diger-blue)">
                                     @c.Nombre
                                     @if (!c.Activo)
                                     {
@@ -110,7 +110,7 @@
                                     @(c.Cargo ?? "—")
                                     @if (!string.IsNullOrWhiteSpace(c.Area))
                                     {
-                                        <span style="color:#475569"> · 🏢 @c.Area</span>
+                                        <span style="color:var(--diger-text-slate-dark)"> · 🏢 @c.Area</span>
                                     }
                                 </div>
                             </td>
@@ -122,7 +122,7 @@
                                     @if (puedeGestionar)
                                     {
                                         <a class="btns" asp-page="/Contactos/Editor" asp-route-id="@c.Id"
-                                           style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#1455a4;border-color:#93c5fd;background:#eff6ff">Editar</a>
+                                           style="font-size:11px;padding:4px 10px;white-space:nowrap;color:var(--diger-blue-mid);border-color:#93c5fd;background:#eff6ff">Editar</a>
                                     }
                                     @if (puedeEliminar)
                                     {
@@ -131,7 +131,7 @@
                                             <form method="post" asp-page-handler="DarDeBaja">
                                                 <input type="hidden" name="id" value="@c.Id" />
                                                 <button class="btns" type="submit"
-                                                        style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#b45309;border-color:#fcd34d;background:#fef3c7"
+                                                        style="font-size:11px;padding:4px 10px;white-space:nowrap;color:var(--diger-warning);border-color:#fcd34d;background:var(--diger-warning-bg)"
                                                         data-confirm="¿Dar de baja a este contacto?">Dar de baja</button>
                                             </form>
                                         }
@@ -140,14 +140,14 @@
                                             <form method="post" asp-page-handler="Reactivar">
                                                 <input type="hidden" name="id" value="@c.Id" />
                                                 <button class="btns" type="submit"
-                                                        style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#15803d;border-color:#86efac;background:#f0fdf4"
+                                                        style="font-size:11px;padding:4px 10px;white-space:nowrap;color:var(--diger-success);border-color:#86efac;background:#f0fdf4"
                                                         data-confirm="¿Reactivar este contacto?">Reactivar</button>
                                             </form>
                                         }
                                         <form method="post" asp-page-handler="Eliminar">
                                             <input type="hidden" name="id" value="@c.Id" />
                                             <button class="hist-del" type="submit"
-                                                    style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
+                                                    style="font-size:11px;padding:4px 8px;color:var(--diger-danger);border-color:#fecaca;background:#fef2f2"
                                                     aria-label="Eliminar contacto" data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
                                         </form>
                                     }
@@ -187,7 +187,7 @@
                                     var rowClass = c.Activo ? "" : "contacto-inactivo";
                                     <tr class="@rowClass">
                                         <td>
-                                            <div style="font-weight:700;color:#0a2d6e">
+                                            <div style="font-weight:700;color:var(--diger-blue)">
                                                 @c.Nombre
                                                 @if (!c.Activo)
                                                 {
@@ -198,7 +198,7 @@
                                     @(c.Cargo ?? "—")
                                     @if (!string.IsNullOrWhiteSpace(c.Area))
                                     {
-                                        <span style="color:#475569"> · 🏢 @c.Area</span>
+                                        <span style="color:var(--diger-text-slate-dark)"> · 🏢 @c.Area</span>
                                     }
                                 </div>
                                         </td>
@@ -209,7 +209,7 @@
                                                 @if (puedeGestionar)
                                                 {
                                                     <a class="btns" asp-page="/Contactos/Editor" asp-route-id="@c.Id"
-                                                       style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#1455a4;border-color:#93c5fd;background:#eff6ff">Editar</a>
+                                                       style="font-size:11px;padding:4px 10px;white-space:nowrap;color:var(--diger-blue-mid);border-color:#93c5fd;background:#eff6ff">Editar</a>
                                                 }
                                                 @if (puedeEliminar)
                                                 {
@@ -218,7 +218,7 @@
                                                         <form method="post" asp-page-handler="DarDeBaja">
                                                             <input type="hidden" name="id" value="@c.Id" />
                                                             <button class="btns" type="submit"
-                                                                    style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#b45309;border-color:#fcd34d;background:#fef3c7"
+                                                                    style="font-size:11px;padding:4px 10px;white-space:nowrap;color:var(--diger-warning);border-color:#fcd34d;background:var(--diger-warning-bg)"
                                                                     data-confirm="¿Dar de baja a este contacto?">Dar de baja</button>
                                                         </form>
                                                     }
@@ -227,14 +227,14 @@
                                                         <form method="post" asp-page-handler="Reactivar">
                                                             <input type="hidden" name="id" value="@c.Id" />
                                                             <button class="btns" type="submit"
-                                                                    style="font-size:11px;padding:4px 10px;white-space:nowrap;color:#15803d;border-color:#86efac;background:#f0fdf4"
+                                                                    style="font-size:11px;padding:4px 10px;white-space:nowrap;color:var(--diger-success);border-color:#86efac;background:#f0fdf4"
                                                                     data-confirm="¿Reactivar este contacto?">Reactivar</button>
                                                         </form>
                                                     }
                                                     <form method="post" asp-page-handler="Eliminar">
                                                         <input type="hidden" name="id" value="@c.Id" />
                                                         <button class="hist-del" type="submit"
-                                                                style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#fecaca;background:#fef2f2"
+                                                                style="font-size:11px;padding:4px 8px;color:var(--diger-danger);border-color:#fecaca;background:#fef2f2"
                                                                 aria-label="Eliminar contacto" data-confirm="¿Eliminar permanentemente este contacto?">✕</button>
                                                     </form>
                                                 }

@@ -9,9 +9,9 @@
     <div class="card" style="margin-top:1.5rem">
         <div style="text-align:center;margin-bottom:1.25rem">
             <div class="iavt" style="margin:0 auto 12px;width:54px;height:54px;font-size:18px">DG</div>
-            <h2 style="color:#0a2d6e;font-size:20px;margin:0">Registro de asistencia</h2>
-            <p style="color:#0a2d6e;font-weight:700;margin:.6rem 0 0;font-size:15px">@r.Titulo</p>
-            <p style="color:#6b7fa3;font-size:13px;margin-top:4px">
+            <h2 style="color:var(--diger-blue);font-size:20px;margin:0">Registro de asistencia</h2>
+            <p style="color:var(--diger-blue);font-weight:700;margin:.6rem 0 0;font-size:15px">@r.Titulo</p>
+            <p style="color:var(--diger-text-muted);font-size:13px;margin-top:4px">
                 @(r.Institucion is null ? "" : r.Institucion + " · ")
                 @(r.Fecha?.ToFechaCorta())
                 @(string.IsNullOrWhiteSpace(r.Hora) ? "" : " · " + r.Hora)
@@ -40,7 +40,7 @@
             {
                 <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
             }
-            <p style="font-size:12px;color:#9aadcc;margin:-.3rem 0 1rem">
+            <p style="font-size:12px;color:var(--diger-text-faint);margin:-.3rem 0 1rem">
                 Tus datos se usarán únicamente para el registro oficial de asistencia.
             </p>
 
@@ -129,7 +129,7 @@
                         @(Model.Fase == "confirmar" ? "Confirmar mi asistencia" : "Confirmar asistencia")
                     </button>
                     <div style="text-align:center;margin-top:.6rem">
-                        <a asp-page="/Asistencia/Registro" asp-route-token="@r.Token" style="font-size:12px;color:#6b7fa3">← Usar otro correo</a>
+                        <a asp-page="/Asistencia/Registro" asp-route-token="@r.Token" style="font-size:12px;color:var(--diger-text-muted)">← Usar otro correo</a>
                     </div>
                 </form>
             }

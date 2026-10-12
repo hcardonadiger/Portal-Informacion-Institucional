@@ -11,7 +11,7 @@
     (string bg, string fg) RolColorPorDefecto(string r) => r switch
     {
         "Administrador"   => ("#eeedfe", "#3c3489"),
-        "JefeInstitucion" => ("#e6f1fb", "#0c447c"),
+        "JefeInstitucion" => ("#e6f1fb", "var(--diger-blue-mid)"),
         "JefeArea"        => ("#e6f1fb", "#1a5fa0"),
         "JefeUnidad"      => ("#e8f5e9", "#1b5e20"),
         "Consultor"       => ("#fff8e1", "#6d4c00"),
@@ -95,7 +95,7 @@
                         }
                         else
                         {
-                            <span style="color:#94a3b8;font-size:13px;font-weight:600">○ Inactivo</span>
+                            <span style="color:var(--diger-text-slate);font-size:13px;font-weight:600">○ Inactivo</span>
                         }
                     </td>
                     <td style="text-align:right;white-space:nowrap">

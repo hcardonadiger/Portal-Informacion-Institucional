@@ -7,7 +7,7 @@
 <div class="container" style="max-width:600px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem">
         <a class="btns" asp-page="/Usuarios/Index" style="font-size:13px">← Volver</a>
-        <h2 style="margin:0;font-size:18px;color:#0a2d6e">@ViewData["Title"]</h2>
+        <h2 style="margin:0;font-size:18px;color:var(--diger-blue)">@ViewData["Title"]</h2>
     </div>
 
     @if (!string.IsNullOrEmpty(Model.Error))
@@ -17,11 +17,11 @@
 
     <form method="post" class="card">
         <div class="field">
-            <label>Nombre completo <span style="color:#dc2626">*</span></label>
+            <label>Nombre completo <span style="color:var(--diger-danger)">*</span></label>
             <input asp-for="Nombre" placeholder="Nombre y apellidos" />
         </div>
         <div class="field">
-            <label>Correo (login) <span style="color:#dc2626">*</span></label>
+            <label>Correo (login) <span style="color:var(--diger-danger)">*</span></label>
             <input asp-for="Correo" type="email" placeholder="usuario@diger.gob.hn" />
         </div>
         <div class="field">
@@ -42,7 +42,7 @@
             @if (Model.UsuarioId is null)
             {
                 <div class="field">
-                    <label>Contraseña inicial <span style="color:#dc2626">*</span></label>
+                    <label>Contraseña inicial <span style="color:var(--diger-danger)">*</span></label>
                     <input asp-for="Password" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" />
                 </div>
             }
@@ -63,10 +63,10 @@
             <p class="hint" style="margin:0 0 .6rem">
                 Define a qué instituciones, áreas o unidades puede acceder este usuario. <strong>No aplica al Administrador</strong>.
             </p>
-            <div style="border:1px solid #eef1f7;border-radius:10px;padding:.7rem;background:#fcfcfd">
+            <div style="border:1px solid var(--diger-bg);border-radius:10px;padding:.7rem;background:#fcfcfd">
                 <table style="width:100%;border-collapse:collapse;margin-bottom:1rem" id="tblAsignaciones">
                     <thead>
-                        <tr style="text-align:left;border-bottom:1px solid #eef1f7;font-size:12px;color:#6b7280">
+                        <tr style="text-align:left;border-bottom:1px solid var(--diger-bg);font-size:12px;color:#6b7280">
                             <th style="padding-bottom:6px">Institución</th>
                             <th style="padding-bottom:6px">Área (Opcional)</th>
                             <th style="padding-bottom:6px">Unidad (Opcional)</th>
@@ -177,7 +177,7 @@
                 Como especialista, este usuario verá y podrá tomar los tickets de estos temas («Sus temas»).
                 <a asp-page="/Tickets/Temas">Administrar temas y tiempos →</a>
             </p>
-            <div style="border:1px solid #eef1f7;border-radius:10px;padding:.4rem .9rem">
+            <div style="border:1px solid var(--diger-bg);border-radius:10px;padding:.4rem .9rem">
                 @if (!Model.Temas.Any())
                 {
                     <span class="hint">No hay temas definidos todavía.</span>
@@ -185,7 +185,7 @@
                 @foreach (var grupo in Model.Temas.GroupBy(t => t.Categoria ?? "Sin categoría").OrderBy(g => g.Key))
                 {
                     <div class="tema-grupo" style="padding:.5rem 0;border-bottom:1px solid #f4f6fb">
-                        <label class="chk" style="margin:0 0 .35rem;font-weight:700;color:#0a2d6e" title="Seleccionar toda la categoría">
+                        <label class="chk" style="margin:0 0 .35rem;font-weight:700;color:var(--diger-blue)" title="Seleccionar toda la categoría">
                             <input type="checkbox" class="cat-all" onchange="toggleCat(this)" />
                             <span>@grupo.Key</span>
                         </label>
