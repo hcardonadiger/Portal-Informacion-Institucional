@@ -141,16 +141,30 @@
                             </div>
                         </td>
                         <td data-rotulo="Estado">
-                            <span class="est-pill @w.cls">@w.txt</span>
-                            @* "Legado" solo cuando el filtro no lo implica ya: dentro de
-                               la vista Legados, repetirlo en cada fila es ruido. *@
-                            @if (e.EsLegado && Model.Legado != true)
+                            @* En un expediente legado, "Legado" ES el estado. Los 28 que
+                               hay quedaron en EnExploracion porque ese es el valor por
+                               defecto de la carga masiva que los creó, no porque alguien
+                               los esté explorando: mostrar esa fase decía algo falso. Su
+                               fase real se desconoce, y lo único cierto de ellos es que
+                               son previos al corte. *@
+                            @if (e.EsLegado)
                             {
-                                <span class="est-marca" title="Fecha de apertura anterior a abril de 2026 (o sin fecha de apertura). No cuenta en los tableros.">Legado</span>
+                                <span class="est-pill est-legado" title="Expediente anterior a abril de 2026. No tiene seguimiento confiable en la nueva metodología y no cuenta en los tableros.">Legado</span>
                             }
+                            else
+                            {
+                                <span class="est-pill @w.cls">@w.txt</span>
+                            }
+                            @* El duplicado no lleva burbuja: era una segunda caja debajo
+                               de la píldora, con la que competía y a la que doblaba el
+                               alto de la fila. Basta el signo, que se explica al pasar el
+                               cursor y lo lee también quien use lector de pantalla. *@
                             @if (e.EsPosibleDuplicado)
                             {
-                                <span class="est-marca" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">⚠ Duplicado</span>
+                                <span class="est-aviso" title="Posible duplicado de: @string.Join(", ", e.DuplicadoDeCodigos)">
+                                    <span aria-hidden="true">⚠</span>
+                                    <span class="sr-only">Posible duplicado de @string.Join(", ", e.DuplicadoDeCodigos)</span>
+                                </span>
                             }
                         </td>
                         <td data-rotulo="Responsable">

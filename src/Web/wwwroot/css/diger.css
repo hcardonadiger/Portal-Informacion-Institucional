@@ -2605,18 +2605,26 @@ tr.contacto-inactivo td {
 .est-pill.wf-completada  { background: var(--diger-success-bg);    color: var(--diger-success); }
 .est-pill.wf-cancelada   { background: var(--diger-danger-bg);     color: var(--diger-danger-text); }
 
-/* Marca secundaria: excepción, no estado. Contorno, no relleno. */
-.est-marca {
+/* Legado es un estado, no una marca encima de otro estado. Va en gris de
+   archivo: no es una fase del flujo —ninguna le aplica— sino un expediente
+   que quedó fuera de la metodología nueva. */
+.est-pill.est-legado {
+    background: var(--diger-border);
+    color: var(--diger-text-slate-dark);
+}
+
+/* Aviso de duplicado: solo el signo. Antes era una segunda caja debajo de la
+   píldora; competía con ella y doblaba el alto de la fila para decir algo que
+   el signo ya dice. El texto completo vive en el title y en un .sr-only, así
+   que no se pierde para quien use lector de pantalla. */
+.est-aviso {
     display: inline-flex;
     align-items: center;
-    font-size: var(--diger-fs-2xs);
-    font-weight: 600;
-    padding: 2px 7px;
-    margin-left: 5px;
-    border-radius: 4px;
-    border: 1px solid var(--diger-border);
-    color: var(--diger-text-muted);
-    white-space: nowrap;
+    margin-left: 6px;
+    color: var(--diger-warning);
+    font-size: var(--diger-fs-sm);
+    cursor: help;
+    vertical-align: middle;
 }
 
 /* ── RESPONSABLE SIN ASIGNAR ──────────────────────────────────────────
