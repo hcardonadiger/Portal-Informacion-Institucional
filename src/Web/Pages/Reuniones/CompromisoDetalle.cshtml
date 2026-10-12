@@ -32,7 +32,7 @@
         <a class="btns" asp-page="/Reuniones/Compromisos">← Volver a compromisos</a>
         <div style="display:flex;gap:8px">
             <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@c.Id" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio al responsable asignado de este compromiso?');">
-                <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Recordar Responsable</button>
+                <button type="submit" class="btns" style="background:#eff6ff;color:var(--diger-blue-mid);border-color:#bfdbfe">🔔 Recordar Responsable</button>
             </form>
             <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@c.ReunionId">Ver acta de reunión</a>
         </div>
@@ -51,16 +51,16 @@
                         Vencido
                     </span>
                 }
-                <h2 style="margin:4px 0 10px;font-size:20px;color:#0a2d6e">@c.Compromiso</h2>
-                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:#475569">
-                    <div><strong>Reunión:</strong> <a asp-page="/Reuniones/Acta" asp-route-id="@c.ReunionId" style="color:#1455a4;font-weight:600">@c.ReunionTitulo</a></div>
+                <h2 style="margin:4px 0 10px;font-size:20px;color:var(--diger-blue)">@c.Compromiso</h2>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--diger-text-slate-dark)">
+                    <div><strong>Reunión:</strong> <a asp-page="/Reuniones/Acta" asp-route-id="@c.ReunionId" style="color:var(--diger-blue-mid);font-weight:600">@c.ReunionTitulo</a></div>
                     <div><strong>Institución:</strong> @(c.Institucion ?? "—")</div>
                     <div><strong>Responsable:</strong> @(c.Responsable ?? "—")</div>
                 </div>
             </div>
             <div style="text-align:right;min-width:180px">
                 <div style="font-size:12px;color:#64748b">Plazo límite</div>
-                <div style="font-size:16px;font-weight:800;color:@(c.Vencido ? "#a32d2d" : "#0a2d6e")">
+                <div style="font-size:16px;font-weight:800;color:@(c.Vencido ? "var(--diger-danger-strong)" : "var(--diger-blue)")">
                     @(c.Plazo?.ToFechaCorta() ?? "Sin plazo")
                 </div>
                 @if (c.FechaCumplimiento is not null)
@@ -74,7 +74,7 @@
 
         @if (!string.IsNullOrWhiteSpace(c.ActualizadoPor))
         {
-            <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px">
+            <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--diger-border);font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px">
                 <span style="font-size:14px">⏱️</span>
                 <span>Último cambio de estado realizado por <strong>@c.ActualizadoPor</strong> @(c.ActualizadoEl is not null ? "el " + c.ActualizadoEl.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "")</span>
             </div>
@@ -143,7 +143,7 @@
         else if (c.Estado == EstadoCompromiso.EnProgreso)
         {
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                <span style="font-size:13px;color:#475569">Actualmente se encuentra <strong>En Proceso</strong>.</span>
+                <span style="font-size:13px;color:var(--diger-text-slate-dark)">Actualmente se encuentra <strong>En Proceso</strong>.</span>
                 <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
                     <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnRevision" />
                     <input type="hidden" name="nota" value="Enviado a revisión para evaluación" />
@@ -163,7 +163,7 @@
         {
             @* Pendiente / Reprogramado / Cancelado *@
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                <span style="font-size:13px;color:#475569">Estado actual: <strong>@CompromisoUi.Label(c.Estado)</strong>.</span>
+                <span style="font-size:13px;color:var(--diger-text-slate-dark)">Estado actual: <strong>@CompromisoUi.Label(c.Estado)</strong>.</span>
                 <form method="post" asp-page-handler="Estado" asp-route-id="@c.Id" style="display:inline">
                     <input type="hidden" name="nuevoEstado" value="@EstadoCompromiso.EnProgreso" />
                     <input type="hidden" name="nota" value="Iniciado proceso de trabajo" />
@@ -190,7 +190,7 @@
     @if (!estaBloqueadoForm)
     {
         <div class="card" style="margin-bottom:1.5rem">
-            <h3 style="margin:0 0 12px;font-size:16px;color:#0a2d6e">💬 Registrar Avance o Evidencia</h3>
+            <h3 style="margin:0 0 12px;font-size:16px;color:var(--diger-blue)">💬 Registrar Avance o Evidencia</h3>
             <form method="post" asp-page-handler="Comentar" asp-route-id="@c.Id" enctype="multipart/form-data">
                 <div class="field" style="margin-bottom:12px">
                     <label>Comentario / Observación de avance</label>
@@ -207,11 +207,11 @@
 
     @* ── Historial y Comentarios (Línea de Tiempo) ────────────────── *@
     <div class="card">
-        <h3 style="margin:0 0 16px;font-size:16px;color:#0a2d6e">📋 Historial de Avances y Evidencias (@c.Comentarios.Count)</h3>
+        <h3 style="margin:0 0 16px;font-size:16px;color:var(--diger-blue)">📋 Historial de Avances y Evidencias (@c.Comentarios.Count)</h3>
 
         @if (c.Comentarios.Count == 0)
         {
-            <div style="text-align:center;padding:2rem 1rem;color:#94a3b8;font-size:13.5px">
+            <div style="text-align:center;padding:2rem 1rem;color:var(--diger-text-slate);font-size:13.5px">
                 <div style="font-size:32px;margin-bottom:6px">💬</div>
                 No hay comentarios ni archivos registrados en este compromiso aún.
             </div>
@@ -221,17 +221,17 @@
             <div style="display:flex;flex-direction:column;gap:14px">
                 @foreach (var item in c.Comentarios)
                 {
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;position:relative">
+                    <div style="background:#f8fafc;border:1px solid var(--diger-border);border-radius:10px;padding:14px;position:relative">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
                             <div style="display:flex;align-items:center;gap:8px">
-                                <span style="background:#0a2d6e;color:#fff;border-radius:50%;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">
+                                <span style="background:var(--diger-blue);color:#fff;border-radius:50%;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">
                                     @(item.CreadoPor.Substring(0, Math.Min(2, item.CreadoPor.Length)).ToUpper())
                                 </span>
                                 <div>
-                                    <strong style="font-size:13.5px;color:#0a2d6e">@item.CreadoPor</strong>
+                                    <strong style="font-size:13.5px;color:var(--diger-blue)">@item.CreadoPor</strong>
                                     @if (!string.IsNullOrWhiteSpace(item.CreadoPorRol))
                                     {
-                                        <span style="background:#e2e8f0;color:#334155;border-radius:12px;padding:1px 8px;font-size:11px;margin-left:4px">
+                                        <span style="background:var(--diger-border);color:#334155;border-radius:12px;padding:1px 8px;font-size:11px;margin-left:4px">
                                             @item.CreadoPorRol
                                         </span>
                                     }

@@ -22,15 +22,15 @@
     @* ── KPIs ──────────────────────────────────────────────────── *@
     <div class="row2" style="grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:1.25rem">
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos">
-            <div style="font-size:22px;font-weight:800;color:#0a2d6e">@res.Total</div>
+            <div style="font-size:22px;font-weight:800;color:var(--diger-blue)">@res.Total</div>
             <div class="prog-label">Total</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.Pendiente">
-            <div style="font-size:22px;font-weight:800;color:#0c447c">@res.Pendientes</div>
+            <div style="font-size:22px;font-weight:800;color:var(--diger-blue-mid)">@res.Pendientes</div>
             <div class="prog-label">Pendiente revisar</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.EnProgreso">
-            <div style="font-size:22px;font-weight:800;color:#854f0b">@res.EnProgreso</div>
+            <div style="font-size:22px;font-weight:800;color:var(--diger-warning-strong)">@res.EnProgreso</div>
             <div class="prog-label">En proceso</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.EnRevision">
@@ -38,7 +38,7 @@
             <div class="prog-label">En revisión</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-soloVencidos="true">
-            <div style="font-size:22px;font-weight:800;color:#a32d2d">@res.Vencidos</div>
+            <div style="font-size:22px;font-weight:800;color:var(--diger-danger-strong)">@res.Vencidos</div>
             <div class="prog-label">Vencidos</div>
         </a>
         <a class="card kpi-link" style="margin:0;text-align:center" asp-page="/Reuniones/Compromisos" asp-route-estado="@EstadoCompromiso.Cumplido">
@@ -115,8 +115,8 @@
                 {
                     var ec = CompromisoUi.Color(c.Estado);
                     <tr>
-                        <td style="font-weight:600;color:#0a2d6e">
-                            <a asp-page="/Reuniones/CompromisoDetalle" asp-route-id="@c.Id" style="color:#0a2d6e;text-decoration:none">@c.Compromiso</a>
+                        <td style="font-weight:600;color:var(--diger-blue)">
+                            <a asp-page="/Reuniones/CompromisoDetalle" asp-route-id="@c.Id" style="color:var(--diger-blue);text-decoration:none">@c.Compromiso</a>
                             @if (c.NumComentarios > 0 || c.NumArchivos > 0)
                             {
                                 <div style="display:flex;gap:8px;margin-top:3px;font-size:11.5px;color:#64748b;font-weight:400">
@@ -142,7 +142,7 @@
                             }
                             else if (c.ProximoAVencer)
                             {
-                                <span style="background:#fef3c7;color:#b45309;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;display:inline-block;margin-top:2px">⏰ Próximo a vencer</span>
+                                <span style="background:var(--diger-warning-bg);color:var(--diger-warning);border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700;display:inline-block;margin-top:2px">⏰ Próximo a vencer</span>
                             }
                             @if (c.Estado == EstadoCompromiso.Cumplido && c.FechaCumplimiento is not null)
                             {
@@ -188,7 +188,7 @@
                                 {
                                     var ec = CompromisoUi.Color(c.Estado);
                                     <tr>
-                                        <td style="font-weight:600;color:#0a2d6e">
+                                        <td style="font-weight:600;color:var(--diger-blue)">
                                             @c.Compromiso
                                             @if (!string.IsNullOrWhiteSpace(c.NotaSeguimiento))
                                             {

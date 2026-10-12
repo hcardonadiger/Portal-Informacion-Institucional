@@ -20,7 +20,7 @@
         @if (Model.ExpId is int segId)
         {
             <form method="post" asp-page-handler="EnviarRecordatorio" asp-route-id="@segId" style="display:inline" onsubmit="return confirm('¿Desea enviar una notificación de recordatorio al analista y contacto de este expediente?');">
-                <button type="submit" class="btns" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">🔔 Recordar</button>
+                <button type="submit" class="btns" style="background:#eff6ff;color:var(--diger-blue-mid);border-color:#bfdbfe">🔔 Recordar</button>
             </form>
             <a class="btnp" asp-page="/Expedientes/Seguimiento" asp-route-id="@segId">Seguimiento de digitalización</a>
             <a class="btns" asp-page="/Expedientes/Resumen" asp-route-id="@segId">PDF</a>
@@ -224,7 +224,7 @@
             </select>
             <input type="text" id="inst_otra" placeholder="Nombre o sigla de la institución"
                    oninput="onInstOtraInput()" style="display:none;margin-top:6px">
-            <label id="inst_otra_reg_wrap" style="display:none;align-items:flex-start;gap:7px;margin-top:7px;font-size:12px;font-weight:500;color:var(--diger-text-secondary, #4a5568);cursor:pointer">
+            <label id="inst_otra_reg_wrap" style="display:none;align-items:flex-start;gap:7px;margin-top:7px;font-size:12px;font-weight:500;color:var(--diger-text-secondary, var(--diger-text-secondary));cursor:pointer">
               <input type="checkbox" id="inst_otra_registrar" style="width:15px;height:15px;margin-top:1px;flex-shrink:0">
               <span>Registrar esta institución en el catálogo</span>
             </label>
@@ -268,7 +268,7 @@
         <div id="tramites-nombres-wrap"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn-add" onclick="agregarTramiteApertura()">+ Agregar trámite</button>
-          <button type="button" class="btn-add" style="background:#eff6ff;color:#1455a4;border-color:#bfdbfe" onclick="abrirModalSiger()">📥 Importar desde SIGER</button>
+          <button type="button" class="btn-add" style="background:#eff6ff;color:var(--diger-blue-mid);border-color:#bfdbfe" onclick="abrirModalSiger()">📥 Importar desde SIGER</button>
         </div>
         <span class="hint" style="display:block;margin-top:6px">Agregue tantos trámites como necesite; use ✕ para quitar uno.</span>
       </div>
@@ -592,12 +592,12 @@
           <div class="estado-row" style="background:var(--azul-c);font-weight:700;font-size:11.5px;color:var(--azul-m)">
             <span>Sección</span><span style="text-align:center">Estado</span><span>Notas</span>
           </div>
-          <div class="estado-row"><span class="estado-label">Apertura del expediente</span><select class="estado-sel" id="est-0" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-0" placeholder="Nota..."></div>
-          <div class="estado-row"><span class="estado-label">Ficha del trámite</span><select class="estado-sel" id="est-1" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-1" placeholder="Nota..."></div>
-          <div class="estado-row"><span class="estado-label">Marco legal y documentación</span><select class="estado-sel" id="est-2" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-2" placeholder="Nota..."></div>
-          <div class="estado-row"><span class="estado-label">Proceso actual</span><select class="estado-sel" id="est-3" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-3" placeholder="Nota..."></div>
-          <div class="estado-row"><span class="estado-label">Modelo propuesto</span><select class="estado-sel" id="est-4" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-4" placeholder="Nota..."></div>
-          <div class="estado-row"><span class="estado-label">Infraestructura SOL</span><select class="estado-sel" id="est-5" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:#fafbfd;width:100%" id="nota-5" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Apertura del expediente</span><select class="estado-sel" id="est-0" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--diger-bg-soft);width:100%" id="nota-0" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Ficha del trámite</span><select class="estado-sel" id="est-1" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--diger-bg-soft);width:100%" id="nota-1" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Marco legal y documentación</span><select class="estado-sel" id="est-2" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--diger-bg-soft);width:100%" id="nota-2" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Proceso actual</span><select class="estado-sel" id="est-3" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--diger-bg-soft);width:100%" id="nota-3" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Modelo propuesto</span><select class="estado-sel" id="est-4" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--diger-bg-soft);width:100%" id="nota-4" placeholder="Nota..."></div>
+          <div class="estado-row"><span class="estado-label">Infraestructura SOL</span><select class="estado-sel" id="est-5" onchange="actualizarEstados()"><option>Pendiente</option><option>En progreso</option><option>Completo</option><option>Validado</option></select><input type="text" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12.5px;font-family:inherit;background:var(--diger-bg-soft);width:100%" id="nota-5" placeholder="Nota..."></div>
         </div>
       </div>
 
@@ -652,9 +652,9 @@
 
 @* ── Detalle de nodo de flujo (visor; ids consumidos por expediente.js → showNodeModal) ── *@
 <div id="node-modal" onclick="closeNodeModal()"
-     style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+     style="display:none;position:fixed;inset:0;background:rgba(2,57,94,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
   <div onclick="event.stopPropagation()"
-       style="background:var(--diger-surface);border-radius:16px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
+       style="background:var(--diger-surface);border-radius:16px;max-width:440px;width:100%;box-shadow:0 24px 60px rgba(2,57,94,.25);overflow:hidden">
     <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid var(--diger-border-soft)">
       <span id="nm-badge" style="flex:none;width:30px;height:30px;border-radius:50%;background:var(--diger-blue-mid);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">1</span>
       <div style="flex:1;min-width:0">
@@ -670,7 +670,7 @@
       <div><div class="nm-lbl">Documento emitido</div><div id="nm-documento" style="font-size:14px">—</div></div>
       <div><div class="nm-lbl">Observación de campo</div><div id="nm-obs" style="font-size:14px">—</div></div>
     </div>
-    <div style="padding:.9rem 1.3rem;border-top:1px solid #eef1f7;text-align:right">
+    <div style="padding:.9rem 1.3rem;border-top:1px solid var(--diger-bg);text-align:right">
       <button type="button" class="hist-del" onclick="eliminarNodoDesdeModal()">✕ Eliminar paso</button>
     </div>
   </div>
@@ -678,25 +678,25 @@
 
 @* ── Menú flotante "+" para agregar nodos (poblado por expediente.js con .fam-opt) ── *@
 <div id="flow-add-menu"
-     style="display:none;position:fixed;z-index:1001;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 12px 32px rgba(10,45,110,.18);padding:5px;min-width:140px"></div>
+     style="display:none;position:fixed;z-index:1001;background:#fff;border:1px solid var(--diger-border);border-radius:10px;box-shadow:0 12px 32px rgba(2,57,94,.18);padding:5px;min-width:140px"></div>
 
 @* ── Modal buscar e importar trámite SIGER ── *@
 <div id="siger-modal" onclick="cerrarModalSiger()"
-     style="display:none;position:fixed;inset:0;background:rgba(10,45,110,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+     style="display:none;position:fixed;inset:0;background:rgba(2,57,94,.35);z-index:1000;align-items:center;justify-content:center;padding:1rem">
   <div onclick="event.stopPropagation()"
-       style="background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(10,45,110,.25);overflow:hidden">
-    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid #eef1f7">
+       style="background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(2,57,94,.25);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:12px;padding:1.1rem 1.3rem;border-bottom:1px solid var(--diger-bg)">
       <span style="font-size:18px">📥</span>
-      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:#0a2d6e">Importar trámite desde inventario SIGER</div></div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--diger-blue)">Importar trámite desde inventario SIGER</div></div>
       <button type="button" onclick="cerrarModalSiger()" aria-label="Cerrar"
               style="flex:none;border:0;background:#f0f4fa;color:#64748b;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px">✕</button>
     </div>
-    <div style="padding:1rem 1.3rem;border-bottom:1px solid #eef1f7">
+    <div style="padding:1rem 1.3rem;border-bottom:1px solid var(--diger-bg)">
       <input type="text" id="siger-buscar" placeholder="Buscar por nombre, código o sigla..." oninput="buscarSigerDebounce()"
              style="width:100%;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;font-family:inherit">
     </div>
     <div id="siger-resultados" style="flex:1;overflow-y:auto;padding:0.5rem 1.3rem;min-height:200px;max-height:50vh">
-      <div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Escriba al menos 2 caracteres para buscar</div>
+      <div style="text-align:center;color:var(--diger-text-slate);padding:2rem;font-size:13px">Escriba al menos 2 caracteres para buscar</div>
     </div>
   </div>
 </div>

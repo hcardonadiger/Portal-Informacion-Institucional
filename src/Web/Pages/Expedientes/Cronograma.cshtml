@@ -264,7 +264,7 @@ async function guardarFila(btn) {
 }
 .cron-varia {
     display: inline-flex; align-items: center; justify-content: center;
-    background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
+    background: var(--diger-warning-bg); color: #92400e; border: 1px solid #fcd34d;
     border-radius: 50%; width: 18px; height: 18px;
     font-size: 12px; font-weight: 800; margin-left: 6px; cursor: help;
 }
@@ -272,44 +272,44 @@ async function guardarFila(btn) {
 /* resumen */
 .cron-resumen { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .cron-stat    { display: flex; align-items: center; gap: 6px; }
-.cron-stat-n  { font-weight: 700; font-size: 18px; color: #0a2d6e; }
+.cron-stat-n  { font-weight: 700; font-size: 18px; color: var(--diger-blue); }
 
 /* badges */
 .cron-badge { font-size: 11px; font-weight: 600; border-radius: 20px; padding: 2px 8px; white-space: nowrap; }
 .cron-ok    { background: #d1fae5; color: #065f46; }
 .cron-proc  { background: #dbeafe; color: #1e3a8a; }
 .cron-prox  { background: #fef9c3; color: #713f12; }
-.cron-venc  { background: #fee2e2; color: #991b1b; }
-.cron-pend  { background: #f1f5f9; color: #475569; }
+.cron-venc  { background: var(--diger-danger-bg); color: #991b1b; }
+.cron-pend  { background: #f1f5f9; color: var(--diger-text-slate-dark); }
 
 /* tabla */
 .cron-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.cron-tbl th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; text-align: left; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+.cron-tbl th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; text-align: left; border-bottom: 2px solid var(--diger-border); white-space: nowrap; }
 .cron-tbl td { padding: 7px 10px; border-bottom: 1px solid #f0f3f8; vertical-align: middle; }
 .cron-row:last-child td { border-bottom: none; }
 .cron-row:hover td { background: #f8fafc; }
 
 .cron-td-etapa { min-width: 180px; }
-.cron-num { display: inline-block; font-weight: 700; color: #0a2d6e; font-size: 12px; min-width: 20px; }
+.cron-num { display: inline-block; font-weight: 700; color: var(--diger-blue); font-size: 12px; min-width: 20px; }
 .cron-lbl { font-size: 12px; color: #334155; margin-left: 4px; }
 
-.cron-in { border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 6px; font-size: 12px; width: 100%; background: #fff; color: #1e293b; box-sizing: border-box; }
+.cron-in { border: 1px solid var(--diger-border); border-radius: 6px; padding: 4px 6px; font-size: 12px; width: 100%; background: #fff; color: #1e293b; box-sizing: border-box; }
 .cron-in:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px #93c5fd40; }
-.cron-in[disabled] { background: #f8fafc; color: #94a3b8; cursor: default; }
+.cron-in[disabled] { background: #f8fafc; color: var(--diger-text-slate); cursor: default; }
 
 /* avance */
-.cron-avbar { height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 2px; }
+.cron-avbar { height: 6px; background: var(--diger-border); border-radius: 4px; overflow: hidden; margin-bottom: 2px; }
 .cron-avbar i { display: block; height: 100%; background: #10b981; border-radius: 4px; transition: width .3s; }
 .cron-avpct { font-size: 11px; color: #64748b; }
 
 .cron-td-act { text-align: center; }
-.cron-save { background: none; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 14px; width: 32px; height: 28px; display: inline-flex; align-items: center; justify-content: center; transition: border-color .2s, background .2s; }
+.cron-save { background: none; border: 1px solid var(--diger-border); border-radius: 6px; cursor: pointer; font-size: 14px; width: 32px; height: 28px; display: inline-flex; align-items: center; justify-content: center; transition: border-color .2s, background .2s; }
 .cron-save:hover { border-color: #3b82f6; background: #eff6ff; }
 .cron-save.cron-saved { border-color: #10b981; color: #10b981; background: #f0fdf4; }
 
 /* Gantt */
 .cron-gantt-card { padding: 16px 20px; }
-.cron-gantt-title { font-weight: 700; font-size: 13px; color: #0a2d6e; margin-bottom: 12px; }
+.cron-gantt-title { font-weight: 700; font-size: 13px; color: var(--diger-blue); margin-bottom: 12px; }
 .cron-gantt { position: relative; }
 .cron-gantt-row { display: flex; align-items: center; gap: 0; height: 26px; margin-bottom: 4px; }
 .cron-gantt-lbl { width: 60px; flex-shrink: 0; font-size: 11px; font-weight: 700; color: #334155; text-align: right; padding-right: 8px; }
@@ -321,7 +321,7 @@ async function guardarFila(btn) {
 .cron-gantt-bar.cron-venc { background: #f87171; }
 .cron-gantt-bar.cron-pend { background: #cbd5e1; }
 .cron-gantt-hoy { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; opacity: .7; pointer-events: none; }
-.cron-gantt-axis { display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 6px; padding-left: 60px; }
+.cron-gantt-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--diger-text-slate); margin-top: 6px; padding-left: 60px; }
 
 @* Acá vivía la variante oscura del cronograma. Eliminada el 2026-09-24 con el resto del modo oscuro; ver tokens.css. *@
 </style>

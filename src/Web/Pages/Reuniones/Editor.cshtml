@@ -75,7 +75,7 @@
       <div class="sec-title"><span class="sec-step-badge">1</span>Generales</div>
       <div class="card accent">
         <div class="fg-hdr">Información básica</div>
-        <div class="field"><label>Título <span style="color:#dc2626">*</span></label>
+        <div class="field"><label>Título <span style="color:var(--diger-danger)">*</span></label>
           <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" required /></div>
         <div class="row3">
           <div class="field"><label>Fecha</label><input asp-for="Datos.Fecha" type="date" /></div>
@@ -142,7 +142,7 @@
       {
         <div class="card" style="background:#f0f7ff;border:1px solid #d4e4fb">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-            <div style="font-size:13px;color:#0a2d6e">
+            <div style="font-size:13px;color:var(--diger-blue)">
               <strong>Auto-registro disponible.</strong> Comparte un enlace/QR para que los participantes se registren desde su teléfono.
             </div>
             <a class="btnp" asp-page="/Reuniones/Asistencia" asp-route-id="@ridA">Enlace y QR de asistencia →</a>
@@ -247,7 +247,7 @@
 
       @* ── Autocompletar desde transcripción (Cowork) — opcional ── *@
       <details class="card" id="cowork-details" style="padding:0">
-        <summary style="cursor:pointer;padding:14px 16px;font-weight:600;color:#1455a4;font-size:13.5px">
+        <summary style="cursor:pointer;padding:14px 16px;font-weight:600;color:var(--diger-blue-mid);font-size:13.5px">
           Llenar automáticamente desde una transcripción (opcional)
         </summary>
         <div style="padding:0 16px 16px">
@@ -516,7 +516,7 @@
     flex: none; position: relative; z-index: 1;
     transition: background .2s, color .2s, box-shadow .2s;
 }
-.sbi.active .sbi-num { background: var(--diger-blue-mid); color: #fff; box-shadow: 0 2px 8px rgba(20,85,164,.3); }
+.sbi.active .sbi-num { background: var(--diger-blue-mid); color: #fff; box-shadow: 0 2px 8px rgba(26,101,163,.3); }
 .sbi.done .sbi-num { background: var(--diger-success); color: #fff; }
 .sbi-info { display: flex; flex-direction: column; gap: 1px; padding-top: 4px; min-width: 0; }
 .sbi-label { font-size: 12.5px; font-weight: 600; }
@@ -563,7 +563,7 @@
     border-radius: var(--diger-radius-pill); padding: 5px 10px;
     transition: border-color .15s;
 }
-.inst-chip.principal { background: linear-gradient(135deg, var(--diger-blue-light), var(--diger-blue-pale)); font-weight: 700; border-color: rgba(20,85,164,.4); }
+.inst-chip.principal { background: linear-gradient(135deg, var(--diger-blue-light), var(--diger-blue-pale)); font-weight: 700; border-color: rgba(26,101,163,.4); }
 .inst-chip button {
     background: none; border: none; cursor: pointer;
     color: var(--diger-text-muted); font-size: 13px; line-height: 1;
@@ -582,7 +582,7 @@
 }
 .main .field input:focus, .main .field select:focus, .main .field textarea:focus {
     outline: none; border-color: var(--diger-blue-mid); background: var(--diger-surface);
-    box-shadow: 0 0 0 3px rgba(20,85,164,.08);
+    box-shadow: 0 0 0 3px rgba(26,101,163,.08);
 }
 
 /* ══ RTE toolbar (override diger.css for this page) ═══════════════ */
@@ -604,7 +604,7 @@
     background: var(--diger-surface); color: var(--diger-text);
     transition: border-color .2s, box-shadow .2s;
 }
-.main .rte-body:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(20,85,164,.08); }
+.main .rte-body:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(26,101,163,.08); }
 
 /* ══ Acuerdo card items ════════════════════════════════════════════ */
 .acuerdo-item {
@@ -615,7 +615,7 @@
     background: var(--diger-bg-soft);
     transition: border-color .15s, box-shadow .15s;
 }
-.acuerdo-item:focus-within { border-color: var(--diger-blue-mid); background: var(--diger-surface); box-shadow: 0 2px 8px rgba(20,85,164,.07); }
+.acuerdo-item:focus-within { border-color: var(--diger-blue-mid); background: var(--diger-surface); box-shadow: 0 2px 8px rgba(26,101,163,.07); }
 .ac-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .ac-num {
     display: inline-flex; align-items: center; justify-content: center;
@@ -630,7 +630,7 @@
     padding: 8px 10px; background: var(--diger-surface); color: var(--diger-text); font-family: inherit; line-height: 1.55;
     transition: border-color .2s;
 }
-.ac-compromiso:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(20,85,164,.08); }
+.ac-compromiso:focus { outline: none; border-color: var(--diger-blue-mid); box-shadow: 0 0 0 3px rgba(26,101,163,.08); }
 .ac-meta { display: flex; gap: 10px; align-items: flex-start; }
 .ac-meta .field { margin-bottom: 0; }
 .ac-meta select, .ac-meta input[type=date] { width: 100%; }
@@ -659,7 +659,7 @@
     background: var(--diger-bg-soft);
     transition: border-color .15s, box-shadow .15s;
 }
-.adj-item:focus-within { border-color: var(--diger-blue-mid); background: var(--diger-surface); box-shadow: 0 2px 8px rgba(20,85,164,.07); }
+.adj-item:focus-within { border-color: var(--diger-blue-mid); background: var(--diger-surface); box-shadow: 0 2px 8px rgba(26,101,163,.07); }
 .adj-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .adj-ico { font-size: 15px; flex: none; line-height: 1; }
 .adj-titulo { flex: 1; min-width: 0; }

@@ -87,11 +87,11 @@
                 <input type="hidden" name="orden" value="@Model.Orden" />
                 <input type="hidden" name="desc" value="@(Model.Desc ? "true" : "false")" />
                 <div class="field" style="min-width:200px;flex:1">
-                    <label for="f-titulo" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Título</label>
+                    <label for="f-titulo" style="font-size:11px;font-weight:700;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:.06em">Título</label>
                     <input type="text" id="f-titulo" name="titulo" value="@Model.FTitulo" placeholder="Título de la reunión…" class="field-input" />
                 </div>
                 <div class="field" style="min-width:170px">
-                    <label for="f-institucion" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Institución</label>
+                    <label for="f-institucion" style="font-size:11px;font-weight:700;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:.06em">Institución</label>
                     <select id="f-institucion" name="institucion" class="field-input">
                         <option value="">Todas</option>
                         @foreach (var i in Model.Opciones.Instituciones)
@@ -101,7 +101,7 @@
                     </select>
                 </div>
                 <div class="field" style="min-width:150px">
-                    <label for="f-tipo" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Tipo</label>
+                    <label for="f-tipo" style="font-size:11px;font-weight:700;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:.06em">Tipo</label>
                     <select id="f-tipo" name="tipo" class="field-input">
                         <option value="">Todos</option>
                         @foreach (var t in Model.Opciones.Tipos)
@@ -113,18 +113,18 @@
                 @* Desde y hasta comparten un solo campo: como dos rótulos sueltos, la barra
                    se partía en dos renglones. *@
                 <div class="field" style="min-width:230px">
-                    <label for="f-desde" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Fecha de reunión</label>
+                    <label for="f-desde" style="font-size:11px;font-weight:700;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:.06em">Fecha de reunión</label>
                     <div style="display:flex;align-items:center;gap:5px">
                         <input type="date" id="f-desde" name="desde" value="@Model.FDesde?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Desde" style="min-width:0" />
-                        <span style="color:#6b7fa3">–</span>
+                        <span style="color:var(--diger-text-muted)">–</span>
                         <input type="date" id="f-hasta" name="hasta" value="@Model.FHasta?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Hasta" style="min-width:0" />
                     </div>
                 </div>
                 <div class="field" style="min-width:230px">
-                    <label for="f-creada-desde" style="font-size:11px;font-weight:700;color:#6b7fa3;text-transform:uppercase;letter-spacing:.06em">Fecha de registro</label>
+                    <label for="f-creada-desde" style="font-size:11px;font-weight:700;color:var(--diger-text-muted);text-transform:uppercase;letter-spacing:.06em">Fecha de registro</label>
                     <div style="display:flex;align-items:center;gap:5px">
                         <input type="date" id="f-creada-desde" name="creadaDesde" value="@Model.FCreadaDesde?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Registrada desde" style="min-width:0" />
-                        <span style="color:#6b7fa3">–</span>
+                        <span style="color:var(--diger-text-muted)">–</span>
                         <input type="date" id="f-creada-hasta" name="creadaHasta" value="@Model.FCreadaHasta?.ToString("yyyy-MM-dd")" class="field-input" aria-label="Registrada hasta" style="min-width:0" />
                     </div>
                 </div>
@@ -153,7 +153,7 @@
             <tbody>
                 @if (Model.Resultado.Items.Count == 0)
                 {
-                    <tr><td colspan="7" style="text-align:center;padding:2rem;color:#9aadcc">No se encontraron reuniones con los criterios aplicados.</td></tr>
+                    <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--diger-text-faint)">No se encontraron reuniones con los criterios aplicados.</td></tr>
                 }
                 @foreach (var r in Model.Resultado.Items)
                 {
