@@ -77,6 +77,22 @@ el navegador lo falsifica engordando el trazo, y se ve emborronado sin que
 nada avise. Al hacer este cambio había tres así. Si toca cambiar un peso,
 vale la pena volver a medir.
 
+**Las sirve el portal, no Google.** No es una preferencia: la
+`Content-Security-Policy` de `Program.cs` declara `style-src 'self'` y
+`font-src 'self'`, así que el navegador **bloquea** cualquier hoja o fuente
+de otro dominio. Mientras el `<link>` de `_Layout` apuntó a Google Fonts, el
+portal **nunca renderizó Poppins**: caía al respaldo del sistema (Segoe UI)
+sin que nada fallara, y el único rastro era un error de consola.
+
+Eso es lo que hace peligroso este fallo: **el CSS calculado dice la verdad y
+la pantalla no**. `getComputedStyle` devuelve `Poppins` porque la regla CSS
+es correcta; lo que falta es el archivo. Para comprobar que una tipografía
+está activa de verdad hay que **medir el ancho renderizado** de una cadena
+contra el respaldo, o mirar que `document.fonts` la liste como `loaded`.
+
+Los `.woff2` viven en `wwwroot/fonts` y sus `@font-face` en
+`wwwroot/css/fuentes.css`. Ver `wwwroot/fonts/LEEME.md`.
+
 `afiche-qr.css` conserva Segoe UI: decisión documentada para impresión sin
 conexión, porque el afiche se imprime en máquinas que pueden no tener las
 fuentes del portal.

@@ -1,0 +1,104 @@
+/* ══════════════════════════════════════════════════════════════════
+   DIGER — Tipografías servidas por el propio portal
+
+   Antes se pedían a Google Fonts con un <link> en _Layout. No se veían
+   nunca: la cabecera Content-Security-Policy de Program.cs declara
+   `style-src 'self'` y `font-src 'self'`, así que el navegador bloqueaba
+   la hoja de Google y el portal caía al respaldo del sistema —Segoe UI—
+   sin que nada fallara ni avisara. El único rastro era un error en la
+   consola que nadie miraba.
+
+   Servirlas desde aquí cumple 'self' sin tocar la política, y además:
+     · el portal funciona sin internet, que importa en una intranet
+     · no se filtra la IP de cada visitante a un tercero
+     · se ahorran la resolución DNS y el TLS de dos dominios externos
+
+   Son el subconjunto `latin` (U+0000-00FF y acompañantes), que cubre el
+   español completo: á é í ó ú ñ ü ¿ ¡ están todos dentro de U+00A1-00FF.
+
+   Pesos: solo los que el portal usa de verdad, medidos en pantalla, no
+   supuestos. Poppins trae únicamente Medium y ExtraBold, los dos cortes
+   que el Manual de Marca nombra (pág. 08). Ver DESIGN.md §1.2.
+
+   `font-display: swap` dibuja con el respaldo mientras llega la fuente,
+   en vez de dejar el texto invisible. En un portal de trámites es
+   preferible leer algo enseguida a esperar por la letra correcta.
+
+   Licencias: ambas familias se distribuyen bajo SIL Open Font License.
+   Ver wwwroot/fonts/LEEME.md.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── MARCA ─────────────────────────────────────────────────────────── */
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/Poppins-500.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Poppins';
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url('../fonts/Poppins-800.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── INTERFAZ ──────────────────────────────────────────────────────── */
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/IBMPlexSans-400.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/IBMPlexSans-500.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../fonts/IBMPlexSans-600.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Sans';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('../fonts/IBMPlexSans-700.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── CÓDIGOS ───────────────────────────────────────────────────────── */
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/IBMPlexMono-400.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('../fonts/IBMPlexMono-700.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

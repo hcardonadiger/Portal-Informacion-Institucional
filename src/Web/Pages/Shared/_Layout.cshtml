@@ -73,15 +73,14 @@
     @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
     @{ var token = Antiforgery.GetAndStoreTokens(Context).RequestToken; }
     <meta name="csrf-token" content="@token" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    @* Dos familias por función (ver DESIGN.md §1.2). Poppins carga solo los
-       dos cortes que el Manual de Marca nombra —Medium y ExtraBold—, no los
-       cinco de antes: el resto del portal ya no la usa. IBM Plex Sans lleva
-       la interfaz y Plex Mono los códigos y las cifras. Son 8 archivos de
-       fuente contra los 5 de antes, pero cuatro de los viejos se cargaban
-       para texto que hoy va en Plex. *@
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    @* Las tipografías las sirve el propio portal (ver DESIGN.md §1.2 y
+       wwwroot/fonts/LEEME.md). NO poner aquí un <link> a Google Fonts: la
+       Content-Security-Policy de Program.cs declara `style-src 'self'` y
+       `font-src 'self'`, de modo que el navegador lo bloquea y el portal cae
+       al respaldo del sistema sin que nada falle ni avise. Eso fue
+       exactamente lo que pasó mientras el enlace apuntó a Google: Poppins
+       no se renderizó nunca. *@
+    <link rel="stylesheet" href="~/css/fuentes.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/diger.css" asp-append-version="true" />
     @if (_instBranding?.Color is { Length: > 0 } instColor)
