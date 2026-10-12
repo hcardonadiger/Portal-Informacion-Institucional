@@ -59,6 +59,19 @@ h1, h2, h3,
 .tram-cod {
     font-family: var(--diger-font-mono);
     font-variant-numeric: tabular-nums;
+    /* Un codigo no se parte nunca. "EXP-INPR-2026-" en una linea y "01" en la
+       siguiente deja de leerse como un identificador y se copia mal. Los
+       guiones invitan al navegador a cortar justo ahi, asi que hay que
+       prohibirselo explicitamente. */
+    white-space: nowrap;
+}
+
+/* Una fecha corta tampoco se parte: "18-08-" arriba y "2026" abajo obliga a
+   releer para entender qué dice, y en una columna de siete filas eso se paga
+   siete veces. No se pone en .res-meta —que es metadato genérico y a veces
+   lleva texto largo que SÍ debe fluir— sino en su propia clase. */
+.dg-fecha {
+    white-space: nowrap;
 }
 
 /* ── CIFRAS EN TABLAS ─────────────────────────────────────────────────

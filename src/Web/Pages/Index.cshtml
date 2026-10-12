@@ -105,7 +105,7 @@
                         </td>
                         <td>@e.Analista</td>
                         <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                        <td class="res-meta">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
+                        <td class="res-meta dg-fecha">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
                         <td style="white-space:nowrap;text-align:right">
                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>
@@ -170,7 +170,7 @@
                         </td>
                                         <td>@e.Analista</td>
                                         <td style="text-align:center" title="@tooltip">@e.NumTramites</td>
-                                        <td class="res-meta">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
+                                        <td class="res-meta dg-fecha">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
                                         <td style="white-space:nowrap;text-align:right">
                                             <a class="btns" asp-page="/Expedientes/Seguimiento" asp-route-id="@e.Id"
                                                style="font-size:12.5px;padding:6px 12px">Seguimiento</a>

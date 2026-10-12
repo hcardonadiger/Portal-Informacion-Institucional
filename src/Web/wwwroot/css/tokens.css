@@ -148,7 +148,7 @@
        13 `font-variant-numeric: tabular-nums` puestos a mano en diger.css
        dice que el problema se venía parcheando caso por caso. */
     --diger-font-marca: 'Poppins', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    --diger-font-ui:    'IBM Plex Sans', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --diger-font-ui:    'Manrope', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
     --diger-font-mono:  'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
     --diger-weight-regular:   400;

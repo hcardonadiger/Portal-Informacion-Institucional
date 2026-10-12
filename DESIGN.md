@@ -50,10 +50,24 @@ Mismo criterio que las tres capas de color: **el manual norma la tipografía
 de marca, no una escala de interfaz**. Poppins se queda donde el manual de
 verdad gobierna; la interfaz densa usa una letra de trabajo.
 
+**Por qué Manrope y no otra.** Es la tipografía del portal **Firmante
+(Trámites Digitales DIGER)**. Adoptarla hace que los dos sistemas de la
+institución se lean como uno solo, que es un argumento más fuerte que
+cualquier preferencia estética: quien usa los dos no debería sentir que
+cambió de organismo al pasar de uno a otro.
+
+**Cuesta ancho, y hay que contarlo.** Manrope es ~3 % más ancha que IBM Plex
+Sans al mismo tamaño (medido: «Expedientes de Digitalización» ocupa 539.8 px
+contra 525.4). En las tablas de siete columnas eso bastó para que los códigos
+y las fechas empezaran a partirse en dos líneas. Por eso `.dg-cod` lleva
+`white-space: nowrap`: un identificador partido deja de leerse como tal y se
+copia mal. Si se añaden columnas a una tabla densa, conviene mirarla en
+pantalla antes de darla por buena.
+
 | Token | Familia | Dónde manda |
 |---|---|---|
 | `--diger-font-marca` | Poppins | `h1`–`h3`, `.page-title`, `.pg-title`, `.app-brand-word`, `.app-brand-title`, `.login-title`, y los PDF |
-| `--diger-font-ui` | IBM Plex Sans | Todo lo demás: tablas, formularios, badges, navegación, pie |
+| `--diger-font-ui` | Manrope | Todo lo demás: tablas, formularios, badges, navegación, pie |
 | `--diger-font-mono` | IBM Plex Mono | `.dg-cod` y las clases de código (`.trm-cod`, `.efh-cod`, `.tram-cod`) |
 
 **El motivo no es solo estético.** Poppins es geométrica: sus cifras no son
@@ -71,7 +85,7 @@ cuántos elementos quedan en cada familia, no leer el CSS.
 
 **Pesos: se carga lo que se usa, medido.** Poppins trae solo Medium y
 ExtraBold —los dos cortes que el manual nombra— porque el resto del portal ya
-no la usa. Plex Sans trae 400/500/600/700 y Plex Mono 400/700, que es
+no la usa. Manrope trae 400/500/600/700 y Plex Mono 400/700, que es
 exactamente lo que el portal pide. Un peso pedido y no cargado **no falla**:
 el navegador lo falsifica engordando el trazo, y se ve emborronado sin que
 nada avise. Al hacer este cambio había tres así. Si toca cambiar un peso,

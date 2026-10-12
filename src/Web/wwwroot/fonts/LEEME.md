@@ -16,15 +16,15 @@ poner un `<link>` a Google Fonts, pasará exactamente lo mismo.
 |---|---|---|---|
 | `Poppins-500.woff2` | Poppins | Medium | Bajada del header |
 | `Poppins-800.woff2` | Poppins | ExtraBold | `h1`–`h3`, titulares, marca, login |
-| `IBMPlexSans-400.woff2` | IBM Plex Sans | Regular | Cuerpo del portal |
-| `IBMPlexSans-500.woff2` | IBM Plex Sans | Medium | Énfasis suave |
-| `IBMPlexSans-600.woff2` | IBM Plex Sans | SemiBold | Etiquetas, enlaces de pie |
-| `IBMPlexSans-700.woff2` | IBM Plex Sans | Bold | Encabezados de tabla, badges |
+| `Manrope-400.woff2` | Manrope | Regular | Cuerpo del portal |
+| `Manrope-500.woff2` | Manrope | Medium | Énfasis suave |
+| `Manrope-600.woff2` | Manrope | SemiBold | Etiquetas, enlaces de pie |
+| `Manrope-700.woff2` | Manrope | Bold | Encabezados de tabla, badges |
 | `IBMPlexMono-400.woff2` | IBM Plex Mono | Regular | Códigos en listados |
 | `IBMPlexMono-700.woff2` | IBM Plex Mono | Bold | Códigos destacados |
 
 Son el subconjunto `latin`, que cubre el español completo: `á é í ó ú ñ ü ¿ ¡`
-caen todos dentro de `U+00A1-00FF`. Pesan 225 KB en total.
+caen todos dentro de `U+00A1-00FF`. Pesan 141 KB en total.
 
 Los pesos son **los que el portal usa**, medidos en pantalla, no supuestos.
 Un peso que se pide y no se carga no falla: el navegador lo falsifica
@@ -37,13 +37,16 @@ de Marca nombra (pág. 08) y el resto del portal ya no la usa.
 
 ## Licencias
 
-Ambas familias se distribuyen bajo **SIL Open Font License 1.1**, que permite
-la redistribución:
+Las tres familias se distribuyen bajo **SIL Open Font License 1.1**, que
+permite la redistribución:
 
 - Poppins — Indian Type Foundry. La licencia completa está en
   `src/Infrastructure/Reports/Fuentes/OFL.txt`, donde viajan las mismas
   Poppins embebidas para los PDF.
-- IBM Plex Sans / Mono — IBM. <https://github.com/IBM/plex>
+- Manrope — Mikhail Sharanda. <https://github.com/sharanda/manrope>
+  Es la tipografía del portal Firmante (Trámites Digitales DIGER); se adopta
+  aquí para que los dos sistemas de DIGER se lean como uno solo.
+- IBM Plex Mono — IBM. <https://github.com/IBM/plex>
 
 ## Cómo actualizarlas
 
