@@ -1,22 +1,42 @@
 /* ══════════════════════════════════════════════════════════════════
    DIGER — Design tokens
-   Alineados al Manual de Marca DIGER 2026 (azul gobierno + acento dorado
-   + cian), homologados con el portal de Encuestas. Los nombres de token se
-   conservan (--diger-blue*) para no romper referencias existentes.
+
+   Alineados al Manual de Marca DIGER. La paleta del manual (pág. 09)
+   son TRES colores y nada más. No hay dorado: el que había (ad8411,
+   escrito sin almohadilla a propósito — el guardián prohíbe el literal
+   incluso en comentarios) estaba a 147° de tono del color de marca más
+   cercano, y el manual,
+   en Usos Incorrectos punto C, prohíbe sustituir el color de marca
+   por tonos fuera de la línea gráfica.
+
+   Tres capas, con reglas distintas:
+     marca    — literales del manual, inmodificables
+     derivada — mismo tono, otra luminosidad (±8°)
+     función  — neutros y estados, fuera del manual a propósito
+
+   Lo comprueba scripts/verificar_marca.py, que falla si algo se sale.
    Ver DESIGN.md para la referencia completa.
    ══════════════════════════════════════════════════════════════════ */
 :root {
-    /* Color — marca (azul gobierno, Manual de Marca 2026) */
-    --diger-blue: #02395e;          /* azul gobierno (primario) */
-    --diger-blue-dark: #022a45;     /* azul oscuro — énfasis/degradados/hover */
-    --diger-blue-mid: #1455a4;      /* azul interactivo — estados activos, focus, badges */
-    --diger-blue-light: #e8f0ff;    /* fondo azul muy suave (pills, badges) */
-    --diger-blue-pale: #c8d5ee;     /* borde suave sobre azul claro */
+    /* ── CAPA MARCA — Manual de Marca DIGER, pág. 09 ──────────────────
+       Tres valores, literales del manual. No se derivan ni se ajustan.
+       Cualquier otro azul que pretenda ser marca es un incumplimiento. */
+    --diger-blue:       #02395e;   /* azul oscuro (marino)      — tono 204° */
+    --diger-blue-mid:   #1a65a3;   /* azul medio (corporativo)  — tono 207° */
+    --diger-celeste:    #7acbdd;   /* celeste (azul claro)      — tono 191° */
 
-    /* Color — acentos institucionales (Manual de Marca 2026) */
-    --diger-gold: #ad8411;          /* dorado institucional (acento primario) */
-    --diger-gold-light: #c79621;    /* dorado claro */
-    --diger-cyan: #7acbdd;          /* cian (acento secundario) */
+    /* ── CAPA DERIVADA — mismo tono, otra luminosidad ─────────────────
+       Regla de pertenencia: ±8° de tono respecto a la capa marca. */
+    --diger-blue-dark:  #022a45;   /* sombra de --diger-blue    — tono 204° */
+    --diger-blue-light: #e8f5ff;   /* tinte  — antes #e8f0ff, violáceo a 219° */
+    --diger-blue-pale:  #c8ddee;   /* borde  — antes #c8d5ee, violáceo a 219° */
+
+    /* Obsoletos: repuntados a la capa marca para que pinten el color
+       correcto incluso donde todavía nadie migró sus usos. Se eliminan
+       en la tarea 12, cuando el guardián confirme que no queda ninguna
+       referencia. No agregar usos nuevos. */
+    --diger-blue-title:  var(--diger-blue);
+    --diger-blue-strong: var(--diger-blue-mid);
 
     --diger-border: #e2e8f0;
     --diger-text: #1a1a1a;
@@ -32,6 +52,11 @@
     --diger-success-bg: #dcfce7;
     --diger-warning: #b45309;
     --diger-warning-bg: #fef3c7;
+    /* Reunión privada en el calendario. Antes usaba el dorado y lo
+       llamaba "institucional", pero esto es un estado, no marca: vive
+       en la capa función. El cambio además corrige accesibilidad —
+       el dorado como texto daba 3.45 y no alcanzaba AA; este da 5.02. */
+    --diger-privado: #b45309;
     --diger-danger: #dc2626;
     --diger-danger-text: #b91c1c;
     --diger-danger-bg: #fee2e2;
@@ -51,8 +76,6 @@
        [data-theme=dark] y [data-theme=light]), así que con la preferencia del sistema en
        claro y sin elección explícita el token quedaba sin valor. Corregido 2026-08-13. */
     --diger-success-strong: #15803d;
-    --diger-blue-title: #0a2d6e;
-    --diger-blue-strong: #0c447c;
     --diger-text-strong: #2d3748;
     --diger-text-slate: #94a3b8;
     --diger-text-slate-dark: #475569;
@@ -185,10 +208,13 @@
     --diger-bg-blue:      #f5f8ff;
     --diger-bg-blue-alt:  #f8fbff;
     --diger-bg-blue-pale: #f0f4ff;
-    --diger-blue-light:   #e8f0ff;
+    --diger-blue-light:   #e8f5ff;
 
-    --diger-blue-title:    #0a2d6e;
-    --diger-blue-strong:   #0c447c;
+    /* Obsoletos, repuntados a la capa marca. Este bloque pisa al :root de
+       arriba, asi que si aqui quedaran los hex viejos el repunte no serviria
+       de nada. Se eliminan en la tarea 12. */
+    --diger-blue-title:    var(--diger-blue);
+    --diger-blue-strong:   var(--diger-blue-mid);
     --diger-danger-strong: #a32d2d;
     --diger-warning-strong: #854f0b;
     --diger-success-strong: #15803d;
