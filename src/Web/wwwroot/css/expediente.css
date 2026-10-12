@@ -1,6 +1,8 @@
 /* variables: ver tokens.css — este archivo usa --diger-* */
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;color:var(--diger-text);background:var(--diger-bg-soft);min-height:100vh}
+/* Sin font-family: esta regla pisaba el body con Segoe UI y sacaba de marca al
+   modulo de Expedientes completo. Al quitarla hereda Poppins y su peso Medium. */
+body{font-size:14px;color:var(--diger-text);background:var(--diger-bg-soft);min-height:100vh}
 .topbar{background:linear-gradient(90deg,var(--diger-blue),var(--diger-blue-mid));padding:0 1.5rem;height:48px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(2,57,94,.18);position:sticky;top:0;z-index:40}
 .tb-left{display:flex;align-items:center;gap:10px}
 .tb-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;color:#fff;letter-spacing:.06em}

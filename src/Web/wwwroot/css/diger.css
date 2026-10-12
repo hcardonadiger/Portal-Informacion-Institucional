@@ -10,6 +10,11 @@
 body {
     font-family: 'Poppins', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: var(--diger-text-base);
+    /* El manual (pág. 08) nombra Poppins Medium para cuerpo. Sin declarar peso
+       el body corría en 400 (Regular), que el manual no menciona. Los pesos 600
+       y 700 siguen disponibles como escalones de interfaz: el manual norma la
+       tipografía de marca, no una escala para tablas y badges. */
+    font-weight: var(--diger-weight-medium);
     color: var(--diger-text);
     background: var(--diger-bg);
     min-height: 100vh;
@@ -46,7 +51,10 @@ body {
 .page-title,
 .pg-title {
     color: var(--diger-blue-strong);
-    font-weight: 700;
+    /* 800 — Manual de Marca, pág. 08. Son los dos únicos selectores que
+       cambian de peso: el manual norma el titular, no toda la jerarquía,
+       así que h2…h6 y los títulos de tarjeta se quedan donde estaban. */
+    font-weight: var(--diger-weight-extrabold);
     font-size: 1.6rem;
     line-height: 1.2;
     border-bottom: 3px solid var(--diger-blue-mid);
