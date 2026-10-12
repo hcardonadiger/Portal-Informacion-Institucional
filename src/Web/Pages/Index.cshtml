@@ -15,6 +15,11 @@
         EstadoExpediente.EnValidacion    => ("wf-enproceso",  "En validación"),
         _                                => ("wf-completada", "Cerrado")
     };
+
+    // Un expediente tiene responsable cuando el campo trae algo que no sea el
+    // marcador de hueco que dejó la carga masiva.
+    static bool TieneResponsable(string? analista) =>
+        !string.IsNullOrWhiteSpace(analista) && analista.Trim() != "(Sin asignar)";
 }
 
 <div class="container" style="max-width:1040px">
@@ -141,13 +146,20 @@
                             </div>
                         </td>
                         <td data-rotulo="Estado">
-                            @* En un expediente legado, "Legado" ES el estado. Los 28 que
+                            @* "Legado" ES el estado mientras nadie lo trabaje. Los 28 que
                                hay quedaron en EnExploracion porque ese es el valor por
                                defecto de la carga masiva que los creó, no porque alguien
-                               los esté explorando: mostrar esa fase decía algo falso. Su
-                               fase real se desconoce, y lo único cierto de ellos es que
-                               son previos al corte. *@
-                            @if (e.EsLegado)
+                               los esté explorando: mostrar esa fase decía algo falso.
+
+                               Se pide responsable además de legado, y no solo lo segundo.
+                               En cuanto a un legado se le asigna responsable, alguien lo
+                               está trabajando de verdad y su fase sí significa algo, así
+                               que pasa a mostrarla. Y al revés: pedir solo "sin
+                               responsable" etiquetaría "Legado" a un expediente nuevo
+                               recién creado al que todavía no se le ha asignado nadie,
+                               que es falso. Hoy las dos condiciones coinciden en los 35
+                               expedientes; la diferencia aparece en cuanto cambie uno. *@
+                            @if (e.EsLegado && !TieneResponsable(e.Analista))
                             {
                                 <span class="est-pill est-legado" title="Expediente anterior a abril de 2026. No tiene seguimiento confiable en la nueva metodología y no cuenta en los tableros.">Legado</span>
                             }
@@ -168,13 +180,15 @@
                             }
                         </td>
                         <td data-rotulo="Responsable">
-                            @if (string.IsNullOrWhiteSpace(e.Analista) || e.Analista.Trim() == "(Sin asignar)")
+                            @* Mismo criterio que decide el estado: una sola definición de
+                               "sin asignar", para que no puedan separarse. *@
+                            @if (TieneResponsable(e.Analista))
                             {
-                                <span class="sin-asignar">Sin asignar</span>
+                                @e.Analista
                             }
                             else
                             {
-                                @e.Analista
+                                <span class="sin-asignar">Sin asignar</span>
                             }
                         </td>
                         <td class="col-num" data-rotulo="Trámites" title="@tooltip">@e.NumTramites</td>
