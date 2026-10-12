@@ -44,7 +44,44 @@ tono, contraste AA de cada par declarado, y el censo de literales. Recorre
 las cuatro superficies: `wwwroot/css`, `Pages/**/*.cshtml`, `wwwroot/js` y
 los `.cs` que pintan color.
 
-### 1.2 Tabla de tokens
+### 1.2 Dos tipografías, repartidas por función (2026-10-12)
+
+Mismo criterio que las tres capas de color: **el manual norma la tipografía
+de marca, no una escala de interfaz**. Poppins se queda donde el manual de
+verdad gobierna; la interfaz densa usa una letra de trabajo.
+
+| Token | Familia | Dónde manda |
+|---|---|---|
+| `--diger-font-marca` | Poppins | `h1`–`h3`, `.page-title`, `.pg-title`, `.app-brand-word`, `.app-brand-title`, `.login-title`, y los PDF |
+| `--diger-font-ui` | IBM Plex Sans | Todo lo demás: tablas, formularios, badges, navegación, pie |
+| `--diger-font-mono` | IBM Plex Mono | `.dg-cod` y las clases de código (`.trm-cod`, `.efh-cod`, `.tram-cod`) |
+
+**El motivo no es solo estético.** Poppins es geométrica: sus cifras no son
+tabulares, su `I` y su `l` se confunden y a 12.5px en una tabla de siete
+columnas rinde mal. Este portal está lleno de códigos (`EXP-INPR-2026-01`) y
+de cifras que deben alinearse. Que ya hubiera **13 `tabular-nums` puestos a
+mano** en `diger.css` dice que el problema se venía parcheando caso por caso;
+ahora `table` lo trae por defecto.
+
+**Los encabezados van por etiqueta, no por clase.** La primera versión de la
+lista de superficies de marca salió de las clases del CSS y dejó el portal
+con **un elemento en Poppins contra 551 en Plex**: los titulares reales son
+`<h2>` pelados. Si alguien vuelve a tocar esa lista, la comprobación es mirar
+cuántos elementos quedan en cada familia, no leer el CSS.
+
+**Pesos: se carga lo que se usa, medido.** Poppins trae solo Medium y
+ExtraBold —los dos cortes que el manual nombra— porque el resto del portal ya
+no la usa. Plex Sans trae 400/500/600/700 y Plex Mono 400/700, que es
+exactamente lo que el portal pide. Un peso pedido y no cargado **no falla**:
+el navegador lo falsifica engordando el trazo, y se ve emborronado sin que
+nada avise. Al hacer este cambio había tres así. Si toca cambiar un peso,
+vale la pena volver a medir.
+
+`afiche-qr.css` conserva Segoe UI: decisión documentada para impresión sin
+conexión, porque el afiche se imprime en máquinas que pueden no tener las
+fuentes del portal.
+
+### 1.3 Tabla de tokens
 
 | Token | Valor | Uso típico |
 |---|---|---|

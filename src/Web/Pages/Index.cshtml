@@ -91,7 +91,7 @@
                         <td>
                             <a class="seg-inst" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Institucion</a>
                         </td>
-                        <td><span class="res-meta">@e.Codigo</span></td>
+                        <td><span class="res-meta dg-cod">@e.Codigo</span></td>
                         <td>
                             <span class="wf-badge @w.cls">@w.txt</span>
                             @if (e.EsLegado)
@@ -156,7 +156,7 @@
                                     var w = Wf(e.Estado);
                                     var tooltip = e.TramiteNombres.Any() ? string.Join(" · ", e.TramiteNombres) : "Sin trámites";
                                     <tr>
-                                        <td><a class="seg-inst" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a></td>
+                                        <td><a class="seg-inst dg-cod" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a></td>
                                         <td>
                             <span class="wf-badge @w.cls">@w.txt</span>
                             @if (e.EsLegado)

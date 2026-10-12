@@ -38,7 +38,9 @@
     .lg { min-height: 100vh; }
     .login-logo { width: 100%; max-width: 300px; height: auto; margin: 0 auto 1.15rem; display: block; }
     /* El margen inferior sustituye el aire que antes daba el subtítulo. */
-    .login-title { color: var(--diger-blue); font-size: 30px; font-weight: 700; line-height: 1.25; margin: 0 0 1.35rem; text-align: center; }
+    /* 800, no 700: es un titular de marca y ExtraBold es el corte que el
+       manual nombra. De paso deja a Poppins cargando solo Medium y ExtraBold. */
+    .login-title { color: var(--diger-blue); font-size: 30px; font-weight: var(--diger-weight-extrabold); line-height: 1.25; margin: 0 0 1.35rem; text-align: center; }
     .login-btn { width: 100%; justify-content: center; box-sizing: border-box; padding: 15px 20px; font-size: 18px; border-radius: var(--diger-radius-md); }
     form .login-btn { margin-top: .5rem; }
     .login-alt { margin-top: 1.6rem; }

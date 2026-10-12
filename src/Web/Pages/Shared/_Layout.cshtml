@@ -75,7 +75,13 @@
     <meta name="csrf-token" content="@token" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    @* Dos familias por función (ver DESIGN.md §1.2). Poppins carga solo los
+       dos cortes que el Manual de Marca nombra —Medium y ExtraBold—, no los
+       cinco de antes: el resto del portal ya no la usa. IBM Plex Sans lleva
+       la interfaz y Plex Mono los códigos y las cifras. Son 8 archivos de
+       fuente contra los 5 de antes, pero cuatro de los viejos se cargaban
+       para texto que hoy va en Plex. *@
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/diger.css" asp-append-version="true" />
     @if (_instBranding?.Color is { Length: > 0 } instColor)
@@ -548,7 +554,9 @@
     padding: 12px 14px 10px; border-bottom: 1px solid var(--diger-border);
     flex: none;
 }
-.notif-panel-title { font-size: 13px; font-weight: 800; color: var(--diger-text); }
+/* 700, no 800: es cromo de interfaz y va en Plex, donde el 800 no se carga
+   — el navegador lo falsificaba engordando el 700 a mano. */
+.notif-panel-title { font-size: 13px; font-weight: 700; color: var(--diger-text); }
 .notif-mark-all-btn {
     font-size: 11px; color: var(--diger-blue-mid); font-weight: 600;
     background: none; border: none; cursor: pointer; padding: 0;

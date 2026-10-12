@@ -8,16 +8,67 @@
 }
 
 body {
-    font-family: 'Poppins', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    /* El cuerpo del portal es interfaz, no marca: lee en la letra de trabajo.
+       Poppins no desaparece — se declara explícitamente en las superficies de
+       marca, más abajo. Si alguien quita esas declaraciones, Poppins sale de
+       la pantalla y ahí sí se incumple el manual.
+
+       El peso vuelve a Regular, y no es un retroceso: el 500 de octubre era
+       "Poppins Medium", el corte que el manual nombra para esa familia. Plex
+       Sans tiene más peso visual que Poppins al mismo número, y a 500 el
+       cuerpo se empasta en las tablas densas. */
+    font-family: var(--diger-font-ui);
     font-size: var(--diger-text-base);
-    /* El manual (pág. 08) nombra Poppins Medium para cuerpo. Sin declarar peso
-       el body corría en 400 (Regular), que el manual no menciona. Los pesos 600
-       y 700 siguen disponibles como escalones de interfaz: el manual norma la
-       tipografía de marca, no una escala para tablas y badges. */
-    font-weight: var(--diger-weight-medium);
+    font-weight: var(--diger-weight-regular);
     color: var(--diger-text);
     background: var(--diger-bg);
     min-height: 100vh;
+}
+
+/* ── SUPERFICIES DE MARCA ─────────────────────────────────────────────
+   Las únicas que llevan Poppins, y por eso van declaradas juntas: es la
+   lista que hay que mirar para saber si el portal sigue cumpliendo el
+   Manual de Marca. Los cortes son los dos que el manual nombra.
+
+   Los encabezados van por etiqueta y no por clase a propósito. La primera
+   versión de esta lista salía de las clases del CSS (.page-title, .pg-title)
+   y dejó el portal con UN elemento en Poppins contra 551 en Plex: los
+   titulares reales son <h2> pelados, sin clase. Encima heredaban peso 800,
+   que no se carga en Plex, así que el navegador lo falsificaba.
+
+   h4…h6 se quedan en la letra de interfaz: son subtítulos dentro de un
+   formulario o una tarjeta, no la voz de la marca. */
+h1, h2, h3,
+.page-title,
+.pg-title,
+.app-brand-word,
+.app-brand-title,
+.login-title {
+    font-family: var(--diger-font-marca);
+}
+
+/* ── CÓDIGOS ──────────────────────────────────────────────────────────
+   EXP-INPR-2026-01 no es texto, es un identificador: se compara carácter
+   a carácter y se teclea a mano. En una proporcional, la 'I' de INPR y el
+   '1' del año se parecen lo suficiente para equivocarse al dictarlo por
+   teléfono. En mono cada signo ocupa lo mismo y la comparación es visual.
+   `.dg-cod` es la clase a poner en cualquier código nuevo. */
+.dg-cod,
+.trm-cod,
+.efh-cod,
+.tram-cod {
+    font-family: var(--diger-font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── CIFRAS EN TABLAS ─────────────────────────────────────────────────
+   Las cifras proporcionales bailan de fila en fila y una columna de
+   montos deja de leerse como columna. Esto ya estaba resuelto a mano en
+   13 reglas sueltas de este archivo; ponerlo en la tabla lo vuelve el
+   comportamiento por defecto en vez de algo que hay que acordarse de
+   añadir. No afecta al texto: solo cambia el ancho de los dígitos. */
+table {
+    font-variant-numeric: tabular-nums;
 }
 
 :focus-visible {
@@ -1823,7 +1874,9 @@ tr.contacto-inactivo td {
     align-items: center;
     justify-content: center;
     font-size: var(--diger-fs-sm);
-    font-weight: 800;
+    /* 700, no 800: las iniciales van en Plex y el 800 no se carga ahi, asi
+       que el navegador engordaba el 700 a mano y salia emborronado. */
+    font-weight: 700;
     flex: none;
 }
 

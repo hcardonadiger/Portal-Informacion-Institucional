@@ -134,6 +134,23 @@
     --diger-text-4xl:  2.25rem;   /* 36px */
     --diger-text-5xl:  3rem;      /* 48px */
 
+    /* ── TIPOGRAFÍA: dos familias, repartidas por función ─────────────────
+       Mismo criterio que la paleta: el Manual de Marca (pág. 08) norma la
+       tipografía DE MARCA —los cortes del logotipo y los materiales
+       institucionales—, no una escala de interfaz. Poppins se queda donde
+       el manual de verdad gobierna; la interfaz densa usa una letra de
+       trabajo.
+
+       El motivo no es solo estético. Poppins es geométrica: sus cifras no
+       son tabulares, su 'I' y su 'l' se confunden, y a 12.5px en una tabla
+       de siete columnas rinde mal. Este portal está lleno de códigos
+       (EXP-INPR-2026-01) y de cifras que deben alinearse. Que ya hubiera
+       13 `font-variant-numeric: tabular-nums` puestos a mano en diger.css
+       dice que el problema se venía parcheando caso por caso. */
+    --diger-font-marca: 'Poppins', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --diger-font-ui:    'IBM Plex Sans', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --diger-font-mono:  'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
     --diger-weight-regular:   400;
     --diger-weight-medium:    500;
     --diger-weight-semibold:  600;
