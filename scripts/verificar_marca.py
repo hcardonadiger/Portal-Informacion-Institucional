@@ -106,10 +106,39 @@ def literales(texto: str) -> list[str]:
     return [m.lower() for m in re.findall(r"#[0-9a-fA-F]{6}\b", texto)]
 
 
+# El mismo color prohibido escrito como rgb()/rgba() no lleva almohadilla y
+# se escapaba del censo y de la comprobacion [1]: rgba(10, 45, 110, .12) es
+# #0a2d6e en decimal. Habia 39 asi, de modo que el guardian podia dar verde
+# con el color prohibido vivo. Se comprueban las dos escrituras.
+def _patron_rgb(hex_: str) -> re.Pattern:
+    h = hex_.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return re.compile(rf"rgba?\(\s*{r}\s*,\s*{g}\s*,\s*{b}\s*[,)]")
+
+
+PATRONES_RGB = {hex_: _patron_rgb(hex_) for hex_ in PROHIBIDOS}
+
+
+def funciones_rgb(texto: str) -> list[str]:
+    """Usos de un color PROHIBIDO escritos como rgb()/rgba()."""
+    hallados = []
+    for hex_, patron in PATRONES_RGB.items():
+        hallados += [hex_] * len(patron.findall(texto))
+    return hallados
+
+
 def censo() -> tuple[int, int]:
     en_css = sum(len(literales(f.read_text(encoding="utf-8", errors="replace")))
                  for f in archivos_css())
     en_vistas = sum(len(literales(f.read_text(encoding="utf-8", errors="replace")))
+                    for f in archivos_vista())
+    return en_css, en_vistas
+
+
+def censo_rgb() -> tuple[int, int]:
+    en_css = sum(len(funciones_rgb(f.read_text(encoding="utf-8", errors="replace").lower()))
+                 for f in archivos_css())
+    en_vistas = sum(len(funciones_rgb(f.read_text(encoding="utf-8", errors="replace").lower()))
                     for f in archivos_vista())
     return en_css, en_vistas
 
@@ -131,10 +160,13 @@ def main() -> int:
     print("[1] Colores prohibidos")
     for archivo in archivos_css() + archivos_vista():
         texto = archivo.read_text(encoding="utf-8", errors="replace").lower()
+        rel = archivo.relative_to(RAIZ)
         for hex_, motivo in PROHIBIDOS.items():
             if hex_ in texto:
-                rel = archivo.relative_to(RAIZ)
                 fallos.append(f"{rel}: {hex_} - {motivo}")
+            n = len(PATRONES_RGB[hex_].findall(texto))
+            if n:
+                fallos.append(f"{rel}: {hex_} escrito como rgb/rgba, {n} vez(ces) - {motivo}")
     for nombre in ("--diger-gold", "--diger-gold-light"):
         for archivo in archivos_css() + archivos_vista():
             if nombre in archivo.read_text(encoding="utf-8", errors="replace"):
@@ -173,8 +205,14 @@ def main() -> int:
         print(f"    {desc:34s} {r:5.2f}  {estado}")
 
     # -- 4. Censo -------------------------------------------------------
+    # El censo hex se deja intacto: tiene linea base guardada y la metrica de
+    # avance del plan es que baje monotonamente. Los rgb/rgba van en su propia
+    # cuenta para no mover ese numero bajo los pies de nadie.
     print("[4] Censo de literales hex")
     print(f"    css: {css_n}   vistas: {vistas_n}   total: {css_n + vistas_n}")
+    rgb_css, rgb_vistas = censo_rgb()
+    print(f"    prohibidos como rgb/rgba -> css: {rgb_css}   vistas: {rgb_vistas}"
+          f"   total: {rgb_css + rgb_vistas}")
 
     print()
     if fallos:
