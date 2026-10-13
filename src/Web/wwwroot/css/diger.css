@@ -145,7 +145,7 @@ table {
     color: var(--diger-blue-mid);
     background: var(--diger-blue-light);
     padding: 2px 8px;
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     text-decoration: none;
     white-space: nowrap;
     vertical-align: middle;
@@ -243,12 +243,14 @@ table {
     padding: var(--diger-space-6);
     margin-bottom: 1.25rem;
     box-shadow: var(--diger-shadow-sm);
-    transition: box-shadow .25s, transform .25s;
+    transition: border-color .15s;
 }
 
+/* Lengua de casa, apartado 8: la tarjeta se señala marcando el borde, no
+   levantándose. Una lista de expedientes se recorre comparando, y un elemento
+   que brinca bajo el cursor estorba justo en ese momento. */
 .card:hover {
-    box-shadow: 0 8px 28px rgba(2, 57, 94, .12);
-    transform: translateY(-1px);
+    border-color: var(--diger-blue-pale);
 }
 
 .stitle {
@@ -384,7 +386,7 @@ select.field-input:focus {
 
 /* ── BUTTONS ────────────────────────────────────────────────── */
 .btnp {
-    background: linear-gradient(135deg, var(--diger-blue), var(--diger-blue-dark));
+    background: var(--diger-blue);
     color: #fff;
     border: none;
     border-radius: var(--diger-radius-md);
@@ -395,14 +397,17 @@ select.field-input:focus {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    transition: all .2s;
-    box-shadow: var(--diger-shadow-lg);
+    transition: background-color .15s;
+    box-shadow: var(--diger-shadow-btn);
     text-decoration: none;
 }
 
+/* Lengua de casa, apartados 6 y 8: el botón tiene border: none, así que
+   "marcar el borde" no tiene dónde aplicarse — en un botón relleno el
+   equivalente honesto es oscurecer el relleno. La sombra de antes era
+   rgba(2,57,94,.4): el 40%, la más oscura de todo el portal. */
 .btnp:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(2, 57, 94, .4);
+    background: var(--diger-blue-dark);
 }
 
 .btnp:disabled {
@@ -548,20 +553,20 @@ select.field-input:focus {
     align-items: center;
     gap: 14px;
     box-shadow: var(--diger-shadow-sm);
-    transition: all .22s;
+    transition: border-color .15s;
 }
 
+/* Lengua de casa, apartado 8: ya marcaba el borde; solo se le quitó el
+   levante y la sombra md que lo acompañaba. */
 .hist-item:hover {
     border-color: var(--diger-blue-mid);
-    box-shadow: var(--diger-shadow-md);
-    transform: translateY(-1px);
 }
 
 .hist-avatar {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--diger-blue), var(--diger-blue-dark));
+    background: var(--diger-blue);
     color: #fff;
     font-size: var(--diger-fs-sm);
     font-weight: 800;
@@ -679,7 +684,7 @@ select.field-input:focus {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--diger-blue), var(--diger-blue-dark));
+    background: var(--diger-blue);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -718,7 +723,7 @@ select.field-input:focus {
     width: 90px;
     height: 90px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--diger-blue), var(--diger-blue-dark));
+    background: var(--diger-blue);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -773,12 +778,12 @@ select.field-input:focus {
 
 .ok-inst {
     display: inline-block;
-    background: linear-gradient(135deg, var(--diger-blue-light), #ddeeff);
+    background: var(--diger-blue-light);
     color: var(--diger-blue);
     font-weight: 700;
     font-size: var(--diger-fs-sm);
     padding: 6px 16px;
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     margin-bottom: 1.5rem;
     border: 1px solid #c0d0f0;
 }
@@ -808,7 +813,7 @@ select.field-input:focus {
     width: 34px;
     height: 34px;
     border-radius: var(--diger-radius-sm);
-    background: linear-gradient(135deg, var(--diger-blue-light), #d5e8ff);
+    background: var(--diger-blue-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -908,7 +913,7 @@ select.field-input:focus {
 
 .btn-doc-add {
     padding: 9px 18px;
-    background: linear-gradient(135deg, var(--diger-blue), var(--diger-blue-dark));
+    background: var(--diger-blue);
     color: #fff;
     border: none;
     border-radius: var(--diger-radius-sm);
@@ -996,7 +1001,7 @@ select.field-input:focus {
 
 /* ── MIEMBRO ────────────────────────────────────────────────── */
 .miembro {
-    background: linear-gradient(135deg, var(--diger-bg-blue), #eef2fc);
+    background: var(--diger-bg-blue);
     border: 1.5px solid var(--diger-blue-pale);
     border-radius: var(--diger-radius-md);
     padding: 14px;
@@ -1090,7 +1095,7 @@ tr.contacto-inactivo td {
     color: var(--diger-blue-mid);
     background: var(--diger-blue-light);
     border: 1px solid #c0d0f0;
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     padding: 2px 12px;
 }
 
@@ -2386,7 +2391,7 @@ tr.contacto-inactivo td {
     gap: 7px;
     padding: 6px 12px;
     border: 1px solid var(--diger-border);
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     background: var(--diger-surface);
     color: var(--diger-text-secondary);
     font-size: var(--diger-fs-sm);
@@ -2609,7 +2614,7 @@ tr.contacto-inactivo td {
     display: inline-flex;
     align-items: center;
     padding: 3px 10px;
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     font-size: var(--diger-fs-2xs);
     font-weight: 700;
     white-space: nowrap;
@@ -2857,7 +2862,7 @@ tr.contacto-inactivo td {
 .rol-badge {
     display: inline-flex;
     align-items: center;
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     font-weight: 700;
 }
 
@@ -2952,16 +2957,16 @@ tr.contacto-inactivo td {
 /* ── PROGRESS BAR ───────────────────────────────────────────── */
 .prog {
     background: var(--diger-bg);
-    border-radius: var(--diger-radius-pill);
+    border-radius: 2px;
     height: 10px;
     overflow: hidden;
     width: 100%;
 }
 
 .prog-bar {
-    background: linear-gradient(90deg, var(--diger-blue), var(--diger-blue-dark));
+    background: var(--diger-blue-mid);
     height: 100%;
-    border-radius: var(--diger-radius-pill);
+    border-radius: 2px;
     transition: width .4s;
 }
 
@@ -3021,17 +3026,19 @@ tr.contacto-inactivo td {
     min-width: 180px;
 }
 
+/* Lengua de casa, apartado 5: la tabla de registro no flota. Antes estaba
+   construida como una tarjeta —radio 12px, overflow: hidden y sombra— pero una
+   tabla de expedientes ES el contenido de la página, no un objeto encima de
+   ella. Sin caja, el oficio de separar lo hacen las reglas horizontales, y
+   recupera el ancho que la caja le quitaba al dato. */
 .seg-table {
     width: 100%;
     border-collapse: collapse;
-    background: var(--diger-surface);
-    border-radius: var(--diger-radius-md);
-    overflow: hidden;
-    box-shadow: var(--diger-shadow-sm);
 }
 
+/* Sin fondo, el encabezado tiene que sostenerse solo: lo hace la regla
+   inferior, más firme que las de las filas. */
 .seg-table th {
-    background: var(--diger-bg-blue);
     font-size: var(--diger-fs-xs);
     text-transform: uppercase;
     letter-spacing: .04em;
@@ -3039,11 +3046,12 @@ tr.contacto-inactivo td {
     text-align: left;
     padding: 11px 14px;
     font-weight: 700;
+    border-bottom: 1.5px solid var(--diger-text-muted);
 }
 
 .seg-table td {
     padding: 11px 14px;
-    border-top: 1px solid var(--diger-border-soft);
+    border-top: 1px solid var(--diger-border);
     font-size: var(--diger-fs-sm);
     color: var(--diger-text-strong);
     vertical-align: middle;
@@ -3475,7 +3483,7 @@ tr.contacto-inactivo td {
     padding: 6px 13px;
     background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     font-family: inherit;
     font-size: var(--diger-fs-sm);
     font-weight: 600;
@@ -3757,9 +3765,16 @@ tr.contacto-inactivo td {
     color: inherit;
 }
 
+/* Lengua de casa, apartado 3: el numeral era el acento visual más fuerte del
+   portal —peso 800 a 30px— puesto sobre un dato que rara vez es el más
+   importante de su pantalla. A 1.4rem y peso 600 se lee igual de rápido sin
+   gritar, y monoespaciado alinea entre tarjetas, que es lo que uno hace con
+   estas cifras: compararlas en columna. */
 .kpi-card .kpi-num {
-    font-size: var(--diger-text-3xl);
-    font-weight: 800;
+    font-size: 1.4rem;
+    font-weight: 600;
+    font-family: var(--diger-font-mono);
+    font-variant-numeric: tabular-nums;
     color: var(--diger-blue);
     line-height: 1.1;
 }
@@ -4273,7 +4288,7 @@ a.kpi-cell:hover .kpi-cell-arw {
     flex: 1;
     min-width: 40px;
     height: 6px;
-    border-radius: var(--diger-radius-pill);
+    border-radius: 2px;
     background: #eef1f6;
     overflow: hidden;
 }
@@ -4281,7 +4296,7 @@ a.kpi-cell:hover .kpi-cell-arw {
 .trm-barra > i {
     display: block;
     height: 100%;
-    border-radius: var(--diger-radius-pill);
+    border-radius: 2px;
     background: var(--sem-solido, var(--diger-blue-mid));
 }
 
@@ -4654,12 +4669,17 @@ a.kpi-cell:hover .kpi-cell-arw {
 /* ── Seguimiento de compromisos ─────────────────────────────── */
 .kpi-link {
     text-decoration: none;
-    transition: box-shadow .15s, transform .15s;
 }
 
-.kpi-link:hover {
-    box-shadow: 0 6px 18px rgba(2, 57, 94, .13);
-    transform: translateY(-1px);
+/* Lengua de casa, apartado 8: .kpi-link es un <a> sin borde propio, pero
+   envuelve a .kpi-card, que sí lo tiene. El borde que se marca es el de la
+   tarjeta de dentro. */
+.kpi-link .kpi-card {
+    transition: border-color .15s;
+}
+
+.kpi-link:hover .kpi-card {
+    border-color: var(--diger-blue-mid);
 }
 
 .seg-upd {
@@ -5101,7 +5121,7 @@ a.kpi-cell:hover .kpi-cell-arw {
     flex: 1;
     min-width: 0;
     height: 3px;
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     overflow: hidden;
     background: var(--diger-border-soft);
 }
@@ -5294,7 +5314,7 @@ a.kpi-cell:hover .kpi-cell-arw {
     cursor: pointer;
     background: none;
     border: 1px solid transparent;
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     padding: 3px 10px 3px 8px;
     transition: .14s;
 }
@@ -5447,7 +5467,7 @@ a.kpi-cell:hover .kpi-cell-arw {
 .seg-gbar>i {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, #0f8a6a, #12a67f);
+    background: var(--diger-blue-mid);
     width: 0;
     transition: width .3s;
 }
@@ -5578,7 +5598,7 @@ a.kpi-cell:hover .kpi-cell-arw {
 .est-btn {
     border: 1.5px solid var(--diger-border);
     background: var(--diger-surface);
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     padding: 3px 12px;
     font-size: var(--diger-fs-sm);
     font-weight: 600;
@@ -5623,7 +5643,7 @@ a.kpi-cell:hover .kpi-cell-arw {
     text-decoration: none;
     background: var(--diger-surface);
     border: 1.5px solid var(--diger-border);
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     padding: 5px 13px;
 }
 
@@ -5670,7 +5690,7 @@ a.kpi-cell:hover .kpi-cell-arw {
     color: #fff;
     font-weight: 800;
     letter-spacing: .02em;
-    background: linear-gradient(135deg, var(--diger-blue-mid), var(--diger-blue));
+    background: var(--diger-blue-mid);
 }
 
 .tkm-brand h1 {
@@ -5808,13 +5828,15 @@ a.kpi-cell:hover .kpi-cell-arw {
     border: 1px solid #dbe5ef;
     border-radius: var(--diger-radius-sm);
     padding: 14px 15px;
-    box-shadow: 0 8px 24px rgba(2, 57, 94, .08);
+    box-shadow: var(--diger-shadow-sm);
     cursor: pointer;
-    transition: transform .2s, box-shadow .2s;
+    transition: border-color .15s;
 }
+/* Lengua de casa, apartados 7 y 8: la sombra literal de 24px al 8% pasa al
+   token — es una superficie, no algo que flote — y el levante de 2px se
+   cambia por marca de borde. */
 .tkm-metric:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(2, 57, 94, .12);
+    border-color: var(--diger-blue-mid);
 }
 
 .tkm-metric span {
@@ -6141,7 +6163,7 @@ a.kpi-cell:hover .kpi-cell-arw {
 
 /* Pill de institución */
 .inst-pill {
-    display: inline-block; padding: 2px 9px; border-radius: var(--diger-radius-pill);
+    display: inline-block; padding: 2px 9px; border-radius: var(--diger-radius-sm);
     font-size: var(--diger-fs-sm); font-weight: 700; color: #fff; white-space: nowrap;
 }
 
@@ -6328,23 +6350,37 @@ textarea.form-control { resize: vertical; }
     .col-md-auto { grid-column: auto; width: max-content; align-self: end; }
 }
 
-/* ── Badge ───────────────────────────────────────────────────── */
+/* ── Badge ─────────────────────────────────────────────────────
+   Lengua de casa, apartado 4. El estado deja de ser una burbuja pastel y pasa
+   a ser tipografía: versalitas, sin fondo y sin caja.
+
+   El fondo de color tenía tres costos. Lo normal llamaba tanto la atención como
+   la excepción, de modo que el color no informaba nada. El pastel no sobrevive
+   a una impresión en blanco y negro, y estos expedientes se imprimen. Y una
+   fila con tres badges de colores distintos se vuelve ruido justo donde hace
+   falta comparar.
+
+   La regla que queda: el color significa EXCEPCIÓN. Lo normal —secondary y
+   light— se apaga en gris y baja de peso; solo warning, danger y success
+   conservan tono, y success lo conserva porque "vigente" a veces ES la
+   excepción que se busca. */
 .badge {
     display: inline-flex;
     align-items: center;
-    padding: 3px 9px;
-    border-radius: var(--diger-radius-sm);
-    font-size: var(--diger-fs-xs);
+    padding: 0;
+    font-size: var(--diger-fs-2xs);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
     white-space: nowrap;
 }
-.badge-success   { background: var(--diger-success-bg);  color: var(--diger-success-strong); }
-.badge-warning   { background: var(--diger-warning-bg);  color: var(--diger-warning-strong); }
-.badge-danger    { background: var(--diger-danger-bg);   color: var(--diger-danger-text); }
-.badge-info      { background: #dbeafe; color: #1e40af; }
-.badge-primary   { background: var(--diger-blue-light);  color: var(--diger-blue-mid); }
-.badge-secondary { background: var(--diger-border); color: var(--diger-text-slate-dark); }
-.badge-light     { background: #f8fafc; color: #64748b; border: 1px solid var(--diger-border); }
+.badge-success   { color: var(--diger-success-strong); }
+.badge-warning   { color: var(--diger-warning-strong); }
+.badge-danger    { color: var(--diger-danger-text); }
+.badge-info      { color: var(--diger-blue-mid); }
+.badge-primary   { color: var(--diger-blue-mid); }
+.badge-secondary { color: var(--diger-text-muted); font-weight: 500; }
+.badge-light     { color: var(--diger-text-muted); font-weight: 500; }
 
 /* ── Progress bar ────────────────────────────────────────────── */
 .progress {
@@ -6549,7 +6585,7 @@ textarea.form-control { resize: vertical; }
     max-width: 100%;
     padding: 1px 4px 1px 7px;
     border: 1px solid var(--diger-border);
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     background: var(--diger-border-soft);
     font-size: var(--diger-fs-xs);
     line-height: 1.5;
@@ -6614,7 +6650,10 @@ textarea.form-control { resize: vertical; }
     padding: 1.1rem 1.25rem;
     min-width: min(420px, 90vw);
     max-width: 92vw;
-    box-shadow: var(--diger-shadow-lg);
+    /* Lengua de casa, apartado 7: un diálogo es lo único del portal que de
+       verdad flota, así que lleva el token que lo dice. Al 18% de shadow-lg
+       dejaría de leerse como algo que está encima. */
+    box-shadow: var(--diger-shadow-float);
 }
 .dep-dialog::backdrop { background: rgba(15, 23, 42, .45); }
 .dep-dialog h3 { margin: 0 0 .35rem; }
@@ -6651,7 +6690,7 @@ textarea.form-control { resize: vertical; }
     font-weight: 700;
     color: var(--diger-text-muted);
     background: var(--diger-bg);
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     padding: 1px 7px;
     letter-spacing: 0;
 }
@@ -7021,7 +7060,7 @@ textarea.form-control { resize: vertical; }
     padding: 6px 13px;
     background: var(--diger-surface);
     border: 1px solid var(--diger-border);
-    border-radius: var(--diger-radius-pill);
+    border-radius: var(--diger-radius-sm);
     font-size: var(--diger-fs-sm);
     font-weight: 600;
     color: var(--diger-text-secondary);
@@ -7148,13 +7187,13 @@ textarea.form-control { resize: vertical; }
     border-radius: var(--diger-radius-lg);
     box-shadow: var(--diger-shadow-sm);
     text-decoration: none;
-    transition: box-shadow .25s, transform .25s, border-color .25s;
+    transition: border-color .15s;
 }
 
+/* Lengua de casa, apartado 8: ya marcaba el borde; se le quitó el levante
+   de 2px y la sombra de 28px que lo acompañaba. */
 .cat-card:hover {
     border-color: var(--diger-blue-mid);
-    box-shadow: 0 8px 28px rgba(2, 57, 94, .12);
-    transform: translateY(-2px);
 }
 
 .cat-card .cat-ico {

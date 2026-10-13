@@ -80,19 +80,47 @@
 
     /* Radios de borde — escala consolidada 2026-08-07 (ver DESIGN.md §3).
        sm agrupa el clúster 6-10px (inputs/botones pequeños, la mayoría del
-       CSS existente); md ya existía y absorbe 11-14px; lg promueve el 16px
-       de .card (la superficie base de casi todo el portal) a token en vez
-       de literal; pill sigue siendo 20px/99px (mismo resultado visual, un
-       pill se redondea al 50% de su alto sin importar cuál de los dos se use). */
+       CSS existente); md ya existía y absorbe 11-14px; pill sigue siendo
+       20px/99px (mismo resultado visual, un pill se redondea al 50% de su
+       alto sin importar cuál de los dos se use).
+
+       lg bajó de 16px a 8px el 2026-10-13 (lengua de casa, apartado 3). Nació
+       promoviendo a token el 16px de .card, que es la superficie base de 70 de
+       las 105 páginas: ese redondeo generoso, repetido en casi todo el portal,
+       era una de las dos cosas que lo hacían leerse como plantilla. sm se dejó
+       a propósito en 8px — la decisión fue endurecer la superficie grande, no
+       la geometría entera.
+
+       pill quedó reservado a lo que es un conteo: .chip-conteo, .ficha-tabs .n
+       y .dep-mas. Los avatares no lo usan (van a border-radius: 50%) y las
+       barras de progreso pasaron a 2px, porque 8px sobre una barra de 10px de
+       alto vuelve a ser casi un pill. */
     --diger-radius-sm: 8px;
     --diger-radius-md: 12px;
-    --diger-radius-lg: 16px;
+    --diger-radius-lg: 8px;
     --diger-radius-pill: 20px;
 
-    /* Sombras */
-    --diger-shadow-sm: 0 2px 8px rgba(2,57,94,.06);
+    /* Sombras — reafinadas el 2026-10-13 (lengua de casa, apartado 7).
+       Las tres de antes no formaban una escala: sm iba a 8px de desenfoque al
+       6%, md a 20px al 12%, y lg *reducía* el desenfoque a 14px pero subía al
+       30%. Es decir, lg no era más profunda que md: era más oscura. Deriva,
+       no diseño. Ahora sm y lg son monótonas respecto a md.
+
+       Los dos tokens de abajo existen porque un valor de la escala no servía
+       en su sitio, y forzarlo habría sido peor que nombrarlo:
+
+       -btn    el 7% de sm es literalmente invisible sobre el relleno
+               #02395e del botón primario. Si .btnp ha de tener un gramo de
+               relieve, necesita su propia opacidad.
+       -float  .dep-dialog es un diálogo: está encima de todo. Al 18% de lg
+               dejaría de leerse como algo que flota. La tesis del apartado 7
+               es que la profundidad signifique algo — y esto es lo único del
+               portal que de verdad flota. */
+    --diger-shadow-sm: 0 1px 3px rgba(2,57,94,.07);
     --diger-shadow-md: 0 6px 20px rgba(2,57,94,.12);
-    --diger-shadow-lg: 0 4px 14px rgba(2,57,94,.3);
+    --diger-shadow-lg: 0 2px 8px rgba(2,57,94,.18);
+    --diger-shadow-btn:   0 1px 2px rgba(2,42,69,.28);
+    --diger-shadow-float: 0 8px 28px rgba(2,57,94,.22);
 
     /* Anillo de foco (agregado 2026-08-07) — el "glow" que ya usan .field,
        .edit-grid, .lista-buscar, .form-control/.form-select y
@@ -230,7 +258,9 @@
     --diger-warning-bg:  #fef3c7;
     --diger-danger-bg:   #fee2e2;
 
-    --diger-shadow-sm: 0 2px 8px rgba(2,57,94,.06);
+    --diger-shadow-sm: 0 1px 3px rgba(2,57,94,.07);
     --diger-shadow-md: 0 6px 20px rgba(2,57,94,.12);
-    --diger-shadow-lg: 0 4px 14px rgba(2,57,94,.3);
+    --diger-shadow-lg: 0 2px 8px rgba(2,57,94,.18);
+    --diger-shadow-btn:   0 1px 2px rgba(2,42,69,.28);
+    --diger-shadow-float: 0 8px 28px rgba(2,57,94,.22);
 }
