@@ -43,8 +43,23 @@ del dato, y se queda.
 **El color significa excepción.** Lo normal no lleva color.
 
 Un estado se lee por **tipografía**: versalitas, `--diger-fs-2xs`, peso 700,
-`letter-spacing: .07em`, sin fondo y sin caja. `.badge-secondary` y `.badge-light`
-—lo normal— se apagan en `--diger-text-muted` y bajan a peso 500.
+`letter-spacing: .07em`, sin fondo y sin caja. Lo normal —`.badge-secondary`,
+`.badge-light`, `.wf-registrada`, `.est-legado`, los `.default` y `.gris`— se apaga
+en `--diger-text-muted` y baja a peso 500.
+
+**El portal tiene nueve familias de estado, y todas hablan este idioma**: `.badge`,
+`.status-badge`, `.est-pill`, `.prio-badge`, `.rol-badge`, `.wf-badge`,
+`.hist-badge`, `.edt-estado` (en `diger.css`) y `.ret-badge`, `.tb-badge` (en
+`expediente.css`). Se descubrieron contándolas: aplicar la doctrina a una sola
+—como se hizo al principio— no produce coherencia, produce **dos idiomas
+conviviendo en la misma pantalla**, que es peor que no haber hecho nada. Antes de
+tocar una familia de estado, busca si tiene hermanas.
+
+`.est-pill` conserva su nombre por historia: ya no es una píldora.
+
+**`.rpill` NO es de esta familia** aunque lo parezca: contiene un
+`input[type=radio]`. Es un control seleccionable, y un control se viste como
+control.
 
 El motivo no es estético. Un fondo pastel hace que lo normal llame tanto la atención
 como la excepción, de modo que el color deja de informar; no sobrevive a una
@@ -73,10 +88,18 @@ de la página, no un objeto encima de ella. El oficio de separar lo hacen las re
 horizontales, y el encabezado se sostiene con una regla inferior más firme que las de
 las filas.
 
-**Cero gradientes.** Un gradiente mete colores que nadie eligió: aparecen por
-interpolación. Si hace falta color, es uno de la paleta, plano.
+**Cero gradientes en superficie de dato.** Un gradiente mete colores que nadie
+eligió: aparecen por interpolación. Si hace falta color, es uno de la paleta, plano.
 
-> Comprobación: `grep -c gradient diger.css` → **0**.
+Sobreviven exactamente **dos**, y conviene saber por qué:
+
+- `.topbar` (`expediente.css`) — es la **cabecera de marca** del editor. Ésta es la
+  excepción que la regla nombra.
+- `.flow-node::after` — un conector de 2×10px cuyo degradado **es** un
+  desvanecido funcional, no ornamento de superficie.
+
+> Comprobación: `grep -c gradient diger.css` → **0**;
+> `grep -c gradient expediente.css` → **2**.
 
 ## 4. Movimiento
 
@@ -93,10 +116,25 @@ Al pasar el ratón se **marca el borde** (`--diger-blue-mid`, o `--diger-blue-pa
 - una **fila de tabla** tiñe el fondo (`.seg-table tr:hover td`), que es lo que hace
   cualquier hoja de cálculo, y por una razón.
 
-La animación de **aparición** de un modal (`transform: scale`) no es movimiento de
-hover y no se toca.
+La animación de **aparición** no es movimiento de hover y no se toca: los `scale`
+de modal en `diger.css`, y en `expediente.css` los `@keyframes fadeUp` / `famIn` y
+la entrada del `.toast`.
 
-> Comprobación: `grep -c translateY diger.css` → **0**.
+> Comprobación: `grep -c translateY diger.css` → **0**;
+> `grep -c translateY expediente.css` → **4**, todas de aparición.
+
+## 4 bis. El portal tiene más de una hoja de estilo
+
+`diger.css` (7,186 líneas) no es todo. También hay `expediente.css` (el editor de
+expedientes, escrito con una regla por línea), `modal.css`,
+`tramites-indicadores.css` y `afiche-qr.css`.
+
+**Medir solo `diger.css` da un falso verde.** Pasó: se declaró "cero gradientes,
+cero translateY" cuando `expediente.css` todavía tenía 8 y 6. Cualquier
+comprobación de esta lengua de casa corre sobre **todas** las hojas.
+
+`afiche-qr.css` queda **fuera**: es un afiche impreso, otra pieza con su propia
+decisión pendiente, y no se toca desde aquí.
 
 ## 5. Cifras y códigos
 

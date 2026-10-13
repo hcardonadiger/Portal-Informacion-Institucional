@@ -596,29 +596,20 @@ select.field-input:focus {
     gap: 10px;
 }
 
+/* Lengua de casa, apartado 4. Ver la nota de .badge: un estado es tipografía,
+   no una burbuja. */
 .hist-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 10px;
-    border-radius: var(--diger-radius-md);
-    font-size: var(--diger-fs-xs);
+    font-size: var(--diger-fs-2xs);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
 }
 
-.hist-badge.op {
-    background: var(--diger-success-bg);
-    color: var(--diger-success);
-}
-
-.hist-badge.proc {
-    background: var(--diger-warning-bg);
-    color: var(--diger-warning);
-}
-
-.hist-badge.ni {
-    background: var(--diger-danger-bg);
-    color: var(--diger-danger-text);
-}
+.hist-badge.op   { color: var(--diger-success-strong); }
+.hist-badge.proc { color: var(--diger-warning-strong); }
+.hist-badge.ni   { color: var(--diger-danger-text); }
 
 .hist-arrow {
     font-size: var(--diger-text-lg);
@@ -2279,40 +2270,24 @@ tr.contacto-inactivo td {
 }
 
 /* ── WORKFLOW BADGES ────────────────────────────────────────── */
+/* Lengua de casa, apartado 4. Ver la nota de .badge. "Registrada" es el
+   estado normal del flujo, así que se apaga: el color queda para lo que
+   pide atención. */
 .wf-badge {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 3px 11px;
-    border-radius: var(--diger-radius-md);
-    font-size: var(--diger-fs-xs);
+    font-size: var(--diger-fs-2xs);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
 }
 
-.wf-registrada {
-    background: var(--diger-border);
-    color: var(--diger-text-slate-dark);
-}
-
-.wf-asignada {
-    background: #dbeafe;
-    color: var(--diger-blue-mid);
-}
-
-.wf-enproceso {
-    background: var(--diger-warning-bg);
-    color: var(--diger-warning);
-}
-
-.wf-completada {
-    background: var(--diger-success-bg);
-    color: var(--diger-success);
-}
-
-.wf-cancelada {
-    background: var(--diger-danger-bg);
-    color: var(--diger-danger-text);
-}
+.wf-registrada { color: var(--diger-text-muted); font-weight: 500; }
+.wf-asignada   { color: var(--diger-blue-mid); }
+.wf-enproceso  { color: var(--diger-warning-strong); }
+.wf-completada { color: var(--diger-success-strong); }
+.wf-cancelada  { color: var(--diger-danger-text); }
 
 /* ══════════════════════════════════════════════════════════════════════
    LISTA CON CRUD — tabla de expedientes
@@ -2610,28 +2585,30 @@ tr.contacto-inactivo td {
    Vuelve la píldora, ahora con color semántico y a un solo renglón. La
    marca "Legado" ya no se repite en cada fila cuando el filtro Legados
    está activo: ahí es redundante, lo dice el filtro. */
+/* Lengua de casa, apartado 4. Ver la nota de .badge. El nombre .est-pill
+   quedó histórico: ya no es una píldora. */
 .est-pill {
     display: inline-flex;
     align-items: center;
-    padding: 3px 10px;
-    border-radius: var(--diger-radius-sm);
     font-size: var(--diger-fs-2xs);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
     white-space: nowrap;
 }
 
-.est-pill.wf-registrada  { background: var(--diger-border);        color: var(--diger-text-slate-dark); }
-.est-pill.wf-asignada    { background: var(--diger-blue-light);    color: var(--diger-blue-mid); }
-.est-pill.wf-enproceso   { background: var(--diger-warning-bg);    color: var(--diger-warning-strong); }
-.est-pill.wf-completada  { background: var(--diger-success-bg);    color: var(--diger-success); }
-.est-pill.wf-cancelada   { background: var(--diger-danger-bg);     color: var(--diger-danger-text); }
+.est-pill.wf-registrada  { color: var(--diger-text-muted); font-weight: 500; }
+.est-pill.wf-asignada    { color: var(--diger-blue-mid); }
+.est-pill.wf-enproceso   { color: var(--diger-warning-strong); }
+.est-pill.wf-completada  { color: var(--diger-success-strong); }
+.est-pill.wf-cancelada   { color: var(--diger-danger-text); }
 
 /* Legado es un estado, no una marca encima de otro estado. Va en gris de
    archivo: no es una fase del flujo —ninguna le aplica— sino un expediente
    que quedó fuera de la metodología nueva. */
 .est-pill.est-legado {
-    background: var(--diger-border);
-    color: var(--diger-text-slate-dark);
+    color: var(--diger-text-muted);
+    font-weight: 500;
 }
 
 /* Aviso de duplicado: solo el signo. Antes era una segunda caja debajo de la
@@ -2857,87 +2834,40 @@ tr.contacto-inactivo td {
 
 /* ── TICKET / USUARIO BADGES (estado, prioridad, rol) ───────── */
 /* ── TICKET / USUARIO BADGES (estado, prioridad, rol) ───────── */
+/* Lengua de casa, apartado 4. Ver la nota de .badge. Lo normal —default,
+   media— se apaga en gris y baja de peso; el color queda para lo que pide
+   atención. De paso salen ocho literales hex que no pertenecían a ninguna
+   de las tres capas de tokens.css. */
 .status-badge,
 .prio-badge,
 .rol-badge {
     display: inline-flex;
     align-items: center;
-    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-2xs);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
 }
 
-.status-badge.abierto {
-    background: var(--diger-blue-light);
-    color: var(--diger-blue-mid);
-}
+.status-badge.abierto   { color: var(--diger-blue-mid); }
+.status-badge.enproceso { color: var(--diger-warning-strong); }
+.status-badge.resuelto  { color: var(--diger-success-strong); }
+.status-badge.default   { color: var(--diger-text-muted); font-weight: 500; }
+.status-badge.vencido   { color: var(--diger-danger-strong); }
 
-.status-badge.enproceso {
-    background: #faeeda;
-    color: var(--diger-warning-strong);
-}
-
-.status-badge.resuelto {
-    background: #eaf3de;
-    color: #27500a;
-}
-
-.status-badge.default {
-    background: #f1efe8;
-    color: #444441;
-}
-
-.status-badge.vencido {
-    background: #fcebeb;
-    color: var(--diger-danger-strong);
-}
-
-.prio-badge.critica {
-    background: #fcebeb;
-    color: var(--diger-danger-strong);
-}
-
-.prio-badge.alta {
-    background: #faece7;
-    color: #993c1d;
-}
-
-.prio-badge.media {
-    background: var(--diger-blue-light);
-    color: var(--diger-blue-mid);
-}
-
-.prio-badge.default {
-    background: #f1efe8;
-    color: #5f5e5a;
-}
+.prio-badge.critica { color: var(--diger-danger-strong); }
+.prio-badge.alta    { color: var(--diger-warning-strong); }
+.prio-badge.media   { color: var(--diger-blue-mid); }
+.prio-badge.default { color: var(--diger-text-muted); font-weight: 500; }
 
 /* Paleta del catálogo de prioridades (ColorEtiqueta). Las de arriba —critica, alta, media,
    default— nombran un nivel y las sigue usando el módulo de tickets; estas nombran un color,
    porque quien administra el catálogo elige cómo se ve «Q3», no qué tan urgente es. */
-.prio-badge.rojo {
-    background: #fcebeb;
-    color: var(--diger-danger-strong);
-}
-
-.prio-badge.naranja {
-    background: #faece7;
-    color: #993c1d;
-}
-
-.prio-badge.azul {
-    background: var(--diger-blue-light);
-    color: var(--diger-blue-mid);
-}
-
-.prio-badge.verde {
-    background: #eaf3de;
-    color: #27500a;
-}
-
-.prio-badge.gris {
-    background: #f1efe8;
-    color: #5f5e5a;
-}
+.prio-badge.rojo    { color: var(--diger-danger-strong); }
+.prio-badge.naranja { color: var(--diger-warning-strong); }
+.prio-badge.azul    { color: var(--diger-blue-mid); }
+.prio-badge.verde   { color: var(--diger-success-strong); }
+.prio-badge.gris    { color: var(--diger-text-muted); font-weight: 500; }
 
 .rol-badge.admin {
     background: #eeedfe;
@@ -3344,8 +3274,13 @@ tr.contacto-inactivo td {
     min-width: 0;
 }
 
+/* Lengua de casa, apartado 4: ya no tenía caja; solo le faltaba hablar el
+   mismo idioma que los demás estados. */
 .edt-estado {
-    font-weight: 600;
+    font-size: var(--diger-fs-2xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
     color: var(--diger-text-strong);
 }
 
