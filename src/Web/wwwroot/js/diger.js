@@ -66,11 +66,32 @@ function toggleUserPanel() {
 function toggleMainNav(open) {
     var nav = document.getElementById('mainNav');
     var bd = document.getElementById('navBackdrop');
+    var btn = document.getElementById('navToggle');
     if (!nav) return;
     if (typeof open === 'undefined') open = !nav.classList.contains('open');
+
+    var yaEstaba = nav.classList.contains('open');
     nav.classList.toggle('open', open);
     if (bd) bd.classList.toggle('open', open);
     if (!open) closeAllNavGroups();
+
+    // El botón tiene que DECIR si está abierto: con el menú en cajón a
+    // cualquier ancho, un lector de pantalla no tiene otra forma de saberlo.
+    if (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    }
+
+    // El foco sigue al menú y vuelve al botón al cerrar. Sin esto, abrir con
+    // el teclado deja el foco detrás del cajón y hay que tabular a ciegas.
+    // Solo si el estado cambió de verdad: toggleMainNav(false) se llama en
+    // cada Escape y en cada clic fuera, y robaría el foco sin motivo.
+    if (open && !yaEstaba) {
+        var primero = nav.querySelector('button, [href]');
+        if (primero) primero.focus();
+    } else if (!open && yaEstaba && btn) {
+        btn.focus();
+    }
 }
 
 document.addEventListener('click', function (e) {

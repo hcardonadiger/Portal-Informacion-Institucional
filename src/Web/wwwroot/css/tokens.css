@@ -139,6 +139,12 @@
     /* Transición estándar (la mayoría de las reglas ya usa .2s/.22s/.25s) */
     --diger-transition: .2s;
 
+    /* Alto de la cabecera. No está fijado en .app-header —lo da su contenido,
+       y hoy mide 57px— pero el cajón del menú y su velo necesitan empezar
+       justo debajo para no tapar la hamburguesa que los abre y los cierra.
+       Si la cabecera cambia de alto, este es el único valor que mover. */
+    --diger-header-h: 57px;
+
     /* Escala de densidad propia de Trámites (agregada 2026-08-07). El CSS
        real de diger.css es mucho más chico que la tipografía del sitio
        público (tablas y badges densos, no contenido editorial) — migrar a

@@ -1680,73 +1680,105 @@ tr.contacto-inactivo td {
     color: var(--diger-blue-mid);
 }
 
+/* Empieza bajo la cabecera, no en el borde: si el velo tapara la
+   hamburguesa, el clic para cerrar caería en el velo y no en el botón. */
 .nav-backdrop {
     display: none;
     position: fixed;
-    inset: 0;
+    inset: var(--diger-header-h) 0 0 0;
     background: rgba(2, 57, 94, .35);
     z-index: 150;
 }
 
-/* Cabecera responsiva: menú lateral deslizable en pantallas pequeñas */
-@media (max-width: 900px) {
-    .nav-toggle {
-        display: flex;
-    }
+/* ══════════════════════════════════════════════════════════════════
+   MENÚ EN CAJÓN — a cualquier ancho desde el 2026-10-13
 
+   Esto ya existía, pero encerrado en @media (max-width: 900px): el cajón y
+   su hamburguesa solo aparecían en pantallas chicas, y arriba de 900px el
+   menú era una barra horizontal fija que no se podía cerrar.
+
+   Ahora es el único menú. Lo que se gana es el ancho de la cabecera —en
+   un portal de tablas densas, nueve grupos de navegación comiéndose la
+   fila superior son nueve cosas que el ojo tiene que saltar antes de
+   llegar al dato. Y lo que se abre, se cierra.
+
+   El cajón FLOTA, así que su fondo es --diger-panel y no --diger-surface:
+   en tema oscuro la superficie de contenido es translúcida a propósito y
+   dejaría pasar el texto de la página por detrás del menú.
+   ══════════════════════════════════════════════════════════════════ */
+.nav-toggle {
+    display: flex;
+}
+
+.main-nav {
+    position: fixed;
+    /* Bajo la cabecera, para que la hamburguesa siga a la vista y el mismo
+       botón que abre sea el que cierra. Con el cajón a pantalla completa
+       quedaba tapado y había que adivinar que el velo o Escape cerraban. */
+    top: var(--diger-header-h);
+    left: 0;
+    bottom: 0;
+    width: 264px;
+    background: var(--diger-panel);
+    border-right: 1px solid var(--diger-border);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 1rem .7rem;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    z-index: 200;
+    overflow-y: auto;
+    box-shadow: var(--diger-shadow-float);
+}
+
+.main-nav.open {
+    transform: translateX(0);
+}
+
+/* Dentro del cajón el fondo ya no es la barra navy, así que los botones
+   dejan el blanco y vuelven al color de texto. */
+.nav-group-btn {
+    width: 100%;
+    justify-content: space-between;
+    color: var(--diger-text-secondary);
+}
+
+.nav-group-btn:hover,
+.nav-group.on > .nav-group-btn,
+.nav-group.open > .nav-group-btn {
+    background: var(--diger-blue-light);
+    color: var(--diger-blue-mid);
+}
+
+/* Los submenús se despliegan en su sitio, no flotando al lado: dentro de
+   un cajón vertical un menú absoluto se saldría de la pantalla. */
+.nav-group-menu {
+    position: static;
+    display: block;
+    min-width: 0;
+    border: 0;
+    box-shadow: none;
+    padding: 0 0 .3rem .6rem;
+}
+
+.nav-caret {
+    display: none;
+}
+
+.nav-backdrop.open {
+    display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
     .main-nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        width: 264px;
-        background: var(--diger-surface);
-        flex-direction: column;
-        align-items: stretch;
-        gap: 2px;
-        padding: 1rem .7rem;
-        transform: translateX(-100%);
-        transition: transform .22s ease;
-        z-index: 200;
-        overflow-y: auto;
-        box-shadow: var(--diger-shadow-md);
+        transition: none;
     }
+}
 
-    .main-nav.open {
-        transform: translateX(0);
-    }
-
-    /* En el drawer móvil (fondo blanco) los botones vuelven a color de marca */
-    .nav-group-btn {
-        width: 100%;
-        justify-content: space-between;
-        color: var(--diger-text-secondary);
-    }
-
-    .nav-group-btn:hover,
-    .nav-group.on > .nav-group-btn,
-    .nav-group.open > .nav-group-btn {
-        background: var(--diger-blue-light);
-        color: var(--diger-blue-mid);
-    }
-
-    .nav-group-menu {
-        position: static;
-        display: block;
-        min-width: 0;
-        border: 0;
-        box-shadow: none;
-        padding: 0 0 .3rem .6rem;
-    }
-
-    .nav-caret {
-        display: none;
-    }
-
-    .nav-backdrop.open {
-        display: block;
-    }
-
+/* Lo que sigue siendo cosa de pantallas chicas: el nombre y el rol del
+   usuario junto al avatar, que ahí no caben. */
+@media (max-width: 900px) {
     .user-menu-meta {
         display: none;
     }
