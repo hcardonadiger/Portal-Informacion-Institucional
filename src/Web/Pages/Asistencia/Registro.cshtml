@@ -2,6 +2,11 @@
 @model Diger.TramitesEstado.Web.Pages.Asistencia.RegistroModel
 @{
     ViewData["Title"] = "Registro de asistencia";
+    // CLARA SIEMPRE. Esta es la página del QR: la abre gente de fuera, desde su
+    // teléfono, sin sesión. Es exactamente la que obligó a eliminar el modo
+    // oscuro el 2026-09-24, porque salía oscura cuando el JS del tema no
+    // alcanzaba a correr. No la ponga en tema oscuro.
+    ViewData["BodyClass"] = "";
     var r = Model.Reunion!;
 }
 

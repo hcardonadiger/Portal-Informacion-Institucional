@@ -6489,8 +6489,29 @@ textarea.form-control { resize: vertical; }
     outline-offset: 2px;
 }
 
-/* Acá vivía la variante oscura del modal de confirmación. Se eliminó el
-   2026-09-24 junto con el resto del modo oscuro; ver tokens.css. */
+/* Aquí vivía la variante oscura del modal de confirmación. Se eliminó el
+   2026-09-24 con el resto del modo oscuro, y vuelve el 2026-10-13 con el tema
+   de ámbito. Son los dos únicos sitios del portal que el tema no resolvía
+   solo, y por motivos distintos:
+
+   cancelar  tenía #f1f5f9 literal, así que se quedaba gris claro mientras el
+             texto se volvía claro: 1.54:1.
+   confirmar pone #fff sobre --diger-danger, que en oscuro es un salmón claro
+             (#f2868a) para poder leerse como texto. Blanco sobre salmón da
+             2.46, así que aquí el texto es el que se oscurece. */
+.tema-oscuro .dg-confirm-cancel {
+    background: none;
+    color: var(--diger-text-secondary);
+    border-color: var(--diger-border);
+}
+
+.tema-oscuro .dg-confirm-cancel:hover {
+    background: rgba(122, 203, 221, .10);
+}
+
+.tema-oscuro .dg-confirm-ok {
+    color: #050f1a;
+}
 
 
 /* ── Dependencias entre actividades (editor de proyectos) ──────────────────
@@ -7157,4 +7178,183 @@ textarea.form-control { resize: vertical; }
     font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
     line-height: 1.45;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TEMA OSCURO DE ÁMBITO — lo que los tokens no alcanzan a resolver
+
+   Casi todo se adapta solo: tokens.css redefine los valores dentro de
+   .tema-oscuro y los componentes, que leen var(--diger-*), siguen.
+   Aquí quedan las tres cosas que un token no puede arreglar.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 1. El fondo. La trama la genera scripts/generar_trama.py y se sirve
+      desde wwwroot: la CSP declara `img-src 'self' data:`, así que un
+      archivo propio entra y uno de la intranet no. Va fija para que no
+      se desplace con el scroll —una trama que corre detrás del texto
+      marea— y `cover` evita que se repita visiblemente. */
+body.tema-oscuro {
+    background-color: var(--diger-bg);
+    background-image: url("../img/trama-proyectos.svg");
+    background-size: cover;
+    background-position: center top;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+
+/* 2. El azul de marca no se lee sobre oscuro: #1a65a3 da 3.4:1 contra
+      #050f1a. El literal del Manual NO se toca —sigue siendo el color
+      de marca— pero el TEXTO azul pasa a la derivada que sí alcanza AA.
+      Son los siete selectores que pintan texto con --diger-blue-mid. */
+.tema-oscuro .badge-info,
+.tema-oscuro .badge-primary,
+.tema-oscuro .status-badge.abierto,
+.tema-oscuro .est-pill.wf-asignada,
+.tema-oscuro .wf-asignada,
+.tema-oscuro .prio-badge.azul,
+.tema-oscuro .prio-badge.media {
+    color: var(--diger-blue-sobre-oscuro);
+}
+
+/* 2b. Los rellenos de marca. En .tema-oscuro los nombres --diger-blue y
+       --diger-blue-mid llevan la luminosidad que se lee como TEXTO (ver la
+       nota larga en tokens.css). Estos treinta selectores son los que los
+       usaban como FONDO, donde el navy del Manual sí funciona porque es más
+       claro que el suelo. Se les devuelve el literal.
+
+       La lista salió de extraerlos, no de buscarlos a ojo:
+         awk '/\{/{s=$0} /background: *var\(--diger-blue(-mid)?\)/{print s}' */
+.tema-oscuro .app-header,
+.tema-oscuro .bar-fill,
+.tema-oscuro .bg-primary,
+.tema-oscuro .bib-seg.on,
+.tema-oscuro .btn-doc-add,
+.tema-oscuro .btnp,
+.tema-oscuro .btns-primary,
+.tema-oscuro .btns.on,
+.tema-oscuro .cal-add:hover,
+.tema-oscuro .cal-dia-hdr.es-hoy .cal-dia-num,
+.tema-oscuro .cal-today .cal-num,
+.tema-oscuro .check-wrap,
+.tema-oscuro .cuenta-nav-link.on,
+.tema-oscuro .diger-footer,
+.tema-oscuro .doc-btn-open,
+.tema-oscuro .ficha-tabs [role="tab"][aria-selected="true"],
+.tema-oscuro .g-m.enproceso,
+.tema-oscuro .gantt-barra.enproceso,
+.tema-oscuro .hilo-badge:hover,
+.tema-oscuro .hist-avatar,
+.tema-oscuro .iavt,
+.tema-oscuro .ic0,
+.tema-oscuro .nav-group-menu .nav-item.on,
+.tema-oscuro .nav-item.on,
+.tema-oscuro .prog-bar,
+.tema-oscuro .seg-gbar>i,
+.tema-oscuro .side-avatar,
+.tema-oscuro .side-link.on,
+.tema-oscuro .step-item.active .step-circle,
+.tema-oscuro .tkm-mark {
+    background: var(--diger-blue-fondo);
+}
+
+/* 2c. Lo que flota va sobre superficie opaca. .dg-confirm-box y compañía
+       leen --diger-surface, que aquí es translúcido a propósito para dejar
+       ver la trama; un diálogo con eso deja pasar el texto de la página por
+       detrás. --diger-panel existe justamente para esta distinción. */
+.tema-oscuro .dg-confirm-box,
+.tema-oscuro .side-user-panel,
+.tema-oscuro .dep-dialog,
+.tema-oscuro .modal-box,
+.tema-oscuro .seg-upd>div {
+    background: var(--diger-panel);
+}
+
+/* 2d. Los fondos claros escritos como literal. Son 33 y ningún token los
+       alcanzaba, así que en oscuro se quedaban casi blancos con el texto ya
+       claro encima. Agrupados por lo que HACEN, no por dónde están:
+
+         awk '/\{/{s=$0} /background: *#[a-f0-9]{6}/{ ...si es claro... print s }'
+
+       Si agrega un fondo claro literal, su sitio está en uno de estos cinco
+       grupos — o mejor, use un token y no hará falta tocarlos. */
+
+/* realce al pasar el ratón */
+.tema-oscuro .cal-dia-item:hover,
+.tema-oscuro .cal-ev:hover,
+.tema-oscuro a.kpi-cell:hover,
+.tema-oscuro .rpill:hover,
+.tema-oscuro .table-hover tr:hover td,
+.tema-oscuro .trow:hover,
+.tema-oscuro .tk-filebox:hover,
+.tema-oscuro .grupo-inst-hdr:hover,
+.tema-oscuro .tk-adj:hover {
+    background: rgba(122, 203, 221, .08);
+}
+
+/* superficie suave: cabeceras, cajas de apoyo, barras laterales */
+.tema-oscuro .app-sidebar,
+.tema-oscuro .card-header,
+.tema-oscuro .seg-etapa-head,
+.tema-oscuro .tkm-sla-box,
+.tema-oscuro .cal-ev-tag,
+.tema-oscuro .tk-adj,
+.tema-oscuro .kpi-cell-ico,
+.tema-oscuro .rol-badge.admin {
+    background: rgba(122, 203, 221, .05);
+}
+
+/* pistas: el canal vacío de una barra, la línea entre pasos */
+.tema-oscuro .seg-gbar,
+.tema-oscuro .trm-barra,
+.tema-oscuro .step-item:not(:last-child)::after,
+.tema-oscuro .cal-filtro.off .cal-dot {
+    background: rgba(122, 203, 221, .14);
+}
+
+/* tintes semánticos: van al token de su estado, que en oscuro ya es
+   translúcido sobre el suelo en vez de un pastel */
+.tema-oscuro .alert-error,
+.tema-oscuro .kpi-cell.is-crit,
+.tema-oscuro .table-danger > td {
+    background: var(--diger-danger-bg);
+}
+
+.tema-oscuro .alert-ok,
+.tema-oscuro .table-success > td,
+.tema-oscuro .rol-badge.default,
+.tema-oscuro .est-btn.est-2 {
+    background: var(--diger-success-bg);
+}
+
+.tema-oscuro .contacto-inactivo,
+.tema-oscuro .cal-chip.priv:hover,
+.tema-oscuro .cal-dia-item.priv:hover,
+.tema-oscuro .est-btn.est-1 {
+    background: var(--diger-warning-bg);
+}
+
+/* 3. El realce de la tabla. Sobre un fondo liso la tabla no necesita
+      caja —así quedó en la lengua de casa, apartado 5— pero sobre una
+      trama sí: sin un plano propio, el patrón corre por debajo de cada
+      celda y la lectura densa se cansa. Es un realce, no una tarjeta:
+      celeste al 5%, borde de un píxel, sin radio y sin sombra. Deja ver
+      la trama en vez de taparla. */
+.tema-oscuro .seg-table {
+    background: rgba(122, 203, 221, .05);
+    border: 1px solid rgba(122, 203, 221, .16);
+}
+
+/* Impresión: estos proyectos se imprimen, y un fondo oscuro sale como
+   una mancha de tinta. Se devuelve todo a papel blanco. */
+@media print {
+    body.tema-oscuro {
+        background-image: none;
+        background-color: #fff;
+        color: #000;
+    }
+
+    .tema-oscuro .seg-table {
+        background: none;
+        border: 1px solid #999;
+    }
 }

@@ -88,7 +88,20 @@
         <style>:root { --diger-blue: @instColor; --diger-blue-dark: @instColor; --diger-blue-mid: @instColor; }</style>
     }
 </head>
-<body>
+@{
+    // Tema oscuro en todo el portal (2026-10-13). Se escribe en el SERVIDOR a
+    // propósito: el modo oscuro anterior dependía de que el JS pusiera
+    // data-theme antes de las hojas de estilo, y cuando no corría, el registro
+    // público de asistencia salía oscuro. Esto no puede fallar así, porque no
+    // hay JS de por medio.
+    //
+    // Una página se sale poniendo ViewData["BodyClass"] = "". Hoy solo lo hace
+    // Asistencia/Registro, que es el QR público: lo abre gente de fuera, desde
+    // su teléfono, y tiene que salir claro siempre. Si agrega otra página
+    // pública que use este layout, exímala ahí también.
+    var claseCuerpo = ViewData["BodyClass"] as string ?? "tema-oscuro";
+}
+<body class="@claseCuerpo">
     <partial name="_IconSprite" />
     @if (User.Identity?.IsAuthenticated == true)
     {
@@ -542,7 +555,10 @@
 .notif-panel {
     position: absolute; top: calc(100% + 8px); right: 0;
     width: 340px; max-height: 480px;
-    background: #fff; border: 1.5px solid var(--diger-border);
+    /* --diger-panel, no --diger-surface: este panel FLOTA sobre la página.
+       Era #fff literal, así que en tema oscuro se quedaba blanco mientras el
+       texto se volvía claro, y no se leía nada. */
+    background: var(--diger-panel); border: 1.5px solid var(--diger-border);
     border-radius: 12px; box-shadow: var(--diger-shadow-md);
     display: flex; flex-direction: column;
     z-index: 900; overflow: hidden;

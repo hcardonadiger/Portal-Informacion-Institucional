@@ -163,6 +163,46 @@ de su pantalla.
 
 ---
 
+## 7. El portal es oscuro (2026-10-13)
+
+Todo el portal usa `.tema-oscuro`, la clase que `_Layout` pone en `<body>` por
+defecto. Suelo `#050f1a` con una trama de nodos de fondo, y la tabla como
+**realce translúcido** —celeste al 5% con borde de 1px, sin radio y sin sombra—
+que deja ver la trama en vez de taparla.
+
+**Esto no es el modo oscuro que se eliminó.** Aquel era conmutable por el
+usuario y dependía de que el JS escribiera `data-theme` antes de las hojas de
+estilo; cuando no corría, el registro público de asistencia salía oscuro. Éste
+se declara en el servidor, sin JS. **`Asistencia/Registro` sigue claro** con
+`ViewData["BodyClass"] = ""`: es el QR público, lo abre gente de fuera. Toda
+página pública nueva que use `_Layout` tiene que eximirse igual.
+
+**El azul de marca cambia de papel, no de tono.** Dentro del ámbito oscuro
+`--diger-blue` y `--diger-blue-mid` llevan la luminosidad que se lee como texto
+(`#8fc4e8`, `#4e9ad6`), y el relleno va en `--diger-blue-fondo` (`#0d4d7a`).
+Los tres están dentro de 1° del tono del Manual, que es exactamente para lo que
+existe la capa derivada. El literal puro no servía en ninguno de los dos
+papeles: como texto da 1.6:1, y como relleno queda tan cerca del suelo que un
+avatar de 30px pierde el círculo.
+
+**Una superficie que flota es opaca** (`--diger-panel`, `#0b1f33`); una de
+contenido puede ser translúcida. En claro ambas eran `#fff` y la distinción no
+existía; sobre una trama sí importa, porque un diálogo translúcido deja pasar el
+texto de la página por detrás.
+
+**La excepción al apartado 5.** Allí se dijo que la tabla no lleva caja. Sobre
+una trama sí: sin un plano propio el patrón corre bajo cada celda y la lectura
+densa se cansa. Es un realce, no una tarjeta.
+
+**Cómo se verifica.** No a ojo: se le pregunta a la página. El censo recorre
+cada nodo de texto visible, resuelve su fondo efectivo subiendo por los
+ancestros y calcula el contraste. Así aparecieron los 33 fondos claros escritos
+como literal que ningún token alcanzaba, y los dos botones del modal de
+confirmación. Los pares del tema están en `PARES_AA` del guardián.
+
+> Comprobación: ninguna pantalla debe tener nodos por debajo de 4.5:1.
+> Medido: `/Tableros` 0 de 94, `/Instituciones` 0 de 242, `/Proyectos` 0 de 160.
+
 ## Lo que esta lengua de casa NO decide
 
 - La **paleta**: la gobierna el Manual de Marca y `scripts/verificar_marca.py`.

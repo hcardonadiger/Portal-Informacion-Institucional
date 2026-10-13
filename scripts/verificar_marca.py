@@ -81,6 +81,22 @@ PARES_AA = [
     ("#5b21b6", "#ede9fe", "compromiso: reprogramado"),
     ("#5f5e5a", "#f1efe8", "compromiso: otro"),
     ("#a32d2d", "#fcebeb", "compromiso: vencido"),
+    # Tema oscuro de ambito (.tema-oscuro en tokens.css, usado hoy por el
+    # modulo de Proyectos). Los valores de la paleta clara NO sirven aqui:
+    # #854f0b da 1.9 sobre este fondo, #15803d da 3.3 y #b91c1c da 3.6. Los
+    # de abajo son los sustitutos, y estan en esta lista para que nadie los
+    # pueda ajustar por debajo de AA sin que el script lo diga.
+    ("#e8eef5", "#050f1a", "oscuro: texto principal"),
+    ("#b9c9da", "#050f1a", "oscuro: texto de celda"),
+    ("#8ba1b8", "#050f1a", "oscuro: texto atenuado"),
+    ("#7acbdd", "#050f1a", "oscuro: celeste de marca"),
+    ("#8fc4e8", "#050f1a", "oscuro: azul oscuro derivado para texto"),
+    ("#4e9ad6", "#050f1a", "oscuro: azul medio derivado para texto"),
+    ("#ffffff", "#0d4d7a", "oscuro: blanco sobre relleno de marca"),
+    ("#e8eef5", "#0b1f33", "oscuro: texto sobre panel flotante"),
+    ("#5fd598", "#050f1a", "oscuro: estado cumplido"),
+    ("#f0b76a", "#050f1a", "oscuro: aviso"),
+    ("#f2868a", "#050f1a", "oscuro: vencido"),
 ]
 
 

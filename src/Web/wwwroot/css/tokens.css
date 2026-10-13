@@ -40,6 +40,11 @@
     --diger-bg: #eef1f7;
     --diger-bg-soft: #fafbfd;
     --diger-surface: #fff;          /* fondo de card/modal/panel (agregado 2026-08-07) — antes literal #fff repetido 54 veces */
+    /* Superficie que FLOTA (panel, menú, modal). En claro coincide con
+       --diger-surface, pero en oscuro no puede: una superficie de contenido
+       puede ser translúcida y dejar ver la trama; una que flota encima tiene
+       que ser opaca o el texto de abajo se le mete. Ver .tema-oscuro. */
+    --diger-panel: #fff;
 
     /* Color — estado semántico */
     --diger-success: #15803d;
@@ -233,6 +238,7 @@
 
     --diger-bg:          #eef1f7;
     --diger-bg-soft:     #fafbfd;
+    --diger-panel:       #fff;
     --diger-surface:     #fff;
     --diger-border:      #e2e8f0;
     --diger-border-soft: #f2f5f9;
@@ -263,4 +269,113 @@
     --diger-shadow-lg: 0 2px 8px rgba(2,57,94,.18);
     --diger-shadow-btn:   0 1px 2px rgba(2,42,69,.28);
     --diger-shadow-float: 0 8px 28px rgba(2,57,94,.22);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TEMA OSCURO DE ÁMBITO — agregado 2026-10-13
+
+   No es el modo oscuro que se eliminó el 2026-09-24. Aquel era un tema
+   CONMUTABLE por el usuario, y su falla era que el registro público de
+   asistencia salía oscuro cuando el JS que escribía data-theme no
+   alcanzaba a correr. Esto es lo contrario: una clase que la página
+   declara en el servidor, sin JS de por medio y sin preferencia que
+   consultar. Si el JS no corre, la página sale oscura igual, porque
+   siempre lo fue.
+
+   Funciona redefiniendo tokens, no reescribiendo componentes: como todo
+   diger.css lee var(--diger-*), basta con cambiar los valores dentro del
+   ámbito para que la tabla, las tarjetas, los campos y los estados se
+   adapten solos.
+
+   EL AZUL DE MARCA CAMBIA DE PAPEL, NO DE TONO. Esto merece explicación
+   porque contradice la regla de arriba, y a propósito.
+
+   El azul oscuro del Manual sirve para dos cosas incompatibles sobre
+   fondo oscuro: como RELLENO funciona (es más claro que el suelo), pero
+   como TEXTO da 1.6:1 y es invisible. Y el portal lo usa 67 veces como
+   color y 22 como fondo; el azul medio, 83 y 8. Parchear los 150 textos
+   uno por uno era inviable y habría que repetirlo con cada regla nueva.
+
+   Así que dentro de este ámbito los nombres --diger-blue y
+   --diger-blue-mid llevan la luminosidad que SÍ se lee como texto, y el
+   literal del Manual se conserva intacto en --diger-blue-fondo, que es
+   el que usan los 30 rellenos (ver el bloque de diger.css que los
+   enumera). El tono no se mueve: 204.3° contra 204°, y 206.5° contra
+   207°, ambos dentro de la tolerancia de 8° que verifica
+   scripts/verificar_marca.py. Es exactamente lo que la capa derivada
+   existe para hacer — mismo tono, otra luminosidad — aplicado a un
+   fondo que la paleta clara no contemplaba.
+
+   En el tema claro nada de esto cambia: ahí los literales del Manual
+   siguen donde siempre.
+
+   Los valores de estado son capa función, calculados para AA sobre
+   #050f1a. Sus pares están en PARES_AA del guardián: si alguien los
+   ajusta y bajan de 4.5, el script falla.
+   ══════════════════════════════════════════════════════════════════ */
+.tema-oscuro {
+    color-scheme: dark;
+
+    /* El relleno de marca, levantado. El literal del Manual (#02395e) queda a
+       solo unos puntos de luminancia del suelo #050f1a: un botón grande con
+       texto blanco todavía se lee, pero un avatar de 30px pierde el círculo —
+       se ve el texto flotando. Mismo tono (204.8° contra 204°), otra
+       luminosidad: la capa derivada otra vez, ahora del lado del relleno. */
+    --diger-blue-fondo: #0d4d7a;
+
+    /* Derivada: los azules que SÍ se leen como texto sobre oscuro */
+    --diger-blue:              #8fc4e8;
+    --diger-blue-mid:          #4e9ad6;
+    --diger-blue-sobre-oscuro: #4e9ad6;
+
+    /* Tintes: en claro son casi blancos y aquí taparían la trama */
+    --diger-blue-light: rgba(122, 203, 221, .12);
+    --diger-blue-pale:  rgba(122, 203, 221, .30);
+
+    /* Suelo y superficies. El realce de la tabla es celeste al 5%: sobre
+       la trama tiene que dejarla ver, no taparla. */
+    --diger-bg:            #050f1a;
+    --diger-bg-soft:       #071726;
+    --diger-surface:       rgba(122, 203, 221, .05);
+    /* Aquí se separan: la superficie de contenido es translúcida y deja ver
+       la trama; la que flota tiene que ser opaca o el texto de abajo se le
+       mete por detrás. En claro ambas eran #fff y la diferencia no existía. */
+    --diger-panel:         #0b1f33;
+    --diger-bg-blue:       rgba(122, 203, 221, .05);
+    --diger-bg-blue-alt:   rgba(122, 203, 221, .09);
+    --diger-bg-blue-pale:  rgba(122, 203, 221, .04);
+    --diger-border:        rgba(122, 203, 221, .16);
+    --diger-border-soft:   rgba(122, 203, 221, .10);
+
+    /* Texto. Los cuatro alcanzan AA sobre #050f1a. */
+    --diger-text:            #e8eef5;
+    --diger-text-strong:     #ffffff;
+    --diger-text-secondary:  #b9c9da;
+    --diger-text-muted:      #8ba1b8;
+    --diger-text-faint:      #6f879f;
+    --diger-text-slate:      #8ba1b8;
+    --diger-text-slate-dark: #b9c9da;
+
+    /* Estados. Los de la paleta clara (#854f0b, #15803d, #b91c1c) quedan
+       por debajo de AA sobre este fondo. */
+    --diger-success:        #5fd598;
+    --diger-success-strong: #5fd598;
+    --diger-success-bg:     rgba(95, 213, 152, .12);
+    --diger-warning:        #f0b76a;
+    --diger-warning-strong: #f0b76a;
+    --diger-warning-bg:     rgba(240, 183, 106, .12);
+    --diger-privado:        #f0b76a;
+    --diger-danger:         #f2868a;
+    --diger-danger-text:    #f2868a;
+    --diger-danger-strong:  #f2868a;
+    --diger-danger-bg:      rgba(242, 134, 138, .12);
+
+    /* Sombras: sobre oscuro una sombra negra no se ve. Lo que separa un
+       plano de otro aquí es el borde, no la profundidad. */
+    --diger-shadow-sm:    0 1px 3px rgba(0, 0, 0, .35);
+    --diger-shadow-md:    0 6px 20px rgba(0, 0, 0, .45);
+    --diger-shadow-lg:    0 2px 8px rgba(0, 0, 0, .40);
+    --diger-shadow-btn:   0 1px 2px rgba(0, 0, 0, .45);
+    --diger-shadow-float: 0 8px 28px rgba(0, 0, 0, .55);
+    --diger-ring:         0 0 0 4px rgba(122, 203, 221, .22);
 }
