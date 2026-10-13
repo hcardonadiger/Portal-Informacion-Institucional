@@ -42,6 +42,7 @@ public sealed class AppDbContext(
     public DbSet<TicketComentario>         TicketComentarios  { get; init; } = default!;
     public DbSet<CategoriaTicket>          CategoriasTicket   { get; init; } = default!;
     public DbSet<TemaTicket>               TemasTicket        { get; init; } = default!;
+    public DbSet<PrioridadTicket>          PrioridadesTicket  { get; init; } = default!;
     public DbSet<UsuarioTema>              UsuarioTemas         { get; init; } = default!;
     public DbSet<RolModuloAcceso>          RolModuloAccesos     { get; init; } = default!;
     public DbSet<Rol>                      Roles                { get; init; } = default!;
@@ -70,6 +71,8 @@ public sealed class AppDbContext(
     public DbSet<TareaDigitalizacionSiger>  TareasDigitalizacionSiger { get; init; } = default!;
     public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
     public DbSet<Proyecto>                  Proyectos             { get; init; } = default!;
+    public DbSet<PrioridadProyecto>         PrioridadesProyecto   { get; init; } = default!;
+    public DbSet<CategoriaProyecto>         CategoriasProyecto    { get; init; } = default!;
     public DbSet<EntregableProyecto>        ProyectoEntregables   { get; init; } = default!;
     public DbSet<ActividadProyecto>         ProyectoActividades   { get; init; } = default!;
     public DbSet<AvanceProyecto>            ProyectoAvances       { get; init; } = default!;
@@ -1038,7 +1041,6 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
         b.Property(x => x.Descripcion).HasMaxLength(4000);
         b.Property(x => x.TemaOtro).HasMaxLength(200);
-        b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Institucion).HasMaxLength(120);
         b.Property(x => x.ExpedienteCodigo).HasMaxLength(40);
@@ -1052,6 +1054,12 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         b.HasIndex(x => x.Numero).IsUnique();
         b.HasIndex(x => x.Estado);
         b.HasIndex(x => x.CreatedAt);
+        b.HasIndex(x => x.PrioridadId);
+
+        // El ticket apunta al catálogo de prioridades. Restrict y no Cascade: borrar una
+        // prioridad no puede llevarse por delante los tickets que la tienen.
+        b.HasOne(x => x.PrioridadRef).WithMany()
+            .HasForeignKey(x => x.PrioridadId).OnDelete(DeleteBehavior.Restrict);
 
         b.HasOne<Institucion>().WithMany()
             .HasForeignKey(x => x.InstitucionId).OnDelete(DeleteBehavior.SetNull);
@@ -1199,6 +1207,25 @@ public sealed class CategoriaTicketConfiguration : IEntityTypeConfiguration<Cate
         b.Property(x => x.Nombre).HasMaxLength(80).IsRequired();
         b.Property(x => x.Activo).HasDefaultValue(true);
         b.HasIndex(x => x.Nombre).IsUnique();
+    }
+}
+
+public sealed class PrioridadTicketConfiguration : IEntityTypeConfiguration<PrioridadTicket>
+{
+    public void Configure(EntityTypeBuilder<PrioridadTicket> b)
+    {
+        b.ToTable("PrioridadesTicket");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(40).IsRequired();
+        b.Property(x => x.Color).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Orden).HasDefaultValue(0);
+        b.Property(x => x.Activo).HasDefaultValue(true);
+        b.Property(x => x.EsPredeterminada).HasDefaultValue(false);
+        b.Property(x => x.EsCritica).HasDefaultValue(false);
+        b.HasIndex(x => x.Nombre).IsUnique();
+        // Ordenar por Orden es lo que hace toda pantalla que la muestre.
+        b.HasIndex(x => x.Orden);
     }
 }
 
@@ -1732,6 +1759,40 @@ public sealed class ConciliacionSigerConfiguration : IEntityTypeConfiguration<Co
 }
 
 // ── Seguimiento de proyectos internos ─────────────────────────────────────
+public sealed class CategoriaProyectoConfiguration : IEntityTypeConfiguration<CategoriaProyecto>
+{
+    public void Configure(EntityTypeBuilder<CategoriaProyecto> b)
+    {
+        b.ToTable("CategoriasProyecto");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(60).IsRequired();
+        b.Property(x => x.Color).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Orden).HasDefaultValue(0);
+        b.Property(x => x.Activo).HasDefaultValue(true);
+        b.HasIndex(x => x.Nombre).IsUnique();
+        b.HasIndex(x => x.Orden);
+    }
+}
+
+public sealed class PrioridadProyectoConfiguration : IEntityTypeConfiguration<PrioridadProyecto>
+{
+    public void Configure(EntityTypeBuilder<PrioridadProyecto> b)
+    {
+        b.ToTable("PrioridadesProyecto");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(40).IsRequired();
+        b.Property(x => x.Color).HasConversion<string>().HasMaxLength(20).IsRequired();
+        b.Property(x => x.Orden).HasDefaultValue(0);
+        b.Property(x => x.Activo).HasDefaultValue(true);
+        b.Property(x => x.EsPredeterminada).HasDefaultValue(false);
+        b.HasIndex(x => x.Nombre).IsUnique();
+        // Ordenar por Orden es lo que hace toda pantalla que la muestre.
+        b.HasIndex(x => x.Orden);
+    }
+}
+
 // El filtro de Proyecto (arriba, junto a los demás) solo excluye los borrados: a propósito no
 // lleva rama de alcance, porque son proyectos de DIGER y no hay InstitucionId del que colgarla.
 // Quién los ve lo decide el permiso Proyectos.Ver. Ver el XML doc de la entidad Proyecto.
@@ -1752,8 +1813,20 @@ public sealed class ProyectoConfiguration : IEntityTypeConfiguration<Proyecto>
         // El filtro de alcance entra por acá, así que conviene que el ancla esté indexada.
         b.HasIndex(x => x.InstitucionId);
         b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(30);
-        b.Property(x => x.Prioridad).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Accion).HasConversion<string>().HasMaxLength(20);
+
+        // El proyecto apunta al catálogo de prioridades. Restrict y no Cascade: borrar una
+        // prioridad no puede llevarse por delante los proyectos que la tienen. El módulo lo
+        // impide antes de llegar acá; esto es la red por debajo, por si alguien borra a mano.
+        b.HasOne(x => x.PrioridadRef).WithMany()
+            .HasForeignKey(x => x.PrioridadId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => x.PrioridadId);
+
+        // La categoría sí admite nulo —es opcional— pero se borra con el mismo cuidado: Restrict,
+        // para que quitar una categoría no toque los proyectos que la tienen.
+        b.HasOne(x => x.CategoriaRef).WithMany()
+            .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => x.CategoriaId);
 
         // Filtrado: el índice único va sobre los vivos, porque el borrado es lógico y un código
         // liberado por un borrado tiene que poder reutilizarse.

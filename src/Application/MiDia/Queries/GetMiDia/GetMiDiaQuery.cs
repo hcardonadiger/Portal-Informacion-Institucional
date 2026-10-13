@@ -149,7 +149,9 @@ public sealed class GetMiDiaQueryHandler(
                    && (t.Estado == EstadoTicket.Abierto || t.Estado == EstadoTicket.EnProgreso)
                 select new
                 {
-                    t.Id, t.Numero, t.Titulo, t.Estado, t.Prioridad, t.CreatedAt,
+                    t.Id, t.Numero, t.Titulo, t.Estado, t.CreatedAt,
+                    // La prioridad es del catálogo desde 2026-09-18: se lee su nombre, no un enum.
+                    Prioridad = t.PrioridadRef!.Nombre,
                     Tema      = ctx.TemasTicket.Where(m => m.Id == t.TemaId).Select(m => m.Nombre).FirstOrDefault(),
                     HorasSla  = ctx.TemasTicket.Where(m => m.Id == t.TemaId).Select(m => (int?)m.HorasResolucion).FirstOrDefault(),
                     t.TemaOtro

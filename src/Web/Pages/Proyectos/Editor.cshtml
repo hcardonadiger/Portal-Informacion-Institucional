@@ -811,10 +811,10 @@
                     </div>
                     <div class="field" style="width:150px">
                         <label for="f-prio">Prioridad</label>
-                        <select id="f-prio" name="Prioridad" disabled="@(!Model.PuedeEditar)">
-                            @foreach (var pr in Enum.GetValues<PrioridadProyecto>())
+                        <select id="f-prio" name="PrioridadId" disabled="@(!Model.PuedeEditar)">
+                            @foreach (var pr in Model.Prioridades)
                             {
-                                <option value="@((int)pr)" selected="@(Model.Prioridad == pr)">@pr</option>
+                                <option value="@pr.Id" selected="@(Model.PrioridadId == pr.Id)">@pr.Nombre</option>
                             }
                         </select>
                     </div>
@@ -830,6 +830,19 @@
                             }
                         </select>
                         <div class="res-meta" style="margin-top:4px">Qué hacemos nosotros en el proyecto, no de qué trata.</div>
+                    </div>
+                    @* De qué trata, que es la otra mitad de la pregunta que responde Acción.
+                       Opcional por el mismo motivo: vacía significa que nadie lo clasificó. *@
+                    <div class="field" style="width:190px">
+                        <label for="f-categoria">Categoría</label>
+                        <select id="f-categoria" name="CategoriaId" disabled="@(!Model.PuedeEditar)">
+                            <option value="">— Sin clasificar —</option>
+                            @foreach (var ca in Model.CategoriasProyecto)
+                            {
+                                <option value="@ca.Id" selected="@(Model.CategoriaId == ca.Id)">@ca.Nombre</option>
+                            }
+                        </select>
+                        <div class="res-meta" style="margin-top:4px">De qué trata el proyecto.</div>
                     </div>
                     <div class="field" style="width:170px">
                         <label for="f-ini">Inicio planificado</label>

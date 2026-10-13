@@ -135,23 +135,12 @@ builder.Services
         opts.ExpireTimeSpan   = TimeSpan.FromHours(builder.Configuration.GetValue("Auth:CookieExpirationHours", 8));
         opts.SlidingExpiration = true;
         
-        // Compartir la cookie de sesión entre el subdominio cert.* y el dominio principal
-        opts.Events = new CookieAuthenticationEvents
-        {
-            OnSigningIn = context =>
-            {
-                var host = context.Request.Host.Host;
-                // Si el host es una IP pura (ej. 192.168.x.x), NO configuramos un dominio
-                // porque los navegadores rechazan cookies de dominio ".192.168.x.x".
-                // Las cookies por defecto se comparten entre puertos de la misma IP.
-                if (host != "localhost" && host.Contains('.') && !System.Net.IPAddress.TryParse(host, out _))
-                {
-                    var mainDomain = host.StartsWith("cert.") ? host.Substring(5) : host;
-                    context.CookieOptions.Domain = "." + mainDomain;
-                }
-                return Task.CompletedTask;
-            }
-        };
+        // Compartir la cookie de sesión entre el subdominio cert.* y el dominio principal.
+        // El dominio se aplica en el CookieManager y no en OnSigningIn: así lo llevan
+        // también la renovación automática de SlidingExpiration y el cierre de sesión,
+        // que antes lo perdían y dejaban la sesión sin poder cerrarse desde el nombre de
+        // dominio. Ver CookieDeSesionPorHost.
+        opts.CookieManager = new CookieDeSesionPorHost();
     });
 
 // Todas las policies estáticas que vivían aquí (PuedeAdministrarCatalogo,

@@ -14,5 +14,8 @@ namespace Diger.TramitesEstado.Application.Common.Models;
 /// </summary>
 public static class Marca
 {
-    public const string Nombre = "GestionGD";
+    // 2026-09-18: era «GestionGD». Va con tilde porque es texto que lee una persona, igual que
+    // el resto de la interfaz; el nombre sin tilde sobrevive donde es un identificador y no un
+    // rótulo —las bases GestionGD_TEST y GestionGD_Unificada, y la carpeta del repositorio—.
+    public const string Nombre = "Gestión Digital";
 }

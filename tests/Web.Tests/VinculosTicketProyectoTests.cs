@@ -40,14 +40,17 @@ public sealed class VinculosTicketProyectoTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var proyecto = Proyecto.Crear("PRY-2026-90", "Portal de tramites");
+        proyecto.PrioridadId = PortalFactory.PrioridadPorDefecto;
         proyecto.InstitucionId = "DIGER";
         db.Proyectos.Add(proyecto);
 
         var propio = Ticket.Crear("TCK-2026-0001", "No carga el listado de expedientes");
+        propio.PrioridadId = PortalFactory.PrioridadTicketPorDefecto;
         propio.InstitucionId = "DIGER";
 
         // El ajeno es de otra institución: el proyecto sí se ve, el ticket no.
         var ajeno = Ticket.Crear("TCK-2026-0002", "Incidencia reservada de CONSUCOOP");
+        ajeno.PrioridadId = PortalFactory.PrioridadTicketPorDefecto;
         ajeno.InstitucionId = "CONSUCOOP";
 
         db.Tickets.AddRange(propio, ajeno);
@@ -226,6 +229,7 @@ public sealed class VinculosTicketProyectoTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var p2 = Proyecto.Crear("PRY-2026-91", "Proyecto de otra institucion");
+            p2.PrioridadId = PortalFactory.PrioridadPorDefecto;
             p2.InstitucionId = "CONSUCOOP";
             db.Proyectos.Add(p2);
             await db.SaveChangesAsync();

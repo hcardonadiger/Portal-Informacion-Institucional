@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Solution overview
 
-**GestionGD** is an internal portal for DIGER (Honduras) to manage institutional processes (expedientes), meetings (reuniones), contacts (contactos), and support tickets. Target: .NET 9, SQL Server, xUnit.
+**Gestión Digital** is an internal portal for DIGER (Honduras) to manage institutional processes (expedientes), meetings (reuniones), contacts (contactos), and support tickets. Target: .NET 9, SQL Server, xUnit.
+
+The user-facing name was **GestionGD** until 2026-09-18. That spelling survives only where it is an identifier rather than a label — the `GestionGD_TEST` and `GestionGD_Unificada` databases, and the `GestionGD-dev` working copy — so don't "fix" those when you see them.
 
 The user-facing name is the constant `Marca.Nombre` (`src/Application/Common/Models/Marca.cs`) — browser title, login, header, emails, PDF/Excel headers and the Swagger title all read from it. Put the product name there, never as a literal. It is deliberately separate from `InstitucionOptions`, which carries the *institution* (DIGER, its logo, its site) and stays configurable per deployment. Solution, namespaces, assemblies and the `Diger.TramitesEstado.*` project names were **not** renamed: the rename was scoped to what the user reads.
 

@@ -49,6 +49,7 @@ public sealed class BibliotecaTests : IAsyncLifetime
         int categoriaId, string titulo, string archivo)
     {
         var proyecto = Proyecto.Crear(codigo, nombre);
+        proyecto.PrioridadId = PortalFactory.PrioridadPorDefecto;
         proyecto.InstitucionId = institucion;
         db.Proyectos.Add(proyecto);
         await db.SaveChangesAsync();

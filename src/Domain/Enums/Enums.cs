@@ -136,13 +136,8 @@ public enum EstadoTicket
     Cerrado    = 4
 }
 
-public enum PrioridadTicket
-{
-    Baja    = 1,
-    Media   = 2,
-    Alta    = 3,
-    Critica = 4
-}
+// La prioridad del ticket dejó de ser un enum fijo: ahora es el catálogo administrable
+// PrioridadTicket (con orden, color, predeterminada y marca de crítica), en Domain.Entities.
 
 // La categoría/tema del ticket dejó de ser un enum fijo: ahora es el catálogo
 // administrable TemaTicket (con SLA en horas), asignable a especialistas.
@@ -241,11 +236,21 @@ public enum EstadoProyecto
     Cancelado   = 5
 }
 
-public enum PrioridadProyecto
+// La prioridad del proyecto dejó de ser un enum fijo: ahora es el catálogo administrable
+// PrioridadProyecto (con orden, color y predeterminada), en Domain.Entities.
+
+// ── Color de una insignia de catálogo ──────────────────────────────────────
+// Paleta cerrada a propósito: el administrador elige entre estos cinco y no escribe un color
+// libre. Cada miembro tiene su regla en diger.css (.prio-badge.<nombre en minúscula>), así que
+// un valor inventado saldría sin estilo. Se guarda como texto (HasConversion<string>) para que
+// la columna se lea sola.
+public enum ColorEtiqueta
 {
-    Alta  = 1,
-    Media = 2,
-    Baja  = 3
+    Gris    = 1,
+    Azul    = 2,
+    Verde   = 3,
+    Naranja = 4,
+    Rojo    = 5
 }
 
 // ── Qué hace DIGER dentro del proyecto ─────────────────────────────────────

@@ -38,7 +38,9 @@ public class GetMisProyectosDashboardQueryTests : IDisposable
     public async Task SoloTraeProyectosDondeElUsuarioEsInteresadoOResponsable()
     {
         var mio = Proyecto.Crear("PRY-2026-10", "Mío");
+        mio.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         var ajeno = Proyecto.Crear("PRY-2026-11", "Ajeno");
+        ajeno.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         _ctx.Proyectos.AddRange(mio, ajeno);
         await _ctx.SaveChangesAsync();
 
@@ -56,6 +58,7 @@ public class GetMisProyectosDashboardQueryTests : IDisposable
     public async Task IncluyeElProyectoDelQueElUsuarioEsResponsableAunqueNoSeaInteresado()
     {
         var aCargo = Proyecto.Crear("PRY-2026-12", "A cargo");
+        aCargo.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         aCargo.ResponsableId = _usuarioId;
         _ctx.Proyectos.AddRange(aCargo, Proyecto.Crear("PRY-2026-13", "Ajeno"));
         await _ctx.SaveChangesAsync();
@@ -74,16 +77,19 @@ public class GetMisProyectosDashboardQueryTests : IDisposable
         _ctx.Unidades.Add(Unidad.Crear("UNI1", "AREA1", "Unidad de Sistemas"));
 
         var vencido = Proyecto.Crear("PRY-2026-20", "Vencido y callado");
+        vencido.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         vencido.CambiarEstado(EstadoProyecto.EnEjecucion, "Prueba");
         vencido.FechaFinPlan = hoy.AddDays(-5);
         vencido.UnidadId = "UNI1";
 
         var alDia = Proyecto.Crear("PRY-2026-21", "Al día");
+        alDia.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         alDia.CambiarEstado(EstadoProyecto.EnEjecucion, "Prueba");
         alDia.FechaFinPlan = hoy.AddDays(10);
 
         // Planificado: vencido igual, pero «sin reportar» solo aplica a lo que está en ejecución.
         var planificado = Proyecto.Crear("PRY-2026-22", "Planificado vencido");
+        planificado.PrioridadId = PrioridadesDePrueba.Media(_ctx);
         planificado.FechaFinPlan = hoy.AddDays(-3);
 
         _ctx.Proyectos.AddRange(vencido, alDia, planificado);

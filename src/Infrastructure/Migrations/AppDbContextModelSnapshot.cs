@@ -516,6 +516,56 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("CategoriasDocumento", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.CategoriaProyecto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<int>("Orden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.HasIndex("Orden");
+
+                    b.ToTable("CategoriasProyecto", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.CategoriaTicket", b =>
                 {
                     b.Property<int>("Id")
@@ -2918,6 +2968,121 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("Prefijos", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PrioridadProyecto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("EsPredeterminada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("Orden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.HasIndex("Orden");
+
+                    b.ToTable("PrioridadesProyecto", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PrioridadTicket", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("EsCritica")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("EsPredeterminada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("Orden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.HasIndex("Orden");
+
+                    b.ToTable("PrioridadesTicket", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Proyecto", b =>
                 {
                     b.Property<int>("Id")
@@ -2935,6 +3100,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(120)");
 
                     b.Property<int>("AvancePct")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CategoriaId")
                         .HasColumnType("int");
 
                     b.Property<string>("Codigo")
@@ -2981,10 +3149,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<string>("Prioridad")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<int>("PrioridadId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Responsable")
                         .HasMaxLength(200)
@@ -3005,11 +3171,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CategoriaId");
+
                     b.HasIndex("Codigo")
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("InstitucionId");
+
+                    b.HasIndex("PrioridadId");
 
                     b.HasIndex("Estado", "FechaFinPlan");
 
@@ -3806,10 +3976,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<string>("Prioridad")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<int>("PrioridadId")
+                        .HasColumnType("int");
 
                     b.Property<string>("ReportanteCorreo")
                         .HasMaxLength(200)
@@ -3862,6 +4030,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasIndex("Numero")
                         .IsUnique();
+
+                    b.HasIndex("PrioridadId");
 
                     b.HasIndex("TemaId");
 
@@ -4886,6 +5056,24 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Proyecto", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.CategoriaProyecto", "CategoriaRef")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.PrioridadProyecto", "PrioridadRef")
+                        .WithMany()
+                        .HasForeignKey("PrioridadId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CategoriaRef");
+
+                    b.Navigation("PrioridadRef");
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ProyectoExpediente", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
@@ -5051,6 +5239,12 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasForeignKey("InstitucionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.PrioridadTicket", "PrioridadRef")
+                        .WithMany()
+                        .HasForeignKey("PrioridadId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.TemaTicket", "TemaRef")
                         .WithMany()
                         .HasForeignKey("TemaId")
@@ -5060,6 +5254,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("UnidadId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("PrioridadRef");
 
                     b.Navigation("TemaRef");
                 });

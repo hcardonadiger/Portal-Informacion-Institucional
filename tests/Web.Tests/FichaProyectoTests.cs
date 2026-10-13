@@ -32,6 +32,7 @@ public sealed class FichaProyectoTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var proyecto = Proyecto.Crear("PRY-2026-99", "Proyecto de la ficha");
+        proyecto.PrioridadId = PortalFactory.PrioridadPorDefecto;
         // El filtro de alcance se ancla en la institución; sin esto el proyecto no lo ve nadie.
         proyecto.InstitucionId = "DIGER";
 

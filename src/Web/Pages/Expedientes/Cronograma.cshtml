@@ -323,22 +323,27 @@ async function guardarFila(btn) {
 .cron-gantt-hoy { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; opacity: .7; pointer-events: none; }
 .cron-gantt-axis { display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 6px; padding-left: 60px; }
 
+@* Los selectores llevan html:not([data-theme="light"]) para que este bloque respete un modo
+   claro forzado. La mayoría de sus reglas van por tokens y se aclaraban solas, pero siete
+   traen colores oscuros escritos a mano —las píldoras de estado y los dos avisos— y esas no:
+   se quedaban oscuras sobre una página clara. Hoy eso apaga el modo oscuro junto con el
+   resto; el día que se reactive, sigue sirviendo para quien elija claro a mano. *@
 @@media (prefers-color-scheme: dark) {
-    .cron-central-info  { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
-    .cron-varia         { background: #78350f; color: #fde68a; border-color: #92400e; }
-    .cron-tbl th        { background: var(--diger-surface); color: var(--diger-text-muted); border-bottom-color: var(--diger-border); }
-    .cron-tbl td        { border-bottom-color: var(--diger-border-soft); }
-    .cron-row:hover td  { background: var(--diger-surface); }
-    .cron-in            { background: var(--diger-bg-soft); border-color: var(--diger-border); color: var(--diger-text); }
-    .cron-in[disabled]  { background: var(--diger-surface); color: var(--diger-text-slate-dark); }
-    .cron-avbar         { background: var(--diger-border); }
-    .cron-gantt-track   { background: var(--diger-surface); }
-    .cron-save          { border-color: var(--diger-border); }
-    .cron-save:hover    { border-color: #60a5fa; background: #1e3a5f; }
-    .cron-ok    { background: #064e3b; color: #6ee7b7; }
-    .cron-proc  { background: #1e3a8a; color: #93c5fd; }
-    .cron-prox  { background: #78350f; color: #fde68a; }
-    .cron-venc  { background: #7f1d1d; color: #fca5a5; }
-    .cron-pend  { background: var(--diger-surface); color: var(--diger-text-muted); }
+    html:not([data-theme="light"]) .cron-central-info  { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
+    html:not([data-theme="light"]) .cron-varia         { background: #78350f; color: #fde68a; border-color: #92400e; }
+    html:not([data-theme="light"]) .cron-tbl th        { background: var(--diger-surface); color: var(--diger-text-muted); border-bottom-color: var(--diger-border); }
+    html:not([data-theme="light"]) .cron-tbl td        { border-bottom-color: var(--diger-border-soft); }
+    html:not([data-theme="light"]) .cron-row:hover td  { background: var(--diger-surface); }
+    html:not([data-theme="light"]) .cron-in            { background: var(--diger-bg-soft); border-color: var(--diger-border); color: var(--diger-text); }
+    html:not([data-theme="light"]) .cron-in[disabled]  { background: var(--diger-surface); color: var(--diger-text-slate-dark); }
+    html:not([data-theme="light"]) .cron-avbar         { background: var(--diger-border); }
+    html:not([data-theme="light"]) .cron-gantt-track   { background: var(--diger-surface); }
+    html:not([data-theme="light"]) .cron-save          { border-color: var(--diger-border); }
+    html:not([data-theme="light"]) .cron-save:hover    { border-color: #60a5fa; background: #1e3a5f; }
+    html:not([data-theme="light"]) .cron-ok    { background: #064e3b; color: #6ee7b7; }
+    html:not([data-theme="light"]) .cron-proc  { background: #1e3a8a; color: #93c5fd; }
+    html:not([data-theme="light"]) .cron-prox  { background: #78350f; color: #fde68a; }
+    html:not([data-theme="light"]) .cron-venc  { background: #7f1d1d; color: #fca5a5; }
+    html:not([data-theme="light"]) .cron-pend  { background: var(--diger-surface); color: var(--diger-text-muted); }
 }
 </style>

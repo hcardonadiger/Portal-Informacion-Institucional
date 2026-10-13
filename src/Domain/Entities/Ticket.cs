@@ -17,7 +17,11 @@ public sealed class Ticket : BaseAuditableEntity, ISoftDeletable
     public int?            TemaId    { get; set; }
     public TemaTicket?     TemaRef   { get; set; } // navegación (para nombre + SLA)
     public string?         TemaOtro  { get; set; }
-    public PrioridadTicket Prioridad { get; set; } = PrioridadTicket.Media;
+
+    // Prioridad del catálogo administrable PrioridadTicket. Era un enum fijo hasta 2026-09-18.
+    public int              PrioridadId  { get; set; }
+    public PrioridadTicket? PrioridadRef { get; set; } // navegación (nombre + color + orden)
+
     public EstadoTicket    Estado    { get; private set; } = EstadoTicket.Abierto;
 
     // ── Vínculos (opcionales) ─────────────────────────────────────

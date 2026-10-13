@@ -37,6 +37,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var proyecto = Proyecto.Crear("PRY-2026-80", "Nodo de interconexión");
+        proyecto.PrioridadId = PortalFactory.PrioridadPorDefecto;
         proyecto.InstitucionId = "DIGER";
         db.Proyectos.Add(proyecto);
 
@@ -237,6 +238,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var p2 = Proyecto.Crear("PRY-2026-81", "Proyecto de otra institucion");
+            p2.PrioridadId = PortalFactory.PrioridadPorDefecto;
             p2.InstitucionId = "CONSUCOOP";
             db.Proyectos.Add(p2);
             await db.SaveChangesAsync();

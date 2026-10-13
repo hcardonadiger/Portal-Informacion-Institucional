@@ -4,6 +4,7 @@ using Diger.TramitesEstado.Application.Common.Models;
 using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetOperadoresSoporte;
+using Diger.TramitesEstado.Application.Tickets.Prioridades;
 
 namespace Diger.TramitesEstado.Application.Tickets.Commands.CrearTicket;
 
@@ -36,7 +37,8 @@ public sealed class CrearTicketCommandHandler(
         var numero = await GenerarNumeroAsync(ct);
         var t = Ticket.Crear(numero, d.Titulo);
         await NormalizarTemaOtroAsync(d, ct);
-        TicketMapper.Aplicar(t, d);
+        var prioridadId = await PrioridadTicketResolver.ResolverAsync(ctx, d.PrioridadId, ct);
+        TicketMapper.Aplicar(t, d, prioridadId);
         t.EstablecerCreador(currentUser.UserId, currentUser.Nombre ?? currentUser.Correo);
         // "Reportado por" se obtiene del usuario que registra el ticket.
         t.EstablecerReportante(currentUser.Nombre ?? currentUser.Correo, currentUser.Correo);

@@ -106,7 +106,7 @@ public sealed class InformeProyectoPdfService : IInformeProyectoPdfService
                     {
                         tb.ColumnsDefinition(c => { c.ConstantColumn(120); c.RelativeColumn(); c.ConstantColumn(120); c.RelativeColumn(); });
                         KV(tb, "Responsable",     f.Responsable ?? "—");
-                        KV(tb, "Prioridad",       PrioridadLabel(f.Prioridad));
+                        KV(tb, "Prioridad",       f.Prioridad);
                         KV(tb, "Institución",     f.InstitucionId ?? "—");
                         KV(tb, "Área / Unidad",   string.Join(" / ", new[]{f.AreaId, f.UnidadId}.Where(x=>!string.IsNullOrWhiteSpace(x))) is {Length:>0} au ? au : "Transversal");
                         KV(tb, "Inicio (plan)",   Fecha(f.FechaInicioPlan));
@@ -418,7 +418,6 @@ public sealed class InformeProyectoPdfService : IInformeProyectoPdfService
     { EstadoProyecto.EnEjecucion => "En ejecución", _ => e.ToString() };
     private static string EstadoEntLabel(EstadoEntregable e) => e switch
     { EstadoEntregable.EnProceso => "En proceso", _ => e.ToString() };
-    private static string PrioridadLabel(PrioridadProyecto p) => p.ToString();
     private static string CategoriaLabel(CategoriaRiesgo c) => c switch
     { CategoriaRiesgo.Tecnico => "Técnico", _ => c.ToString() };
     private static string RolLabel(RolInteresado r) => r switch

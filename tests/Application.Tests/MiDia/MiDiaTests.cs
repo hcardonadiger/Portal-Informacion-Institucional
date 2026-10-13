@@ -118,6 +118,9 @@ public class MiDiaTests : IDisposable
 
         var t = Ticket.Crear("TCK-2026-0001", "No llegan los correos de notificación");
         t.TemaId = tema.Id;
+        // La prioridad es del catálogo desde 2026-09-18 y la bandeja lee su nombre: sin una fila
+        // del catálogo el ticket no sale en la consulta, como tampoco existiría en la base real.
+        t.PrioridadId = PrioridadesTicketDePrueba.Media(_ctx);
         t.Asignar(UsuarioFijo.IdUsuario, "Ana Ortez", "sistema");
         _ctx.Tickets.Add(t);
         await _ctx.SaveChangesAsync();
