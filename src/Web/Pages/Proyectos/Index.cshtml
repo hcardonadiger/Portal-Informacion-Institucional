@@ -168,7 +168,6 @@
             <thead>
                 <tr>
                     <th>Proyecto</th>
-                    <th style="width:150px">Responsable</th>
                     <th style="width:110px">Estado</th>
                     <th style="width:170px">Avance</th>
                     <th style="width:130px">Estructura</th>
@@ -180,32 +179,33 @@
                 @foreach (var p in Model.Proyectos)
                 {
                     <tr>
+                        @* La fila se aligeró el 2026-10-13: el nombre manda y se lleva todo el
+                           ancho que dejó la columna Responsable, que bajó a la segunda línea.
+                           Salieron prioridad y acción —el filtro de arriba sigue encontrándolas—
+                           y salió «sin reportar»: ese síntoma se desglosa en el tablero
+                           (Tableros/Proyectos, Tableros/ProyectosArea y Tableros/ProyectosUnidad),
+                           cuya tarjeta además enlaza de vuelta a esta lista ya filtrada por la
+                           señal, así que no se perdió ningún camino. *@
                         <td>
-                            <div style="font-weight:600">@p.Nombre</div>
+                            <div style="font-weight:600">
+                                @p.Nombre
+                                @* nowrap: sin esto el código se parte entre líneas cuando el
+                                   nombre llena el ancho, y «PRY-2026-34» aparecía cortado en
+                                   «PRY-2026-» / «34». Un identificador no se divide. *@
+                                <span class="res-meta" style="margin-left:8px;font-weight:400;white-space:nowrap">@p.Codigo</span>
+                            </div>
                             <div class="res-meta">
-                                @p.Codigo
-                                <span class="@Etiquetas.ClaseColor(p.PrioridadColor)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Prioridad</span>
-                                @if (p.Accion is { } accion)
-                                {
-                                    @* Sin acción no se pinta nada: una insignia «Sin clasificar» en
-                                       cada fila vieja es ruido, y el filtro ya permite encontrarlas. *@
-                                    <span class="badge" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@Etiquetas.Accion(accion)</span>
-                                }
+                                @(string.IsNullOrWhiteSpace(p.Responsable) ? "—" : p.Responsable)
                                 @if (p.Categoria is { Length: > 0 } categoria && p.CategoriaColor is { } colorCat)
                                 {
-                                    @* Mismo criterio que la acción: sin categoría no se pinta nada. *@
-                                    <span class="@Etiquetas.ClaseColor(colorCat)" style="margin-left:6px;padding:1px 8px;font-size:var(--diger-fs-2xs)">@categoria</span>
-                                }
-                                @if (p.SinReportar)
-                                {
-                                    @* El síntoma que más interesa en seguimiento: no es que vaya tarde,
-                                       es que hace un mes que nadie informa. *@
-                                    <span class="badge badge-warning" style="margin-left:6px">Sin reportar hace 30+ días</span>
+                                    @* Sin categoría no se pinta nada: una insignia «Sin clasificar»
+                                       en cada fila vieja es ruido, y el filtro ya las encuentra. *@
+                                    <span class="res-meta" style="margin:0 6px">·</span>
+                                    <span class="@Etiquetas.ClaseColor(colorCat)">@categoria</span>
                                 }
                             </div>
                         </td>
-                        <td class="res-meta">@(string.IsNullOrWhiteSpace(p.Responsable) ? "—" : p.Responsable)</td>
-                        <td><span class="@EstadoCls(p.Estado)" style="padding:3px 10px;font-size:var(--diger-fs-xs)">@EstadoTxt(p.Estado)</span></td>
+                        <td><span class="@EstadoCls(p.Estado)">@EstadoTxt(p.Estado)</span></td>
                         <td>
                             <div style="display:flex;align-items:center;gap:8px">
                                 <div class="progress" style="flex:1;height:6px">
