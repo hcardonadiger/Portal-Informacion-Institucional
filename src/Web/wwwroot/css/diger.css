@@ -1475,33 +1475,17 @@ tr.contacto-inactivo td {
     display: block;
 }
 
-.nav-item {
-    display: flex;
-    align-items: center;
-    padding: 9px 12px;
-    border-radius: var(--diger-radius-sm);
-    text-decoration: none;
-    font-size: var(--diger-fs-base);
-    font-weight: 600;
-    color: var(--diger-text-secondary);
-    white-space: nowrap;
-}
-
-.nav-item:hover {
-    background: var(--diger-bg-soft);
-    color: var(--diger-blue-mid);
-}
-
-.nav-item.on {
-    background: var(--diger-blue);
-    color: #fff;
-}
-
 /* Entradas del desplegable del navbar.
    Se escriben con dos clases a propósito: más abajo, la fila de atajos a tableros
    redefine `.nav-item` (borde, gap y color propios) y, con igual especificidad,
    ganaba por orden de aparición. Al calificar con el contenedor, el navbar deja de
-   depender de en qué parte del archivo esté escrito. */
+   depender de en qué parte del archivo esté escrito.
+
+   Acá vivía además una copia sin calificar de este mismo bloque. Ya no hacía falta
+   —en el layout no hay un solo `.nav-item` fuera de `.nav-group-menu`— y sí hacía
+   daño: su `white-space: nowrap` llegaba a los atajos del tablero, cuyo subtítulo
+   dejaba de envolver y se salía de la tarjeta. La fuga era invisible mientras los
+   rótulos fueran cortos. */
 .nav-group-menu .nav-item {
     display: flex;
     align-items: center;
