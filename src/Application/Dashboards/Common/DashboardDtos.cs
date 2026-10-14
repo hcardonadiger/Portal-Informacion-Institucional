@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Domain.Enums;
+﻿using Diger.TramitesEstado.Domain.Enums;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Common;
 
@@ -15,7 +15,12 @@ public sealed record TendenciaDto(int Actual, int Anterior)
     public int PorcentajeCambio => Anterior == 0 ? (Actual > 0 ? 100 : 0) : (int)Math.Round((Actual - Anterior) * 100.0 / Anterior);
 }
 
-// ── Resumen ejecutivo (Inicio) ────────────────────────────────────────────
+// ── Inicio: indicadores transversales ─────────────────────────────────────
+// Solo lo que cualquier unidad lee como suyo. Lo de digitalización de trámites
+// (avance global, por institución, por analista, estado de trámites) y los
+// conteos de expedientes salieron de acá: eran un dominio solo presentándose
+// como el resumen del portal, y ya tienen DigitalizacionDashboardDto y
+// ExpedientesDashboardDto para su propio tablero.
 public sealed record ResumenDto(
     // Tickets
     int TicketsAbiertos, int TicketsEnProgreso, int TicketsCriticos, int TicketsTotal,
@@ -23,19 +28,12 @@ public sealed record ResumenDto(
     TendenciaDto TicketsCreados,
     IReadOnlyList<SerieMensualDto> TicketsPorMes,
     IReadOnlyList<SerieMensualDto> TicketsResueltosPorMes,
-    // Expedientes
-    int ExpedientesTotal, int ExpedientesCerrados, int ExpedientesEnProceso,
     // Reuniones y acuerdos
     int ReunionesTotal, int ReunionesMes,
     int AcuerdosVencidos, int AcuerdosProximos,
     int AcuerdosTotal, int AcuerdosCumplidos, int TasaCumplimiento,
     // Capacitación
-    int PersonasCapacitadas, int AsistenciasCapacitacion,
-    // Digitalización
-    int DigTotalTramites, int DigEnOperacion, int DigEnProceso, int DigNoIniciados,
-    double DigAvanceGlobal,
-    IReadOnlyList<AvanceInstitucionDto> DigPorInstitucion,
-    IReadOnlyList<AnalistaAvanceDto> DigPorAnalista);
+    int PersonasCapacitadas, int AsistenciasCapacitacion);
 
 public sealed record ResumenTicketDto(
     int Id, string Numero, string Titulo, EstadoTicket Estado,

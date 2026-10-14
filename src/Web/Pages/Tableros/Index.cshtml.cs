@@ -1,20 +1,19 @@
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
 
+/// <summary>
+/// Inicio del portal: solo indicadores que cualquier unidad lee como suyos.
+/// Los filtros por período y por estado de trámite que vivían acá se fueron con
+/// el bloque de digitalización: no tocaban tickets, acuerdos ni capacitación, así
+/// que filtraban sin cambiar nada de lo que queda a la vista.
+/// </summary>
 [Authorize]
 [Permission("Tableros", AccionModulo.Ver, "Ver tableros")]
 public sealed class IndexModel(ISender sender, IUsuarioRepository usuarioRepo, ICurrentUserService currentUser) : PageModel
 {
     public ResumenDto Data { get; private set; } = default!;
-    public DateOnly? Desde { get; private set; }
-    public DateOnly? Hasta { get; private set; }
-    public EstadoTramite? Estado { get; private set; }
 
-    public async Task OnGetAsync(DateOnly? desde, DateOnly? hasta, string? estado, CancellationToken ct)
+    public async Task OnGetAsync(CancellationToken ct)
     {
-        Desde = desde;
-        Hasta = hasta;
-        Estado = Enum.TryParse<EstadoTramite>(estado, ignoreCase: true, out var est) ? est : null;
-
         // El técnico ve los KPIs de tickets limitados a sus temas o sus tickets asignados.
         // "No es jefatura" lo decide la capacidad EsSupervisor del rol (tabla Roles).
         var esTecnico = !currentUser.EsGlobal && !currentUser.EsSupervisor;
@@ -27,6 +26,6 @@ public sealed class IndexModel(ISender sender, IUsuarioRepository usuarioRepo, I
             tecnicoId = uid;
         }
 
-        Data = await sender.Send(new GetResumenQuery(temaIds, tecnicoId, Desde, Hasta, Estado), ct);
+        Data = await sender.Send(new GetResumenQuery(temaIds, tecnicoId), ct);
     }
 }

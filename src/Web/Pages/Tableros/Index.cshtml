@@ -3,53 +3,31 @@
 @inject AccesoModulosService Acceso
 @model Diger.TramitesEstado.Web.Pages.Tableros.IndexModel
 @{
-    ViewData["Title"] = "Resumen Ejecutivo";
+    ViewData["Title"] = "Inicio";
     var d = Model.Data;
-    var pctDig = (int)Math.Round(d.DigAvanceGlobal * 100);
     var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
     string Tono(int valor, string tonoActivo) => valor == 0 ? "is-zero" : tonoActivo;
     var hayTickets = d.TicketsPorMes.Any(x => x.Cantidad > 0) || d.TicketsResueltosPorMes.Any(x => x.Cantidad > 0);
+    var puedeDigitalizacion = await Acceso.PuedeClaveAsync("Expedientes.Ver");
 }
 
+@* Esta página es el destino del login, así que solo lleva lo que vale para
+   cualquier unidad: tickets, acuerdos de reunión, cumplimiento y capacitación.
+   El avance de digitalización de trámites salió de acá — era un resumen de un
+   solo dominio presentado como si fuera el del portal — y vive en sus propios
+   tableros (/Tableros/Digitalizacion y /Tableros/Tramites), bajo la clave de
+   ese dominio. Si vuelve a hacer falta un indicador acá, que sea uno que toda
+   unidad pueda leer como suyo. *@
 <div class="container" style="max-width:1200px">
     <div class="hist-header">
         <div>
-            <h2>Resumen Ejecutivo</h2>
-            <p>Vista gerencial consolidada de todos los dominios <span class="help-tip tip-down" data-tip="Tablero ejecutivo con indicadores clave de digitalización, tickets y reuniones. Los valores en rojo requieren atención inmediata.">?</span></p>
+            <h2>Inicio</h2>
+            <p>Indicadores comunes a todas las unidades <span class="help-tip tip-down" data-tip="Tickets de soporte, acuerdos de reunión, cumplimiento y personas capacitadas. Los valores en rojo requieren atención inmediata.">?</span></p>
         </div>
     </div>
 
-    <form method="get" class="seg-filters">
-        <div class="field"><label>Estado trámite</label>
-            <select name="estado" onchange="this.form.submit()">
-                <option value="">Todos</option>
-                <option value="Pendiente" selected="@(Model.Estado == EstadoTramite.Pendiente)">Pendiente</option>
-                <option value="EnProceso" selected="@(Model.Estado == EstadoTramite.EnProceso)">En proceso</option>
-                <option value="Completado" selected="@(Model.Estado == EstadoTramite.Completado)">Completado</option>
-                <option value="EnOperacion" selected="@(Model.Estado == EstadoTramite.EnOperacion)">En operación</option>
-                <option value="Suspendido" selected="@(Model.Estado == EstadoTramite.Suspendido)">Suspendido</option>
-            </select>
-        </div>
-        <div class="field"><label>Desde</label><input type="date" name="desde" value="@(Model.Desde?.ToString("yyyy-MM-dd"))" /></div>
-        <div class="field"><label>Hasta</label><input type="date" name="hasta" value="@(Model.Hasta?.ToString("yyyy-MM-dd"))" /></div>
-        <button class="btnp" type="submit" style="margin-bottom:.1rem">Filtrar</button>
-        @if (Model.Desde is not null || Model.Hasta is not null || Model.Estado is not null)
-        {
-            <a class="btns" asp-page="/Tableros/Index" style="margin-bottom:.1rem">Limpiar</a>
-        }
-    </form>
-
     @* ── KPI Strip ────────────────────────────────────────────────── *@
-    <div class="kpi-strip" style="--kpi-cols:6">
-        <div class="kpi-cell @Tono(pctDig, "is-ok")">
-            <div class="kpi-cell-top">
-                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-grafica"></use></svg></span>
-                <span class="kpi-cell-lbl">Avance digitalización</span>
-            </div>
-            <div class="kpi-cell-num">@pctDig<span style="font-size:16px">%</span></div>
-            <div class="kpi-cell-sub">@d.DigEnOperacion operación · @d.DigEnProceso proceso · @d.DigNoIniciados sin iniciar</div>
-        </div>
-
+    <div class="kpi-strip" style="--kpi-cols:5">
         <a class="kpi-cell @Tono(d.TicketsCriticos, "is-crit")" asp-page="/Tableros/Tickets">
             <div class="kpi-cell-top">
                 <span class="kpi-cell-ico"><svg class="ico"><use href="#i-alerta"></use></svg></span>
@@ -113,7 +91,7 @@
         </div>
     </div>
 
-    @* ── Gráficos ─────────────────────────────────────────────────── *@
+    @* ── Tendencia de tickets ─────────────────────────────────────── *@
     <div class="dash-grid">
         <div class="dash-card">
             <h3>
@@ -128,7 +106,7 @@
             </h3>
             @if (hayTickets)
             {
-                <div style="position:relative;height:200px"><canvas id="chTickets"></canvas></div>
+                <div style="position:relative;height:220px"><canvas id="chTickets"></canvas></div>
             }
             else
             {
@@ -139,105 +117,7 @@
                 </div>
             }
         </div>
-
-        <div class="dash-card">
-            <h3>Avance de digitalización por institución</h3>
-            @if (!d.DigPorInstitucion.Any())
-            {
-                <div class="empty-state">
-                    <div class="empty-state-ico"><svg class="ico"><use href="#i-grafica"></use></svg></div>
-                    <div class="empty-state-t1">Sin trámites en digitalización</div>
-                    <div class="empty-state-t2">Registre un trámite para comenzar</div>
-                </div>
-            }
-            else
-            {
-                <div style="display:flex;flex-direction:column;gap:8px;margin-top:2px">
-                @foreach (var inst in d.DigPorInstitucion)
-                {
-                    var p = (int)Math.Round(inst.AvancePromedio * 100);
-                    var bc = p >= 100 ? "#2f7d32" : p >= 50 ? "var(--diger-blue-mid)" : p >= 25 ? "#ef9f27" : "#888780";
-                    <div class="bar-row">
-                        <span class="bar-lbl" title="@inst.Institucion">@inst.Institucion</span>
-                        <div class="bar-track"><div class="bar-fill" style="width:@(Math.Max(p, 1))%;background:@bc"></div></div>
-                        <span class="bar-val" style="color:@bc">@p%</span>
-                    </div>
-                }
-                </div>
-                <p style="font-size:11px;color:var(--diger-text-muted);margin:8px 0 0;text-align:right">
-                    <a asp-page="/Tableros/Digitalizacion" style="color:inherit">Ver detalle →</a>
-                </p>
-            }
-        </div>
     </div>
-
-    @* ── Digitalización — estado y carga ─────────────────────────── *@
-    @if (d.DigTotalTramites > 0)
-    {
-    <div class="dash-grid">
-        <div class="dash-card">
-            <h3>Estado de trámites</h3>
-            <div style="display:flex;align-items:center;gap:24px;margin-top:4px">
-                <div style="position:relative;width:180px;height:180px;flex-shrink:0">
-                    <canvas id="chEstado"></canvas>
-                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-                        <span style="font-size:28px;font-weight:700;color:var(--diger-text)">@d.DigTotalTramites</span>
-                        <span style="font-size:11px;color:var(--diger-text-muted)">trámites</span>
-                    </div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:10px;flex:1">
-                    <div style="display:flex;align-items:center;gap:8px">
-                        <span style="width:12px;height:12px;border-radius:2px;background:#2f7d32;flex-shrink:0"></span>
-                        <span style="flex:1;font-size:13px">En operación</span>
-                        <span style="font-weight:700;font-size:15px">@d.DigEnOperacion</span>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px">
-                        <span style="width:12px;height:12px;border-radius:2px;background:var(--diger-blue-mid);flex-shrink:0"></span>
-                        <span style="flex:1;font-size:13px">En proceso</span>
-                        <span style="font-weight:700;font-size:15px">@d.DigEnProceso</span>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px">
-                        <span style="width:12px;height:12px;border-radius:2px;background:#b0a99f;flex-shrink:0"></span>
-                        <span style="flex:1;font-size:13px">Sin iniciar</span>
-                        <span style="font-weight:700;font-size:15px">@d.DigNoIniciados</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="dash-card">
-            <h3>Carga por analista</h3>
-            @if (d.DigPorAnalista.Any())
-            {
-                <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
-                @foreach (var an in d.DigPorAnalista)
-                {
-                    var pa = (int)Math.Round(an.AvancePromedio * 100);
-                    var ac = pa >= 100 ? "#2f7d32" : pa >= 50 ? "var(--diger-blue-mid)" : pa >= 25 ? "#ef9f27" : "#b0a99f";
-                    <div>
-                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px">
-                            <span title="@an.Analista" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">@an.Analista</span>
-                            <span style="color:var(--diger-text-muted)">@an.Completados/@an.TotalTramites completados · @pa%</span>
-                        </div>
-                        <div class="bar-track"><div class="bar-fill" style="width:@(Math.Max(pa, 1))%;background:@ac"></div></div>
-                    </div>
-                }
-                </div>
-                <p style="font-size:11px;color:var(--diger-text-muted);margin:8px 0 0;text-align:right">
-                    <a asp-page="/Tableros/Digitalizacion" style="color:inherit">Ver detalle →</a>
-                </p>
-            }
-            else
-            {
-                <div class="empty-state">
-                    <div class="empty-state-ico"><svg class="ico"><use href="#i-grafica"></use></svg></div>
-                    <div class="empty-state-t1">Sin analistas asignados</div>
-                    <div class="empty-state-t2">Asigne analistas a los trámites para ver la distribución</div>
-                </div>
-            }
-        </div>
-    </div>
-    }
 
     @* ── Indicadores operativos resumidos ──────────────────────────── *@
     <div class="kpi-grid" style="grid-template-columns:repeat(3, 1fr)">
@@ -260,14 +140,6 @@
         <div class="dash-card">
             <h3>Tableros detallados</h3>
             <div class="exe-nav-grid">
-                <a class="nav-item" asp-page="/Tableros/Digitalizacion">
-                    <span class="nav-item-ico"><svg class="ico"><use href="#i-grafica"></use></svg></span>
-                    <span class="nav-item-tx">
-                        <span class="nav-item-t1">Digitalización</span>
-                        <span class="nav-item-t2">Avance por institución, etapas y analistas</span>
-                    </span>
-                    <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
-                </a>
                 <a class="nav-item" asp-page="/Tableros/Tickets">
                     <span class="nav-item-ico"><svg class="ico"><use href="#i-ticket"></use></svg></span>
                     <span class="nav-item-tx">
@@ -286,14 +158,28 @@
                     <span class="nav-item-ct">@d.ReunionesTotal</span>
                     <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
                 </a>
-                <a class="nav-item" asp-page="/Tableros/Tramites">
-                <span class="nav-item-ico"><svg class="ico"><use href="#i-grafica"></use></svg></span>
-                <span class="nav-item-tx">
-                    <span class="nav-item-t1">Avance de trámites</span>
-                    <span class="nav-item-t2">Semáforo de seguimiento por trámite</span>
-                </span>
-                <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
-            </a>
+                @* Los dos tableros de digitalización se gatean con la clave de su
+                   destino, no con Tableros.Ver: son de un solo dominio y quien no
+                   trabaja expedientes no tiene por qué verlos ofrecidos. *@
+                @if (puedeDigitalizacion)
+                {
+                    <a class="nav-item" asp-page="/Tableros/Digitalizacion">
+                        <span class="nav-item-ico"><svg class="ico"><use href="#i-grafica"></use></svg></span>
+                        <span class="nav-item-tx">
+                            <span class="nav-item-t1">Digitalización</span>
+                            <span class="nav-item-t2">Avance por institución, etapas y analistas</span>
+                        </span>
+                        <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
+                    </a>
+                    <a class="nav-item" asp-page="/Tableros/Tramites">
+                        <span class="nav-item-ico"><svg class="ico"><use href="#i-grafica"></use></svg></span>
+                        <span class="nav-item-tx">
+                            <span class="nav-item-t1">Avance de trámites</span>
+                            <span class="nav-item-t2">Semáforo de seguimiento por trámite</span>
+                        </span>
+                        <span class="nav-item-chev"><svg class="ico"><use href="#i-chevron"></use></svg></span>
+                    </a>
+                }
                 @* El tablero de proyectos se gatea con la clave de su destino, no con
                    Tableros.Ver: los proyectos internos se protegen por su propio permiso. *@
                 @if (await Acceso.PuedeClaveAsync("Proyectos.Ver"))
@@ -329,15 +215,11 @@
         .exe-nav-grid .nav-item + .nav-item { border-top: none; }
     }
 </style>
-@{var hayGraficos = hayTickets || d.DigTotalTramites > 0;}
-@if (hayGraficos)
+@if (hayTickets)
 {
 <script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>
 <script>
   Chart.defaults.font.family = 'system-ui, sans-serif';
-  @if (hayTickets)
-  {
-  <text>
   new Chart(document.getElementById('chTickets'), {
     type: 'line',
     data: {
@@ -368,31 +250,6 @@
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
     }
   });
-  </text>
-  }
-  @if (d.DigTotalTramites > 0)
-  {
-  <text>
-  new Chart(document.getElementById('chEstado'), {
-    type: 'doughnut',
-    data: {
-      labels: ['En operación', 'En proceso', 'Sin iniciar'],
-      datasets: [{
-        data: [@d.DigEnOperacion, @d.DigEnProceso, @d.DigNoIniciados],
-        backgroundColor: ['#2f7d32', '#1a65a3', '#b0a99f'],
-        borderWidth: 2,
-        borderColor: 'var(--diger-bg, #fff)'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '65%',
-      plugins: { legend: { display: false } }
-    }
-  });
-  </text>
-  }
 </script>
 }
 }

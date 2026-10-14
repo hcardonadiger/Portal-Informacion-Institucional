@@ -230,7 +230,7 @@
                                     @if (puedeTableros)
                                     {
                                         <a class="nav-item @(EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/MiTablero"><svg class="ico"><use href="#i-tablero"></use></svg>Mi Tablero</a>
-                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/Index"><svg class="ico"><use href="#i-grafica"></use></svg>Tableros General</a>
+                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/Index"><svg class="ico"><use href="#i-grafica"></use></svg>Inicio</a>
                                     }
                                     @if (puedeExpedientes)
                                     {

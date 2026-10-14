@@ -1,11 +1,17 @@
 using Diger.TramitesEstado.Application.Dashboards.Common;
-using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 
 namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetResumen;
 
+/// <summary>
+/// Indicadores del Inicio. Solo los transversales: tickets, reuniones y sus
+/// acuerdos, cumplimiento y capacitación. El bloque de digitalización de trámites
+/// que esta consulta armaba (avance global, por institución, por analista, estado
+/// de trámites) salió de acá junto con los filtros de período y estado que solo a
+/// él aplicaban; ese detalle lo sirve GetDigitalizacionDashboardQuery, que es
+/// donde el dominio se ve completo y no disfrazado de resumen del portal.
+/// </summary>
 public sealed record GetResumenQuery(
-    IReadOnlyList<int>? TecnicoTemaIds = null, Guid? TecnicoUserId = null,
-    DateOnly? Desde = null, DateOnly? Hasta = null, EstadoTramite? Estado = null) : IRequest<ResumenDto>;
+    IReadOnlyList<int>? TecnicoTemaIds = null, Guid? TecnicoUserId = null) : IRequest<ResumenDto>;
 
 public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetResumenQuery, ResumenDto>
@@ -57,20 +63,6 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
             .Select(g => new { g.Key.Year, g.Key.Month, C = g.Count() }).ToListAsync(ct))
             .Select(x => (x.Year, x.Month, x.C));
 
-        // ── Expedientes (con filtros de período y estado de trámite) ──
-        // Los legados (sin seguimiento confiable en la nueva metodología) no cuentan en tableros.
-        var expedientes = ctx.Expedientes.AsNoTracking()
-            .Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha);
-        if (q.Desde is { } desdeExp)
-            expedientes = expedientes.Where(e => e.Tramites.Any(t => t.FechaCreacion >= desdeExp));
-        if (q.Hasta is { } hastaExp)
-            expedientes = expedientes.Where(e => e.Tramites.Any(t => t.FechaCreacion <= hastaExp));
-        if (q.Estado is { } estadoExp)
-            expedientes = expedientes.Where(e => e.Tramites.Any(t => t.EstadoTramite == estadoExp));
-
-        var expedientesTotal    = await expedientes.CountAsync(ct);
-        var expedientesCerrados = await expedientes.CountAsync(e => e.EstadoExpediente == EstadoExpediente.Cerrado, ct);
-
         // ── Reuniones y acuerdos ─────────────────────────────────────
         var reunionesTotal = await ctx.Reuniones.CountAsync(ct);
         var reunionesMes   = await ctx.Reuniones.CountAsync(r => r.Fecha >= primerDiaMes && r.Fecha <= finMes, ct);
@@ -97,87 +89,15 @@ public sealed class GetResumenQueryHandler(IApplicationDbContext ctx)
             .Distinct()
             .Count();
 
-        // ── Digitalización ───────────────────────────────────────────
-        var listaExp = await expedientes
-            .Select(e => new
-            {
-                e.Id, e.Institucion, e.InstitucionId, e.Analista,
-                Tramites = e.Tramites.Select(t => new { t.TramiteIndex, t.NombreTramite, t.FechaCreacion, t.EstadoTramite }).ToList()
-            })
-            .ToListAsync(ct);
-
-        var digTotalTramites = listaExp.Sum(e => e.Tramites.Count);
-        var expIds = listaExp.Select(e => e.Id).ToList();
-        var avances = await ctx.ExpedienteEtapaAvances.AsNoTracking()
-            .Where(a => expIds.Contains(a.ExpedienteId))
-            .ToListAsync(ct);
-
-        var avancePorTramite = avances
-            .GroupBy(a => (a.ExpedienteId, a.TramiteIndex))
-            .ToDictionary(
-                g => g.Key,
-                g =>
-                {
-                    var estados = new Dictionary<string, int>();
-                    var aplica = new Dictionary<string, bool>();
-                    foreach (var row in g)
-                    {
-                        if (row.SubId.StartsWith("APLICA:"))
-                            aplica[row.SubId[7..]] = row.Estado == 1;
-                        else
-                            estados[row.SubId] = row.Estado;
-                    }
-                    return MetodologiaDigitalizacion.Global(estados, aplica);
-                });
-
-        var tramitesConAvance = new List<(string Institucion, string? Analista, double Avance)>();
-        foreach (var exp in listaExp)
-        foreach (var t in exp.Tramites)
-        {
-            if (q.Desde is { } dT && t.FechaCreacion < dT) continue;
-            if (q.Hasta is { } hT && t.FechaCreacion > hT) continue;
-            if (q.Estado is { } sT && t.EstadoTramite != sT) continue;
-            var pct = avancePorTramite.TryGetValue((exp.Id, t.TramiteIndex), out var v) ? v : 0;
-            tramitesConAvance.Add((exp.Institucion, exp.Analista, pct));
-        }
-
-        var digEnOperacion  = tramitesConAvance.Count(t => t.Avance >= 0.9999);
-        var digEnProceso    = tramitesConAvance.Count(t => t.Avance > 0 && t.Avance < 0.9999);
-        var digNoIniciados  = tramitesConAvance.Count(t => t.Avance <= 0);
-        var digAvanceGlobal = tramitesConAvance.Count == 0
-            ? 0 : tramitesConAvance.Average(t => t.Avance);
-
-        var digPorInstitucion = tramitesConAvance
-            .GroupBy(t => t.Institucion)
-            .Select(g => new AvanceInstitucionDto(
-                g.Key, g.Count(),
-                g.Count(t => t.Avance >= 0.9999),
-                g.Average(t => t.Avance)))
-            .OrderByDescending(x => x.AvancePromedio)
-            .ToList();
-
-        var digPorAnalista = tramitesConAvance
-            .Where(t => !string.IsNullOrWhiteSpace(t.Analista))
-            .GroupBy(t => t.Analista!)
-            .Select(g => new AnalistaAvanceDto(
-                g.Key, g.Count(),
-                g.Count(t => t.Avance >= 0.9999),
-                g.Average(t => t.Avance)))
-            .OrderByDescending(x => x.TotalTramites)
-            .ToList();
-
         return new ResumenDto(
             ticketsAbiertos, ticketsEnProgreso, ticketsCriticos, ticketsTotal,
             ticketsResueltos, diasPromedio,
             new TendenciaDto(creadosMes, creadosMesAnt),
             SerieMensual.Ultimos12(porMesRaw),
             SerieMensual.Ultimos12(resueltosMesRaw),
-            expedientesTotal, expedientesCerrados, expedientesTotal - expedientesCerrados,
             reunionesTotal, reunionesMes,
             acuerdosVencidos, acuerdosProximos,
             acuerdosTotal, acuerdosCumplidos, tasaCumplimiento,
-            personasCap, asistenciasCap,
-            digTotalTramites, digEnOperacion, digEnProceso, digNoIniciados, digAvanceGlobal,
-            digPorInstitucion, digPorAnalista);
+            personasCap, asistenciasCap);
     }
 }
