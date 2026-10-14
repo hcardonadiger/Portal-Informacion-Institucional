@@ -53,9 +53,12 @@ SET XACT_ABORT ON;
 
 DECLARE @SoloMostrar bit = 0;      -- 1 = solo informa, no cambia nada
 
+-- Se dice EN QUE base se está, porque el error habitual es correrlo en master: SSMS abre la
+-- ventana de consulta ahí. RAISERROR solo acepta variables como argumento, no DB_NAME().
+DECLARE @BaseActual sysname = DB_NAME();
 IF OBJECT_ID(N'dbo.TramitesSiger') IS NULL OR OBJECT_ID(N'dbo.Instituciones') IS NULL
 BEGIN
-    RAISERROR(N'Esta base no parece de Gestión Digital: le faltan TramitesSiger o Instituciones. No se hizo nada.', 16, 1);
+    RAISERROR(N'Está conectado a la base «%s», que no es la de Gestión Digital (le faltan TramitesSiger o Instituciones). En SSMS, cambie la base en la lista desplegable de arriba a la izquierda y vuelva a ejecutar. No se hizo nada.', 16, 1, @BaseActual);
     RETURN;
 END
 
