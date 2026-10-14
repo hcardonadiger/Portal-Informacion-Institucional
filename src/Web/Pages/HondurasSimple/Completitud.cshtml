@@ -1,23 +1,161 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.HondurasSimple.CompletitudModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Completitud de fichas — SIGER";
-    string ClasePct(int pct) => pct >= 90 ? "wf-completada" : pct >= 40 ? "wf-enproceso" : "wf-registrada";
+    var r = Model.Resumen;
+    // Cada enlace se pregunta por el permiso de su destino, no por el de esta página.
+    var puedeEditar  = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
+    var puedeVerSiger = await Acceso.PuedeAsync(ModulosPortal.Siger);
+
+    // Un solo criterio de color para barras, insignias y cifras: el del tramo. Si la tabla y el
+    // tablero pintaran con umbrales distintos, la misma ficha se vería verde arriba y ámbar abajo.
+    TramoCompletitud TramoDe(int pct) => CompletitudModel.Tramos.First(t => pct >= t.Desde && pct <= t.Hasta);
+    string Insignia(int pct) => TramoDe(pct).Clave switch
+    {
+        "completas" => "wf-completada", "alta" => "wf-asignada", "media" => "wf-enproceso", _ => "wf-cancelada"
+    };
+    string Tono(int pct) => "comp-t-" + TramoDe(pct).Clave;
+
+    // Enlaces que cambian un solo criterio y conservan los demás. La página se pierde a
+    // propósito: cambiar de filtro con «página 4» puesta casi siempre cae fuera de rango.
+    string Ir(string? mostrar = null, string? institucion = null, string? vista = null, bool limpiarMostrar = false) =>
+        Url.Page("/HondurasSimple/Completitud", new
+        {
+            Vista = vista ?? Model.Vista,
+            Model.Buscar,
+            InstitucionId = institucion ?? Model.InstitucionId,
+            Mostrar = limpiarMostrar ? null : mostrar ?? Model.Mostrar,
+            Model.Orden
+        })!;
+
+    var hayFiltro = Model.Buscar is not null || Model.InstitucionId is not null;
+    var ordenes = Model.PorInstitucion ? CompletitudModel.OrdenesInstituciones : CompletitudModel.OrdenesFichas;
 }
 
-<div class="container" style="max-width:1100px">
+<style>
+    /* Solo lo propio de esta página; lo demás es .kpi-card, .dash-card, .bar-row y .seg-table. */
+    .comp-pagina { max-width: 1200px; }
+
+    .kpi-card.comp-kpi { display: flex; flex-direction: column; gap: 2px; }
+    .kpi-card.comp-kpi .kpi-num { font-size: var(--diger-text-2xl); }
+    a.kpi-card.comp-kpi { transition: border-color var(--diger-transition), box-shadow var(--diger-transition); }
+    a.kpi-card.comp-kpi:hover { border-color: var(--diger-blue-mid); box-shadow: var(--diger-shadow-md); }
+    .kpi-card.comp-kpi.on { border-color: var(--diger-blue-mid); box-shadow: var(--diger-ring); }
+    .comp-sub { font-size: var(--diger-fs-xs); color: var(--diger-text-muted); }
+    .comp-kpi .bar-track { height: 6px; margin-top: 6px; }
+
+    .comp-dash { margin-bottom: 1.4rem; }
+    .comp-dash .dash-card h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .comp-dash .dash-card h3 small { font-weight: 400; font-size: var(--diger-fs-xs); color: var(--diger-text-muted); }
+    .comp-dash .bar-row { grid-template-columns: 110px 1fr 44px; }
+    .comp-dash .bar-lbl a { color: inherit; text-decoration: none; }
+    .comp-dash .bar-lbl a:hover { color: var(--diger-blue-strong); text-decoration: underline; }
+    .comp-pie { margin: .6rem 0 0; font-size: var(--diger-fs-xs); color: var(--diger-text-muted); }
+    .comp-pie a { color: var(--diger-blue-strong); font-weight: 700; text-decoration: none; }
+
+    .comp-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--diger-border); margin-bottom: 1rem; flex-wrap: wrap; }
+    .comp-tabs a { padding: 8px 14px; margin-bottom: -2px; border-bottom: 3px solid transparent;
+                   font-size: var(--diger-fs-base); font-weight: 600; color: var(--diger-text-muted); text-decoration: none; }
+    .comp-tabs a.on { color: var(--diger-blue-strong); border-bottom-color: var(--diger-blue-mid); }
+    /* La búsqueda se lleva el espacio sobrante; el selector de institución no, o los nombres
+       largos del catálogo lo estiran a media pantalla. */
+    .comp-filtros .field { flex: 0 1 200px; min-width: 0; }
+    .comp-filtros .comp-f-buscar { flex: 1 1 220px; }
+    .comp-filtros .comp-f-inst { flex-basis: 240px; }
+    .comp-filtros .comp-f-orden { flex-basis: 230px; }
+
+    .comp-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: .6rem; }
+
+    /* Los colores del tramo, con los tokens que ya cambian en el tema oscuro. Van bajo
+       .comp-pagina para ganarle a «.kpi-card .kpi-num», que pinta todas las cifras de azul. */
+    .comp-pagina .comp-t-completas { color: var(--diger-success-strong); }
+    .comp-pagina .comp-t-alta      { color: var(--diger-blue-strong); }
+    .comp-pagina .comp-t-media     { color: var(--diger-warning-strong); }
+    .comp-pagina .comp-t-baja      { color: var(--diger-danger-strong); }
+    /* El azul de marca de .bar-fill casi desaparece sobre el fondo del tema oscuro. */
+    .bar-fill.comp-b-alta { background: var(--diger-blue-mid); }
+
+    /* ── Tabla ─────────────────────────────────────────────────────────
+       El encabezado se queda fijo al bajar: con veinte filas de porcentajes, perder de vista qué
+       columna es cuál obligaba a subir y bajar para leer cada fila. Se pega justo debajo de la
+       barra azul, que también es sticky; su alto lo mide el script del final (--comp-tope) porque
+       cambia con el ancho, y 64px es el respaldo si el script no corre.
+       Para que sticky funcione contra la ventana, ningún antepasado puede recortar el
+       desbordamiento: por eso la tabla pierde el overflow:hidden de .seg-table, y las esquinas
+       redondeadas pasan a las celdas de las puntas. */
+    .seg-table.comp-tabla { overflow: visible; }
+    .comp-tabla th { position: sticky; top: var(--comp-tope, 64px); z-index: 2;
+                     box-shadow: inset 0 -1px 0 var(--diger-border); white-space: nowrap; }
+    .comp-tabla th:first-child { border-top-left-radius: var(--diger-radius-md); }
+    .comp-tabla th:last-child  { border-top-right-radius: var(--diger-radius-md); }
+    .comp-tabla .comp-c { text-align: center; }
+    .comp-tabla .comp-cod { white-space: nowrap; font-weight: 700; color: var(--diger-blue-title); }
+    .comp-tabla .comp-nombre { color: var(--diger-text-strong); text-decoration: none; font-weight: 600; }
+    .comp-tabla a.comp-nombre:hover { color: var(--diger-blue-strong); text-decoration: underline; }
+    .comp-tabla .comp-inst { display: block; font-size: var(--diger-fs-xs); color: var(--diger-text-muted); margin-top: 2px; }
+    .comp-pct { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+    .comp-pct .bar-track { flex: 1; height: 8px; min-width: 60px; }
+    .comp-pct strong { font-size: var(--diger-fs-sm); min-width: 40px; text-align: right; }
+    .comp-pct + small { display: block; font-size: var(--diger-fs-2xs); color: var(--diger-text-muted); }
+    .comp-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .comp-chip { font-size: var(--diger-fs-2xs); font-weight: 600; padding: 2px 8px; border-radius: var(--diger-radius-pill);
+                 background: var(--diger-warning-bg); color: var(--diger-warning-strong); white-space: nowrap; }
+    .comp-nada { color: var(--diger-text-slate); }
+    .comp-tabla .btns { font-size: var(--diger-fs-xs); padding: 4px 10px; white-space: nowrap; }
+
+    /* Tableta: la tabla por institución no cabe a lo ancho. Aquí sí hace falta el desplazamiento
+       horizontal, y con él sticky ya no puede pegarse a la ventana; se pega al contenedor, que
+       tiene alto propio para que haya contra qué pegarse. */
+    @@media (min-width: 601px) and (max-width: 1100px) {
+        .comp-scroll { overflow: auto; max-height: 75vh; border-radius: var(--diger-radius-md); }
+        .comp-tabla th { top: 0; }
+    }
+
+    /* Celular: cada fila se vuelve tarjeta y cada dato lleva su rótulo al lado, así que no hay
+       encabezado que perder de vista. Sin esto la tabla obliga a desplazarse de lado. */
+    @@media (max-width: 600px) {
+        .comp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .comp-dash .bar-row { grid-template-columns: 90px 1fr 40px; }
+        .seg-table.comp-tabla, .comp-tabla tbody, .comp-tabla tr, .comp-tabla td { display: block; }
+        .seg-table.comp-tabla { background: transparent; box-shadow: none; }
+        .comp-tabla thead { display: none; }
+        .comp-tabla tr { background: var(--diger-surface); border: 1px solid var(--diger-border);
+                         border-radius: var(--diger-radius-md); padding: 8px 14px; margin-bottom: 10px;
+                         box-shadow: var(--diger-shadow-sm); }
+        .seg-table.comp-tabla tr:hover td { background: transparent; }
+        .comp-tabla td { border: 0; padding: 5px 0; display: flex; justify-content: space-between;
+                         align-items: center; gap: 12px; text-align: right; }
+        .comp-tabla td[data-etq]::before { content: attr(data-etq); flex: none; text-align: left;
+                         font-size: var(--diger-fs-2xs); font-weight: 700; text-transform: uppercase;
+                         letter-spacing: .04em; color: var(--diger-text-muted); }
+        .comp-tabla td.comp-titulo { display: block; text-align: left; }
+        .comp-tabla td.comp-accion:empty { display: none; }
+        .comp-chips { justify-content: flex-end; }
+        .comp-pct { min-width: 150px; }
+        .comp-pct + small { text-align: right; }
+    }
+</style>
+
+<div class="container comp-pagina">
     <div class="hist-header">
         <div>
-            <h2>Completitud de fichas <span class="help-tip tip-down" data-tip="Por institución, qué porcentaje de trámites ya tiene categoría, modalidad, tiempo, costo y enlace a SOL capturados. Es el criterio para saber si el piloto está listo para publicarse.">?</span></h2>
+            <h2>Completitud de fichas <span class="help-tip tip-down" data-tip="Una ficha está completa cuando tiene categoría, modalidad, tiempo, costo y, si el trámite está en SOL, su enlace. Por institución es el criterio para saber si el piloto está listo para publicarse.">?</span></h2>
             <p>Solo cuenta trámites con institución vinculada. Los sin vincular quedan fuera hasta que se resuelva la Fase 2.</p>
         </div>
-        <div style="display:flex;gap:8px">
-            <a class="btns" asp-page="/HondurasSimple/CapturaLote">Ir a captura por lotes</a>
-            <a class="btns" asp-page="/Siger/Index">← Inventario</a>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            @if (puedeEditar)
+            {
+                <a class="btns" asp-page="/HondurasSimple/CapturaLote">Ir a captura por lotes</a>
+            }
+            @if (puedeVerSiger)
+            {
+                <a class="btns" asp-page="/Siger/Index">← Inventario</a>
+            }
         </div>
     </div>
 
-    @if (Model.Filas.Count == 0)
+    @if (!Model.HayFichas)
     {
         <div class="hist-empty">
             <div class="ico"></div>
@@ -26,48 +164,327 @@
     }
     else
     {
-        <div class="tabla-envoltura" style="overflow-x:auto">
-        <table class="seg-table">
-            <thead>
-                <tr>
-                    <th>Institución</th>
-                    <th style="text-align:center">Fichas</th>
-                    <th style="text-align:center">Publicadas</th>
-                    <th style="text-align:center">Categoría</th>
-                    <th style="text-align:center">Modalidad</th>
-                    <th style="text-align:center">Tiempo</th>
-                    <th style="text-align:center">Costo</th>
-                    <th style="text-align:center">En SOL</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var f in Model.Filas)
-                {
-                    <tr>
-                        <td>
-                            <a class="seg-inst" asp-page="/HondurasSimple/CapturaLote" asp-route-InstitucionId="@f.InstitucionId">@f.Institucion</a>
-                        </td>
-                        <td style="text-align:center">@f.Fichas</td>
-                        <td style="text-align:center">
-                            <span class="wf-badge @ClasePct(f.PctPublicables)">@f.Publicables (@f.PctPublicables%)</span>
-                        </td>
-                        <td style="text-align:center">
-                            <span class="wf-badge @ClasePct(f.PctCategoria)">@f.ConCategoria (@f.PctCategoria%)</span>
-                        </td>
-                        <td style="text-align:center">
-                            <span class="wf-badge @ClasePct(f.PctModalidad)">@f.ConModalidad (@f.PctModalidad%)</span>
-                        </td>
-                        <td style="text-align:center">
-                            <span class="wf-badge @ClasePct(f.PctTiempo)">@f.ConTiempo (@f.PctTiempo%)</span>
-                        </td>
-                        <td style="text-align:center">
-                            <span class="wf-badge @ClasePct(f.PctCosto)">@f.ConCosto (@f.PctCosto%)</span>
-                        </td>
-                        <td style="text-align:center">@f.EnSol</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-        </div>
+        @* ── Tablero ───────────────────────────────────────────────────
+           Cuenta todas las fichas de la búsqueda, no las de la página: ver CompletitudModel. *@
+        if (r.Total > 0)
+        {
+            <div class="kpi-grid comp-kpis">
+                <div class="kpi-card comp-kpi">
+                    <div class="kpi-num" data-kpi="total">@r.Total</div>
+                    <div class="kpi-lbl">Fichas</div>
+                    <div class="comp-sub">de @r.Instituciones @(r.Instituciones == 1 ? "institución" : "instituciones")</div>
+                </div>
+                <div class="kpi-card comp-kpi">
+                    <div class="kpi-num @Tono(r.Promedio)" data-kpi="promedio">@r.Promedio&nbsp;%</div>
+                    <div class="kpi-lbl">Completitud promedio <span class="help-tip tip-down" data-tip="Promedio de los campos capturados por ficha: una con 3 de 4 cuenta 75 %.">?</span></div>
+                    <div class="bar-track"><div class="bar-fill @TramoDe(r.Promedio).ClaseBarra" style="width:@r.Promedio%"></div></div>
+                </div>
+                <a class="kpi-card comp-kpi @(Model.Mostrar == "completas" ? "on" : "")" href="@Ir("completas")">
+                    <div class="kpi-num comp-t-completas" data-kpi="completas">@r.Completas</div>
+                    <div class="kpi-lbl">Completas</div>
+                    <div class="comp-sub">@ResumenCompletitud.Pct(r.Completas, r.Total) % del total</div>
+                </a>
+                <a class="kpi-card comp-kpi @(Model.Mostrar == "incompletas" ? "on" : "")" href="@Ir("incompletas")">
+                    <div class="kpi-num comp-t-media" data-kpi="incompletas">@r.Incompletas</div>
+                    <div class="kpi-lbl">Incompletas</div>
+                    <div class="comp-sub">les falta al menos un campo</div>
+                </a>
+                <a class="kpi-card comp-kpi @(Model.Mostrar == "baja" ? "on" : "")" href="@Ir("baja")">
+                    <div class="kpi-num comp-t-baja" data-kpi="rezagadas">@r.Rezagadas</div>
+                    <div class="kpi-lbl">Rezagadas</div>
+                    <div class="comp-sub">por debajo del @CompletitudModel.Umbral&nbsp;%</div>
+                </a>
+                <div class="kpi-card comp-kpi">
+                    <div class="kpi-num" data-kpi="publicadas">@r.Publicadas</div>
+                    <div class="kpi-lbl">Publicadas</div>
+                    <div class="comp-sub">en Honduras Fácil · @ResumenCompletitud.Pct(r.Publicadas, r.Total) %</div>
+                </div>
+            </div>
+
+            <div class="dash-grid comp-dash">
+                <div class="dash-card">
+                    <h3>Distribución <small>fichas por tramo</small></h3>
+                    @foreach (var (t, n) in r.PorTramo)
+                    {
+                        <div class="bar-row" title="@t.Etiqueta: @t.Rango">
+                            <span class="bar-lbl"><a href="@Ir(t.Clave)">@t.Etiqueta</a></span>
+                            <div class="bar-track"><div class="bar-fill @t.ClaseBarra" style="width:@ResumenCompletitud.Pct(n, r.Total)%"></div></div>
+                            <span class="bar-val" data-tramo="@t.Clave">@n</span>
+                        </div>
+                    }
+                    <p class="comp-pie">Pulse un tramo para ver solo esas fichas.</p>
+                </div>
+
+                <div class="dash-card">
+                    <h3>Lo que más falta <small>fichas sin el campo</small></h3>
+                    @foreach (var (campo, n) in r.QueFalta)
+                    {
+                        <div class="bar-row">
+                            <span class="bar-lbl">@(char.ToUpper(campo[0]) + campo[1..])</span>
+                            <div class="bar-track"><div class="bar-fill c-amber" style="width:@ResumenCompletitud.Pct(n, r.Total)%"></div></div>
+                            <span class="bar-val" data-falta="@campo">@n</span>
+                        </div>
+                    }
+                    <p class="comp-pie">El enlace a SOL solo se exige a las fichas que están en SOL.</p>
+                </div>
+
+                <div class="dash-card">
+                    <h3>Menor completitud <small>por institución</small></h3>
+                    @if (r.Peores.Count == 0)
+                    {
+                        <p class="comp-pie" style="margin:0">Todas las instituciones tienen sus fichas completas.</p>
+                    }
+                    else
+                    {
+                        foreach (var i in r.Peores)
+                        {
+                            <div class="bar-row" title="@i.Nombre — @i.Fichas fichas, @i.Completas completas">
+                                <span class="bar-lbl"><a href="@Ir(institucion: i.Id, vista: CompletitudModel.VistaFichas)">@i.Id</a></span>
+                                <div class="bar-track"><div class="bar-fill @TramoDe(i.Promedio).ClaseBarra" style="width:@i.Promedio%"></div></div>
+                                <span class="bar-val">@i.Promedio&nbsp;%</span>
+                            </div>
+                        }
+                        <p class="comp-pie"><a href="@Ir(vista: CompletitudModel.VistaInstituciones)">Ver todas por institución →</a></p>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ── Vistas ────────────────────────────────────────────────── *@
+        <nav class="comp-tabs" aria-label="Vista">
+            <a class="@(Model.PorInstitucion ? "" : "on")" href="@Ir(vista: CompletitudModel.VistaFichas)">Por ficha</a>
+            <a class="@(Model.PorInstitucion ? "on" : "")" href="@Ir(vista: CompletitudModel.VistaInstituciones)">Por institución</a>
+        </nav>
+
+        @* ── Filtros ───────────────────────────────────────────────── *@
+        <form method="get" class="seg-filters comp-filtros">
+            <input type="hidden" name="Vista" value="@Model.Vista" />
+            <div class="field comp-f-buscar">
+                <label for="comp-buscar">Buscar</label>
+                <input id="comp-buscar" name="Buscar" value="@Model.Buscar" placeholder="Código, nombre o institución..." />
+            </div>
+            <div class="field comp-f-inst">
+                <label for="comp-inst">Institución</label>
+                <select id="comp-inst" name="InstitucionId">
+                    <option value="">Todas</option>
+                    @foreach (var (id, nombre) in Model.OpcionesInstitucion)
+                    {
+                        <option value="@id" selected="@(Model.InstitucionId == id)">@nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label for="comp-mostrar">Mostrar</label>
+                <select id="comp-mostrar" name="Mostrar">
+                    <option value="">Todas las fichas</option>
+                    <option value="incompletas" selected="@(Model.Mostrar == "incompletas")">Incompletas</option>
+                    @foreach (var t in CompletitudModel.Tramos)
+                    {
+                        <option value="@t.Clave" selected="@(Model.Mostrar == t.Clave)">@t.Etiqueta (@t.Rango)</option>
+                    }
+                </select>
+            </div>
+            <div class="field comp-f-orden">
+                <label for="comp-orden">Ordenar por</label>
+                <select id="comp-orden" name="Orden">
+                    @foreach (var (clave, etiqueta) in ordenes)
+                    {
+                        <option value="@clave" selected="@(Model.Orden == clave)">@etiqueta</option>
+                    }
+                </select>
+            </div>
+            <button class="btnp" type="submit">Filtrar</button>
+            <a class="btns" asp-page="/HondurasSimple/Completitud" asp-route-Vista="@Model.Vista">Limpiar</a>
+        </form>
+
+        @if (!Model.PorInstitucion)
+        {
+            var p = Model.Fichas;
+            if (p.Total == 0)
+            {
+                <div class="hist-empty">
+                    <div class="ico"></div>
+                    <p>@(hayFiltro || Model.Mostrar is not null ? "Ninguna ficha coincide con estos filtros." : "No hay fichas que mostrar.")</p>
+                </div>
+            }
+            else
+            {
+                <div class="comp-meta">
+                    <span class="res-meta">@p.Total @(p.Total == 1 ? "ficha" : "fichas")@(Model.Mostrar is null ? "" : " de " + r.Total) · ordenadas por @ordenes.First(o => o.Clave == Model.Orden).Etiqueta.ToLowerInvariant()</span>
+                    @if (puedeEditar && Model.InstitucionId is not null && r.Incompletas > 0)
+                    {
+                        <a class="btns" asp-page="/HondurasSimple/CapturaLote" asp-route-InstitucionId="@Model.InstitucionId" asp-route-SoloIncompletas="true">Capturar sus @r.Incompletas incompletas en lote</a>
+                    }
+                </div>
+
+                <div class="comp-scroll">
+                    <table class="seg-table comp-tabla">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Trámite</th>
+                                <th>Completitud</th>
+                                <th>Le falta</th>
+                                <th class="comp-c">Honduras Fácil</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var f in p.Items)
+                            {
+                                <tr data-ficha="@f.Codigo">
+                                    <td data-etq="Código"><span class="comp-cod">@f.Codigo</span></td>
+                                    <td class="comp-titulo">
+                                        @if (puedeVerSiger)
+                                        {
+                                            <a class="comp-nombre" asp-page="/Siger/Detalle" asp-route-id="@f.Id">@f.Nombre</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="comp-nombre">@f.Nombre</span>
+                                        }
+                                        <span class="comp-inst" title="@f.Institucion">@f.Institucion</span>
+                                    </td>
+                                    <td data-etq="Completitud">
+                                        <div>
+                                            <div class="comp-pct">
+                                                <div class="bar-track"><div class="bar-fill @f.Tramo.ClaseBarra" style="width:@f.Pct%"></div></div>
+                                                <strong class="@Tono(f.Pct)">@f.Pct&nbsp;%</strong>
+                                            </div>
+                                            <small>@f.Capturados de @f.Requeridos campos</small>
+                                        </div>
+                                    </td>
+                                    <td data-etq="Le falta">
+                                        @if (f.Completa)
+                                        {
+                                            <span class="wf-badge wf-completada">Completa</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="comp-chips">
+                                                @foreach (var campo in f.Faltantes)
+                                                {
+                                                    <span class="comp-chip">@campo</span>
+                                                }
+                                            </span>
+                                        }
+                                    </td>
+                                    <td data-etq="Honduras Fácil" class="comp-c">
+                                        @if (f.Publicado)
+                                        {
+                                            <span class="wf-badge wf-asignada">Publicada</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="comp-nada">—</span>
+                                        }
+                                    </td>
+                                    <td class="comp-accion" style="text-align:right">@if (puedeEditar)
+                                        {
+                                            <a class="btns" asp-page="/HondurasSimple/Editor" asp-route-id="@f.Id">@(f.Completa ? "Editar" : "Completar")</a>
+                                        }</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <partial name="_Paginacion" model="new PaginacionVm(p.Page, p.TotalPages, p.Total, p.Desde, p.Hasta)" />
+            }
+        }
+        else
+        {
+            var p = Model.Instituciones;
+            if (p.Total == 0)
+            {
+                <div class="hist-empty">
+                    <div class="ico"></div>
+                    <p>Ninguna institución tiene fichas que coincidan con estos filtros.</p>
+                </div>
+            }
+            else
+            {
+                <div class="comp-meta">
+                    <span class="res-meta">@p.Total @(p.Total == 1 ? "institución" : "instituciones")@(Model.Mostrar is null ? "" : ", contando solo las fichas que se muestran") · ordenadas por @ordenes.First(o => o.Clave == Model.Orden).Etiqueta.ToLowerInvariant()</span>
+                </div>
+
+                <div class="comp-scroll">
+                    <table class="seg-table comp-tabla">
+                        <thead>
+                            <tr>
+                                <th>Institución</th>
+                                <th class="comp-c">Fichas</th>
+                                <th>Completitud</th>
+                                <th class="comp-c">Completas</th>
+                                <th class="comp-c">Categoría</th>
+                                <th class="comp-c">Modalidad</th>
+                                <th class="comp-c">Tiempo</th>
+                                <th class="comp-c">Costo</th>
+                                <th class="comp-c">Enlace SOL <span class="help-tip tip-down tip-left" data-tip="Solo sobre las fichas que están en SOL; a las demás no se les exige.">?</span></th>
+                                <th class="comp-c">Publicadas</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var i in p.Items)
+                            {
+                                <tr data-inst="@i.Id">
+                                    <td class="comp-titulo">
+                                        <a class="comp-nombre" href="@Ir(institucion: i.Id, vista: CompletitudModel.VistaFichas)" title="Ver sus fichas">@i.Nombre</a>
+                                        <span class="comp-inst">@i.Id</span>
+                                    </td>
+                                    <td data-etq="Fichas" class="comp-c"><strong>@i.Fichas</strong></td>
+                                    <td data-etq="Completitud">
+                                        <div class="comp-pct">
+                                            <div class="bar-track"><div class="bar-fill @TramoDe(i.Promedio).ClaseBarra" style="width:@i.Promedio%"></div></div>
+                                            <strong class="@Tono(i.Promedio)">@i.Promedio&nbsp;%</strong>
+                                        </div>
+                                    </td>
+                                    <td data-etq="Completas" class="comp-c"><span class="wf-badge @Insignia(i.PctCompletas)" title="@i.PctCompletas % de sus fichas">@i.Completas</span></td>
+                                    <td data-etq="Categoría" class="comp-c"><span class="wf-badge @Insignia(i.PctCategoria)" title="@i.ConCategoria de @i.Fichas">@i.PctCategoria&nbsp;%</span></td>
+                                    <td data-etq="Modalidad" class="comp-c"><span class="wf-badge @Insignia(i.PctModalidad)" title="@i.ConModalidad de @i.Fichas">@i.PctModalidad&nbsp;%</span></td>
+                                    <td data-etq="Tiempo" class="comp-c"><span class="wf-badge @Insignia(i.PctTiempo)" title="@i.ConTiempo de @i.Fichas">@i.PctTiempo&nbsp;%</span></td>
+                                    <td data-etq="Costo" class="comp-c"><span class="wf-badge @Insignia(i.PctCosto)" title="@i.ConCosto de @i.Fichas">@i.PctCosto&nbsp;%</span></td>
+                                    <td data-etq="Enlace SOL" class="comp-c">
+                                        @if (i.EnSol == 0)
+                                        {
+                                            <span class="comp-nada" title="Ninguna de sus fichas está en SOL">—</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="wf-badge @Insignia(i.PctEnlaceSol)" title="@i.ConEnlaceSol de @i.EnSol en SOL">@i.PctEnlaceSol&nbsp;%</span>
+                                        }
+                                    </td>
+                                    <td data-etq="Publicadas" class="comp-c">@i.Publicadas</td>
+                                    <td class="comp-accion" style="text-align:right">@if (puedeEditar && i.Completas < i.Fichas)
+                                        {
+                                            <a class="btns" asp-page="/HondurasSimple/CapturaLote" asp-route-InstitucionId="@i.Id" asp-route-SoloIncompletas="true">Capturar</a>
+                                        }</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <partial name="_Paginacion" model="new PaginacionVm(p.Page, p.TotalPages, p.Total, p.Desde, p.Hasta)" />
+            }
+        }
     }
 </div>
+
+@section Scripts {
+    <script>
+        // El encabezado de la tabla se pega debajo de la barra azul, que también es sticky. Su
+        // alto cambia con el ancho (en el celular el menú la hace crecer), así que se mide en vez
+        // de suponerlo, y se vuelve a medir cada vez que cambia.
+        (function () {
+            const barra = document.querySelector('.app-header');
+            const pagina = document.querySelector('.comp-pagina');
+            if (!barra || !pagina) return;
+            const medir = () => pagina.style.setProperty('--comp-tope', barra.getBoundingClientRect().height + 'px');
+            medir();
+            if ('ResizeObserver' in window) new ResizeObserver(medir).observe(barra);
+            else window.addEventListener('resize', medir);
+        })();
+    </script>
+}
