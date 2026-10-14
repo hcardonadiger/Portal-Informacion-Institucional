@@ -1213,7 +1213,8 @@ tr.contacto-inactivo td {
     align-items: center;
     gap: .35rem;
     padding: .5rem 1.4rem;
-    max-width: 1500px;
+    /* 1720 y no 1500: con 1500 la barra completa no cabía nunca, ni en una pantalla de 1920. */
+    max-width: 1720px;
     margin: 0 auto;
 }
 
@@ -1397,12 +1398,57 @@ tr.contacto-inactivo td {
     opacity: 1;
 }
 
-/* Con seis grupos el ancho aprieta en la franja previa al menú lateral (900px).
-   Acotado por abajo para no encoger también los botones del drawer, que ya van a lo ancho. */
-@media (min-width: 901px) and (max-width: 1180px) {
+/* La barra completa —marca con la institución, nueve grupos y el usuario con su nombre— mide
+   unos 1.650 px. Por debajo de eso los grupos, que no se parten, se montaban sobre la campana y
+   el usuario (14-10-2026). Se cede en escalones, de lo que menos se extraña a lo que más:
+     1. Hasta 1.700 px: fuera el nombre de la institución junto a la marca (ya está en la franja
+        de gobierno y en el panel de usuario); grupos un poco más juntos. El nombre del usuario
+        se queda: con estos escalones cabe en todos los anchos.
+     2. Hasta 1.400 px: letra pequeña y grupos apretados.
+     3. Hasta 1.240 px: sin la flechita de cada grupo.
+     4. Hasta 1.140 px: el menú pasa al panel lateral (ver la regla de max-width: 1140px).
+   Medido con los nueve grupos que ve un administrador: cada escalón deja el menú sin tocar la
+   campana en todo su tramo.
+   Acotado por abajo para no encoger también los botones del panel, que ya van a lo ancho. */
+@media (min-width: 1141px) and (max-width: 1700px) {
+    .app-brand-divider,
+    .app-brand-inst,
+    .app-brand-inst-logo,
+    .app-brand-title {
+        display: none;
+    }
+
     .nav-group-btn {
-        padding: 9px 9px;
+        padding: 9px 10px;
+    }
+}
+
+/* En el celular tampoco cabe: el nombre de la institución empujaba la campana fuera de la
+   pantalla. El menú ya va en el panel lateral; aquí solo se aparta ese nombre. */
+@media (max-width: 600px) {
+    .app-brand-divider,
+    .app-brand-inst,
+    .app-brand-inst-logo,
+    .app-brand-title {
+        display: none;
+    }
+}
+
+@media (min-width: 1141px) and (max-width: 1400px) {
+    .nav-group-btn {
+        padding: 8px 7px;
+        gap: 4px;
         font-size: var(--diger-fs-sm);
+    }
+}
+
+@media (min-width: 1141px) and (max-width: 1240px) {
+    .nav-group-btn {
+        padding: 8px 6px;
+    }
+
+    .nav-group-btn .nav-caret {
+        display: none;
     }
 }
 
@@ -1544,7 +1590,9 @@ tr.contacto-inactivo td {
 }
 
 /* Cabecera responsiva: menú lateral deslizable en pantallas pequeñas */
-@media (max-width: 900px) {
+/* 1140 y no 900: con nueve grupos la barra no cabe en una fila por debajo de eso, ni siquiera
+   apretada. */
+@media (max-width: 1140px) {
     .nav-toggle {
         display: flex;
     }
