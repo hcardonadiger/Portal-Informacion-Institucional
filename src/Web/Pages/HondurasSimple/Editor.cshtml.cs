@@ -220,10 +220,20 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
 
         if (!ModelState.IsValid) return Page();
 
+        // La institución que ve la API pública es InstitucionId, no el nombre ni la sigla de
+        // texto. Hasta el 14-10-2026 el Editor solo guardaba el texto: en pantalla la ficha decía
+        // «INPREMA», pero para la API no era de nadie y Honduras Fácil no la traía nunca, sin un
+        // error en ninguna parte.
+        string? avisoInstitucion = null;
+
         if (Form.Id == 0)
         {
+            var (llave, aviso) = await ResolverInstitucionAsync(Form.Sigla, null, null, ct);
+            avisoInstitucion = aviso;
+
             var entity = new TramiteSiger
             {
+                InstitucionId = llave,
                 IdSiger = Form.IdSiger, Codigo = Form.Codigo!, Nombre = Form.Nombre!,
                 Institucion = Form.Institucion!, Sigla = Form.Sigla, Dependencia = Form.Dependencia,
                 Descripcion = Form.Descripcion, Objetivo = Form.Objetivo, DirigidoA = Form.DirigidoA,
@@ -242,7 +252,7 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             // distintos: el segundo se hace a mano en Siger/Publicacion (D-08, D-10).
             ctx.TramitesSiger.Add(entity);
             await ctx.SaveChangesAsync(ct);
-            TempData["SuccessMsg"] = "Tramite creado.";
+            TempData["SuccessMsg"] = Mensaje("Tramite creado.", avisoInstitucion);
             return RedirectToPage("/Siger/Detalle", new { id = entity.Id });
         }
         else
@@ -265,7 +275,10 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             {
                 entity.Nombre = Form.Nombre!;
                 entity.Institucion = Form.Institucion!;
+                var siglaAnterior = entity.Sigla;
                 entity.Sigla = Form.Sigla;
+                (entity.InstitucionId, avisoInstitucion) =
+                    await ResolverInstitucionAsync(Form.Sigla, siglaAnterior, entity.InstitucionId, ct);
                 entity.Dependencia = Form.Dependencia;
                 entity.Descripcion = Form.Descripcion;
                 entity.Objetivo = Form.Objetivo;
@@ -310,9 +323,52 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             // nadie lo hubiera pedido. Publicar se decide en Siger/Publicacion (D-10).
 
             await ctx.SaveChangesAsync(ct);
-            TempData["SuccessMsg"] = "Tramite actualizado.";
+            TempData["SuccessMsg"] = Mensaje("Tramite actualizado.", avisoInstitucion);
             return RedirectToPage("/Siger/Detalle", new { id = entity.Id });
         }
+    }
+
+    private static string Mensaje(string hecho, string? aviso) => aviso is null ? hecho : $"{hecho} {aviso}";
+
+    /// <summary>
+    /// La llave de institución de una ficha a partir de su sigla. Misma regla que el script 18
+    /// (<c>asignar-institucion-a-tramites.sql</c>): la llave es la sigla cuando existe una
+    /// institución con ese Id, y no se inventa cuando no existe.
+    /// </summary>
+    /// <param name="siglaAnterior">La sigla antes de este guardado; null al crear.</param>
+    /// <param name="llaveActual">La llave antes de este guardado; null al crear.</param>
+    /// <returns>La llave que corresponde y, si queda vacía, el aviso para quien guarda.</returns>
+    private async Task<(string? Llave, string? Aviso)> ResolverInstitucionAsync(
+        string? sigla, string? siglaAnterior, string? llaveActual, CancellationToken ct)
+    {
+        var s = sigla?.Trim();
+
+        if (!string.IsNullOrEmpty(s))
+        {
+            // IgnoreQueryFilters no es un descuido. Instituciones tiene filtro de alcance, y quien
+            // usa esta pantalla —un Jefe de Área de DIGER, no el administrador— solo vería la
+            // suya: «INPREMA» no aparecería y la ficha se quedaría sin llave por culpa del filtro.
+            // Aquí no se lee una institución para mostrarla; se comprueba que la sigla exista.
+            var arriba = s.ToUpperInvariant();
+            var llave = await ctx.Instituciones.IgnoreQueryFilters().AsNoTracking()
+                .Where(i => i.Id.ToUpper() == arriba)
+                .Select(i => i.Id)
+                .FirstOrDefaultAsync(ct);
+            if (llave is not null) return (llave, null);
+        }
+
+        // La sigla no es de ninguna institución registrada. Si no cambió, se conserva la llave que
+        // ya tuviera: la pone «Pasar a SIGER» desde el expediente, y guardar otra cosa de la ficha
+        // no puede borrarla. Si cambió, la vieja ya no vale: dejarla mandaría el trámite a la
+        // institución equivocada, que es peor que no mandarlo.
+        var mismaSigla = string.Equals(s ?? "", siglaAnterior?.Trim() ?? "", StringComparison.OrdinalIgnoreCase);
+        if (mismaSigla && llaveActual is not null) return (llaveActual, null);
+
+        var aviso = string.IsNullOrEmpty(s)
+            ? "Ojo: la ficha no tiene sigla, así que no tiene institución y no llegará a Honduras Fácil aunque se publique."
+            : $"Ojo: la sigla «{s}» no es la de ninguna institución registrada. La ficha se guardó, pero no llegará " +
+              "a Honduras Fácil aunque se publique: corrija la sigla o registre la institución.";
+        return (null, aviso);
     }
 
 }

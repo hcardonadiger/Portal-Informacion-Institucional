@@ -85,11 +85,34 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
 
         if (cambiadas > 0) await ctx.SaveChangesAsync(ct);
 
-        TempData["SuccessMsg"] = cambiadas == 0
+        var mensaje = cambiadas == 0
             ? "Ninguna ficha cambió de estado."
             : publicar
                 ? $"{cambiadas} ficha(s) publicada(s) en Honduras Fácil."
                 : $"{cambiadas} ficha(s) retirada(s) de Honduras Fácil. Siguen completas en el inventario.";
+
+        // Publicar una ficha sin institución no falla: queda publicada y no llega nunca, porque
+        // la API reparte el catálogo por institución. Se publica igual —el aviso informa, no
+        // bloquea— pero se dice, y se dice cuáles, para que se puedan corregir en el Editor.
+        if (publicar)
+        {
+            var sinInstitucion = fichas
+                .Where(f => f.Publicado && string.IsNullOrEmpty(f.InstitucionId))
+                .Select(f => f.Codigo)
+                .OrderBy(c => c)
+                .ToList();
+            if (sinInstitucion.Count > 0)
+            {
+                var lista = string.Join(", ", sinInstitucion.Take(10)) + (sinInstitucion.Count > 10 ? "…" : "");
+                mensaje += sinInstitucion.Count == 1
+                    ? $" Ojo: la ficha {lista} no tiene institución asignada y no llegará a Honduras Fácil hasta tenerla. " +
+                      "Corrija la sigla en el Editor."
+                    : $" Ojo: {sinInstitucion.Count} fichas no tienen institución asignada y ninguna llegará a Honduras Fácil " +
+                      $"hasta tenerla: {lista}. Corrija la sigla en el Editor.";
+            }
+        }
+
+        TempData["SuccessMsg"] = mensaje;
 
         return Redirigir();
     }

@@ -358,8 +358,15 @@ public sealed class AppDbContext(
         // ── Inyección automática de jerarquía institucional en inserciones ──────
         foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
         {
+            // TramiteSiger queda fuera a propósito. En las demás filas InstitucionId dice de quién
+            // es el registro, y quien lo crea es su dueño. En un trámite dice qué institución lo
+            // ATIENDE, que casi nunca es la de quien lo captura: con esta inyección, cada ficha que
+            // creaba alguien de DIGER nacía como trámite de DIGER, la API la publicaba así y
+            // Honduras Fácil no la traía nunca, porque DIGER no está en su corte. La llave de una
+            // ficha la pone el Editor a partir de la sigla, o el pase desde el expediente.
             var instProp = entry.Metadata.FindProperty("InstitucionId");
-            if (instProp != null && string.IsNullOrEmpty(entry.Property("InstitucionId").CurrentValue as string))
+            if (instProp != null && entry.Entity is not TramiteSiger &&
+                string.IsNullOrEmpty(entry.Property("InstitucionId").CurrentValue as string))
             {
                 entry.Property("InstitucionId").CurrentValue = _activeInst;
             }
