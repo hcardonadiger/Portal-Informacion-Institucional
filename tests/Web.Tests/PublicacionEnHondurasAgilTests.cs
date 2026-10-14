@@ -129,6 +129,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
             new("Form.Codigo",      "910-003"),
             new("Form.Nombre",      "Nombre corregido a mano"),
             new("Form.Institucion", "Instituto de Prueba"),
+            new("Form.InstitucionId", "INPREMA"),
             new("Form.EstadoSiger", "Registrado")
         ]);
 
@@ -151,6 +152,7 @@ public sealed class PublicacionEnHondurasAgilTests : IAsyncLifetime
             new("Form.Codigo",      "910-002"),
             new("Form.Nombre",      "Otro nombre corregido"),
             new("Form.Institucion", "Instituto de Prueba"),
+            new("Form.InstitucionId", "INPREMA"),
             new("Form.EstadoSiger", "Aprobado")
         ]);
 

@@ -170,7 +170,7 @@ public sealed class DireccionSolEnElEditorTests : IAsyncLifetime
         new("Form.Codigo",      ficha.Codigo),
         new("Form.Nombre",      ficha.Nombre),
         new("Form.Institucion", ficha.Institucion),
-        new("Form.Sigla",       ficha.Sigla ?? ""),
+        new("Form.InstitucionId", ficha.InstitucionId ?? ""),
         new("Form.EstadoSiger", ficha.EstadoSiger ?? "")
     ];
 

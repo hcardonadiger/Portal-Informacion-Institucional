@@ -116,12 +116,22 @@
 
         <div class="form-grid">
             <div class="field">
-                <label asp-for="Form.Institucion">Institucion</label>
-                <input asp-for="Form.Institucion" disabled="@bloq" required maxlength="200" />
+                <label asp-for="Form.InstitucionId">Institucion responsable</label>
+                @* Una lista y no texto libre: una sigla escrita a mano que no es de ninguna
+                   institución registrada deja la ficha fuera de Honduras Fácil para siempre. *@
+                <select asp-for="Form.InstitucionId" disabled="@bloq" required>
+                    <option value="">— Elija la institucion —</option>
+                    @foreach (var i in Model.Instituciones)
+                    {
+                        <option value="@i.Id">@i.Etiqueta</option>
+                    }
+                </select>
+                <span asp-validation-for="Form.InstitucionId" class="field-error"></span>
+                <small style="color:#64748b">¿No esta en la lista? Registrela primero en <a asp-page="/Instituciones/Index">Instituciones</a>.</small>
             </div>
             <div class="field">
-                <label asp-for="Form.Sigla">Sigla</label>
-                <input asp-for="Form.Sigla" disabled="@bloq" maxlength="30" />
+                <label asp-for="Form.Institucion">Nombre de la institucion, como lo vera el ciudadano</label>
+                <input asp-for="Form.Institucion" disabled="@bloq" required maxlength="200" />
             </div>
         </div>
 

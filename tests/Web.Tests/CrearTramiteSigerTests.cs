@@ -76,7 +76,9 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
             new KeyValuePair<string, string>("Form.IdSiger", idSiger.ToString()),
             new KeyValuePair<string, string>("Form.Codigo", codigo),
             new KeyValuePair<string, string>("Form.Nombre", nombre),
-            new KeyValuePair<string, string>("Form.Institucion", "Secretaría de prueba")
+            new KeyValuePair<string, string>("Form.Institucion", "Secretaría de prueba"),
+            // Desde el 14-10-2026 la institución se elige de la lista y es obligatoria.
+            new KeyValuePair<string, string>("Form.InstitucionId", "INPREMA")
         ]);
     }
 

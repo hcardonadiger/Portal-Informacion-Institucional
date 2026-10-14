@@ -41,7 +41,7 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         if (string.IsNullOrWhiteSpace(institucionId))
             return DireccionSol.Prefijo(sol.Value.UrlBase, null);
 
-        var ruta = await ctx.Instituciones.AsNoTracking()
+        var ruta = await ctx.Instituciones.IgnoreQueryFilters().AsNoTracking()
             .Where(i => i.Id == institucionId)
             .Select(i => i.RutaSol ?? i.Id)
             .FirstOrDefaultAsync(ct);
@@ -49,9 +49,39 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         return DireccionSol.Prefijo(sol.Value.UrlBase, ruta ?? institucionId);
     }
 
+    /// <summary>Las instituciones que se pueden elegir: todas las registradas y activas.</summary>
+    public IReadOnlyList<OpcionInstitucion> Instituciones { get; private set; } = [];
+
+    /// <summary>
+    /// La institución de una ficha se elige de una lista, no se escribe (14-10-2026). Con texto
+    /// libre, cualquier sigla se guardaba: 343 fichas de Test quedaron con una que no era de
+    /// ninguna institución registrada, y ninguna de ellas podía llegar a Honduras Fácil.
+    /// </summary>
+    private async Task CargarInstitucionesAsync(CancellationToken ct)
+    {
+        // IgnoreQueryFilters por lo mismo que en ResolverInstitucionAsync: quien usa esta pantalla
+        // es un Jefe de Área de DIGER, y el filtro de alcance solo le dejaría elegir DIGER.
+        var filas = await ctx.Instituciones.IgnoreQueryFilters().AsNoTracking()
+            .Where(i => i.Activo)
+            .OrderBy(i => i.Nombre)
+            .Select(i => new { i.Id, i.Nombre, i.NombreCorto })
+            .ToListAsync(ct);
+
+        Instituciones = filas
+            .Select(i => new OpcionInstitucion(
+                i.Id,
+                // «ARSA» a secas si el nombre registrado ya es la sigla; si no, «Nombre (SIGLA)».
+                string.Equals(i.Nombre, i.NombreCorto ?? i.Id, StringComparison.OrdinalIgnoreCase)
+                    ? i.Nombre
+                    : $"{i.Nombre} ({i.NombreCorto ?? i.Id})",
+                i.NombreCorto ?? i.Id))
+            .ToList();
+    }
+
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
         Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
+        await CargarInstitucionesAsync(ct);
 
         if (id is not null)
         {
@@ -76,6 +106,12 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
                 t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo);
             UltimaRevision = t.UpdatedAt ?? t.UltimaModificacion ?? t.CreatedAt;
             PrefijoSol = await PrefijoAsync(t.InstitucionId ?? t.Sigla, ct);
+            // La lista llega con la institución de la ficha ya elegida. Si su llave no es válida
+            // —las importadas de SIGER— se intenta por la sigla; si tampoco, queda sin elegir y
+            // no se podrá guardar hasta escoger una.
+            Form.InstitucionId = Instituciones.Any(i => i.Id == t.InstitucionId)
+                ? t.InstitucionId
+                : (await ResolverInstitucionAsync(t.Sigla, t.Sigla, null, ct)).Llave;
             Bloqueo    = await sender.Send(new GetBloqueoFichaQuery(t.Id), ct);
         }
         else
@@ -181,7 +217,8 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
     {
         Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
 
-        PrefijoSol = await PrefijoAsync(Form.Sigla, ct);
+        await CargarInstitucionesAsync(ct);
+        PrefijoSol = await PrefijoAsync(Form.InstitucionId ?? Form.Sigla, ct);
         if (Form.Id != 0) Bloqueo = await sender.Send(new GetBloqueoFichaQuery(Form.Id), ct);
 
         // ── El enlace a SOL (D-13, D-14) ──────────────────────────────────────
@@ -218,24 +255,27 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
 
         await ComprobarQueNoChoqueAsync(ct);
 
+        // Sin una institución de la lista no se guarda. Solo cuando la institución se edita aquí:
+        // con la ficha enlazada a un expediente, viene de allá y el campo sale deshabilitado.
+        if (!Bloqueo.Bloqueada && !Instituciones.Any(i => i.Id == Form.InstitucionId))
+            ModelState.AddModelError("Form.InstitucionId",
+                "Elija la institución responsable de la lista. Si no aparece, regístrela primero en Instituciones.");
+
         if (!ModelState.IsValid) return Page();
 
         // La institución que ve la API pública es InstitucionId, no el nombre ni la sigla de
         // texto. Hasta el 14-10-2026 el Editor solo guardaba el texto: en pantalla la ficha decía
         // «INPREMA», pero para la API no era de nadie y Honduras Fácil no la traía nunca, sin un
-        // error en ninguna parte.
-        string? avisoInstitucion = null;
-
+        // error en ninguna parte. Ahora sale de la lista, y la sigla de texto se deduce de ella.
         if (Form.Id == 0)
         {
-            var (llave, aviso) = await ResolverInstitucionAsync(Form.Sigla, null, null, ct);
-            avisoInstitucion = aviso;
+            var elegida = Instituciones.First(i => i.Id == Form.InstitucionId);
 
             var entity = new TramiteSiger
             {
-                InstitucionId = llave,
+                InstitucionId = elegida.Id,
                 IdSiger = Form.IdSiger, Codigo = Form.Codigo!, Nombre = Form.Nombre!,
-                Institucion = Form.Institucion!, Sigla = Form.Sigla, Dependencia = Form.Dependencia,
+                Institucion = Form.Institucion!, Sigla = elegida.Sigla, Dependencia = Form.Dependencia,
                 Descripcion = Form.Descripcion, Objetivo = Form.Objetivo, DirigidoA = Form.DirigidoA,
                 EstadoSiger = Form.EstadoSiger,
                 DisponibleEnLinea = Form.DisponibleEnLinea, EnPlanDigitalizacion = Form.EnPlanDigitalizacion,
@@ -252,7 +292,7 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             // distintos: el segundo se hace a mano en Siger/Publicacion (D-08, D-10).
             ctx.TramitesSiger.Add(entity);
             await ctx.SaveChangesAsync(ct);
-            TempData["SuccessMsg"] = Mensaje("Tramite creado.", avisoInstitucion);
+            TempData["SuccessMsg"] = "Tramite creado.";
             return RedirectToPage("/Siger/Detalle", new { id = entity.Id });
         }
         else
@@ -275,10 +315,9 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             {
                 entity.Nombre = Form.Nombre!;
                 entity.Institucion = Form.Institucion!;
-                var siglaAnterior = entity.Sigla;
-                entity.Sigla = Form.Sigla;
-                (entity.InstitucionId, avisoInstitucion) =
-                    await ResolverInstitucionAsync(Form.Sigla, siglaAnterior, entity.InstitucionId, ct);
+                var elegida = Instituciones.First(i => i.Id == Form.InstitucionId);
+                entity.InstitucionId = elegida.Id;
+                entity.Sigla = elegida.Sigla;
                 entity.Dependencia = Form.Dependencia;
                 entity.Descripcion = Form.Descripcion;
                 entity.Objetivo = Form.Objetivo;
@@ -323,12 +362,10 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             // nadie lo hubiera pedido. Publicar se decide en Siger/Publicacion (D-10).
 
             await ctx.SaveChangesAsync(ct);
-            TempData["SuccessMsg"] = Mensaje("Tramite actualizado.", avisoInstitucion);
+            TempData["SuccessMsg"] = "Tramite actualizado.";
             return RedirectToPage("/Siger/Detalle", new { id = entity.Id });
         }
     }
-
-    private static string Mensaje(string hecho, string? aviso) => aviso is null ? hecho : $"{hecho} {aviso}";
 
     /// <summary>
     /// La llave de institución de una ficha a partir de su sigla. Misma regla que el script 18
@@ -382,6 +419,8 @@ public sealed class TramiteSigerForm
     public string? Nombre { get; set; }
     public string? Institucion { get; set; }
     public string? Sigla { get; set; }
+    /// <summary>La institución responsable, elegida de la lista. Es la que ve la API.</summary>
+    public string? InstitucionId { get; set; }
     public string? Dependencia { get; set; }
     public string? Descripcion { get; set; }
     public string? Objetivo { get; set; }
@@ -416,3 +455,6 @@ public sealed class TramiteSigerForm
     public string? TiempoTexto { get; set; }
     public bool    EsPopular { get; set; }
 }
+
+/// <summary>Una institución de la lista del Editor: su llave, cómo se lee y su sigla.</summary>
+public sealed record OpcionInstitucion(string Id, string Etiqueta, string Sigla);
