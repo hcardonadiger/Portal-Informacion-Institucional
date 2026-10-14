@@ -3,8 +3,13 @@
     var query = Context.Request.Query;
     Func<int, string> Link = p =>
     {
-        var parts = query.Where(kv => kv.Key != "pg")
-            .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value.ToString())}").ToList();
+        // Sin distinguir mayúsculas: las páginas que vuelven de una acción (publicar, aprobar…)
+        // redirigen con «Pg=8», y comparando solo con «pg» ese número se quedaba en la dirección
+        // junto al nuevo —«?Pg=8&pg=6»—. El enlace gana el primero y no se movía de página
+        // (14-10-2026). Cada valor va por separado: ToString() de varios valores los une con comas.
+        var parts = query.Where(kv => !string.Equals(kv.Key, "pg", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(kv => kv.Value.Select(v => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(v ?? "")}"))
+            .ToList();
         parts.Add("pg=" + p);
         return Context.Request.Path + "?" + string.Join("&", parts);
     };
