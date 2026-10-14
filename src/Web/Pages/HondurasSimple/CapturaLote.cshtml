@@ -14,18 +14,31 @@
         <a class="btns" asp-page="/Siger/Index">← Inventario</a>
     </div>
 
-    <form method="get" class="lista-buscar" style="margin-bottom:1rem">
-        <select name="InstitucionId" onchange="this.form.submit()">
-            <option value="">— Todas las instituciones —</option>
-            @foreach (var i in Model.Instituciones)
-            {
-                <option value="@i.Id" selected="@(i.Id == Model.InstitucionId)">@i.Nombre</option>
-            }
-        </select>
-        <label class="chk-label">
-            <input type="checkbox" name="SoloIncompletas" value="true" checked="@Model.SoloIncompletas" onchange="this.form.submit()" />
-            Solo fichas incompletas
-        </label>
+    @* El mismo molde de filtros que Publicado y el inventario: antes era un <select> suelto, con
+       el aspecto por defecto del navegador. *@
+    <form method="get" class="seg-filters">
+        <div class="field" style="flex:1 1 260px">
+            <label for="f-institucion">Institución</label>
+            <select id="f-institucion" name="InstitucionId" onchange="this.form.submit()">
+                <option value="">Todas las instituciones</option>
+                @foreach (var i in Model.Instituciones)
+                {
+                    <option value="@i.Id" selected="@(i.Id == Model.InstitucionId)">@i.Nombre</option>
+                }
+            </select>
+        </div>
+        <div class="field" style="flex:1 1 220px">
+            <label for="f-buscar">Buscar</label>
+            <input id="f-buscar" name="Buscar" value="@Model.Buscar" placeholder="Nombre o código..." />
+        </div>
+        <div class="field" style="min-width:0">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:40px;margin:0">
+                <input type="checkbox" name="SoloIncompletas" value="true" checked="@Model.SoloIncompletas" onchange="this.form.submit()" style="width:auto" />
+                Solo fichas incompletas
+            </label>
+        </div>
+        <button class="btnp" type="submit">Filtrar</button>
+        <a class="btns" asp-page="/HondurasSimple/CapturaLote">Limpiar</a>
     </form>
 
     @if (Model.Filas.Count == 0)
@@ -40,6 +53,8 @@
         <form method="post">
             <input type="hidden" name="InstitucionId" value="@Model.InstitucionId" />
             <input type="hidden" name="SoloIncompletas" value="@Model.SoloIncompletas" />
+            <input type="hidden" name="Buscar" value="@Model.Buscar" />
+            <input type="hidden" name="Pg" value="@Model.Resultado.Page" />
 
             <div class="card" style="margin-bottom:1rem">
                 <h3 style="margin-top:0">Aplicar a los trámites seleccionados</h3>
@@ -82,8 +97,10 @@
                     </div>
                 </div>
                 <button type="submit" class="btnp" style="margin-top:8px" data-confirm="¿Aplicar los cambios a los trámites marcados?">Aplicar a los seleccionados</button>
+                <span class="res-meta" style="margin-left:8px">La casilla del encabezado marca solo los de esta página.</span>
             </div>
 
+            <div style="overflow-x:auto">
             <table class="seg-table">
                 <thead>
                     <tr>
@@ -102,7 +119,7 @@
                     {
                         <tr>
                             <td><input class="chk-fila" type="checkbox" name="Seleccionados" value="@f.Id" /></td>
-                            <td><span class="res-meta">@f.Codigo</span></td>
+                            <td style="white-space:nowrap"><span class="res-meta">@f.Codigo</span></td>
                             <td>@f.Nombre</td>
                             <td>@(f.CategoriaNombre ?? "—")</td>
                             <td>@(f.Modalidad ?? "—")</td>
@@ -122,6 +139,9 @@
                     }
                 </tbody>
             </table>
+            </div>
         </form>
+
+        <partial name="_Paginacion" model="new PaginacionVm(Model.Resultado.Page, Model.Resultado.TotalPages, Model.Resultado.Total, Model.Resultado.Desde, Model.Resultado.Hasta)" />
     }
 </div>

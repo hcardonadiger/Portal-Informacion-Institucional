@@ -6,7 +6,8 @@
     var puedePublicar = await Acceso.PuedeClaveAsync("HondurasSimple.Publicacion.Editar");
 }
 
-<div class="container">
+@* Más ancho que los 780 px de .container: la tabla tiene ocho columnas. *@
+<div class="container" style="max-width:1200px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
         <a class="btns" asp-page="/Siger/Index" style="font-size:13px">← Inventario</a>
         <h2 style="margin:0;font-size:18px;color:#0a2d6e">Publicado en Honduras Fácil</h2>
@@ -38,7 +39,7 @@
         @foreach (var t in tabs)
         {
             var activa = Model.Tab == t.Key;
-            <a asp-page="/HondurasSimple/Publicacion" asp-route-tab="@t.Key" asp-route-buscar="@Model.Buscar" asp-route-sigla="@Model.Sigla"
+            <a asp-page="/HondurasSimple/Publicacion" asp-route-tab="@t.Key" asp-route-buscar="@Model.Buscar" asp-route-sigla="@Model.Sigla" asp-route-avisos="@Model.Avisos"
                style="padding:8px 16px;text-decoration:none;font-weight:600;font-size:14px;border-bottom:3px solid @(activa ? "#1455a4" : "transparent");color:@(activa ? "#1455a4" : "#64748b")">
                 @t.Label <span style="opacity:.7">(@t.Count)</span>
             </a>
@@ -62,6 +63,14 @@
                 }
             </select>
         </div>
+        <div class="field" style="min-width:160px">
+            <label>Avisos</label>
+            <select name="avisos">
+                <option value="">Todas</option>
+                <option value="@PublicacionModel.AvisosSin" selected="@(Model.Avisos == PublicacionModel.AvisosSin)">Sin avisos</option>
+                <option value="@PublicacionModel.AvisosCon" selected="@(Model.Avisos == PublicacionModel.AvisosCon)">Con avisos</option>
+            </select>
+        </div>
         <button class="btnp" type="submit">Filtrar</button>
         <a class="btns" asp-page="/HondurasSimple/Publicacion" asp-route-tab="@Model.Tab">Limpiar</a>
     </form>
@@ -82,6 +91,7 @@
             <input type="hidden" name="tab" value="@Model.Tab" />
             <input type="hidden" name="buscar" value="@Model.Buscar" />
             <input type="hidden" name="sigla" value="@Model.Sigla" />
+            <input type="hidden" name="avisos" value="@Model.Avisos" />
             <input type="hidden" name="pg" value="@Model.Resultado.Page" />
 
             @if (puedePublicar)
@@ -119,7 +129,7 @@
                                     <td><input class="chk-ficha" type="checkbox" name="Seleccion" value="@f.Id" /></td>
                                 }
                                 <td style="white-space:nowrap">@f.Codigo</td>
-                                <td>@f.Nombre</td>
+                                <td style="min-width:220px">@f.Nombre</td>
                                 <td style="white-space:nowrap">@(f.Sigla ?? f.Institucion)</td>
                                 <td style="white-space:nowrap">@(f.EstadoSiger ?? "—")</td>
                                 <td style="white-space:nowrap">

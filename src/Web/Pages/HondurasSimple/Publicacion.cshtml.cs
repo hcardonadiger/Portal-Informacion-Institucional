@@ -32,11 +32,16 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
     public const string TabCandidatas = "candidatas";
     public const string TabTodas      = "todas";
 
+    public const string AvisosSin = "sin";
+    public const string AvisosCon = "con";
+
     private const int TamanoPagina = 25;
 
     [BindProperty(SupportsGet = true)] public string  Tab    { get; set; } = TabPublicadas;
     [BindProperty(SupportsGet = true)] public string? Buscar { get; set; }
     [BindProperty(SupportsGet = true)] public string? Sigla  { get; set; }
+    /// <summary>«sin» = solo las fichas sin avisos; «con» = solo las que tienen; vacío = todas.</summary>
+    [BindProperty(SupportsGet = true)] public string? Avisos { get; set; }
     [BindProperty(SupportsGet = true)] public int?    Pg     { get; set; }
 
     /// <summary>Fichas marcadas en el formulario. Solo se actúa sobre estas.</summary>
@@ -117,7 +122,7 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
         return Redirigir();
     }
 
-    private IActionResult Redirigir() => RedirectToPage(new { Tab, Buscar, Sigla, Pg });
+    private IActionResult Redirigir() => RedirectToPage(new { Tab, Buscar, Sigla, Avisos, Pg });
 
     // ── Carga ─────────────────────────────────────────────────────────────────
 
@@ -147,6 +152,9 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
 
         if (!string.IsNullOrWhiteSpace(Sigla))
             q = q.Where(t => t.Sigla == Sigla);
+
+        if (Avisos == AvisosSin)      q = q.Where(SinAviso);
+        else if (Avisos == AvisosCon) q = q.Where(ConAviso);
 
         var total = await q.CountAsync(ct);
 
@@ -188,6 +196,25 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
     private static readonly Expression<Func<TramiteSiger, bool>> EsCandidata =
         t => !t.Publicado
           && (t.EstadoSiger == ReglaPublicacion.Aprobado || t.EstadoSiger == ReglaPublicacion.Completo);
+
+    /// <summary>
+    /// La ficha que la columna Avisos pinta «sin observaciones»: estado listo y nada por llenar.
+    /// </summary>
+    /// <remarks>
+    /// Para filtrar hay que decidirlo en SQL, antes de paginar; la columna lo decide en memoria con
+    /// <see cref="ReglaPublicacion.EstadoListoParaPublicar"/> y
+    /// <see cref="FichaPublicaCompletitud.CamposFaltantes"/>. Esto repite las dos, campo por campo:
+    /// si se agrega un campo obligatorio allá, va también aquí, o el filtro y la columna dirán cosas
+    /// distintas. <c>PublicacionAvisosTests</c> lo comprueba con una ficha por cada aviso posible.
+    /// </remarks>
+    private static readonly Expression<Func<TramiteSiger, bool>> SinAviso =
+        t => (t.EstadoSiger == ReglaPublicacion.Aprobado || t.EstadoSiger == ReglaPublicacion.Completo)
+          && t.CategoriaId != null && t.Modalidad != null && t.TiempoTexto != null && t.CostoEsGratuito != null
+          && !(t.EstaEnSol && t.SolUrl == null && t.SolTramo == null);
+
+    /// <summary>Lo contrario de <see cref="SinAviso"/>, derivado de ella y no escrito a mano.</summary>
+    private static readonly Expression<Func<TramiteSiger, bool>> ConAviso =
+        Expression.Lambda<Func<TramiteSiger, bool>>(Expression.Not(SinAviso.Body), SinAviso.Parameters);
     /// <param name="Faltantes">Campos sin llenar. No impide publicar; se enseña como aviso.</param>
     public sealed record FilaVm(
         int      Id,

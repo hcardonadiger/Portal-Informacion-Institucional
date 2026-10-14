@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Diger.TramitesEstado.Application.Siger.Bloqueo;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,12 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? InstitucionId { get; set; }
     [BindProperty(SupportsGet = true)] public bool SoloIncompletas { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Buscar { get; set; }
+    [BindProperty(SupportsGet = true)] public int? Pg { get; set; }
+
+    /// <summary>Lo mismo que el inventario. Antes la lista salía entera: con «Todas las
+    /// instituciones» eran cientos de filas seguidas debajo del panel (14-10-2026).</summary>
+    private const int TamanoPagina = 25;
 
     [BindProperty] public List<int> Seleccionados { get; set; } = [];
     [BindProperty] public int? CategoriaId { get; set; }
@@ -22,7 +29,8 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
 
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
     public IReadOnlyList<CategoriaTramite> Categorias { get; private set; } = [];
-    public IReadOnlyList<FilaLoteDto> Filas { get; private set; } = [];
+    public PagedResult<FilaLoteDto> Resultado { get; private set; } = PagedResult<FilaLoteDto>.Empty(TamanoPagina);
+    public IReadOnlyList<FilaLoteDto> Filas => Resultado.Items;
 
     public sealed record FilaLoteDto(
         int Id, string Codigo, string Nombre, string? CategoriaNombre, string? Modalidad,
@@ -87,16 +95,42 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
         if (!string.IsNullOrWhiteSpace(InstitucionId))
             q = q.Where(t => t.InstitucionId == InstitucionId);
 
-        var filas = await q.OrderBy(t => t.Nombre)
+        if (!string.IsNullOrWhiteSpace(Buscar))
+        {
+            var b = Buscar.Trim();
+            q = q.Where(t => t.Nombre.Contains(b) || t.Codigo.Contains(b));
+        }
+
+        // En SQL y no en memoria: con paginación, filtrar después de traer la página dejaría
+        // páginas a medias.
+        if (SoloIncompletas) q = q.Where(FichaIncompleta);
+
+        var total = await q.CountAsync(ct);
+        var (_, page, size) = Paginacion.Normalizar(null, Pg, TamanoPagina);
+        var totalPaginas = Math.Max(1, (int)Math.Ceiling(total / (double)size));
+        if (page > totalPaginas) page = totalPaginas;
+
+        var filas = await q.OrderBy(t => t.Nombre).ThenBy(t => t.Id)
+            .Skip((page - 1) * size).Take(size)
             .Select(t => new { t.Id, t.Codigo, t.Nombre, t.CategoriaId, t.Modalidad, t.TiempoTexto, t.CostoTexto, t.CostoEsGratuito, t.EstaEnSol, t.SolUrl, t.SolTramo })
             .ToListAsync(ct);
 
-        var todas = filas.Select(f => new FilaLoteDto(
+        var items = filas.Select(f => new FilaLoteDto(
             f.Id, f.Codigo, f.Nombre,
             f.CategoriaId is { } cid && categoriaNombres.TryGetValue(cid, out var n) ? n : null,
             f.Modalidad, f.TiempoTexto, f.CostoTexto, f.CostoEsGratuito, f.EstaEnSol,
-            FichaPublicaCompletitud.Evaluar(f.CategoriaId, f.Modalidad, f.TiempoTexto, f.CostoEsGratuito, f.EstaEnSol, f.SolUrl, f.SolTramo)));
+            FichaPublicaCompletitud.Evaluar(f.CategoriaId, f.Modalidad, f.TiempoTexto, f.CostoEsGratuito, f.EstaEnSol, f.SolUrl, f.SolTramo)))
+            .ToList();
 
-        Filas = (SoloIncompletas ? todas.Where(f => !f.FichaCompleta) : todas).ToList();
+        Resultado = new PagedResult<FilaLoteDto>(items, total, page, size);
     }
+
+    /// <summary>
+    /// <see cref="FichaPublicaCompletitud.CamposFaltantes"/> escrita para SQL, campo por campo: si
+    /// se agrega un campo obligatorio allá, va también aquí, o el filtro y la columna «Completa»
+    /// dirán cosas distintas.
+    /// </summary>
+    private static readonly Expression<Func<TramiteSiger, bool>> FichaIncompleta =
+        t => t.CategoriaId == null || t.Modalidad == null || t.TiempoTexto == null ||
+             t.CostoEsGratuito == null || (t.EstaEnSol && t.SolUrl == null && t.SolTramo == null);
 }

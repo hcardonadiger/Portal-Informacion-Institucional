@@ -8,7 +8,10 @@
     var enPendientes = Model.Tab == "pendientes";
 }
 
-<div class="container">
+@* 1280 px y no los 780 de .container: la tabla tiene ocho columnas y, a ese ancho, «De dónde
+   sale» —lo que hay que leer para decidir— quedaba detrás de la barra de desplazamiento
+   horizontal (14-10-2026). *@
+<div class="container" style="max-width:1280px">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
         <a class="btns" asp-page="/Siger/Index" style="font-size:13px">← Inventario</a>
         <h2 style="margin:0;font-size:18px;color:#0a2d6e">Llenado asistido</h2>
@@ -180,14 +183,14 @@
                                     <td><input class="chk-prop" type="checkbox" name="Seleccion" value="@f.Id" /></td>
                                 }
                                 <td style="white-space:nowrap">@f.Codigo</td>
-                                <td>@f.Nombre</td>
+                                <td style="min-width:200px">@f.Nombre</td>
                                 <td style="white-space:nowrap">@f.Institucion</td>
                                 <td style="white-space:nowrap">@f.Campo</td>
                                 <td><strong>@f.Valor</strong></td>
                                 <td style="white-space:nowrap">
                                     <span style="font-size:11px;font-weight:700;background:@f.FondoCerteza;color:@f.ColorCerteza;padding:2px 8px;border-radius:4px">@f.Certeza</span>
                                 </td>
-                                <td style="font-size:12px;color:#4a5568;max-width:380px">@f.Justificacion</td>
+                                <td style="font-size:12px;line-height:1.5;color:#4a5568;min-width:320px;max-width:480px">@f.Justificacion</td>
                                 @if (!enPendientes)
                                 {
                                     <td style="white-space:nowrap;font-size:12px;color:#64748b">
