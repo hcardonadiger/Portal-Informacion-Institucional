@@ -1704,7 +1704,11 @@ tr.contacto-inactivo td {
     top: calc(100% + 8px);
     right: 0;
     width: 280px;
-    background: var(--diger-surface);
+    /* --diger-panel, no --diger-surface: el panel FLOTA sobre la página. En
+       oscuro --diger-surface es translúcido y el contenido de abajo se veía a
+       través. La regla de oscuro que lo cubría nombraba .side-user-panel, el
+       panel de la barra lateral de antes, y nunca alcanzó a éste. */
+    background: var(--diger-panel);
     border: 1px solid var(--diger-border);
     border-radius: var(--diger-radius-md);
     box-shadow: 0 12px 30px rgba(2, 57, 94, .16);
