@@ -101,7 +101,7 @@
             <input type="hidden" asp-for="Datos.Tipo" id="tp-val" />
           </div>
         </div>
-        <div class="fg-hdr">Instituciones convocadas <span class="help-tip tip-down" data-tip="Las instituciones agregadas aquí estarán disponibles al registrar asistentes y asignar responsables de acuerdos.">?</span></div>
+        <div class="fg-hdr">Instituciones convocadas <span class="help-tip tip-down" data-tip="Las instituciones agregadas aquí estarán disponibles al registrar asistentes. El responsable de un acuerdo se elige entre los asistentes, no entre instituciones.">?</span></div>
         <div class="field">
           <label>Agregar institución</label>
           <div style="display:flex;gap:8px">
@@ -766,7 +766,6 @@
   var institucionesSeleccionadas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(d.InstitucionesIds));
   var CONTACTOS_DIR = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
       Model.ContactosDirectorio.Select(c => new { id = c.Id, nombre = c.Nombre, cargo = c.Cargo, inst = c.Institucion, instId = c.InstitucionId, correo = c.Correo, telefono = c.Telefono, area = c.Area })));
-  var MI_INSTITUCION_ID = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.InstitucionActivaId ?? ""));
 
   // Mantiene el snapshot del nombre (hidden) alineado con la opción elegida del catálogo
   function syncAsisInst(sel) {
@@ -1049,62 +1048,60 @@
             hid.value = (op && op.dataset.cid) || '';
         }
 
+        // El responsable de un acuerdo sale SOLO de los asistentes de la reunión.
+        //
+        // Antes la lista ofrecía además dos grupos que no son gente de esta reunión: las
+        // instituciones convocadas —más la propia, siempre— y el directorio entero de contactos.
+        // Por eso en la base hay acuerdos cuyo responsable es "PNUD/SDE": una institución no
+        // rinde cuentas, y un compromiso sin una persona detrás no se le puede cobrar a nadie.
+        // Para encargarle un acuerdo a alguien que no estuvo, agréguelo primero como asistente
+        // —el buscador del directorio, arriba, lo hace en un clic—.
+        //
+        // Lo que ya estaba guardado no se pierde: si el responsable actual no está entre los
+        // asistentes, se conserva como opción al final para no borrarlo al reabrir el acta.
         function actualizarResponsables() {
             var nombres = nombresAsistentes();
-            var instituciones = institucionesSeleccionadas.map(function (id) { return nombreInstitucion(id); });
-            // La institución que redacta la reunión siempre debe poder elegirse como responsable,
-            // aunque no esté entre las instituciones convocadas.
-            var mia = MI_INSTITUCION_ID
-                ? INSTITUCIONES.filter(function (i) { return i.Id === MI_INSTITUCION_ID; })[0]
-                : null;
-            if (mia && instituciones.indexOf(mia.Nombre) < 0) instituciones.unshift(mia.Nombre);
             document.querySelectorAll('#acuerdos-list .resp-select').forEach(function (sel) {
                 var actual = sel.dataset.selected !== undefined ? sel.dataset.selected : sel.value;
                 var actualCid = sel.dataset.selectedCid || '';
                 sel.innerHTML = '';
+
                 var blank = document.createElement('option');
-                blank.value = ''; blank.textContent = '— Seleccione —';
+                blank.value = '';
+                blank.textContent = nombres.length ? '— Seleccione —' : '— Agregue asistentes primero —';
                 sel.appendChild(blank);
 
-                function agregarGrupo(etiqueta, valores) {
-                    if (!valores.length) return;
-                    var gp = document.createElement('optgroup');
-                    gp.label = etiqueta;
-                    valores.forEach(function (n) {
-                        var op = document.createElement('option');
-                        op.value = n; op.textContent = n;
-                        // Un participante que existe en el directorio hereda su id de contacto
-                        var c = contactoPorNombre(n);
-                        if (c) op.dataset.cid = c.id;
-                        if (n === actual) op.selected = true;
-                        gp.appendChild(op);
-                    });
-                    sel.appendChild(gp);
-                }
-                agregarGrupo('Participantes', nombres);
-                agregarGrupo('Instituciones', instituciones);
-
-                if (CONTACTOS_DIR.length) {
-                    var gp = document.createElement('optgroup');
-                    gp.label = 'Directorio';
-                    CONTACTOS_DIR.forEach(function (c) {
-                        var op = document.createElement('option');
-                        op.value = c.nombre;
-                        op.dataset.cid = c.id;
-                        op.textContent = c.cargo ? c.nombre + ' — ' + c.cargo : c.nombre;
-                        if (actualCid ? String(c.id) === actualCid : c.nombre === actual) op.selected = true;
-                        gp.appendChild(op);
-                    });
-                    sel.appendChild(gp);
-                }
-
-                var todosNombres = nombres.concat(instituciones)
-                    .concat(CONTACTOS_DIR.map(function (c) { return c.nombre; }));
-                if (actual && todosNombres.indexOf(actual) < 0) {
+                // `elegido` existe para que el valor guardado SIEMPRE quede representado. Sin esa
+                // cuenta, un acuerdo con id de contacto cuyo asistente no está en el directorio no
+                // casaba por id ni caía al respaldo —su nombre sí estaba en la lista—, el select
+                // se quedaba en «— Seleccione —» y el responsable se perdía al guardar.
+                var elegido = false;
+                nombres.forEach(function (n) {
                     var op = document.createElement('option');
-                    op.value = actual; op.textContent = actual; op.selected = true;
+                    op.value = n; op.textContent = n;
+                    // Un asistente que existe en el directorio hereda su id de contacto
+                    var c = contactoPorNombre(n);
+                    if (c) op.dataset.cid = c.id;
+                    if (!elegido && (n === actual || (c && actualCid && String(c.id) === actualCid))) {
+                        op.selected = true;
+                        elegido = true;
+                        // Si el asistente no figura en el directorio cargado —puede estar fuera
+                        // del alcance de quien edita— se conserva el id guardado en vez de
+                        // dejarlo caer: perder el vínculo al contacto es perder dato.
+                        if (!c && actualCid) op.dataset.cid = actualCid;
+                    }
                     sel.appendChild(op);
+                });
+
+                if (!elegido && actual) {
+                    var legado = document.createElement('option');
+                    legado.value = actual;
+                    legado.textContent = actual + ' (no asiste)';
+                    legado.dataset.cid = actualCid;
+                    legado.selected = true;
+                    sel.appendChild(legado);
                 }
+
                 delete sel.dataset.selected;
                 delete sel.dataset.selectedCid;
 

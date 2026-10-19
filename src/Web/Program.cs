@@ -193,6 +193,9 @@ builder.Services.AddRazorPages(opts =>
 .AddMvcOptions(options =>
 {
     options.Filters.Add<Diger.TramitesEstado.Web.Common.ConsultorReadOnlyPageFilter>();
+    // Antes del de permisos: a quien le falta el cambio de contraseña hay que mandarlo a
+    // cambiarla, no decirle que no tiene permiso para la página a la que iba.
+    options.Filters.Add<Diger.TramitesEstado.Web.Common.CambioPasswordObligatorioPageFilter>();
     options.Filters.Add<Diger.TramitesEstado.Web.Common.PermissionPageFilter>();
 });
 

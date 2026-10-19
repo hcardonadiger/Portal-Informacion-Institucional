@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.Json;
 using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 using Diger.TramitesEstado.Infrastructure.Security;
@@ -32,6 +32,16 @@ public static class SesionClaimsFactory
             new(ClaimTypes.Name,           usuario.Nombre),
             new(ClaimTypes.Email,          usuario.Correo)
         };
+
+        // Solo se emite si la contraseña la eligió el dueño. La ausencia del claim es lo que el
+        // portón lee como «cambio pendiente», y por eso no se emite un valor vacío ni un cero:
+        // una sesión sin dato tiene que quedar retenida, no aprobada por omisión.
+        if (usuario.PasswordCambiadoEl is { } cambiadoEl)
+        {
+            claims.Add(new Claim(
+                AppClaims.PasswordCambiadoEl,
+                cambiadoEl.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+        }
 
         if (usuario.Asignaciones.Count > 0)
         {

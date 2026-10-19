@@ -1,10 +1,13 @@
-namespace Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
+﻿namespace Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 
 public sealed record AsignacionAuthDto(string InstitucionId, string? AreaId, string? UnidadId, string Rol);
 
 /// <summary><paramref name="RolGlobal"/> es null cuando el usuario no tiene ninguna asignación:
 /// no tiene rol, y eso NO se rellena con uno por defecto — ver la nota del handler.</summary>
-public sealed record UsuarioAuthDto(Guid Id, string Nombre, string Correo, string? RolGlobal, IReadOnlyList<AsignacionAuthDto> Asignaciones);
+/// <summary><paramref name="PasswordCambiadoEl"/> viaja hasta el claim de la sesión para que el
+/// portón de cambio obligatorio no tenga que consultar la base en cada petición. Nula significa
+/// que la contraseña vigente no la eligió el dueño de la cuenta.</summary>
+public sealed record UsuarioAuthDto(Guid Id, string Nombre, string Correo, string? RolGlobal, IReadOnlyList<AsignacionAuthDto> Asignaciones, DateTime? PasswordCambiadoEl = null);
 
 public sealed record AutenticarUsuarioQuery(string Correo, string Password)
     : IRequest<UsuarioAuthDto?>;
@@ -46,6 +49,7 @@ public sealed class AutenticarUsuarioQueryHandler(
         // red de seguridad hace su trabajo en vez de quedar tapada.
         var rolGlobal = asignaciones.FirstOrDefault()?.Rol;
 
-        return new UsuarioAuthDto(usuario.Id, usuario.Nombre, usuario.Correo, rolGlobal, asignaciones);
+        return new UsuarioAuthDto(usuario.Id, usuario.Nombre, usuario.Correo, rolGlobal, asignaciones,
+                                  usuario.PasswordCambiadoEl);
     }
 }

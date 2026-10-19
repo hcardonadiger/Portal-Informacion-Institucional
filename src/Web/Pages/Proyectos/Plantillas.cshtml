@@ -1,0 +1,308 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Proyectos.PlantillasModel
+@using Diger.TramitesEstado.Domain.Enums
+@{
+    ViewData["Title"] = "Plantillas de proyecto";
+    var edi = Model.EnEdicion;
+}
+
+<div class="container lista">
+    <div class="page-head">
+        <div>
+            <h2 class="page-title">Plantillas de proyecto</h2>
+            <p class="page-sub">
+                Estructuras guardadas para los proyectos que se repiten cada ciclo. Una plantilla
+                lleva los entregables y sus actividades &mdash; no fechas ni responsables, que
+                cambian en cada edición.
+            </p>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMsg"] is string ok)   { <div class="alert alert-ok">@ok</div> }
+    @if (TempData["ErrorMsg"]   is string err)  { <div class="alert alert-error">@err</div> }
+
+    @* ── El formulario ────────────────────────────────────────────────
+       Uno solo que sirve para crear y para editar: con ?editar=N llega
+       relleno y el id oculto hace que el comando actualice en vez de
+       insertar. Dos formularios distintos divergirían al primer cambio. *@
+    <div class="card">
+        <h3 class="card-title">@(edi is null ? "Nueva plantilla" : $"Editando: {edi.Nombre}")</h3>
+
+        <form method="post" asp-page-handler="Guardar" id="form-plantilla">
+            @if (edi is not null) { <input type="hidden" name="id" value="@edi.Id" /> }
+
+            <div class="grid-2">
+                <div class="field">
+                    <label for="p-nombre">Nombre</label>
+                    <input id="p-nombre" name="nombre" value="@edi?.Nombre" required maxlength="300"
+                           placeholder="Plan Operativo Anual" />
+                </div>
+                <div class="field">
+                    <label for="p-desc">Descripción</label>
+                    <input id="p-desc" name="descripcion" value="@edi?.Descripcion" maxlength="1000"
+                           placeholder="Para qué sirve esta estructura" />
+                </div>
+            </div>
+
+            @* ── Visibilidad ──────────────────────────────────────────
+               El nivel manda y los dos selectores de abajo solo aparecen
+               cuando ese nivel los usa: ofrecer un área a una plantilla
+               de institución es ofrecer un dato que se va a descartar. *@
+            <fieldset class="field" style="border:0;padding:0;margin-top:1rem">
+                <legend style="font-size:var(--diger-fs-sm);font-weight:600;color:var(--diger-text-secondary);padding:0">
+                    ¿Quién puede usarla?
+                </legend>
+                <div class="rgroup" id="p-nivel">
+                    @foreach (var n in new[] { NivelAlcance.Institucion, NivelAlcance.Area, NivelAlcance.Unidad })
+                    {
+                        var sel = (edi?.Nivel ?? NivelAlcance.Institucion) == n;
+                        <label class="rpill @(sel ? "on" : "")">
+                            <input type="radio" name="nivel" value="@((int)n)" checked="@sel"
+                                   onchange="plantillaNivel()" />
+                            @Diger.TramitesEstado.Web.Pages.Proyectos.PlantillasModel.NivelTexto(n)
+                        </label>
+                    }
+                </div>
+            </fieldset>
+
+            <div class="grid-2" id="p-ambito" style="margin-top:.6rem">
+                <div class="field" id="p-area-wrap">
+                    <label for="p-area">Área</label>
+                    <select id="p-area" name="areaId" class="field-input">
+                        <option value="">— Elija el área —</option>
+                        @foreach (var a in Model.Areas)
+                        {
+                            <option value="@a.Id" selected="@(edi?.AreaId == a.Id)">@a.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" id="p-unidad-wrap">
+                    <label for="p-unidad">Unidad</label>
+                    <select id="p-unidad" name="unidadId" class="field-input">
+                        <option value="">— Elija la unidad —</option>
+                        @foreach (var u in Model.Unidades)
+                        {
+                            <option value="@u.Id" data-area="@u.AreaId" selected="@(edi?.UnidadId == u.Id)">@u.Nombre</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            @* ── El árbol ─────────────────────────────────────────────
+               Entregables con sus actividades dentro. Los name llevan el
+               índice del entregable (act_nombre_0, act_nombre_1…) para que
+               el servidor sepa a cuál pertenece cada actividad sin JSON
+               de por medio. Ver LeerArbol en el PageModel. *@
+            <h4 style="margin:1.4rem 0 .5rem">Estructura</h4>
+            <div id="entregables"></div>
+
+            <button type="button" class="btns" onclick="agregarEntregable()">+ Entregable</button>
+
+            <div style="margin-top:1.2rem;display:flex;gap:.6rem;align-items:center">
+                <label class="rpill @(edi is null || edi.Activa ? "on" : "")" style="margin:0">
+                    <input type="checkbox" name="activa" value="true"
+                           checked="@(edi is null || edi.Activa)" />
+                    Activa
+                </label>
+                <button type="submit" class="btnp">@(edi is null ? "Crear plantilla" : "Guardar cambios")</button>
+                @if (edi is not null)
+                {
+                    <a class="btns" asp-page="/Proyectos/Plantillas">Cancelar</a>
+                }
+            </div>
+        </form>
+    </div>
+
+    @* ── Las que ya hay ───────────────────────────────────────────── *@
+    @if (Model.Plantillas.Count == 0)
+    {
+        <div class="hist-empty">
+            <div class="ico"></div>
+            <p>Todavía no hay plantillas.<br />Cree la primera con el formulario de arriba.</p>
+        </div>
+    }
+    else
+    {
+        <table class="seg-table tabla-moderna tabla-fija">
+            <thead>
+                <tr>
+                    <th>Plantilla</th>
+                    <th style="width:190px">Quién la usa</th>
+                    <th class="col-num" style="width:110px">Entregables</th>
+                    <th class="col-num" style="width:110px">Actividades</th>
+                    <th style="width:100px">Estado</th>
+                    <th class="col-acciones" style="width:150px"><span class="sr-only">Acciones</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Plantillas)
+                {
+                    <tr>
+                        <td>
+                            <div class="celda-inst">
+                                <span class="inst-sigla">@p.Nombre</span>
+                                @if (!string.IsNullOrWhiteSpace(p.Descripcion))
+                                {
+                                    <span class="inst-nombre">@p.Descripcion</span>
+                                }
+                            </div>
+                        </td>
+                        <td class="res-meta">
+                            @Diger.TramitesEstado.Web.Pages.Proyectos.PlantillasModel.NivelTexto(p.Nivel)
+                        </td>
+                        <td class="col-num">@p.NumEntregables</td>
+                        <td class="col-num">@p.NumActividades</td>
+                        <td>
+                            @if (p.Activa) { <span class="est-pill wf-asignada">Activa</span> }
+                            else           { <span class="est-pill wf-registrada">Inactiva</span> }
+                        </td>
+                        <td class="col-acciones">
+                            <a class="btns" asp-page="/Proyectos/Plantillas" asp-route-editar="@p.Id"
+                               style="font-size:12.5px;padding:6px 12px">Editar</a>
+                            <details class="fila-menu">
+                                <summary aria-label="Más acciones para @p.Nombre" title="Más acciones">⋯</summary>
+                                <div class="fila-menu-panel">
+                                    <form method="post" asp-page-handler="Eliminar">
+                                        <input type="hidden" name="id" value="@p.Id" />
+                                        <button class="peligro" type="submit"
+                                                data-confirm="¿Eliminar la plantilla «@p.Nombre»? Los proyectos que ya la usaron no se tocan: se copió la estructura, no se enlazó.">Eliminar plantilla</button>
+                                    </form>
+                                </div>
+                            </details>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@section Scripts {
+<script>
+    // El árbol que llega del servidor, para rellenar el formulario al editar.
+    var ARBOL = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        Model.EnEdicion?.Entregables.Select(e => new {
+            nombre = e.Nombre, desc = e.Descripcion,
+            acts = e.Actividades.Select(a => new { nombre = a.Nombre, desc = a.Descripcion })
+        }) ?? []));
+
+    // El índice del entregable viaja en el name de sus actividades, así que
+    // renumerar es obligatorio tras cada alta o baja: si se dejara el índice
+    // viejo, las actividades de un entregable borrado se colgarían del
+    // siguiente. Se renumera el DOM entero en vez de parchear, que es más
+    // corto y no deja huecos.
+    function renumerar() {
+        document.querySelectorAll('#entregables .ent').forEach(function (ent, i) {
+            ent.querySelector('.ent-num').textContent = (i + 1) + '.';
+            ent.querySelectorAll('.act-nombre').forEach(function (x) { x.name = 'act_nombre_' + i; });
+            ent.querySelectorAll('.act-desc').forEach(function (x) { x.name = 'act_desc_' + i; });
+            ent.querySelector('.btn-add-act').dataset.i = i;
+        });
+    }
+
+    function filaActividad(i, nombre, desc) {
+        var d = document.createElement('div');
+        d.className = 'act';
+        d.innerHTML =
+            '<input class="act-nombre" name="act_nombre_' + i + '" maxlength="300" placeholder="Actividad" value="' + (nombre || '').replace(/"/g, '&quot;') + '" />' +
+            '<input class="act-desc" name="act_desc_' + i + '" maxlength="1000" placeholder="Detalle (opcional)" value="' + (desc || '').replace(/"/g, '&quot;') + '" />' +
+            '<button type="button" class="btns peligro-suave" onclick="this.parentNode.remove()" aria-label="Quitar actividad">&times;</button>';
+        return d;
+    }
+
+    function agregarEntregable(nombre, desc, acts) {
+        var cont = document.getElementById('entregables');
+        var i = cont.querySelectorAll('.ent').length;
+        var d = document.createElement('div');
+        d.className = 'ent';
+        d.innerHTML =
+            '<div class="ent-head">' +
+              '<span class="ent-num">' + (i + 1) + '.</span>' +
+              '<input name="ent_nombre" maxlength="300" placeholder="Entregable" required value="' + (nombre || '').replace(/"/g, '&quot;') + '" />' +
+              '<input name="ent_desc" maxlength="1000" placeholder="Detalle (opcional)" value="' + (desc || '').replace(/"/g, '&quot;') + '" />' +
+              '<button type="button" class="btns peligro-suave" onclick="quitarEntregable(this)" aria-label="Quitar entregable">&times;</button>' +
+            '</div>' +
+            '<div class="acts"></div>' +
+            '<button type="button" class="btns btn-add-act" data-i="' + i + '" onclick="agregarActividad(this)">+ Actividad</button>';
+        cont.appendChild(d);
+
+        var caja = d.querySelector('.acts');
+        (acts || []).forEach(function (a) { caja.appendChild(filaActividad(i, a.nombre, a.desc)); });
+        renumerar();
+    }
+
+    function quitarEntregable(btn) {
+        btn.closest('.ent').remove();
+        renumerar();
+    }
+
+    function agregarActividad(btn) {
+        var ent = btn.closest('.ent');
+        ent.querySelector('.acts').appendChild(filaActividad(btn.dataset.i, '', ''));
+        renumerar();
+    }
+
+    // Los selectores de ámbito solo se ven cuando el nivel los usa, y la unidad
+    // además se acota al área elegida: ofrecer unidades de otra área es ofrecer
+    // una combinación que el dominio va a rechazar.
+    function plantillaNivel() {
+        var nivel = +document.querySelector('input[name="nivel"]:checked').value;
+        document.getElementById('p-area-wrap').style.display   = (nivel === 3 || nivel === 4) ? '' : 'none';
+        document.getElementById('p-unidad-wrap').style.display = (nivel === 4) ? '' : 'none';
+        document.querySelectorAll('.rgroup .rpill').forEach(function (p) {
+            p.classList.toggle('on', p.querySelector('input').checked);
+        });
+        filtrarUnidades();
+    }
+
+    function filtrarUnidades() {
+        var area = document.getElementById('p-area').value;
+        document.querySelectorAll('#p-unidad option[data-area]').forEach(function (o) {
+            o.hidden = !!area && o.dataset.area !== area;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (ARBOL.length) ARBOL.forEach(function (e) { agregarEntregable(e.nombre, e.desc, e.acts); });
+        else agregarEntregable();          // una fila en blanco: el formulario nunca sale vacío
+        plantillaNivel();
+        document.getElementById('p-area').addEventListener('change', filtrarUnidades);
+    });
+</script>
+}
+
+<style>
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @@media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* El entregable es el bloque y sus actividades van sangradas dentro: la
+       jerarquía se lee por la sangría y el borde izquierdo, sin numeración
+       compuesta tipo 1.2.3 que obliga a renumerar a mano al reordenar. */
+    .ent {
+        border: 1px solid var(--diger-border);
+        border-left: 3px solid var(--diger-blue-pale);
+        padding: .7rem .85rem;
+        margin-bottom: .6rem;
+        background: var(--diger-bg-soft);
+    }
+    .ent-head { display: flex; gap: .5rem; align-items: center; }
+    .ent-num { font-weight: 700; color: var(--diger-blue); flex: none; min-width: 1.4rem; }
+    .ent-head input[name="ent_nombre"] { flex: 2; }
+    .ent-head input[name="ent_desc"]   { flex: 3; }
+    .ent input, .act input {
+        padding: 7px 10px;
+        border: 1px solid var(--diger-border);
+        border-radius: var(--diger-radius-sm);
+        font-family: inherit;
+        font-size: var(--diger-fs-sm);
+        background: var(--diger-surface);
+        color: var(--diger-text);
+        min-width: 0;
+    }
+    .acts { margin: .5rem 0 .5rem 1.9rem; display: flex; flex-direction: column; gap: .35rem; }
+    .act { display: flex; gap: .5rem; align-items: center; }
+    .act input:first-child { flex: 2; }
+    .act input:nth-child(2) { flex: 3; }
+    .btn-add-act { margin-left: 1.9rem; font-size: 12px; padding: 4px 10px; }
+    .peligro-suave { flex: none; padding: 4px 9px; color: var(--diger-danger-text); }
+</style>

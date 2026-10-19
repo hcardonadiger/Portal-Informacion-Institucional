@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 
@@ -33,6 +33,7 @@ public sealed class AutenticarUsuarioCertificadoQueryHandler(
 
         var rolGlobal = asignaciones.FirstOrDefault()?.Rol ?? "Empleado";
 
-        return new UsuarioAuthDto(usuario.Id, usuario.Nombre, usuario.Correo, rolGlobal, asignaciones);
+        return new UsuarioAuthDto(usuario.Id, usuario.Nombre, usuario.Correo, rolGlobal, asignaciones,
+                                  usuario.PasswordCambiadoEl);
     }
 }

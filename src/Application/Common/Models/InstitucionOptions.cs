@@ -1,4 +1,4 @@
-namespace Diger.TramitesEstado.Application.Common.Models;
+﻿namespace Diger.TramitesEstado.Application.Common.Models;
 
 /// <summary>Identidad institucional del sistema, configurable vía appsettings (sección "Institucion").</summary>
 public sealed class InstitucionOptions
@@ -13,6 +13,12 @@ public sealed class InstitucionOptions
     public string Nombre { get; init; } = "Dirección General de Gobierno Digital";
     public string NombreCorto { get; init; } = "DIGER";
     public string Logo { get; init; } = "/img/logo_diger.png";
+
+    /// <summary>El mismo logotipo en negativo, para fondos oscuros. No es un detalle de hoja de
+    /// estilo: el arte a color lleva "Gobierno de la República de Honduras" en negro, así que sobre
+    /// la cabecera navy desaparece, y teñirlo por CSS mataría los azules de la marca. Cada
+    /// despliegue trae su propio par —positivo y negativo— igual que trae su nombre y su sitio.</summary>
+    public string LogoNegativo { get; init; } = "/img/logo_diger_negativo.png";
     public string Direccion { get; init; } = "";
     public string Telefono { get; init; } = "";
     public string Email { get; init; } = "";

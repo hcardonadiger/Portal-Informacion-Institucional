@@ -1,4 +1,4 @@
-/* ══════════════════════════════════════════════════════════════════
+﻿/* ══════════════════════════════════════════════════════════════════
    DIGER — Design tokens
 
    Alineados al Manual de Marca DIGER. La paleta del manual (pág. 09)
@@ -140,10 +140,33 @@
     --diger-transition: .2s;
 
     /* Alto de la cabecera. No está fijado en .app-header —lo da su contenido,
-       y hoy mide 57px— pero el cajón del menú y su velo necesitan empezar
-       justo debajo para no tapar la hamburguesa que los abre y los cierra.
+       y hoy mide 63px: lo manda la hamburguesa (44px, el objetivo táctil
+       mínimo, más alta que el logo de 40px) más el relleno de
+       .app-header-inner y la línea celeste— pero el cajón del menú y su velo
+       necesitan empezar justo
+       debajo para no tapar la hamburguesa que los abre y los cierra.
        Si la cabecera cambia de alto, este es el único valor que mover. */
-    --diger-header-h: 57px;
+    /* 78px desde el 2026-10-19 (antes 63): el logo subió de 40 a 56px al
+       quitarse la franja de gobierno que iba encima.
+
+       56 de logo + 2×0.6rem de relleno (19.2) + 3 del borde celeste = 78.2, que
+       el navegador resuelve en 78 —medido, no calculado—. El conjunto
+       cabecera+franja medía 90, así que la barra superior del portal ADELGAZÓ
+       12px aunque la marca se vea un 40% más grande.
+
+       Si cambia el alto del logo o el relleno de .app-header-inner, este es el
+       valor que hay que rehacer: es el respaldo del cajón del menú para cuando
+       el JS no corre. */
+    --diger-header-h: 78px;
+
+    /* Ancho del cajón del menú (agregado 2026-10-15, al volverse anclable).
+
+       Es un token y no un número repetido porque desde que el cajón se ancla
+       hay DOS reglas que tienen que medir lo mismo: el ancho del propio cajón
+       y el corrimiento que cede el contenido a su derecha. Si se separan, o
+       queda una franja muerta entre el menú y la tabla, o el cajón le pisa la
+       primera columna. Un solo valor y no hay forma de desincronizarlas. */
+    --diger-nav-w: 264px;
 
     /* Escala de densidad propia de Trámites (agregada 2026-08-07). El CSS
        real de diger.css es mucho más chico que la tipografía del sitio
@@ -186,9 +209,31 @@
        (EXP-INPR-2026-01) y de cifras que deben alinearse. Que ya hubiera
        13 `font-variant-numeric: tabular-nums` puestos a mano en diger.css
        dice que el problema se venía parcheando caso por caso. */
-    --diger-font-marca: 'Poppins', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+       ───────────────────────────────────────────────────────────────────
+       2026-10-19: UNA sola familia, Manrope, por decisión del dueño del
+       portal. Los tres tokens quedan apuntando a ella.
+
+       QUÉ SE GANA: la pantalla deja de mezclar tres letras. Antes convivían
+       Poppins en los titulares, Manrope en el cuerpo y IBM Plex Mono en
+       códigos y fechas; en una fila de tabla se veían las tres a la vez y
+       los números cantaban. Manrope trae cifras tabulares, así que los
+       códigos y las fechas siguen alineándose en columna —ver la nota de
+       los sitios que usaban la monoespaciada, que ahora piden
+       `font-variant-numeric: tabular-nums` explícito—.
+
+       QUÉ SE PIERDE, Y HAY QUE SABERLO: el Manual de Marca (pág. 08) norma
+       la tipografía institucional y nombra Poppins. Mientras los tres
+       tokens apunten a Manrope, NO HAY UN SOLO ELEMENTO EN POPPINS en todo
+       el portal, y eso se aparta del manual. El guardián
+       (scripts/verificar_marca.py) no lo detecta: solo vigila color.
+
+       CÓMO SE VUELVE: devolviendo --diger-font-marca a Poppins en esta
+       línea. Los titulares (h1-h3, .page-title, .pg-title, .login-title)
+       vuelven solos, porque siguen leyendo el token. Por eso el token se
+       conserva con su nombre en vez de borrarlo: la vuelta es una línea. */
+    --diger-font-marca: 'Manrope', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
     --diger-font-ui:    'Manrope', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
-    --diger-font-mono:  'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    --diger-font-mono:  'Manrope', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
 
     --diger-weight-regular:   400;
     --diger-weight-medium:    500;

@@ -40,6 +40,9 @@ public sealed class GuardasDePostTests : IAsyncLifetime
 
         var reunion = Reunion.Crear("Mesa técnica de interconectividad");
         reunion.InstitucionId = "DIGER";
+        reunion.InstitucionDuenaId = "DIGER";
+        reunion.AreaId    = PortalFactory.AreaDeCasa;
+        reunion.UnidadId  = PortalFactory.UnidadDeCasa;
         db.Reuniones.Add(reunion);
         await db.SaveChangesAsync();
         _reunionId = reunion.Id;
@@ -53,7 +56,7 @@ public sealed class GuardasDePostTests : IAsyncLifetime
 
     private async Task<(HttpClient Cliente, string Token)> SesionAsync(string rol = "JefeArea")
     {
-        var cliente = _portal.ClienteComo(rol);
+        var cliente = _portal.ClienteComo(rol, area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var html = await cliente.GetStringAsync($"/Reuniones/Acta/{_reunionId}");
         var token = Regex.Match(html,
             """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;

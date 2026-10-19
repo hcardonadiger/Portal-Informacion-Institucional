@@ -34,7 +34,9 @@ public sealed class ActualizarReunionCommandHandler(
         var principalId = cmd.Datos.InstitucionesIds.FirstOrDefault();
         if (!string.IsNullOrWhiteSpace(principalId))
         {
-            var inst = await institucionRepo.GetByIdAsync(principalId, ct);
+            // Sin recorte de alcance: con GetByIdAsync, guardar el formulario de una reunión cuya
+            // contraparte es de otra institución la dejaba en blanco —la borraba—.
+            var inst = await institucionRepo.GetParaConvocarByIdAsync(principalId, ct);
             r.InstitucionId = inst?.Id;
             r.Institucion   = inst?.Nombre;
         }

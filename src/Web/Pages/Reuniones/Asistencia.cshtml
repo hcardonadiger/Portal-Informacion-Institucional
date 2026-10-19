@@ -36,7 +36,7 @@
 <link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/afiche-qr.css" asp-append-version="true" />
 
-<div class="container" style="max-width:1080px">
+<div class="container lista">
     <partial name="_SuccessBanner" />
 
     @* ── Header ───────────────────────────────────────────────────── *@
@@ -315,7 +315,9 @@
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(a.Institucion))
                                     {
-                                        <span class="inst-pill @IC(a.Institucion)">@a.Institucion</span>
+                                        @* Sin @IC(): la píldora de institución pasó a ser texto
+                                           en negrita, y esa clase seguiría pintándole el fondo. *@
+                                        <span class="inst-pill">@a.Institucion</span>
                                     }
                                     else
                                     {

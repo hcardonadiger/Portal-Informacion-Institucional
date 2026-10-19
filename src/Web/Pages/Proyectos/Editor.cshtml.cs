@@ -3,6 +3,7 @@ using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Categorias;
 using Diger.TramitesEstado.Application.Proyectos.Prioridades;
+using Diger.TramitesEstado.Application.Proyectos.Plantillas;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
@@ -37,6 +38,13 @@ public sealed class EditorModel(
     public IReadOnlyList<OpcionVinculoDto> ExpedientesVinculables { get; private set; } = [];
     public IReadOnlyList<OpcionVinculoDto> TicketsVinculables     { get; private set; } = [];
     public AlcanceOpcionesDto Alcance { get; private set; } = new([], []);
+
+    /// <summary>
+    /// Plantillas de estructura que alcanzan a quien mira. Viene vacía salvo que el proyecto no
+    /// tenga entregables y se pueda editar: es la única situación en que traer una es posible, y
+    /// listarlas en cualquier otra sería ofrecer un botón que el comando va a rechazar.
+    /// </summary>
+    public IReadOnlyList<PlantillaProyectoResumenDto> Plantillas { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
     /// <summary>El cronograma dibujable del proyecto. Se arma en la capa de aplicación —la
@@ -334,6 +342,44 @@ public sealed class EditorModel(
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
+
+        return VolverA(id, "estructura");
+    }
+
+    // ── Traer estructura de una plantilla ───────────────────────────────────
+    /// <summary>
+    /// Copia dentro del proyecto el esqueleto de una plantilla.
+    /// </summary>
+    /// <remarks>
+    /// Lleva la clave de <b>editar proyectos</b> y no la de administrar plantillas: lo que acá se
+    /// toca es la estructura de este proyecto. Quien pueda editarlo puede traer una plantilla que
+    /// alguien más mantiene; mantenerlas es otra clave y otra pantalla.
+    ///
+    /// <para>Es un POST al servidor y no una inyección de filas con JavaScript a propósito: así la
+    /// estructura queda guardada de una vez —no a medias, esperando que alguien pulse «Guardar»— y
+    /// el árbol que se copia sale del mismo comando que tiene pruebas, en vez de reconstruirse en
+    /// el navegador.</para>
+    /// </remarks>
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostTraerPlantillaAsync(int id, int plantillaId, CancellationToken ct)
+    {
+        // El select no puede ser required —la validación del navegador es del formulario entero y
+        // bloquearía «Guardar»—, así que el campo vacío llega hasta acá y se responde con lo que
+        // falta en vez de con «la plantilla ya no existe», que es lo que diría el comando.
+        if (plantillaId <= 0)
+        {
+            TempData["ErrorMsg"] = "Elija una plantilla antes de traer la estructura.";
+            return VolverA(id, "estructura");
+        }
+
+        try
+        {
+            var cuantos = await sender.Send(new TraerPlantillaAProyectoCommand(id, plantillaId), ct);
+            TempData["SuccessMsg"] =
+                $"Estructura traída de la plantilla: {cuantos} entregable{(cuantos == 1 ? "" : "s")}. " +
+                "Revise fechas y responsables antes de arrancar.";
+        }
+        catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
 
         return VolverA(id, "estructura");
     }
@@ -951,6 +997,12 @@ public sealed class EditorModel(
 
         if (PuedeEditar || PuedeReportarAvance)
             Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
+
+        // Las plantillas solo se consultan cuando de verdad se pueden ofrecer: con estructura ya
+        // cargada el control no existe —traerla pisaría avances— y entonces la consulta sería
+        // trabajo tirado en la pantalla más pesada del portal.
+        if (PuedeEditar && dto.Entregables.Count == 0)
+            Plantillas = await sender.Send(new GetPlantillasProyectoQuery(SoloActivas: true), ct);
 
         // Repositorio documental. Se consulta siempre que se pueda ver: la documentación de un
         // proyecto cerrado se sigue leyendo, solo deja de poder tocarse.

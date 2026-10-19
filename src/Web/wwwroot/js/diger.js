@@ -1,4 +1,4 @@
-/* ── Radio pills — activar clase "on" al seleccionar ──────────────────── */
+﻿/* ── Radio pills — activar clase "on" al seleccionar ──────────────────── */
 document.addEventListener('change', function (e) {
     if (e.target.type !== 'radio') return;
     var group = e.target.closest('.rgroup');
@@ -62,24 +62,164 @@ function toggleUserPanel() {
     p.classList.toggle('open');
 }
 
-/* Menú principal en pantallas pequeñas (hamburguesa) */
+/* ── Conmutador de tema ───────────────────────────────────────────────────
+   Este JS NO decide el tema: lo decide el servidor leyendo la cookie, y la
+   clase ya viene puesta en el <body> del HTML. Esto solo registra la elección
+   y adelanta el efecto para que el botón responda sin recargar.
+
+   La diferencia importa. El modo oscuro que se eliminó el 2026-09-24 ponía el
+   tema desde aquí, antes de las hojas de estilo, y cuando el JS no corría el
+   registro público de asistencia salía oscuro. Si este archivo no carga, el
+   botón no responde y nada más: ninguna página se pinta del color equivocado.
+
+   La cookie no lleva HttpOnly a propósito —la escribe el navegador— y no
+   guarda nada sensible: dice "claro" u "oscuro". Lax basta porque solo se lee
+   al navegar dentro del portal. */
+function cambiarTema() {
+    var b = document.body;
+    var aOscuro = !b.classList.contains('tema-oscuro');
+
+    b.classList.toggle('tema-oscuro', aOscuro);
+    b.classList.toggle('tema-claro', !aOscuro);
+
+    // Un año: es una preferencia, no una sesión.
+    document.cookie = 'diger_tema=' + (aOscuro ? 'oscuro' : 'claro')
+        + ';path=/;max-age=31536000;samesite=lax';
+
+    // Los <select> y las barras de desplazamiento los pinta el navegador a
+    // partir de esto, no del CSS. Sin actualizarlo, al conmutar quedan del
+    // tema anterior hasta la siguiente carga.
+    var meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.setAttribute('content', aOscuro ? 'dark' : 'light');
+
+    var btn = document.getElementById('temaBtn');
+    if (btn) {
+        var t = aOscuro ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro';
+        btn.setAttribute('title', t);
+        btn.setAttribute('aria-label', t);
+        btn.setAttribute('aria-pressed', aOscuro ? 'true' : 'false');
+    }
+}
+
+/* El cajón arranca donde TERMINA la cabecera. Se mide en vez de leer el token
+   porque el responsive le cambia el alto, y una medida siempre acierta.
+
+   Hasta el 2026-10-19 esto además corregía un desfase: encima de la cabecera
+   iba una franja de gobierno que no era pegajosa, de modo que sin scroll la
+   cabecera empezaba 28px más abajo y el cajón, anclado al token, le comía el
+   borde inferior a la hamburguesa —justo el botón que vuelve a cerrarlo—. Al
+   bajar, la franja se iba y el valor volvía a coincidir solo.
+
+   Esa franja ya no existe, así que la cabecera empieza en el borde superior
+   pase lo que pase. Por eso se fue el listener de scroll: no quedaba nada que
+   pudiera mover el borde inferior al desplazarse, y recalcularlo en cada píxel
+   era trabajo tirado. El de resize se queda, que es el que sí cambia el alto. */
+function ajustarTopDelCajon() {
+    var h = document.querySelector('.app-header');
+    if (!h) return;
+    var y = Math.round(h.getBoundingClientRect().bottom);
+    document.documentElement.style.setProperty('--diger-nav-top', y + 'px');
+}
+
+function cajonAbierto() {
+    var nav = document.getElementById('mainNav');
+    return !!(nav && nav.classList.contains('open'));
+}
+
+/* ── ¿El cajón es PASAJERO o está ANCLADO? ────────────────────────────────
+
+   Es la única pregunta de la que cuelga todo el comportamiento nuevo, así que
+   vive en un solo lugar y se contesta igual en los tres sitios que la hacen:
+   el velo, Escape y el clic fuera.
+
+   PASAJERO (lo de siempre): el cajón flota sobre la página, tiende un velo y
+   se va con Escape o con un clic en cualquier parte. Es lo correcto cuando no
+   hay ancho que ceder —abajo de 900px el contenido quedaría en una tira— y es
+   lo que pasa mientras el menú no esté anclado.
+
+   ANCLADO: el contenido se corrió a su derecha, no hay nada tapado y por lo
+   tanto nada que cerrar de apuro. Solo la hamburguesa lo oculta. Que Escape no
+   lo cierre es deliberado: tecleando Escape para salir de un desplegable
+   cualquiera se habría desanclado el menú sin pedirlo.
+
+   Los 900px son el mismo punto de ruptura que ya usa la cabecera para callar
+   el nombre y el rol del usuario; el CSS anula el corrimiento en ese mismo
+   ancho, de modo que no hay forma de que JS y CSS discrepen de lado. */
+function cajonEsPasajero() {
+    var shell = document.querySelector('.app-shell');
+    return !shell || !shell.classList.contains('nav-anclado') || window.innerWidth <= 900;
+}
+
+/* El velo se pinta solo cuando el cajón TAPA algo. Anclado no tapa: el
+   contenido se corrió. Y era precisamente el velo lo que limitaba el uso de
+   los módulos —intercepta todo clic sobre la página, así que con el menú
+   abierto no se podía trabajar—.
+
+   Se sincroniza en vez de fijarse al abrir porque el ancho cambia sin que
+   nadie toque el botón: girar una tableta pasa de anclado a pasajero y el velo
+   tiene que aparecer, o el cajón se queda tapando contenido sin forma de
+   cerrarlo con un clic fuera. */
+function sincronizarVelo() {
+    var bd = document.getElementById('navBackdrop');
+    if (!bd) return;
+    bd.classList.toggle('open', cajonAbierto() && cajonEsPasajero());
+}
+
+window.addEventListener('resize', function () {
+    if (cajonAbierto()) {
+        ajustarTopDelCajon();
+        sincronizarVelo();
+    }
+});
+
+/* El cajón anclado llega abierto desde el servidor, así que al cargar hay dos
+   cosas que poner al día y que ningún clic va a disparar: la medida del borde
+   inferior real de la cabecera —el CSS trae el token como respaldo, pero la
+   medida acierta también cuando el responsive le cambia el alto— y el velo,
+   que depende del ancho y el servidor no lo conoce. */
+document.addEventListener('DOMContentLoaded', function () {
+    if (cajonAbierto()) {
+        ajustarTopDelCajon();
+        sincronizarVelo();
+    }
+});
+
+/* Menú principal: se ancla y se oculta con el mismo botón.
+ *
+ * La cookie no lleva HttpOnly a propósito —la escribe el navegador— y no
+ * guarda nada sensible: dice "anclado" u "oculto". Un año, porque es una
+ * preferencia y no una sesión. El servidor la lee en _Layout.cshtml y pinta la
+ * clase, así que el anclaje sobrevive a la recarga del próximo módulo sin que
+ * el contenido dé un salto. Si este archivo no carga, el botón no responde y
+ * nada más: ninguna página se pinta corrida de más ni de menos. */
 function toggleMainNav(open) {
     var nav = document.getElementById('mainNav');
-    var bd = document.getElementById('navBackdrop');
+    var shell = document.querySelector('.app-shell');
     var btn = document.getElementById('navToggle');
     if (!nav) return;
     if (typeof open === 'undefined') open = !nav.classList.contains('open');
 
     var yaEstaba = nav.classList.contains('open');
+    // Medir ANTES de mostrarlo: si se mide después, el cajón ya se dibujó una
+    // vez en la posición vieja y se ve el salto.
+    if (open) ajustarTopDelCajon();
     nav.classList.toggle('open', open);
-    if (bd) bd.classList.toggle('open', open);
+    // El shell primero y el velo después: sincronizarVelo pregunta por esta
+    // clase, así que leerla antes de moverla daría la respuesta vieja.
+    if (shell) shell.classList.toggle('nav-anclado', open);
+    sincronizarVelo();
     if (!open) closeAllNavGroups();
+
+    document.cookie = 'diger_menu=' + (open ? 'anclado' : 'oculto')
+        + ';path=/;max-age=31536000;samesite=lax';
 
     // El botón tiene que DECIR si está abierto: con el menú en cajón a
     // cualquier ancho, un lector de pantalla no tiene otra forma de saberlo.
+    // El rótulo nombra lo que el botón HACE, y anclar no es lo mismo que
+    // abrir: dice que el menú se queda.
     if (btn) {
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        btn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+        btn.setAttribute('aria-label', open ? 'Ocultar menú' : 'Anclar menú');
     }
 
     // El foco sigue al menú y vuelve al botón al cerrar. Sin esto, abrir con
@@ -106,7 +246,10 @@ document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         closeAllNavGroups();
         closeUserPanel();
-        toggleMainNav(false);
+        // Solo si el cajón es pasajero. Anclado, Escape lo habría desanclado cada
+        // vez que alguien lo teclea para salir de un desplegable, y volver a
+        // anclarlo sería trabajo que el usuario no pidió.
+        if (cajonEsPasajero()) toggleMainNav(false);
     }
 });
 

@@ -30,6 +30,9 @@ public sealed class ListadoReunionesEncabezadosTests : IAsyncLifetime
 
         var r = Reunion.Crear("Taller de modelado con CONSUCOOP");
         r.InstitucionId = "DIGER";
+        r.InstitucionDuenaId = "DIGER";
+        r.AreaId    = PortalFactory.AreaDeCasa;
+        r.UnidadId  = PortalFactory.UnidadDeCasa;
         r.Institucion = "CONSUCOOP";
         r.Fecha = new DateOnly(2026, 9, 1);
         r.Tipo = "Taller";
@@ -44,7 +47,7 @@ public sealed class ListadoReunionesEncabezadosTests : IAsyncLifetime
     }
 
     private async Task<string> ListadoAsync(string url = "/Reuniones") =>
-        System.Net.WebUtility.HtmlDecode(await _portal.ClienteComo("JefeArea").GetStringAsync(url));
+        System.Net.WebUtility.HtmlDecode(await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync(url));
 
     [Fact]
     public async Task LosEncabezadosNoImprimenLaExpresionRazorEnCrudo()

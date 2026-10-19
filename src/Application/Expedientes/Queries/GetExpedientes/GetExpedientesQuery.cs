@@ -19,9 +19,64 @@ public sealed record ExpedienteListItemDto(
     IReadOnlyList<string> TramiteNombres);
 
 /// <param name="Legado">Filtro por corte de legado: null = todos, true = solo legados, false = solo nuevos.</param>
+/// <param name="Institucion">Sigla de la institución (InstitucionId), no el nombre largo.</param>
+/// <param name="Analista">Encargado del expediente. Coincidencia exacta: viene de un selector,
+/// no de un campo libre, así que un Contains solo traería falsos positivos entre homónimos.</param>
+/// <param name="Estado">Fase del expediente.</param>
+/// <param name="Accion">Acción de racionalización. Vive en los TRÁMITES, no en el expediente, así
+/// que filtra los expedientes que tengan al menos un trámite con esa acción. Un expediente puede
+/// aparecer bajo dos acciones distintas, y es correcto: tiene trámites de las dos.</param>
 public sealed record GetExpedientesQuery(
-    string? Q = null, int? Page = null, int? Size = null, bool Todos = false, bool? Legado = null)
+    string? Q = null, int? Page = null, int? Size = null, bool Todos = false, bool? Legado = null,
+    string? Institucion = null, string? Analista = null,
+    EstadoExpediente? Estado = null, string? Accion = null)
     : IRequest<PagedResult<ExpedienteListItemDto>>;
+
+/// <summary>Las opciones de los selectores de la lista de expedientes.</summary>
+/// <remarks>
+/// Va aparte de <see cref="GetExpedientesQuery"/> a propósito: las opciones son el universo
+/// completo y no pueden salir de la página que se está viendo. Si se derivaran de las filas
+/// cargadas, al filtrar por una institución desaparecerían del selector todas las demás y no
+/// habría forma de volver.
+///
+/// Las tres listas respetan el ámbito institucional por sí solas: salen de la misma tabla, a la
+/// que el DbContext ya le aplica el filtro global de alcance.
+/// </remarks>
+public sealed record OpcionesExpedientesDto(
+    IReadOnlyList<string> Instituciones,
+    IReadOnlyList<string> Encargados,
+    IReadOnlyList<string> Acciones);
+
+public sealed record GetOpcionesExpedientesQuery : IRequest<OpcionesExpedientesDto>;
+
+public sealed class GetOpcionesExpedientesQueryHandler(IApplicationDbContext ctx)
+    : IRequestHandler<GetOpcionesExpedientesQuery, OpcionesExpedientesDto>
+{
+    public async Task<OpcionesExpedientesDto> Handle(
+        GetOpcionesExpedientesQuery _, CancellationToken ct)
+    {
+        var instituciones = await ctx.Expedientes.AsNoTracking()
+            .Select(e => e.InstitucionId)
+            .Where(s => s != null && s != "")
+            .Distinct().OrderBy(s => s)
+            .ToListAsync(ct);
+
+        var encargados = await ctx.Expedientes.AsNoTracking()
+            .Select(e => e.Analista)
+            .Where(s => s != null && s != "")
+            .Distinct().OrderBy(s => s)
+            .ToListAsync(ct);
+
+        var acciones = await ctx.Expedientes.AsNoTracking()
+            .SelectMany(e => e.Tramites)
+            .Select(t => t.Accion!)
+            .Where(s => s != null && s != "")
+            .Distinct().OrderBy(s => s)
+            .ToListAsync(ct);
+
+        return new OpcionesExpedientesDto(instituciones, encargados, acciones);
+    }
+}
 
 public sealed class GetExpedientesQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetExpedientesQuery, PagedResult<ExpedienteListItemDto>>
@@ -40,6 +95,24 @@ public sealed class GetExpedientesQueryHandler(IApplicationDbContext ctx)
             baseq = legado
                 ? baseq.Where(e => e.FechaApertura == null || e.FechaApertura < CorteLegado.Fecha)
                 : baseq.Where(e => e.FechaApertura != null && e.FechaApertura >= CorteLegado.Fecha);
+
+        // Los cuatro de los selectores. Coincidencia exacta en los tres de texto:
+        // los valores salen de un desplegable armado con los que existen, no de
+        // un campo libre, así que un Contains solo traería falsos positivos
+        // —"INA" dentro de "INPREMA", por ejemplo—. Para buscar por partes está Q.
+        if (!string.IsNullOrWhiteSpace(query.Institucion))
+            baseq = baseq.Where(e => e.InstitucionId == query.Institucion);
+
+        if (!string.IsNullOrWhiteSpace(query.Analista))
+            baseq = baseq.Where(e => e.Analista == query.Analista);
+
+        if (query.Estado is { } estado)
+            baseq = baseq.Where(e => e.EstadoExpediente == estado);
+
+        // La acción vive en los trámites: se piden los expedientes que tengan al
+        // menos uno con esa acción.
+        if (!string.IsNullOrWhiteSpace(query.Accion))
+            baseq = baseq.Where(e => e.Tramites.Any(t => t.Accion == query.Accion));
 
         var total = await baseq.CountAsync(ct);
 

@@ -1,0 +1,57 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Cuenta.CambioObligatorioModel
+@{
+    ViewData["Title"] = "Cambio de contraseña requerido";
+    Layout = "_Layout";
+}
+
+<div class="container" style="max-width:560px">
+    <div class="card" style="margin-top:2rem">
+        <h2 style="color:var(--diger-blue);font-size:20px;margin:0 0 .5rem">Cambio de contraseña requerido</h2>
+
+        <p style="color:var(--diger-text-secondary);font-size:14px;margin-bottom:1.25rem">
+            Antes de continuar, define una contraseña nueva. Es <strong>una sola vez</strong>:
+            cuando la guardes, no volveremos a pedírtelo.
+        </p>
+
+        @if (Model.Error is not null)
+        {
+            <div class="alert-error" style="margin-bottom:1.25rem">@Model.Error</div>
+        }
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-error"></div>
+
+            <div class="field">
+                <label>Nueva contraseña</label>
+                <input asp-for="PasswordNueva" type="password" autocomplete="new-password"
+                       placeholder="Mínimo 8 caracteres" autofocus />
+                <span asp-validation-for="PasswordNueva" class="text-error"></span>
+            </div>
+
+            <div class="field">
+                <label>Confirmar nueva contraseña</label>
+                <input asp-for="PasswordConfirmar" type="password" autocomplete="new-password" />
+                <span asp-validation-for="PasswordConfirmar" class="text-error"></span>
+            </div>
+
+            <p class="hint" style="margin:.9rem 0 1.4rem">
+                Debe tener al menos 8 caracteres y ser distinta de la que usas hoy.
+            </p>
+
+            <button type="submit" class="btnp">Guardar y continuar</button>
+        </form>
+
+        @* Reusa el #logoutForm que _Layout ya deja en la página: /Cuenta/Logout solo acepta POST,
+           así que un enlace rebotaría contra el portón en vez de cerrar la sesión. *@
+        <p class="hint" style="margin-top:1.5rem">
+            <button type="submit" form="logoutForm"
+                    style="background:none;border:0;padding:0;font:inherit;color:var(--diger-blue);text-decoration:underline;cursor:pointer">Cerrar sesión</button>
+            si preferís hacerlo más tarde.
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

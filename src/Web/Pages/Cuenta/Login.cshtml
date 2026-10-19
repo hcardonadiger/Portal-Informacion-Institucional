@@ -7,6 +7,21 @@
 @{
     ViewData["Title"] = "Iniciar sesión";
     Layout = "_Layout";
+
+    // CLARO SIEMPRE, declarado y no heredado. Esta pantalla tiene una tarjeta
+    // con `background: #fff` fijo —ver .lg-formwrap más abajo—, así que no
+    // puede recibir los tokens de texto del tema oscuro: la letra saldría clara
+    // sobre blanco, que es justo lo que pasaba. Y con `color-scheme: dark`
+    // Chrome remataba pintando el autorrelleno con su paleta oscura, de ahí que
+    // el campo cambiara de aspecto al tocarlo.
+    //
+    // No basta con que el portal abra en claro: cualquiera que haya elegido
+    // oscuro arrastra su cookie hasta acá y la rompería otra vez. Declarándolo,
+    // esta página queda fuera del conmutador —como el registro público de
+    // asistencia— y sale igual para todo el mundo. Si algún día la tarjeta deja
+    // de ser blanca fija, esta línea se puede quitar.
+    ViewData["BodyClass"] = "tema-claro";
+
     var _inst = InstOpts.Value;
 
     var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
@@ -50,9 +65,53 @@
     .login-link { font-size: 14.5px; color: var(--diger-blue); text-decoration: none; }
 
     /* Campos: .field vive en diger.css (global), así que la escala mayor
-       se acota al login para no alterar el resto del portal. */
-    .lg-formcard .field label { font-size: 16.5px; }
-    .lg-formcard .field input { font-size: 18px; padding: 13px 16px; }
+       se acota al login para no alterar el resto del portal.
+
+       El campo va DEFINIDO, no insinuado. En el portal un input se apoya en
+       una tarjeta con su propio fondo, y con el borde suave de --diger-border
+       basta para saber dónde empieza. Acá la tarjeta es blanca y el campo
+       también lo era: solo lo separaba una línea de #e2e8f0, que sobre blanco
+       casi no existe. Se le da fondo propio y borde de marca atenuado, de modo
+       que el campo se lea como una caja en la que se escribe antes de tocarlo.
+
+       La etiqueta sube a peso 600 y al azul oscuro por lo mismo: en gris medio
+       sobre blanco se leía como texto de apoyo, no como el nombre del campo. */
+    .lg-formcard .field label {
+        font-size: 16.5px;
+        font-weight: var(--diger-weight-semibold);
+        color: var(--diger-blue);
+    }
+
+    .lg-formcard .field input {
+        font-size: 18px;
+        padding: 13px 16px;
+        background: var(--diger-bg);
+        border: 1.5px solid var(--diger-blue-pale);
+        color: var(--diger-text);
+    }
+
+    .lg-formcard .field input::placeholder { color: var(--diger-text-faint); }
+
+    /* Al enfocar, el campo se aclara y el borde pasa al azul medio: el cambio
+       es de borde y fondo a la vez, para que se vea también sin color. */
+    .lg-formcard .field input:focus {
+        background: #fff;
+        border-color: var(--diger-blue-mid);
+    }
+
+    /* El autorrelleno de Chrome se pinta con su propia paleta y se come el
+       fondo del campo. No se puede sobrescribir con `background`, pero sí con
+       una sombra interior del tamaño de la caja, que es el truco de siempre.
+       Antes esto no hacía falta porque el campo era blanco como la tarjeta;
+       ahora que tiene fondo propio, sin esto el relleno automático saldría de
+       otro color que el campo vacío de al lado. */
+    .lg-formcard .field input:-webkit-autofill,
+    .lg-formcard .field input:-webkit-autofill:hover,
+    .lg-formcard .field input:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0 100px var(--diger-bg) inset;
+        -webkit-text-fill-color: var(--diger-text);
+        caret-color: var(--diger-text);
+    }
 
     /* ── Diseño dividido ────────────────────────────────────────── */
     .lg-grid { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }

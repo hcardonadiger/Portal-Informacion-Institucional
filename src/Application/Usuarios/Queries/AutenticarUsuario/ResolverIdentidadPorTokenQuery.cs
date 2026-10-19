@@ -1,4 +1,4 @@
-namespace Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
+﻿namespace Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 
 /// <summary>
 /// La identidad que el servidor MCP le da a una petición autenticada por token: el mismo
@@ -52,7 +52,8 @@ public sealed class ResolverIdentidadPorTokenQueryHandler(IApplicationDbContext 
             activaEntity.InstitucionId, activaEntity.AreaId, activaEntity.UnidadId, activaEntity.Rol);
 
         var usuarioDto = new UsuarioAuthDto(
-            usuario.Id, usuario.Nombre, usuario.Correo, activa.Rol, asignaciones);
+            usuario.Id, usuario.Nombre, usuario.Correo, activa.Rol, asignaciones,
+            usuario.PasswordCambiadoEl);
 
         return new IdentidadTokenDto(usuarioDto, activa);
     }

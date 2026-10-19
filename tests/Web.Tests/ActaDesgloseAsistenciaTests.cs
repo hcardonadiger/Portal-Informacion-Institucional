@@ -35,6 +35,9 @@ public sealed class ActaDesgloseAsistenciaTests : IAsyncLifetime
 
         var r = Reunion.Crear("Capacitación con muchos participantes");
         r.InstitucionId = "DIGER";
+        r.InstitucionDuenaId = "DIGER";
+        r.AreaId    = PortalFactory.AreaDeCasa;
+        r.UnidadId  = PortalFactory.UnidadDeCasa;
         r.Institucion = "DIGER";
         r.Fecha = new DateOnly(2026, 9, 30);
         r.Tipo = "Capacitación";
@@ -58,7 +61,7 @@ public sealed class ActaDesgloseAsistenciaTests : IAsyncLifetime
     [Fact]
     public async Task ElActaAbreAunqueLaInstitucionVengaConDistintasMayusculas()
     {
-        var respuesta = await _portal.ClienteComo("JefeArea").GetAsync($"/Reuniones/Acta/{_reunionId}");
+        var respuesta = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetAsync($"/Reuniones/Acta/{_reunionId}");
 
         respuesta.StatusCode.Should().Be(System.Net.HttpStatusCode.OK,
             "una variante de capitalización en el texto libre no puede tumbar la página entera");
@@ -68,7 +71,7 @@ public sealed class ActaDesgloseAsistenciaTests : IAsyncLifetime
     public async Task LasVariantesDeMayusculasCuentanComoUnaSolaInstitucion()
     {
         var html = System.Net.WebUtility.HtmlDecode(
-            await _portal.ClienteComo("JefeArea").GetStringAsync($"/Reuniones/Acta/{_reunionId}"));
+            await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync($"/Reuniones/Acta/{_reunionId}"));
 
         var desglose = System.Text.RegularExpressions.Regex.Match(
             html, "(?s)Desglose de asistencia por institución.*?</table>").Value;
@@ -82,7 +85,7 @@ public sealed class ActaDesgloseAsistenciaTests : IAsyncLifetime
     [Fact]
     public async Task ElPdfDelActaSeDescargaConEsosMismosDatos()
     {
-        var respuesta = await _portal.ClienteComo("JefeArea")
+        var respuesta = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa)
             .GetAsync($"/Reuniones/Acta/{_reunionId}?handler=Pdf");
 
         respuesta.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
