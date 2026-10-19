@@ -307,16 +307,23 @@
                                 </div>
                             </div>
                         }
-                        @if (puedeTableros || puedeExpedientes)
+                        @* El ejecutivo se gatea con la clave de su destino (Proyectos.Ver), no con la del
+                           módulo Tableros: quien ve proyectos sin ver tableros también lo alcanza. *@
+                        @{ var puedeEjecutivo = await Acceso.PuedeClaveAsync("Proyectos.Ver"); }
+                        @if (puedeTableros || puedeExpedientes || puedeEjecutivo)
                         {
                             var grpTab = EsRuta("/Tableros") || EsRuta("/Informes");
                             <div class="nav-group @(grpTab ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Tableros<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
+                                    @if (puedeEjecutivo)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Tableros/Ejecutivo") ? "on" : "")" asp-page="/Tableros/Ejecutivo"><svg class="ico"><use href="#i-plan"></use></svg>Ejecutivo</a>
+                                    }
                                     @if (puedeTableros)
                                     {
+                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") && !EsRuta("/Tableros/Ejecutivo") ? "on" : "")" asp-page="/Tableros/Index"><svg class="ico"><use href="#i-grafica"></use></svg>Todos los tableros</a>
                                         <a class="nav-item @(EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/MiTablero"><svg class="ico"><use href="#i-tablero"></use></svg>Mi Tablero</a>
-                                        <a class="nav-item @(EsRuta("/Tableros") && !EsRuta("/Tableros/MiTablero") ? "on" : "")" asp-page="/Tableros/Index"><svg class="ico"><use href="#i-grafica"></use></svg>Inicio</a>
                                     }
                                     @if (puedeExpedientes)
                                     {

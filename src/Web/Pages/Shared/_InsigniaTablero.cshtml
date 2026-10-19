@@ -1,0 +1,31 @@
+@using Diger.TramitesEstado.Application.Common.Interfaces
+@model string
+@inject AccesoModulosService Acceso
+@inject ICurrentUserService Usuario
+@*
+    Línea de insignia bajo el título de un tablero marcado por la auditoría. La lee del
+    catálogo (Web/Common/TablerosCatalogo.cs) por la ruta de la página, así que retirar la
+    marca es cambiar una línea allá y no tocar ocho vistas. Un tablero vigente no pinta nada.
+*@
+@{
+    var item = TablerosCatalogo.Buscar(Model);
+    var texto = item is null ? null : TablerosCatalogo.TextoInsignia(item);
+    // El enlace al relacionado solo se ofrece si el usuario llega a él: un rol de unidad que
+    // abriera el operativo sería redirigido de vuelta. El texto de la marca se dice igual.
+    var relacionado = item?.Relacionado is { } r ? TablerosCatalogo.Buscar(r) : null;
+    var enlazar = relacionado is not null && await TablerosCatalogo.PuedeAbrirAsync(relacionado, Acceso, Usuario);
+}
+@if (item is not null && texto is not null)
+{
+    var motivo = item.Estado switch
+    {
+        EstadoTablero.Repetido         => $"repetido con {TablerosCatalogo.TituloDe(item.Relacionado)}",
+        EstadoTablero.EnRediseno       => "rediseño pendiente",
+        EstadoTablero.PropuestoRetirar => $"se propone retirarlo; use {TablerosCatalogo.TituloDe(item.Relacionado)}",
+        _                              => texto.ToLowerInvariant()
+    };
+    <p class="res-meta tablero-marca">
+        <span class="@TablerosCatalogo.ClaseInsignia(item.Estado)"><svg class="ico" aria-hidden="true"><use href="#@TablerosCatalogo.IconoInsignia(item.Estado)"></use></svg>@texto</span>
+        <span>Este tablero está marcado: @motivo.@if (enlazar) { <text> </text><a href="@item.Relacionado">Ir a @TablerosCatalogo.TituloDe(item.Relacionado) →</a> }</span>
+    </p>
+}

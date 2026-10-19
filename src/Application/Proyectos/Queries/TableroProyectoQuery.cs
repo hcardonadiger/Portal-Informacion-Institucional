@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Dashboards.Common;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Queries;
@@ -153,15 +154,10 @@ public sealed class GetTableroProyectoQueryHandler(IApplicationDbContext ctx)
             .Where(x => x.Act.FechaInicioPlan is not null && x.Act.FechaFinPlan is not null)
             .ToList();
 
-        var esperado = conFechas.Count == 0 ? 0 : (int)Math.Round(conFechas.Average(x =>
-        {
-            var ini = x.Act.FechaInicioPlan!.Value;
-            var fin = x.Act.FechaFinPlan!.Value;
-            if (hoy <= ini) return 0d;
-            if (hoy >= fin) return 100d;
-            var total = fin.DayNumber - ini.DayNumber;
-            return total <= 0 ? 100d : (hoy.DayNumber - ini.DayNumber) * 100d / total;
-        }));
+        // La fórmula vive en ProyectoEstadoReglas para que el tablero ejecutivo calcule lo mismo
+        // para cada proyecto del portafolio. Sin ventanas devuelve null; aquí se sigue mostrando 0.
+        var esperado = ProyectoEstadoReglas.AvanceEsperado(
+            conFechas.Select(x => (x.Act.FechaInicioPlan!.Value, x.Act.FechaFinPlan!.Value)), hoy) ?? 0;
 
         var fisico = p.Entregables.Count == 0 ? 0
             : (int)Math.Round(p.Entregables.Count(e => e.Estado == EstadoEntregable.Completado)

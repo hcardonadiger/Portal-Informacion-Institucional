@@ -1,0 +1,378 @@
+@page
+@using System.Globalization
+@using Diger.TramitesEstado.Application.Dashboards.Queries.GetEjecutivoProyectos
+@inject AccesoModulosService Acceso
+@model Diger.TramitesEstado.Web.Pages.Tableros.EjecutivoModel
+@{
+    ViewData["Title"] = "Tablero ejecutivo de proyectos";
+    var d = Model.Data;
+    var c = Model.Contexto;
+    var inst = Model.Institucion;
+    var inv = CultureInfo.InvariantCulture;
+
+    var calculado = d.CalculadoEnUtc.ToLocalTime();
+    int? diasUltimo = d.UltimoReporte is { } ur ? (int)(d.CalculadoEnUtc - ur).TotalDays : null;
+    var desactualizado = diasUltimo is null || diasUltimo > ProyectoEstadoReglas.DiasSinReporte;
+
+    var puedeOperativo = await Acceso.PuedeClaveAsync("Proyectos.Ver");
+    var puedeCrear     = d.Total == 0 && await Acceso.PuedeClaveAsync("Proyectos.Crear");
+
+    string ClaseSalud(SaludProyecto s) => s switch
+    {
+        SaludProyecto.Rojo  => "rojo",
+        SaludProyecto.Ambar => "ambar",
+        SaludProyecto.Verde => "verde",
+        _                   => "neutro"
+    };
+    string ClaseBarra(SaludProyecto s) => s switch
+    {
+        SaludProyecto.Rojo  => "c-red",
+        SaludProyecto.Ambar => "c-amber",
+        SaludProyecto.Verde => "c-green",
+        _                   => "c-gray"
+    };
+    string? IconoSalud(SaludProyecto s) => s switch
+    {
+        SaludProyecto.Rojo  => "i-alerta",
+        SaludProyecto.Ambar => "i-vencido",
+        SaludProyecto.Verde => "i-check",
+        _                   => null
+    };
+    string UltimoReporteTexto(ProyectoEjecutivoDto p) =>
+        p.UltimoAvance is null ? "sin reportes"
+        : p.DiasSinReporte is null or <= 0 ? "último reporte hoy"
+        : $"último reporte {FormatoEjecutivo.Hace(p.DiasSinReporte.Value)}";
+    string Cifras(ProyectoEjecutivoDto p) =>
+        p.SinEstructura ? "sin entregables cargados"
+        : p.AvanceEsperado is { } e ? $"{p.AvancePct} % · esp. {e} % · {FormatoEjecutivo.Puntos(p.Desviacion!.Value)}"
+        : $"{p.AvancePct} % · sin línea base";
+    string AriaBarra(ProyectoEjecutivoDto p)
+    {
+        if (p.SinEstructura) return "Sin dato de avance: el proyecto no tiene entregables cargados";
+        if (p.AvanceEsperado is not { } e) return $"Avance {p.AvancePct} por ciento, sin línea base";
+        var dv = p.Desviacion!.Value;
+        var rel = dv < 0 ? $"{-dv} puntos por detrás del plan" : dv > 0 ? $"{dv} puntos por delante del plan" : "en el plan";
+        return $"Avance {p.AvancePct} por ciento, esperado {e}, {rel}";
+    }
+    string Corto(string t, int max) => t.Length <= max ? t : t[..max].TrimEnd() + "…";
+
+    // Dona: segmentos acumulados en conic-gradient, pintados con tokens (cambia sola con el tema).
+    string ColorEstado(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.Cerrado     => "var(--diger-success)",
+        EstadoProyecto.EnEjecucion => "var(--diger-blue-mid)",
+        EstadoProyecto.Planificado => "var(--diger-text-faint)",
+        EstadoProyecto.Suspendido  => "var(--diger-warning)",
+        _                          => "var(--diger-text-slate)"
+    };
+    var tramos = new List<string>();
+    var acumulado = 0.0;
+    foreach (var s in d.PorEstado)
+    {
+        var desde = acumulado;
+        acumulado += d.Total == 0 ? 0 : s.Cantidad * 100.0 / d.Total;
+        tramos.Add($"{ColorEstado(s.Estado)} {desde.ToString("0.##", inv)}% {acumulado.ToString("0.##", inv)}%");
+    }
+    var dona = tramos.Count == 0 ? "var(--diger-bg-soft)" : $"conic-gradient({string.Join(", ", tramos)})";
+
+    const int MaxDecisiones = 10;
+    // R8: 140 caracteres son tres líneas en la columna de 1/3; el resto va en el title.
+    const int MaxTextoDecision = 140;
+
+    // R2: rojo, ámbar y verde siempre a la vista; lo neutro (no se mide contra el plan) se pliega.
+    var visibles = d.Proyectos.Where(p => p.Salud != SaludProyecto.Neutro).ToList();
+    var neutros  = d.Proyectos.Where(p => p.Salud == SaludProyecto.Neutro).ToList();
+    string GrupoNeutro()
+    {
+        var partes = new[] { ("Finalizado", "finalizados"), ("No iniciado", "no iniciados"), ("Sin dato", "sin dato"), ("Cancelado", "cancelados") }
+            .Where(x => neutros.Any(p => p.EtiquetaSalud == x.Item1))
+            .Select(x => x.Item2)
+            .ToList();
+        var texto = partes.Count <= 1 ? string.Join("", partes)
+            : string.Join(", ", partes.Take(partes.Count - 1)) + " y " + partes[^1];
+        return texto.Length == 0 ? texto : char.ToUpper(texto[0]) + texto[1..];
+    }
+    var filtrosTexto = $"Área: {c.AreaNombre ?? "todas"} · Unidad: {c.UnidadNombre ?? "todas"} · Responsable: {c.ResponsableNombre ?? "todos"}";
+}
+
+<div class="container ejec">
+    <div class="hist-header ejec-cab">
+        <div>
+            <img class="ejec-logo-impreso" src="@inst.Logo" alt="@inst.NombreCorto" />
+            <h2>@c.Titulo</h2>
+            <p>Seguimiento de avance, salud y decisiones · @d.Total @(d.Total == 1 ? "proyecto" : "proyectos") · @inst.NombreCorto</p>
+            <p class="ejec-filtros-impresos">@filtrosTexto</p>
+        </div>
+        <div class="ejec-cab-der">
+            <div class="ejec-chips">
+                <span class="ejec-chip">Calculado al @FormatoEjecutivo.FechaHora(calculado)</span>
+                <span class="ejec-chip @(desactualizado ? "is-viejo" : "")"
+                      title="Último reporte de avance registrado en esta cartera">
+                    Último reporte:
+                    @if (d.UltimoReporte is { } u)
+                    {
+                        @FormatoEjecutivo.FechaLarga(u.ToLocalTime())
+                        @if (desactualizado) { <text> · @FormatoEjecutivo.Hace(diasUltimo!.Value)</text> }
+                    }
+                    else
+                    {<text>sin reportes</text>}
+                </span>
+            </div>
+            <div class="ejec-acciones">
+                <button type="button" class="btns" onclick="window.print()">Imprimir</button>
+                @if (puedeOperativo)
+                {
+                    <a class="btns" asp-page="/Tableros/Proyectos">Seguimiento operativo →</a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <form method="get" class="seg-filters ejec-filtros">
+        @if (c.PuedeElegirArea)
+        {
+            <div class="field">
+                <label for="f-area">Área</label>
+                <select id="f-area" name="Area" onchange="this.form.submit()">
+                    <option value="" selected="@(c.AreaId is null)">Todas las áreas</option>
+                    @foreach (var a in c.Areas)
+                    {
+                        <option value="@a.Id" selected="@(c.AreaId == a.Id)">@a.Nombre@(a.Activo ? "" : " (inactiva)")</option>
+                    }
+                </select>
+            </div>
+        }
+        @if (c.Unidades.Count > 0)
+        {
+            <div class="field">
+                <label for="f-unidad">Unidad</label>
+                <select id="f-unidad" name="Unidad" onchange="this.form.submit()">
+                    <option value="">Todas</option>
+                    @foreach (var u in c.Unidades)
+                    {
+                        <option value="@u.Id" selected="@(c.UnidadId == u.Id)">@u.Nombre</option>
+                    }
+                </select>
+            </div>
+        }
+        <div class="field">
+            <label for="f-resp">Responsable</label>
+            <select id="f-resp" name="Responsable" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                @foreach (var u in c.Usuarios)
+                {
+                    <option value="@u.Id" selected="@(c.ResponsableId == u.Id)">@u.Nombre</option>
+                }
+            </select>
+        </div>
+        @if (Model.HayFiltro)
+        {
+            <a class="btns" asp-page="/Tableros/Ejecutivo" style="margin-bottom:.1rem">Limpiar</a>
+        }
+    </form>
+
+    <partial name="_KpiEjecutivo" model="d" />
+
+    @if (d.Total == 0)
+    {
+        <div class="dash-card">
+            <div class="empty-state">
+                <div class="empty-state-ico"><svg class="ico"><use href="#i-plan"></use></svg></div>
+                <div class="empty-state-t1">No hay proyectos en @(c.AreaNombre ?? inst.NombreCorto) con estos filtros</div>
+                <div class="empty-state-t2">
+                    <a asp-page="/Tableros/Ejecutivo">Limpiar filtros</a>
+                    @if (puedeCrear)
+                    {<text> · </text><a asp-page="/Proyectos/Editor">Crear proyecto →</a>}
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="ejec-grid">
+            <section class="dash-card ejec-lista-card" id="ejec-lista" aria-labelledby="ejec-lista-t">
+                <h3 id="ejec-lista-t">Avance y salud por proyecto</h3>
+                @{
+                    // Fila de dos renglones (R2): nombre y salud arriba; meta, barra y cifras abajo.
+                    void Fila(ProyectoEjecutivoDto p, int n)
+                    {
+                        var icono = IconoSalud(p.Salud);
+                        // El último reporte va primero: la línea se recorta con «…» a la derecha
+                        // y lo que una jefatura necesita ver es hace cuánto no se reporta, no
+                        // el final del nombre del responsable.
+                        var sub = new List<string> { UltimoReporteTexto(p), p.Responsable ?? "sin responsable" };
+                        if (c.UnidadId is null) sub.Add(p.UnidadEtiqueta ?? "sin unidad");
+                        var meta = string.Join(" · ", sub);
+                        <li class="ejec-fila">
+                            <a class="ejec-fila-link" href="/Tableros/Proyecto/@p.ProyectoId">
+                                <span class="ejec-num">@n</span>
+                                <span class="ejec-fila-cuerpo">
+                                    <span class="ejec-fila-cab">
+                                        <span class="ejec-nombre">@p.Nombre <span class="ejec-codigo">@p.Codigo</span></span>
+                                        <span class="ejec-salud">
+                                            <span class="salud-badge @ClaseSalud(p.Salud)">@if (icono is not null) {<svg class="ico" aria-hidden="true"><use href="#@icono"></use></svg>}@p.EtiquetaSalud</span>
+                                            @if (!string.IsNullOrEmpty(p.MotivoSalud))
+                                            {<span class="res-meta ejec-motivo">@p.MotivoSalud</span>}
+                                        </span>
+                                    </span>
+                                    <span class="ejec-fila-pie">
+                                        <span class="res-meta ejec-sub" title="@meta">@meta</span>
+                                        <span class="bar-track ejec-barra" role="img" aria-label="@AriaBarra(p)">
+                                            @if (!p.SinEstructura)
+                                            {<span class="bar-fill @ClaseBarra(p.Salud)" style="width:@(Math.Clamp(p.AvancePct, 0, 100))%"></span>}
+                                            @if (p.AvanceEsperado is { } esp)
+                                            {<span class="bar-mark" style="left:@(Math.Clamp(esp, 0, 100))%"></span>}
+                                        </span>
+                                        <span class="ejec-cifras">@Cifras(p)</span>
+                                    </span>
+                                </span>
+                            </a>
+                        </li>
+                    }
+                }
+                @if (visibles.Count > 0)
+                {
+                    <ol class="ejec-lista">
+                        @for (var k = 0; k < visibles.Count; k++) { Fila(visibles[k], k + 1); }
+                    </ol>
+                }
+                @if (neutros.Count > 0)
+                {
+                    @* Se sirve abierto y el script lo cierra en pantalla: sin JS queda abierto, que es el
+                       modo de fallo seguro, y al imprimir se vuelve a abrir (R2, R10). *@
+                    <details class="ejec-neutros" open>
+                        <summary>@GrupoNeutro() (@neutros.Count) — <span class="ejec-neutros-mostrar">mostrar</span><span class="ejec-neutros-ocultar">ocultar</span></summary>
+                        <ol class="ejec-lista" start="@(visibles.Count + 1)">
+                            @for (var k = 0; k < neutros.Count; k++) { Fila(neutros[k], visibles.Count + k + 1); }
+                        </ol>
+                    </details>
+                }
+            </section>
+
+            <div class="ejec-lateral">
+                <section class="dash-card" aria-labelledby="ejec-dona-t">
+                    <h3 id="ejec-dona-t">Estado de los proyectos</h3>
+                    <div class="ejec-dona-caja">
+                        <div class="ejec-dona" style="background:@dona" aria-hidden="true">
+                            <span class="ejec-dona-centro"><strong>@d.Total</strong><span>@(d.Total == 1 ? "proyecto" : "proyectos")</span></span>
+                        </div>
+                        <ul class="ejec-leyenda">
+                            @foreach (var s in d.PorEstado)
+                            {
+                                <li><span class="ejec-cuadro" style="background:@ColorEstado(s.Estado)"></span><span>@s.Etiqueta</span><strong>@s.Cantidad</strong></li>
+                            }
+                        </ul>
+                    </div>
+                    @if (d.SinEstructura > 0)
+                    {
+                        <p class="res-meta ejec-nota">@d.SinEstructura sin entregables (sin dato de avance)</p>
+                    }
+                </section>
+
+                <section class="dash-card" id="ejec-decisiones" aria-labelledby="ejec-dec-t">
+                    <h3 id="ejec-dec-t">Necesita decisión (@d.Decisiones.Count)</h3>
+                    @if (d.Decisiones.Count == 0)
+                    {
+                        <p class="res-meta">Ningún proyecto reporta bloqueos vigentes, cierres vencidos ni trabajo arrancado con dependencias abiertas.</p>
+                    }
+                    else
+                    {
+                        <ol class="ejec-decisiones">
+                            @foreach (var x in d.Decisiones.Take(MaxDecisiones))
+                            {
+                                var ico = x.Tipo switch
+                                {
+                                    TipoDecision.BloqueoVigente => "i-alerta",
+                                    TipoDecision.CierreVencido  => "i-vencido",
+                                    _                           => "i-enlace"
+                                };
+                                <li class="ejec-decision tipo-@x.Tipo.ToString().ToLowerInvariant()">
+                                    <svg class="ico ejec-dec-ico" aria-hidden="true"><use href="#@ico"></use></svg>
+                                    <div>
+                                        <div class="ejec-dec-cab">
+                                            <a href="/Tableros/Proyecto/@x.ProyectoId">@x.Proyecto</a>
+                                            @if (x.Tipo != TipoDecision.CierreVencido)
+                                            {<span class="res-meta"> · @FormatoEjecutivo.Hace(x.Dias)</span>}
+                                        </div>
+                                        <div class="ejec-dec-tx" title="@(x.Texto.Length > MaxTextoDecision ? x.Texto : null)">@Corto(x.Texto, MaxTextoDecision)</div>
+                                        @if (x.Autor is not null)
+                                        {<div class="res-meta ejec-dec-autor">— @x.Autor</div>}
+                                    </div>
+                                </li>
+                            }
+                        </ol>
+                        @if (d.Decisiones.Count > MaxDecisiones && puedeOperativo)
+                        {
+                            <a class="ejec-mas" asp-page="/Tableros/Proyectos">ver @(d.Decisiones.Count - MaxDecisiones) más en seguimiento operativo →</a>
+                        }
+                    }
+                </section>
+            </div>
+        </div>
+    }
+
+    <footer class="res-meta ejec-pie">
+        <p>
+            Fuente: módulo Proyectos de @inst.NombreCorto. Avance real = promedio de los entregables de cada
+            proyecto (los que no tienen actividades valen por su estado: 0, 50 o 100). Esperado = interpolación
+            de las actividades con fechas planificadas; por eso real y esperado no promedian lo mismo, como en el
+            tablero de cada proyecto. Datos filtrados por el alcance de su rol. Datos para seguimiento interno.
+        </p>
+        <details class="ejec-reglas">
+            <summary>Reglas del semáforo</summary>
+            <p>Se aplica la primera regla que se cumple; el color siempre va con su etiqueta.</p>
+            <ol>
+                <li><strong>Finalizado</strong>, <strong>Cancelado</strong> o <strong>Sin dato</strong> (sin entregables cargados): gris, no se mide contra el plan.</li>
+                <li><strong>Vencido</strong> (rojo): pasó la fecha de cierre planificada y el proyecto sigue abierto.</li>
+                <li><strong>Bloqueado</strong> (rojo): el último reporte de avance declara un bloqueo.</li>
+                <li><strong>Atrasado</strong> (rojo): @(-ProyectoEstadoReglas.DesviacionRoja) puntos o más por detrás de lo esperado a la fecha.</li>
+                <li><strong>En riesgo</strong> (ámbar): entre @(-ProyectoEstadoReglas.DesviacionAmbar) y @(-ProyectoEstadoReglas.DesviacionRoja - 1) puntos por detrás.</li>
+                <li><strong>Sin reportar</strong> (ámbar): en ejecución y sin reportes en los últimos @ProyectoEstadoReglas.DiasSinReporte días.</li>
+                <li><strong>Suspendido</strong> (ámbar).</li>
+                <li><strong>Sin línea base</strong> (ámbar): en ejecución sin fecha de cierre comprometida o sin fechas en sus actividades; no hay contra qué comparar.</li>
+                <li><strong>No iniciado</strong> (gris): planificado. Si ya muestra avance, es un dato por corregir en la ficha.</li>
+                <li><strong>En plan</strong> (verde): todo lo demás.</li>
+            </ol>
+            <p>La prioridad del proyecto no cambia su color. La marca vertical de cada barra es el avance esperado hoy.</p>
+        </details>
+        <p>Trabajo futuro: tendencia mensual del avance.</p>
+    </footer>
+</div>
+
+@section Scripts {
+<style>
+    @@page { size: A4 landscape; margin: 12mm; }
+    @@media print {
+        .app-header, .main-nav, .diger-footer, .chat-widget,
+        .ejec-filtros, .ejec-acciones, .ejec .tablero-marca, .ejec-reglas:not([open]) { display: none !important; }
+        .ejec-logo-impreso, .ejec-filtros-impresos { display: block !important; }
+        /* R10: la columna lateral (dona y decisiones) va antes que la lista, para que la primera
+           hoja tenga KPI + estado + decisiones y las siguientes la lista completa. */
+        .ejec-grid { display: flex !important; flex-direction: column; }
+        .ejec-lateral { order: -1; }
+        .ejec-neutros > summary { display: none; }
+        .ejec-lateral > .dash-card, .ejec-lista-card { margin-bottom: 12px; }
+        .ejec-fila, .ejec-decision { break-inside: avoid; }
+        .ejec .bar-fill, .ejec .bar-mark, .ejec .salud-badge, .ejec-dona, .ejec-cuadro,
+        .ejec .kpi-cell.is-crit, .ejec-chip {
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+        .ejec .kpi-cell-arw { display: none; }
+    }
+</style>
+<script>
+  (function () {
+    // R2: el grupo neutro llega abierto y se pliega en pantalla; al imprimir sale completo.
+    var grupos = document.querySelectorAll('details.ejec-neutros');
+    var antes = [];
+    grupos.forEach(function (g) { g.open = false; });
+    window.addEventListener('beforeprint', function () {
+      antes = Array.prototype.map.call(grupos, function (g) { return g.open; });
+      grupos.forEach(function (g) { g.open = true; });
+    });
+    window.addEventListener('afterprint', function () {
+      grupos.forEach(function (g, i) { g.open = !!antes[i]; });
+    });
+  })();
+</script>
+}
