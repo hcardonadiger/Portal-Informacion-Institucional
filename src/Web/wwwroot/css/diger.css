@@ -7596,6 +7596,15 @@ body.tema-claro {
     background: var(--diger-panel);
 }
 
+/* El avatar de la cabecera no entra en la regla de .side-avatar de arriba:
+   --diger-blue-fondo es justo el azul de la cabecera en oscuro, y el círculo
+   desaparecía. Conserva el celeste del tema claro, con texto --diger-panel
+   (aquí casi negro) en lugar de --diger-blue, que en oscuro se aclara. */
+.tema-oscuro .user-menu-btn .side-avatar {
+    background: var(--diger-celeste);
+    color: var(--diger-panel);
+}
+
 /* 2d. Los fondos claros escritos como literal. Son 33 y ningún token los
        alcanzaba, así que en oscuro se quedaban casi blancos con el texto ya
        claro encima. Agrupados por lo que HACEN, no por dónde están:
