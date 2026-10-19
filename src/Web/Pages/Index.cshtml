@@ -22,7 +22,7 @@
         !string.IsNullOrWhiteSpace(analista) && analista.Trim() != "(Sin asignar)";
 }
 
-<div class="container" style="max-width:1040px">
+<div class="container lista">
     <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
@@ -35,9 +35,11 @@
         <div style="display:flex;gap:10px;align-items:center">
             <div class="acciones-sec">
                 @* La agrupada es la que abre: ahí la institución es el título de
-                   la tarjeta y la tabla no tiene que repetirla en cada fila, que
-                   es lo que apretaba la vista de lista. El botón ofrece la otra. *@
-                <button type="button" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista de lista</button>
+                   la tarjeta y la tabla no tiene que repetirla en cada fila.
+                   Pero eso solo compensa cuando la institución agrupa VARIOS
+                   expedientes, y hoy 31 de 33 tienen uno solo: por eso abre la
+                   lista y el botón ofrece la agrupada, no al revés. *@
+                <button type="button" id="btn-toggle-vista" onclick="toggleVistaExpedientes()">Vista por institución</button>
                 @* Cada enlace se gatea con la clave de SU destino, no con la de esta página:
                    plantillas vive en el módulo de administración y pide otra clave, así que
                    mostrarlo junto a "nuevo expediente" llevaba a un Forbidden. *@
@@ -60,25 +62,42 @@
         <form method="get" class="franja-buscar">
             <input type="search" name="q" value="@Model.Q" placeholder="Buscar por código, institución, responsable o trámite…" aria-label="Buscar expedientes" />
             @if (Model.Legado.HasValue) { <input type="hidden" name="legado" value="@Model.Legado.Value" /> }
+            @* Los selectores viajan con la búsqueda: buscar no puede tirar los
+               filtros puestos ni al revés. *@
+            @if (!string.IsNullOrWhiteSpace(Model.Institucion)) { <input type="hidden" name="Institucion" value="@Model.Institucion" /> }
+            @if (!string.IsNullOrWhiteSpace(Model.Encargado)) { <input type="hidden" name="Encargado" value="@Model.Encargado" /> }
+            @if (Model.Estado is not null) { <input type="hidden" name="Estado" value="@((int)Model.Estado)" /> }
+            @if (!string.IsNullOrWhiteSpace(Model.Accion)) { <input type="hidden" name="Accion" value="@Model.Accion" /> }
             <button class="btns" type="submit">Buscar</button>
             @if (!string.IsNullOrEmpty(Model.Q))
             {
-                <a class="btns" asp-page="/Index" asp-route-legado="@Model.Legado" title="Quitar la búsqueda">Limpiar</a>
+                <a class="btns" asp-page="/Index" asp-route-legado="@Model.Legado"
+                   asp-route-Institucion="@Model.Institucion" asp-route-Encargado="@Model.Encargado"
+                   asp-route-Estado="@((int?)Model.Estado)" asp-route-Accion="@Model.Accion"
+                   title="Quitar la búsqueda">Limpiar</a>
             }
         </form>
 
         <div class="franja-sep" aria-hidden="true"></div>
 
         <div class="chips-filtro" role="group" aria-label="Filtrar por periodo">
+            @* Los chips arrastran los selectores: cambiar de periodo no puede
+               tirar los filtros puestos. *@
             <a class="chip-filtro@(Model.Legado is null ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q"
+               asp-route-Institucion="@Model.Institucion" asp-route-Encargado="@Model.Encargado"
+               asp-route-Estado="@((int?)Model.Estado)" asp-route-Accion="@Model.Accion"
                aria-current="@(Model.Legado is null ? "true" : null)">
                 Todos <span class="chip-conteo">@Model.ConteoTodos</span>
             </a>
             <a class="chip-filtro@(Model.Legado == false ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="False"
+               asp-route-Institucion="@Model.Institucion" asp-route-Encargado="@Model.Encargado"
+               asp-route-Estado="@((int?)Model.Estado)" asp-route-Accion="@Model.Accion"
                aria-current="@(Model.Legado == false ? "true" : null)">
                 Nuevos <span class="chip-conteo">@Model.ConteoNuevos</span>
             </a>
             <a class="chip-filtro@(Model.Legado == true ? " on" : "")" asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="True"
+               asp-route-Institucion="@Model.Institucion" asp-route-Encargado="@Model.Encargado"
+               asp-route-Estado="@((int?)Model.Estado)" asp-route-Accion="@Model.Accion"
                aria-current="@(Model.Legado == true ? "true" : null)"
                title="Expedientes con fecha de apertura anterior a abril de 2026 (o sin fecha). No cuentan en los tableros porque no tienen seguimiento confiable en la nueva metodología.">
                 Legados <span class="chip-conteo">@Model.ConteoLegados</span>
@@ -86,13 +105,110 @@
         </div>
     </div>
 
+    @* ── Selectores ────────────────────────────────────────────────────
+       Hasta el 2026-10-19 esta pantalla tenía DOS controles —la búsqueda y
+       el chip de legado— contra los siete de Proyectos, y por eso se veía
+       vacía: 35 expedientes sin manera de acotarlos obligan a leerlos
+       enteros.
+
+       Son cuatro y no más, y cada uno contesta una pregunta distinta:
+       Institución ("¿qué hay de esta casa?"), Encargado ("¿qué me toca?"),
+       Estado ("¿en qué fase va?") y Acción ("¿qué se decidió hacer?"). Un
+       quinto que repitiera alguna de esas cuatro sumaría ruido, no filtro.
+
+       Se envían al cambiar, sin botón: un selector que exige pulsar
+       "Filtrar" después se olvida la mitad de las veces. La búsqueda sí
+       lleva botón porque se escribe, y enviar en cada tecla sería peor.
+
+       Un selector sin opciones no se pinta: en una base recién sembrada
+       Acción puede venir vacía, y un desplegable con un solo "— Todas —"
+       es un control que miente sobre lo que hay. *@
+    <form method="get" class="seg-filters" id="filtros-exp">
+        @if (!string.IsNullOrEmpty(Model.Q)) { <input type="hidden" name="q" value="@Model.Q" /> }
+        @if (Model.Legado.HasValue) { <input type="hidden" name="legado" value="@Model.Legado.Value" /> }
+
+        @if (Model.Opciones.Instituciones.Count > 0)
+        {
+            <div class="field">
+                <label for="f-inst">Institución</label>
+                <select id="f-inst" name="Institucion" onchange="this.form.submit()">
+                    <option value="">— Todas —</option>
+                    @foreach (var i in Model.Opciones.Instituciones)
+                    {
+                        <option value="@i" selected="@(Model.Institucion == i)">@i</option>
+                    }
+                </select>
+            </div>
+        }
+
+        @if (Model.Opciones.Encargados.Count > 0)
+        {
+            <div class="field">
+                <label for="f-enc">Encargado</label>
+                <select id="f-enc" name="Encargado" onchange="this.form.submit()">
+                    <option value="">— Todos —</option>
+                    @foreach (var a in Model.Opciones.Encargados)
+                    {
+                        <option value="@a" selected="@(Model.Encargado == a)">@a</option>
+                    }
+                </select>
+            </div>
+        }
+
+        <div class="field" style="min-width:160px">
+            <label for="f-estado">Estado</label>
+            <select id="f-estado" name="Estado" onchange="this.form.submit()">
+                <option value="">— Todos —</option>
+                @foreach (var e in Enum.GetValues<EstadoExpediente>())
+                {
+                    <option value="@((int)e)" selected="@(Model.Estado == e)">@Wf(e).txt</option>
+                }
+            </select>
+        </div>
+
+        @if (Model.Opciones.Acciones.Count > 0)
+        {
+            <div class="field">
+                <label for="f-accion">Acción</label>
+                <select id="f-accion" name="Accion" onchange="this.form.submit()">
+                    <option value="">— Todas —</option>
+                    @foreach (var a in Model.Opciones.Acciones)
+                    {
+                        <option value="@a" selected="@(Model.Accion == a)">@a</option>
+                    }
+                </select>
+            </div>
+        }
+
+        @* Solo aparece cuando hay algo que limpiar: un botón permanentemente
+           inerte enseña a ignorar esa esquina de la pantalla. Conserva la
+           búsqueda y el periodo, que no son parte de estos selectores. *@
+        @if (Model.HayFiltros)
+        {
+            <div class="field" style="justify-content:flex-end;flex:none">
+                <a class="btns" asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="@Model.Legado"
+                   title="Quitar los filtros, conservando la búsqueda">Quitar filtros</a>
+            </div>
+        }
+    </form>
+
     @if (Model.Resultado.Total == 0)
     {
         <div class="hist-empty">
             <div class="ico"></div>
-            @if (string.IsNullOrEmpty(Model.Q))
+            @* El vacío tiene que decir POR QUÉ está vacío. Con filtros puestos,
+               "no hay expedientes registrados" es falso —los hay, pero no estos—
+               y manda a crear uno que no hacía falta. *@
+            @if (string.IsNullOrEmpty(Model.Q) && !Model.HayFiltros)
             {
                 <p>No hay expedientes registrados.<br />Crea el primero con el botón de arriba.</p>
+            }
+            else if (Model.HayFiltros)
+            {
+                <p>
+                    Ningún expediente cumple los filtros puestos.<br />
+                    <a asp-page="/Index" asp-route-q="@Model.Q" asp-route-legado="@Model.Legado">Quitar los filtros</a>
+                </p>
             }
             else
             {
@@ -102,7 +218,10 @@
     }
     else
     {
-        <div id="vista-lista" style="display:none">
+        @* La lista abre; la agrupada se pide con el botón. Ver la nota del
+           script al pie: con un expediente por institución, agrupar deja la
+           pantalla llena de encabezados y vacía de datos. *@
+        <div id="vista-lista">
         @* .tabla-moderna es un modificador: .seg-table se usa en 41 páginas y
            cambiarla de golpe tocaría mucho más que esta pantalla.
 
@@ -113,15 +232,54 @@
            data-rotulo alimenta el rótulo de cada celda en móvil, donde la
            cabecera se oculta y la fila se vuelve ficha. *@
         <div class="tabla-caja">
-        <table class="seg-table tabla-moderna">
+        <table class="seg-table tabla-moderna tabla-fija">
             <thead>
                 <tr>
+                    @* Reagrupada el 2026-10-19 con la forma de Proyectos, que es la tabla
+                       que mejor se lee del portal: la identidad ocupa la primera columna y
+                       lleva dentro todo lo que identifica al expediente —sigla, nombre de
+                       la institución, código y responsable—, y el resto son columnas
+                       cortas de ancho fijo.
+
+                       Responsable salió de su columna propia. Era la tercera de seis y,
+                       con nombres de tres y cuatro palabras, abría la fila y empujaba a
+                       Trámites, Apertura y las acciones contra el borde derecho. Dentro de
+                       la identidad no ocupa ancho: ocupa un renglón que ya estaba ahí.
+
+                       Los anchos van declarados para que las cuatro columnas de la derecha
+                       no se repartan el sobrante: sin ellos el navegador se lo da todo a la
+                       primera y deja un hueco antes de Estado. *@
+                    @* Expediente deja de absorber el sobrante. Sin ancho declarado se
+                       llevaba 700px de los 1200 para un contenido de unos 200, y ese
+                       hueco entre la identidad y Estado era lo que hacía ver la tabla
+                       vacía: no le faltaban filas, le sobraba aire en una sola columna.
+
+                       El sobrante pasa a Trámites, que ahora muestra lo que el
+                       expediente CONTIENE. Esos nombres ya venían en el DTO y se
+                       gastaban en el title del número: hasta 71 por expediente,
+                       invisibles salvo que alguien dejara el cursor encima. Son el
+                       dato con el que se reconoce un expediente de un vistazo. *@
+                    @* UN DATO POR COLUMNA. Se vuelve a la forma original de la tabla
+                       —institución, código, estado, responsable, trámites, apertura y
+                       acciones— después de un rodeo que no funcionó: apilar código y
+                       responsable dentro de la celda de la institución. Esa versión
+                       ganaba altura de fila y perdía lo que una tabla hace mejor que
+                       nada: alinear el mismo dato en vertical para poder compararlo
+                       entre filas. Un código bajo un nombre de institución no se
+                       compara con el de la fila de arriba; en su propia columna, sí.
+
+                       Los anchos están repartidos sobre los 1200px del contenedor y
+                       suman 840 fijos, así que Institución —la única que puede traer
+                       texto largo— se queda con los 360 restantes. Con .tabla-fija ese
+                       reparto se respeta exactamente; sin él, el navegador volvería a
+                       dárselo todo a la primera columna. *@
                     <th>Institución</th>
-                    <th>Estado <span class="help-tip tip-down" data-tip="Fase actual: Exploración → Levantamiento → Modelado → Validación → Cerrado.">?</span></th>
-                    <th>Responsable</th>
-                    <th class="col-num">Trámites</th>
-                    <th class="col-num">Apertura</th>
-                    <th class="col-acciones"><span class="sr-only">Acciones</span></th>
+                    <th style="width:150px">Código</th>
+                    <th style="width:150px">Estado <span class="help-tip tip-down" data-tip="Fase actual: Exploración → Levantamiento → Modelado → Validación → Cerrado.">?</span></th>
+                    <th style="width:170px">Responsable</th>
+                    <th class="col-num" style="width:90px">Trámites <span class="help-tip tip-down tip-left" data-tip="Cuántos trámites tiene el expediente. El detalle se ve al pasar el cursor.">?</span></th>
+                    <th class="col-num" style="width:110px">Apertura</th>
+                    <th class="col-acciones" style="width:170px"><span class="sr-only">Acciones</span></th>
                 </tr>
             </thead>
             <tbody>
@@ -136,17 +294,34 @@
                             @* La sigla manda y el nombre largo va debajo, acotado a dos
                                líneas: los legados guardan el nombre completo y sin
                                acotar ocupaban cinco renglones. El nombre entero queda
+                               en el title, al alcance del cursor.
+
+                               El código bajó de la línea de la sigla a su propio renglón,
+                               y el responsable entró debajo. Los cuatro datos se leen
+                               ahora en columna y al mismo borde izquierdo —la forma de
+                               Proyectos— en vez de dos arriba y uno abajo: así entre
+                               filas se comparan «código contra código» a la misma altura
+                               en lugar de buscarlos a distinta sangría. *@
+                            @* La sigla manda y el nombre largo va debajo, acotado a dos
+                               líneas: los legados guardan el nombre completo y sin
+                               acotar ocupaban cinco renglones. El nombre entero queda
                                en el title, al alcance del cursor. *@
                             <div class="celda-inst">
-                                <span class="celda-inst-top">
-                                    <a class="inst-sigla" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@sigla</a>
-                                    <span class="inst-cod">@e.Codigo</span>
-                                </span>
+                                <span class="inst-sigla">@sigla</span>
                                 @if (!string.IsNullOrWhiteSpace(nombre) && !string.Equals(nombre, sigla, StringComparison.OrdinalIgnoreCase))
                                 {
                                     <span class="inst-nombre" title="@nombre">@nombre</span>
                                 }
                             </div>
+                        </td>
+                        @* El código en su propia columna: es el identificador del
+                           expediente y lo que distingue dos filas de la misma
+                           institución —hay cuatro que tienen dos expedientes cada una—.
+                           Va en monoespaciada y sin partir: «EXP-2026-14» no puede
+                           aparecer cortado en «EXP-2026-» / «14». Es también el enlace
+                           a la ficha, que antes colgaba de la sigla. *@
+                        <td data-rotulo="Código">
+                            <a class="exp-codigo" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a>
                         </td>
                         <td data-rotulo="Estado">
                             @* "Legado" ES el estado mientras nadie lo trabaje. Los 28 que
@@ -182,9 +357,13 @@
                                 </span>
                             }
                         </td>
+                        @* El responsable, en su columna. Mismo criterio que decide el
+                           estado: una sola definición de "sin asignar", para que no
+                           puedan separarse. 28 de los 35 expedientes no tienen
+                           asignado, así que la columna se lee más como un hueco por
+                           llenar que como un dato: por eso "Sin asignar" va atenuado y
+                           en cursiva, no como un nombre más. *@
                         <td data-rotulo="Responsable">
-                            @* Mismo criterio que decide el estado: una sola definición de
-                               "sin asignar", para que no puedan separarse. *@
                             @if (TieneResponsable(e.Analista))
                             {
                                 @e.Analista
@@ -194,6 +373,9 @@
                                 <span class="sin-asignar">Sin asignar</span>
                             }
                         </td>
+                        @* Solo el conteo. El detalle —los nombres de los trámites— va en
+                           el title: son hasta 71 por expediente y en la celda gastarían
+                           dos renglones por fila. *@
                         <td class="col-num" data-rotulo="Trámites" title="@tooltip">@e.NumTramites</td>
                         <td class="col-num" data-rotulo="Apertura">@(e.FechaApertura.ToFechaCorta() ?? "—")</td>
                         <td class="col-acciones">
@@ -239,7 +421,7 @@
            Lleva el mismo tratamiento que la lista —"Legado" como estado,
            código en monoespaciada, menú de fila con la destructiva aparte—
            para que las dos vistas no diverjan. *@
-        <div id="vista-agrupada">
+        <div id="vista-agrupada" style="display:none">
             @foreach (var grupo in Model.Todos.GroupBy(e => e.Institucion ?? "Sin institución").OrderBy(g => g.Key))
             {
                 <div class="grupo-inst">
@@ -249,15 +431,26 @@
                         <span class="grupo-inst-chevron" aria-hidden="true">▾</span>
                     </button>
                     <div class="grupo-inst-body">
-                        <table class="seg-table tabla-moderna">
+                        <table class="seg-table tabla-moderna tabla-fija">
+                            @* El encabezado se queda aunque el grupo traiga una sola
+                               fila. Ocultarlo con .sr-only lo saca del flujo, y con él
+                               se van los anchos de columna que están declarados en los
+                               <th>: la tabla se redistribuiría sola y las dos vistas
+                               dejarían de coincidir. El problema que esto buscaba
+                               resolver —33 encabezados sobre 35 filas— ya se resolvió
+                               arriba: la agrupada dejó de ser la vista que abre. *@
                             <thead>
                                 <tr>
+                                    @* Las mismas columnas que la lista MENOS Institución: acá
+                                       la institución es el título de la tarjeta y repetirla en
+                                       cada fila sería decirla dos veces. Un dato por columna,
+                                       igual que arriba: las dos vistas no pueden divergir. *@
                                     <th>Código</th>
-                                    <th>Estado</th>
-                                    <th>Responsable</th>
-                                    <th class="col-num">Trámites</th>
-                                    <th class="col-num">Apertura</th>
-                                    <th class="col-acciones"><span class="sr-only">Acciones</span></th>
+                                    <th style="width:150px">Estado</th>
+                                    <th style="width:170px">Responsable</th>
+                                    <th class="col-num" style="width:90px">Trámites</th>
+                                    <th class="col-num" style="width:110px">Apertura</th>
+                                    <th class="col-acciones" style="width:170px"><span class="sr-only">Acciones</span></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -266,8 +459,10 @@
                                     var w = Wf(e.Estado);
                                     var tooltip = e.TramiteNombres.Any() ? string.Join(" · ", e.TramiteNombres) : "Sin trámites";
                                     <tr>
-                                        <td class="col-dato">
-                                            <a class="inst-sigla" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a>
+                                        @* El código es la identidad de la fila acá: la institución
+                                           ya la dice el encabezado del grupo. *@
+                                        <td data-rotulo="Código">
+                                            <a class="exp-codigo" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a>
                                         </td>
                                         <td data-rotulo="Estado">
                                             @if (e.EsLegado && !TieneResponsable(e.Analista))
@@ -286,6 +481,7 @@
                                                 </span>
                                             }
                                         </td>
+                                        @* Responsable en su columna, igual que en la lista. *@
                                         <td data-rotulo="Responsable">
                                             @if (TieneResponsable(e.Analista))
                                             {
@@ -330,14 +526,21 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // La agrupada es la de salida, asi que solo hay que actuar cuando el
-        // usuario eligio expresamente la lista. Antes era al reves y la
-        // comparacion con 'true' cubria el caso contrario.
+        // La LISTA es la de salida desde el 2026-10-19. Antes lo era la
+        // agrupada, y con los datos reales eso dejaba la pantalla casi vacía:
+        // 31 de las 33 instituciones tienen UN solo expediente, así que
+        // agrupar producía 33 tarjetas —encabezado de institución, encabezado
+        // de tabla y una fila cada una— para 35 expedientes. El encabezado de
+        // columnas repetido 33 veces sobre una fila es cromo, no estructura.
+        //
+        // La agrupada se queda: sirve el día que una institución acumule
+        // varios expedientes, y hoy ya lo hacen dos. Pero deja de ser la que
+        // abre. Solo hay que actuar cuando el usuario eligió la otra.
         var agrupada = sessionStorage.getItem('vistaExpedientesAgrupada');
-        if (agrupada === 'false') {
-            document.getElementById('vista-agrupada').style.display = 'none';
-            document.getElementById('vista-lista').style.display = '';
-            document.getElementById('btn-toggle-vista').textContent = 'Vista por institución';
+        if (agrupada === 'true') {
+            document.getElementById('vista-lista').style.display = 'none';
+            document.getElementById('vista-agrupada').style.display = '';
+            document.getElementById('btn-toggle-vista').textContent = 'Vista de lista';
         }
     });
 

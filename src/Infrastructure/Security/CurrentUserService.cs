@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 
@@ -13,6 +13,11 @@ public static class AppClaims
     public const string ActiveArea        = "diger:area";
     public const string ActiveUnidad      = "diger:unidad";
     public const string AsignacionesJson  = "diger:asignaciones";
+
+    /// <summary>Cuándo fijó el dueño su contraseña, en ISO-8601 UTC. Si el claim NO está, la
+    /// sesión cuenta como pendiente de cambio — así una cookie emitida antes de que esto
+    /// existiera queda retenida en vez de colarse.</summary>
+    public const string PasswordCambiadoEl = "diger:pwdfecha";
 }
 
 public sealed class CurrentUserService(IHttpContextAccessor accessor, IRolCatalogo rolCatalogo) : ICurrentUserService

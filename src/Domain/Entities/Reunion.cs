@@ -47,6 +47,19 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public string?   Modalidad { get; set; }   // Presencial / Virtual / Híbrida / Otro
     public string?   Lugar     { get; set; }
     public string?   InstitucionId { get; set; } // beneficiaria (opcional; permite "Otro")
+
+    /// <summary>
+    /// Institución DUEÑA: la casa que convocó. No confundir con <see cref="InstitucionId"/>, que es
+    /// la CONTRAPARTE invitada y vale null cuando no se eligió ninguna.
+    ///
+    /// Existe porque el filtro de alcance necesitaba un ancla institucional y solo tenía la
+    /// contraparte: un usuario de DIGER veía las reuniones donde DIGER figuraba como invitada —un
+    /// recorte arbitrario de 14 de 81— y, peor, los usuarios de CONSUCOOP veían 17 reuniones
+    /// internas de DIGER, con sus acuerdos y sus listas de asistentes, solo por estar nombrados
+    /// como contraparte. Area y Unidad ya anclaban al dueño, pero llegan nulas en 80 de 81.
+    /// </summary>
+    public string?   InstitucionDuenaId { get; set; }
+
     public string?   AreaId        { get; set; }
     public string?   UnidadId      { get; set; }
     public string?   Institucion   { get; set; } // snapshot del nombre

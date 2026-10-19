@@ -37,7 +37,7 @@
     string Fecha(DateOnly? d) => d?.ToString("dd/MM/yyyy") ?? "—";
 }
 
-<div class="container" style="max-width:1180px">
+<div class="container lista">
     <partial name="_SuccessBanner" />
     @if (TempData["ErrorMsg"] is string err)
     {
@@ -189,24 +189,22 @@
                            (Tableros/Proyectos, Tableros/ProyectosArea y Tableros/ProyectosUnidad),
                            cuya tarjeta además enlaza de vuelta a esta lista ya filtrada por la
                            señal, así que no se perdió ningún camino. *@
-                        <td>
-                            <div style="font-weight:600">
-                                @p.Nombre
-                                @* nowrap: sin esto el código se parte entre líneas cuando el
-                                   nombre llena el ancho, y «PRY-2026-34» aparecía cortado en
-                                   «PRY-2026-» / «34». Un identificador no se divide. *@
-                                <span class="res-meta" style="margin-left:8px;font-weight:400;white-space:nowrap">@p.Codigo</span>
-                            </div>
-                            <div class="res-meta">
-                                @(string.IsNullOrWhiteSpace(p.Responsable) ? "—" : p.Responsable)
-                                @if (p.Categoria is { Length: > 0 } categoria && p.CategoriaColor is { } colorCat)
-                                {
-                                    @* Sin categoría no se pinta nada: una insignia «Sin clasificar»
-                                       en cada fila vieja es ruido, y el filtro ya las encuentra. *@
-                                    <span class="res-meta" style="margin:0 6px">·</span>
-                                    <span class="@Etiquetas.ClaseColor(colorCat)">@categoria</span>
-                                }
-                            </div>
+                        @* Los cuatro datos del proyecto se leen en columna, cada uno en su
+                           renglón y todos al mismo borde izquierdo: así el ojo baja por una
+                           sola línea de arranque en lugar de buscarlos en un 2×2, y entre
+                           filas se comparan «código contra código» a la misma altura. *@
+                        <td class="pry-ident">
+                            <div class="pry-ident-nombre">@p.Nombre</div>
+                            @* nowrap: un identificador no se divide; «PRY-2026-34» no puede
+                               aparecer cortado en «PRY-2026-» / «34». *@
+                            <div class="res-meta" style="white-space:nowrap">@p.Codigo</div>
+                            <div class="res-meta">@(string.IsNullOrWhiteSpace(p.Responsable) ? "—" : p.Responsable)</div>
+                            @if (p.Categoria is { Length: > 0 } categoria && p.CategoriaColor is { } colorCat)
+                            {
+                                @* Sin categoría no se pinta nada: una insignia «Sin clasificar»
+                                   en cada fila vieja es ruido, y el filtro ya las encuentra. *@
+                                <div><span class="@Etiquetas.ClaseColor(colorCat)">@categoria</span></div>
+                            }
                         </td>
                         <td><span class="@EstadoCls(p.Estado)">@EstadoTxt(p.Estado)</span></td>
                         @* Sin barra desde el 2026-10-13: la cifra ya dice el avance, y la barra

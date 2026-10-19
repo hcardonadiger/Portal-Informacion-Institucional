@@ -35,6 +35,9 @@ public sealed class AficheQrTests : IAsyncLifetime
 
         var completa = Reunion.Crear("Enlace responsable de encuesta - Grupo 2");
         completa.InstitucionId = "DIGER";
+        completa.InstitucionDuenaId = "DIGER";
+        completa.AreaId    = PortalFactory.AreaDeCasa;
+        completa.UnidadId  = PortalFactory.UnidadDeCasa;
         completa.Institucion   = "Instituto Nacional de Previsión del Magisterio";
         completa.Fecha     = new DateOnly(2026, 9, 24);
         completa.Hora      = "09:00 a 12:00";
@@ -45,10 +48,16 @@ public sealed class AficheQrTests : IAsyncLifetime
         // Sin hora, sin modalidad, sin lugar y sin tipo: el caso que antes dejaba filas con guiones.
         var minima = Reunion.Crear("Mesa técnica de racionalización");
         minima.InstitucionId = "DIGER";
+        minima.InstitucionDuenaId = "DIGER";
+        minima.AreaId    = PortalFactory.AreaDeCasa;
+        minima.UnidadId  = PortalFactory.UnidadDeCasa;
         minima.Fecha = new DateOnly(2026, 10, 5);
 
         var cerrada = Reunion.Crear("Reunión con registro cerrado");
         cerrada.InstitucionId  = "DIGER";
+        cerrada.InstitucionDuenaId  = "DIGER";
+        cerrada.AreaId     = PortalFactory.AreaDeCasa;
+        cerrada.UnidadId   = PortalFactory.UnidadDeCasa;
         cerrada.RegistroAbierto = false;
 
         db.Reuniones.AddRange(completa, minima, cerrada);
@@ -72,7 +81,7 @@ public sealed class AficheQrTests : IAsyncLifetime
     /// </summary>
     private async Task<string> AficheAsync(int reunionId)
     {
-        var html = await _portal.ClienteComo("JefeArea")
+        var html = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa)
             .GetStringAsync($"/Reuniones/Asistencia/{reunionId}");
 
         return System.Net.WebUtility.HtmlDecode(html);
@@ -117,7 +126,7 @@ public sealed class AficheQrTests : IAsyncLifetime
     public async Task El_titular_se_pone_en_mayuscula_por_estilo_y_no_en_el_dato()
     {
         var html = await AficheAsync(_completaId);
-        var hoja = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+        var hoja = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync("/css/afiche-qr.css");
 
         html.Should().NotContain("ENLACE RESPONSABLE DE ENCUESTA",
             "el dato guardado no se altera: la mayúscula la pone el CSS");
@@ -229,7 +238,7 @@ public sealed class AficheQrTests : IAsyncLifetime
     [Fact]
     public async Task La_hoja_del_afiche_usa_la_letra_del_sistema_y_no_una_fuente_web()
     {
-        var hoja = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+        var hoja = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync("/css/afiche-qr.css");
 
         var familia = hoja[hoja.IndexOf("font-family:", StringComparison.Ordinal)..];
         familia = familia[..familia.IndexOf(';')];
@@ -266,7 +275,7 @@ public sealed class AficheQrTests : IAsyncLifetime
     [Fact]
     public async Task Los_datos_de_la_reunion_se_ven_como_tarjetas_y_no_como_lineas_sueltas()
     {
-        var hoja = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+        var hoja = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync("/css/afiche-qr.css");
         var campo = Regla(hoja, ".afiche-campo");
 
         campo.Should().Contain("background", "cada dato es una tarjeta con cuerpo, no una línea al aire");
@@ -285,7 +294,7 @@ public sealed class AficheQrTests : IAsyncLifetime
         // El afiche se pega en una pared y se lee a un par de metros: los pasos y el valor de cada
         // dato eran los dos textos que quedaban cortos. Los mínimos son el piso acordado, no el
         // valor exacto, para poder afinar el diseño sin tener que reescribir la prueba.
-        var hoja     = await _portal.ClienteComo("JefeArea").GetStringAsync("/css/afiche-qr.css");
+        var hoja     = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync("/css/afiche-qr.css");
         var vertical = Regla(hoja, ".afiche");
         var apaisado = Regla(hoja, ".afiche--apaisado");
 

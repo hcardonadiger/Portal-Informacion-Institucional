@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.RestablecerPasswordUsuario;
@@ -14,7 +14,9 @@ public sealed class RestablecerPasswordUsuarioCommandHandler(
         var u = await repo.GetByIdAsync(cmd.Id, ct)
             ?? throw new NotFoundException(nameof(Usuario), cmd.Id);
 
-        u.CambiarPassword(hasher.Hash(cmd.NuevaPassword));
+        // Temporal, no definitiva: la fija un administrador, no el dueño. Así la cuenta queda
+        // pendiente del cambio obligatorio en su próximo ingreso en vez de contar como cumplida.
+        u.AsignarPasswordTemporal(hasher.Hash(cmd.NuevaPassword));
         repo.Update(u);
         await uow.SaveChangesAsync(ct);
         return Unit.Value;

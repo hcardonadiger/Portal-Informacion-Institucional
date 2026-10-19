@@ -83,6 +83,9 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
 
         var r = Reunion.Crear(titulo);
         r.InstitucionId = "DIGER";
+        r.InstitucionDuenaId = "DIGER";
+        r.AreaId    = PortalFactory.AreaDeCasa;
+        r.UnidadId  = PortalFactory.UnidadDeCasa;
         r.Institucion   = "CONSUCOOP";
         r.Fecha         = new DateOnly(2026, 9, 1);
         r.Tipo          = "Capacitación";
@@ -116,10 +119,10 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
     }
 
     private Task<string> ActaAsync(int? id = null) =>
-        _portal.ClienteComo("JefeArea").GetStringAsync($"/Reuniones/Acta/{id ?? _reunionId}");
+        _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync($"/Reuniones/Acta/{id ?? _reunionId}");
 
     private Task<string> EditorAsync() =>
-        _portal.ClienteComo("JefeArea").GetStringAsync($"/Reuniones/Editor/{_reunionId}");
+        _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync($"/Reuniones/Editor/{_reunionId}");
 
     // ── El detalle de capacitación se fue ─────────────────────────────────────
 
@@ -252,7 +255,7 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
     [Fact]
     public async Task El_adjunto_se_descarga_con_su_nombre_original()
     {
-        var r = await _portal.ClienteComo("JefeArea")
+        var r = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa)
             .GetAsync($"/Reuniones/Acta/{_reunionId}?handler=Adjunto&adjuntoId={_adjuntoDocId}");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -266,7 +269,7 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
         // El archivo existe y el usuario puede ver las dos reuniones; lo que se rechaza es pedirle
         // a una reunión un adjunto que no es suyo. Si el handler aceptara rutas en vez de Ids,
         // esto bajaría el archivo sin chistar.
-        var r = await _portal.ClienteComo("JefeArea")
+        var r = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa)
             .GetAsync($"/Reuniones/Acta/{_reunionId}?handler=Adjunto&adjuntoId={_adjuntoAjenoId}");
 
         r.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -284,7 +287,7 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
     [Fact]
     public async Task Pedir_un_adjunto_inexistente_es_404_y_no_un_error()
     {
-        var r = await _portal.ClienteComo("JefeArea")
+        var r = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa)
             .GetAsync($"/Reuniones/Acta/{_reunionId}?handler=Adjunto&adjuntoId=999999");
 
         r.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -295,7 +298,7 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
     /// <summary>El cliente y el token antifalsificación del editor de la reunión sembrada.</summary>
     private async Task<(HttpClient Cliente, string Token)> EditorConTokenAsync()
     {
-        var cliente = _portal.ClienteComo("JefeArea");
+        var cliente = _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var html = await cliente.GetStringAsync($"/Reuniones/Editor/{_reunionId}");
         var token = System.Text.RegularExpressions.Regex.Match(html,
             """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;
@@ -422,7 +425,7 @@ public sealed class ReunionAdjuntosTests : IAsyncLifetime
     public async Task El_acta_sigue_descargando_su_pdf()
     {
         // La sección 6 del PDF cambió para incluir adjuntos; que siga generándose es lo mínimo.
-        var r = await _portal.ClienteComo("JefeArea")
+        var r = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa)
             .GetAsync($"/Reuniones/Acta/{_reunionId}?handler=Pdf");
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);

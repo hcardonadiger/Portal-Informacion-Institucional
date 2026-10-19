@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Diger.TramitesEstado.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication;
@@ -32,6 +32,13 @@ public sealed class TestAuthHandler(
     public const string CabeceraArea        = "X-Test-Area";
     public const string CabeceraUnidad      = "X-Test-Unidad";
 
+    /// <summary>Controla el claim de fecha de cambio de contraseña: ausente emite «ahora»
+    /// (la sesión ya cumplió), <see cref="SinCambio"/> no emite claim —lo que el portón lee
+    /// como pendiente— y cualquier otro valor se emite tal cual.</summary>
+    public const string CabeceraPasswordCambiadoEl = "X-Test-PasswordCambiadoEl";
+
+    public const string SinCambio = "ninguno";
+
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         // Sin cabecera de usuario la petición es anónima: así se puede probar también el
@@ -54,6 +61,17 @@ public sealed class TestAuthHandler(
             claims.Add(new Claim(ClaimTypes.Role, rol!));
             claims.Add(new Claim(AppClaims.ActiveRol, rol!));
         }
+
+        // Por defecto la sesión de prueba cuenta como «ya cambió su contraseña». Si no, el día
+        // que la fecha de corte de appsettings.json llegue, el portón de cambio obligatorio
+        // empezaría a redirigir todas las suites web a la vez.
+        var cambiadoEl = Request.Headers.TryGetValue(CabeceraPasswordCambiadoEl, out var pwd) &&
+                         !string.IsNullOrWhiteSpace(pwd)
+            ? pwd.ToString()
+            : DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+
+        if (cambiadoEl != SinCambio)
+            claims.Add(new Claim(AppClaims.PasswordCambiadoEl, cambiadoEl));
 
         Agregar(claims, CabeceraInstitucion, AppClaims.ActiveInstitucion);
         Agregar(claims, CabeceraArea,        AppClaims.ActiveArea);

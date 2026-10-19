@@ -25,11 +25,23 @@ public interface IInstitucionRepository
     /// de instituciones —un catálogo público—, no datos de ellas.</summary>
     Task<IReadOnlyList<Institucion>>       GetActivasParaConvocarAsync(CancellationToken ct = default);
 
+    /// <summary>La contraparte de una reunión, por Id, saltándose el alcance del usuario —la
+    /// variante por Id de <see cref="GetActivasParaConvocarAsync"/>, y por el mismo motivo.
+    /// Quitar el recorte de la lista del selector no bastaba: al guardar, la institución elegida se
+    /// resolvía con <see cref="GetByIdAsync"/>, que sí va filtrado, devolvía null para cualquiera
+    /// que no fuera la propia y la reunión quedaba con la contraparte en blanco sin avisar. Al
+    /// editar era peor: borraba la que ya tenía.</summary>
+    Task<Institucion?>                     GetParaConvocarByIdAsync(string id, CancellationToken ct = default);
+
     Task<IReadOnlyList<Institucion>>       GetAllAsync(CancellationToken ct = default);
     Task<Institucion?>                     GetByIdAsync(string id, CancellationToken ct = default);
     Task<Institucion?>                     GetByIdWithTramitesAsync(string id, CancellationToken ct = default);
     Task<IReadOnlyList<Institucion>>       GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default);
     Task<Institucion?>                     GetByNombreAsync(string nombre, CancellationToken ct = default);
+
+    /// <summary>Por nombre, sin recorte de alcance. La usa el alta automática de instituciones al
+    /// guardar una reunión; ver la implementación para por qué la variante filtrada rompía.</summary>
+    Task<Institucion?>                     GetParaConvocarByNombreAsync(string nombre, CancellationToken ct = default);
     Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(string institucionId, CancellationToken ct = default);
     Task<IReadOnlyList<TramiteDefinicion>> GetAllTramitesAsync(CancellationToken ct = default);
     Task<bool>                             ExisteNombreAsync(string nombre, string? exceptoId = null, CancellationToken ct = default);
@@ -230,6 +242,9 @@ public interface IApplicationDbContext
     DbSet<Movimiento>               Movimientos         { get; }
     DbSet<Prefijo>                  Prefijos            { get; }
     DbSet<PlantillaTramite>         PlantillasTramite   { get; }
+    DbSet<PlantillaProyecto>        PlantillasProyecto  { get; }
+    DbSet<PlantillaEntregable>      PlantillaEntregables { get; }
+    DbSet<PlantillaActividad>       PlantillaActividades { get; }
     DbSet<Notificacion>             Notificaciones      { get; }
     DbSet<ChatSesion>               ChatSesiones           { get; }
     DbSet<ChatMensaje>              ChatMensajes           { get; }

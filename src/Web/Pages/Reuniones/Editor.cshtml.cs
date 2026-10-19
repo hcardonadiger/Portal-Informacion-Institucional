@@ -15,7 +15,6 @@ public sealed class EditorModel(
     public int? ReunionId { get; private set; }
     public IReadOnlyList<Institucion> Instituciones { get; private set; } = [];
     public IReadOnlyList<ContactoDto> ContactosDirectorio { get; private set; } = [];
-    public string? InstitucionActivaId { get; private set; }
 
     /// <summary>Todas las instituciones activas, sin acotar por el alcance del usuario. Convocar
     /// no es "ver": un usuario no global igual tiene que poder invitar a cualquier institución a
@@ -199,7 +198,6 @@ public sealed class EditorModel(
             return Forbid();
 
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
-        InstitucionActivaId = currentUser.ActiveInstitucionId;
         ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
 
         if (id is null)
@@ -230,7 +228,6 @@ public sealed class EditorModel(
             return Forbid();
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
-        InstitucionActivaId = currentUser.ActiveInstitucionId;
         ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
 
         if (string.IsNullOrWhiteSpace(Datos.Titulo))
@@ -259,7 +256,6 @@ public sealed class EditorModel(
     {
         ReunionId = id;
         Instituciones = await InstitucionesEnAlcanceAsync(ct);
-        InstitucionActivaId = currentUser.ActiveInstitucionId;
         ContactosDirectorio = await sender.Send(new GetContactosQuery(), ct);
 
         if (string.IsNullOrWhiteSpace(Datos.Titulo))

@@ -55,6 +55,12 @@ public sealed class AppDbContext(
     public DbSet<ModuloAmbito>             ModuloAmbitos        { get; init; } = default!;
     public DbSet<PermisoAuditoria>         PermisosAuditoria    { get; init; } = default!;
     public DbSet<PlantillaTramite>         PlantillasTramite    { get; init; } = default!;
+    // Plantillas de ESTRUCTURA de proyecto (2026-10-19). Nada que ver con las de
+    // trámite salvo el patrón: son para los proyectos cíclicos, que repiten los
+    // mismos entregables y actividades cada año.
+    public DbSet<PlantillaProyecto>        PlantillasProyecto   { get; init; } = default!;
+    public DbSet<PlantillaEntregable>      PlantillaEntregables { get; init; } = default!;
+    public DbSet<PlantillaActividad>       PlantillaActividades { get; init; } = default!;
     public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
     public DbSet<ChatSesion>                ChatSesiones          { get; init; } = default!;
     public DbSet<ChatMensaje>               ChatMensajes          { get; init; } = default!;
@@ -189,15 +195,21 @@ public sealed class AppDbContext(
             ))
         ));
 
+        // Las escapatorias `== null` son las mismas de Expediente y Contacto, y por el mismo motivo:
+        // un ticket sin área ni unidad es de la institución entera, no de nadie. Sin ellas, el
+        // ticket que reporta alguien sin área asignada no lo veía NINGUNO de los 44 usuarios (de 51)
+        // que sí tienen área o unidad —ni la jefatura ni quien lo tiene que atender—, porque la
+        // comparación exacta contra una columna nula nunca se cumple. Era la única entidad con
+        // ancla jerárquica que no las tenía.
         mb.Entity<Ticket>().HasQueryFilter(t => !t.IsDeleted && (
             _alcanceGlobal ||
             (t.InstitucionId == _activeInst && (
                 (_nivel == NivelAlcance.Institucion &&
-                    (string.IsNullOrEmpty(_activeArea) || t.AreaId == _activeArea) &&
-                    (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
-                (_nivel == NivelAlcance.Area      && t.AreaId == _activeArea &&
-                    (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad)) ||
-                (_nivel == NivelAlcance.Unidad    && t.UnidadId == _activeUnidad)
+                    (string.IsNullOrEmpty(_activeArea) || t.AreaId == _activeArea || t.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad || t.UnidadId == null)) ||
+                (_nivel == NivelAlcance.Area      && (t.AreaId == _activeArea || t.AreaId == null) &&
+                    (string.IsNullOrEmpty(_activeUnidad) || t.UnidadId == _activeUnidad || t.UnidadId == null)) ||
+                (_nivel == NivelAlcance.Unidad    && (t.UnidadId == _activeUnidad || t.UnidadId == null))
             ))
         ));
 
@@ -212,19 +224,56 @@ public sealed class AppDbContext(
         // AreaId y UnidadId son claves primarias globales, así que identifican la institución
         // dueña sin necesidad de un campo aparte: GOBDIG solo existe bajo DIGER.
         //
-        // Respaldo para reuniones sin dueño: se cae al ancla vieja en vez de desaparecer. Sin
-        // esto, una reunión creada por alguien sin área asignada no la vería nadie.
+        // Respaldo para reuniones sin dueño: se cae a la institución dueña en vez de desaparecer.
+        // Sin esto, una reunión creada por alguien sin área asignada no la vería nadie.
+        //
+        // Ese respaldo comparaba contra InstitucionId —la CONTRAPARTE— y por eso repartía mal dos
+        // veces. Hacia adentro: un usuario de DIGER veía solo las 14 reuniones donde DIGER quedó
+        // anotada como invitada, de 81; de ahí salían los 3 acuerdos vencidos y las 27 personas
+        // capacitadas que no eran suyas. Hacia afuera, que es lo grave: los 3 usuarios de CONSUCOOP
+        // veían 17 reuniones internas de DIGER —con sus acuerdos y la lista de asistentes de otras
+        // instituciones— solo por figurar como contraparte. InstitucionDuenaId es la casa que
+        // convocó, y la estampan CrearReunionCommand y el relleno automático de más abajo.
+        //
+        // Y el respaldo vale solo desde nivel Institución. Antes valía en todos los niveles, así
+        // que una reunión sin área ni unidad se le mostraba a la institución entera: un Jefe de
+        // Unidad de Desarrollo de Proyectos veía las 78 migradas, que son de Digitalización de
+        // Trámites. Eso se arregló donde estaba roto —en los datos: las migradas ya tienen unidad
+        // dueña, ver database/2026-10-14_poner_al_dia.sql— y acá se cierra la puerta para que no
+        // vuelva a pasar con lo que se cree de ahora en adelante.
+        //
+        // Lo que queda sin área ni unidad es lo que convoca alguien sin unidad asignada (11 de 49
+        // usuarios). Para esas, el nivel Unidad ya no las ve; las ve su creador —primera rama— y
+        // la jefatura de institución. Lo definitivo es que esos 11 tengan unidad.
+        //
+        // Pero ese respaldo NO alcanza, y por eso existe la primera rama —el creador—. El ancla de
+        // dueño (AreaId/UnidadId) la estampa CrearReunionCommand del contexto activo del creador, y
+        // casi nadie tiene área o unidad asignada: 80 de las 81 reuniones de la base quedaron con
+        // las dos nulas. Para esas, lo único que podía cumplirse era el respaldo —que compara
+        // contra InstitucionId, o sea la CONTRAPARTE—, así que quien convocaba a otra institución
+        // perdía su propia reunión en cuanto la guardaba y solo la veía un administrador global.
+        // Hay una segunda forma de caer en el mismo hueco: un rol de nivel Unidad cuya asignación
+        // trae área pero no unidad deja AreaId lleno y UnidadId nulo, y entonces ni el respaldo
+        // (exige las dos nulas) ni la rama de Unidad (exige UnidadId) se cumplen.
+        //
+        // Quien convocó la reunión la ve siempre —pública o privada—: es la única rama que no
+        // depende de un ancla que puede venir nula, y subsume por completo a la antigua rama de
+        // privadas (una privada se veía exactamente cuando CreadoPorId era el usuario). Lo que
+        // sigue pendiente es el caso de los COLEGAS: para una reunión sin área ni unidad, el resto
+        // de la unidad del creador tampoco la ve. Eso pide una columna de institución dueña, que es
+        // cambio de esquema, no de filtro.
         // Soft-Delete se evalúa primero para corto-circuitar todo el filtro si IsDeleted=true.
         mb.Entity<Reunion>().HasQueryFilter(r => !r.IsDeleted && (
+            (_usuarioId != null && r.CreadoPorId == _usuarioId) ||
             (r.Visibilidad != VisibilidadReunion.Privada && (
                 _alcanceGlobal ||
-                (r.AreaId == null && r.UnidadId == null && r.InstitucionId == _activeInst) ||
+                (_nivel == NivelAlcance.Institucion &&
+                    r.AreaId == null && r.UnidadId == null && r.InstitucionDuenaId == _activeInst) ||
                 (_nivel == NivelAlcance.Unidad      && r.UnidadId != null && r.UnidadId == _activeUnidad) ||
                 (_nivel == NivelAlcance.Area        && r.AreaId   != null && r.AreaId   == _activeArea) ||
                 (_nivel == NivelAlcance.Institucion && r.AreaId   != null &&
                     Areas.Any(a => a.Id == r.AreaId && a.InstitucionId == _activeInst))
-            )) ||
-            (r.Visibilidad == VisibilidadReunion.Privada && r.CreadoPorId != null && r.CreadoPorId == _usuarioId)
+            ))
         ));
 
         mb.Entity<Area>().HasQueryFilter(a =>
@@ -238,6 +287,17 @@ public sealed class AppDbContext(
         mb.Entity<Institucion>().HasQueryFilter(i =>
             _alcanceGlobal || i.Id == _activeInst
         );
+
+        // Plantillas de estructura de proyecto (2026-10-19). El filtro global
+        // solo corta por institución y soft-delete, que es lo que NUNCA debe
+        // cruzarse. El reparto más fino —área y unidad, según el nivel que la
+        // plantilla declara— lo hace la consulta que las lista, porque depende
+        // de dónde está parado quien mira y no de la fila: una plantilla de
+        // área es legítima para su área e invisible para la de al lado, y eso
+        // no se puede expresar sin el ámbito activo del usuario.
+        mb.Entity<PlantillaProyecto>().HasQueryFilter(p => !p.IsDeleted && (
+            _alcanceGlobal || p.InstitucionId == _activeInst
+        ));
 
         mb.Entity<TramiteDefinicion>().HasQueryFilter(t =>
             _alcanceGlobal || t.InstitucionId == _activeInst
@@ -355,12 +415,40 @@ public sealed class AppDbContext(
         }
 
         // ── Inyección automática de jerarquía institucional en inserciones ──────
+        // Rellena el ancla de alcance que el llamador no puso. Vale para toda entidad en la que
+        // `InstitucionId` signifique «de quién es este dato», que son casi todas.
+        //
+        // NO vale donde esa columna es una REFERENCIA en vez del dueño, y ahí hay que saltarla o se
+        // inventan datos:
+        //   · Reunion.InstitucionId es la CONTRAPARTE convocada. CrearReunionCommand la deja en
+        //     null cuando no se eligió ninguna, y el relleno la cambiaba por la institución del que
+        //     guarda: una reunión sin convocados aparecía convocando a la casa.
+        //   · Asistente.InstitucionId es la institución DE LA PERSONA, y vale null a propósito
+        //     cuando se capturó como texto libre (ver la entidad). El relleno etiquetaba a cada
+        //     asistente con la institución de quien pasaba la asistencia: en la base quedaron 182
+        //     asistentes cuyo Id contradice el nombre de institución escrito al lado, y al reabrir
+        //     la reunión el selector de cada asistente mostraba la casa.
+        //   · ReunionInstitucion.InstitucionId es la lista de convocadas; hoy siempre llega puesta
+        //     por AgregarInstitucion, pero por lo que significa va en la misma lista.
+        //
+        // Area/Unidad sí se rellenan en Reunion: esas dos SON su ancla de dueño (ver el filtro).
         foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
         {
+            var institucionEsReferencia = entry.Entity is Reunion or Asistente or ReunionInstitucion;
+
             var instProp = entry.Metadata.FindProperty("InstitucionId");
-            if (instProp != null && string.IsNullOrEmpty(entry.Property("InstitucionId").CurrentValue as string))
+            if (!institucionEsReferencia && instProp != null && string.IsNullOrEmpty(entry.Property("InstitucionId").CurrentValue as string))
             {
                 entry.Property("InstitucionId").CurrentValue = _activeInst;
+            }
+
+            // La dueña sí se rellena en Reunion —es su ancla, no una referencia—, y en cualquier
+            // otra entidad que algún día la lleve. Importadores incluidos: corren como global y
+            // quedan con la institución activa de quien los dispara.
+            var duenaProp = entry.Metadata.FindProperty("InstitucionDuenaId");
+            if (duenaProp != null && string.IsNullOrEmpty(entry.Property("InstitucionDuenaId").CurrentValue as string))
+            {
+                entry.Property("InstitucionDuenaId").CurrentValue = _activeInst;
             }
 
             var areaProp = entry.Metadata.FindProperty("AreaId");
@@ -469,6 +557,7 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         b.Property(x => x.PasswordHash).HasMaxLength(300).IsRequired();
         b.Property(x => x.PasswordResetToken).HasMaxLength(256);
         b.Property(x => x.PasswordResetTokenExpiration);
+        b.Property(x => x.PasswordCambiadoEl);
         b.HasIndex(x => x.Correo).IsUnique();
     }
 }
@@ -544,8 +633,12 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
         b.Property(x => x.RegistroToken).HasDefaultValueSql("NEWID()");
         b.Property(x => x.Visibilidad).HasConversion<string>().HasMaxLength(20).HasDefaultValue(VisibilidadReunion.Publica);
 
+        b.Property(x => x.InstitucionDuenaId).HasMaxLength(120);
+
         b.HasIndex(x => x.Fecha);
         b.HasIndex(x => x.HiloId);
+        // El respaldo del filtro pregunta por las tres a la vez.
+        b.HasIndex(x => new { x.InstitucionDuenaId, x.AreaId, x.UnidadId });
         b.HasIndex(x => new { x.Visibilidad, x.CreadoPorId });
         b.HasIndex(x => x.RegistroToken).IsUnique();
         b.HasIndex(x => x.OrigenExternoId)
@@ -878,6 +971,83 @@ public sealed class PlantillaRequisitoConfiguration : IEntityTypeConfiguration<P
         b.Property(x => x.Requisito).HasMaxLength(500).IsRequired();
         b.Property(x => x.Obs).HasMaxLength(2000);
         b.HasIndex(x => x.PlantillaId);
+    }
+}
+
+/// <summary>
+/// Plantillas de estructura de proyecto (2026-10-19).
+/// </summary>
+/// <remarks>
+/// El nombre es único POR INSTITUCIÓN y no en todo el portal, a diferencia de
+/// las plantillas de trámite: dos instituciones distintas pueden tener cada una
+/// su "Plan Operativo Anual" sin pisarse, y obligarlas a desambiguar en el
+/// nombre —"POA DIGER", "POA INPREMA"— sería hacerles cargar con un detalle del
+/// almacenamiento.
+///
+/// El filtro de soft-delete se aplica en OnModelCreating junto a los demás; acá
+/// solo va la forma.
+/// </remarks>
+public sealed class PlantillaProyectoConfiguration : IEntityTypeConfiguration<PlantillaProyecto>
+{
+    public void Configure(EntityTypeBuilder<PlantillaProyecto> b)
+    {
+        b.ToTable("PlantillasProyecto");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(1000);
+        b.Property(x => x.Activa).HasDefaultValue(true);
+
+        b.Property(x => x.InstitucionId).HasMaxLength(60).IsRequired();
+        b.Property(x => x.AreaId).HasMaxLength(60);
+        b.Property(x => x.UnidadId).HasMaxLength(60);
+        b.Property(x => x.Nivel).HasConversion<int>();
+
+        // Único por institución, y solo entre las vivas: una plantilla borrada
+        // no puede impedir que se cree otra con su mismo nombre.
+        b.HasIndex(x => new { x.InstitucionId, x.Nombre })
+         .IsUnique()
+         .HasFilter("[IsDeleted] = 0");
+
+        // El índice de lectura: la consulta siempre entra por institución y
+        // filtra por activa.
+        b.HasIndex(x => new { x.InstitucionId, x.Activa });
+
+        b.HasMany(x => x.Entregables)
+         .WithOne()
+         .HasForeignKey(e => e.PlantillaProyectoId)
+         .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PlantillaEntregableConfiguration : IEntityTypeConfiguration<PlantillaEntregable>
+{
+    public void Configure(EntityTypeBuilder<PlantillaEntregable> b)
+    {
+        b.ToTable("PlantillaEntregables");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(1000);
+        b.HasIndex(x => x.PlantillaProyectoId);
+
+        b.HasMany(x => x.Actividades)
+         .WithOne()
+         .HasForeignKey(a => a.PlantillaEntregableId)
+         .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class PlantillaActividadConfiguration : IEntityTypeConfiguration<PlantillaActividad>
+{
+    public void Configure(EntityTypeBuilder<PlantillaActividad> b)
+    {
+        b.ToTable("PlantillaActividades");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(300).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(1000);
+        b.HasIndex(x => x.PlantillaEntregableId);
     }
 }
 

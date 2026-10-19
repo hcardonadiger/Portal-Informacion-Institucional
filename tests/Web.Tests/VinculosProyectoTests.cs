@@ -43,10 +43,14 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
 
         var propia = Reunion.Crear("Mesa de trabajo del nodo central");
         propia.InstitucionId = "DIGER";
+        propia.InstitucionDuenaId = "DIGER";
+        propia.AreaId    = PortalFactory.AreaDeCasa;
+        propia.UnidadId  = PortalFactory.UnidadDeCasa;
 
         // La ajena es de otra institución: el proyecto sí se ve, la reunión no.
         var ajena = Reunion.Crear("Acta reservada de CONSUCOOP");
         ajena.InstitucionId = "CONSUCOOP";
+        ajena.InstitucionDuenaId = "CONSUCOOP";
 
         db.Reuniones.AddRange(propia, ajena);
         await db.SaveChangesAsync();
@@ -67,7 +71,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
 
     private async Task<(HttpClient Cliente, string Token)> SesionAsync(string rol = "JefeArea")
     {
-        var cliente = _portal.ClienteComo(rol);
+        var cliente = _portal.ClienteComo(rol, area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var html = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
         var token = TokenRx.Match(html).Groups[1].Value;
         token.Should().NotBeEmpty();
@@ -173,7 +177,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
         // Sembrado por detrás: el vínculo existe, pero su reunión es de otra institución.
         await VincularDirectoAsync(_reunionAjena);
 
-        var cliente = _portal.ClienteComo("JefeArea");
+        var cliente = _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var ficha = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
 
         ficha.Should().NotContain("Acta reservada de CONSUCOOP",
@@ -185,7 +189,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
     [Fact]
     public async Task El_selector_no_ofrece_reuniones_ajenas()
     {
-        var cliente = _portal.ClienteComo("JefeArea");
+        var cliente = _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var ficha = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
 
         ficha.Should().Contain("Mesa de trabajo del nodo central");
@@ -198,7 +202,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
         // El panel se pinta con el HTML pero las pestañas de esta ficha se abren con un onclick
         // explícito, no con un manejador delegado. Sin él, el botón se ve y no hace nada — que es
         // exactamente como salió la primera vez, y ni la compilación ni las pruebas lo veían.
-        var ficha = await _portal.ClienteComo("JefeArea").GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+        var ficha = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
 
         ficha.Should().Contain("abrirPestana('vinculos')",
             "el boton de la pestaña tiene que llamar al conmutador, como los otros siete");
@@ -209,7 +213,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
     [Fact]
     public async Task Se_puede_vincular_desde_la_ficha_de_la_reunion()
     {
-        var cliente = _portal.ClienteComo("JefeArea");
+        var cliente = _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var html = await cliente.GetStringAsync($"/Reuniones/Acta/{_reunionPropia}");
         var token = TokenRx.Match(html).Groups[1].Value;
 
@@ -245,7 +249,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
             ajeno = p2.Id;
         }
 
-        var cliente = _portal.ClienteComo("JefeArea");
+        var cliente = _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var html = await cliente.GetStringAsync($"/Reuniones/Acta/{_reunionPropia}");
         var token = TokenRx.Match(html).Groups[1].Value;
 
@@ -268,7 +272,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
         // Lo delicado es que Razor OMITA el atributo cuando el bool es false. Si escribiera
         // open="False" el navegador lo leería como presente —los atributos booleanos de HTML no
         // miran su valor— y la sección saldría abierta igual, que es justo lo contrario.
-        var cliente = _portal.ClienteComo("JefeArea");
+        var cliente = _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
 
         var vacio = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
         vacio.Should().NotContain("open=\"False\"",
@@ -295,7 +299,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
     [Fact]
     public async Task Datos_es_la_primera_pestana_y_la_que_abre()
     {
-        var ficha = await _portal.ClienteComo("JefeArea").GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
+        var ficha = await _portal.ClienteComo("JefeArea", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa).GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
 
         // Primera en el DOM de la barra.
         var barra = ficha.Substring(ficha.IndexOf("ficha-tabs"));
@@ -318,7 +322,7 @@ public sealed class VinculosProyectoTests : IAsyncLifetime
     public async Task Sin_Proyectos_Editar_no_se_vincula()
     {
         await _portal.OtorgarAsync("Consultor", "Proyectos.Ver", "Reuniones.Ver");
-        var cliente = _portal.ClienteComo("Consultor");
+        var cliente = _portal.ClienteComo("Consultor", area: PortalFactory.AreaDeCasa, unidad: PortalFactory.UnidadDeCasa);
         var html = await cliente.GetStringAsync($"/Proyectos/Editor/{_proyectoId}");
         var token = TokenRx.Match(html).Groups[1].Value;
 

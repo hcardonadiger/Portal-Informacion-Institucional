@@ -11,7 +11,9 @@ internal static class ContactoFeeder
         IApplicationDbContext ctx, IUnitOfWork uow, CancellationToken ct)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var reunionInst = !string.IsNullOrWhiteSpace(r.InstitucionId) ? await instRepo.GetByIdAsync(r.InstitucionId, ct) : null;
+        // La contraparte, sin recorte de alcance: es casi siempre de otra institución y con
+        // GetByIdAsync el contacto se creaba sin institución.
+        var reunionInst = !string.IsNullOrWhiteSpace(r.InstitucionId) ? await instRepo.GetParaConvocarByIdAsync(r.InstitucionId, ct) : null;
 
         foreach (var a in r.Asistentes)
         {
@@ -45,7 +47,9 @@ internal static class ContactoFeeder
 
             if (string.IsNullOrWhiteSpace(institucionTexto)) continue; // ninguna pista de institución
 
-            var inst = await instRepo.GetByNombreAsync(institucionTexto!, ct);
+            // Sin recorte de alcance: la institución del asistente es casi siempre ajena, y con la
+            // variante filtrada «no existía» y se daba de alta duplicada.
+            var inst = await instRepo.GetParaConvocarByNombreAsync(institucionTexto!, ct);
             if (inst is null)
             {
                 // La institución mencionada en la reunión todavía no existe en el catálogo: se crea
@@ -58,7 +62,7 @@ internal static class ContactoFeeder
                 if (string.IsNullOrWhiteSpace(idGenerado)) continue;
 
                 // Si ya existe por Id (creado en otro flujo), se usa el existente.
-                inst = await instRepo.GetByIdAsync(idGenerado, ct)
+                inst = await instRepo.GetParaConvocarByIdAsync(idGenerado, ct)
                     ?? Institucion.Crear(idGenerado, institucionTexto!);
 
                 if (inst.Id == idGenerado && !await instRepo.TieneExpedientesAsync(idGenerado, ct))

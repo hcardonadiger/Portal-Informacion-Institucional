@@ -12,8 +12,13 @@ public sealed class CrearUsuarioCommandHandler(
 {
     public async Task<Guid> Handle(CrearUsuarioCommand cmd, CancellationToken ct)
     {
+        // El correo lo puede estar ocupando un usuario DADO DE BAJA, que no aparece en el listado
+        // mientras no se marque «Mostrar eliminados»: sin decirlo, el mensaje manda a buscar una
+        // cuenta que no se ve en ninguna parte. Restaurarla es la salida, no crear otra.
         if (await repo.ExisteCorreoAsync(cmd.Correo, null, ct))
-            throw new DomainException($"Ya existe un usuario con el correo {cmd.Correo.Trim().ToLowerInvariant()}.");
+            throw new DomainException(
+                $"Ya existe un usuario con el correo {cmd.Correo.Trim().ToLowerInvariant()}. " +
+                "Si no aparece en el listado, puede estar eliminado: actívelo con «Mostrar eliminados» y restáurelo.");
 
         var u = Usuario.Crear(cmd.Nombre, cmd.Correo, hasher.Hash(cmd.Password));
         if (!string.IsNullOrWhiteSpace(cmd.CertificadoThumbprint))

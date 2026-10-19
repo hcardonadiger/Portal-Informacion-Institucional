@@ -1,19 +1,10 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Reuniones.IndexModel
 @inject AccesoModulosService Acceso
-@functions {
-    static string IC(string? inst)
-    {
-        if (string.IsNullOrEmpty(inst)) return "ic7";
-        var h = 0; foreach (var c in inst) h = (h * 31 + c) & 0x7FFFFFFF;
-        return $"ic{h % 8}";
-    }
-    static string InstIni(string? inst)
-    {
-        if (string.IsNullOrEmpty(inst)) return "—";
-        return inst.Length >= 2 ? inst[..2].ToUpper() : inst.ToUpper();
-    }
-}
+@* IC() e InstIni() salieron el 2026-10-19 con el disco de iniciales y el color
+   de la píldora, que eran sus dos únicos usos en esta página. IC() sigue vivo en
+   Reuniones/Asistencia, donde pinta los avatares de las PERSONAS —eso es otra
+   cosa y se queda. *@
 @{
     ViewData["Title"] = "Reuniones y Asistencias";
     var puedeGestionar = await Acceso.PuedeEditarAsync("Reuniones");
@@ -47,7 +38,7 @@
     Func<OrdenReuniones, string> Flecha = col => Model.Orden == col ? (Model.Desc ? " ▼" : " ▲") : "";
 }
 
-<div class="container" style="max-width:1040px">
+<div class="container lista">
     <partial name="_SuccessBanner" />
     <div class="hist-header">
         <div>
@@ -159,17 +150,25 @@
                 {
                     <tr>
                         <td>
+                            @* Salió el disco con las dos iniciales de la institución
+                               (2026-10-19). Decía menos que la columna Institución, que está
+                               dos celdas más allá con el nombre entero, y lo decía con un
+                               color sacado de un hash: "DI" en azul y "CO" en violeta no
+                               significaban nada que la fila no dijera ya. Doce discos de
+                               colores distintos en pantalla pesaban más que el dato.
+
+                               El título se sostiene solo: es negrita sobre el azul de marca
+                               y es lo único enlazado de la celda. *@
                             <div class="reun-titulo-cell">
-                                <span class="inst-av av-sm @IC(r.Institucion)" aria-hidden="true">@InstIni(r.Institucion)</span>
-                                <div>
-                                    <a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>
-                                    @if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }
-                                </div>
+                                <a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>
+                                @if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }
                             </div>
                         </td>
                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                         <td style="text-align:center">
-                            @if (r.Institucion != null) { <span class="inst-pill @IC(r.Institucion)">@r.Institucion</span> }
+                            @* Sin @IC(): esa clase trae el `background` de la paleta .ic0-.ic7
+                               y seguiría pintando la caja aunque .inst-pill ya no la pida. *@
+                            @if (r.Institucion != null) { <span class="inst-pill">@r.Institucion</span> }
                             else { <span class="res-meta">—</span> }
                         </td>
                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
@@ -207,8 +206,10 @@
             @foreach (var grupo in Model.Todas.GroupBy(r => r.Institucion ?? "Sin institución").OrderBy(g => g.Key))
             {
                 <div class="grupo-inst">
+                    @* Sin disco de iniciales, igual que la lista: acá el nombre entero de
+                       la institución ES el título del grupo, así que las dos letras de
+                       colores al lado lo repetían abreviado y peor. *@
                     <div class="grupo-inst-hdr" onclick="toggleGrupoInst(this)">
-                        <span class="inst-av av-lg @IC(grupo.Key == "Sin institución" ? null : grupo.Key)" aria-hidden="true">@InstIni(grupo.Key == "Sin institución" ? null : grupo.Key)</span>
                         <strong>@grupo.Key</strong>
                         <span class="grupo-inst-badge">@grupo.Count() reuni@(grupo.Count() == 1 ? "ón" : "ones")</span>
                         <span class="grupo-inst-chevron">▾</span>
@@ -264,8 +265,11 @@
     }
 </div>
 <style>
-    .reun-titulo-cell { display: flex; align-items: center; gap: 10px; }
-    .reun-titulo-cell > div { display: flex; flex-direction: column; gap: 2px; }
+    /* Sin el disco de iniciales la celda ya no es una fila de dos piezas: es el
+       título, y el enlace al hilo debajo cuando lo hay. Antes el flex horizontal
+       separaba disco y texto, y el <div> interior apilaba esos dos; al salir el
+       disco, el <div> sobraba y se quitó del marcado. */
+    .reun-titulo-cell { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
     .reun-asist-n {
         display: inline-flex; align-items: center; justify-content: center;
         min-width: 26px; height: 22px; padding: 0 7px;
@@ -276,16 +280,17 @@
     /* Encabezados ordenables: se leen como encabezado, no como enlace suelto. */
     .th-orden { color: inherit; text-decoration: none; white-space: nowrap; cursor: pointer; }
     .th-orden:hover { text-decoration: underline; }
-    /* La píldora trae white-space: nowrap del CSS global; un nombre largo de institución
-       estiraba la columna y con ella toda la tabla, sacando la página hacia la derecha.
-       Acá se deja bajar de renglón. Sólo en este listado: la píldora se usa también en
-       Asistencia, donde el ancho no molesta. */
+    /* El nombre de la institución trae white-space: nowrap del CSS global; uno
+       largo —"SECRETARIA DE RELACIONES EXTERIORES"— estiraba la columna y con
+       ella toda la tabla, sacando la página hacia la derecha. Acá se deja bajar
+       de renglón. Sólo en este listado: en Asistencia el ancho no molesta.
+
+       Ya sin caja de color, el texto se alinea a la izquierda como el resto de
+       la columna; centrarlo tenía sentido cuando era una píldora con fondo. */
     #reunion-tbl .inst-pill {
         white-space: normal;
-        display: inline-block;
         max-width: 190px;
-        line-height: 1.25;
-        text-align: center;
+        line-height: 1.3;
     }
     #reunion-tbl .reun-registro { white-space: nowrap; }
 </style>

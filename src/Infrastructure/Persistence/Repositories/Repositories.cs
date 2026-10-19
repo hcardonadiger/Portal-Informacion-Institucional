@@ -73,6 +73,16 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
     public Task<Institucion?> GetByIdAsync(string id, CancellationToken ct = default) =>
         ctx.Instituciones.FindAsync([id], ct).AsTask();
 
+    /// <summary>Misma excepción que <see cref="GetActivasParaConvocarAsync"/> y con el mismo
+    /// argumento de seguridad: el filtro de Institucion es solo de alcance, no lleva soft-delete,
+    /// así que saltárselo no resucita nada. Acá no se exige `Activo`: una reunión histórica puede
+    /// tener como contraparte una institución que después se dio de baja, y perder su nombre al
+    /// guardar sería corromper el acta.</summary>
+    public Task<Institucion?> GetParaConvocarByIdAsync(string id, CancellationToken ct = default) =>
+        ctx.Instituciones
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
+
     public async Task<IReadOnlyList<Institucion>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) =>
         await ctx.Instituciones
             .Where(i => ids.Contains(i.Id))
@@ -89,6 +99,16 @@ public sealed class InstitucionRepository(AppDbContext ctx) : IInstitucionReposi
     {
         var norm = nombre.Trim().ToUpper();
         return ctx.Instituciones.FirstOrDefaultAsync(i => i.Nombre == norm, ct);
+    }
+
+    /// <summary>Por nombre y sin recorte de alcance, para decidir si hay que dar de alta la
+    /// institución que trae escrita un asistente. Con la variante filtrada, una institución ajena
+    /// «no existía» para un usuario no global y se creaba de nuevo con un Id derivado del nombre:
+    /// como IX_Instituciones_Nombre es único, el guardado de la reunión reventaba.</summary>
+    public Task<Institucion?> GetParaConvocarByNombreAsync(string nombre, CancellationToken ct = default)
+    {
+        var norm = nombre.Trim().ToUpper();
+        return ctx.Instituciones.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.Nombre == norm, ct);
     }
 
     public async Task<IReadOnlyList<TramiteDefinicion>> GetTramitesAsync(string institucionId, CancellationToken ct = default) =>
@@ -234,10 +254,16 @@ public sealed class UsuarioRepository(AppDbContext ctx) : IUsuarioRepository
     public async Task<IReadOnlyList<Usuario>> GetAllAsync(CancellationToken ct = default) =>
         await ctx.Usuarios.OrderBy(u => u.Nombre).AsNoTracking().ToListAsync(ct);
 
+    /// <summary>IgnoreQueryFilters es obligatorio acá: IX_Usuarios_Correo es único y NO lleva
+    /// filtro, así que el correo de un usuario dado de baja sigue ocupado —los eliminados se
+    /// conservan a propósito para poder restaurarlos—. Consultando a través del filtro global
+    /// `!IsDeleted` el correo se daba por libre y el choque salía recién en el INSERT, como
+    /// violación de índice en vez de «ya existe un usuario con ese correo».</summary>
     public Task<bool> ExisteCorreoAsync(string correo, Guid? exceptoId = null, CancellationToken ct = default)
     {
         var norm = correo.Trim().ToLowerInvariant();
-        return ctx.Usuarios.AnyAsync(u => u.Correo == norm && (exceptoId == null || u.Id != exceptoId), ct);
+        return ctx.Usuarios.IgnoreQueryFilters()
+            .AnyAsync(u => u.Correo == norm && (exceptoId == null || u.Id != exceptoId), ct);
     }
 
     public async Task AddAsync(Usuario usuario, CancellationToken ct = default) =>

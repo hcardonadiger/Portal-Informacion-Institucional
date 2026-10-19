@@ -1,4 +1,4 @@
-@using Diger.TramitesEstado.Application.Notificaciones
+﻿@using Diger.TramitesEstado.Application.Notificaciones
 @using Diger.TramitesEstado.Application.Chat
 @using System.Security.Claims
 @using Microsoft.EntityFrameworkCore
@@ -21,6 +21,11 @@
     var _instBranding = await BrandingSvc.GetAsync(_activeInstId);
     var _inst = InstOpts.Value;
 
+    // ¿El contexto activo es la casa? El lockup de la cabecera ya ES el de la casa, así
+    // que repetir su nombre al lado no informa; el rótulo solo gana su sitio cuando el
+    // usuario está mirando OTRA institución.
+    var _esLaCasa = string.Equals(_activeInstId, _inst.Id, StringComparison.OrdinalIgnoreCase);
+
     bool EsRuta(params string[] prefijos)
     {
         var path = Context.Request.Path;
@@ -39,6 +44,72 @@
         var s = partes.Length >= 2 ? $"{partes[0][0]}{partes[1][0]}" : partes[0][..Math.Min(2, partes[0].Length)];
         return s.ToUpperInvariant();
     }
+
+    // El tema se resuelve ACÁ, antes del <head>, porque el <meta name="color-scheme">
+    // de más abajo lo necesita: ese meta es lo que hace que el navegador pinte los
+    // <select>, las barras de desplazamiento y los selectores de fecha en el tono
+    // correcto, y son controles que el CSS de la página no alcanza a estilar.
+    //
+    // El modo oscuro conmutable anterior se eliminó el 2026-09-24 por una razón
+    // concreta: dependía de un <script> que ponía data-theme en el <html> antes de
+    // las hojas de estilo, y cuando no corría —un teléfono que lo bloquea, o que lo
+    // ejecuta tarde— el registro público de asistencia salía oscuro. El defecto no
+    // era el conmutador: era que la ELECCIÓN viajaba por JavaScript en el camino
+    // crítico del pintado.
+    //
+    // Aquí la elección viaja en una cookie que lee el servidor, así que la clase ya
+    // sale correcta en el HTML. Si el JS no corre, el botón no responde pero
+    // ninguna página se pinta del color equivocado: es el modo de fallo seguro que
+    // el diseño anterior no tenía.
+    //
+    // Una página se sale del tema declarando ViewData["BodyClass"]. Hoy solo lo
+    // hace Asistencia/Registro, con "", que es el QR público: lo abre gente de
+    // fuera, desde su teléfono, y tiene que salir claro siempre. Una página que
+    // declara su clase no recibe la cookie NI el botón —queda fija— así que eximir
+    // una página nueva sigue siendo una sola línea en la página.
+    // CLARO POR OMISIÓN desde el 2026-10-19. El oscuro ya no es el estado de
+    // salida: se pide con el botón y se recuerda en la cookie. Antes era al
+    // revés —la cookie tenía que decir "claro" para aclarar—, y eso dejaba un
+    // defecto visible en el login: su tarjeta tiene `background: #fff` fijo,
+    // así que heredaba los tokens de texto CLAROS del tema oscuro sobre blanco
+    // y, con `color-scheme: dark`, Chrome le pintaba encima el autorrelleno con
+    // su paleta oscura. Letra clara sobre fondo claro.
+    //
+    // La condición se invierte entera: antes `!= "claro"`, ahora `== "oscuro"`.
+    // Importa que sea comparación por igualdad y no negación: una cookie con
+    // basura, o recortada, cae del lado claro, que es el seguro.
+    var _claseDeclarada = ViewData["BodyClass"] as string;
+    var _participaDelTema = _claseDeclarada is null;
+    var _temaOscuro = _participaDelTema
+        && Context.Request.Cookies["diger_tema"] == "oscuro";
+    var _claseCuerpo = _participaDelTema
+        ? (_temaOscuro ? "tema-oscuro" : "tema-claro")
+        : _claseDeclarada;
+
+    // El cajón del menú se ANCLA, y la elección viaja por el mismo camino que el tema:
+    // una cookie que lee el servidor. No es capricho de simetría.
+    //
+    // En este portal cada enlace es una recarga completa. Si el anclaje viviera en
+    // localStorage habría que reponerlo con un script después de pintar, y el contenido
+    // daría un salto visible al abrir cada módulo —264px de corrimiento apareciendo
+    // tarde— o, peor, se perdería al primer clic y el menú se desanclaría solo. Leída
+    // acá, la clase ya sale en el HTML y la página nace corrida.
+    //
+    // El valor por omisión es ANCLADO desde el 2026-10-19. Antes era al revés
+    // —el portal abría con el menú escondido y había que descubrir la
+    // hamburguesa para sacarlo—, y eso convertía la navegación en algo que hay
+    // que buscar. El menú es la estructura del portal: se ve, y quien no lo
+    // quiera lo contrae con el mismo botón.
+    //
+    // La condición se invierte entera: antes `== "anclado"`, ahora
+    // `!= "oculto"`. Importa el sentido: solo un "oculto" EXPLÍCITO —que
+    // escribe el botón— lo esconde, así que una cookie con basura o recortada
+    // cae del lado visible, que es el que no deja al usuario sin navegación.
+    //
+    // Bajo 900px esto no empuja nada: el CSS anula el corrimiento y el cajón
+    // vuelve a ser pasajero, porque no hay 264px que ceder sin dejar el
+    // contenido en una tira.
+    var _cajonAnclado = Context.Request.Cookies["diger_menu"] != "oculto";
 }
 
 <!DOCTYPE html>
@@ -46,20 +117,20 @@
 <head>
     <meta charset="UTF-8" />
     @* ───────────────────────────────────────────────────────────────────────────────
-       2026-09-24 — MODO OSCURO ELIMINADO. El portal es claro y nada más.
+       El tema de los controles que el CSS no alcanza a estilar: <select>, <option>,
+       barras de desplazamiento y selectores de fecha. El navegador los pinta a partir
+       de este <meta>, no de la hoja de estilos.
 
-       Antes acá iba un <script> que escribía data-theme="light" en el <html>. Era un
-       interruptor temporal (2026-09-18) y funcionaba, pero dejaba el login y el
-       registro de asistencia por QR —ambos públicos— dependiendo de que el JavaScript
-       corriera antes de pintar. Si no corría, el CSS oscuro seguía ahí y un teléfono
-       en modo oscuro los pintaba oscuros.
+       Hasta el 2026-10-19 estaba clavado en "light" —herencia de cuando el portal era
+       claro y nada más— y desde que el portal se puso oscuro eso era un defecto
+       visible: un <select> blanco de sistema sobre el navy de la página.
 
-       Ya no hay CSS oscuro que tapar: se borraron los bloques de tokens.css,
-       diger.css, Cronograma.cshtml y el de este archivo. Queda este <meta>, que es
-       declarativo y no necesita JavaScript: le dice al navegador que use su tema
-       claro para <select>, barras de desplazamiento y selectores de fecha.
+       Lo importante es que sigue siendo DECLARATIVO y sale del servidor. El modo
+       oscuro que se eliminó el 2026-09-24 ponía esto mismo por JavaScript antes de
+       las hojas de estilo, y cuando el JS no corría el registro público de asistencia
+       salía oscuro. Aquí el valor viene ya resuelto en el HTML.
        ─────────────────────────────────────────────────────────────────────────────── *@
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="@(_temaOscuro ? "dark" : "light")" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="@(_instBranding?.Color ?? "#02395e")" />
     <title>@ViewData["Title"] — @Marca.Nombre</title>
@@ -88,20 +159,7 @@
         <style>:root { --diger-blue: @instColor; --diger-blue-dark: @instColor; --diger-blue-mid: @instColor; }</style>
     }
 </head>
-@{
-    // Tema oscuro en todo el portal (2026-10-13). Se escribe en el SERVIDOR a
-    // propósito: el modo oscuro anterior dependía de que el JS pusiera
-    // data-theme antes de las hojas de estilo, y cuando no corría, el registro
-    // público de asistencia salía oscuro. Esto no puede fallar así, porque no
-    // hay JS de por medio.
-    //
-    // Una página se sale poniendo ViewData["BodyClass"] = "". Hoy solo lo hace
-    // Asistencia/Registro, que es el QR público: lo abre gente de fuera, desde
-    // su teléfono, y tiene que salir claro siempre. Si agrega otra página
-    // pública que use este layout, exímala ahí también.
-    var claseCuerpo = ViewData["BodyClass"] as string ?? "tema-oscuro";
-}
-<body class="@claseCuerpo">
+<body class="@_claseCuerpo">
     <partial name="_IconSprite" />
     @if (User.Identity?.IsAuthenticated == true)
     {
@@ -126,25 +184,53 @@
         var rolFiltro = User.FindFirstValue(AppClaims.ActiveRol);
         bool showAsignaciones = asignaciones != null && asignaciones.Count > 1;
         bool showJerarquia = rolFiltro == "JefeInstitucion" || rolFiltro == "JefeArea";
-        <div class="app-shell">
-            <div class="gov-bar">
-                <div class="gov-bar-inner">
-                    <span>@_inst.Eslogan</span>
-                    <a href="@_inst.SitioWeb" target="_blank" rel="noopener">@(_inst.SitioWeb.Replace("https://", "").Replace("http://", ""))</a>
-                </div>
-            </div>
+        @* La franja de gobierno salió el 2026-10-19. Llevaba el eslogan
+           —"Gobierno de la República de Honduras"— y la dirección del sitio, y
+           las dos sobraban por la misma razón: el lockup oficial que va justo
+           debajo YA dice GOBIERNO DE LA REPÚBLICA DE HONDURAS, con el escudo.
+           Era la misma frase dos veces, una encima de la otra, y la de arriba
+           en letra más chica. La dirección del portal no la necesita quien ya
+           está dentro de él.
+
+           Los 28px que ocupaba se le dieron al logo, que pasó de 40 a 56px: la
+           cabecera entera baja de 91px a 79 y aun así la marca se ve más
+           grande. Ver --diger-header-h en tokens.css.
+
+           Quitarla además simplifica el cajón del menú: era lo único que hacía
+           que la cabecera NO empezara en el borde superior, y por eso el cajón
+           tenía que medir su posición en vez de leerla del token. *@
+        @* nav-anclado es la clase que corre el contenido a la derecha del cajón. Va en el
+           shell y no en el cajón porque lo que se mueve es el contenido, no el menú: el
+           cajón está en position:fixed y ya sabe dónde pararse. *@
+        <div class="app-shell @(_cajonAnclado ? "nav-anclado" : "")">
             <header class="app-header">
                 <div class="app-header-inner">
+                    @* El botón va ANTES de la marca: es el primer control de la página y
+                       el único que abre el cajón, así que encabeza el orden de tabulación en
+                       vez de quedar detrás del logo. aria-expanded y aria-controls son lo
+                       único que dice si el cajón está abierto; toggleMainNav los mantiene
+                       al día. *@
+                    <button type="button" class="nav-toggle" id="navToggle"
+                            onclick="toggleMainNav()"
+                            aria-label="@(_cajonAnclado ? "Ocultar menú" : "Anclar menú")"
+                            aria-expanded="@(_cajonAnclado ? "true" : "false")"
+                            aria-controls="mainNav">&#9776;</button>
+
                     <a class="app-brand" asp-page="/Tableros/Index" title="Inicio">
-                        <svg width="27" height="20" viewBox="0 0 70 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="flex-shrink:0">
-                            <rect x="0" y="4" width="34" height="13" rx="6.5" fill="#7ACBDD"/>
-                            <rect x="0" y="20" width="50" height="13" rx="6.5" fill="#BFE3EE"/>
-                            <rect x="0" y="36" width="66" height="13" rx="6.5" fill="#FFFFFF"/>
-                        </svg>
-                        <span class="app-brand-word">@_inst.NombreCorto</span>
-                        <span class="app-brand-divider"></span>
-                        @if (_instBranding is not null)
+                        @* El lockup oficial (escudo + Gobierno de la República + DIGER) sustituye
+                           al dibujo de tres barras y a la palabra escrita: la marca ya la trae el
+                           arte. Va el negativo, no el positivo: así el logo no necesita placa y se
+                           apoya directo sobre el navy de la cabecera. *@
+                        <img src="@_inst.LogoNegativo" class="app-brand-logo" alt="@(_inst.Eslogan) — @(_inst.NombreCorto)" />
+                        @* En la casa, la marca termina en el logo: no se escribe el nombre del
+                           producto —está en el título del navegador y en cada encabezado de
+                           página— ni se repite "DIGER", que el logo ya dice. Fuera de la casa
+                           entra el nombre de la institución activa, que es lo único que el logo
+                           NO dice; el separador viaja con él, porque solo separa si hay algo
+                           del otro lado. *@
+                        @if (_instBranding is not null && !_esLaCasa)
                         {
+                            <span class="app-brand-divider"></span>
                             if (!string.IsNullOrEmpty(_instBranding.LogoUrl))
                             {
                                 <img src="@_instBranding.LogoUrl" class="app-brand-inst-logo"
@@ -152,22 +238,13 @@
                             }
                             <span class="app-brand-inst">@(_instBranding.NombreCorto ?? _instBranding.Nombre)</span>
                         }
-                        else
-                        {
-                            <span class="app-brand-title">@Marca.Nombre</span>
-                        }
                     </a>
 
-                    @* aria-expanded y aria-controls: desde que el menú es un cajón a
-                       cualquier ancho, este botón es la única forma de saber si está
-                       abierto. toggleMainNav los mantiene al día. *@
-                    <button type="button" class="nav-toggle" id="navToggle"
-                            onclick="toggleMainNav()"
-                            aria-label="Abrir menú"
-                            aria-expanded="false"
-                            aria-controls="mainNav">&#9776;</button>
-
-                    <nav class="main-nav" id="mainNav" aria-label="Menú principal">
+                    @* Anclado, el cajón nace ya desplegado: la clase viene del servidor y no de
+                       un script, así que no hay un fotograma con el menú cerrado antes de que
+                       el JS lo abra. La transición de .main-nav no se dispara —la clase ya
+                       estaba al pintar—, que es justo lo que se quiere al cambiar de módulo. *@
+                    <nav class="main-nav @(_cajonAnclado ? "open" : "")" id="mainNav" aria-label="Menú principal">
                         @*
                             Un grupo por pregunta que se hace el usuario: qué trabajo tengo, qué hay
                             en SIGER, qué estamos ejecutando, cómo vamos, qué tengo agendado, qué me
@@ -212,11 +289,20 @@
                             <div class="nav-group @(EsRuta("/Proyectos") ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Proyectos<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
-                                    <a class="nav-item @(EsRuta("/Proyectos") && !EsRuta("/Proyectos/Biblioteca") && !EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/Index">Portafolio</a>
+                                    <a class="nav-item @(EsRuta("/Proyectos") && !EsRuta("/Proyectos/Biblioteca") && !EsRuta("/Proyectos/MisActividades") && !EsRuta("/Proyectos/Plantillas") ? "on" : "")" asp-page="/Proyectos/Index">Portafolio</a>
                                     <a class="nav-item @(EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/MisActividades">Mis actividades</a>
                                     @if (await Acceso.PuedeClaveAsync("Proyectos.Documentos.Ver"))
                                     {
                                         <a class="nav-item @(EsRuta("/Proyectos/Biblioteca") ? "on" : "")" asp-page="/Proyectos/Biblioteca">Biblioteca</a>
+                                    }
+                                    @* Plantillas de estructura, para los proyectos cíclicos.
+                                       Va en Proyectos y no en Administración —donde están las de
+                                       trámite— porque quien las necesita es quien formula
+                                       proyectos. Su clave es propia, así que mantener plantillas
+                                       no obliga a dar permiso sobre todos los proyectos. *@
+                                    @if (await Acceso.PuedeClaveAsync("Proyectos.Plantillas.Ver"))
+                                    {
+                                        <a class="nav-item @(EsRuta("/Proyectos/Plantillas") ? "on" : "")" asp-page="/Proyectos/Plantillas">Plantillas</a>
                                     }
                                 </div>
                             </div>
@@ -309,10 +395,16 @@
                             var puedeRoles    = await Acceso.PuedeAsync("Accesos.Roles");
                             var puedePermisos = await Acceso.PuedeAsync("Accesos.Permisos");
                             var puedeModulos  = await Acceso.PuedeAsync("Accesos.Modulos");
-                            var puedeMigrar   = HostEnv.IsDevelopment()
-                                             && await Acceso.PuedeClaveAsync("Admin.Migraciones.Crear");
+                            // puedeMigrar salió con el enlace de "Migrar desde Supabase"
+                            // (2026-10-19). Era lo único que lo usaba, y dejarlo habría
+                            // mantenido vivo un permiso que ya no abre nada desde el menú.
+                            // La guarda real vive en la página, que es donde importa.
                         }
-                        @if (puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeModulos || puedeMigrar)
+                        @* Sin puedeMigrar en la condición: si se dejara, el grupo
+                           Administración aparecería en Development para quien tenga esa
+                           clave aunque no pueda ver ninguna de sus entradas, y se abriría
+                           vacío. *@
+                        @if (puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeModulos)
                         {
                             var grpAdmin = EsRuta("/Catalogos") || EsRuta("/Instituciones")
                                         || EsRuta("/Areas") || EsRuta("/Unidades")
@@ -340,11 +432,16 @@
                                     {
                                         <a class="nav-item @(EsRuta("/Accesos/Modulos") ? "on" : "")" asp-page="/Accesos/Modulos"><svg class="ico"><use href="#i-accesos"></use></svg>Alcance de módulos</a>
                                     }
-                                    @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
-                                    @if (puedeMigrar)
-                                    {
-                                        <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
-                                    }
+                                    @* "Migrar desde Supabase" salió del menú el 2026-10-19. Era una
+                                       herramienta de traslado desde el portal demo, de un solo uso y
+                                       ya hecha, y ocupaba un renglón permanente en Administración
+                                       para algo que no se repite.
+
+                                       La PÁGINA sigue existiendo en /Admin/MigrarSupabase con sus
+                                       dos guardas intactas —solo en Development y solo con la clave
+                                       Admin.Migraciones.Crear—, así que se llega escribiendo la
+                                       dirección si hiciera falta reimportar. Quitar el enlace no
+                                       quita la función: quita el recordatorio. *@
                                 </div>
                             </div>
                         }
@@ -387,9 +484,24 @@
                         };
                     }
                     <div class="header-right">
-                        @* Oculto mientras el modo oscuro esté deshabilitado: un botón que no hace
-                           nada es peor que no tenerlo. Se oculta en vez de borrarse para que
-                           reactivarlo sea quitar el style. Ver el interruptor en el <head>. *@
+                        @* El conmutador de tema. Solo aparece donde el tema es del usuario:
+                           una página que declara su propia BodyClass —hoy el registro público
+                           de asistencia— queda fija y no lo muestra, porque ahí el botón
+                           mentiría. Un botón que no hace nada es peor que no tenerlo. *@
+                        @if (_participaDelTema)
+                        {
+                            <button type="button" class="header-icon tema-btn" id="temaBtn"
+                                    onclick="cambiarTema()"
+                                    title="@(_temaOscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro")"
+                                    aria-label="@(_temaOscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro")"
+                                    aria-pressed="@(_temaOscuro ? "true" : "false")">
+                                @* Se ven los dos y el CSS esconde el que sobra según la clase
+                                   del cuerpo. Así el icono correcto ya sale en el HTML, sin
+                                   esperar al JS: lo mismo que se hace con la clase del tema. *@
+                                <svg class="ico ico-sol" aria-hidden="true"><use href="#i-sol"></use></svg>
+                                <svg class="ico ico-luna" aria-hidden="true"><use href="#i-luna"></use></svg>
+                            </button>
+                        }
                         <div class="notif-wrap" id="notifWrap">
                             <button type="button" class="header-icon notif-btn" onclick="toggleNotifPanel(event)" title="Notificaciones" aria-haspopup="true">
                                 &#128276;

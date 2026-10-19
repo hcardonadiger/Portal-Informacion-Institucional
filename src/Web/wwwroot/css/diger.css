@@ -1,4 +1,4 @@
-/* ── RESET & BASE ───────────────────────────────────────────── */
+﻿/* ── RESET & BASE ───────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -41,8 +41,6 @@ body {
 h1, h2, h3,
 .page-title,
 .pg-title,
-.app-brand-word,
-.app-brand-title,
 .login-title {
     font-family: var(--diger-font-marca);
 }
@@ -99,10 +97,37 @@ table {
     padding: 2rem 1rem 3rem;
 }
 
+/* El ancho de una pantalla que presenta una TABLA.
+
+   Hasta el 2026-10-19 cada página se lo escribía a mano, en línea, con
+   `style="max-width:NNNpx"`. El censo dio 51 páginas con tabla y ONCE
+   anchos distintos: 600, 920, 960, 1000, 1040, 1080, 1100, 1180, 1200,
+   1280 y 1400. Dos listados hermanos —Reuniones a 1040 y Proyectos a
+   1180— no coincidían, y el propio SIGER usaba cuatro anchos entre sus
+   pantallas. No era una escala: era deriva, un número por página y por
+   día.
+
+   Se unifica en el 1200 de Siger/Index, que es el listado más ancho que
+   ya estaba en uso, y se expresa como CLASE y no como literal repetido:
+   el valor vive en un sitio y una página nueva lo hereda escribiendo
+   `class="container lista"`. Mientras siga siendo un `style=` en cada
+   archivo, la deriva vuelve.
+
+   Qué NO lleva esta clase: los editores de un registro. Un formulario a
+   1200px pone la etiqueta y su campo a dos palmos, y una línea de texto
+   de ese ancho se lee mal —la medida cómoda ronda los 65 caracteres—.
+   Esos se quedan en su ancho corto aunque tengan una tabla dentro. */
+.container.lista {
+    max-width: 1200px;
+}
+
 /* Contenedor de página para las pantallas que no usan .container.
-   Mismo margen que .container; el ancho es el de un listado con acciones. */
+   Mismo margen que .container; el ancho es el de un listado con acciones,
+   así que es el MISMO que .container.lista y por eso lo lee del mismo
+   sitio: lo usan Plan de Trabajo e Informes, que son listados como los
+   demás y no tenían por qué ir 20px más angostos. */
 .pg-wrap {
-    max-width: 1180px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 2rem 1rem 3rem;
 }
@@ -1313,32 +1338,6 @@ tr.contacto-inactivo td {
 }
 
 /* Franja de gobierno */
-.gov-bar {
-    background: var(--diger-blue-dark);
-    color: rgba(255, 255, 255, .85);
-    font-size: var(--diger-fs-sm);
-}
-
-.gov-bar-inner {
-    max-width: 1500px;
-    margin: 0 auto;
-    padding: .35rem 1.4rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-}
-
-.gov-bar-inner a {
-    color: rgba(255, 255, 255, .85);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.gov-bar-inner a:hover {
-    color: #fff;
-}
-
 /* Header navy con línea celeste. Sobre navy el acento es el celeste:
    rinde 6.52 contra el fondo, mientras el azul medio se perdería. */
 .app-header {
@@ -1354,7 +1353,9 @@ tr.contacto-inactivo td {
     display: flex;
     align-items: center;
     gap: .35rem;
-    padding: .5rem 1.4rem;
+    /* .6rem vertical con el logo a 56px da los 79px de --diger-header-h,
+       contando los 3px del borde celeste de abajo. */
+    padding: .6rem 1.4rem;
     max-width: 1500px;
     margin: 0 auto;
 }
@@ -1368,11 +1369,28 @@ tr.contacto-inactivo td {
     margin-right: .6rem;
 }
 
-.app-brand-word {
-    font-weight: 800;
-    font-size: var(--diger-text-xl);
-    letter-spacing: .04em;
-    color: #fff;
+/* El lockup va en negativo (LogoNegativo) y por eso se apoya directo sobre el
+   navy, sin placa: el fondo del logo ES el de la cabecera. No se tiñe por CSS
+   —un filter lo aplanaría todo a un color y se perderían el celeste y el azul
+   medio del logotipo—, se sirve el arte que la marca ya trae resuelto.
+
+   56px desde el 2026-10-19, antes 40. El alto salió de la franja de gobierno
+   que se quitó: ocupaba 28px diciendo "Gobierno de la República de Honduras",
+   que es exactamente lo que el lockup ya dice con el escudo. Se le pasaron 16
+   de esos 28 al logo y los otros 12 se ahorraron: la cabecera entera baja de
+   91px a 79 y la marca se ve un 40% más grande.
+
+   El lockup mide 5.12:1 y su bajada ("DIRECCIÓN DE GESTIÓN POR RESULTADOS")
+   ocupa el 7.4% del alto: a 40px eran 3.0px y a 56px son 4.1px, así que sigue
+   siendo textura y no texto. Para que esa línea se leyera harían falta unos
+   108px de logo, que es más cabecera de la que ninguna pantalla puede ceder.
+   Lo que sí tiene que leerse —el escudo y GOBIERNO DE LA REPÚBLICA DE
+   HONDURAS— ya aguantaba a 40 y ahora respira. */
+.app-brand-logo {
+    display: block;
+    height: 56px;
+    width: auto;
+    flex-shrink: 0;
 }
 
 .app-brand-divider {
@@ -1381,23 +1399,22 @@ tr.contacto-inactivo td {
     background: rgba(255, 255, 255, .3);
 }
 
-.app-brand-title {
-    color: rgba(255, 255, 255, .92);
-    font-weight: 500;
-    font-size: var(--diger-fs-base);
-    white-space: nowrap;
-}
-
+/* 44px es el objetivo táctil mínimo recomendado, y aquí además es el elemento
+   más alto de la cabecera: es él quien fija --diger-header-h, no el logo.
+   Abre el cajón, así que va a la izquierda de la marca —primero el control,
+   después la identidad— y el margen lo separa del logo sin depender del gap
+   de .app-header-inner, que es más apretado. */
 .nav-toggle {
     display: none;
     border: 1.5px solid rgba(255, 255, 255, .4);
     background: transparent;
     border-radius: var(--diger-radius-sm);
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
+    margin-right: .55rem;
     align-items: center;
     justify-content: center;
-    font-size: var(--diger-text-base);
+    font-size: var(--diger-text-lg);
     cursor: pointer;
     color: #fff;
     flex: none;
@@ -1555,6 +1572,77 @@ tr.contacto-inactivo td {
     color: #fff;
 }
 
+/* Reparto fijo de columnas. Va en una clase propia y NO en .seg-table
+   porque esa la usan 41 páginas y la mayoría quiere lo contrario: que la
+   columna se ajuste a su contenido.
+
+   Acá hace falta porque una columna lleva texto largo —nombres de
+   trámite de noventa caracteres— con white-space: nowrap. Sin reparto
+   fijo el navegador dimensiona cada columna por su contenido, el nowrap
+   le pide el ancho del texto ENTERO y la tabla se desborda del
+   contenedor: medido, 1431px dentro de uno de 1200, con Apertura y las
+   acciones empujadas fuera de la pantalla. El text-overflow: ellipsis
+   nunca llegaba a actuar, porque la celda crecía en vez de recortar.
+
+   Con el reparto fijo mandan los anchos declarados en los <th>, la
+   columna sin ancho se queda con el sobrante exacto y el ellipsis sí
+   entra. */
+.tabla-fija {
+    table-layout: fixed;
+}
+
+/* El código del expediente, en su columna de la lista. Es el enlace a la
+   ficha —antes lo era la sigla de la institución— porque es lo que
+   identifica al expediente: cuatro instituciones tienen dos expedientes
+   cada una, y pulsar "CONSUCOOP" no decía cuál de los dos se abría.
+
+   nowrap porque un identificador no se divide: «EXP-CONS-2026-05» no
+   puede aparecer cortado en «EXP-CONS-» / «2026-05». Las cifras van
+   tabulares para que los códigos se alineen en columna; la familia
+   monoespaciada se fue a Manrope (ver tokens.css) y sin esto perderían
+   la rejilla. */
+.exp-codigo {
+    font-family: var(--diger-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text-slate);
+    letter-spacing: -.01em;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.exp-codigo:hover {
+    color: var(--diger-blue-mid);
+    text-decoration: underline;
+}
+
+/* ── Conmutador de tema ───────────────────────────────────────────────
+   El botón lleva los DOS iconos y el CSS esconde el que sobra según la
+   clase del cuerpo. Se hace así y no eligiéndolo en el servidor ni en el
+   JS por una razón: al conmutar, el JS solo cambia la clase del <body> y
+   el icono se actualiza solo, sin tocar el marcado. Y en la primera carga
+   el icono correcto ya viene en el HTML.
+
+   Se muestra el tema al que se VA, no el que se tiene: en oscuro se ve el
+   sol, porque pulsar aclara. Es la convención que la gente espera, y
+   además el otro camino —mostrar el estado— deja la duda de si el icono
+   es un botón o un indicador. */
+.tema-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tema-btn .ico {
+    width: 19px;
+    height: 19px;
+    display: block;
+}
+
+.tema-btn .ico-sol { display: none; }
+.tema-oscuro .tema-btn .ico-sol { display: block; }
+.tema-oscuro .tema-btn .ico-luna { display: none; }
+
 .user-menu {
     position: relative;
 }
@@ -1665,11 +1753,13 @@ tr.contacto-inactivo td {
 }
 
 /* Empieza bajo la cabecera, no en el borde: si el velo tapara la
-   hamburguesa, el clic para cerrar caería en el velo y no en el botón. */
+   hamburguesa, el clic para cerrar caería en el velo y no en el botón.
+   --diger-nav-top es el borde inferior REAL de la cabecera, que el JS mide
+   al abrir; el token es el valor por defecto si el JS no corre. */
 .nav-backdrop {
     display: none;
     position: fixed;
-    inset: var(--diger-header-h) 0 0 0;
+    inset: var(--diger-nav-top, var(--diger-header-h)) 0 0 0;
     background: rgba(2, 57, 94, .35);
     z-index: 150;
 }
@@ -1698,11 +1788,25 @@ tr.contacto-inactivo td {
     position: fixed;
     /* Bajo la cabecera, para que la hamburguesa siga a la vista y el mismo
        botón que abre sea el que cierra. Con el cajón a pantalla completa
-       quedaba tapado y había que adivinar que el velo o Escape cerraban. */
-    top: var(--diger-header-h);
+       quedaba tapado y había que adivinar que el velo o Escape cerraban.
+
+       Hasta el 2026-10-19 el token no bastaba: encima de la cabecera había una
+       franja de gobierno que NO era pegajosa, así que sin scroll la cabecera
+       empezaba 28px más abajo y el cajón anclado al token le mordía el borde
+       inferior a la hamburguesa. Al quitarse la franja, la cabecera empieza en
+       el borde superior siempre y el token YA es el valor correcto.
+
+       --diger-nav-top se conserva porque sigue siendo más fiel: lo mide el JS
+       sobre la cabecera real, así que acierta también cuando el responsive le
+       cambia el alto. El token es el respaldo para cuando el JS no corre, y
+       ahora ese respaldo es exacto en vez de quedarse corto. */
+    top: var(--diger-nav-top, var(--diger-header-h));
     left: 0;
     bottom: 0;
-    width: 264px;
+    /* El mismo token que usa el corrimiento del contenido cuando el cajón se
+       ancla. Si los dos valores se separaran, o queda una franja muerta entre
+       el menú y la tabla, o el cajón le pisa la primera columna. */
+    width: var(--diger-nav-w);
     background: var(--diger-panel);
     border-right: 1px solid var(--diger-border);
     flex-direction: column;
@@ -1754,8 +1858,67 @@ tr.contacto-inactivo td {
     display: block;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   ANCLAJE DEL CAJÓN — 2026-10-15
+
+   El cajón de arriba flota y tiende un velo. Mientras está abierto no se
+   puede usar ningún módulo: el velo intercepta todo clic sobre la página. Eso
+   lo vuelve un menú de paso —se abre, se elige, se cierra— y no un menú de
+   trabajo, que es lo que hace falta cuando hay que ir y volver entre
+   Expedientes, SIGER y un tablero.
+
+   Anclarlo cambia una sola cosa: el contenido CEDE el ancho del cajón en vez
+   de quedar debajo. Al no haber nada tapado, el velo se calla y el cajón se
+   queda hasta que la hamburguesa lo oculte.
+
+   Se corren el <main> y el pie, NO la cabecera. Ahí vive la hamburguesa —el
+   único control que lo oculta— y tiene que quedarse donde el ojo la dejó;
+   además la cabecera entera es la que da el borde superior del cajón.
+
+   El corrimiento es padding y no margin porque .app-main es el que lleva
+   flex:1 dentro del shell: un margin le restaría del alto disponible al
+   repartir, y el padding lo deja crecer igual.
+   ══════════════════════════════════════════════════════════════════ */
+.app-shell.nav-anclado > .app-main,
+.app-shell.nav-anclado > .diger-footer {
+    padding-left: var(--diger-nav-w);
+}
+
+/* El velo se calla SOLO cuando hay ancho para correr el contenido. Es el
+   complemento exacto de la regla de abajo —901px arriba, 900px abajo— y la
+   contraparte de cajonEsPasajero() en diger.js, que pregunta por el mismo
+   ancho: así no hay forma de que uno crea que tapa y el otro que no.
+
+   Gana sobre .nav-backdrop.open por especificidad (dos clases más un
+   descendiente contra dos clases), no por orden, de modo que sigue valiendo
+   aunque algo se reordene más abajo en la hoja. */
+@media (min-width: 901px) {
+    .app-shell.nav-anclado .nav-backdrop {
+        display: none;
+    }
+}
+
+/* Abajo de 900px el anclaje no empuja: no hay 264px que ceder sin dejar el
+   contenido en una tira de texto. Ahí el cajón vuelve a ser pasajero —flota,
+   el velo reaparece y Escape o un clic fuera lo cierran, igual que siempre—.
+   900px es el punto de ruptura que ya usa la cabecera para callar el nombre y
+   el rol del usuario; no se inventa uno nuevo. */
+@media (max-width: 900px) {
+    .app-shell.nav-anclado > .app-main,
+    .app-shell.nav-anclado > .diger-footer {
+        padding-left: 0;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .main-nav {
+        transition: none;
+    }
+
+    /* Sin esto el cajón entra de golpe pero el contenido sigue deslizándose,
+       que es el movimiento más grande de los dos. */
+    .app-main,
+    .diger-footer {
         transition: none;
     }
 }
@@ -1764,6 +1927,27 @@ tr.contacto-inactivo td {
    usuario junto al avatar, que ahí no caben. */
 @media (max-width: 900px) {
     .user-menu-meta {
+        display: none;
+    }
+}
+
+/* Bajo 620px el lockup compite con la hamburguesa: pierde alto y la marca se
+   queda sola. Calla el rótulo de institución activa —que solo aparece cuando
+   el contexto no es la casa— junto con su separador: si se ocultara uno sin el
+   otro, el separador quedaría colgando. El contexto de institución sigue a un
+   toque, en el menú de usuario. */
+@media (max-width: 620px) {
+    /* Sube de 26 a 34px con el mismo criterio que el de escritorio: la franja
+       de gobierno que se quitó dejó alto libre también acá. Sigue por debajo
+       del tamaño grande porque a este ancho la hamburguesa y el avatar del
+       usuario comparten renglón con la marca. */
+    .app-brand-logo {
+        height: 34px;
+    }
+
+    .app-brand-divider,
+    .app-brand-inst,
+    .app-brand-inst-logo {
         display: none;
     }
 }
@@ -2027,9 +2211,14 @@ tr.contacto-inactivo td {
     border-color: var(--diger-danger);
 }
 
+/* La transición del corrimiento vive acá y no en la regla de .nav-anclado a
+   propósito: puesta allá, solo animaría al anclar —al quitarse la clase se
+   iría con ella y el contenido volvería de golpe—. En la regla base anima en
+   los dos sentidos, y acompaña los .22s con que el cajón entra y sale. */
 .app-main {
     flex: 1;
     min-width: 0;
+    transition: padding-left .22s ease;
 }
 
 /* Footer institucional (navy + línea celeste superior) */
@@ -2038,6 +2227,7 @@ tr.contacto-inactivo td {
     border-top: 3px solid var(--diger-celeste);
     color: rgba(255, 255, 255, .8);
     margin-top: 2rem;
+    transition: padding-left .22s ease;
 }
 
 .diger-footer-inner {
@@ -2527,6 +2717,9 @@ tr.contacto-inactivo td {
 
 .seg-table.tabla-moderna td.col-num {
     font-family: var(--diger-font-mono);
+    /* La monoespaciada se fue a Manrope (tokens.css): sin esto los
+       códigos y las fechas dejarían de alinearse en columna. */
+    font-variant-numeric: tabular-nums;
     font-size: var(--diger-fs-sm);
     color: var(--diger-text-secondary);
 }
@@ -2549,12 +2742,26 @@ tr.contacto-inactivo td {
 
    El código va aquí abajo y no en columna propia: repetía la sigla que ya
    está arriba, y una columna que repite otra es una columna de menos. */
+/* La celda de identidad del expediente. Reagrupada el 2026-10-19 con el
+   mismo criterio que .pry-ident en Proyectos: los datos que identifican
+   la fila se leen en columna, cada uno en su renglón y todos al mismo
+   borde izquierdo, para que el ojo baje por una sola línea de arranque.
+
+   El responsable entró acá desde su propia columna. Suelto abría la fila
+   —era la tercera de seis— y obligaba a las cuatro columnas de datos a
+   apretarse contra el borde derecho. Dentro, la fila queda con la
+   identidad a la izquierda y cuatro columnas cortas a la derecha, que es
+   la forma de Proyectos.
+
+   Ya no lleva tope de 330px: ahora es la columna la que manda el ancho, y
+   acotarla aquí partía el nombre de la institución en más renglones de
+   los necesarios. */
 .celda-inst {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
     min-width: 0;
-    max-width: 330px;
+    line-height: 1.4;
 }
 
 /* Sigla y código en el mismo renglón: en renglones separados la celda se iba
@@ -2567,11 +2774,20 @@ tr.contacto-inactivo td {
     min-width: 0;
 }
 
+/* La identidad del expediente, 2026-10-19. Subió un escalón de la escala
+   (12.5 → 14px) porque es el dato que manda en la fila y el que se busca
+   al barrer la lista: es el equivalente de .pry-ident-nombre en Proyectos,
+   que es la tabla que mejor se lee del portal.
+
+   Las dos líneas de abajo —código y nombre de la institución— estaban a
+   10.5px, dos escalones por debajo de las de Proyectos (12.5px). Esa, y
+   no otra, era la razón de que esta tabla se viera más apretada que
+   aquella con el mismo ancho y el mismo relleno. */
 .inst-sigla {
     font-weight: 700;
     color: var(--diger-blue);
     text-decoration: none;
-    font-size: var(--diger-fs-sm);
+    font-size: var(--diger-fs-base);
 }
 
 .inst-sigla:hover {
@@ -2579,7 +2795,7 @@ tr.contacto-inactivo td {
 }
 
 .inst-nombre {
-    font-size: var(--diger-fs-2xs);
+    font-size: var(--diger-fs-sm);
     color: var(--diger-text-muted);
     line-height: 1.35;
     display: -webkit-box;
@@ -2587,14 +2803,6 @@ tr.contacto-inactivo td {
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-}
-
-.inst-cod {
-    font-family: var(--diger-font-mono);
-    font-size: var(--diger-fs-2xs);
-    color: var(--diger-text-slate);
-    letter-spacing: -.01em;
-    white-space: nowrap;
 }
 
 /* ── PÍLDORA DE ESTADO ────────────────────────────────────────────────
@@ -3007,6 +3215,25 @@ tr.contacto-inactivo td {
     background: var(--diger-bg-blue-alt);
 }
 
+/* ── IDENTIDAD DEL PROYECTO: los cuatro datos en columna ──
+   Nombre, código, responsable y categoría van uno debajo del otro, todos
+   arrancando en el mismo borde izquierdo, para que el ojo baje por una sola
+   línea de arranque y entre filas se comparen a la misma altura. Cuatro
+   renglones estiran la fila, así que el interlineado se aprieta y la
+   separación entre ellos se lleva con un margen mínimo, no con el del
+   párrafo. */
+.seg-table td.pry-ident {
+    line-height: 1.4;
+}
+
+.pry-ident > div + div {
+    margin-top: 2px;
+}
+
+.pry-ident-nombre {
+    font-weight: 600;
+}
+
 /* ── EDIT-GRID: tablas editables (asistentes, acuerdos) sin desbordar el contenedor ── */
 .edit-grid {
     table-layout: fixed;
@@ -3166,6 +3393,39 @@ tr.contacto-inactivo td {
 .cel-calc {
     font-size: var(--diger-fs-xs);
     color: var(--diger-text-secondary);
+}
+
+/* ── TRAER UNA PLANTILLA DE ESTRUCTURA ──────────────────────── */
+/* Solo aparece en el proyecto sin entregables, así que no compite con la tabla: puede
+   permitirse el ancho entero. Texto arriba y control abajo —y no en dos columnas— porque la
+   explicación es lo que decide si se usa, y partirla a media pantalla la deja en dos líneas
+   de cuatro palabras en cualquier portátil. */
+
+.plantilla-traer {
+    display: flex;
+    flex-direction: column;
+    gap: .7rem;
+}
+
+.plantilla-traer .pt-control {
+    display: flex;
+    align-items: flex-end;
+    gap: .55rem;
+    flex-wrap: wrap;
+}
+
+/* El selector se lleva el espacio sobrante y el botón se queda con el suyo: los nombres de
+   plantilla son largos —«Informe trimestral de seguimiento»— y un select angosto los corta
+   justo donde se distinguen entre sí. */
+.plantilla-traer .pt-control select {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.plantilla-traer .pt-control .cel-lbl {
+    display: block;
+    flex-basis: 100%;
+    margin-bottom: -.35rem;
 }
 
 /* ── EDT: LA FILA COMO FICHA ────────────────────────────────── */
@@ -6113,9 +6373,26 @@ a.kpi-cell:hover .kpi-cell-arw {
 .ic7 { background: #374151; }
 
 /* Pill de institución */
+/* La institución, 2026-10-19: texto en negrita y nada más.
+
+   Era una píldora de fondo sólido que tomaba su color de .ic0-.ic7, una
+   paleta de ocho tonos repartidos por un hash del nombre. Dos problemas.
+   El primero es de marca: cinco de esos ocho —violeta, cian, ladrillo,
+   magenta y gris— no están en el Manual, y en una lista de doce filas la
+   pantalla salía de seis colores que no son los de la casa. El segundo
+   es de significado: el color no codificaba NADA. Salía de un hash, así
+   que CONSUCOOP era violeta por casualidad, no por ser CONSUCOOP; el ojo
+   buscaba un patrón donde solo había ruido.
+
+   El nombre de la institución ya se distingue solo: es la única palabra
+   en mayúsculas de su columna. No necesitaba una caja de color para que
+   se viera, y sin ella la fila baja de dos pesos visuales a uno. */
 .inst-pill {
-    display: inline-block; padding: 2px 9px; border-radius: var(--diger-radius-sm);
-    font-size: var(--diger-fs-sm); font-weight: 700; color: #fff; white-space: nowrap;
+    display: inline-block;
+    font-size: var(--diger-fs-sm);
+    font-weight: 700;
+    color: var(--diger-text-strong);
+    white-space: nowrap;
 }
 
 /* ── Branding de institución en la barra de navegación ─────── */
@@ -7204,14 +7481,44 @@ textarea.form-control { resize: vertical; }
    Aquí quedan las tres cosas que un token no puede arreglar.
    ══════════════════════════════════════════════════════════════════ */
 
-/* 1. El fondo. La trama la genera scripts/generar_trama.py y se sirve
-      desde wwwroot: la CSP declara `img-src 'self' data:`, así que un
-      archivo propio entra y uno de la intranet no. Va fija para que no
-      se desplace con el scroll —una trama que corre detrás del texto
-      marea— y `cover` evita que se repita visiblemente. */
+/* 1. El fondo. Lo genera scripts/generar_trama.py y se sirve desde
+      wwwroot: la CSP declara `img-src 'self' data:`, así que un archivo
+      propio entra y uno de la intranet no. Va fijo para que no se
+      desplace con el scroll —una trama que corre detrás del texto
+      marea— y `cover` evita que se repita visiblemente.
+
+      Es una red de nodos: puntos unidos con sus vecinos, que dice
+      interoperabilidad. El centro queda despejado a propósito, y eso no
+      es decoración: 73 superficies de esta hoja leen --diger-surface,
+      que en oscuro es celeste al 5 %, así que el fondo se ve A TRAVÉS
+      de las tarjetas. Si el patrón corriera por el centro, correría por
+      debajo de cada tabla del portal.
+
+      Un SVG de fondo no resuelve var(--diger-*) —los tokens del
+      documento no le llegan— así que el color va horneado y hace falta
+      un archivo por tema. Ver la cabecera del script: el celeste da
+      10.47:1 contra este suelo y el navy 10.61:1 contra el claro, de
+      modo que la misma curva de alfa sirve en los dos.
+
+      No hay media query que lo cambie por ancho: al ser una sola trama
+      que cubre todo el lienzo, no hay mitad que perder en una pantalla
+      estrecha. El `cover` la escala y ya. */
 body.tema-oscuro {
     background-color: var(--diger-bg);
-    background-image: url("../img/trama-proyectos.svg");
+    background-image: url("../img/trama-nodos-oscuro.svg");
+    background-size: cover;
+    background-position: center top;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+
+/* 1b. La misma trama en claro. Es una clase que se PIDE, no la ausencia
+       de .tema-oscuro: `body:not(.tema-oscuro)` le caería encima al
+       registro público de QR (Asistencia/Registro pone
+       ViewData["BodyClass"] = ""), que está limpio a propósito. */
+body.tema-claro {
+    background-color: var(--diger-bg);
+    background-image: url("../img/trama-nodos-claro.svg");
     background-size: cover;
     background-position: center top;
     background-attachment: fixed;
@@ -7349,27 +7656,107 @@ body.tema-oscuro {
     background: var(--diger-warning-bg);
 }
 
+/* 2e. El desplegable del <select>. Este es el caso en que los tokens no
+       bastan por una razón distinta a las de arriba: la lista de opciones
+       NO la dibuja esta hoja, la dibuja el sistema operativo.
+
+       El portal le pone `background` y `color` al <select> cerrado, y con
+       eso Chrome deja de aplicarle el esquema oscuro al desplegable: las
+       <option> se quedan heredando el color de texto CLARO del select,
+       pero el fondo del panel lo pinta el sistema en BLANCO. Resultado:
+       texto casi blanco sobre blanco. Solo se leía la opción resaltada,
+       porque esa sí la pinta el sistema entera.
+
+       `color-scheme: dark` ya se hereda desde .tema-oscuro y no alcanza:
+       hay que pintar las opciones explícitamente. Van sobre --diger-panel
+       y no sobre --diger-surface porque el desplegable FLOTA sobre la
+       página, que es la misma distinción que ya se hace con modales y
+       diálogos; además --diger-surface es translúcida y un panel del
+       sistema no puede serlo. El par texto/panel ya está verificado por
+       el guardián de marca, que lo mide en 14.29:1.
+
+       Alcanza a los 168 <select> del portal de una vez, repartidos en 42
+       páginas: esto no era un defecto de una pantalla. */
+.tema-oscuro option,
+.tema-oscuro optgroup {
+    background-color: var(--diger-panel);
+    color: var(--diger-text);
+}
+
+/* Los campos de fecha traen su propio calendario del sistema y el icono
+   que lo abre. Heredan `color-scheme` igual que el select, pero se deja
+   declarado donde se ve el problema: sin esquema oscuro el icono sale
+   negro sobre el fondo oscuro del campo y desaparece. Son 44 en el
+   portal. */
+.tema-oscuro input[type="date"],
+.tema-oscuro input[type="time"],
+.tema-oscuro input[type="datetime-local"],
+.tema-oscuro select {
+    color-scheme: dark;
+}
+
 /* 3. El realce de la tabla. Sobre un fondo liso la tabla no necesita
       caja —así quedó en la lengua de casa, apartado 5— pero sobre una
       trama sí: sin un plano propio, el patrón corre por debajo de cada
       celda y la lectura densa se cansa. Es un realce, no una tarjeta:
       celeste al 5%, borde de un píxel, sin radio y sin sombra. Deja ver
-      la trama en vez de taparla. */
+      la trama en vez de taparla.
+
+      Alcanza a .seg-table, que es la tabla de Proyectos y también la de
+      Accesos, Catálogos, Áreas y Admin: el realce es del sistema, no de
+      una pantalla. */
 .tema-oscuro .seg-table {
     background: rgba(122, 203, 221, .05);
     border: 1px solid rgba(122, 203, 221, .16);
 }
 
+/* 3b. Lo mismo en claro, que hasta el 2026-10-19 faltaba. Mientras el
+       tema claro no tuvo trama no hacía falta; ahora la tiene y la tabla
+       se quedaba sin plano, con los nodos corriendo por debajo de las
+       celdas.
+
+       ACLARA, no oscurece, y ahí está la diferencia con el tema oscuro.
+       El primer intento fue navy al 5%, buscando el mismo salto de L* que
+       el celeste al 5% del oscuro pero hacia abajo. Era simétrico sobre el
+       papel y equivocado en pantalla: el suelo claro (#eef1f7) ya tira a
+       gris, así que oscurecerlo daba otro gris y la tabla se confundía con
+       el fondo en vez de separarse de él. Además iba contra la casa —en
+       tema claro --diger-surface es BLANCO, las tarjetas son blancas— así
+       que la tabla pedía lo mismo.
+
+       El 55% está medido y tiene techo: el suelo está a L* 95.08 y el
+       blanco puro a 100, de modo que lo MÁXIMO que se puede aclarar son
+       +4.92. El 55% da +2.75, poco más de la mitad de ese margen: bastante
+       para leerse como un plano aparte y poco para tapar la trama, que en
+       claro es navy entre el 5 y el 31% de alfa. Al 35% apenas se despega
+       del fondo; al 75% ya se lee como blanco opaco y la trama desaparece
+       debajo.
+
+       El borde se queda en navy: es un borde, tiene que contrastar contra
+       el plano claro, no acompañarlo. */
+.tema-claro .seg-table {
+    background: rgba(255, 255, 255, .55);
+    border: 1px solid rgba(2, 57, 94, .19);
+}
+
 /* Impresión: estos proyectos se imprimen, y un fondo oscuro sale como
-   una mancha de tinta. Se devuelve todo a papel blanco. */
+   una mancha de tinta. Se devuelve todo a papel blanco. El tema claro
+   no mancha, pero su trama tampoco aporta nada en papel y gasta tinta:
+   se quita igual. La regla del repliegue no hace falta anularla —esta
+   gana por venir después y por ser más específica en el medio print. */
 @media print {
-    body.tema-oscuro {
+    body.tema-oscuro,
+    body.tema-claro {
         background-image: none;
         background-color: #fff;
         color: #000;
     }
 
-    .tema-oscuro .seg-table {
+    /* El realce de la tabla existe para separarla de la trama, y en papel
+       no hay trama: sobra en los dos temas. Queda el borde gris, que ahí
+       sí hace falta para que la tabla se lea como tabla. */
+    .tema-oscuro .seg-table,
+    .tema-claro .seg-table {
         background: none;
         border: 1px solid #999;
     }

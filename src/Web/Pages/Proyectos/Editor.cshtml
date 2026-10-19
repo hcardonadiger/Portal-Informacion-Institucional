@@ -390,6 +390,52 @@
                         que va como actividad adentro.
                     </div>
                 </div>
+
+                @* Traer una plantilla: solo acá, en la rama de «sin estructura». No es una
+                   casualidad de dónde quedó el bloque — es la regla. Con entregables ya cargados
+                   copiar el esqueleto obligaría a decidir qué pasa con los avances y las fechas
+                   reales, y el comando lo rechaza; ofrecer el control sería ofrecer un error.
+
+                   NO lleva <form> propio: todo este panel ya vive dentro de #form-ficha, y anidar
+                   formularios no es HTML válido —el navegador descarta el de adentro y el botón
+                   acaba posteando al handler equivocado—. El botón desvía este mismo formulario
+                   con formaction, que es la forma válida de tener dos destinos en un <form>.
+
+                   Por lo mismo el <select> no puede ser required: la validación del navegador es
+                   del formulario entero, así que un campo vacío acá bloquearía «Guardar». Quien
+                   exige la plantilla es el servidor, abajo. *@
+                @if (Model.Plantillas.Any())
+                {
+                    <div class="card plantilla-traer" style="margin-bottom:1rem">
+                        <div class="pt-texto">
+                            <strong>¿Es un proyecto que se repite cada ciclo?</strong>
+                            <p class="res-meta" style="margin:.2rem 0 0">
+                                Traiga el esqueleto de una plantilla y ahórrese teclearlo. Se copian
+                                <strong>entregables y actividades</strong> con sus descripciones; las
+                                fechas, los responsables y los avances se cargan después, porque son
+                                de este ciclo y no del molde. Después se edita como cualquier otra
+                                estructura: lo que se trae es una copia, no un vínculo.
+                            </p>
+                        </div>
+                        <div class="pt-control">
+                            <label class="cel-lbl" for="pt-sel">Plantilla</label>
+                            <select id="pt-sel" name="plantillaId" class="input">
+                                <option value="">— Elija una —</option>
+                                @foreach (var pl in Model.Plantillas)
+                                {
+                                    @* El conteo va en la opción y no en un tooltip: es lo único que
+                                       distingue dos plantillas de nombre parecido antes de traerla. *@
+                                    <option value="@pl.Id">@pl.Nombre (@pl.NumEntregables entregable@(pl.NumEntregables == 1 ? "" : "s"), @pl.NumActividades actividad@(pl.NumActividades == 1 ? "" : "es"))</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-primary"
+                                    formaction="@Url.Page(null, "TraerPlantilla", new { id = p.Id })"
+                                    formnovalidate>
+                                Traer estructura
+                            </button>
+                        </div>
+                    </div>
+                }
             }
 
             @* La tabla se renderiza aunque esté vacía si se puede editar: es el ancla que el script

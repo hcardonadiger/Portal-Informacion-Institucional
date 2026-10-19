@@ -1,4 +1,4 @@
-using Diger.TramitesEstado.Application.Common.Interfaces;
+﻿using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Domain.Enums;
 using Diger.TramitesEstado.Infrastructure.Persistence;
@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -52,9 +53,25 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
     /// </summary>
     public const int PrioridadTicketPorDefecto = 3;
 
+    /// <summary>
+    /// Fecha de corte del cambio obligatorio de contraseña para ESTA instancia del host.
+    /// Vacía por defecto —sin corte, el portón no retiene a nadie— para que las demás suites
+    /// no cambien de comportamiento el día que la fecha real de appsettings.json llegue.
+    /// Hay que fijarla antes de la primera petición: se lee al construir el host.
+    /// </summary>
+    public string CorteCambioPassword { get; set; } = "";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        // Va como fuente en memoria y no por UseSetting: appsettings.json se superpone a la
+        // configuración del host, y pisaría el valor de la prueba.
+        builder.ConfigureAppConfiguration(cfg => cfg.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Auth:CambioPasswordObligatorioDesde"] = CorteCambioPassword
+            }));
 
         builder.ConfigureServices(services =>
         {
@@ -96,6 +113,14 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
 
     private const string SinRol = "";
 
+    /// <summary>Área y unidad del usuario de prueba, y de las reuniones que siembran las suites.
+    /// Existen porque el filtro de Reunion ancla en el dueño: desde que el respaldo por institución
+    /// vale solo a nivel Institución, un cliente sin área ni unidad no ve una reunión que no haya
+    /// convocado él. En producción es lo normal —38 de 49 usuarios tienen unidad—, así que el
+    /// banco de pruebas se parece más a la realidad teniéndolas que no.</summary>
+    public const string AreaDeCasa   = "GOBDIG";
+    public const string UnidadDeCasa = "DITRA";
+
     /// <summary>Crea el esquema y siembra los roles base y un usuario por rol. Llamar una vez
     /// por fixture.</summary>
     public async Task PrepararAsync()
@@ -117,6 +142,13 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
                 Rol.Crear("Consultor", "Consultor", NivelAlcance.Unidad,
                     esSoloLectura: true, esSistema: true));
 
+            await db.SaveChangesAsync();
+        }
+
+        if (!await db.Areas.AnyAsync(a => a.Id == AreaDeCasa))
+        {
+            db.Areas.Add(Area.Crear(AreaDeCasa, "DIGER", "Gobierno Digital"));
+            db.Unidades.Add(Unidad.Crear(UnidadDeCasa, AreaDeCasa, "Digitalización de Trámites"));
             await db.SaveChangesAsync();
         }
 
@@ -211,7 +243,11 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
 
     /// <summary>Cliente que habla como el rol indicado. Sin rol (null) simula la cuenta sin
     /// asignación; sin usuario, una petición anónima.</summary>
-    public HttpClient ClienteComo(string? rolId, string institucion = "DIGER")
+    /// <remarks>Área y unidad van vacías por omisión a propósito: varias suites de proyectos
+    /// comprueban justamente el comportamiento de un usuario que no las tiene. Las suites de
+    /// reuniones las piden explícitas, porque su filtro ancla en el dueño.</remarks>
+    public HttpClient ClienteComo(string? rolId, string institucion = "DIGER",
+                                 string? area = null, string? unidad = null)
     {
         var cliente = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -219,6 +255,8 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
 
         cliente.DefaultRequestHeaders.Add(TestAuthHandler.CabeceraUsuarioId, usuarioId.ToString());
         cliente.DefaultRequestHeaders.Add(TestAuthHandler.CabeceraInstitucion, institucion);
+        if (!string.IsNullOrEmpty(area))   cliente.DefaultRequestHeaders.Add(TestAuthHandler.CabeceraArea,   area);
+        if (!string.IsNullOrEmpty(unidad)) cliente.DefaultRequestHeaders.Add(TestAuthHandler.CabeceraUnidad, unidad);
 
         if (rolId is not null)
             cliente.DefaultRequestHeaders.Add(TestAuthHandler.CabeceraRol, rolId);
