@@ -1,0 +1,146 @@
+@page "{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Siger.OriginalModel
+@inject AccesoModulosService Acceso
+@{
+    // El archivo del original se fue a Honduras Simple: solo se ofrece a quien puede entrar.
+    var puedeArchivar = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
+    var esOriginal = Model.Version == Diger.TramitesEstado.Domain.Entities.OrigenFoto.VersionOriginal;
+    ViewData["Title"] = esOriginal ? "Original de SIGER" : $"Versión {Model.Version}";
+    var f = Model.Foto;
+}
+
+<div class="container" style="max-width:900px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;flex-wrap:wrap">
+        <a class="btns" asp-page="/Siger/Detalle" asp-route-id="@Model.Id" style="font-size:13px">← Volver a la ficha</a>
+        <h2 style="margin:0;font-size:18px;color:#0a2d6e">
+            @(esOriginal ? "Cómo llegó esta ficha desde SIGER" : $"Cómo estaba esta ficha antes del pase #{Model.Version}")
+        </h2>
+    </div>
+
+    @* ── Historial (Fase 9) ──────────────────────────────────────────
+       Cada foto guarda el estado que un pase REEMPLAZÓ, no el que dejó. Por eso la lista se lee
+       hacia atrás: la versión más alta es lo que había justo antes del último pase. *@
+    @if (Model.Versiones.Count > 1)
+    {
+        <div class="card" style="margin-bottom:1rem">
+            <h3 class="sec-h">Versiones archivadas</h3>
+            <p style="font-size:13px;color:#4a5568;margin:0 0 .7rem">
+                Cada fila es el estado que un pase desde el expediente reemplazó. La versión 0 es
+                el inventario tal como llegó de SIGER, antes de que este portal escribiera nada.
+            </p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                @foreach (var v in Model.Versiones)
+                {
+                    var activa = v.Version == Model.Version;
+                    <a asp-page="/Siger/Original" asp-route-id="@Model.Id" asp-route-version="@v.Version"
+                       style="padding:6px 12px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;border:1.5px solid @(activa ? "#1455a4" : "#e2e8f0");background:@(activa ? "#dbeafe" : "#fff");color:@(activa ? "#1455a4" : "#475569")">
+                        @(v.EsOriginal ? "Original (0)" : $"Pase #{v.Version}")
+                        <span style="display:block;font-weight:400;font-size:11px;opacity:.8">@v.CapturadaEl.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (f is null)
+    {
+        <div class="card">
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+                @if (esOriginal)
+                {
+                    <text>
+                        Esta ficha no tiene foto original guardada.
+                        @if (puedeArchivar)
+                        {
+                            <text>Si el inventario aún no se ha archivado, se toma desde <a asp-page="/HondurasSimple/Archivo">Archivo del SIGER original</a>.</text>
+                        }
+                    </text>
+                }
+                else
+                {
+                    <text>No hay ninguna versión archivada con ese número para esta ficha.</text>
+                }
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="res-meta" style="margin-bottom:1rem">
+            Código <strong>@f.Codigo</strong>
+            @if (f.IdSiger is int idS) { <text> · Id SIGER <strong>@idS</strong></text> }
+            · archivada el <strong>@f.CapturadaEl.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
+        </div>
+
+        if (!f.Legible || f.Ficha is null)
+        {
+            <div class="alert-error" style="margin-bottom:1rem">
+                El documento archivado no se pudo interpretar. Se muestra tal cual quedó guardado.
+            </div>
+            <div class="card"><pre style="white-space:pre-wrap;font-size:12px;margin:0">@f.Contenido</pre></div>
+        }
+        else
+        {
+            var d = f.Ficha;
+            var secciones = new (string Titulo, List<string> Filas)[]
+            {
+                ("Pasos del proceso", d.Pasos.Select(p =>
+                    $"{p.NumeroPaso}. {p.Titulo ?? p.Descripcion}" +
+                    (string.IsNullOrWhiteSpace(p.LugarDependencia) ? "" : $" — {p.LugarDependencia}")).ToList()),
+                ("Requisitos", d.Requisitos.Select(r =>
+                    $"{r.Numero}. {r.Requisito}" +
+                    (string.IsNullOrWhiteSpace(r.Tipo) ? "" : $" ({r.Tipo})")).ToList()),
+                ("Entregables", d.Entregables.Select(e =>
+                    $"{e.Numero}. {e.Entregable}" +
+                    (string.IsNullOrWhiteSpace(e.Formato) ? "" : $" ({e.Formato})")).ToList()),
+                ("Lugares de atención", d.LugaresAtencion.Select(l =>
+                    $"{l.Numero}. {l.Lugar}" +
+                    (string.IsNullOrWhiteSpace(l.Ciudad) ? "" : $" — {l.Ciudad}")).ToList()),
+                ("Enlaces", d.Enlaces.Select(e => $"{e.Numero}. {e.Url}").ToList()),
+                ("Tareas de digitalización", d.TareasDigitalizacion.Select(x =>
+                    $"{x.NumeroTarea}. {x.Descripcion}" +
+                    (string.IsNullOrWhiteSpace(x.Estado) ? "" : $" [{x.Estado}]")).ToList())
+            };
+
+            <div class="card" style="margin-bottom:1rem">
+                <h3 class="sec-h">@d.Nombre</h3>
+                <dl style="display:grid;grid-template-columns:180px 1fr;gap:.45rem 1rem;font-size:14px;margin:0">
+                    <dt style="color:#64748b">Institución</dt>
+                    <dd style="margin:0">@d.Institucion @(string.IsNullOrWhiteSpace(d.Sigla) ? "" : $"({d.Sigla})")</dd>
+                    <dt style="color:#64748b">Dependencia</dt><dd style="margin:0">@(d.Dependencia ?? "—")</dd>
+                    <dt style="color:#64748b">Estado en SIGER</dt><dd style="margin:0">@(d.EstadoSiger ?? "—")</dd>
+                    <dt style="color:#64748b">Publicada</dt><dd style="margin:0">@(d.Publicado ? "Sí" : "No")</dd>
+                    <dt style="color:#64748b">Modalidad</dt><dd style="margin:0">@(d.Modalidad ?? "—")</dd>
+                    <dt style="color:#64748b">Tiempo</dt><dd style="margin:0">@(d.TiempoTexto ?? "—")</dd>
+                    <dt style="color:#64748b">Costo</dt><dd style="margin:0">@(d.CostoTexto ?? "—")</dd>
+                    <dt style="color:#64748b">En SOL</dt><dd style="margin:0">@(d.EstaEnSol ? (d.SolUrl ?? "Sí") : "No")</dd>
+                    <dt style="color:#64748b">Dirigido a</dt><dd style="margin:0">@(d.DirigidoA ?? "—")</dd>
+                    <dt style="color:#64748b">Objetivo</dt><dd style="margin:0">@(d.Objetivo ?? "—")</dd>
+                    <dt style="color:#64748b">Descripción</dt><dd style="margin:0">@(d.Descripcion ?? "—")</dd>
+                    <dt style="color:#64748b">Vigencia</dt><dd style="margin:0">@(d.VigenciaDocumento ?? "—")</dd>
+                    <dt style="color:#64748b">Temporalidad</dt><dd style="margin:0">@(d.Temporalidad ?? "—")</dd>
+                    <dt style="color:#64748b">Observaciones DIGER</dt><dd style="margin:0">@(d.ObservacionesDiger ?? "—")</dd>
+                </dl>
+            </div>
+
+            foreach (var s in secciones)
+            {
+                <div class="card" style="margin-bottom:1rem">
+                    <h3 class="sec-h">@s.Titulo (@s.Filas.Count)</h3>
+                    @if (s.Filas.Count == 0)
+                    {
+                        <p style="font-size:13px;color:#64748b;margin:0">Sin registros en el original.</p>
+                    }
+                    else
+                    {
+                        <ul style="margin:0;padding-left:1.2rem">
+                            @foreach (var fila in s.Filas)
+                            {
+                                <li style="font-size:13px;margin-bottom:.3rem">@fila</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        }
+    }
+</div>

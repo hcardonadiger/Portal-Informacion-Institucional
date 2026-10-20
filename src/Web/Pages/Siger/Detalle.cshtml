@@ -4,7 +4,11 @@
 @{
     ViewData["Title"] = Model.Tramite.Codigo + " — " + Model.Tramite.Nombre;
     var t = Model.Tramite;
-    var esAdmin = await Acceso.PuedeEditarAsync("Siger");
+    // Detalle se queda en SIGER porque es de consulta. Editar y eliminar se fueron con
+    // Honduras Simple, asi que se preguntan por su permiso y son dos, no uno: borrar una
+    // ficha del inventario no es lo mismo que corregirla.
+    var puedeEditarFicha   = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
+    var puedeEliminarFicha = await Acceso.PuedeEliminarAsync(ModulosPortal.HondurasSimple);
 }
 
 <div class="container lista">
@@ -14,9 +18,12 @@
             <p>@t.Institucion (@t.Sigla)</p>
         </div>
         <div style="display:flex;gap:8px">
-            @if (esAdmin)
+            @if (puedeEditarFicha)
             {
-                <a class="btns" asp-page="/Siger/Editor" asp-route-id="@t.Id">Editar</a>
+                <a class="btns" asp-page="/HondurasSimple/Editor" asp-route-id="@t.Id">Editar</a>
+            }
+            @if (puedeEliminarFicha)
+            {
                 <form method="post" asp-page-handler="Eliminar" asp-route-id="@t.Id"
                       onsubmit="return confirm('Eliminar este tramite?')">
                     <button class="btns" style="color:var(--diger-danger)" type="submit">Eliminar</button>
@@ -25,6 +32,106 @@
             <a class="btns" asp-page="/Siger/Index">Volver al listado</a>
         </div>
     </div>
+
+    @* ── Ficha promovida (Fase 11) ──────────────────────────────────────
+       Sin este aviso, alguien que busque este trámite en el inventario de SIGER no lo encuentra y
+       concluye que falta un dato. No falta: nunca estuvo ahí. *@
+    @if (t.IdSiger is null)
+    {
+        <div class="card" style="border-left:4px solid #166534;background:#f0fdf4;margin-bottom:1rem">
+            <h3 class="sec-h" style="color:#166534">Ficha creada desde un expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+                Este trámite <strong>no existe en el inventario de SIGER</strong>: lo levantó DIGER y
+                se promovió desde
+                @if (Model.ExpedientesVinculados.Count > 0)
+                {
+                    var v = Model.ExpedientesVinculados[0];
+                    <a asp-page="/Expedientes/Editor" asp-route-id="@v.Id">el expediente @v.Codigo</a>
+                }
+                else
+                {
+                    <text>un expediente</text>
+                }.
+                Por eso su código lleva la marca <strong>-P</strong> y no tiene Id de SIGER.
+            </p>
+        </div>
+    }
+
+    @* ── De SIGER a un expediente (D-06, D-17) ──────────────────────────
+       El enlace es lo que bloquea la ficha, así que la tarjeta lo dice antes de que alguien lo
+       haga: no es «copiar datos», es «mudar dónde se editan». *@
+    @if (Model.Bloqueo.Bloqueada)
+    {
+        <div class="card" style="border-left:4px solid #b45309;background:#fffbeb;margin-bottom:1rem">
+            <h3 class="sec-h" style="color:#92400e">El contenido de esta ficha se edita en su expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0">
+                Está enlazada al expediente
+                <a asp-page="/Expedientes/Editor" asp-route-id="@Model.Bloqueo.ExpedienteId"><strong>@Model.Bloqueo.ExpedienteCodigo</strong></a>,
+                como <strong>@Model.Bloqueo.NombreTramite</strong>@(Model.Bloqueo.EsBucket ? " (contenedor de importados)" : "").
+                Lo que se capture allí llega acá al pasar el trámite a SIGER.
+            </p>
+        </div>
+    }
+    else if (await Acceso.PuedeEditarAsync("Expedientes"))
+    {
+        <div class="card" style="margin-bottom:1rem">
+            <h3 class="sec-h">Traer esta ficha a un expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0 0 .7rem">
+                Copia el contenido de la ficha a un trámite de expediente y las deja enlazadas.
+                <strong>A partir de ese momento el contenido se edita en el expediente</strong> y esta
+                pantalla lo muestra de solo lectura; los pasos del proceso se quedan acá y no viajan.
+            </p>
+            <form method="post" asp-page-handler="Importar" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+                <input type="hidden" name="id" value="@t.Id" />
+                <div class="field" style="min-width:240px;margin:0">
+                    <label>Expediente destino</label>
+                    <select name="expedienteId">
+                        <option value="">Contenedor «Trámites Importados de SIGER»</option>
+                        @foreach (var e in Model.ExpedientesDestino)
+                        {
+                            <option value="@e.Id">@e.Codigo</option>
+                        }
+                    </select>
+                </div>
+                <button class="btnp" type="submit">Traer al expediente</button>
+            </form>
+            <span class="res-meta">
+                Si no elige uno, se usa el contenedor de importados de esta institución, que no
+                cuenta como levantamiento ni sale en los tableros.
+            </span>
+        </div>
+    }
+
+    @* ── Alerta de ficha incompleta ──────────────────────────────── *@
+    @if (Model.Faltantes.Count > 0)
+    {
+        <div class="card" role="alert"
+             style="margin-bottom:1.25rem;border-left:4px solid #b45309;background:#fffbeb">
+            <div style="font-weight:700;color:#b45309;margin-bottom:6px">
+                Esta ficha está incompleta y por eso no se publica.
+            </div>
+            <p style="margin:0 0 8px">
+                El Portal de Trámites y Servicios solo muestra fichas con todos estos datos.
+                Falta capturar:
+            </p>
+            <ul style="margin:0 0 10px 18px">
+                @foreach (var campo in Model.Faltantes)
+                {
+                    <li><strong>@campo</strong></li>
+                }
+            </ul>
+            @if (puedeEditarFicha)
+            {
+                <a class="btnp" asp-page="/HondurasSimple/Editor" asp-route-id="@t.Id">Completar la ficha</a>
+            }
+            else
+            {
+                <p style="margin:0;color:#7c5010">
+                    Avise al administrador del inventario para que la complete.
+                </p>
+            }
+        </div>
+    }
 
     @* ── Ficha principal ─────────────────────────────────────────── *@
     <div class="card" style="margin-bottom:1.25rem">
@@ -35,7 +142,16 @@
             </div>
             <div class="detail-row">
                 <span class="detail-lbl">Id SIGER</span>
-                <span>@t.IdSiger</span>
+                @* Vacío no es un dato que falte por capturar: significa que esta ficha se creó
+                   desde un expediente y no existe en SIGER. Se dice, en vez de dejar el hueco. *@
+                <span>@(t.IdSiger?.ToString() ?? "— creada desde un expediente")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Original de SIGER</span>
+                @* El archivo guarda cómo llegó esta ficha antes de que el portal escribiera
+                   encima. El enlace se muestra siempre: si no hay foto, la pantalla lo dice y
+                   explica dónde se toma —más útil que esconder la opción. *@
+                <span><a asp-page="/Siger/Original" asp-route-id="@t.Id">Ver el historial de versiones →</a></span>
             </div>
             <div class="detail-row">
                 <span class="detail-lbl">Institucion</span>
@@ -88,6 +204,28 @@
             <div class="detail-row">
                 <span class="detail-lbl">Temporalidad</span>
                 <span>@(t.Temporalidad ?? "—")</span>
+            </div>
+            @* ── Los cuatro datos que exige el portal ciudadano ────────────
+               Van juntos y con etiqueta propia porque son los que escribe el llenado asistido.
+               Antes no se pintaba ninguno: la página solo sabía decir cuáles FALTABAN, así que
+               en cuanto se llenaban desaparecían de la vista y parecía que la aprobación no
+               había guardado nada. El tiempo, además, se leía como si fuera Temporalidad, que
+               es otro dato y viene de SIGER. *@
+            <div class="detail-row">
+                <span class="detail-lbl">Categoria <span class="help-tip" data-tip="Categoría con la que el trámite se clasifica en el Portal de Trámites y Servicios.">?</span></span>
+                <span>@(Model.CategoriaNombre ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Modalidad</span>
+                <span>@(t.Modalidad ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Tiempo de respuesta <span class="help-tip" data-tip="Cuánto tarda el trámite. Es el dato que se publica; no confundir con Temporalidad, que describe cada cuánto se realiza.">?</span></span>
+                <span>@(t.TiempoTexto ?? "—")</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-lbl">Costo</span>
+                <span>@(t.CostoEsGratuito is null ? "—" : (t.CostoEsGratuito.Value ? "Gratuito" : "Con costo"))</span>
             </div>
             <div class="detail-row">
                 <span class="detail-lbl">Fecha ingreso</span>

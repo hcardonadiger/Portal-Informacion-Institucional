@@ -20,6 +20,24 @@ public sealed class Institucion : BaseAuditableEntity<string>
     public string? Horario   { get; private set; }
     public string? Tipo      { get; private set; }
 
+    // ── Dirección en SOL (D-04, D-20) ──────────────────────────────────────
+
+    /// <summary>
+    /// La ruta de esta institución dentro de SOL, cuando la real difiere de su llave.
+    ///
+    /// <b>Nula significa «nadie la ha corregido»</b>, y entonces vale la llave primaria. No se
+    /// copia el Id acá al crear la institución, aunque sería más simple de leer, por la misma
+    /// razón que en la Fase 5 no se guardó una bandera de autollenado: un valor copiado se
+    /// convierte en mentira en cuanto cambia el original, y además borra la diferencia entre
+    /// «nadie lo tocó» y «alguien decidió que fuera igual a la llave». Resolverlo por
+    /// <see cref="RutaSolEfectiva"/> no se desactualiza nunca.
+    /// </summary>
+    public string? RutaSol { get; private set; }
+
+    /// <summary>La ruta que de verdad se usa para componer direcciones: la corregida si existe,
+    /// la llave si no. Nunca vacía, porque la llave nunca lo está.</summary>
+    public string RutaSolEfectiva => RutaSol ?? Id;
+
     private readonly List<TramiteDefinicion> _tramites = [];
     public IReadOnlyCollection<TramiteDefinicion> Tramites => _tramites.AsReadOnly();
 
@@ -79,6 +97,28 @@ public sealed class Institucion : BaseAuditableEntity<string>
         Direccion = string.IsNullOrWhiteSpace(direccion) ? null : direccion.Trim();
         Horario   = string.IsNullOrWhiteSpace(horario)   ? null : horario.Trim();
         Tipo      = string.IsNullOrWhiteSpace(tipo)      ? null : tipo.Trim();
+    }
+
+    /// <summary>
+    /// Corrige la ruta de esta institución en SOL. Vacío la devuelve a su valor por defecto —la
+    /// llave— en vez de dejarla en blanco, para que borrar el campo en el formulario signifique
+    /// «vuelve a lo de siempre» y no «esta institución se queda sin ruta».
+    /// </summary>
+    /// <exception cref="DomainException">Si la ruta no puede ir dentro de una dirección. Se
+    /// rechaza en vez de escaparse: un espacio o un acento acá es un descuido de captura, y
+    /// escaparlo produciría enlaces que se ven bien y llevan a un 404 que nadie nota.</exception>
+    public void FijarRutaSol(string? ruta)
+    {
+        var limpia = DireccionSol.Normalizar(ruta);
+
+        if (limpia is not null && !DireccionSol.EsSegmentoValido(limpia))
+            throw new DomainException(
+                "La ruta de SOL solo puede llevar letras, números, guiones (-) y guiones bajos (_), " +
+                "separando tramos con barra (/). Sin espacios, tildes ni la dirección completa.");
+
+        // Igual a la llave es igual a no haberla corregido. Guardarlo como valor propio haría
+        // que una institución renombrada arrastrara la ruta vieja para siempre.
+        RutaSol = string.Equals(limpia, Id, StringComparison.OrdinalIgnoreCase) ? null : limpia;
     }
 
     public void Activar()    => Activo = true;

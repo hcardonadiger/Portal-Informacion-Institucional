@@ -31,6 +31,8 @@ public sealed class AppDbContext(
     public DbSet<Expediente>               Expedientes        { get; init; } = default!;
     public DbSet<ExpedienteTramite>        Tramites           { get; init; } = default!;
     public DbSet<TramiteRequisito>         Requisitos         { get; init; } = default!;
+    public DbSet<ExpedienteTramiteEntregable> EntregablesTramite { get; init; } = default!;
+    public DbSet<ExpedienteTramiteLugar>     LugaresTramite     { get; init; } = default!;
     public DbSet<FlujoNodo>                Flujos             { get; init; } = default!;
     public DbSet<FundamentoLegal>          Legal              { get; init; } = default!;
     public DbSet<DocumentoSolicitado>      DocsSolicitados    { get; init; } = default!;
@@ -81,6 +83,8 @@ public sealed class AppDbContext(
     public DbSet<EnlaceSiger>               EnlacesSiger          { get; init; } = default!;
     public DbSet<TareaDigitalizacionSiger>  TareasDigitalizacionSiger { get; init; } = default!;
     public DbSet<ConciliacionSiger>         ConciliacionesSiger   { get; init; } = default!;
+    public DbSet<FotoTramiteSiger>         FotosTramiteSiger  { get; init; } = default!;
+    public DbSet<PropuestaLlenado>          PropuestasLlenado  { get; init; } = default!;
     public DbSet<Proyecto>                  Proyectos             { get; init; } = default!;
     public DbSet<PrioridadProyecto>         PrioridadesProyecto   { get; init; } = default!;
     public DbSet<CategoriaProyecto>         CategoriasProyecto    { get; init; } = default!;
@@ -379,13 +383,42 @@ public sealed class AppDbContext(
         base.OnModelCreating(mb);
     }
 
+    /// <summary>
+    /// Excepción acotada al autoservicio de la propia cuenta.
+    ///
+    /// <para>El bloqueo de solo lectura no admitía ninguna excepción, y eso dejaba sin efecto la
+    /// decisión que declara <c>[PermisoNoRequerido]</c>: cambiar la contraseña propia, editar el
+    /// perfil o vincular un certificado no pueden depender de un permiso otorgable —ni del
+    /// alcance de escritura del rol—, porque entonces basta desmarcar una casilla para dejar a
+    /// alguien sin poder entrar a su propia cuenta. Con la guarda cerrada del todo, esas páginas
+    /// pasaban el filtro y morían al guardar.</para>
+    ///
+    /// <para>La excepción se abre lo mínimo: <b>todas</b> las filas mutadas tienen que ser
+    /// modificaciones de la fila de <c>Usuario</c> del usuario activo. No vale un alta, no vale
+    /// una baja, y no vale acompañarla de ninguna otra entidad en el mismo guardado — si así
+    /// fuera, cualquier página podría colgar su mutación de un cambio de perfil.</para>
+    /// </summary>
+    private bool EsAutoservicioDeLaPropiaCuenta()
+    {
+        if (_usuarioId is null) return false;
+
+        var mutadas = ChangeTracker.Entries()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .ToList();
+
+        return mutadas.Count > 0
+            && mutadas.All(e => e.State == EntityState.Modified
+                             && e.Entity is Usuario u
+                             && u.Id == _usuarioId.Value);
+    }
+
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         // ── Bloqueo de seguridad duro para roles de solo lectura ───────────────
         var hasMutations = ChangeTracker.Entries().Any(e =>
             e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted);
 
-        if (hasMutations && _esSoloLectura)
+        if (hasMutations && _esSoloLectura && !EsAutoservicioDeLaPropiaCuenta())
         {
             throw new UnauthorizedAccessException("El rol activo es de solo lectura y no puede mutar datos.");
         }
@@ -527,6 +560,12 @@ public sealed class InstitucionConfiguration : IEntityTypeConfiguration<Instituc
         b.Property(x => x.Tipo).HasMaxLength(60);
         b.ToTable(t => t.HasCheckConstraint("CK_Instituciones_SitioWeb",
             "[SitioWeb] IS NULL OR [SitioWeb] LIKE 'http://%' OR [SitioWeb] LIKE 'https://%'"));
+
+        // ── Ruta en SOL (plan Fase 7, D-20) ────────────────────────────────
+        // Anulable, y nula es lo normal: significa «vale la llave». No se le pone valor por
+        // omisión en la base a propósito — un DEFAULT copiaría el Id y volvería indistinguible
+        // «nadie la corrigió» de «alguien la puso igual a la llave».
+        b.Property(x => x.RutaSol).HasMaxLength(300);
 
         b.HasData(Seed.Instituciones);
     }
@@ -877,7 +916,36 @@ public sealed class ExpedienteTramiteConfiguration : IEntityTypeConfiguration<Ex
         b.HasOne<TramiteSiger>().WithMany()
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => x.TramiteSigerId);
+
+        // ── Campos de la ficha pública (Fase 8) ────────────────────────────
+        b.Property(x => x.ModalidadDetalle).HasMaxLength(200);
+        b.Property(x => x.VigenciaDocumento).HasMaxLength(120);
+        b.Property(x => x.Temporalidad).HasMaxLength(60);
+        b.Property(x => x.ObservacionesDiger).HasMaxLength(4000);
+        b.Property(x => x.SolTramo).HasMaxLength(300);
+        b.Property(x => x.EstaEnSol).HasDefaultValue(false);
+        b.HasOne<CategoriaTramite>().WithMany()
+            .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.SetNull);
+        b.HasIndex(x => x.CategoriaId).HasFilter("[CategoriaId] IS NOT NULL");
+
+        // Catálogo cerrado de modalidad, igual que en la ficha SIGER. Sin prefijo N': los
+        // valores son ASCII y el literal N'...' (T-SQL) no lo entiende SQLite, que usan los
+        // Web.Tests vía EnsureCreated.
+        //
+        // Se declara acá para que el modelo y la base digan lo mismo, pero **se crea en la
+        // migración que convierte los valores de texto libre**, no en la que agrega las
+        // columnas. Puesto antes, la migración fallaría al aplicarse sobre cualquier base con
+        // datos: en Ensayo hay 202 trámites con modalidad escrita a mano.
+        b.ToTable(t => t.HasCheckConstraint("CK_ExpedienteTramites_Modalidad",
+            "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')"));
+
+
         b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
+
+        // Identidad estable del trámite: única para que la conciliación pueda buscar por ella
+        // sin ambigüedad. Es un Guid, así que la unicidad no restringe nada real; lo que
+        // atrapa es un error de programación que asignara la misma clave a dos trámites.
+        b.HasIndex(x => x.ClaveEstable).IsUnique();
     }
 }
 
@@ -897,6 +965,42 @@ public sealed class TramiteRequisitoConfiguration : IEntityTypeConfiguration<Tra
     }
 }
 
+
+/// <summary>
+/// Entregables y lugares del trámite del expediente (Fase 8).
+///
+/// Se identifican por <c>ExpedienteId</c> + <c>TramiteIndex</c> y no por una llave foránea al
+/// trámite, igual que <c>TramiteRequisitos</c>: guardar un expediente borra y reinserta todos
+/// sus hijos, así que el <c>Id</c> del trámite cambia en cada guardado y no sirve de referencia.
+/// </summary>
+public sealed class ExpedienteTramiteEntregableConfiguration : IEntityTypeConfiguration<ExpedienteTramiteEntregable>
+{
+    public void Configure(EntityTypeBuilder<ExpedienteTramiteEntregable> b)
+    {
+        b.ToTable("ExpedienteTramiteEntregables");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Entregable).HasMaxLength(500).IsRequired();
+        b.Property(x => x.Formato).HasMaxLength(120);
+        b.Property(x => x.Presentacion).HasMaxLength(120);
+        b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
+    }
+}
+
+public sealed class ExpedienteTramiteLugarConfiguration : IEntityTypeConfiguration<ExpedienteTramiteLugar>
+{
+    public void Configure(EntityTypeBuilder<ExpedienteTramiteLugar> b)
+    {
+        b.ToTable("ExpedienteTramiteLugares");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Lugar).HasMaxLength(400).IsRequired();
+        b.Property(x => x.Ciudad).HasMaxLength(120);
+        b.Property(x => x.Direccion).HasMaxLength(500);
+        b.Property(x => x.Telefonos).HasMaxLength(200);
+        b.HasIndex(x => new { x.ExpedienteId, x.TramiteIndex });
+    }
+}
 public sealed class FlujoNodoConfiguration : IEntityTypeConfiguration<FlujoNodo>
 {
     public void Configure(EntityTypeBuilder<FlujoNodo> b)
@@ -1859,6 +1963,7 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
 
         // ── Campos para la ficha pública (Ventanilla Digital / plan Fase 1, script A) ──
         b.Property(x => x.SolUrl).HasMaxLength(500);
+        b.Property(x => x.SolTramo).HasMaxLength(300);
         b.Property(x => x.CostoTexto).HasMaxLength(250);
         b.Property(x => x.TiempoTexto).HasMaxLength(120);
         b.Property(x => x.Modalidad).HasMaxLength(20);
@@ -1874,12 +1979,20 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
             // literal N'...' (T-SQL) no lo entiende SQLite, que usan los Web.Tests vía EnsureCreated.
             t.HasCheckConstraint("CK_TramitesSiger_Modalidad",
                 "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')");
-            // La regla de D-01 (plan), protegida en la base y no solo en el formulario.
+            // La regla de D-01, protegida en la base y no solo en el formulario. Desde la Fase 7
+            // el enlace puede venir de dos sitios: el tramo que se captura hoy, o la URL completa
+            // heredada de antes (D-14). Basta cualquiera de los dos.
+            //
+            // Sin la rama del tramo, guardar una ficha capturada como manda D-13 fallaría contra
+            // esta restricción: es lo primero que rompe al pasar de URL completa a tramo.
             t.HasCheckConstraint("CK_TramitesSiger_Sol",
-                "[EstaEnSol] = 0 OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
+                "[EstaEnSol] = 0 OR [SolTramo] IS NOT NULL OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
         });
 
-        b.HasIndex(x => x.IdSiger).IsUnique();
+        // Filtrado a propósito: SQL Server solo admite UN nulo en un índice único sin filtro, y
+        // las fichas promovidas desde un expediente son todas de IdSiger nulo. Sin el filtro, la
+        // segunda promoción falla con violación de índice.
+        b.HasIndex(x => x.IdSiger).IsUnique().HasFilter("[IdSiger] IS NOT NULL");
         b.HasIndex(x => x.Codigo).IsUnique();
         b.HasIndex(x => x.Institucion);
         b.HasIndex(x => x.Sigla);
@@ -1892,7 +2005,7 @@ public sealed class TramiteSigerConfiguration : IEntityTypeConfiguration<Tramite
         // un índice completo sobre 1000+ filas casi todas nulas no ayuda a nadie.
         b.HasIndex(x => x.CategoriaId).HasFilter("[CategoriaId] IS NOT NULL");
         b.HasIndex(x => x.Modalidad).HasFilter("[Modalidad] IS NOT NULL");
-        b.HasIndex(x => x.EstaEnSol).IncludeProperties(x => x.SolUrl).HasFilter("[EstaEnSol] = 1");
+        b.HasIndex(x => x.EstaEnSol).IncludeProperties(x => new { x.SolUrl, x.SolTramo }).HasFilter("[EstaEnSol] = 1");
 
         // El índice de la consulta que la API hace todo el día: el catálogo paginado.
         b.HasIndex(x => new { x.Publicado, x.CategoriaId, x.InstitucionId })
@@ -2026,16 +2139,82 @@ public sealed class ConciliacionSigerConfiguration : IEntityTypeConfiguration<Co
         b.Property(x => x.Nota).HasMaxLength(500);
 
         // Una sola decisión vigente por trámite: al revisar de nuevo se actualiza, no se acumula.
-        b.HasIndex(x => x.ExpedienteTramiteId).IsUnique();
+        b.HasIndex(x => x.ClaveTramite).IsUnique();
 
-        // Si el trámite del expediente desaparece, su decisión deja de tener sentido.
-        b.HasOne<ExpedienteTramite>().WithMany()
-            .HasForeignKey(x => x.ExpedienteTramiteId).OnDelete(DeleteBehavior.Cascade);
+        // Sin llave foránea a ExpedienteTramite, y es el arreglo entero de la Fase 3: la que
+        // había borraba en cascada, y como guardar un expediente borra y reinserta todos sus
+        // trámites, cada guardado se llevaba las decisiones por delante.
+        //
+        // La cascada cuelga del expediente, que sí es estable. Si desaparece un trámite suelto,
+        // su decisión queda huérfana y la bandeja simplemente no la encuentra —inofensivo al
+        // lado de perderlas todas en cada guardado.
+        b.HasOne<Expediente>().WithMany()
+            .HasForeignKey(x => x.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => x.ExpedienteId);
 
         // La ficha SIGER se conserva aunque se borre: la decisión sigue siendo historial válido.
         b.HasOne<TramiteSiger>().WithMany()
             .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.SetNull);
         b.HasIndex(x => x.TramiteSigerId);
+    }
+}
+
+// ── Archivo del SIGER original (Fase 2 del plan revisado) ──────────────────
+public sealed class FotoTramiteSigerConfiguration : IEntityTypeConfiguration<FotoTramiteSiger>
+{
+    public void Configure(EntityTypeBuilder<FotoTramiteSiger> b)
+    {
+        b.ToTable("FotosTramiteSiger");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Origen).HasMaxLength(40).IsRequired();
+        b.Property(x => x.Codigo).HasMaxLength(20).IsRequired();
+        b.Property(x => x.Contenido).IsRequired();   // nvarchar(max): la ficha entera y sus hijos
+
+        // Una sola foto por ficha y versión. Es lo que hace idempotente a la captura del
+        // original: sin este índice, dos corridas simultáneas guardarían la versión 0 dos veces
+        // y el archivo dejaría de tener una respuesta única a «cómo era esto al principio».
+        b.HasIndex(x => new { x.TramiteSigerId, x.Version }).IsUnique();
+
+        // Para buscar en el archivo una ficha que ya se borró del inventario.
+        b.HasIndex(x => x.Codigo);
+
+        // Deliberadamente sin HasOne<TramiteSiger>(): el archivo tiene que sobrevivir a que la
+        // ficha se borre. Con cascada, borrar una ficha destruiría la única copia de su
+        // información original. Ver las notas de la entidad.
+    }
+}
+
+// ── Llenado asistido de fichas SIGER (Fase 5 del plan revisado) ────────────
+public sealed class PropuestaLlenadoConfiguration : IEntityTypeConfiguration<PropuestaLlenado>
+{
+    public void Configure(EntityTypeBuilder<PropuestaLlenado> b)
+    {
+        b.ToTable("PropuestasLlenado");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+
+        b.Property(x => x.ValorPropuesto).HasMaxLength(300);
+        b.Property(x => x.Justificacion).HasMaxLength(400).IsRequired();
+        b.Property(x => x.DecididaPor).HasMaxLength(120);
+
+        // Una sola propuesta pendiente por ficha y campo. Filtrado a propósito: el generador se
+        // corre varias veces mientras se afinan las reglas, y sin esto cada pasada acumularía
+        // otra fila para el mismo hueco hasta volver la cola inservible. Que sea filtrado —y no
+        // único a secas— deja volver a proponer un campo que alguien rechazó, que es justo lo que
+        // se quiere cuando la regla mejora.
+        b.HasIndex(x => new { x.TramiteSigerId, x.Campo })
+            .IsUnique()
+            .HasFilter("[Estado] = 0");
+
+        // Para la pantalla: se entra por estado y se filtra por certeza dentro.
+        b.HasIndex(x => new { x.Estado, x.Certeza });
+
+        // Con cascada, al revés que el archivo de la Fase 2. El archivo guarda cómo era la ficha
+        // y tiene que sobrevivirla; esto guarda qué se propuso para sus huecos, y sin la ficha no
+        // significa nada.
+        b.HasOne<TramiteSiger>().WithMany()
+            .HasForeignKey(x => x.TramiteSigerId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

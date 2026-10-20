@@ -95,6 +95,8 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     private readonly List<InfraCondicion>         _condiciones = [];
     private readonly List<InfraChecklistItem>     _checklistInfra   = [];
     private readonly List<ExpedienteSeccionEstado> _secciones  = [];
+    private readonly List<ExpedienteTramiteEntregable> _entregables = [];
+    private readonly List<ExpedienteTramiteLugar>      _lugares     = [];
 
     public IReadOnlyCollection<ExpedienteTramite>       Tramites    => _tramites.AsReadOnly();
     public IReadOnlyCollection<TramiteRequisito>        Requisitos  => _requisitos.AsReadOnly();
@@ -106,6 +108,12 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     public IReadOnlyCollection<InfraCondicion>          Condiciones => _condiciones.AsReadOnly();
     public IReadOnlyCollection<InfraChecklistItem>      ChecklistInfra => _checklistInfra.AsReadOnly();
     public IReadOnlyCollection<ExpedienteSeccionEstado> Secciones   => _secciones.AsReadOnly();
+
+    // Hijos del trámite, no del expediente: se identifican por ExpedienteId + TramiteIndex,
+    // igual que Requisitos. Agregados en la Fase 8 para que el expediente pueda guardar todo
+    // lo que guarda una ficha SIGER.
+    public IReadOnlyCollection<ExpedienteTramiteEntregable> Entregables => _entregables.AsReadOnly();
+    public IReadOnlyCollection<ExpedienteTramiteLugar>      Lugares     => _lugares.AsReadOnly();
 
     private Expediente() { }
 
@@ -150,6 +158,7 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
         _tramites.Clear(); _requisitos.Clear(); _flujos.Clear();
         _legal.Clear(); _docsSolicitados.Clear(); _docsInternos.Clear();
         _perfiles.Clear(); _condiciones.Clear(); _checklistInfra.Clear(); _secciones.Clear();
+        _entregables.Clear(); _lugares.Clear();
     }
 
     public void Agregar(ExpedienteTramite t)       => _tramites.Add(t);
@@ -162,4 +171,6 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     public void Agregar(InfraCondicion c)          => _condiciones.Add(c);
     public void Agregar(InfraChecklistItem i)      => _checklistInfra.Add(i);
     public void Agregar(ExpedienteSeccionEstado s) => _secciones.Add(s);
+    public void Agregar(ExpedienteTramiteEntregable e) => _entregables.Add(e);
+    public void Agregar(ExpedienteTramiteLugar l)      => _lugares.Add(l);
 }

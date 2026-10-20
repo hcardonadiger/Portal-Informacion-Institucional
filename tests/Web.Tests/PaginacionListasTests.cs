@@ -89,7 +89,13 @@ public sealed class PaginacionListasTests : IAsyncLifetime
         var exp = Expediente.Crear("EXP-PAG-01", "DIGER", null, null, "DIGER", "Analista");
         exp.FechaApertura = new DateOnly(2026, 5, 1);
         for (var i = 0; i < Sembrados; i++)
-            exp.Agregar(new ExpedienteTramite { NombreTramite = $"Tramite paginado {i:00}", TramiteIndex = i });
+            // ClaveEstable lleva indice unico desde la rama Jamil: sin darle uno propio, las doce
+            // filas nacian con Guid vacio y chocaban entre si al guardar.
+            exp.Agregar(new ExpedienteTramite
+            {
+                NombreTramite = $"Tramite paginado {i:00}", TramiteIndex = i,
+                ClaveEstable = Guid.NewGuid()
+            });
         db.Expedientes.Add(exp);
 
         await db.SaveChangesAsync();

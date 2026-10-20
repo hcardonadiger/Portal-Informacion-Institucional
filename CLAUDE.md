@@ -15,7 +15,7 @@ The solution (`Diger.TramitesEstado.sln`) contains two runnable hosts and four s
 | Project | Role |
 |---|---|
 | `src/Web` | Razor Pages web app — the primary UI used in production |
-| `src/Presentation` | Minimal API / Swagger host — alternative API surface |
+| `src/Api` | Public API v1 (Swagger). **Standalone: references no other project.** |
 | `src/Application` | CQRS handlers (MediatR), FluentValidation, pipeline behaviors |
 | `src/Domain` | Entities, enums, domain events, `DomainException` |
 | `src/Infrastructure` | EF Core (SQL Server), repositories, `IPasswordHasher`, `ICurrentUserService` |
@@ -34,7 +34,7 @@ dotnet build Diger.TramitesEstado.sln
 dotnet run --project src\Web
 
 # Run the API host
-dotnet run --project src\Presentation
+dotnet run --project src\Api
 
 # Run all tests
 dotnet test Diger.TramitesEstado.sln
@@ -61,7 +61,8 @@ dotnet ef migrations add <NombreMigracion> --project src\Infrastructure --startu
 
 ## Local development
 
-- **Database**: SQL Server named instance `localhost\SQL2025`, Windows authentication. `appsettings.Development.json` points at **`GestionGD_new`** (commit `fef2502`, 2026-09-23) — that is the database local development actually uses, and as of 2026-09-24 it is the only `GestionGD*` database on the instance (created 2026-09-22). `appsettings.json` still names `GestionGD_TEST`, which **no longer exists there**, so any host started outside `Development` connects to nothing and fails on the first query until that string is repointed. It has to be that instance: these databases were restored from backups taken on SQL Server 2025 and SQL Server does not restore downlevel, so `SQLEXPRESS` (2022) cannot host them. It has to be Windows auth: `SQL2025` runs in Windows-only mode and `sa` is disabled. When deploying to IIS, give the app-pool identity a login on that instance and a user in the database — otherwise the app starts and every page fails on the first query. On startup, in Development, the app auto-migrates and calls `DbSeeder.SeedUsuariosAsync` (`Program.cs`) **only if** `Datos:AplicarMigracionesAlArrancar` is `true` — off by default, on purpose: a `Development` connection string that happens to point at a shared/production-named database must not silently migrate it just because someone pressed F5. Enable it per machine, never in a committed appsettings file — e.g. `dotnet user-secrets set "Datos:AplicarMigracionesAlArrancar" true --project src\Web` (and the same for `src\Presentation` if you run that host), or the `Datos__AplicarMigracionesAlArrancar=true` environment variable. Tests never touch this — they use EF In-Memory.
+- **Database**: SQL Server named instance `localhost\SQL2025`, Windows authentication. `appsettings.Development.json` points at **`GestionGD_new`** (commit `fef2502`, 2026-09-23) — that is the database local development actually uses, and as of 2026-09-24 it is the only `GestionGD*` database on the instance (created 2026-09-22). `appsettings.json` still names `GestionGD_TEST`, which **no longer exists there**, so any host started outside `Development` connects to nothing and fails on the first query until that string is repointed. It has to be that instance: these databases were restored from backups taken on SQL Server 2025 and SQL Server does not restore downlevel, so `SQLEXPRESS` (2022) cannot host them. It has to be Windows auth: `SQL2025` runs in Windows-only mode and `sa` is disabled. When deploying to IIS, give the app-pool identity a login on that instance and a user in the database — otherwise the app starts and every page fails on the first query. On startup, in Development, the app auto-migrates and calls `DbSeeder.SeedUsuariosAsync` (`Program.cs`) **only if** `Datos:AplicarMigracionesAlArrancar` is `true` — off by default, on purpose: a `Development` connection string that happens to point at a shared/production-named database must not silently migrate it just because someone pressed F5. Enable it per machine, never in a committed appsettings file — e.g. `dotnet user-secrets set "Datos:AplicarMigracionesAlArrancar" true --project src\Web` (and the same for `src\Api` if you run that host), or the `Datos__AplicarMigracionesAlArrancar=true` environment variable. Tests never touch this — they use EF In-Memory.
+- **The sandbox is another machine's setup, not this one's.** The `Jamil` branch pointed `appsettings.Development.json` at `DigerTramitesEstado_Unificada_Sandbox` on `LP-GD-JAGM\SQLEXPRESS` (SQL login `sa`), so that running the portal for real would not leave traces a `DELETE` cannot undo — audit rows, history, `UpdatedAt`/`UpdatedBy` stamps on pre-existing rows. On merging (2026-10-20) those strings were kept **commented** in the file and the active one stayed `GestionGD_new`: `LP-GD-JAGM` is not this machine, and two active `DefaultConnection` keys in the same object is a duplicate key, not a choice. `scripts\pruebas\Refrescar-Sandbox.ps1` still creates and refreshes that sandbox for whoever works on that machine.
 - **Seeded logins** (from `DbSeeder`, all password-hashed): `admin@diger.gob.hn` / `Admin#2026` (Administrador), plus `jefe.inst@`, `jefe.area@`, `jefe.uni@`, `empleado@`, `consultor@` with passwords `JefeInst#2026`, `JefeArea#2026`, `JefeUni#2026`, `Empleado#2026`, `Consultor#2026`.
 - **Ports**: `launchSettings.json` binds https `49175`/`49176` + http `49177`; `.claude/launch.json` ("web") runs http `5011`. The certificate-login flow hard-codes `https://localhost:49176/Cuenta/LoginCertificado` in Development, so keep 49176 free when testing cert login.
 - **Secrets**: Supabase import credentials live in User Secrets (UserSecretsId `diger-tramites-estado-web`) under `Supabase:Url` / `Supabase:AnonKey` — not in appsettings.
@@ -74,7 +75,8 @@ dotnet ef migrations add <NombreMigracion> --project src\Infrastructure --startu
 ### Clean Architecture layers
 
 ```
-Web / Presentation  →  Application  →  Domain
+Web  →  Application  →  Domain     (PortalDigital)
+Api  →  su propio modelo de lectura      (independiente)
                     →  Infrastructure (registered via DI)
 ```
 
@@ -86,6 +88,8 @@ Web / Presentation  →  Application  →  Domain
 ### MediatR pipeline
 
 Every request flows through `LoggingBehavior` → `ValidationBehavior` → handler. Handlers receive their repository and `IUnitOfWork` (both implemented by `AppDbContext`) via constructor injection.
+
+**Commands mutate; queries don't.** A command handler takes `IUnitOfWork`, calls `SaveChangesAsync`, and returns the new id (`int`/`Guid`) or `Unit` — never an entity or a full DTO. A query handler never calls `SaveChangesAsync`, and reads with **`.AsNoTracking()`**: without it EF keeps a change-tracking snapshot of every row it hands back, which costs memory on list pages and leaves tracked entities that a later `SaveChangesAsync` in the same scope can persist by accident.
 
 ### Institutional scope (data isolation)
 
@@ -135,6 +139,20 @@ Idempotency: reuniones/expedientes dedupe on `OrigenExternoId` (unique filtered 
 ### Expediente aggregate
 
 `Expediente` is the most complex aggregate (7 sections, 10 child collections). Child collections are always replaced in bulk: call `LimpiarHijos()` then `Agregar(...)` for each item. The command handler (`ActualizarExpedienteCommand`) and `ExpedienteMapper.Aplicar()` implement this pattern — use the same pattern when adding new child types.
+
+### Front-end (Razor Pages)
+
+Server logic lives in the PageModel (`.cshtml.cs`), markup in the `.cshtml`. Pages call MediatR `ISender`, never repositories.
+
+- **No external CDNs.** jQuery, Chart and SignalR are served from `wwwroot/lib/`; new libraries go there too. The portal runs inside an institutional network where outbound access isn't guaranteed, and a CDN that doesn't answer takes the page's styling or behaviour down with it.
+- **Every `fetch`/AJAX call that writes must carry the antiforgery token.** Read it from the layout's meta tag and send it as a header:
+
+  ```js
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+  fetch(url, { method: 'POST', headers: { 'RequestVerificationToken': csrf } });
+  ```
+
+  Razor Pages validate antiforgery on POST; without the header the call comes back 400 and, from the browser, the failure looks like a server bug.
 
 ### Testing approach
 

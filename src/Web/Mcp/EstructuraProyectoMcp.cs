@@ -1,5 +1,10 @@
 using Diger.TramitesEstado.Application.Proyectos.Common;
 
+// Hay dos EntregableInput: el de Proyectos y el de Expedientes, y GlobalUsings.cs trae el
+// segundo a todo el Web. Acá se habla de la ficha de un proyecto, así que se nombra el de
+// Proyectos a mano en vez de dejar que el compilador elija —no puede— o que gane el global.
+using EntregableInput = Diger.TramitesEstado.Application.Proyectos.Common.EntregableInput;
+
 namespace Diger.TramitesEstado.Web.Mcp;
 
 /// <summary>

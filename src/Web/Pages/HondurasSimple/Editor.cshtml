@@ -1,0 +1,335 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.HondurasSimple.EditorModel
+@{
+    ViewData["Title"] = Model.EsNuevo ? "Nuevo Tramite SIGER" : "Editar Tramite SIGER";
+
+    // Con la ficha bloqueada (D-17) los campos de contenido salen deshabilitados. Razor omite el
+    // atributo cuando el valor es null, así que la misma marca sirve para los dos casos.
+    var bloq = Model.Bloqueo.Bloqueada ? "disabled" : null;
+}
+
+<div class="container" style="max-width:860px">
+    <div class="hist-header">
+        <div>
+            <h2>@ViewData["Title"]</h2>
+            <p>@(Model.EsNuevo ? "Registrar un nuevo tramite en el inventario" : "Modificar datos del tramite")</p>
+        </div>
+        <a class="btns" asp-page="/Siger/Index">Cancelar</a>
+    </div>
+
+    @* ── Qué le falta a esta ficha ───────────────────────────────── *@
+    @if (!Model.EsNuevo && Model.Faltantes.Count > 0)
+    {
+        <div class="card" role="alert"
+             style="margin-bottom:1rem;border-left:4px solid #b45309;background:#fffbeb">
+            <strong style="color:#b45309">@FichaPublicaCompletitud.Frase(Model.Faltantes)</strong>
+            <p style="margin:6px 0 0">
+                Mientras falte cualquiera de esos datos, el trámite no se publica en el Portal de
+                Trámites y Servicios, aunque esté aprobado.
+            </p>
+        </div>
+    }
+    else if (!Model.EsNuevo)
+    {
+        <div class="card"
+             style="margin-bottom:1rem;border-left:4px solid #15803d;background:#f0fdf4">
+            <strong style="color:#15803d">La ficha pública está completa.</strong>
+            <span>Se publica en cuanto el trámite quede en estado Aprobado o Completo.</span>
+        </div>
+    }
+
+    @* ── El bloqueo condicional (D-17) ──────────────────────────────────
+       Se dice arriba y con el enlace puesto: quien abra esta ficha para corregir algo tiene que
+       enterarse antes de escribir, no después de guardar y ver que no cambió nada. *@
+    @if (Model.Bloqueo.Bloqueada)
+    {
+        <div class="card" style="border-left:4px solid #b45309;background:#fffbeb;margin-bottom:1rem">
+            <h3 class="sec-h" style="color:#92400e">El contenido de esta ficha se edita en su expediente</h3>
+            <p style="font-size:14px;line-height:1.55;color:#4a5568;margin:0 0 .6rem">
+                Está enlazada al expediente
+                <a asp-page="/Expedientes/Editor" asp-route-id="@Model.Bloqueo.ExpedienteId"><strong>@Model.Bloqueo.ExpedienteCodigo</strong></a>,
+                como <strong>@Model.Bloqueo.NombreTramite</strong>.
+                @if (Model.Bloqueo.EsBucket)
+                {
+                    <text>Ese expediente es el contenedor de fichas importadas de SIGER, no un levantamiento.</text>
+                }
+                Nombre, descripción, categoría, modalidad, tiempo, costo y enlace a SOL se capturan allí
+                y llegan acá al pasar el trámite a SIGER.
+            </p>
+            <p style="font-size:13px;color:#78350f;margin:0">
+                Lo que sí se sigue editando en esta pantalla: el <strong>código</strong>, el
+                <strong>estado de SIGER</strong>, el plan de digitalización y si el trámite es popular.
+                Publicarla o quitarla del portal se decide en <a asp-page="/HondurasSimple/Publicacion">Publicación</a>.
+            </p>
+            <form method="post" asp-page-handler="Desenlazar" style="margin-top:.8rem"
+                  onsubmit="return confirm('Al desenlazarla, esta ficha vuelve a editarse en esta pantalla y deja de recibir los cambios del expediente @Model.Bloqueo.ExpedienteCodigo. El trámite del expediente se queda donde está, pero ya no manda sobre la ficha. ¿Continuar?')">
+                <input type="hidden" name="id" value="@Model.Form.Id" />
+                <button class="btns" type="submit" style="border-color:#b45309;color:#b45309">Desenlazar del expediente</button>
+                <span class="res-meta">Vuelve a editarse acá. Avisa antes de hacerlo.</span>
+            </form>
+        </div>
+    }
+
+    <form method="post" class="card">
+        <input type="hidden" asp-for="Form.Id" />
+
+        @* ModelOnly y no All: los errores de campo ya salen junto a su campo, y repetirlos arriba
+           obligaría a leer dos veces lo mismo. Esto recoge lo que no tiene campo al que colgarse. *@
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="hint warn" style="margin-bottom:1rem">
+                <span class="ico" aria-hidden="true">⚠️</span>
+                <div>
+                    No se pudo guardar. Revise los campos marcados.
+                    <div asp-validation-summary="ModelOnly"></div>
+                </div>
+            </div>
+        }
+
+        <div class="form-grid">
+            <div class="field">
+                @* Sin «required»: una ficha creada desde un expediente no existe en SIGER y por
+                   tanto no tiene identificador. Dejarlo vacío es la forma de decirlo. *@
+                <label asp-for="Form.IdSiger">Id SIGER</label>
+                <input asp-for="Form.IdSiger" type="number" placeholder="Vacío si no viene de SIGER" />
+                @* Lleva indice unico en la base. Sin este aviso el choque salia como «Ocurrió un
+                   error inesperado» y el formulario se perdia entero. *@
+                <span asp-validation-for="Form.IdSiger" class="field-error"></span>
+                <span class="res-meta">Déjelo vacío si la ficha se creó desde un expediente.</span>
+                @if (Model.EsNuevo && Model.SiguienteIdSigerLibre is int siguiente)
+                {
+                    <div class="res-meta" style="margin-top:4px">El siguiente libre es @siguiente.</div>
+                }
+            </div>
+            <div class="field">
+                <label asp-for="Form.Codigo">Codigo</label>
+                <input asp-for="Form.Codigo" required maxlength="20" placeholder="400-001" />
+                <span asp-validation-for="Form.Codigo" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Nombre">Nombre del tramite</label>
+            <input asp-for="Form.Nombre" disabled="@bloq" required maxlength="600" />
+        </div>
+
+        <div class="form-grid">
+            <div class="field">
+                <label asp-for="Form.Institucion">Institucion</label>
+                <input asp-for="Form.Institucion" disabled="@bloq" required maxlength="200" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.Sigla">Sigla</label>
+                <input asp-for="Form.Sigla" disabled="@bloq" maxlength="30" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Dependencia">Dependencia o area responsable</label>
+            <input asp-for="Form.Dependencia" disabled="@bloq" maxlength="400" />
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Descripcion">Descripcion</label>
+            <textarea asp-for="Form.Descripcion" disabled="@bloq" rows="3"></textarea>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.Objetivo">Objetivo</label>
+            <textarea asp-for="Form.Objetivo" disabled="@bloq" rows="2"></textarea>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.DirigidoA">Dirigido a</label>
+            <textarea asp-for="Form.DirigidoA" disabled="@bloq" rows="2"></textarea>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="field">
+                <label asp-for="Form.EstadoSiger">Estado en SIGER</label>
+                <select asp-for="Form.EstadoSiger">
+                    <option value="">— Seleccione —</option>
+                    <option value="Registrado">Registrado</option>
+                    <option value="Aprobado">Aprobado</option>
+                    <option value="Completo">Completo</option>
+                    <option value="Borrador">Borrador</option>
+                </select>
+            </div>
+            <div class="field">
+                <label asp-for="Form.VigenciaDocumento">Vigencia del documento</label>
+                <input asp-for="Form.VigenciaDocumento" disabled="@bloq" maxlength="60" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.Temporalidad">Temporalidad</label>
+                <input asp-for="Form.Temporalidad" disabled="@bloq" maxlength="60" />
+            </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+            <div class="field">
+                <label class="chk-label">
+                    <input asp-for="Form.DisponibleEnLinea" type="checkbox" /> Disponible en linea (legado, sin usar)
+                </label>
+            </div>
+            <div class="field">
+                <label class="chk-label">
+                    <input asp-for="Form.EnPlanDigitalizacion" type="checkbox" /> En plan de digitalizacion
+                </label>
+            </div>
+        </div>
+
+        <div class="field" style="background:var(--diger-blue-pale, #eef3fb);padding:12px 16px;border-radius:8px;margin-bottom:1rem">
+            <strong>Publicado en el portal ciudadano:</strong>
+            @if (Model.PublicadoActual)
+            {
+                <span class="wf-badge wf-completada">Sí</span>
+            }
+            else
+            {
+                <span class="wf-badge wf-registrada">No</span>
+                @* El texto decía además «y la ficha está completa». Dejó de ser cierto con P-09
+                   (20-08-2026): la completitud ya no decide la publicación, solo avisa. Un aviso
+                   que describe una regla que el sistema ya no aplica manda al técnico a llenar
+                   campos que no van a publicarle nada. *@
+                <span class="res-meta">— se publica cuando el estado es Aprobado o Completo</span>
+            }
+            @if (!Model.EsNuevo)
+            {
+                <div class="res-meta" style="margin-top:4px">
+                    Última revisión: @(Model.UltimaRevision?.ToString("dd/MM/yyyy") ?? "—")
+                </div>
+            }
+        </div>
+
+        <h3 style="margin-top:1.5rem">Ficha pública (Ventanilla Digital)</h3>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+            <div class="field">
+                <label asp-for="Form.CategoriaId">Categoría</label>
+                <select asp-for="Form.CategoriaId" disabled="@bloq">
+                    <option value="">— Sin categoría —</option>
+                    @foreach (var c in Model.Categorias)
+                    {
+                        <option value="@c.Id">@c.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label asp-for="Form.Modalidad">Modalidad</label>
+                <select asp-for="Form.Modalidad" disabled="@bloq">
+                    <option value="">— Sin definir —</option>
+                    <option value="Virtual">Virtual</option>
+                    <option value="Presencial">Presencial</option>
+                    <option value="Hibrido">Híbrido</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+            <div class="field">
+                <label asp-for="Form.TiempoTexto">Tiempo estimado (texto libre)</label>
+                <input asp-for="Form.TiempoTexto" disabled="@bloq" maxlength="120" placeholder="ej. 5 días hábiles" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.CostoTexto">Costo (texto libre)</label>
+                <input asp-for="Form.CostoTexto" disabled="@bloq" maxlength="250" placeholder="ej. L. 200.00, o Gratuito" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.CostoEsGratuito">¿Es gratuito?</label>
+            <select asp-for="Form.CostoEsGratuito" disabled="@bloq">
+                <option value="">— No especificado —</option>
+                <option value="true">Sí, es gratuito</option>
+                <option value="false">No, tiene costo</option>
+            </select>
+        </div>
+
+        <div class="field">
+            <label class="chk-label">
+                <input asp-for="Form.EstaEnSol" disabled="@bloq" type="checkbox" id="chk-en-sol" /> Se puede hacer desde SOL
+            </label>
+        </div>
+        <div class="field">
+            <label asp-for="Form.SolTramo">Enlace a SOL</label>
+
+            @* El prefijo va pegado al campo y no en un texto de ayuda debajo (D-13): quien
+               escribe tiene que ver la dirección completa que va a producir, no imaginarla. *@
+            <div style="display:flex;align-items:stretch;flex-wrap:wrap">
+                <span style="display:inline-flex;align-items:center;padding:0 10px;background:#f1f5f9;border:1px solid #cbd5e1;border-right:none;border-radius:6px 0 0 6px;font-family:monospace;font-size:13px;color:#475569;white-space:nowrap">@Model.PrefijoSol</span>
+                <input asp-for="Form.SolTramo" disabled="@bloq" maxlength="300" placeholder="tramo-final"
+                       style="flex:1 1 180px;min-width:140px;border-radius:0 6px 6px 0;font-family:monospace" />
+            </div>
+            <span asp-validation-for="Form.SolTramo" class="field-error"></span>
+            <span class="res-meta">
+                Escriba solo el tramo final. Lo de delante lo pone la institución, y se corrige
+                en su ficha si la ruta real de SOL no coincide con su sigla.
+            </span>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Form.SolUrl))
+            {
+                <div style="margin-top:.6rem;padding:.6rem .7rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px">
+                    <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:.25rem">Enlace heredado</div>
+                    <div style="font-family:monospace;font-size:12px;word-break:break-all;color:#4a5568">@Model.Form.SolUrl</div>
+                    <p style="font-size:12px;color:#78350f;margin:.4rem 0 .3rem">
+                        Esta ficha arrastra una dirección completa de antes de que se compusieran.
+                        Se respeta tal cual mientras no haya tramo; en cuanto capture uno arriba,
+                        manda el tramo.
+                    </p>
+                    <label class="chk-label" style="font-size:13px">
+                        <input asp-for="Form.QuitarSolHeredada" disabled="@bloq" type="checkbox" /> Quitar este enlace heredado
+                    </label>
+                </div>
+            }
+        </div>
+
+        <div class="field">
+            <label class="chk-label">
+                <input asp-for="Form.EsPopular" type="checkbox" /> Marcar como trámite popular
+            </label>
+        </div>
+
+        <h3 style="margin-top:1.5rem">Otros datos</h3>
+        <div class="form-grid">
+            <div class="field">
+                <label asp-for="Form.EnlacePrincipal">Enlace principal</label>
+                <input asp-for="Form.EnlacePrincipal" disabled="@bloq" type="url" maxlength="600" />
+            </div>
+            <div class="field">
+                <label asp-for="Form.DiagramaUrl">URL del diagrama</label>
+                <input asp-for="Form.DiagramaUrl" maxlength="600" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.FechaIngreso">Fecha de ingreso</label>
+            <input asp-for="Form.FechaIngreso" type="date" />
+        </div>
+
+        <div class="field">
+            <label asp-for="Form.ObservacionesDiger">Observaciones DIGER</label>
+            <textarea asp-for="Form.ObservacionesDiger" disabled="@bloq" rows="3"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
+            <a class="btns" asp-page="/Siger/Index">Cancelar</a>
+            <button class="btnp" type="submit">@(Model.EsNuevo ? "Crear tramite" : "Guardar cambios")</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<style>
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 16px;
+    }
+    .chk-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        padding: 8px 0;
+    }
+</style>
+}

@@ -18,6 +18,7 @@ public static class OriginalShapeMapper
             var f = t < o.Tramites.Count ? o.Tramites[t] : new();
             string? G(string k) => f.TryGetValue(k, out var v) ? v : null;
             int? sigerId = int.TryParse(G("tramite_siger_id"), out var sid) ? sid : null;
+            Guid? claveEstable = Guid.TryParse(G("clave_estable"), out var ce) ? ce : null;
             tramites.Add(new TramiteInput(
                 t,
                 At(o.TramiteNombres, t) ?? G("nombre_tramite") ?? "",
@@ -28,7 +29,15 @@ public static class OriginalShapeMapper
                 G("dirigido"), G("horario"), G("telefono"), G("email_tramite"), G("sitio_web"),
                 sigerId,
                 ParseDate(G("fecha_creacion")),
-                ParseEstadoTramite(G("estado_tramite"))));
+                ParseEstadoTramite(G("estado_tramite")),
+                claveEstable,
+                // Ficha pública (Fase 8). Se leen del mismo diccionario que el resto de la fila.
+                int.TryParse(G("categoria_id"), out var cid) ? cid : null,
+                G("modalidad_detalle"),
+                ParseBool3(G("es_gratuito")),
+                G("vigencia_documento"), G("temporalidad"), G("observaciones_diger"),
+                string.Equals(G("esta_en_sol"), "true", StringComparison.OrdinalIgnoreCase),
+                G("sol_tramo")));
         }
 
         var requisitos = new List<RequisitoInput>();
@@ -45,6 +54,23 @@ public static class OriginalShapeMapper
             }
         }
 
+
+        // Entregables y lugares (Fase 8): listas por trámite, igual que reqs_tram.
+        var entregables = new List<EntregableInput>();
+        for (var t = 0; t < o.EntregablesTram.Count && t < n; t++)
+        {
+            var filas = o.EntregablesTram[t] ?? [];
+            for (var k = 0; k < filas.Count; k++)
+                entregables.Add(new EntregableInput(t, k, filas[k].Entregable ?? "", filas[k].Formato, filas[k].Presentacion));
+        }
+
+        var lugares = new List<LugarInput>();
+        for (var t = 0; t < o.LugaresTram.Count && t < n; t++)
+        {
+            var filas = o.LugaresTram[t] ?? [];
+            for (var k = 0; k < filas.Count; k++)
+                lugares.Add(new LugarInput(t, k, filas[k].Lugar ?? "", filas[k].Ciudad, filas[k].Direccion, filas[k].Telefonos));
+        }
         var flujos = new List<FlujoNodoInput>();
         AddFlujos(flujos, o.FlujosActual, FaseFlujo.Actual, n);
         AddFlujos(flujos, o.FlujosPropuesto, FaseFlujo.Propuesto, n);
@@ -96,7 +122,8 @@ public static class OriginalShapeMapper
             o.ContraparteUsuarioNombre,
             ParseDate(o.FechaLimiteEntrega),
             o.ValidadoDigerUsuarioId,
-            o.ValidadoInstUsuarioId);
+            o.ValidadoInstUsuarioId,
+            entregables, lugares);
     }
 
     // ── DTO de aplicación → forma editor (al abrir para editar) ───────────
@@ -138,8 +165,18 @@ public static class OriginalShapeMapper
                 ["alcance_obs"] = t.AlcanceObs, ["descripcion"] = t.Descripcion, ["dirigido"] = t.Dirigido,
                 ["horario"] = t.Horario, ["telefono"] = t.Telefono, ["email_tramite"] = t.EmailTramite, ["sitio_web"] = t.SitioWeb,
                 ["tramite_siger_id"] = t.TramiteSigerId?.ToString(),
+                ["clave_estable"] = t.ClaveEstable?.ToString(),
                 ["fecha_creacion"] = Fmt(t.FechaCreacion),
-                ["estado_tramite"] = FmtEstadoTramite(t.EstadoTramite)
+                ["estado_tramite"] = FmtEstadoTramite(t.EstadoTramite),
+                // Ficha pública (Fase 8)
+                ["categoria_id"] = t.CategoriaId?.ToString(),
+                ["modalidad_detalle"] = t.ModalidadDetalle,
+                ["es_gratuito"] = t.EsGratuito?.ToString().ToLowerInvariant(),
+                ["vigencia_documento"] = t.VigenciaDocumento,
+                ["temporalidad"] = t.Temporalidad,
+                ["observaciones_diger"] = t.ObservacionesDiger,
+                ["esta_en_sol"] = t.EstaEnSol ? "true" : "false",
+                ["sol_tramo"] = t.SolTramo
             });
         }
 
@@ -151,6 +188,21 @@ public static class OriginalShapeMapper
             if (r.TramiteIndex < 0 || r.TramiteIndex >= nt) continue;
             o.ReqsTram[r.TramiteIndex].Add(new() { Requisito = r.Requisito, Obs = r.Obs, PlantillaOrigenId = r.PlantillaOrigenId, EsPersonalizado = r.EsPersonalizado });
             o.AccionesTram[r.TramiteIndex].Add(new() { Accion = FmtAccion(r.Accion), Justificacion = r.Justificacion });
+        }
+
+        // Entregables y lugares (Fase 8), con la misma forma de lista-por-trámite.
+        o.EntregablesTram = Enumerable.Range(0, nt).Select(_ => new List<OriginalExpedienteDto.EntregableOrig>()).ToList();
+        foreach (var g in (d.Entregables ?? []).OrderBy(x => x.TramiteIndex).ThenBy(x => x.Orden))
+        {
+            if (g.TramiteIndex < 0 || g.TramiteIndex >= nt) continue;
+            o.EntregablesTram[g.TramiteIndex].Add(new() { Entregable = g.Entregable, Formato = g.Formato, Presentacion = g.Presentacion });
+        }
+
+        o.LugaresTram = Enumerable.Range(0, nt).Select(_ => new List<OriginalExpedienteDto.LugarOrig>()).ToList();
+        foreach (var l in (d.Lugares ?? []).OrderBy(x => x.TramiteIndex).ThenBy(x => x.Orden))
+        {
+            if (l.TramiteIndex < 0 || l.TramiteIndex >= nt) continue;
+            o.LugaresTram[l.TramiteIndex].Add(new() { Lugar = l.Lugar, Ciudad = l.Ciudad, Direccion = l.Direccion, Telefonos = l.Telefonos });
         }
 
         o.FlujosActual = Enumerable.Range(0, nt).Select(_ => new List<OriginalExpedienteDto.NodoOrig>()).ToList();
@@ -208,6 +260,17 @@ public static class OriginalShapeMapper
 
     private static string? At(List<string?> list, int i) => i >= 0 && i < list.Count ? list[i] : null;
     private static int? ParseInt(string? s) => int.TryParse(s, out var v) ? v : null;
+
+    /// <summary>
+    /// Lee un booleano de tres estados desde el formulario. Vacío es <c>null</c> y significa «no
+    /// se ha capturado», que no es lo mismo que «no». Es la misma regla del costo en la ficha
+    /// pública: no haber escrito nada nunca se lee como «es gratuito».
+    /// </summary>
+    private static bool? ParseBool3(string? v) =>
+        string.IsNullOrWhiteSpace(v) ? null
+        : v.Equals("true", StringComparison.OrdinalIgnoreCase) || v == "1" ? true
+        : v.Equals("false", StringComparison.OrdinalIgnoreCase) || v == "0" ? false
+        : null;
     private static DateOnly? ParseDate(string? s) => DateOnly.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
     private static string? Fmt(DateOnly? d) => d?.ToString("yyyy-MM-dd");
 

@@ -19,7 +19,14 @@ public static class ModulosPortal
     public const string Contactos   = "Contactos";
     public const string Proyectos   = "Proyectos";
 
-    // SIGER se gateaba con la clave de Expedientes, asi que no habia forma de dar uno sin el
-    // otro — justo lo que pide separar Expedientes (una unidad) de SIGER (una unidad y un area).
-    public const string Siger       = "Siger";
+    /// <summary>El inventario SIGER, de sola consulta: es el grupo que puede abrirse a gente
+    /// de fuera. Hasta el 3 de septiembre de 2026 el navbar lo gateaba con Expedientes, asi que
+    /// ensenarle el inventario a alguien obligaba a regalarle Expedientes entero — no habia
+    /// forma de dar uno sin el otro, justo lo que pide separar Expedientes (una unidad) de
+    /// SIGER (una unidad y un area).</summary>
+    public const string Siger          = "Siger";
+
+    /// <summary>El trabajo operativo del portal ciudadano: conciliar, publicar, llenar y editar
+    /// fichas. Se separo de SIGER para que abrir el inventario no lo abra tambien a el.</summary>
+    public const string HondurasSimple = "HondurasSimple";
 }

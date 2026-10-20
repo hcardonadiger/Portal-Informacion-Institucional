@@ -272,6 +272,195 @@ function addReqFicha(i){ if(!reqsTram[i]) reqsTram[i]=[]; reqsTram[i].push({requ
 function updateReqFicha(i,idx,field,val){ if(reqsTram[i]&&reqsTram[i][idx]){ reqsTram[i][idx][field]=val; if(field==='requisito') actualizarNumReq(); } }
 function removeReqFicha(i,idx){ if(reqsTram[i]){ reqsTram[i].splice(idx,1); renderReqFichaRows(i); actualizarNumReq(); } }
 
+
+// ── ENTREGABLES Y LUGARES POR TRÁMITE (Fase 8) ───────────────
+// Mismo patrón que los requisitos de arriba: un arreglo por trámite, reemplazo en bloque al
+// guardar. Existen porque D-17 deja estos campos editables SOLO desde el expediente en cuanto
+// la ficha queda enlazada; si la pantalla no los pintara, el primer guardado borraría lo que
+// la migración sembró y nadie lo notaría hasta ver la ficha publicada sin entregables.
+var entregablesTram = [[]];
+var lugaresTram     = [[]];
+
+function renderEntregableRows(i){
+  var tbody = document.getElementById('entregable-tbody-'+i);
+  if(!tbody) return;
+  var rows = entregablesTram[i] || (entregablesTram[i]=[]);
+  tbody.innerHTML = rows.map(function(r, idx){
+    return '<tr>'
+      + '<td class="nc">'+(idx+1)+'</td>'
+      + '<td><input type="text" placeholder="Ej: Constancia, licencia, certificado" value="'+escHtml(r.entregable||'')+'" onchange="updateEntregable('+i+','+idx+',\'entregable\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Físico / Digital" value="'+escHtml(r.formato||'')+'" onchange="updateEntregable('+i+','+idx+',\'formato\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Ventanilla / Descarga / Correo" value="'+escHtml(r.presentacion||'')+'" onchange="updateEntregable('+i+','+idx+',\'presentacion\',this.value)"></td>'
+      + '<td style="text-align:center;padding:6px"><button class="btn-rm" onclick="removeEntregable('+i+','+idx+')">✕</button></td>'
+    + '</tr>';
+  }).join('');
+}
+function addEntregable(i){ if(!entregablesTram[i]) entregablesTram[i]=[]; entregablesTram[i].push({entregable:'',formato:'',presentacion:''}); renderEntregableRows(i); }
+function updateEntregable(i,idx,field,val){ if(entregablesTram[i]&&entregablesTram[i][idx]) entregablesTram[i][idx][field]=val; }
+function removeEntregable(i,idx){ if(entregablesTram[i]){ entregablesTram[i].splice(idx,1); renderEntregableRows(i); } }
+
+function renderLugarRows(i){
+  var tbody = document.getElementById('lugar-tbody-'+i);
+  if(!tbody) return;
+  var rows = lugaresTram[i] || (lugaresTram[i]=[]);
+  tbody.innerHTML = rows.map(function(r, idx){
+    return '<tr>'
+      + '<td class="nc">'+(idx+1)+'</td>'
+      + '<td><input type="text" placeholder="Nombre de la sede u oficina" value="'+escHtml(r.lugar||'')+'" onchange="updateLugar('+i+','+idx+',\'lugar\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Ciudad" value="'+escHtml(r.ciudad||'')+'" onchange="updateLugar('+i+','+idx+',\'ciudad\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Dirección" value="'+escHtml(r.direccion||'')+'" onchange="updateLugar('+i+','+idx+',\'direccion\',this.value)"></td>'
+      + '<td><input type="text" placeholder="Teléfonos" value="'+escHtml(r.telefonos||'')+'" onchange="updateLugar('+i+','+idx+',\'telefonos\',this.value)"></td>'
+      + '<td style="text-align:center;padding:6px"><button class="btn-rm" onclick="removeLugar('+i+','+idx+')">✕</button></td>'
+    + '</tr>';
+  }).join('');
+}
+function addLugar(i){ if(!lugaresTram[i]) lugaresTram[i]=[]; lugaresTram[i].push({lugar:'',ciudad:'',direccion:'',telefonos:''}); renderLugarRows(i); }
+function updateLugar(i,idx,field,val){ if(lugaresTram[i]&&lugaresTram[i][idx]) lugaresTram[i][idx][field]=val; }
+function removeLugar(i,idx){ if(lugaresTram[i]){ lugaresTram[i].splice(idx,1); renderLugarRows(i); } }
+
+/// Opciones del catálogo de categorías, que el servidor inyecta en __EXPMETA__.
+function categoriaOptions(){
+  var opts = '<option value="">— Sin categoría —</option>';
+  var cats = (window.__EXPMETA__ && window.__EXPMETA__.categorias) || [];
+  cats.forEach(function(c){ opts += '<option value="'+c.id+'">'+escHtml(c.nombre)+'</option>'; });
+  return opts;
+}
+
+// ── PASAR A SIGER (Fase 9) ───────────────────────────────────
+// Escribe el trámite del expediente hacia su ficha del inventario: la primera vez creándola, las
+// siguientes sobrescribiéndola.
+//
+// Trabaja sobre lo GUARDADO, no sobre lo que hay en pantalla. El editor vive en el navegador y no
+// manda nada hasta que alguien guarda; el diálogo lo dice con todas sus letras en vez de pasar
+// datos viejos sin avisar.
+var _paseTramite = null;
+
+function puedePasarASiger(){
+  var m = window.__EXPMETA__ || {};
+  return !!(m.id && m.puedeSiger);
+}
+
+async function abrirModalPase(i){
+  if(!puedePasarASiger()) return;
+  _paseTramite = i;
+
+  var m = document.getElementById('pase-modal');
+  m.style.display = 'flex';
+  document.getElementById('pase-confirmar').disabled = true;
+  document.getElementById('pase-titulo').textContent = 'Pasar a SIGER';
+  document.getElementById('pase-cuerpo').innerHTML =
+    '<div style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Calculando qué cambiaría…</div>';
+
+  try{
+    var url = __EXPMETA__.vistaPreviaPaseUrl + '&id=' + __EXPMETA__.id + '&tramiteIndex=' + i;
+    var resp = await fetch(url, { headers: { 'Accept':'application/json' } });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    pintarVistaPreviaPase(await resp.json());
+  }catch(err){
+    document.getElementById('pase-cuerpo').innerHTML =
+      '<div class="alert-error">No se pudo calcular la vista previa: ' + escHtml(err.message) + '</div>';
+  }
+}
+
+function cerrarModalPase(){
+  document.getElementById('pase-modal').style.display = 'none';
+  _paseTramite = null;
+}
+
+function pintarVistaPreviaPase(p){
+  document.getElementById('pase-titulo').textContent =
+    (p.esNueva ? 'Crear la ficha ' : 'Actualizar la ficha ') + p.codigo;
+
+  var h = '';
+
+  h += '<p style="font-size:13px;color:#4a5568;margin:0 0 .9rem;padding:.6rem .7rem;background:#f8fafc;border-radius:6px">'
+     + '<strong>Se pasa lo que está guardado</strong>, no lo que hay en pantalla. Si acaba de editar algo, guarde antes.'
+     + '</p>';
+
+  if(p.esNueva){
+    h += '<div style="padding:.6rem .7rem;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:6px;margin-bottom:.9rem;font-size:13px;color:#065f46">'
+       + 'La ficha todavía no existe. Se va a crear con el código <strong>' + escHtml(p.codigo) + '</strong>, '
+       + '<strong>sin publicar</strong>: publicarla en el portal ciudadano es una decisión aparte.'
+       + '</div>';
+  }
+
+  if(!p.cambios.length && !p.colecciones.some(function(c){ return c.antes !== c.despues; })){
+    h += '<div style="padding:1rem;background:#f8fafc;border-radius:8px;font-size:13px;color:#64748b;text-align:center">'
+       + 'La ficha ya dice exactamente esto. No hay nada que pasar.'
+       + '</div>';
+    document.getElementById('pase-cuerpo').innerHTML = h;
+    document.getElementById('pase-confirmar').disabled = true;
+    return;
+  }
+
+  if(p.cambios.length){
+    h += '<table class="dtbl"><thead><tr><th>Campo</th><th>Dice ahora</th><th>Va a decir</th></tr></thead><tbody>';
+    p.cambios.forEach(function(c){
+      h += '<tr>'
+         + '<td style="font-weight:600">' + escHtml(c.campo) + '</td>'
+         + '<td style="color:#9f1239">' + (c.antes ? escHtml(c.antes) : '<em style="color:#94a3b8">sin capturar</em>') + '</td>'
+         + '<td style="color:#065f46">' + (c.despues ? escHtml(c.despues) : '<em style="color:#94a3b8">sin capturar</em>') + '</td>'
+         + '</tr>';
+    });
+    h += '</tbody></table>';
+  }
+
+  var colsCambiadas = p.colecciones.filter(function(c){ return c.antes !== c.despues; });
+  if(colsCambiadas.length){
+    h += '<h3 class="sec-h" style="margin-top:1rem">Listas</h3><ul style="font-size:13px;color:#4a5568;margin:0;padding-left:1.2rem">';
+    colsCambiadas.forEach(function(c){
+      h += '<li>' + escHtml(c.coleccion) + ': <strong>' + c.antes + '</strong> → <strong>' + c.despues + '</strong></li>';
+    });
+    h += '</ul>';
+  }
+
+  h += '<p style="font-size:12px;color:#64748b;margin:1rem 0 0;line-height:1.5">'
+     + 'No se tocan el código, el estado de SIGER, los pasos del proceso, ni si la ficha está publicada o marcada como popular. '
+     + (p.esNueva ? '' : 'Antes de sobrescribir queda archivada una versión con lo que dice hoy.')
+     + '</p>';
+
+  document.getElementById('pase-cuerpo').innerHTML = h;
+  document.getElementById('pase-confirmar').disabled = false;
+}
+
+async function confirmarPase(){
+  if(_paseTramite === null) return;
+  var btn = document.getElementById('pase-confirmar');
+  btn.disabled = true;
+  btn.textContent = 'Pasando…';
+
+  try{
+    var fd = new FormData();
+    fd.append('id', __EXPMETA__.id);
+    fd.append('tramiteIndex', _paseTramite);
+    fd.append('__RequestVerificationToken', __EXPMETA__.token);
+
+    var resp = await fetch(__EXPMETA__.pasarASigerUrl, { method:'POST', body: fd });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    var r = await resp.json();
+    if(!r.ok && r.error) throw new Error(r.error);
+
+    // El enlace recién creado se guarda del lado del cliente para que la insignia SIGER aparezca
+    // sin recargar; el servidor ya lo escribió.
+    _sigerIds[_paseTramite] = r.tramiteSigerId;
+    // Solo al CREAR: una ficha que ya existía no cambia de origen porque la actualicemos, y
+    // pisar el dato la volvería azul aunque hubiera nacido acá.
+    if(r.fueCreada) registrarFichaEnlazada(r.tramiteSigerId, r.codigo, true);
+    actualizarTabsTramite();
+    actualizarBadgesSiger();
+
+    cerrarModalPase();
+    mostrarToast(r.fueCreada
+      ? 'Ficha ' + r.codigo + ' creada en SIGER (sin publicar).'
+      : 'Ficha ' + r.codigo + ' actualizada. Versión ' + r.versionArchivada + ' archivada.');
+  }catch(err){
+    document.getElementById('pase-cuerpo').innerHTML =
+      '<div class="alert-error">No se pudo pasar: ' + escHtml(err.message) + '</div>';
+  }finally{
+    btn.textContent = 'Confirmar';
+    btn.disabled = false;
+  }
+}
 // ── INFRAESTRUCTURA SOL (una vez por expediente) ─────────────
 var PERFILES = [
   'Administrador/a de redes','Administrador/a de base de datos',
@@ -624,7 +813,8 @@ function seleccionarContacto(sel){
 // Campos de la ficha que viven en el DOM (para snapshot al agregar/quitar trámites)
 var FICHA_FIELDS = ['nombre_corto','modalidad','plazo_legal','tercero','accion','tiempo_real','metodo_pago',
   'pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto','doc_entregado','objetivo',
-  'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web'];
+  'alcance_obs','descripcion','dirigido','horario','telefono','email_tramite','sitio_web',
+  'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
 
 // Construye el HTML de una fila de trámite en la Apertura. Muestra ✕ solo si hay más de un trámite.
 function tramRowHTML(i){
@@ -635,7 +825,7 @@ function tramRowHTML(i){
   if(window.__EXPMETA__ && window.__EXPMETA__.plantillas){
     window.__EXPMETA__.plantillas.forEach(function(p){ opts += '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; });
   }
-  var sigerBadge = (_sigerIds[i]) ? ' <span style="font-size:10px;font-weight:700;background:#dbeafe;color:var(--diger-blue-mid);padding:1px 6px;border-radius:4px;vertical-align:middle">SIGER</span>' : '';
+  var sigerBadge = badgeSigerHTML(_sigerIds[i]);
   return '<div class="tram-row" style="flex-direction:row;align-items:flex-start;gap:10px;flex-wrap:wrap">'
     + '<div class="f" style="flex:1;min-width:250px"><label>Trámite ' + (i+1) + ' <span class="star">*</span>'
     + sigerBadge + ' <span class="tram-cod" id="tcod-'+i+'"></span></label>'
@@ -656,9 +846,12 @@ function actualizarNumTramites(){
   while(flujosActual.length < n) flujosActual.push([]);
   while(flujosPropuesto.length < n) flujosPropuesto.push([]);
   while(reqsTram.length < n) reqsTram.push([]);
+  while(entregablesTram.length < n) entregablesTram.push([]);
+  while(lugaresTram.length < n) lugaresTram.push([]);
   while(accionesTram.length < n) accionesTram.push([]);
   flujosActual.length = n; flujosPropuesto.length = n;
   reqsTram.length = n; accionesTram.length = n;
+  entregablesTram.length = n; lugaresTram.length = n;
 
   var wrap = document.getElementById('tramites-nombres-wrap');
   if(wrap){ wrap.innerHTML = ''; for(var i=0; i<n; i++) wrap.innerHTML += tramRowHTML(i); }
@@ -679,6 +872,7 @@ function snapshotTramites(){
     var al = document.querySelector('input[name="alcance_'+i+'"]:checked');
     o.alcance = al ? al.value : '';
     o._sigerId = (_sigerIds[i] !== undefined) ? _sigerIds[i] : null;
+    o._clave = (_claves[i] !== undefined) ? _claves[i] : null;
     o.fecha_creacion = gv('fecha_creacion_'+i);
     o.estado_tramite = gv('estado_tramite_'+i);
     snap.push(o);
@@ -687,7 +881,7 @@ function snapshotTramites(){
 }
 
 function restoreTramites(snap){
-  _sigerIds = [];
+  _sigerIds = []; _claves = [];
   for(var i=0; i<snap.length; i++){
     sv('tnam-'+i, snap[i].tnam || '');
     sv('area_resp-'+i, snap[i].area || '');
@@ -699,6 +893,7 @@ function restoreTramites(snap){
     }
     togglePago(i);
     _sigerIds.push(snap[i]._sigerId || null);
+    _claves.push(snap[i]._clave || null);
     sv('fecha_creacion_'+i, snap[i].fecha_creacion || '');
     sv('estado_tramite_'+i, snap[i].estado_tramite || '');
   }
@@ -718,23 +913,79 @@ function agregarTramiteApertura(){
 // ── IMPORTAR DESDE SIGER ──────────────────────────────────────
 var _sigerTimer = null;
 var _sigerIds = [];
+// Identidad estable de cada trámite, en paralelo a _sigerIds y tratada igual: se guarda dentro
+// del objeto al hacer snapshot y se reconstruye desde ahí, para que se mueva con su trámite
+// cuando alguien quita otro del medio o reordena. Vacía = trámite nuevo, el servidor la crea.
+var _claves = [];
 
+
+// ── INSIGNIA DE ORIGEN (Fase 11) ─────────────────────────────
+// Un trámite enlazado puede venir de dos sitios opuestos y la pantalla los pintaba iguales:
+//
+//   Azul  — se trajo del inventario de SIGER. DIGER está modelando algo que ya existía.
+//   Verde — la ficha nació acá y se promovió. DIGER está publicando algo que no existía.
+//
+// Confundirlos lleva a buscar en SIGER una ficha que nunca estuvo ahí. La diferencia la da
+// IdSiger, que el servidor ya resolvió y dejó en __EXPMETA__.fichasEnlazadas.
+/// Deja constancia en el cliente de una ficha recién enlazada, para que su insignia diga la
+/// verdad sin recargar la página. Sin esto, una ficha promovida hace un segundo se pintaría de
+/// azul —«traída de SIGER»— que es justo lo contrario de lo que pasó.
+function registrarFichaEnlazada(sigerId, codigo, promovida){
+  var m = window.__EXPMETA__ || (window.__EXPMETA__ = {});
+  if(!m.fichasEnlazadas) m.fichasEnlazadas = {};
+  m.fichasEnlazadas[String(sigerId)] = { codigo: codigo || '', promovida: !!promovida };
+}
+
+function fichaEnlazada(sigerId){
+  var m = window.__EXPMETA__ || {};
+  return (m.fichasEnlazadas && m.fichasEnlazadas[String(sigerId)]) || null;
+}
+
+function badgeSigerHTML(sigerId){
+  if(!sigerId) return '';
+
+  var f = fichaEnlazada(sigerId);
+  var promovida = !!(f && f.promovida);
+  var codigo = (f && f.codigo) ? f.codigo : '';
+
+  var estilo = promovida
+    ? 'background:#dcfce7;color:#166534'
+    : 'background:#dbeafe;color:var(--diger-blue-mid)';
+
+  var texto  = promovida ? 'Promovida' : 'SIGER';
+  var titulo = promovida
+    ? 'Esta ficha nació en el portal y no existe en el inventario de SIGER' + (codigo ? ' — ' + codigo : '')
+    : 'Ficha traída del inventario de SIGER' + (codigo ? ' — ' + codigo : '');
+
+  var base = (window.__EXPMETA__ && __EXPMETA__.fichaUrlBase) || '';
+  var abre = base ? '<a href="'+escHtml(base + sigerId)+'" target="_blank" rel="noopener" style="text-decoration:none">' : '';
+  var cierra = base ? '</a>' : '';
+
+  return ' ' + abre
+    + '<span class="siger-badge" title="'+escHtml(titulo)+'" style="font-size:10px;font-weight:700;'
+    + estilo + ';padding:1px 6px;border-radius:4px;vertical-align:middle">'+texto+'</span>'
+    + cierra;
+}
 function actualizarBadgesSiger(){
   for(var i=0; i<tramiteCount; i++){
     var label = document.querySelector('#tramites-nombres-wrap .tram-row:nth-child('+(i+1)+') label');
     if(!label) continue;
+
+    // Se rehace en vez de conservarse: el origen puede haber cambiado —un trámite recién pasado
+    // a SIGER estrena insignia sin recargar— y una insignia vieja diria lo contrario de la verdad.
     var existing = label.querySelector('.siger-badge');
-    if(_sigerIds[i]){
-      if(!existing){
-        var badge = document.createElement('span');
-        badge.className = 'siger-badge';
-        badge.style.cssText = 'font-size:10px;font-weight:700;background:#dbeafe;color:var(--diger-blue-mid);padding:1px 6px;border-radius:4px;vertical-align:middle;margin-left:4px';
-        badge.textContent = 'SIGER';
-        var star = label.querySelector('.star');
-        if(star) star.after(badge);
-        else label.appendChild(badge);
-      }
-    } else if(existing) existing.remove();
+    var envoltura = existing && existing.parentElement && existing.parentElement.tagName === 'A'
+      ? existing.parentElement : existing;
+    if(envoltura) envoltura.remove();
+
+    if(!_sigerIds[i]) continue;
+
+    var html = badgeSigerHTML(_sigerIds[i]);
+    if(!html) continue;
+
+    var star = label.querySelector('.star');
+    if(star) star.insertAdjacentHTML('afterend', html);
+    else label.insertAdjacentHTML('beforeend', html);
   }
 }
 
@@ -796,11 +1047,14 @@ async function seleccionarSiger(it){
   var newIdx = tramiteCount - 1;
 
   while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
+  while(_claves.length < tramiteCount) _claves.push(null);
   _sigerIds[newIdx] = it.id;
+  registrarFichaEnlazada(it.id, it.codigo, false);
 
   actualizarNumTramites();
   restoreTramites(snap);
   _sigerIds[newIdx] = it.id;
+  registrarFichaEnlazada(it.id, it.codigo, false);
 
   sv('tnam-'+newIdx, it.nombre||'');
   sv('area_resp-'+newIdx, it.dependencia||'');
@@ -823,7 +1077,9 @@ async function seleccionarSiger(it){
     var det = await resp.json();
 
     setTimeout(function(){
-      if(det.disponibleEnLinea) sv('modalidad_'+newIdx, 'En línea (total)');
+      // Valor del catálogo cerrado. Antes decía 'En línea (total)', que desde la Fase 8 ya no
+      // existe en el desplegable: escribirlo dejaba la modalidad en blanco sin avisar.
+      if(det.disponibleEnLinea){ sv('modalidad_'+newIdx, 'Virtual'); sv('modalidad_detalle_'+newIdx, 'Importado de SIGER como disponible en línea'); }
       if(det.enlacePrincipal) sv('sitio_web_'+newIdx, det.enlacePrincipal);
       if(det.vigenciaDocumento) sv('plazo_legal_'+newIdx, det.vigenciaDocumento);
 
@@ -894,6 +1150,7 @@ function quitarTramiteApertura(i){
   snap.splice(i, 1);
   flujosActual.splice(i, 1); flujosPropuesto.splice(i, 1);
   reqsTram.splice(i, 1); accionesTram.splice(i, 1);
+  entregablesTram.splice(i, 1); lugaresTram.splice(i, 1);
   tramiteCount--;
   if(activeTram >= tramiteCount) activeTram = tramiteCount - 1;
   actualizarNumTramites();
@@ -935,7 +1192,8 @@ function migrarDatosTramite(i){
   var fieldsToMigrar = ['nombre_corto','modalidad','plazo_legal','tercero','accion',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
-    'horario','telefono','email_tramite','sitio_web'];
+    'horario','telefono','email_tramite','sitio_web',
+    'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
   fieldsToMigrar.forEach(function(f){ sv(f+'_'+i, gv(f+'_'+j)); });
 
   // TGR rubros dependen de la institución — cargar primero, luego asignar rubro
@@ -955,7 +1213,11 @@ function migrarDatosTramite(i){
 
   // Requisitos (copia profunda)
   reqsTram[i] = (reqsTram[j]||[]).map(function(r){ return {requisito:r.requisito||'',obs:r.obs||''}; });
+  entregablesTram[i] = (entregablesTram[j]||[]).map(function(g){ return {entregable:g.entregable||'',formato:g.formato||'',presentacion:g.presentacion||''}; });
+  lugaresTram[i] = (lugaresTram[j]||[]).map(function(l){ return {lugar:l.lugar||'',ciudad:l.ciudad||'',direccion:l.direccion||'',telefonos:l.telefonos||''}; });
   renderReqFichaRows(i);
+  renderEntregableRows(i);
+  renderLugarRows(i);
   actualizarNumReq();
 
   // Acciones modelo propuesto (copia profunda)
@@ -1015,7 +1277,7 @@ function renderFichasPanels(){
     var show = (i === activeTram);
     wrap.innerHTML += fichaHTML(i, names[i], show);
   }
-  for(var k=0; k<tramiteCount; k++){ renderReqFichaRows(k); togglePago(k); }
+  for(var k=0; k<tramiteCount; k++){ renderReqFichaRows(k); renderEntregableRows(k); renderLugarRows(k); togglePago(k); }
   syncAllNombreTramites();
 }
 
@@ -1048,7 +1310,11 @@ function fichaHTML(i, nombre, show){
         + '<div class="f"><label>Nombre corto / abreviatura</label><input type="text" id="nombre_corto_'+i+'" placeholder="Nombre común"></div>'
       + '</div>'
       + '<div class="g3">'
-        + '<div class="f"><label>Modalidad actual</label><select id="modalidad_'+i+'"><option value="">— Seleccione —</option><option>Presencial</option><option>En línea (parcial)</option><option>En línea (total)</option><option>Mixto</option></select></div>'
+        // Catálogo cerrado, igual que la ficha pública. Antes ofrecía «Mixto» y «En línea
+        // (parcial)»: «Mixto» no contiene ni «linea» ni «presencial», así que al normalizar
+        // se convertía en nada y el trámite se quedaba sin modalidad sin avisar.
+        + '<div class="f"><label>Modalidad actual</label><select id="modalidad_'+i+'"><option value="">— Seleccione —</option><option value="Presencial">Presencial</option><option value="Virtual">En línea</option><option value="Hibrido">En línea y presencial</option></select></div>'
+        + '<div class="f"><label>Detalle de la modalidad</label><input type="text" id="modalidad_detalle_'+i+'" placeholder="Ej: en línea total, solo la solicitud"></div>'
         + '<div class="f"><label>Plazo máximo legal</label><input type="text" id="plazo_legal_'+i+'" placeholder="Ej: 15 días hábiles"></div>'
       + '</div>'
       + '<div class="g2">'
@@ -1098,6 +1364,43 @@ function fichaHTML(i, nombre, show){
       + '<table class="dtbl"><thead><tr><th>#</th><th>Requisito / descripción</th><th>Observación</th><th style="width:36px"></th></tr></thead>'
         + '<tbody id="req-ficha-tbody-'+i+'"></tbody></table>'
       + '<button class="btn-add" onclick="addReqFicha('+i+')">+ Agregar requisito</button>'
+    + '</div>'
+    // ── Ficha pública (Fase 8) ────────────────────────────────────────────
+    // Todo lo de esta tarjeta viaja a la ficha SIGER que ve el ciudadano. Está acá y no en la
+    // ficha porque D-17 invierte quién manda: una vez enlazada, la ficha queda de solo lectura.
+    + '<div class="card"><div class="ct">Ficha pública (lo que verá el ciudadano)</div>'
+      + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Estos datos son los que se publican en el portal ciudadano. Un campo vacío deja la ficha incompleta y el portal puede ocultarla.</p>'
+      // El botón solo aparece si el expediente está guardado y quien mira puede escribir en
+      // SIGER. Ofrecerlo cuando el servidor lo va a rechazar solo produce un error inexplicable.
+      + (puedePasarASiger()
+          ? '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:.9rem">'
+            + '<button type="button" class="btnp" onclick="abrirModalPase('+i+')">Pasar a SIGER →</button>'
+            + '<span class="res-meta">Crea o actualiza la ficha del inventario. No la publica.</span>'
+          + '</div>'
+          : '')
+      + '<div class="g3">'
+        + '<div class="f"><label>Categoría</label><select id="categoria_id_'+i+'">'+categoriaOptions()+'</select></div>'
+        + '<div class="f"><label>¿Es gratuito?</label><select id="es_gratuito_'+i+'"><option value="">— No especificado —</option><option value="true">Sí, es gratuito</option><option value="false">No, tiene costo</option></select></div>'
+        + '<div class="f"><label>Temporalidad</label><input type="text" id="temporalidad_'+i+'" placeholder="Ej: Permanente, estacional"></div>'
+      + '</div>'
+      + '<div class="g3">'
+        + '<div class="f"><label>Vigencia del documento</label><input type="text" id="vigencia_documento_'+i+'" placeholder="Ej: 2 años"></div>'
+        + '<div class="f"><label>¿Se puede hacer desde SOL?</label><select id="esta_en_sol_'+i+'"><option value="false">No</option><option value="true">Sí</option></select></div>'
+        + '<div class="f"><label>Tramo del enlace en SOL</label><input type="text" id="sol_tramo_'+i+'" placeholder="tramo-final"></div>'
+      + '</div>'
+      + '<div class="f"><label>Observaciones DIGER</label><textarea id="observaciones_diger_'+i+'" rows="2" placeholder="Notas internas. No las ve el ciudadano."></textarea></div>'
+    + '</div>'
+    + '<div class="card"><div class="ct">Entregables del trámite</div>'
+      + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Qué recibe el ciudadano cuando el trámite termina.</p>'
+      + '<table class="dtbl"><thead><tr><th>#</th><th>Entregable</th><th>Formato</th><th>Presentación</th><th style="width:36px"></th></tr></thead>'
+        + '<tbody id="entregable-tbody-'+i+'"></tbody></table>'
+      + '<button class="btn-add" onclick="addEntregable('+i+')">+ Agregar entregable</button>'
+    + '</div>'
+    + '<div class="card"><div class="ct">Lugares de atención</div>'
+      + '<p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">Dónde se atiende el trámite. Si es solo en línea, puede quedar vacío.</p>'
+      + '<table class="dtbl"><thead><tr><th>#</th><th>Lugar</th><th>Ciudad</th><th>Dirección</th><th>Teléfonos</th><th style="width:36px"></th></tr></thead>'
+        + '<tbody id="lugar-tbody-'+i+'"></tbody></table>'
+      + '<button class="btn-add" onclick="addLugar('+i+')">+ Agregar lugar</button>'
     + '</div>'
     + '<div class="card"><div class="ct">Descripción y contacto</div>'
       + '<div class="f"><label>Descripción del servicio</label><textarea id="descripcion_'+i+'" rows="3" placeholder="¿Qué hace este trámite? ¿A quién sirve?"></textarea></div>'
@@ -1645,13 +1948,15 @@ function recolectar(){
   var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero','accion',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
-    'horario','telefono','email_tramite','sitio_web'];
+    'horario','telefono','email_tramite','sitio_web',
+    'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
   for(var t=0;t<tramiteCount;t++){
     var ft = {};
     fichaFields.forEach(function(f){ ft[f] = gv(f+'_'+t); });
     var alc = document.querySelector('input[name="alcance_'+t+'"]:checked');
     ft.alcance = alc ? alc.value : '';
     if(_sigerIds[t]) ft.tramite_siger_id = String(_sigerIds[t]);
+    if(_claves[t]) ft.clave_estable = String(_claves[t]);
     ft.fecha_creacion = gv('fecha_creacion_'+t) || '';
     ft.estado_tramite = gv('estado_tramite_'+t) || '';
     d.tramites.push(ft);
@@ -1659,6 +1964,8 @@ function recolectar(){
 
   // Requisitos por trámite + acciones del modelo
   d.reqs_tram = reqsTram.slice(0, tramiteCount);
+  d.entregables_tram = entregablesTram.slice(0, tramiteCount);
+  d.lugares_tram = lugaresTram.slice(0, tramiteCount);
   d.acciones_tram = accionesTram.slice(0, tramiteCount);
 
   // Infraestructura SOL (una vez por expediente)
@@ -1922,6 +2229,8 @@ function poblarFormulario(d){
 
   // Requisitos/acciones por trámite (antes de render para que aparezcan)
   reqsTram = d.reqs_tram ? d.reqs_tram.map(function(r){ return r||[]; }) : [[]];
+  entregablesTram = d.entregables_tram ? d.entregables_tram.map(function(x){ return x||[]; }) : [[]];
+  lugaresTram = d.lugares_tram ? d.lugares_tram.map(function(x){ return x||[]; }) : [[]];
   accionesTram = d.acciones_tram ? d.acciones_tram.map(function(a){ return a||[]; }) : [[]];
 
   // Tramites count + nombres + áreas
@@ -1932,6 +2241,8 @@ function poblarFormulario(d){
   if(d.tramite_nombres) d.tramite_nombres.forEach(function(nm,i){ sv('tnam-'+i, nm||''); });
   if(d.tramite_areas) d.tramite_areas.forEach(function(ar,i){ sv('area_resp-'+i, ar||''); });
   while(reqsTram.length < tramiteCount) reqsTram.push([]);
+  while(entregablesTram.length < tramiteCount) entregablesTram.push([]);
+  while(lugaresTram.length < tramiteCount) lugaresTram.push([]);
   while(accionesTram.length < tramiteCount) accionesTram.push([]);
   actualizarTabsTramite();
   renderFichasPanels();
@@ -1940,8 +2251,9 @@ function poblarFormulario(d){
   var fichaFields = ['nombre_tramite','nombre_corto','modalidad','plazo_legal','tercero','accion',
     'tiempo_real','metodo_pago','pago_banco','pago_cuenta','tgr_inst','tgr_rubro','tgr_monto',
     'doc_entregado','objetivo','alcance_obs','descripcion','dirigido',
-    'horario','telefono','email_tramite','sitio_web'];
-  _sigerIds = [];
+    'horario','telefono','email_tramite','sitio_web',
+    'modalidad_detalle','categoria_id','es_gratuito','vigencia_documento','temporalidad','observaciones_diger','esta_en_sol','sol_tramo'];
+  _sigerIds = []; _claves = [];
   if(d.tramites) d.tramites.forEach(function(ft,t){
     fichaFields.forEach(function(f){
       if(f === 'nombre_tramite') return; // siempre derivado de tnam en apertura
@@ -1951,10 +2263,12 @@ function poblarFormulario(d){
     if(ft.alcance){ var al=document.querySelector('input[name="alcance_'+t+'"][value="'+ft.alcance+'"]'); if(al) al.checked=true; }
     togglePago(t);
     _sigerIds.push(ft.tramite_siger_id ? parseInt(ft.tramite_siger_id) : null);
+    _claves.push(ft.clave_estable || null);
     if(ft.fecha_creacion) sv('fecha_creacion_'+t, ft.fecha_creacion);
     if(ft.estado_tramite) sv('estado_tramite_'+t, ft.estado_tramite);
   });
   while(_sigerIds.length < tramiteCount) _sigerIds.push(null);
+  while(_claves.length < tramiteCount) _claves.push(null);
   actualizarBadgesSiger();
   syncAllNombreTramites();
 
@@ -2113,6 +2427,7 @@ function nuevoExp(){
   currentIdx=null; tramiteCount=1; activeTram=0;
   flujosActual=[[]]; flujosPropuesto=[[]];
   reqsTram=[[]]; accionesTram=[[]];
+  entregablesTram=[[]]; lugaresTram=[[]];
   document.querySelectorAll('input:not([type=radio]):not([type=checkbox]),select,textarea').forEach(function(el){ if(el.id&&!el.readOnly) el.value=''; });
   document.querySelectorAll('input[type=checkbox]').forEach(function(el){ el.checked=false; });
   document.querySelectorAll('input[type=radio]').forEach(function(el){ el.checked=false; });

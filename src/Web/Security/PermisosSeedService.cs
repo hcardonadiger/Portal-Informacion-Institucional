@@ -31,7 +31,14 @@ public sealed class PermisosSeedService(
     /// </summary>
     private static readonly HashSet<string> AbiertosAntes =
         new(StringComparer.OrdinalIgnoreCase)
-        { "Siger", "PlanTrabajo", "Informes", "Recursos", "Chat", "Tramites" };
+        { "Siger", "HondurasSimple", "PlanTrabajo", "Informes", "Recursos", "Chat", "Tramites" };
+
+    // "HondurasSimple" entra en la lista el 3 de septiembre de 2026 sin ampliar nada: hasta
+    // ese dia sus pantallas colgaban de "Siger", que ya estaba abierto, asi que en una base
+    // nueva todos los roles las alcanzaban igual. Omitirlo aqui no habria sido "mas seguro":
+    // habria cambiado a escondidas lo que recibe una instalacion nueva. Lo que si cambia es
+    // que ahora el administrador puede quitarlo, cosa que antes no podia sin cerrar tambien
+    // el inventario.
 
     public async Task StartAsync(CancellationToken ct)
     {
