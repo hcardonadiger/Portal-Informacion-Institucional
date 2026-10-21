@@ -15,11 +15,14 @@ public sealed record CompromisoListItemDto(
     string?          NotaSeguimiento,
     bool             Vencido,
     DateTime?        ActualizadoEl,
-    string?          ActualizadoPor);
+    string?          ActualizadoPor,
+    int              NumComentarios = 0,
+    int              NumArchivos = 0,
+    bool             ProximoAVencer = false);
 
 public sealed record CompromisosResumen(
     int Total, int Pendientes, int EnProgreso, int Cumplidos,
-    int Reprogramados, int Cancelados, int Vencidos);
+    int Reprogramados, int Cancelados, int Vencidos, int EnRevision = 0);
 
 public sealed record CompromisosResult(
     PagedResult<CompromisoListItemDto> Pagina,
@@ -38,49 +41,48 @@ public sealed record GetCompromisosQuery(
 public sealed class GetCompromisosQueryHandler(IApplicationDbContext ctx)
     : IRequestHandler<GetCompromisosQuery, CompromisosResult>
 {
-    public async Task<CompromisosResult> Handle(GetCompromisosQuery query, CancellationToken ct)
+    public async Task<CompromisosResult> Handle(GetCompromisosQuery request, CancellationToken ct)
     {
-        var (q, page, size) = Paginacion.Normalizar(query.Q, query.Page, query.Size);
+        var (q, page, size) = Paginacion.Normalizar(request.Q, request.Page, request.Size);
         var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var tresDias = hoy.AddDays(3);
 
-        // El join contra Reuniones (filtradas por alcance) restringe los acuerdos a reuniones visibles.
-        var alcance =
-            from a in ctx.Acuerdos.AsNoTracking()
-            join r in ctx.Reuniones on a.ReunionId equals r.Id
-            select new { a, r };
+        var baseQuery = ctx.Acuerdos
+            .Join(ctx.Reuniones,
+                  a => a.ReunionId, r => r.Id,
+                  (a, r) => new { a, r });
 
-        // ── Resumen (sobre el alcance completo, independiente de los filtros activos) ──
-        var soloAcuerdos = alcance.Select(x => x.a);
         var resumen = new CompromisosResumen(
-            Total:         await soloAcuerdos.CountAsync(ct),
-            Pendientes:    await soloAcuerdos.CountAsync(a => a.Estado == EstadoCompromiso.Pendiente, ct),
-            EnProgreso:    await soloAcuerdos.CountAsync(a => a.Estado == EstadoCompromiso.EnProgreso, ct),
-            Cumplidos:     await soloAcuerdos.CountAsync(a => a.Estado == EstadoCompromiso.Cumplido, ct),
-            Reprogramados: await soloAcuerdos.CountAsync(a => a.Estado == EstadoCompromiso.Reprogramado, ct),
-            Cancelados:    await soloAcuerdos.CountAsync(a => a.Estado == EstadoCompromiso.Cancelado, ct),
-            Vencidos:      await soloAcuerdos.CountAsync(a =>
-                a.Plazo != null && a.Plazo < hoy &&
-                (a.Estado == EstadoCompromiso.Pendiente || a.Estado == EstadoCompromiso.EnProgreso || a.Estado == EstadoCompromiso.Reprogramado), ct));
+            Total:         await baseQuery.CountAsync(ct),
+            Pendientes:    await baseQuery.CountAsync(x => x.a.Estado == EstadoCompromiso.Pendiente, ct),
+            EnProgreso:    await baseQuery.CountAsync(x => x.a.Estado == EstadoCompromiso.EnProgreso, ct),
+            Cumplidos:     await baseQuery.CountAsync(x => x.a.Estado == EstadoCompromiso.Cumplido, ct),
+            Reprogramados: await baseQuery.CountAsync(x => x.a.Estado == EstadoCompromiso.Reprogramado, ct),
+            Cancelados:    await baseQuery.CountAsync(x => x.a.Estado == EstadoCompromiso.Cancelado, ct),
+            Vencidos:      await baseQuery.CountAsync(x => x.a.Plazo != null && x.a.Plazo < hoy &&
+                (x.a.Estado == EstadoCompromiso.Pendiente || x.a.Estado == EstadoCompromiso.EnProgreso || x.a.Estado == EstadoCompromiso.Reprogramado), ct),
+            EnRevision:    await baseQuery.CountAsync(x => x.a.Estado == EstadoCompromiso.EnRevision, ct));
 
-        var responsables = await soloAcuerdos
-            .Where(a => a.Responsable != null && a.Responsable != "")
-            .Select(a => a.Responsable!).Distinct().OrderBy(x => x).Take(200).ToListAsync(ct);
+        var responsables = await baseQuery
+            .Where(x => x.a.Responsable != null && x.a.Responsable != "")
+            .Select(x => x.a.Responsable!)
+            .Distinct().OrderBy(x => x).ToListAsync(ct);
 
-        // ── Filtros ──
-        var filtrada = alcance;
-        if (query.Estado is { } est)
-            filtrada = filtrada.Where(x => x.a.Estado == est);
-        if (query.InstitucionId is { } inst)
-            filtrada = filtrada.Where(x => x.r.InstitucionId == inst);
-        if (!string.IsNullOrWhiteSpace(query.Responsable))
-        {
-            var resp = query.Responsable.Trim();
-            filtrada = filtrada.Where(x => x.a.Responsable != null && x.a.Responsable.Contains(resp));
-        }
-        if (query.SoloVencidos)
-            filtrada = filtrada.Where(x =>
-                x.a.Plazo != null && x.a.Plazo < hoy &&
+        var filtrada = baseQuery;
+
+        if (request.Estado.HasValue)
+            filtrada = filtrada.Where(x => x.a.Estado == request.Estado.Value);
+
+        if (!string.IsNullOrWhiteSpace(request.InstitucionId))
+            filtrada = filtrada.Where(x => x.r.InstitucionId == request.InstitucionId);
+
+        if (!string.IsNullOrWhiteSpace(request.Responsable))
+            filtrada = filtrada.Where(x => x.a.Responsable == request.Responsable);
+
+        if (request.SoloVencidos)
+            filtrada = filtrada.Where(x => x.a.Plazo != null && x.a.Plazo < hoy &&
                 (x.a.Estado == EstadoCompromiso.Pendiente || x.a.Estado == EstadoCompromiso.EnProgreso || x.a.Estado == EstadoCompromiso.Reprogramado));
+
         if (q is not null)
             filtrada = filtrada.Where(x =>
                 x.a.Compromiso.Contains(q) ||
@@ -90,7 +92,6 @@ public sealed class GetCompromisosQueryHandler(IApplicationDbContext ctx)
         var total = await filtrada.CountAsync(ct);
 
         var items = await filtrada
-            // Abiertos primero; dentro de ellos, vencidos arriba y por plazo más próximo.
             .OrderBy(x => x.a.Estado == EstadoCompromiso.Cumplido || x.a.Estado == EstadoCompromiso.Cancelado)
             .ThenByDescending(x => x.a.Plazo != null && x.a.Plazo < hoy)
             .ThenBy(x => x.a.Plazo == null)
@@ -102,7 +103,11 @@ public sealed class GetCompromisosQueryHandler(IApplicationDbContext ctx)
                 x.a.FechaCumplimiento, x.a.NotaSeguimiento,
                 x.a.Plazo != null && x.a.Plazo < hoy &&
                     (x.a.Estado == EstadoCompromiso.Pendiente || x.a.Estado == EstadoCompromiso.EnProgreso || x.a.Estado == EstadoCompromiso.Reprogramado),
-                x.a.SeguimientoActualizadoEl, x.a.SeguimientoActualizadoPor))
+                x.a.SeguimientoActualizadoEl, x.a.SeguimientoActualizadoPor,
+                x.a.Comentarios.Count(),
+                x.a.Comentarios.Count(c => c.ArchivoUrl != null && c.ArchivoUrl != ""),
+                x.a.Plazo != null && x.a.Plazo >= hoy && x.a.Plazo <= tresDias &&
+                    (x.a.Estado == EstadoCompromiso.Pendiente || x.a.Estado == EstadoCompromiso.EnProgreso || x.a.Estado == EstadoCompromiso.Reprogramado)))
             .ToListAsync(ct);
 
         var pagina = new PagedResult<CompromisoListItemDto>(items, total, page, size);

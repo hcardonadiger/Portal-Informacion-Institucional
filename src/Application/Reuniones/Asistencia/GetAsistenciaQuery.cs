@@ -14,11 +14,13 @@ public sealed class GetAsistenciaQueryHandler(IReunionRepository repo, IInstituc
             ?? throw new NotFoundException(nameof(Reunion), q.ReunionId);
 
         var asistentes = r.Asistentes
-            .OrderByDescending(a => a.RegistradoEl ?? DateTime.MinValue)
+            .OrderBy(a => a.EsPreregistro && !a.Confirmado.HasValue ? 0 : 1) // pendientes primero
+            .ThenByDescending(a => a.RegistradoEl ?? DateTime.MinValue)
             .ThenBy(a => a.Nombre)
             .Select(a => new AsistenteVm(
                 a.Id, a.Nombre, a.Cargo, a.Institucion, a.Departamento,
-                a.Correo, a.Telefono, a.AutoRegistro, a.RegistradoEl))
+                a.Correo, a.Telefono, a.AutoRegistro, a.RegistradoEl,
+                a.EsPreregistro, a.Confirmado))
             .ToList();
 
         var institucionIds = r.InstitucionesParticipantes.Select(x => x.InstitucionId).ToList();

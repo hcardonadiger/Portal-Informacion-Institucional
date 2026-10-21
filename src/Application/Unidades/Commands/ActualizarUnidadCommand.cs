@@ -2,7 +2,7 @@ using FluentValidation;
 
 namespace Diger.TramitesEstado.Application.Unidades.Commands;
 
-public sealed record ActualizarUnidadCommand(string Id, string Nombre, string? Descripcion, string? NombreCorto, string? LogoUrl)
+public sealed record ActualizarUnidadCommand(string Id, string Nombre, bool Activo, string? Descripcion, string? NombreCorto, string? LogoUrl)
     : IRequest<Unit>;
 
 public sealed class ActualizarUnidadCommandHandler(IUnidadRepository repo, IUnitOfWork uow)
@@ -18,6 +18,9 @@ public sealed class ActualizarUnidadCommandHandler(IUnidadRepository repo, IUnit
 
         unidad.Renombrar(cmd.Nombre);
         unidad.ActualizarDetalles(cmd.Descripcion, cmd.NombreCorto, cmd.LogoUrl);
+        
+        if (cmd.Activo) unidad.Activar();
+        else unidad.Desactivar();
         
         repo.Update(unidad);
         await uow.SaveChangesAsync(ct);

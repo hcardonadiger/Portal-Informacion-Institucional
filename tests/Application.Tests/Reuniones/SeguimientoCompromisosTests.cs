@@ -19,7 +19,7 @@ public class SeguimientoCompromisosTests : IDisposable
         var opts = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _ctx = new AppDbContext(opts, new FakeCurrentUser());
+        _ctx = new AppDbContext(opts, new FakeCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
     }
 
     private async Task<AcuerdoReunion> SembrarAcuerdoAsync(DateOnly? plazo, EstadoCompromiso estado)

@@ -30,3 +30,14 @@ Thumbs.db
 
 # Archivos subidos por usuarios (no versionar)
 src/Web/wwwroot/uploads/
+src/Web/App_Data/uploads/
+
+# Configuracion local de Claude Code: contiene credenciales, no versionar
+.claude/settings.local.json
+# Respaldos y scripts SQL generados localmente (pueden pesar decenas de MB)
+.backups/
+
+# Archivos de bloqueo que Office deja mientras un documento está abierto (~$nombre.xlsx).
+# Viven junto al archivo real —database/plantillas/ tiene la plantilla de proyectos— y
+# aparecen como sin seguimiento cada vez que alguien la abre para revisarla.
+~$*

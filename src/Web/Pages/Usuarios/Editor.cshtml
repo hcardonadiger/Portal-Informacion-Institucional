@@ -35,7 +35,7 @@
                 <select asp-for="Rol">
                     @foreach (var r in Model.Roles)
                     {
-                        <option value="@r">@r</option>
+                        <option value="@r.Codigo">@r.Nombre</option>
                     }
                 </select>
             </div>
@@ -135,7 +135,7 @@
                     const tdBtn = document.createElement('td');
                     tdBtn.style.padding = '6px 4px';
                     tdBtn.style.textAlign = 'right';
-                    tdBtn.innerHTML = `<button type="button" style="background:none;border:none;color:#dc2626;cursor:pointer;padding:4px" onclick="removeAsignacion(${index})">✕</button>`;
+                    tdBtn.innerHTML = `<button type="button" style="background:none;border:none;color:#dc2626;cursor:pointer;padding:4px" aria-label="Quitar asignación" onclick="removeAsignacion(${index})">✕</button>`;
 
                     tr.appendChild(tdInst);
                     tr.appendChild(tdArea);

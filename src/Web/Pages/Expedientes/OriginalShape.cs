@@ -9,8 +9,15 @@ public sealed class OriginalExpedienteDto
 {
     [JsonPropertyName("_ts")]                public string? Ts { get; set; } // marca de tiempo origen (importación)
     [JsonPropertyName("inst")]               public string? Inst { get; set; }
+    // Bandera de acción del editor (opción "Otra"), no es dato del expediente:
+    // pide dar de alta la institución en el catálogo al guardar. No se mapea a ExpedienteInputDto.
+    [JsonPropertyName("inst_registrar")]     public bool InstRegistrar { get; set; }
     [JsonPropertyName("fecha_apertura")]     public string? FechaApertura { get; set; }
     [JsonPropertyName("analista")]           public string? Analista { get; set; }
+    [JsonPropertyName("analista_id")]        public Guid? AnalistaId { get; set; }
+    [JsonPropertyName("contraparte_usuario_id")]     public Guid? ContraparteUsuarioId { get; set; }
+    [JsonPropertyName("contraparte_usuario_nombre")] public string? ContraparteUsuarioNombre { get; set; }
+    [JsonPropertyName("fecha_limite_entrega")]       public string? FechaLimiteEntrega { get; set; }
     [JsonPropertyName("dir_sede")]           public string? DirSede { get; set; }
     [JsonPropertyName("contacto_nombre")]    public string? ContactoNombre { get; set; }
     [JsonPropertyName("contacto_cargo")]     public string? ContactoCargo { get; set; }
@@ -47,7 +54,9 @@ public sealed class OriginalExpedienteDto
     [JsonPropertyName("obs_levantamiento")]  public string? ObsLevantamiento { get; set; }
     [JsonPropertyName("obs_expediente")]     public string? ObsExpediente { get; set; }
     [JsonPropertyName("validado_diger")]     public string? ValidadoDiger { get; set; }
+    [JsonPropertyName("validado_diger_usuario_id")] public Guid? ValidadoDigerUsuarioId { get; set; }
     [JsonPropertyName("validado_inst")]      public string? ValidadoInst { get; set; }
+    [JsonPropertyName("validado_inst_usuario_id")]  public Guid? ValidadoInstUsuarioId { get; set; }
     [JsonPropertyName("fecha_validacion")]   public string? FechaValidacion { get; set; }
     [JsonPropertyName("num_acta")]           public string? NumActa { get; set; }
 

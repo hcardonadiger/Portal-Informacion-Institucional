@@ -2,7 +2,9 @@ namespace Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 
 public sealed record AsignacionAuthDto(string InstitucionId, string? AreaId, string? UnidadId, string Rol);
 
-public sealed record UsuarioAuthDto(Guid Id, string Nombre, string Correo, string RolGlobal, IReadOnlyList<AsignacionAuthDto> Asignaciones);
+/// <summary><paramref name="RolGlobal"/> es null cuando el usuario no tiene ninguna asignación:
+/// no tiene rol, y eso NO se rellena con uno por defecto — ver la nota del handler.</summary>
+public sealed record UsuarioAuthDto(Guid Id, string Nombre, string Correo, string? RolGlobal, IReadOnlyList<AsignacionAuthDto> Asignaciones);
 
 public sealed record AutenticarUsuarioQuery(string Correo, string Password)
     : IRequest<UsuarioAuthDto?>;
@@ -34,7 +36,15 @@ public sealed class AutenticarUsuarioQueryHandler(
             .Select(a => new AsignacionAuthDto(a.InstitucionId, a.AreaId, a.UnidadId, a.Rol))
             .ToList();
 
-        var rolGlobal = asignaciones.FirstOrDefault()?.Rol ?? "Empleado";
+        // Sin asignaciones NO hay rol, y no se inventa uno.
+        //
+        // Acá había un `?? "Empleado"` que le daba a cualquier cuenta sin configurar el rol
+        // Empleado completo (32 claves en la matriz actual, incluidas Expedientes.Editar y
+        // Contactos.Eliminar). Anulaba una propiedad que el sistema ya tiene: CurrentUserService
+        // falla cerrado cuando el rol no se resuelve —alcance mínimo y sin capacidades— y
+        // PermissionAuthorizationHandler no aprueba nada sin rol. Dejando esto en null, esa
+        // red de seguridad hace su trabajo en vez de quedar tapada.
+        var rolGlobal = asignaciones.FirstOrDefault()?.Rol;
 
         return new UsuarioAuthDto(usuario.Id, usuario.Nombre, usuario.Correo, rolGlobal, asignaciones);
     }

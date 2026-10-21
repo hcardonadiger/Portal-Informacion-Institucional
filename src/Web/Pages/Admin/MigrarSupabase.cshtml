@@ -1,0 +1,152 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Admin.MigrarSupabaseModel
+@{
+    ViewData["Title"] = "Migrar desde Supabase";
+}
+
+<div class="container" style="max-width:1000px">
+    <div class="hist-header">
+        <div>
+            <h2>Migrar información desde Supabase</h2>
+            <p>Revisa las tablas del portal demo y trae lo que aún falta.</p>
+        </div>
+        <a class="btns" asp-page="/Reuniones/Index">← Volver</a>
+    </div>
+
+    @if (!Model.EsDesarrollo)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">
+            La migración solo se ejecuta en entorno de <strong>Desarrollo</strong>. Aquí puedes revisar, pero no traer datos.
+        </div>
+    }
+    @if (Model.Error is not null)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+    @if (Model.Mensaje is not null)
+    {
+        <div class="alert-success" style="margin-bottom:1rem">@Model.Mensaje</div>
+    }
+
+    <div class="dash-card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:.8rem">
+            <h3 style="margin:0">Estado del origen</h3>
+            <form method="post" style="display:flex;gap:8px">
+                <button type="submit" asp-page-handler="Revisar" class="btns">↻ Revisar de nuevo</button>
+                @if (Model.EsDesarrollo && Model.Scan is { TotalPendiente: > 0 })
+                {
+                    <button type="submit" asp-page-handler="Migrar" class="btnp"
+                            onclick="return confirm('Se traerán @(Model.Scan!.TotalPendiente) registro(s) pendientes. ¿Continuar?')">
+                        ⬇ Migrar pendientes (@Model.Scan!.TotalPendiente)
+                    </button>
+                }
+            </form>
+        </div>
+
+        @if (Model.Scan is null)
+        {
+            <p style="font-size:13px;color:#6b7fa3">No se pudo leer el origen.</p>
+        }
+        else
+        {
+            <table class="seg-table">
+                <thead>
+                    <tr>
+                        <th>Fuente</th>
+                        <th style="width:90px;text-align:right">En origen</th>
+                        <th style="width:100px;text-align:right">Ya migrados</th>
+                        <th style="width:95px;text-align:right">Pendientes</th>
+                        <th style="width:230px">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Scan.Fuentes)
+                    {
+                        <tr>
+                            <td>
+                                <div style="font-weight:600;color:#0a2d6e">@f.Fuente</div>
+                                <div style="font-size:11.5px;color:#8a96ad">@f.Descripcion</div>
+                            </td>
+                            <td style="text-align:right;font-weight:700">@f.EnOrigen</td>
+                            <td style="text-align:right">@(f.YaMigrados?.ToString() ?? "—")</td>
+                            <td style="text-align:right;font-weight:700;color:@((f.Pendientes ?? 0) > 0 ? "#9a6b08" : "#1d7a4c")">
+                                @(f.Pendientes?.ToString() ?? "—")
+                            </td>
+                            <td>
+                                @if (!f.Soportado)
+                                {
+                                    <span class="mig-badge sin">Sin importador</span>
+                                }
+                                else if ((f.Pendientes ?? 0) > 0)
+                                {
+                                    <span class="mig-badge pend">Pendiente</span>
+                                }
+                                else
+                                {
+                                    <span class="mig-badge ok">Al día</span>
+                                }
+                                <div style="font-size:11.5px;color:#8a96ad;margin-top:3px">@f.Nota</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @if (Model.ResReuniones is not null || Model.ResExpedientes is not null || Model.ResCatalogos is not null)
+    {
+        <div class="dash-card" style="margin-top:16px">
+            <h3>Resultado de la última migración</h3>
+            @if (Model.ResCatalogos is { } rc)
+            {
+                <p style="font-size:13px;margin:.3rem 0">
+                    <strong>Instituciones:</strong> @rc.InstitucionesCreadas creadas · @rc.InstitucionesOmitidas omitidas
+                </p>
+                <p style="font-size:13px;margin:.3rem 0">
+                    <strong>Levantamientos:</strong> @rc.LevantamientosCreados creados · @rc.LevantamientosOmitidos omitidos
+                </p>
+                <p style="font-size:13px;margin:.3rem 0">
+                    <strong>Eventos de calendario:</strong> @rc.EventosCreados creados · @rc.EventosOmitidos omitidos
+                </p>
+                @if (rc.Errores.Any())
+                {
+                    <ul style="font-size:12.5px;color:#a32d2d;margin:.2rem 0 .6rem 1.1rem">
+                        @foreach (var e in rc.Errores) { <li>@e</li> }
+                    </ul>
+                }
+            }
+            @if (Model.ResReuniones is { } rr)
+            {
+                <p style="font-size:13px;margin:.3rem 0">
+                    <strong>Reuniones:</strong> @rr.Creadas creadas · @rr.Omitidas omitidas · @rr.Total en origen
+                </p>
+                @if (rr.Errores.Any())
+                {
+                    <ul style="font-size:12.5px;color:#a32d2d;margin:.2rem 0 .6rem 1.1rem">
+                        @foreach (var e in rr.Errores) { <li>@e</li> }
+                    </ul>
+                }
+            }
+            @if (Model.ResExpedientes is { } re)
+            {
+                <p style="font-size:13px;margin:.3rem 0">
+                    <strong>Expedientes:</strong> @re.Creados creados · @re.Omitidos omitidos · @re.Total en origen
+                </p>
+                @if (re.Errores.Any())
+                {
+                    <ul style="font-size:12.5px;color:#a32d2d;margin:.2rem 0 .6rem 1.1rem">
+                        @foreach (var e in re.Errores) { <li>@e</li> }
+                    </ul>
+                }
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .mig-badge { display:inline-block;border-radius:20px;padding:2px 10px;font-size:11.5px;font-weight:700 }
+    .mig-badge.ok   { background:#eafaf0;color:#1d7a4c;border:1px solid #b7e6cb }
+    .mig-badge.pend { background:#fdf6e3;color:#9a6b08;border:1px solid #f5d98a }
+    .mig-badge.sin  { background:#f1f3f7;color:#6b7fa3;border:1px solid #dde3ec }
+</style>

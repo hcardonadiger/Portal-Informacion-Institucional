@@ -11,6 +11,7 @@ using Diger.TramitesEstado.Application.Usuarios.Queries.AutenticarUsuario;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [Authorize]
+[PermisoNoRequerido("Autoservicio: cambiar entre los contextos ya asignados al propio usuario.")]
 public sealed class CambiarContextoModel : PageModel
 {
     public async Task<IActionResult> OnPostAsync(int indiceSeleccionado, string? returnUrl)

@@ -1,0 +1,34 @@
+@model Diger.TramitesEstado.Web.Models.PaginadorVm
+@*
+    Paginador de cliente. Se coloca inmediatamente después de la lista que gobierna, y esa lista
+    lleva data-pg con el mismo Id.
+
+    Nace con hidden: lo destapa diger.js cuando hay más filas que el tamaño de arranque. Al revés
+    —dibujarlo y esconderlo después— parpadea en cada carga sobre las listas cortas, que son la
+    mayoría. Sin JavaScript no aparece ningún control y se ven todas las filas, que es la
+    degradación correcta: nunca deja contenido escondido detrás de un botón muerto.
+*@
+<div class="pager pager-cli"
+     data-pg-for="@Model.Id"
+     data-pg-defecto="@Model.PorDefecto"
+     hidden>
+
+    <span class="pager-info" data-pg-info></span>
+
+    <div class="pager-size">
+        <label for="pg-sz-@Model.Id">Mostrar</label>
+        @* Un select y no botones: son cinco opciones y en el celular una fila de cinco píldoras
+           empuja al paginador fuera de la pantalla. *@
+        <select id="pg-sz-@Model.Id" data-pg-size>
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="0">Todos</option>
+        </select>
+    </div>
+
+    @* Los botones de página los arma el JS: cuántos hay depende del total, que solo se sabe
+       contando las filas ya renderizadas. *@
+    <div class="pager-btns" data-pg-nav></div>
+</div>

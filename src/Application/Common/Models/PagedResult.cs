@@ -15,12 +15,15 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page,
 /// <summary>Normaliza parámetros de paginación/búsqueda recibidos de la UI.</summary>
 public static class Paginacion
 {
-    public const int TamanoDefecto = 20;
+    /// <summary>Configurable vía appsettings ("Paginacion:TamanoDefecto"/"TamanoMaximo"),
+    /// asignado en Program.cs al arrancar.</summary>
+    public static int TamanoDefecto { get; set; } = 20;
+    public static int TamanoMaximo { get; set; } = 100;
 
     public static (string? q, int page, int size) Normalizar(string? q, int? page, int? size)
     {
         var p = page is null or < 1 ? 1 : page.Value;
-        var s = size is null or < 1 ? TamanoDefecto : Math.Min(size.Value, 100);
+        var s = size is null or < 1 ? TamanoDefecto : Math.Min(size.Value, TamanoMaximo);
         var t = string.IsNullOrWhiteSpace(q) ? null : q.Trim();
         return (t, p, s);
     }

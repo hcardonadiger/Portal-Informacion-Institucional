@@ -2,14 +2,38 @@
 @{
     ViewData["Title"] = "Acceso denegado";
     Layout = "_Layout";
+
+    // Los deja PermissionPageFilter justo antes de devolver Forbid. Puede no haberlos: a esta
+    // página también se llega por un [Authorize] de clase, que no sabe de claves de permiso.
+    var clave  = TempData["PermisoRequerido"] as string;
+    var nombre = TempData["PermisoNombre"] as string;
 }
 
-<div class="container" style="max-width:480px">
-    <div class="card" style="text-align:center;margin-top:2rem">
-        <h2 style="color:#0a2d6e;font-size:20px;margin:0 0 .5rem">Acceso denegado</h2>
-        <p style="color:#6b7fa3;font-size:14px;margin-bottom:1.5rem">
-            Tu rol no tiene permisos para acceder a esta sección.
-        </p>
+<div class="container" style="max-width:560px">
+    <div class="card" style="margin-top:2rem">
+        <h2 style="color:var(--diger-blue-title);font-size:20px;margin:0 0 .5rem">Acceso denegado</h2>
+
+        @if (nombre is not null)
+        {
+            <p style="color:var(--diger-text-secondary);font-size:14px;margin-bottom:1rem">
+                Tu rol no tiene el permiso necesario para <strong>@nombre.ToLowerInvariant()</strong>.
+            </p>
+            <div style="background:var(--diger-bg-soft);border:1px solid var(--diger-border);border-radius:var(--diger-radius-sm);padding:.7rem .9rem;margin-bottom:1.25rem">
+                <div class="hint" style="margin-bottom:2px">Permiso requerido</div>
+                <code style="font-size:13px">@clave</code>
+            </div>
+            <p class="hint" style="margin-bottom:1.5rem">
+                Si necesitás esta acción, pedile a un administrador que te la habilite en Accesos → Permisos,
+                indicándole la clave de arriba.
+            </p>
+        }
+        else
+        {
+            <p style="color:var(--diger-text-secondary);font-size:14px;margin-bottom:1.5rem">
+                Tu rol no tiene permisos para acceder a esta sección.
+            </p>
+        }
+
         <a class="btnp" asp-page="/Index">← Volver al inicio</a>
     </div>
 </div>

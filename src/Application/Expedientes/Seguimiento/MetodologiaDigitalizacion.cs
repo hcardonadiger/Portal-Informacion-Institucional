@@ -103,6 +103,7 @@ public static class MetodologiaDigitalizacion
         Etapas.SelectMany(e => e.Subs).ToDictionary(s => s.Id, s => s);
 
     public static bool SubExiste(string subId) => subId is not null && _subs.ContainsKey(subId);
+    public static string? Label(string subId) => _subs.TryGetValue(subId, out var s) ? s.Desc : null;
     public static bool EtapaExiste(string num)  => Etapas.Any(e => e.Num == num);
     public static bool EtapaEsToggle(string num) => Etapas.Any(e => e.Num == num && e.Toggle);
 

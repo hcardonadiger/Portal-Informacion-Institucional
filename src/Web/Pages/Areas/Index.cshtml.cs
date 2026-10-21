@@ -6,7 +6,8 @@ using Diger.TramitesEstado.Domain.Enums;
 
 namespace Diger.TramitesEstado.Web.Pages.Areas;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+[Permission("Areas", AccionModulo.Ver, "Ver áreas")]
+[Authorize(Policy = "Areas.Ver")]
 public class IndexModel(ISender sender) : PageModel
 {
     public IReadOnlyList<AreaListItemDto> Items { get; set; } = [];

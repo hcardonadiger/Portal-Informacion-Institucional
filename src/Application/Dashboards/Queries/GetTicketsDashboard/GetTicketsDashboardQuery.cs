@@ -31,7 +31,7 @@ public sealed class GetTicketsDashboardQueryHandler(IApplicationDbContext ctx)
 
         var total = await filt.CountAsync(ct);
         var abiertos = await filt.CountAsync(x => x.Estado == EstadoTicket.Abierto || x.Estado == EstadoTicket.EnProgreso, ct);
-        var criticos = await filt.CountAsync(x => x.Prioridad == PrioridadTicket.Critica &&
+        var criticos = await filt.CountAsync(x => x.PrioridadRef!.EsCritica &&
             (x.Estado == EstadoTicket.Abierto || x.Estado == EstadoTicket.EnProgreso), ct);
         var resueltos = await filt.CountAsync(x => x.Estado == EstadoTicket.Resuelto || x.Estado == EstadoTicket.Cerrado, ct);
         var pctResueltos = total == 0 ? 0 : (int)Math.Round(resueltos * 100.0 / total);
@@ -51,7 +51,19 @@ public sealed class GetTicketsDashboardQueryHandler(IApplicationDbContext ctx)
             x.CreatedAt.AddHours(x.TemaRef.HorasResolucion) < ahoraSla, ct);
 
         var porEstado = await GrupoAsync(filt.GroupBy(x => x.Estado), ct);
-        var porPrioridad = await GrupoAsync(filt.GroupBy(x => x.Prioridad), ct);
+        // Con el enum, GrupoAsync recorría sus miembros y las categorías vacías salían en cero.
+        // El catálogo pide lo mismo a mano: si solo se listaran las prioridades con tickets, el
+        // gráfico cambiaría de forma según el mes y no se podría comparar contra otro período.
+        var conteoPrioridad = (await filt
+                .GroupBy(x => x.PrioridadId)
+                .Select(g => new { g.Key, C = g.Count() }).ToListAsync(ct))
+            .ToDictionary(x => x.Key, x => x.C);
+
+        var porPrioridad = (await ctx.PrioridadesTicket.AsNoTracking()
+                .OrderBy(p => p.Orden).ThenBy(p => p.Nombre)
+                .Select(p => new { p.Id, p.Nombre, p.Color }).ToListAsync(ct))
+            .Select(p => new ConteoPrioridadDto(p.Id, p.Nombre, conteoPrioridad.TryGetValue(p.Id, out var c) ? c : 0, p.Color))
+            .ToList();
         var porTema = (await filt
             .GroupBy(x => x.TemaRef != null ? x.TemaRef.Nombre : null)
             .Select(g => new { Tema = g.Key, C = g.Count() }).ToListAsync(ct))
@@ -93,9 +105,10 @@ public sealed class GetTicketsDashboardQueryHandler(IApplicationDbContext ctx)
         var antiguos = (await filt
             .Where(x => x.Estado == EstadoTicket.Abierto || x.Estado == EstadoTicket.EnProgreso)
             .OrderBy(x => x.CreatedAt).Take(8)
-            .Select(x => new { x.Id, x.Numero, x.Titulo, x.Institucion, x.CreatedAt, x.Prioridad }).ToListAsync(ct))
+            .Select(x => new { x.Id, x.Numero, x.Titulo, x.Institucion, x.CreatedAt,
+                               Prioridad = x.PrioridadRef!.Nombre, Color = x.PrioridadRef.Color }).ToListAsync(ct))
             .Select(x => new TicketAntiguedadDto(x.Id, x.Numero, x.Titulo, x.Institucion,
-                Math.Max(0, (int)(ahora - x.CreatedAt).TotalDays), x.Prioridad))
+                Math.Max(0, (int)(ahora - x.CreatedAt).TotalDays), x.Prioridad, x.Color))
             .ToList();
 
         return new TicketsDashboardDto(total, abiertos, criticos, resueltos, diasProm, pctResueltos, slaVencidos,

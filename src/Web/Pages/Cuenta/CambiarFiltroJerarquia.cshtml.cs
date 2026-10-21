@@ -9,6 +9,7 @@ using Diger.TramitesEstado.Infrastructure.Security;
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 
 [Authorize]
+[PermisoNoRequerido("Autoservicio: filtra dentro del alcance que el usuario ya tiene, no lo amplía.")]
 public sealed class CambiarFiltroJerarquiaModel : PageModel
 {
     public async Task<IActionResult> OnPostAsync(string? areaId, string? unidadId, string? returnUrl)

@@ -1,0 +1,285 @@
+@page
+@using System.Text.Json
+@model Diger.TramitesEstado.Web.Pages.Siger.TableroModel
+@{
+    ViewData["Title"] = "Observatorio de Tramites SIGER";
+    var d = Model.D;
+    var pctDig = d.TotalTareas > 0 ? (int)Math.Round(100.0 * d.TareasCompletadas / d.TotalTareas) : 0;
+    var maxInst = d.PorInstitucion.FirstOrDefault()?.Cantidad ?? 1;
+    var maxTareaInst = d.TareasPorInstitucion.FirstOrDefault()?.Cantidad ?? 1;
+    var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
+}
+
+<div class="container" style="max-width:1200px">
+    <div class="hist-header">
+        <div>
+            <h2>Observatorio de Tramites SIGER</h2>
+            <p>Analisis del inventario del Portal de Tramites y Servicios</p>
+        </div>
+        <a class="btns" asp-page="/Siger/Index">Ir al inventario</a>
+    </div>
+
+    @* ── KPI Strip ────────────────────────────────────────────── *@
+    <div class="kpi-grid" style="grid-template-columns:repeat(5, 1fr)">
+        <div class="kpi-card">
+            <div class="kpi-num">@d.Total</div>
+            <div class="kpi-lbl">Tramites registrados</div>
+            <div class="obs-sub">@d.Instituciones instituciones</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-num" style="color:#2f7d32">@d.Aprobados</div>
+            <div class="kpi-lbl">Aprobados</div>
+            <div class="obs-sub">@((int)Math.Round(100.0 * d.Aprobados / d.Total))% del total</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-num" style="color:#1455a4">@d.ConDiagrama</div>
+            <div class="kpi-lbl">Con diagrama</div>
+            <div class="obs-sub">@((int)Math.Round(100.0 * d.ConDiagrama / d.Total))% documentados</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-num" style="color:#b45309">@d.ConEnlace</div>
+            <div class="kpi-lbl">Con enlace en portal</div>
+            <div class="obs-sub">@((int)Math.Round(100.0 * d.ConEnlace / d.Total))% publicados</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-num" style="color:#7c3aed">@d.AltaCarga10</div>
+            <div class="kpi-lbl">Alta carga documental</div>
+            <div class="obs-sub">10 o mas requisitos</div>
+        </div>
+    </div>
+
+    @* ── Focos de atencion ────────────────────────────────────── *@
+    <div class="dash-grid" style="grid-template-columns:1fr">
+        <div class="dash-card">
+            <h3>Focos de atencion</h3>
+            <p class="obs-desc">Brechas detectadas en la documentacion del inventario. Un tramite puede tener varios focos.</p>
+            <div style="overflow-x:auto">
+            <table class="seg-table">
+                <thead><tr>
+                    <th>Foco</th>
+                    <th>Descripcion</th>
+                    <th style="text-align:center">Fichas</th>
+                    <th style="text-align:center;width:80px">%</th>
+                    <th style="width:160px">Incidencia</th>
+                </tr></thead>
+                <tbody>
+                    @{ var focos = new (string nombre, string desc, int cnt)[] {
+                        ("Sin diagrama de proceso", "La ficha no tiene diagrama del flujo asociado.", d.SinDiagrama),
+                        ("Sin enlace en portal", "No tiene URL publicada en el portal de tramites.", d.SinEnlace),
+                        ("Alta carga documental", "Exige 10 o mas documentos al solicitante.", d.AltaCarga10),
+                        ("Pasos no documentados", "La ficha no describe el proceso paso a paso.", d.SinPasos),
+                        ("Carga extrema (15+)", "Exige 15 o mas requisitos; simplificacion urgente.", d.AltaCarga15),
+                        ("Sin requisitos listados", "La ficha no indica que documentos se necesitan.", d.SinRequisitos),
+                    }; }
+                    @foreach (var f in focos.OrderByDescending(x => x.cnt))
+                    {
+                        var pct = (int)Math.Round(100.0 * f.cnt / d.Total);
+                        var barColor = pct > 30 ? "#dc2626" : pct > 15 ? "#ef9f27" : "#1455a4";
+                        <tr>
+                            <td style="font-weight:600;white-space:nowrap">@f.nombre</td>
+                            <td style="font-size:12px;color:var(--diger-text-muted)">@f.desc</td>
+                            <td style="text-align:center;font-weight:700">@f.cnt</td>
+                            <td style="text-align:center;font-weight:700;color:@barColor">@pct%</td>
+                            <td>
+                                <div class="bar-track"><div class="bar-fill" style="width:@(Math.Max(pct, 1))%;background:@barColor"></div></div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    @* ── Distribucion por estado + Carga documental ───────────── *@
+    <div class="dash-grid">
+        <div class="dash-card">
+            <h3>Estado de aprobacion</h3>
+            <div style="position:relative;height:240px"><canvas id="chEstado"></canvas></div>
+        </div>
+        <div class="dash-card">
+            <h3>Carga documental</h3>
+            <p class="obs-desc">Requisitos exigidos por ficha</p>
+            <div style="position:relative;height:240px"><canvas id="chCarga"></canvas></div>
+        </div>
+    </div>
+
+    @* ── Tramites por institucion ──────────────────────────────── *@
+    <div class="dash-grid" style="grid-template-columns:1fr">
+        <div class="dash-card">
+            <h3>Tramites por institucion <span style="font-weight:400;font-size:13px;color:var(--diger-text-muted)">top 15 de @d.Instituciones</span></h3>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                @foreach (var inst in d.PorInstitucion)
+                {
+                    var pct = (int)Math.Round(100.0 * inst.Cantidad / maxInst);
+                    var pctTotal = (int)Math.Round(100.0 * inst.Cantidad / d.Total);
+                    <div class="digi-inst-row">
+                        <span class="digi-inst-name">
+                            @if (inst.InstitucionId != null)
+                            {
+                                <a asp-page="/Instituciones/Editor" asp-route-id="@inst.InstitucionId"
+                                   style="color:inherit;text-decoration:none" title="Ver institución">@inst.Sigla</a>
+                            }
+                            else { @inst.Sigla }
+                        </span>
+                        <div class="digi-inst-bar-wrap">
+                            <div class="bar-track"><div class="bar-fill" style="width:@pct%;background:#1455a4"></div></div>
+                        </div>
+                        <span class="digi-inst-pct" style="color:#1455a4">@inst.Cantidad</span>
+                        <span class="digi-inst-meta">@pctTotal%</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Completitud de campos + Top carga documental ──────────── *@
+    <div class="dash-grid">
+        <div class="dash-card">
+            <h3>Completitud de campos</h3>
+            <p class="obs-desc">% de fichas con dato. Las barras cortas son las brechas.</p>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+                @foreach (var c in d.Completitud.OrderBy(x => x.Pct))
+                {
+                    var barColor = c.Pct >= 90 ? "#2f7d32" : c.Pct >= 60 ? "#1455a4" : c.Pct >= 30 ? "#ef9f27" : "#dc2626";
+                    <div class="digi-inst-row">
+                        <span class="digi-inst-name">@c.Campo</span>
+                        <div class="digi-inst-bar-wrap">
+                            <div class="bar-track"><div class="bar-fill" style="width:@c.Pct%;background:@barColor"></div></div>
+                        </div>
+                        <span class="digi-inst-pct" style="color:@barColor">@c.ConDato</span>
+                        <span class="digi-inst-meta">@c.Pct%</span>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="dash-card">
+            <h3>Fichas con mayor carga</h3>
+            <p class="obs-desc">Tramites que exigen mas requisitos al solicitante</p>
+            <div style="overflow-x:auto">
+            <table class="seg-table" style="font-size:12.5px">
+                <thead><tr>
+                    <th style="width:40px">#</th>
+                    <th>Tramite</th>
+                    <th style="text-align:center">Req.</th>
+                    <th style="text-align:center">Pasos</th>
+                </tr></thead>
+                <tbody>
+                    @{ var idx = 0; }
+                    @foreach (var f in d.MayorCarga)
+                    {
+                        idx++;
+                        <tr>
+                            <td style="text-align:center;font-weight:700;color:var(--diger-text-muted)">@idx.ToString("00")</td>
+                            <td>
+                                <a asp-page="/Siger/Detalle" asp-route-id="@f.Id" style="color:var(--diger-text);text-decoration:none">
+                                    @(f.Nombre.Length > 60 ? f.Nombre[..60] + "..." : f.Nombre)
+                                </a>
+                                <div style="font-size:11px;color:var(--diger-text-muted)">@f.Sigla · @f.Codigo</div>
+                            </td>
+                            <td style="text-align:center;font-weight:700;color:#7c3aed">@f.Requisitos</td>
+                            <td style="text-align:center">@f.Pasos</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    @* ── Digitalizacion ───────────────────────────────────────── *@
+    <div class="dash-grid">
+        <div class="dash-card">
+            <h3>Tareas de digitalizacion</h3>
+            <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+                <div class="kpi-card"><div class="kpi-num">@d.TotalTareas.ToString("N0")</div><div class="kpi-lbl">Total tareas</div></div>
+                <div class="kpi-card ok"><div class="kpi-num" style="color:#2f7d32">@d.TareasCompletadas</div><div class="kpi-lbl">Completadas</div></div>
+                <div class="kpi-card"><div class="kpi-num" style="color:#ef9f27">@d.TareasEnProceso.ToString("N0")</div><div class="kpi-lbl">En proceso</div></div>
+            </div>
+            <div style="margin-top:8px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                    <span>Avance global</span>
+                    <span style="font-weight:700">@pctDig%</span>
+                </div>
+                <div class="bar-track" style="height:12px;border-radius:6px">
+                    <div class="bar-fill" style="width:@pctDig%;background:#2f7d32;border-radius:6px;height:12px"></div>
+                </div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <h3>Tareas por institucion <span style="font-weight:400;font-size:13px;color:var(--diger-text-muted)">top 10</span></h3>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                @foreach (var inst in d.TareasPorInstitucion)
+                {
+                    var pct = (int)Math.Round(100.0 * inst.Cantidad / maxTareaInst);
+                    <div class="digi-inst-row">
+                        <span class="digi-inst-name">@inst.Sigla</span>
+                        <div class="digi-inst-bar-wrap">
+                            <div class="bar-track"><div class="bar-fill" style="width:@pct%;background:#7c3aed"></div></div>
+                        </div>
+                        <span class="digi-inst-pct" style="color:#7c3aed">@inst.Cantidad.ToString("N0")</span>
+                        <span class="digi-inst-meta"></span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<style>
+    .obs-sub { font-size:11.5px; color:var(--diger-text-muted); margin-top:2px; }
+    .obs-desc { font-size:12.5px; color:var(--diger-text-muted); margin:0 0 8px; }
+    .digi-inst-row { display:grid; grid-template-columns:100px 1fr 56px 48px; align-items:center; gap:10px; }
+    .digi-inst-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .digi-inst-bar-wrap { min-width:0; }
+    .digi-inst-pct { font-size:14px; font-weight:800; text-align:right; }
+    .digi-inst-meta { font-size:11.5px; color:var(--diger-text-muted); text-align:right; white-space:nowrap; }
+    @@media (max-width: 900px) {
+        .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important; }
+        .digi-inst-row { grid-template-columns: 80px 1fr 48px 40px; }
+    }
+</style>
+<script src="~/lib/chart/chart.umd.min.js" asp-append-version="true"></script>
+<script>
+  Chart.defaults.font.family = 'system-ui, sans-serif';
+  Chart.defaults.plugins.legend.position = 'bottom';
+
+  new Chart(document.getElementById('chEstado'), {
+    type: 'doughnut',
+    data: {
+      labels: @J(d.PorEstado.Select(e => e.Estado)),
+      datasets: [{
+        data: @J(d.PorEstado.Select(e => e.Cantidad)),
+        backgroundColor: ['#94a3b8','#2f7d32','#1455a4','#ef9f27'],
+        borderWidth: 2, borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'bottom', labels: { padding:14, font:{size:12} } },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + ctx.parsed + ' (' + Math.round(ctx.parsed/@d.Total*100) + '%)'; } } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('chCarga'), {
+    type: 'bar',
+    data: {
+      labels: @J(d.CargaDocumental.Select(c => c.Etiqueta)),
+      datasets: [{
+        data: @J(d.CargaDocumental.Select(c => c.Cantidad)),
+        backgroundColor: ['#94a3b8','#2f7d32','#1455a4','#ef9f27','#dc2626'],
+        borderRadius: 4, barThickness: 36
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' tramites (' + Math.round(ctx.parsed.y/@d.Total*100) + '%)'; } } } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+</script>
+}

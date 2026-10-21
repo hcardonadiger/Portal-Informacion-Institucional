@@ -19,6 +19,7 @@ Este documento es la **fuente de verdad** del estado técnico y funcional del si
 | Front-end JS | Vanilla JS + jQuery (local) | Sin frameworks SPA; jQuery 3.7.1 alojado localmente en `wwwroot/lib/jquery/` |
 | Gráficas | Chart.js (local) | Alojado en `wwwroot/lib/chart/`; sin CDN externo |
 | Generación QR | `QRCoder` library | Para tokens de auto-registro de asistentes en reuniones |
+| Background Jobs | `IHostedService` (.NET) | Servicios en segundo plano (ej. `RecordatorioBackgroundService` para notificaciones). Es un componente reciente y sujeto a evolución. |
 
 ---
 
@@ -55,8 +56,13 @@ src/
 └── Web/                            ← Razor Pages, Middleware, Program.cs
     ├── Pages/                      ← Carpetas por módulo (Expedientes, Tickets, Reuniones, etc.)
     ├── Common/
-    │   ├── ModuloAccesoMiddleware.cs  ← Bloquea URL directa por módulo según rol (RolModuloAcceso)
-    │   └── AccesoModulosService.cs    ← Consulta BD para saber si el rol puede acceder al módulo
+    │   ├── PermissionPageFilter.cs    ← Exige [Permission] por handler en cada request
+    │   ├── AccesoModulosService.cs    ← Pregunta claves a la caché de permisos (navbar y botones)
+    │   └── CatalogoModulos.cs         ← Agrupa módulos por área para la pantalla de permisos
+    ├── Security/
+    │   ├── RolCatalogoLoader.cs           ← Carga el catálogo de roles al arrancar
+    │   ├── PermissionCatalogSyncService.cs ← Descubre las claves por reflexión y sincroniza BD
+    │   └── PermisosSeedService.cs         ← Siembra la matriz la primera vez
     ├── Program.cs                  ← Pipeline completo: Auth, Security Headers, Middleware
     └── wwwroot/lib/jquery/         ← jQuery 3.7.1 + Validate 1.21.0 + Unobtrusive 4.0.0 (LOCAL)
 ```
@@ -68,14 +74,20 @@ src/
 | Módulo | Ruta base | Entidades principales | Descripción |
 |--------|-----------|----------------------|-------------|
 | **Expedientes** | `/` (raíz) y `/Expedientes` | `Expediente`, `ExpedienteTramite`, `TramiteRequisito`, `FlujoNodo`, `FundamentoLegal`, `DocumentoSolicitado`, `DocumentoInterno`, `InfraPerfil`, `InfraCondicion`, `InfraChecklistItem`, `ExpedienteSeccionEstado`, `ExpedienteEtapaAvance` | Wizard de 7 secciones para digitalizar trámites. Tiene un sistema de avance por sección (`EstadoSeccion`). |
-| **Reuniones** | `/Reuniones` | `Reunion`, `Asistente`, `AcuerdoReunion` | Gestión de actas. Tiene visibilidad Pública/Privada. Enlace público de auto-registro de asistentes por token UUID + QR. Impresión PDF nativa. Genera contactos automáticamente. |
+| **Reuniones** | `/Reuniones` | `Reunion`, `Asistente`, `AcuerdoReunion` | Gestión de actas. Tiene visibilidad Pública/Privada. Enlace público de auto-registro de asistentes por token UUID + QR. Soporta **Hilos de Reuniones** (enlazar/desenlazar) para mantener el registro completo y seguimiento continuo. Impresión PDF nativa. |
+| **Cuenta / Perfil** | `/Cuenta` | `Usuario` | Módulo independiente para que el usuario activo gestione su propia cuenta (cambio de contraseña, vinculación y verificación de Certificado Digital X.509). |
+| **Seguimiento** | N/A (asociado a Expedientes) | `PlantillaTramite` | Módulo para el seguimiento y reutilización de plantillas de marcos legales y requisitos entre trámites. |
+| **Notificaciones** | `/Notificaciones` | `Notificacion` | Módulo reciente para notificaciones y alertas al usuario. Se complementa con servicios en background (`RecordatorioBackgroundService`). |
 | **Tickets** | `/Tickets` | `Ticket`, `TicketComentario`, `TicketAdjunto`, `TicketTramite`, `TemaTicket`, `CategoriaTicket`, `UsuarioTema` | Help Desk interno. Ciclo: Abierto→En Progreso→Resuelto→Cerrado. Tiene SLA por tema (HorasResolucion), especialistas asignables por tema, adjuntos en comentarios. |
 | **Contactos** | `/Contactos` | `Contacto` | Directorio institucional. Se puede poblar manualmente o se auto-genera al crear asistentes en reuniones (`OrigenContacto.Reunion`). |
 | **Dashboards** | `/Tableros` | KPIs sobre Tickets, Expedientes, Reuniones | 4 queries de dashboard separadas, todas con `.AsNoTracking()`. Usa Chart.js local. |
 | **Calendario** | `/Calendario` | Vista de Reuniones + Expedientes en formato mensual/semanal | Query unificada que cruza fechas de reuniones y expedientes. |
 | **Instituciones** | `/Instituciones` | `Institucion`, `TramiteDefinicion`, `Area`, `Unidad` | Catálogo jerárquico. Solo Admin. Incluye el catálogo de trámites por institución. |
 | **Usuarios** | `/Usuarios` | `Usuario`, `AsignacionUsuario`, `UsuarioTema` | CRUD de usuarios + asignación de rol/institución/área/unidad + temas de ticket que atiende. |
-| **Accesos** | `/Accesos` | `RolModuloAcceso` | Admin configura qué módulos puede ver cada rol. Controlado por `ModuloAccesoMiddleware`. |
+| **Roles** | `/Accesos/Roles` | `Rol` | CRUD del catálogo de roles: alcance de datos y capacidades. Reemplaza al enum `RolUsuario`. |
+| **Permisos** | `/Accesos/Permisos` | `Permiso`, `RolPermiso` | Matriz módulo × acción, un rol a la vez. `?vista=comparar` muestra todos los roles en paralelo, de solo lectura. |
+| **Bitácora** | `/Accesos/Auditoria` | `PermisoAuditoria` | Registro append-only de cada permiso otorgado o revocado, con actor y fecha. |
+| **Diagnóstico** | `/Accesos/Diagnostico` | — | Dado un usuario: asignaciones, alcance, capacidades y claves efectivas. Responde «por qué no puede entrar a X». |
 
 ---
 
@@ -103,6 +115,10 @@ Estas 4 entidades implementan `ISoftDeletable` (tienen columna `IsDeleted BIT NO
 - `Reunion` → `BaseAuditableEntity<int>`, `ISoftDeletable`
 - `Ticket` → `BaseAuditableEntity<int>`, `ISoftDeletable`
 
+### Entidades Adicionales del Dominio
+- `Notificacion` → Entidad base para el sistema de alertas (módulo reciente).
+- `PlantillaTramite` → Entidad para el Módulo de Seguimiento, permite reutilizar información legal y requisitos.
+- `Movimiento` y `Prefijo` → Catálogos auxiliares operativos.
 ### Entidades Base del Dominio
 ```csharp
 BaseEntity<TId>          // Id (protected set), DomainEvents (List<INotification>)
@@ -231,8 +247,17 @@ En `_Layout.cshtml` hay un meta tag con el RequestVerificationToken:
 ```
 El JS puede leerlo con `document.querySelector('meta[name="csrf-token"]').content` y enviarlo en la cabecera `RequestVerificationToken` en peticiones Fetch/HTMX futuras.
 
-### Control de Acceso a Módulos por URL
-`ModuloAccesoMiddleware` (ejecutado después de `UseAuthorization`) mapea la ruta a un módulo (`ModulosPortal.*`) y consulta `RolModuloAcceso` en BD para verificar si el rol activo tiene permiso. Si no, redirige a `/Cuenta/AccessDenied`. La tabla `RolModuloAcceso` es administrada por el Admin desde `/Accesos`.
+### Control de Acceso por Permiso de Acción
+`PermissionPageFilter` corre después de seleccionar el handler y exige la clave que declara `[Permission(modulo, accion)]`, ya sea en el handler o en la clase. La resuelve contra la matriz `RolPermiso` a través de una caché por rol; un rol con capacidad `EsAdministrador` aprueba por código sin depender de filas en la matriz.
+
+El catálogo de claves no se mantiene a mano: `PermissionCatalogSyncService` lo descubre al arrancar por reflexión sobre los PageModel y sincroniza la tabla `Permisos`. Todo handler sin `[Permission]`, `[AllowAnonymous]` ni `[PermisoNoRequerido]` queda registrado como advertencia en el log.
+
+Cuando el permiso falta, la respuesta es `Forbid` y la pantalla `/Cuenta/Denegado` indica **qué clave** hacía falta, para que el usuario sepa qué pedir.
+
+> **Reemplazó a `ModuloAccesoMiddleware`**, que bloqueaba por prefijo de URL con un `switch` escrito a mano. Ese switch cubría 9 prefijos cuando el portal ya tenía 20 módulos: once quedaban sin gatear. La tabla `RolModuloAccesos` se conserva por compatibilidad pero ya nadie la lee.
+
+### Branding y UI Dinámica
+El servicio `InstitucionBrandingService` permite alterar o personalizar elementos visuales en la interfaz gráfica (UI) dinámicamente según la institución activa. Se integra dentro del pipeline de presentación.
 
 ---
 
@@ -259,7 +284,7 @@ El JS puede leerlo con `document.querySelector('meta[name="csrf-token"]').conten
 - **Hijos de Expediente:** `ExpedienteSecciones`, `ExpedienteEtapaAvances`, `ExpedienteTramites`, `TramiteRequisitos`, `FlujoNodos`, `FundamentosLegales`, `DocumentosSolicitados`, `DocumentosInternos`, `InfraPerfiles`, `InfraCondiciones`, `InfraChecklist`
 - **Hijos de Reunion:** `Asistentes`, `AcuerdosReunion`
 - **Hijos de Ticket:** `TicketComentarios`, `TicketAdjuntos`, `TicketTramites`, `TemasTicket`, `CategoriasTicket`, `UsuarioTemas`
-- **Seguridad:** `RolModuloAccesos`
+- **Seguridad:** `Roles`, `Permisos`, `RolPermisos`, `PermisosAuditoria` (append-only), `RolModuloAccesos` (heredada, ya sin uso)
 
 ---
 
@@ -320,14 +345,17 @@ Los repositorios pueden usar `.IgnoreQueryFilters()` cuando necesitan datos glob
 - Security Headers HTTP (CSP, X-Frame-Options, X-Content-Type-Options)
 - jQuery + dependencias JS alojadas localmente (sin CDN externo)
 - Meta tag Anti-CSRF para peticiones AJAX futuras
-- Control de acceso a modulos por URL (ModuloAccesoMiddleware + tabla RolModuloAcceso)
+- Control de acceso por permiso de accion, declarado con [Permission] y descubierto por reflexion
+- Roles administrables en BD con alcance de datos y capacidades, en vez del enum RolUsuario
+- Bitacora append-only de cambios de permisos y pantalla de diagnostico de acceso por usuario
 - Jerarquia Institucion → Area → Unidad en BD y entidades de dominio
 - Combobox de cambio de contexto jerarquico en Navbar
 - Importacion idempotente desde Supabase (Expedientes y Reuniones)
-- Autenticación opcional por Certificado Digital (X.509) mapeado por Thumbprint a Usuarios
+- Autenticación opcional por Certificado Digital (X.509) mapeado por Thumbprint a Usuarios, administrable desde el módulo propio del usuario.
+- **UI completa de Escalabilidad:** Ya se implementaron los módulos de UI para gestión de Áreas y Unidades (`/Areas`, `/Unidades`).
+- **Nuevos Módulos Operativos:** Hilos de Reuniones, Notificaciones con Background Services y Gestión independiente de Cuenta.
 
 ### Pendiente de implementar (proximas fases)
 - **`NotificationHandlers` para Domain Events:** Los eventos estan declarados pero sin handlers. Se deben crear para logica de notificacion/email desacoplada del Command.
 - **`IFileStorageService`:** Los adjuntos se guardan en `wwwroot/uploads/`. Para soportar multiples instancias, mover a Azure Blob Storage / NAS.
 - **Endurecer CSP:** Reemplazar `'unsafe-inline'` con nonces cuando los formularios migren a Fetch/HTMX.
-- **UI completa de Escalabilidad:** Falta el modulo de UI para gestion de Areas/Unidades, asignacion multiple de usuarios, y el rol `Consultor` con restricciones en UI (la estructura de BD ya esta).

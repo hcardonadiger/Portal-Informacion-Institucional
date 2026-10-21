@@ -10,10 +10,26 @@ public sealed class ExpedienteTramite : BaseEntity
     public string? NombreCorto     { get; set; }
     public string? AreaResponsable { get; set; }
 
+    public DateOnly   FechaCreacion  { get; set; }
+    public EstadoTramite EstadoTramite { get; set; } = EstadoTramite.Pendiente;
+
     // Ficha
     public string? Modalidad   { get; set; }
     public string? PlazoLegal  { get; set; }
     public string? Tercero     { get; set; }
+
+    /// <summary>
+    /// Qué hace DIGER con este trámite: acompañar, digitalizar, dar soporte o desarrollar. Es la
+    /// acción, no el tema — un trámite puede ser de acompañamiento aunque el expediente entero
+    /// trate sobre digitalización.
+    ///
+    /// <para>Texto libre y no enum, como el resto de los campos de la ficha (<see cref="Modalidad"/>,
+    /// <see cref="Tercero"/>): el formulario del trámite se arma en JavaScript y manda el rótulo
+    /// del &lt;option&gt; tal cual. Null = todavía nadie lo clasificó, que es un dato distinto de
+    /// haberlo clasificado por defecto.</para>
+    /// </summary>
+    public string? Accion      { get; set; }
+
     public string? TiempoReal  { get; set; }
     public string? MetodoPago  { get; set; }
     public string? PagoBanco   { get; set; }
@@ -31,6 +47,8 @@ public sealed class ExpedienteTramite : BaseEntity
     public string? Telefono    { get; set; }
     public string? EmailTramite { get; set; }
     public string? SitioWeb    { get; set; }
+
+    public int? TramiteSigerId { get; set; }
 }
 
 /// <summary>Requisito de un trámite y la acción propuesta en el modelo.</summary>

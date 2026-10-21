@@ -2,14 +2,31 @@ using Diger.TramitesEstado.Domain.Common;
 
 namespace Diger.TramitesEstado.Domain.Entities;
 
-public sealed class Usuario : BaseAuditableEntity<Guid>
+public sealed class Usuario : BaseAuditableEntity<Guid>, ISoftDeletable
 {
     public string     Nombre       { get; private set; } = default!;
     public string     Correo       { get; private set; } = default!; // login (único)
     public string     PasswordHash { get; private set; } = default!;
     public string?    Telefono     { get; private set; }
     public string?    CertificadoThumbprint { get; private set; }
+    public string?    PasswordResetToken    { get; private set; }
+    public DateTime?  PasswordResetTokenExpiration { get; private set; }
     public bool       Activo       { get; private set; } = true;
+
+    /// <summary>
+    /// Token del enlace de suscripción al calendario personal (formato .ics).
+    ///
+    /// <para>Nulo hasta que la persona pida el enlace: no se le crea a nadie una URL que expone su
+    /// agenda sin que la haya pedido. Es un secreto de portador —quien tenga la URL ve las reuniones
+    /// de esa persona—, igual que el token de auto-registro de asistencia, y por eso se puede
+    /// regenerar para invalidar la anterior.</para>
+    /// </summary>
+    public Guid?      CalendarioToken { get; private set; }
+
+    /// <summary>Borrado lógico. La fila se conserva porque quince columnas repartidas en once
+    /// tablas guardan el GUID del usuario sin clave foránea; borrarla de verdad las dejaría
+    /// apuntando al vacío. Lo aplica el filtro global de AppDbContext.</summary>
+    public bool       IsDeleted    { get; set; }
 
     private Usuario() { }
 
@@ -28,6 +45,23 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
             Telefono     = telefono?.Trim(),
             Activo       = true
         };
+    }
+
+    /// <summary>Borrado lógico: la fila queda, el usuario desaparece. Apaga además
+    /// <see cref="Activo"/> a propósito — hay caminos que solo consultan esa bandera, y un
+    /// «eliminado» que siguiera pasando por ellos sería un borrado de mentira.</summary>
+    public void Eliminar()
+    {
+        IsDeleted = true;
+        Activo    = false;
+    }
+
+    /// <summary>Deshace <see cref="Eliminar"/>. Lo devuelve activo: se restaura a alguien para que
+    /// vuelva a trabajar, y dejarlo inactivo obligaría a un segundo paso que nadie recordaría.</summary>
+    public void Restaurar()
+    {
+        IsDeleted = false;
+        Activo    = true;
     }
 
     public void CambiarPassword(string nuevoHash)
@@ -65,6 +99,46 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
         }
     }
 
+    public void GenerarTokenRecuperacion(string token, TimeSpan validez)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        PasswordResetToken = token;
+        PasswordResetTokenExpiration = DateTime.UtcNow.Add(validez);
+    }
+
+    public void LimpiarTokenRecuperacion()
+    {
+        PasswordResetToken = null;
+        PasswordResetTokenExpiration = null;
+    }
+
+    public bool EsTokenRecuperacionValido(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(PasswordResetToken))
+            return false;
+
+        if (!string.Equals(PasswordResetToken, token, StringComparison.Ordinal))
+            return false;
+
+        return PasswordResetTokenExpiration.HasValue && PasswordResetTokenExpiration.Value > DateTime.UtcNow;
+    }
+
     public void Desactivar() => Activo = false;
     public void Activar()    => Activo = true;
+
+    /// <summary>Crea el token de suscripción si todavía no existe y lo devuelve. Idempotente: pedir
+    /// el enlace dos veces no invalida el que la persona ya pegó en su calendario.</summary>
+    public Guid AsegurarTokenCalendario()
+    {
+        CalendarioToken ??= Guid.NewGuid();
+        return CalendarioToken.Value;
+    }
+
+    /// <summary>Emite un token nuevo: la URL anterior deja de funcionar. Es el remedio para un
+    /// enlace que se compartió de más.</summary>
+    public Guid RegenerarTokenCalendario()
+    {
+        CalendarioToken = Guid.NewGuid();
+        return CalendarioToken.Value;
+    }
 }

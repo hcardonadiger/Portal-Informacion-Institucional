@@ -1,6 +1,7 @@
 namespace Diger.TramitesEstado.Web.Pages.Admin;
 
-[Authorize(Roles = nameof(RolUsuario.Administrador))]
+[Permission("Admin.PlantillasTramite", AccionModulo.Editar, "Crear y editar plantillas de trámite")]
+[Authorize(Policy = "Admin.PlantillasTramite.Editar")]
 public sealed class PlantillaTramiteEditorModel(ISender sender) : PageModel
 {
     public sealed class LegalRowVm

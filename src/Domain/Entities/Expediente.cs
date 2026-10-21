@@ -22,6 +22,9 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
 
     // ── Apertura ──────────────────────────────────────────────────
     public DateOnly? FechaApertura { get; set; }
+    /// <summary>Usuario del sistema responsable (analista DIGER); null en expedientes legados con solo texto.</summary>
+    public Guid?     AnalistaId    { get; set; }
+    /// <summary>Snapshot del nombre del analista para visualización e histórico.</summary>
     public string    Analista      { get; set; } = default!;
     public string?   DirSede       { get; set; }
     public int       NumTramitesProd { get; set; }
@@ -31,6 +34,12 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     public string? ContactoCargo  { get; set; }
     public string? ContactoCorreo { get; set; }
     public string? ContactoTel    { get; set; }
+
+    /// <summary>Usuario del sistema registrado como contraparte de la institución para el llenado de la ficha.</summary>
+    public Guid?     ContraparteUsuarioId     { get; set; }
+    public string?   ContraparteUsuarioNombre { get; set; }
+    /// <summary>Plazo límite para que la contraparte llene la ficha del expediente.</summary>
+    public DateOnly? FechaLimiteEntrega       { get; set; }
 
     // ── Marco legal / documental ──────────────────────────────────
     public string? ObsLegal { get; set; }
@@ -62,12 +71,16 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     public string? InfraPlan        { get; set; }
 
     // ── Estado / cierre ───────────────────────────────────────────
-    public EstadoExpediente        EstadoExpediente    { get; set; } = EstadoExpediente.EnExploracion;
+    public EstadoExpediente        EstadoExpediente    { get; private set; } = EstadoExpediente.EnExploracion;
     public EstadoLevantamientoExp? EstadoLevantamiento { get; set; }
     public string?  ObsExpediente   { get; set; }
     public string?  ObsLevantamiento { get; set; }
-    public string?  ValidadoDiger   { get; set; }
-    public string?  ValidadoInst    { get; set; }
+    public string?  ValidadoDiger   { get; set; } // snapshot del nombre
+    public Guid?    ValidadoDigerUsuarioId   { get; set; }
+    public DateTime? FechaHoraValidacionDiger { get; set; }
+    public string?  ValidadoInst    { get; set; } // snapshot del nombre
+    public Guid?    ValidadoInstUsuarioId    { get; set; }
+    public DateTime? FechaHoraValidacionInst  { get; set; }
     public DateOnly? FechaValidacion { get; set; }
     public string?  NumActa         { get; set; }
 
@@ -117,6 +130,19 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     }
 
     public void MarcarActualizado() => AddDomainEvent(new ExpedienteUpdatedEvent(Id));
+
+    /// <summary>Avanza el expediente a la siguiente etapa de la secuencia. No admite saltos ni retrocesos;
+    /// un expediente Cerrado ya no admite cambios de estado.</summary>
+    public void CambiarEstado(EstadoExpediente nuevo, string actor)
+    {
+        if (nuevo == EstadoExpediente) return; // sin cambio: no-op, no genera evento
+        if ((int)nuevo != (int)EstadoExpediente + 1)
+            throw new DomainException($"No se puede pasar de «{EstadoExpediente}» a «{nuevo}». Solo se permite avanzar a la siguiente etapa.");
+
+        var anterior = EstadoExpediente;
+        EstadoExpediente = nuevo;
+        AddDomainEvent(new ExpedienteEstadoCambiadoEvent(Id, Codigo, anterior.ToString(), nuevo.ToString(), actor));
+    }
 
     // ── Gestión de colecciones (reemplazo en bloque) ──────────────
     public void LimpiarHijos()

@@ -1,6 +1,10 @@
+using Diger.TramitesEstado.Web.Common;
+
 namespace Diger.TramitesEstado.Web.Pages.Admin;
 
-[Authorize(Policy = "PuedeAdministrarCatalogo")]
+[Permission("Admin.Importaciones", AccionModulo.Crear, "Importar reuniones desde Supabase")]
+[Authorize(Policy = "Admin.Importaciones.Crear")]
+[SoloEnDesarrollo]   // misma importación desde Supabase: tampoco debe existir en producción
 public sealed class ImportarReunionesModel(ISender sender, IWebHostEnvironment env) : PageModel
 {
     public bool EsDesarrollo => env.IsDevelopment();

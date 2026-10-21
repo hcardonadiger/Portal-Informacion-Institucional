@@ -1,0 +1,266 @@
+@page
+@using System.IO
+@using System.Text.Encodings.Web
+@model Diger.TramitesEstado.Web.Pages.Recursos.IndexModel
+@{
+    ViewData["Title"] = "Recursos y Plantillas Descargables";
+    var categorias = new[] { "Todos", "Plantilla", "Guía / Manual", "Formulario", "Formato Oficial", "Otro" };
+
+    string FormatoTamano(long bytes) =>
+        bytes >= 1048576 ? $"{bytes / 1048576.0:0.#} MB" : $"{Math.Max(1, (int)(bytes / 1024))} KB";
+
+    (string Icono, string ColorBg) ObtenerIcono(string nombreArchivo)
+    {
+        var ext = System.IO.Path.GetExtension(nombreArchivo)?.ToLowerInvariant() ?? "";
+        return ext switch
+        {
+            ".pdf"  => ("📄", "#fee2e2"),
+            ".doc" or ".docx" => ("📝", "#e0f2fe"),
+            ".xls" or ".xlsx" or ".csv" => ("📊", "#dcfce7"),
+            ".zip" or ".rar" or ".7z"  => ("📦", "#fef3c7"),
+            ".png" or ".jpg" or ".jpeg" => ("🖼️", "#f3e8ff"),
+            _ => ("📎", "#f1f5f9")
+        };
+    }
+}
+
+<div class="container" style="max-width:1180px">
+    <partial name="_SuccessBanner" />
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+
+    @* ── ENCABEZADO PRINCIPAL ─────────────────────────────────────── *@
+    <div class="hist-header" style="margin-bottom:1.5rem">
+        <div>
+            <h2 style="margin:0;font-size:22px;color:#0a2d6e">Recursos y Plantillas Oficiales</h2>
+            <p style="margin:4px 0 0 0;font-size:13.5px;color:#64748b">
+                Repositorio centralizado de documentos, guías de usuario, plantillas reutilizables y formatos oficiales de la DIGER.
+            </p>
+        </div>
+        <div>
+            @if (Model.EsAdmin)
+            {
+                <button type="button" class="btnp" onclick="abrirModalRecurso()">+ Nuevo Recurso / Plantilla</button>
+            }
+        </div>
+    </div>
+
+    @* ── BARRA DE FILTROS Y BÚSQUEDA ──────────────────────────────── *@
+    <div class="card" style="padding:1rem;margin-bottom:1.25rem">
+        <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div style="flex:1;min-width:260px">
+                <input type="text" name="q" value="@Model.Q" placeholder="🔍 Buscar recursos por título, categoría o nombre de archivo..."
+                       style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:13.5px" />
+            </div>
+
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                @foreach (var cat in categorias)
+                {
+                    var active = Model.CategoriaSeleccionada.Equals(cat, StringComparison.OrdinalIgnoreCase);
+                    <a href="?categoria=@cat@(string.IsNullOrWhiteSpace(Model.Q) ? "" : $"&q={Model.Q}")"
+                       class="cat-pill @(active ? "active" : "")">
+                        @cat
+                    </a>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Q) || Model.CategoriaSeleccionada != "Todos")
+            {
+                <a class="btns" asp-page="/Recursos/Index" style="font-size:12px">Limpiar</a>
+            }
+        </form>
+    </div>
+
+    @* ── GRID DE RECURSOS ────────────────────────────────────────── *@
+    @if (!Model.Recursos.Any())
+    {
+        <div class="card" style="text-align:center;padding:3rem 1rem;color:#64748b">
+            <div style="font-size:40px;margin-bottom:8px">📁</div>
+            <h3 style="margin:0;color:#1e293b;font-size:16px">No se encontraron recursos ni plantillas</h3>
+            <p style="margin:4px 0 0 0;font-size:13px">Pruebe ajustando el filtro de búsqueda o la categoría seleccionada.</p>
+        </div>
+    }
+    else
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));gap:16px;margin-bottom:2rem">
+            @foreach (var r in Model.Recursos)
+            {
+                var icon = ObtenerIcono(r.ArchivoNombre);
+                <div class="card" style="padding:1.2rem;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease, box-shadow .15s ease">
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <div style="background:@icon.ColorBg;font-size:22px;padding:8px;border-radius:8px;line-height:1">
+                                    @icon.Icono
+                                </div>
+                                <div>
+                                    <span class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;font-size:11px">
+                                        @r.Categoria
+                                    </span>
+                                </div>
+                            </div>
+                            <span style="font-size:11.5px;color:#64748b" title="Descargas acumuladas">
+                                📥 <strong>@r.DescargasCount</strong>
+                            </span>
+                        </div>
+
+                        <h3 style="margin:0 0 6px 0;font-size:15px;color:#0f172a;line-height:1.35">@r.Titulo</h3>
+                        
+                        @if (!string.IsNullOrWhiteSpace(r.Descripcion))
+                        {
+                            <p style="margin:0 0 10px 0;font-size:13px;color:#475569;line-height:1.45">@r.Descripcion</p>
+                        }
+
+                        <div style="font-size:11.5px;color:#64748b;margin-bottom:12px">
+                            📎 <span style="font-weight:600;color:#334155">@r.ArchivoNombre</span> • @FormatoTamano(r.ArchivoTamano)
+                            <div style="font-size:11px;color:#94a3b8;margin-top:2px">Publicado: @r.CreatedAt.ToString("dd/MM/yyyy")</div>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #f1f5f9;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+                        <a class="btnp" asp-page-handler="Descargar" asp-route-id="@r.Id" style="font-size:12px;padding:6px 14px;display:inline-flex;align-items:center;gap:4px">
+                            📥 Descargar Archivo
+                        </a>
+
+                        @if (Model.EsAdmin)
+                        {
+                            <div style="display:flex;gap:4px">
+                                <button type="button" class="btns" style="font-size:11px;padding:4px 8px"
+                                        onclick="editarRecurso(@r.Id, '@JavaScriptEncoder.Default.Encode(r.Titulo)', '@JavaScriptEncoder.Default.Encode(r.Descripcion ?? "")', '@JavaScriptEncoder.Default.Encode(r.Categoria)')">
+                                    ✏️ Editar
+                                </button>
+                                <form method="post" asp-page-handler="Eliminar" asp-route-id="@r.Id" style="display:inline" onsubmit="return confirm('¿Está seguro de eliminar este recurso?');">
+                                    <button type="submit" class="btns" style="font-size:11px;padding:4px 8px;color:#991b1b;border-color:#fecaca">
+                                        🗑️
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* ── MODAL: SUBIR / EDITAR RECURSO (ADMIN) ────────────────────── *@
+@if (Model.EsAdmin)
+{
+    <div id="modalRecurso" class="modal-backdrop" style="display:none">
+        <div class="modal-card" style="max-width:520px;padding:1.5rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h3 style="margin:0;font-size:17px;color:#0a2d6e" id="modalTituloLabel">Nuevo Recurso / Plantilla</h3>
+                <button type="button" onclick="cerrarModalRecurso()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#64748b">&times;</button>
+            </div>
+
+            <form method="post" id="formRecurso" enctype="multipart/form-data">
+                <input type="hidden" name="id" id="recId" value="0" />
+
+                <div style="margin-bottom:12px">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#1e293b">Título del Recurso *</label>
+                    <input type="text" name="titulo" id="recTitulo" required class="form-input" placeholder="Ej. Plantilla Ficha de Trámite 2026" />
+                </div>
+
+                <div style="margin-bottom:12px">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#1e293b">Categoría *</label>
+                    <select name="categoria" id="recCategoria" required class="form-select">
+                        <option value="Plantilla">Plantilla</option>
+                        <option value="Guía / Manual">Guía / Manual</option>
+                        <option value="Formulario">Formulario</option>
+                        <option value="Formato Oficial">Formato Oficial</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:12px">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#1e293b">Descripción (Opcional)</label>
+                    <textarea name="descripcion" id="recDescripcion" rows="3" class="form-input" placeholder="Descripción breve del contenido o propósito del archivo..."></textarea>
+                </div>
+
+                <div style="margin-bottom:1.25rem">
+                    <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#1e293b" id="lblArchivo">Archivo Adjunto *</label>
+                    <input type="file" name="archivo" id="recArchivo" class="form-input" style="padding:6px" />
+                    <span style="font-size:11.5px;color:#64748b;display:block;margin-top:2px">Formatos permitidos: PDF, Word, Excel, PowerPoint, ZIP, Imágenes (Max. 10 MB).</span>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;gap:8px">
+                    <button type="button" class="btns" onclick="cerrarModalRecurso()">Cancelar</button>
+                    <button type="submit" class="btnp" id="btnGuardarRecurso">Subir y Publicar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<style>
+  .cat-pill {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #475569;
+      background: #f1f5f9;
+      text-decoration: none;
+      transition: all .15s ease;
+  }
+  .cat-pill:hover { background: #e2e8f0; color: #0f172a; }
+  .cat-pill.active { background: #1455a4; color: #ffffff; }
+
+  .form-input, .form-select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13.5px;
+  }
+  .modal-backdrop {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15,23,42,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; backdrop-filter: blur(2px);
+  }
+  .modal-card {
+      background: #ffffff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%;
+  }
+</style>
+
+@section Scripts {
+<script>
+  function abrirModalRecurso() {
+    document.getElementById('recId').value = '0';
+    document.getElementById('recTitulo').value = '';
+    document.getElementById('recDescripcion').value = '';
+    document.getElementById('recCategoria').value = 'Plantilla';
+    document.getElementById('recArchivo').required = true;
+    document.getElementById('lblArchivo').innerText = 'Archivo Adjunto *';
+    document.getElementById('modalTituloLabel').innerText = 'Nuevo Recurso / Plantilla';
+    document.getElementById('btnGuardarRecurso').innerText = 'Subir y Publicar';
+    document.getElementById('formRecurso').action = '?handler=Crear';
+    document.getElementById('modalRecurso').style.display = 'flex';
+  }
+
+  function editarRecurso(id, titulo, descripcion, categoria) {
+    document.getElementById('recId').value = id;
+    document.getElementById('recTitulo').value = titulo;
+    document.getElementById('recDescripcion').value = descripcion;
+    document.getElementById('recCategoria').value = categoria;
+    document.getElementById('recArchivo').required = false;
+    document.getElementById('lblArchivo').innerText = 'Reemplazar Archivo (Opcional)';
+    document.getElementById('modalTituloLabel').innerText = 'Editar Recurso';
+    document.getElementById('btnGuardarRecurso').innerText = 'Guardar Cambios';
+    document.getElementById('formRecurso').action = '?handler=Actualizar';
+    document.getElementById('modalRecurso').style.display = 'flex';
+  }
+
+  function cerrarModalRecurso() {
+    document.getElementById('modalRecurso').style.display = 'none';
+  }
+</script>
+}

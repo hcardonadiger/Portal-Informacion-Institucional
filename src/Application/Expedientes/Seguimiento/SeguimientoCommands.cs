@@ -6,9 +6,11 @@ namespace Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 // ── Actualizar el estado (0/1/2) de un sub-paso de un trámite ─────────────
 public sealed record ActualizarSubEtapaCommand(int ExpedienteId, int TramiteIndex, string SubId, int Estado) : IRequest<Unit>;
 
-public sealed class ActualizarSubEtapaCommandHandler(IApplicationDbContext ctx)
+public sealed class ActualizarSubEtapaCommandHandler(IApplicationDbContext ctx, ICurrentUserService currentUser)
     : IRequestHandler<ActualizarSubEtapaCommand, Unit>
 {
+    private static readonly string[] Etiquetas = ["Pendiente", "En proceso", "Completado"];
+
     public async Task<Unit> Handle(ActualizarSubEtapaCommand cmd, CancellationToken ct)
     {
         if (!MetodologiaDigitalizacion.SubExiste(cmd.SubId))
@@ -21,6 +23,8 @@ public sealed class ActualizarSubEtapaCommandHandler(IApplicationDbContext ctx)
         var fila = await ctx.ExpedienteEtapaAvances.FirstOrDefaultAsync(
             a => a.ExpedienteId == cmd.ExpedienteId && a.TramiteIndex == cmd.TramiteIndex && a.SubId == cmd.SubId, ct);
 
+        var estadoAnterior = fila?.Estado ?? 0;
+
         if (cmd.Estado <= 0)
         {
             if (fila is not null) ctx.ExpedienteEtapaAvances.Remove(fila); // disperso: no se guarda "Pendiente"
@@ -32,6 +36,13 @@ public sealed class ActualizarSubEtapaCommandHandler(IApplicationDbContext ctx)
             });
         else
             fila.Estado = cmd.Estado;
+
+        if (estadoAnterior != cmd.Estado)
+        {
+            var detalle = $"{MetodologiaDigitalizacion.Label(cmd.SubId) ?? cmd.SubId} (trámite {cmd.TramiteIndex}): {Etiquetas[estadoAnterior]} → {Etiquetas[cmd.Estado]}";
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(cmd.ExpedienteId, TipoEventoBitacora.AvanceMetodologico,
+                detalle, currentUser.Nombre ?? "—"));
+        }
 
         await ctx.SaveChangesAsync(ct);
         return Unit.Value;
@@ -52,7 +63,7 @@ public sealed class ActualizarSubEtapaCommandValidator : AbstractValidator<Actua
 // ── Marcar si una etapa especial (toggle) aplica o no, por trámite ────────
 public sealed record CambiarAplicaEtapaCommand(int ExpedienteId, int TramiteIndex, string EtapaNum, bool Aplica) : IRequest<Unit>;
 
-public sealed class CambiarAplicaEtapaCommandHandler(IApplicationDbContext ctx)
+public sealed class CambiarAplicaEtapaCommandHandler(IApplicationDbContext ctx, ICurrentUserService currentUser)
     : IRequestHandler<CambiarAplicaEtapaCommand, Unit>
 {
     public async Task<Unit> Handle(CambiarAplicaEtapaCommand cmd, CancellationToken ct)
@@ -67,6 +78,9 @@ public sealed class CambiarAplicaEtapaCommandHandler(IApplicationDbContext ctx)
         var fila = await ctx.ExpedienteEtapaAvances.FirstOrDefaultAsync(
             a => a.ExpedienteId == cmd.ExpedienteId && a.TramiteIndex == cmd.TramiteIndex && a.SubId == clave, ct);
 
+        var aplicabaAntes = fila is null; // sin fila = aplica (valor por defecto)
+        var cambio = aplicabaAntes != cmd.Aplica;
+
         if (cmd.Aplica) // aplica es el valor por defecto → no se guarda fila
         {
             if (fila is not null) ctx.ExpedienteEtapaAvances.Remove(fila);
@@ -78,6 +92,11 @@ public sealed class CambiarAplicaEtapaCommandHandler(IApplicationDbContext ctx)
             });
         else
             fila.Estado = 0;
+
+        if (cambio)
+            ctx.BitacorasExpediente.Add(BitacoraExpediente.Crear(cmd.ExpedienteId, TipoEventoBitacora.AvanceMetodologico,
+                $"Etapa {cmd.EtapaNum} (trámite {cmd.TramiteIndex}) marcada como {(cmd.Aplica ? "aplica" : "no aplica")}",
+                currentUser.Nombre ?? "—"));
 
         await ctx.SaveChangesAsync(ct);
         return Unit.Value;
