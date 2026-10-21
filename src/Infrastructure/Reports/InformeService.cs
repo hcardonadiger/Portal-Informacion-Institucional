@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using Diger.TramitesEstado.Application.Common.Models;
 using Diger.TramitesEstado.Application.Expedientes.Seguimiento;
 using Diger.TramitesEstado.Application.Informes;
 using Diger.TramitesEstado.Application.Informes.Common;
@@ -45,7 +46,7 @@ public sealed class InformeService : IInformeService
                         {
                             c.Item().Text("GOBIERNO DE LA REPÚBLICA DE HONDURAS")
                                 .FontSize(7).FontColor("#666666");
-                            c.Item().Text("DIGER – Digitalización de Trámites del Estado")
+                            c.Item().Text(Marca.Nombre)
                                 .FontSize(12).Bold().FontColor("#1a3a5c");
                             c.Item().Text("Informe de Estado por Institución")
                                 .FontSize(10).FontColor("#2e6da4");
@@ -228,7 +229,7 @@ public sealed class InformeService : IInformeService
 
         // ── Hoja 1: Resumen ────────────────────────────────────────────────
         var wsRes = wb.Worksheets.Add("Resumen");
-        wsRes.Cell(1, 1).Value = "DIGER – Digitalización de Trámites";
+        wsRes.Cell(1, 1).Value = Marca.Nombre;
         wsRes.Cell(1, 1).Style.Font.Bold = true;
         wsRes.Cell(1, 1).Style.Font.FontSize = 14;
         wsRes.Cell(2, 1).Value = $"Informe: {dto.InstitucionNombre}";

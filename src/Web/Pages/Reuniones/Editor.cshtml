@@ -387,7 +387,7 @@
         <div class="row2">
           <div class="field"><label>Foto 1</label>
             <div class="foto-up">
-              <img id="f1-img" class="@(string.IsNullOrEmpty(d.Foto1Url) ? "" : "has")" src="@d.Foto1Url" alt="Vista previa de la foto 1" />
+              <img id="f1-img" class="@(string.IsNullOrEmpty(d.Foto1Url) ? "" : "has")" src="@(string.IsNullOrEmpty(d.Foto1Url) ? null : Url.Page("/Reuniones/Acta", "Foto", new { id = Model.ReunionId, n = 1 }))" alt="Vista previa de la foto 1" />
               <input type="file" name="Foto1File" accept="image/*" onchange="previewFoto(this,'f1-img')" />
             </div>
             <input asp-for="Datos.Foto1Desc" placeholder="Descripción foto 1" style="margin-top:6px" />
@@ -395,7 +395,7 @@
           </div>
           <div class="field"><label>Foto 2</label>
             <div class="foto-up">
-              <img id="f2-img" class="@(string.IsNullOrEmpty(d.Foto2Url) ? "" : "has")" src="@d.Foto2Url" alt="Vista previa de la foto 2" />
+              <img id="f2-img" class="@(string.IsNullOrEmpty(d.Foto2Url) ? "" : "has")" src="@(string.IsNullOrEmpty(d.Foto2Url) ? null : Url.Page("/Reuniones/Acta", "Foto", new { id = Model.ReunionId, n = 2 }))" alt="Vista previa de la foto 2" />
               <input type="file" name="Foto2File" accept="image/*" onchange="previewFoto(this,'f2-img')" />
             </div>
             <input asp-for="Datos.Foto2Desc" placeholder="Descripción foto 2" style="margin-top:6px" />

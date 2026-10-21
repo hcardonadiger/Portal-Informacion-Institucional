@@ -32,6 +32,7 @@ public class SegmentacionTemasTests : IDisposable
     private async Task SeedTicketAsync(string num, int temaId)
     {
         var t = Ticket.Crear(num, "T " + num);
+        t.PrioridadId = PrioridadesTicketDePrueba.Media(_ctx);
         t.TemaId = temaId;
         await _ctx.Tickets.AddAsync(t);
         await _ctx.SaveChangesAsync();

@@ -12,6 +12,7 @@ public sealed class IndexModel(AccesoModulosService acceso, ICurrentUserService 
     public string UserNombre { get; private set; } = "";
     public string UserRol { get; private set; } = "";
 
+    public bool PuedeProyectos { get; private set; }
     public bool PuedeTableros { get; private set; }
     public bool PuedeCalendario { get; private set; }
     public bool PuedeExpedientes { get; private set; }
@@ -25,6 +26,7 @@ public sealed class IndexModel(AccesoModulosService acceso, ICurrentUserService 
         UserNombre = currentUser.Nombre ?? User.Identity?.Name ?? "Usuario";
         UserRol    = currentUser.Rol ?? (EsAdmin ? "Administrador" : "Usuario");
 
+        PuedeProyectos   = await acceso.PuedeAsync(ModulosPortal.Proyectos, ct);
         PuedeTableros    = await acceso.PuedeAsync(ModulosPortal.Tableros, ct);
         PuedeCalendario  = await acceso.PuedeAsync(ModulosPortal.Calendario, ct);
         PuedeExpedientes = await acceso.PuedeAsync(ModulosPortal.Expedientes, ct);

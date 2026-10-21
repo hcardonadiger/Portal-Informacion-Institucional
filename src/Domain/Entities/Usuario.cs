@@ -2,7 +2,7 @@ using Diger.TramitesEstado.Domain.Common;
 
 namespace Diger.TramitesEstado.Domain.Entities;
 
-public sealed class Usuario : BaseAuditableEntity<Guid>
+public sealed class Usuario : BaseAuditableEntity<Guid>, ISoftDeletable
 {
     public string     Nombre       { get; private set; } = default!;
     public string     Correo       { get; private set; } = default!; // login (único)
@@ -12,6 +12,11 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
     public string?    PasswordResetToken    { get; private set; }
     public DateTime?  PasswordResetTokenExpiration { get; private set; }
     public bool       Activo       { get; private set; } = true;
+
+    /// <summary>Borrado lógico. La fila se conserva porque quince columnas repartidas en once
+    /// tablas guardan el GUID del usuario sin clave foránea; borrarla de verdad las dejaría
+    /// apuntando al vacío. Lo aplica el filtro global de AppDbContext.</summary>
+    public bool       IsDeleted    { get; set; }
 
     private Usuario() { }
 
@@ -30,6 +35,23 @@ public sealed class Usuario : BaseAuditableEntity<Guid>
             Telefono     = telefono?.Trim(),
             Activo       = true
         };
+    }
+
+    /// <summary>Borrado lógico: la fila queda, el usuario desaparece. Apaga además
+    /// <see cref="Activo"/> a propósito — hay caminos que solo consultan esa bandera, y un
+    /// «eliminado» que siguiera pasando por ellos sería un borrado de mentira.</summary>
+    public void Eliminar()
+    {
+        IsDeleted = true;
+        Activo    = false;
+    }
+
+    /// <summary>Deshace <see cref="Eliminar"/>. Lo devuelve activo: se restaura a alguien para que
+    /// vuelva a trabajar, y dejarlo inactivo obligaría a un segundo paso que nadie recordaría.</summary>
+    public void Restaurar()
+    {
+        IsDeleted = false;
+        Activo    = true;
     }
 
     public void CambiarPassword(string nuevoHash)

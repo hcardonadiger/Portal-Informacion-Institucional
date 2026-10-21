@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Tickets.Prioridades;
 using Diger.TramitesEstado.Application.Common.Exceptions;
 
 namespace Diger.TramitesEstado.Web.Pages.Tickets;
@@ -28,7 +29,9 @@ public sealed class EditorModel(
     public string? UsuarioActualCorreo => currentUser.Correo;
     public string? ReportanteView { get; private set; }
 
-    public PrioridadTicket[] Prioridades => Enum.GetValues<PrioridadTicket>();
+    /// <summary>Opciones vivas del catálogo. Al editar incluye además la del ticket, aunque se
+    /// haya retirado: si no, guardar la ficha se la cambiaría sin que nadie lo pidiera.</summary>
+    public IReadOnlyList<OpcionPrioridadTicketDto> Prioridades { get; private set; } = [];
 
     private async Task CargarCatalogosAsync(CancellationToken ct)
     {
@@ -38,6 +41,7 @@ public sealed class EditorModel(
             : insts.Where(i => currentUser.InstitucionesAsignadas.Contains(i.Id)).ToList();
         // Lista completa para el selector dependiente (ya viene filtrado por alcance)
         Expedientes   = (await sender.Send(new GetExpedientesQuery(Todos: true), ct)).Items;
+        Prioridades   = await sender.Send(new GetOpcionesPrioridadTicketQuery(Datos.PrioridadId), ct);
         Temas         = await sender.Send(new GetTemasActivosQuery(), ct);
 
         // Trámites del catálogo, solo de las instituciones dentro del alcance.
@@ -62,9 +66,15 @@ public sealed class EditorModel(
             TicketId = d.Id;
             Datos = new TicketFormDto
             {
-                Titulo = d.Titulo, Descripcion = d.Descripcion, TemaId = d.TemaId, TemaOtro = d.TemaOtro, Prioridad = d.Prioridad,
+                Titulo = d.Titulo, Descripcion = d.Descripcion, TemaId = d.TemaId, TemaOtro = d.TemaOtro,
+                PrioridadId = d.PrioridadId,
                 InstitucionId = d.InstitucionId, ExpedienteId = d.ExpedienteId
             };
+            // Se vuelven a pedir con la prioridad del ticket ya conocida: CargarCatalogosAsync
+            // corrió antes de tener Datos, así que si la prioridad estuviera retirada no habría
+            // entrado en la lista y guardar la ficha se la cambiaría sola.
+            Prioridades = await sender.Send(new GetOpcionesPrioridadTicketQuery(d.PrioridadId), ct);
+
             ReportanteView = string.Join(" · ",
                 new[] { d.ReportanteNombre, d.ReportanteCorreo }.Where(s => !string.IsNullOrWhiteSpace(s)));
             return Page();

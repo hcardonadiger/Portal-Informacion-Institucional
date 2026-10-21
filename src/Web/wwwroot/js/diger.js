@@ -260,3 +260,134 @@ document.addEventListener('keydown', function (e) {
     window._dgConfirm = showConfirm;
 })();
 
+
+/* ── Paginación de cliente para listas largas ──────────────────────────────
+   Gobierna cualquier contenedor con data-pg="<id>" desde el control
+   _TablaPaginada que lleva data-pg-for="<id>". Sirve igual a un <tbody> de
+   <tr> que a un <div> de tarjetas: los ítems son los hijos directos.
+
+   OCULTA CON hidden, NUNCA SACA DEL DOM. Las filas del tablero de trámites
+   llevan onclick inline y las claves de sus modales; desmontarlas y
+   reponerlas rompería esos modales. Además, ocultar deja el CSV y el
+   "Ctrl+F" del navegador operando sobre lo que el servidor mandó.
+
+   El tamaño elegido no se guarda: al recargar vuelve al de arranque. Fue una
+   decisión explícita — todos ven lo mismo al entrar. */
+(function () {
+    'use strict';
+
+    var VENTANA = 2;   // páginas mostradas a cada lado de la actual
+
+    function itemsDe(cont) {
+        return Array.prototype.filter.call(cont.children, function (el) {
+            // Deja fuera la fila de "no hay resultados", que no es un ítem que paginar.
+            return !el.hasAttribute('data-pg-omitir');
+        });
+    }
+
+    function boton(txt, clase) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pager-b' + (clase ? ' ' + clase : '');
+        b.textContent = txt;
+        return b;
+    }
+
+    function montar(ctrl) {
+        var cont = document.querySelector('[data-pg="' + ctrl.dataset.pgFor + '"]');
+        if (!cont) return;
+
+        var items  = itemsDe(cont);
+        var total  = items.length;
+        var minimo = parseInt(ctrl.dataset.pgDefecto, 10) || 10;
+
+        var info   = ctrl.querySelector('[data-pg-info]');
+        var nav    = ctrl.querySelector('[data-pg-nav]');
+        var selSz  = ctrl.querySelector('[data-pg-size]');
+
+        var pagina = 1;
+        var tam    = minimo;
+
+        selSz.value = String(minimo);
+
+        function pintar() {
+            // 0 = "Todos". Con la lista vacía el tamaño no puede ser 0: dividir por cero
+            // dejaría totalPaginas en Infinity y el bucle de botones no terminaría.
+            var t       = tam === 0 ? Math.max(total, 1) : tam;
+            var paginas = Math.max(1, Math.ceil(total / t));
+            if (pagina > paginas) pagina = paginas;
+
+            var desde = (pagina - 1) * t;
+            var hasta = Math.min(desde + t, total);
+
+            items.forEach(function (el, i) {
+                if (i >= desde && i < hasta) el.removeAttribute('hidden');
+                else                         el.setAttribute('hidden', '');
+            });
+
+            info.textContent = total === 0
+                ? 'Sin registros'
+                : (desde + 1) + '\u2013' + hasta + ' de ' + total;
+
+            nav.textContent = '';
+            if (paginas <= 1) return;
+
+            var ini = Math.max(1, pagina - VENTANA);
+            var fin = Math.min(paginas, pagina + VENTANA);
+
+            var prev = boton('\u2190', pagina > 1 ? '' : 'off');
+            prev.setAttribute('aria-label', 'Anterior');
+            prev.addEventListener('click', function () { pagina--; pintar(); });
+            nav.appendChild(prev);
+
+            if (ini > 1) {
+                nav.appendChild(irA(1));
+                if (ini > 2) nav.appendChild(puntos());
+            }
+            for (var p = ini; p <= fin; p++) nav.appendChild(irA(p));
+            if (fin < paginas) {
+                if (fin < paginas - 1) nav.appendChild(puntos());
+                nav.appendChild(irA(paginas));
+            }
+
+            var next = boton('\u2192', pagina < paginas ? '' : 'off');
+            next.setAttribute('aria-label', 'Siguiente');
+            next.addEventListener('click', function () { pagina++; pintar(); });
+            nav.appendChild(next);
+
+            function irA(p) {
+                var b = boton(String(p), p === pagina ? 'on' : '');
+                b.addEventListener('click', function () { pagina = p; pintar(); });
+                return b;
+            }
+            function puntos() {
+                var s = document.createElement('span');
+                s.className = 'pager-dots';
+                s.textContent = '\u2026';
+                return s;
+            }
+        }
+
+        selSz.addEventListener('change', function () {
+            tam = parseInt(selSz.value, 10);
+            // Volver a la primera: quedarse en la página 7 tras pasar de 10 a 100 deja al
+            // usuario mirando una lista vacía sin entender por qué.
+            pagina = 1;
+            pintar();
+        });
+
+        // Sobre una lista que cabe entera en la primera página el control no aporta nada.
+        if (total <= minimo) return;
+
+        ctrl.removeAttribute('hidden');
+        pintar();
+    }
+
+    // diger.js se carga hoy después de @RenderBody, así que las listas ya están. La guarda es
+    // para que mover el <script> en el layout no rompa la paginación en silencio.
+    function iniciar() {
+        document.querySelectorAll('.pager-cli[data-pg-for]').forEach(montar);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
+    else iniciar();
+})();

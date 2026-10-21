@@ -37,6 +37,7 @@ public sealed class RolCatalogo(IServiceScopeFactory scopeFactory, ILogger<RolCa
                 .Select(r => new RolInfo(
                     r.Id, r.Nombre, r.NivelAlcance,
                     r.EsAdministrador, r.EsSoloLectura, r.EsSupervisor, r.EsTecnicoSoporte,
+                    r.EsJefeDeArea, r.EsPmo,
                     r.Color))
                 .ToListAsync(ct);
 

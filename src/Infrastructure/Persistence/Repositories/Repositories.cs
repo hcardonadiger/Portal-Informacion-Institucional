@@ -181,6 +181,7 @@ public sealed class TicketRepository(AppDbContext ctx) : ITicketRepository
             .Include(t => t.Comentarios)
             .Include(t => t.Tramites)
             .Include(t => t.Adjuntos)
+            .Include(t => t.PrioridadRef)
             .Include(t => t.TemaRef)
             .AsSplitQuery()
             .FirstOrDefaultAsync(t => t.Id == id, ct);

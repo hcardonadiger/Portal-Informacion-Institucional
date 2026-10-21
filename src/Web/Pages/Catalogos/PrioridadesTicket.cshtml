@@ -1,0 +1,153 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Catalogos.PrioridadesTicketModel
+@{
+    ViewData["Title"] = "Prioridades de tickets";
+    string Clase(ColorEtiqueta c) => c.ToString().ToLowerInvariant();
+}
+
+<div class="container" style="max-width:1100px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string terr)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@terr</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Prioridades de tickets</h2>
+            <p>Las opciones que ofrece un ticket de soporte. El <strong>orden</strong> decide cómo se listan y cuál se atiende primero.</p>
+        </div>
+        <a class="btns" asp-page="/Catalogos/Index" style="font-size:13px">← Catálogos</a>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">Nueva prioridad</h3>
+        <form method="post" asp-page-handler="Crear" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="margin:0;flex:1;min-width:180px">
+                <label>Nombre <span style="color:#dc2626">*</span></label>
+                <input name="Nombre" value="@Model.Nombre" placeholder="p. ej. Bloqueante" maxlength="40" />
+            </div>
+            <div class="field" style="margin:0;width:110px">
+                <label>Orden</label>
+                <input type="number" name="Orden" min="0" max="999" placeholder="al final" />
+            </div>
+            <div class="field" style="margin:0;width:150px">
+                <label>Color</label>
+                <select name="Color">
+                    @foreach (var c in Enum.GetValues<ColorEtiqueta>())
+                    {
+                        <option value="@((int)c)" selected="@(c == Model.Color)">@c</option>
+                    }
+                </select>
+            </div>
+            <div class="field" style="margin:0;width:150px">
+                <label>
+                    <input type="checkbox" name="EsCritica" value="true" />
+                    Cuenta como crítica
+                    <span class="help-tip" data-tip="Los tickets con esta prioridad suman al indicador de «críticos abiertos» de los tableros.">?</span>
+                </label>
+            </div>
+            <button class="btnp" type="submit" style="margin-bottom:.1rem">Agregar prioridad</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">Catálogo</h3>
+        @if (Model.Prioridades.Count == 0)
+        {
+            <p class="res-meta">Aún no hay prioridades. Cree al menos una: sin ninguna activa no se pueden registrar tickets.</p>
+        }
+        else
+        {
+            @* .edit-grid usa table-layout:fixed, así que la suma de los anchos manda: si se pasa
+               del ancho de la tarjeta, la última columna queda fuera y no se ve. El contenedor con
+               overflow-x es la red por debajo. *@
+            <div style="overflow-x:auto">
+            <table class="seg-table edit-grid">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th style="width:72px">Orden</th>
+                        <th style="width:108px">Color</th>
+                        <th style="width:92px">Vista</th>
+                        <th style="width:72px">Crítica</th>
+                        <th style="width:68px">Activa</th>
+                        <th style="width:76px">Tickets</th>
+                        <th style="width:96px"></th>
+                        <th style="width:74px">Predet.</th>
+                        <th style="width:52px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Prioridades)
+                    {
+                        <tr>
+                            @* El <form> como hijo directo de <tr> no envuelve nada —el parser lo
+                               saca de la pila— pero los controles quedan asociados a él. *@
+                            <form method="post" asp-page-handler="Actualizar">
+                                <input type="hidden" name="id" value="@p.Id" />
+                                <td><input name="nombre" value="@p.Nombre" maxlength="40" style="width:100%" /></td>
+                                <td><input type="number" name="orden" value="@p.Orden" min="0" max="999" style="width:100%" /></td>
+                                <td>
+                                    <select name="color">
+                                        @foreach (var c in Enum.GetValues<ColorEtiqueta>())
+                                        {
+                                            <option value="@((int)c)" selected="@(c == p.Color)">@c</option>
+                                        }
+                                    </select>
+                                </td>
+                                @* Cómo va a verse la insignia en los listados. Tiene columna propia
+                                   porque antes caía bajo el rótulo «Predeterminada» y se leía como
+                                   si esa fila lo fuera. *@
+                                <td style="text-align:center">
+                                    <span class="prio-badge @Clase(p.Color)" style="padding:1px 8px;font-size:var(--diger-fs-2xs)">@p.Nombre</span>
+                                </td>
+                                <td style="text-align:center"><input type="checkbox" name="esCritica" value="true" checked="@p.EsCritica" /></td>
+                                <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@p.Activo" /></td>
+                                <td class="res-meta" style="text-align:center">@p.Tickets</td>
+                                <td style="text-align:right">
+                                    <button class="btns" type="submit" style="font-size:12.5px;padding:6px 12px">Guardar</button>
+                                </td>
+                            </form>
+                            <td style="text-align:center">
+                                @if (p.EsPredeterminada)
+                                {
+                                    <span title="Es la prioridad predeterminada: no se puede eliminar ni desactivar">★</span>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-page-handler="Predeterminada" style="display:inline">
+                                        <input type="hidden" name="id" value="@p.Id" />
+                                        <button class="btns" type="submit" style="font-size:12.5px;padding:6px 10px"
+                                                title="Usar «@p.Nombre» como prioridad inicial de los tickets nuevos">☆</button>
+                                    </form>
+                                }
+                            </td>
+                            <td style="text-align:center">
+                                @if (!p.EsPredeterminada)
+                                {
+                                    <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                        <input type="hidden" name="id" value="@p.Id" />
+                                        <button class="hist-del" type="submit" aria-label="Eliminar prioridad"
+                                                data-confirm="¿Eliminar la prioridad «@p.Nombre»?">✕</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+            <p class="res-meta" style="margin-top:.75rem">
+                ★ marca la prioridad que traen los tickets nuevos. Las marcadas como <strong>críticas</strong>
+                alimentan el indicador de «críticos abiertos» de los tableros. Una prioridad con tickets
+                asignados no se puede eliminar —desactívela y dejará de ofrecerse, sin cambiarle nada a
+                los tickets que ya la tienen—.
+            </p>
+        }
+    </div>
+</div>

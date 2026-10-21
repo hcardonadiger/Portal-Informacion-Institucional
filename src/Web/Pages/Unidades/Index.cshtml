@@ -1,4 +1,5 @@
 @page
+@inject AccesoModulosService Acceso
 @model Diger.TramitesEstado.Web.Pages.Unidades.IndexModel
 @{
     ViewData["Title"] = "Catálogo de Unidades";
@@ -10,7 +11,15 @@
             <h2>Catálogo de Unidades</h2>
             <p>Gestión de unidades dentro de las áreas</p>
         </div>
-        <a class="btnp" asp-page="./Editor">+ Nueva Unidad</a>
+        <div style="display:flex;gap:8px;align-items:center">
+            <a class="btns" asp-page="/Catalogos/Index" style="font-size:13px">← Catálogos</a>
+            @* Igual que en Instituciones: la lista pide Ver y el editor pide Editar, así que
+               ofrecer el botón a quien solo puede ver lo manda a un Forbidden. *@
+            @if (await Acceso.PuedeEditarAsync("Unidades"))
+            {
+                <a class="btnp" asp-page="./Editor">+ Nueva Unidad</a>
+            }
+        </div>
     </div>
 
     @if (Model.Items.Count == 0)

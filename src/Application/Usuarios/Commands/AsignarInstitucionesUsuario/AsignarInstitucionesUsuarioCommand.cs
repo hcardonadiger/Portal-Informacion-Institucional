@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Common.Exceptions;
+using Diger.TramitesEstado.Application.Proyectos.Services;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.AsignarInstitucionesUsuario;
 
@@ -8,7 +9,8 @@ public sealed record AsignarJerarquiaUsuarioCommand(Guid UsuarioId, string Rol, 
     : IRequest<Unit>;
 
 public sealed class AsignarJerarquiaUsuarioCommandHandler(
-    IUsuarioRepository repo, IUnitOfWork uow, IApplicationDbContext ctx, IRolCatalogo catalogo)
+    IUsuarioRepository repo, IUnitOfWork uow, IApplicationDbContext ctx, IRolCatalogo catalogo,
+    IInteresadosAutomaticosSync sync)
     : IRequestHandler<AsignarJerarquiaUsuarioCommand, Unit>
 {
     public async Task<Unit> Handle(AsignarJerarquiaUsuarioCommand cmd, CancellationToken ct)
@@ -31,6 +33,9 @@ public sealed class AsignarJerarquiaUsuarioCommandHandler(
 
         await repo.ReemplazarAsignacionesAsync(cmd.UsuarioId, cmd.Rol, cmd.Asignaciones ?? [], ct);
         await uow.SaveChangesAsync(ct);
+
+        await sync.SincronizarUsuarioAsync(cmd.UsuarioId, ct);
+
         return Unit.Value;
     }
 }

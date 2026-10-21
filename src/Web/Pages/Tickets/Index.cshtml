@@ -13,13 +13,8 @@
         EstadoTicket.Resuelto   => "resuelto",
         _                       => "default",
     };
-    string PrioClase(PrioridadTicket p) => p switch
-    {
-        PrioridadTicket.Critica => "critica",
-        PrioridadTicket.Alta    => "alta",
-        PrioridadTicket.Media   => "media",
-        _                       => "default",
-    };
+    // La clase de la insignia sale del color que trae el catálogo, no de un switch por nivel.
+    string PrioClase(ColorEtiqueta c) => c.ToString().ToLowerInvariant();
     string EstadoLbl(EstadoTicket e) => e switch
     {
         EstadoTicket.EnProgreso => "En progreso", _ => e.ToString()
@@ -71,11 +66,11 @@
     {
         <div style="display:flex;gap:8px;margin-bottom:1rem">
             <a class="@(Model.Vista == "temas" ? "btnp" : "btns")" asp-page="/Tickets/Index"
-               asp-route-vista="temas" asp-route-estado="@Model.Estado" asp-route-prioridad="@Model.Prioridad" asp-route-soloVencidos="@Model.SoloVencidos" asp-route-q="@Model.Q">
+               asp-route-vista="temas" asp-route-estado="@Model.Estado" asp-route-prioridad="@Model.PrioridadId" asp-route-soloVencidos="@Model.SoloVencidos" asp-route-q="@Model.Q">
                 Sus temas
             </a>
             <a class="@(Model.Vista == "mios" ? "btnp" : "btns")" asp-page="/Tickets/Index"
-               asp-route-vista="mios" asp-route-estado="@Model.Estado" asp-route-prioridad="@Model.Prioridad" asp-route-soloVencidos="@Model.SoloVencidos" asp-route-q="@Model.Q">
+               asp-route-vista="mios" asp-route-estado="@Model.Estado" asp-route-prioridad="@Model.PrioridadId" asp-route-soloVencidos="@Model.SoloVencidos" asp-route-q="@Model.Q">
                 Sus tickets
             </a>
         </div>
@@ -97,7 +92,7 @@
             <label>Prioridad</label>
             <select name="prioridad" onchange="this.form.submit()">
                 <option value="">Todas</option>
-                @foreach (var p in Enum.GetValues<PrioridadTicket>()) { <option value="@p" selected="@(Model.Prioridad == p)">@p</option> }
+                @foreach (var p in Model.Prioridades) { <option value="@p.Id" selected="@(Model.PrioridadId == p.Id)">@p.Nombre</option> }
             </select>
         </div>
         <div class="field" style="min-width:170px">
@@ -175,7 +170,7 @@
                         </td>
                         <td class="res-meta">@TemaLbl(t)</td>
                         <td class="res-meta">@(t.Institucion ?? "—")</td>
-                        <td><span class="prio-badge @PrioClase(t.Prioridad)" style="padding:2px 10px;font-size:12px">@t.Prioridad</span></td>
+                        <td><span class="prio-badge @PrioClase(t.PrioridadColor)" style="padding:2px 10px;font-size:12px">@t.Prioridad</span></td>
                         <td><span class="status-badge @EstadoClase(t.Estado)" style="padding:2px 10px;font-size:12px">@EstadoLbl(t.Estado)</span></td>
                         <td class="res-meta">@(t.AsignadoA ?? "—")</td>
                         <td style="white-space:nowrap;text-align:right">
@@ -237,7 +232,7 @@
                                             }
                                         </td>
                                         <td class="res-meta">@TemaLbl(t)</td>
-                                        <td><span class="prio-badge @PrioClase(t.Prioridad)" style="padding:2px 10px;font-size:12px">@t.Prioridad</span></td>
+                                        <td><span class="prio-badge @PrioClase(t.PrioridadColor)" style="padding:2px 10px;font-size:12px">@t.Prioridad</span></td>
                                         <td><span class="status-badge @EstadoClase(t.Estado)" style="padding:2px 10px;font-size:12px">@EstadoLbl(t.Estado)</span></td>
                                         <td class="res-meta">@(t.AsignadoA ?? "—")</td>
                                         <td style="white-space:nowrap;text-align:right">

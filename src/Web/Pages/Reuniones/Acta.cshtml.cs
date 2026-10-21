@@ -1,8 +1,15 @@
+using Diger.TramitesEstado.Application.Proyectos.Commands;
+using Diger.TramitesEstado.Application.Proyectos.Queries;
+
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
 [Permission("Reuniones", AccionModulo.Ver, "Ver reuniones y compromisos")]
-public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoModulosService acceso) : PageModel
+public sealed class ActaModel(
+    ISender sender,
+    IActaPdfService actaPdf,
+    IWebHostEnvironment env,
+    AccesoModulosService acceso) : PageModel
 {
     public bool EsAdmin { get; private set; }
     public int ReunionId { get; private set; }
@@ -21,6 +28,18 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoMod
     public HiloDeReunionDto Hilo { get; private set; } = new(null, []);
     public IReadOnlyList<HiloMiembroRefDto> Enlazables { get; private set; } = [];
 
+    /// <summary>Los proyectos a los que se vinculó esta reunión, y los que se le podrían vincular.
+    /// El vínculo se crea igual desde acá que desde la ficha del proyecto: es el mismo comando.</summary>
+    public ProyectosVinculadosDto Proyectos { get; private set; } = new([], 0, []);
+
+    [BindProperty] public int     VinculoProyectoId { get; set; }
+    [BindProperty] public string? VinculoNota       { get; set; }
+    [BindProperty] public int     VinculoId         { get; set; }
+
+    /// <summary>Vincular modifica la ficha del PROYECTO —y escribe en su bitácora—, así que exige
+    /// su clave y no la de reuniones. La misma acción pide el mismo permiso desde donde se haga.</summary>
+    public bool PuedeVincular { get; private set; }
+
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
     {
         try
@@ -36,6 +55,8 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoMod
 
             Hilo       = await sender.Send(new GetHiloDeReunionQuery(id), ct);
             Enlazables = await sender.Send(new GetReunionesEnlazablesQuery(id), ct);
+            Proyectos  = await sender.Send(new GetProyectosDeReunionQuery(id), ct);
+            PuedeVincular = await acceso.PuedeEditarAsync("Proyectos", ct);
 
             var porNombre = Asistentes
                 .GroupBy(a => string.IsNullOrWhiteSpace(a.Institucion) ? "(sin institución)" : a.Institucion!.Trim())
@@ -56,6 +77,34 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoMod
         {
             return NotFound();
         }
+    }
+
+    /// <summary>
+    /// Sirve una de las dos fotos de evidencia de la reunión.
+    ///
+    /// <para>Es el único archivo del portal que se pinta en un <c>&lt;img&gt;</c> y no se descarga,
+    /// así que sale con su tipo real; el resto va como binario. Lo consumen el acta y la vista
+    /// previa del editor, que apuntan las dos a este handler para no duplicarlo.</para>
+    ///
+    /// <para>Como los demás, resuelve la reunión con la consulta normal antes de tocar el disco:
+    /// quien no puede ver la reunión tampoco ve su evidencia. Antes la imagen se pedía a
+    /// <c>/uploads/reuniones/…</c>, que se servía sin sesión — ver <see cref="ArchivosProtegidos"/>.</para>
+    /// </summary>
+    /// <param name="n">1 o 2. Cualquier otro valor es 404: no hay una tercera foto.</param>
+    public async Task<IActionResult> OnGetFotoAsync(int id, int n, CancellationToken ct)
+    {
+        if (n is not (1 or 2)) return NotFound();
+
+        ReunionFormDto datos;
+        try { datos = (await sender.Send(new GetReunionByIdQuery(id), ct)).Datos; }
+        catch (NotFoundException) { return NotFound(); }
+
+        var url = n == 1 ? datos.Foto1Url : datos.Foto2Url;
+
+        var ruta = ArchivosProtegidos.Resolver(env, url);
+        if (ruta is null) return NotFound();
+
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(ruta));
     }
 
     public async Task<IActionResult> OnGetPdfAsync(int id, CancellationToken ct)
@@ -108,10 +157,47 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoMod
         }
     }
 
+    // ── Vínculo con proyectos ─────────────────────────────────────
+    // Va con Proyectos.Editar y no con Reuniones.Editar: la acción modifica la ficha del proyecto
+    // y escribe en su bitácora. La misma acción exige el mismo permiso desde donde se haga.
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostVincularProyectoAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new VincularReunionCommand(VinculoProyectoId, id, VinculoNota), ct);
+            TempData["SuccessMessage"] = "Reunión vinculada al proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMessage"] = ex.Message; }
+        catch (NotFoundException)  { TempData["ErrorMessage"] = "Ese proyecto no existe o no está a su alcance."; }
+
+        return RedirectToPage(new { id });
+    }
+
+    [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
+    public async Task<IActionResult> OnPostDesvincularProyectoAsync(int id, int proyectoId, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new QuitarVinculoReunionCommand(proyectoId, VinculoId), ct);
+            TempData["SuccessMessage"] = "Reunión desvinculada del proyecto.";
+        }
+        catch (DomainException ex) { TempData["ErrorMessage"] = ex.Message; }
+        catch (NotFoundException)  { return NotFound(); }
+
+        return RedirectToPage(new { id });
+    }
+
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEnlazarAsync(int id, int otraReunionId, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
+        // Acá había un `if (!EsAdmin) return Forbid();` que denegaba SIEMPRE, a todos los roles.
+        // EsAdmin solo se asigna dentro de OnGetAsync, y en un POST ASP.NET construye un PageModel
+        // nuevo y ejecuta únicamente el handler: la propiedad conservaba su valor por defecto.
+        // Quien autoriza es el [Permission] de arriba, que además es donde el portal centraliza
+        // esa decisión; la guarda era una segunda copia de la misma regla —y la copia es lo que se
+        // desincroniza—. EsAdmin se queda para la vista, que es para lo que sirve.
         if (otraReunionId <= 0)
         {
             TempData["ErrorMessage"] = "Seleccione una reunión para enlazar.";
@@ -132,7 +218,7 @@ public sealed class ActaModel(ISender sender, IActaPdfService actaPdf, AccesoMod
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostDesenlazarAsync(int id, CancellationToken ct)
     {
-        if (!EsAdmin) return Forbid();
+        // Mismo caso que Enlazar: la guarda por EsAdmin denegaba siempre. Ver la nota de arriba.
         try
         {
             await sender.Send(new DesenlazarReunionCommand(id), ct);

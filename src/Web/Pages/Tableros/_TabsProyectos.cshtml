@@ -1,0 +1,30 @@
+@using Diger.TramitesEstado.Application.Common.Interfaces
+@inject ICurrentUserService CurrentUser
+@*
+    Pestañas de los tres tableros de proyectos (Unidad / Área / Institución).
+    Vive en /Pages/Tableros porque las tres vistas que lo usan viven aquí.
+
+    Qué pestaña se ve NO lo decide el permiso —las tres páginas piden la misma clave
+    "Proyectos.Ver"— sino hasta dónde alcanza el rol activo: un empleado solo ve lo suyo,
+    un jefe de área ve además su área, y quien tiene alcance de institución ve el
+    portafolio completo. Por eso se pregunta por las capacidades del rol
+    (EsJefeDeArea / NivelAlcance) y nunca por su nombre.
+
+    La pestaña activa la fija cada vista con ViewData["TabActiva"].
+*@
+@{
+    var activa = ViewData["TabActiva"] as string ?? "Unidad";
+    var puedeInstitucion = CurrentUser.EsGlobal
+        || CurrentUser.NivelAlcance is NivelAlcance.Institucion or NivelAlcance.Global;
+}
+<div class="seg-filters" style="margin-bottom:12px">
+    <a class="btns @(activa == "Unidad" ? "on" : "")" asp-page="/Tableros/ProyectosUnidad">Mi unidad</a>
+    @if (CurrentUser.EsJefeDeArea)
+    {
+        <a class="btns @(activa == "Area" ? "on" : "")" asp-page="/Tableros/ProyectosArea">Mi área</a>
+    }
+    @if (puedeInstitucion)
+    {
+        <a class="btns @(activa == "Institucion" ? "on" : "")" asp-page="/Tableros/Proyectos">Institución</a>
+    }
+</div>

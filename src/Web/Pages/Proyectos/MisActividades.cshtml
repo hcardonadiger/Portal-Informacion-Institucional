@@ -1,0 +1,247 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Proyectos.MisActividadesModel
+@{
+    ViewData["Title"] = "Mis actividades";
+    var d = Model.Datos;
+    var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    // Fuera del atributo: un ternario con comillas dobles dentro de un title="" rompe el parseo
+    // de Razor. Ya mordió dos veces en esta misma sesión.
+    string TipCreada(DateTime? f) => f is null
+        ? "Se registró antes del 26-08-2026, cuando el portal todavía no guardaba esta fecha"
+        : "Cuándo se registró la actividad en el portal";
+}
+
+<div class="container" style="max-width:1080px">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string err)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@err</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Mis actividades</h2>
+            <p>
+                Todo lo que tiene a cargo, de todos sus proyectos. Se reporta desde acá:
+                no hace falta abrir cada proyecto.
+            </p>
+        </div>
+        <a class="btns" asp-page="/Proyectos/Index" style="font-size:13px">← Proyectos</a>
+    </div>
+
+    @if (d.TotalAbiertas == 0 && d.Terminadas == 0)
+    {
+        <div class="card">
+            <div class="hist-empty">
+                <div class="ico">✅</div>
+                <p>No tiene actividades a su cargo.</p>
+                <p class="res-meta">
+                    Las actividades se asignan desde la estructura de cada proyecto, y solo pueden
+                    quedar a cargo de un interesado registrado en él.
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* ── Contadores ──────────────────────────────────────────────
+           «Sin fecha» va junto a «vencidas» a propósito: sin él, un cero en vencidas se lee como
+           estar al día cuando en realidad puede no haber contra qué medirse. *@
+        <div class="kpi-grid" style="margin-bottom:1rem">
+            <div class="kpi-card @(d.Vencidas > 0 ? "alert" : "ok")"
+                 title="Su fecha de cierre ya pasó y siguen abiertas">
+                <div class="kpi-num">@d.Vencidas</div><div class="kpi-lbl">Vencidas</div>
+            </div>
+            <div class="kpi-card @(d.PorVencer > 0 ? "warn" : "ok")"
+                 title="Vencen en los próximos 30 días">
+                <div class="kpi-num">@d.PorVencer</div><div class="kpi-lbl">Por vencer</div>
+            </div>
+            <div class="kpi-card @(d.Bloqueadas > 0 ? "warn" : "ok")"
+                 title="Esperan a que termine otra actividad del mismo proyecto">
+                <div class="kpi-num">@d.Bloqueadas</div><div class="kpi-lbl">Bloqueadas</div>
+            </div>
+            <div class="kpi-card @(d.SinFecha > 0 ? "warn" : "ok")"
+                 title="Abiertas y sin fecha de cierre: no hay contra qué medir el atraso">
+                <div class="kpi-num">@d.SinFecha</div><div class="kpi-lbl">Sin fecha</div>
+            </div>
+            <div class="kpi-card"><div class="kpi-num">@d.TotalAbiertas</div><div class="kpi-lbl">Abiertas</div></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-bottom:.6rem">
+            @if (Model.VerTerminadas)
+            {
+                <a class="btns" asp-page="/Proyectos/MisActividades" style="font-size:12.5px">
+                    Ocultar terminadas
+                </a>
+            }
+            else if (d.Terminadas > 0)
+            {
+                <a class="btns" asp-page="/Proyectos/MisActividades" asp-route-VerTerminadas="true"
+                   style="font-size:12.5px">
+                    Ver también las terminadas (@d.Terminadas)
+                </a>
+            }
+        </div>
+
+        @if (!d.Actividades.Any())
+        {
+            <div class="card">
+                <div class="hist-empty">
+                    <div class="ico">✅</div>
+                    <p>No le queda ninguna actividad abierta.</p>
+                    @if (d.Terminadas > 0)
+                    {
+                        <p class="res-meta">Tiene @d.Terminadas terminadas.</p>
+                    }
+                </div>
+            </div>
+        }
+
+        @foreach (var a in d.Actividades)
+        {
+            <article class="act-card @(a.Vencida ? "vencida" : a.Bloqueada ? "bloqueada" : "")">
+                <div class="act-cab">
+                    <div style="flex:1;min-width:0">
+                        <a class="act-pry" asp-page="/Proyectos/Editor" asp-route-id="@a.ProyectoId"
+                           asp-fragment="estructura" title="Abrir el proyecto">
+                            @a.ProyectoCodigo · @a.ProyectoNombre
+                        </a>
+                        <div class="act-tit">@a.Actividad</div>
+                        @* Datos rotulados y no una línea corrida: «Integración con SOL · creada el
+                           26/08/2026» obliga a leer todo para encontrar la fecha. Y se muestran
+                           SIEMPRE — un dato que desaparece cuando falta parece que no existe. *@
+                        <div class="act-meta">
+                            <span class="act-meta-i">
+                                <b>Entregable</b> @a.Entregable
+                            </span>
+                            <span class="act-meta-i" title="@TipCreada(a.CreadoEn)">
+                                <b>Creada</b> @(a.CreadoEn?.ToLocalTime().ToString("dd/MM/yyyy") ?? "sin registrar")
+                            </span>
+                            @if (a.UltimoReporte is { } ur)
+                            {
+                                <span class="act-meta-i">
+                                    <b>Último reporte</b> @ur.ToLocalTime().ToString("dd/MM/yyyy")
+                                </span>
+                            }
+                        </div>
+
+                        <div class="act-badges">
+                            @if (a.Vencida)
+                            {
+                                <span class="badge badge-danger">
+                                    Vencida hace @(-a.DiasParaVencer!.Value) d
+                                </span>
+                            }
+                            else if (a.PorVencer)
+                            {
+                                <span class="badge badge-warning">
+                                    @(a.DiasParaVencer == 0 ? "Vence hoy" : $"Vence en {a.DiasParaVencer} d")
+                                </span>
+                            }
+                            else if (a.SinFecha)
+                            {
+                                <span class="badge badge-secondary" title="No hay fecha contra la cual medir el atraso">
+                                    Sin fecha de cierre
+                                </span>
+                            }
+
+                            @if (a.NoArrancada)
+                            {
+                                <span class="badge badge-warning" title="Debía haber empezado el @a.FechaInicioPlan!.Value.ToString("dd/MM/yyyy") y sigue en cero">
+                                    Sin arrancar
+                                </span>
+                            }
+                            @if (a.Bloqueada)
+                            {
+                                <span class="badge badge-warning" title="No debería arrancar hasta que terminen">
+                                    Espera a @string.Join(" · ", a.Espera)
+                                </span>
+                            }
+                            @if (a.Terminada)
+                            {
+                                <span class="badge badge-success">Terminada</span>
+                            }
+                            @if (a.SinBitacora)
+                            {
+                                <span class="badge badge-secondary" title="El porcentaje subió pero nunca se escribió por qué">
+                                    Sin reportes
+                                </span>
+                            }
+                            else if (a.DiasSinReportar is { } dias && dias > 30 && !a.Terminada)
+                            {
+                                <span class="badge badge-warning">Sin reportar hace @dias d</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="act-avance">
+                        <div class="progress" style="width:110px;height:8px">
+                            <div class="progress-bar @(a.AvancePct >= 100 ? "ok" : a.Vencida ? "alert" : "")"
+                                 style="width:@(a.AvancePct)%"></div>
+                        </div>
+                        <div class="act-pct">@a.AvancePct%</div>
+                    </div>
+                </div>
+
+                @if (Model.PuedeReportar && !a.Terminada)
+                {
+                    <details class="act-reportar">
+                        <summary>Reportar avance</summary>
+
+                        @if (a.Bloqueada)
+                        {
+                            <div class="hint warn" style="margin:.6rem 0">
+                                <span class="ico" aria-hidden="true">⚠️</span>
+                                <div>
+                                    Esta actividad espera a <strong>@string.Join(", ", a.Espera)</strong>.
+                                    Puede reportar igual — es un aviso, no un candado.
+                                </div>
+                            </div>
+                        }
+
+                        <form method="post" asp-page-handler="Reportar"
+                              asp-route-proyectoId="@a.ProyectoId"
+                              asp-route-entregableId="@a.EntregableId"
+                              asp-route-actividadId="@a.ActividadId"
+                              enctype="multipart/form-data">
+                            <input type="hidden" name="VerTerminadas" value="@Model.VerTerminadas.ToString().ToLowerInvariant()" />
+
+                            <div class="field">
+                                <label for="d-@a.ActividadId">Qué se hizo <span style="color:var(--diger-danger)">*</span></label>
+                                <textarea id="d-@a.ActividadId" name="Descripcion" rows="2" maxlength="2000" required
+                                          placeholder="Se remitió el borrador a la contraparte y quedó pendiente su revisión"></textarea>
+                            </div>
+
+                            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+                                <div class="field" style="width:150px">
+                                    <label for="p-@a.ActividadId">Avance</label>
+                                    <div style="display:flex;align-items:center;gap:5px">
+                                        <input id="p-@a.ActividadId" type="number" name="Porcentaje"
+                                               min="0" max="100" step="5" value="@a.AvancePct" />
+                                        <span class="cel-calc">%</span>
+                                    </div>
+                                </div>
+                                <div class="field" style="flex:1;min-width:200px">
+                                    <label for="e-@a.ActividadId">Evidencia</label>
+                                    <input id="e-@a.ActividadId" type="file" name="Evidencia" />
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label for="b-@a.ActividadId">¿Algo la está trabando?</label>
+                                <input id="b-@a.ActividadId" name="Bloqueo" maxlength="1000"
+                                       placeholder="Opcional. Aparece en el tablero mientras siga siendo el último reporte" />
+                            </div>
+
+                            <button type="submit" class="btnp">Registrar avance</button>
+                            <span class="res-meta">
+                                Queda en la bitácora del proyecto, igual que si lo reportara desde su ficha.
+                            </span>
+                        </form>
+                    </details>
+                }
+            </article>
+        }
+    }
+</div>

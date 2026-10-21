@@ -24,6 +24,8 @@ public class VisibilidadReunionTests
         public bool        EsSoloLectura         => false;
         public bool        EsSupervisor          => false;
         public bool        EsTecnicoSoporte      => true;
+        public bool        EsJefeDeArea          => false;
+        public bool        EsPmo                 => false;
         public string?     ActiveInstitucionId   => inst.Length > 0 ? inst[0] : null;
         public string?     ActiveAreaId          => null;
         public string?     ActiveUnidadId        => null;

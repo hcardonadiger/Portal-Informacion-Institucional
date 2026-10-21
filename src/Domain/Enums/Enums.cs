@@ -136,13 +136,8 @@ public enum EstadoTicket
     Cerrado    = 4
 }
 
-public enum PrioridadTicket
-{
-    Baja    = 1,
-    Media   = 2,
-    Alta    = 3,
-    Critica = 4
-}
+// La prioridad del ticket dejó de ser un enum fijo: ahora es el catálogo administrable
+// PrioridadTicket (con orden, color, predeterminada y marca de crítica), en Domain.Entities.
 
 // La categoría/tema del ticket dejó de ser un enum fijo: ahora es el catálogo
 // administrable TemaTicket (con SLA en horas), asignable a especialistas.
@@ -169,6 +164,7 @@ public enum TipoNotificacion
     RecordatorioManualExpediente  = 10,
     RecordatorioManualReunion     = 11,
     RecordatorioManualCompromiso  = 12,
+    ProyectoCambioEstado          = 13,
 }
 
 // ── Estado de una sesión de chat de soporte ───────────────────────────────
@@ -225,4 +221,89 @@ public enum DecisionConciliacion
     Enlazado           = 1, // el trámite quedó vinculado a una ficha SIGER
     Descartado         = 2, // se revisó y no corresponde enlazarlo
     ProponerFichaNueva = 3  // no existe en SIGER; queda en cola para darlo de alta
+}
+
+// ── Seguimiento de proyectos internos de DIGER ────────────────────────────
+// La secuencia no es lineal como EstadoExpediente: Suspendido va y vuelve, y
+// Cancelado se alcanza desde cualquier estado abierto. Las transiciones válidas
+// las declara Proyecto.CambiarEstado, no el orden de este enum.
+public enum EstadoProyecto
+{
+    Planificado = 1,
+    EnEjecucion = 2,
+    Suspendido  = 3,
+    Cerrado     = 4,
+    Cancelado   = 5
+}
+
+// La prioridad del proyecto dejó de ser un enum fijo: ahora es el catálogo administrable
+// PrioridadProyecto (con orden, color y predeterminada), en Domain.Entities.
+
+// ── Color de una insignia de catálogo ──────────────────────────────────────
+// Paleta cerrada a propósito: el administrador elige entre estos cinco y no escribe un color
+// libre. Cada miembro tiene su regla en diger.css (.prio-badge.<nombre en minúscula>), así que
+// un valor inventado saldría sin estilo. Se guarda como texto (HasConversion<string>) para que
+// la columna se lea sola.
+public enum ColorEtiqueta
+{
+    Gris    = 1,
+    Azul    = 2,
+    Verde   = 3,
+    Naranja = 4,
+    Rojo    = 5
+}
+
+// ── Qué hace DIGER dentro del proyecto ─────────────────────────────────────
+// Es la acción, no el tema: «SOL — CONSUCOOP» es Acompañamiento aunque el proyecto trate sobre
+// digitalización. Responde «¿qué ponemos nosotros acá?», que es distinto de «¿de qué se trata?».
+//
+// Los miembros van sin tilde porque el valor se guarda como texto (HasConversion<string>) y ese
+// texto es también el identificador C#; el acento se lo pone Etiquetas.Accion al mostrarlo.
+public enum AccionProyecto
+{
+    Acompanamiento = 1,
+    Digitalizacion = 2,
+    Soporte        = 3,
+    Desarrollo     = 4
+}
+
+// ── Estado de un entregable dentro de un proyecto ──────────────────────────
+// Los miembros conservan sus nombres aunque el tipo se llamara antes EstadoHito: se guardan como
+// texto (HasConversion<string>), así que renombrarlos obligaría a reescribir la columna entera.
+public enum EstadoEntregable
+{
+    Pendiente  = 1,
+    EnProceso  = 2,
+    Completado = 3,
+    Cancelado  = 4
+}
+
+// ── Estado de una actividad dentro de un entregable ────────────────────────
+// No reusa EstadoEntregable por concordancia: leer «Actividad: Completado» en una tabla parece
+// un error de tipeo, no un enum compartido.
+//
+// El estado no se teclea: lo deriva el porcentaje reportado —0 → Pendiente, 1-99 → EnProceso,
+// 100 → Completada—. La excepción es Cancelada, que sí es una decisión, y por eso además saca a
+// la actividad del promedio del entregable en vez de arrastrarlo contando como cero.
+public enum EstadoActividad
+{
+    Pendiente  = 1,
+    EnProceso  = 2,
+    Completada = 3,
+    Cancelada  = 4
+}
+
+// ── Tipo de dependencia entre actividades ──────────────────────────────────
+// Hoy el portal solo modela Fin → Comienzo, que es la dependencia del PMI que cubre casi todos
+// los casos: la sucesora no arranca hasta que la predecesora termina. Los otros tres tipos
+// (Comienzo-Comienzo, Fin-Fin y Comienzo-Fin) obligarían a explicar cuatro conceptos en la ficha
+// para ganar poco, así que quedaron fuera.
+//
+// La columna existe igual —y guarda el tipo— para que agregarlos después sea un miembro más del
+// enum y no una migración de datos. Se guarda como texto (HasConversion<string>): renombrar un
+// miembro obliga a reescribir la columna, como ya pasó con TipoEventoProyecto.
+public enum TipoDependencia
+{
+    /// <summary>La sucesora no puede arrancar hasta que la predecesora esté completada.</summary>
+    FinComienzo = 1
 }

@@ -55,6 +55,8 @@ public sealed class CurrentUserService(IHttpContextAccessor accessor, IRolCatalo
     public bool EsSoloLectura         => RolActual?.EsSoloLectura == true;
     public bool EsSupervisor          => RolActual?.EsSupervisor == true;
     public bool EsTecnicoSoporte      => RolActual?.EsTecnicoSoporte == true;
+    public bool EsJefeDeArea          => RolActual?.EsJefeDeArea == true;
+    public bool EsPmo                 => RolActual?.EsPmo == true;
     
     public IReadOnlyCollection<string> InstitucionesAsignadas
     {

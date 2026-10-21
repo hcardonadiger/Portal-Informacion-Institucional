@@ -1,0 +1,332 @@
+openapi: 3.0.3
+info:
+  title: PortalDigital — API pública de trámites (v1)
+  version: "1.0.0"
+  description: >
+    Catálogo público de trámites de PortalDigital (Diger.TramitesEstado), para
+    consumo de un cliente externo (p. ej. HondurasÁgil). Solo expone trámites
+    con Publicado = 1. No requiere ni asume usuario autenticado del portal
+    interno — ver M-08 en el plan: las consultas ignoran el filtro de alcance
+    institucional a propósito, porque una API pública no tiene sesión.
+    Contrato congelado en la Fase 0 (2026-08-13/14). Cambios de forma requieren
+    una v2, no una edición silenciosa de esta v1.
+servers:
+  - url: /api/v1
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /salud:
+    get:
+      summary: Estado del servicio y de la base de datos
+      operationId: getSalud
+      security: []   # sin clave: es lo primero que un monitor externo consulta
+      responses:
+        "200":
+          description: Servicio operando
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaludDto"
+        "503":
+          description: Servicio degradado (p. ej. la base no responde)
+
+  /tramites:
+    get:
+      summary: Catálogo paginado de trámites publicados
+      operationId: getTramites
+      parameters:
+        - name: busqueda
+          in: query
+          schema: { type: string }
+          description: Coincidencia insensible a tildes/mayúsculas sobre Nombre, Descripcion y Objetivo (P-07).
+        - name: categoria
+          in: query
+          schema: { type: integer }
+          description: CategoriaId.
+        - name: institucion
+          in: query
+          schema: { type: string }
+          description: InstitucionId. Es el parámetro que hace real el piloto (D-04) — el cliente lo manda siempre.
+        - name: modalidad
+          in: query
+          schema: { $ref: "#/components/schemas/Modalidad" }
+        - name: soloGratuitos
+          in: query
+          schema: { type: boolean, default: false }
+        - name: soloEnSol
+          in: query
+          schema: { type: boolean, default: false }
+        - name: soloFichasCompletas
+          in: query
+          schema: { type: boolean, default: false }
+          description: El cliente lo manda siempre (junto con institucion) — sin esto D-04 no existe más que en el papel.
+        - name: orden
+          in: query
+          schema: { type: string, enum: [relevancia, nombre, tiempo], default: relevancia }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: tamano
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Página de resultados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagedResultTramiteResumen"
+
+  /tramites/{codigo}:
+    get:
+      summary: Ficha completa de un trámite
+      operationId: getTramitePorCodigo
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema: { type: string }
+          description: TramitesSiger.Codigo — identidad pública, no el Id interno.
+      responses:
+        "200":
+          description: Ficha del trámite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TramiteDetalleDto"
+        "404":
+          description: No existe, o no está publicado (una API pública no distingue las dos cosas).
+
+  /instituciones:
+    get:
+      summary: Instituciones con datos de contacto y conteo de trámites publicados
+      operationId: getInstituciones
+      responses:
+        "200":
+          description: Listado completo
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/InstitucionDto" }
+
+  /categorias:
+    get:
+      summary: Las categorías del catálogo, con conteo de trámites publicados
+      operationId: getCategorias
+      responses:
+        "200":
+          description: Listado completo (hoy, ocho categorías fijas)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CategoriaDto" }
+
+  /cambios:
+    get:
+      summary: Códigos a refrescar desde una fecha (sincronización incremental)
+      operationId: getCambios
+      description: >
+        No reporta "alta"/"cambio"/"baja" por separado (ver M-09): devuelve la
+        lista de códigos cuyo UpdatedAt es posterior a `desde`. El consumidor
+        hace upsert — es idempotente — así que no hace falta distinguir el tipo
+        de cambio. Las bajas (despublicado o borrado) se resuelven comparando
+        contra /codigos-publicados, no aquí.
+      parameters:
+        - name: desde
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Códigos modificados desde la fecha dada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CambiosDto"
+
+  /codigos-publicados:
+    get:
+      summary: Todos los códigos actualmente publicados
+      operationId: getCodigosPublicados
+      description: >
+        El consumidor retira de su catálogo local cualquier código que ya no
+        aparezca aquí — cubre por igual la ficha despublicada y la borrada
+        (M-09), sin necesitar una columna de "bitácora de bajas" que hoy no existe.
+      responses:
+        "200":
+          description: Lista completa de códigos vivos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Clave estática por cliente (P-02). Un cliente conocido (HondurasÁgil) por ahora.
+
+  schemas:
+    Modalidad:
+      type: string
+      enum: [Virtual, Presencial, Hibrido]
+      description: >
+        Cómo es el trámite. "Digital" = Virtual O Hibrido — esa regla vive en
+        tres sitios (ver plan, sección 05) y hay que mantenerlos sincronizados.
+
+    SaludDto:
+      type: object
+      required: [estado, baseDeDatos, horaServidor]
+      properties:
+        estado: { type: string, enum: [ok, degradado] }
+        baseDeDatos: { type: boolean }
+        horaServidor: { type: string, format: date-time }
+
+    PasoDto:
+      type: object
+      properties:
+        numero: { type: integer }
+        titulo: { type: string, nullable: true, description: "Null si no se capturó — el cliente muestra «Paso N», no un título truncado." }
+        descripcion: { type: string }
+        modalidad: { type: string, enum: [Virtual, Presencial, Hibrido, Interno], nullable: true }
+        lugarDependencia: { type: string, nullable: true }
+        salidaResultado: { type: string, nullable: true }
+        tiempoRegistrado: { type: string, nullable: true }
+
+    RequisitoDto:
+      type: object
+      properties:
+        numero: { type: integer }
+        requisito: { type: string }
+        tipo: { type: string, nullable: true }
+        documentoSoporte: { type: string, nullable: true }
+        formato: { type: string, nullable: true }
+
+    EntregableDto:
+      type: object
+      properties:
+        numero: { type: integer }
+        entregable: { type: string }
+        formato: { type: string, nullable: true }
+        presentacion: { type: string, nullable: true }
+
+    LugarAtencionDto:
+      type: object
+      properties:
+        numero: { type: integer }
+        lugar: { type: string }
+        ciudad: { type: string, nullable: true }
+        direccion: { type: string, nullable: true }
+        telefonos: { type: string, nullable: true }
+
+    EnlaceDto:
+      type: object
+      properties:
+        numero: { type: integer }
+        url: { type: string }
+        tipo: { type: string, nullable: true }
+
+    TramiteResumenDto:
+      type: object
+      description: Fila del catálogo paginado — /tramites.
+      required: [codigo, nombre, institucionId, institucion, esPopular, estaEnSol, fichaCompleta]
+      properties:
+        codigo: { type: string, maxLength: 20 }
+        nombre: { type: string, maxLength: 600 }
+        institucionId: { type: string }
+        institucion: { type: string }
+        categoriaId: { type: integer, nullable: true }
+        categoriaNombre: { type: string, nullable: true }
+        modalidad: { allOf: [{ $ref: "#/components/schemas/Modalidad" }], nullable: true }
+        esPopular: { type: boolean }
+        costoEsGratuito:
+          type: boolean
+          nullable: true
+          description: "Tres estados: null = no capturado, false = tiene costo, true = gratuito. NUNCA se infiere de un costo vacío."
+        costoTexto: { type: string, nullable: true, maxLength: 250 }
+        tiempoTexto: { type: string, nullable: true, maxLength: 120 }
+        estaEnSol: { type: boolean }
+        fichaCompleta:
+          type: boolean
+          description: Informativo. El filtrado real lo hace ?soloFichasCompletas=true del lado del servidor.
+
+    TramiteDetalleDto:
+      allOf:
+        - $ref: "#/components/schemas/TramiteResumenDto"
+        - type: object
+          properties:
+            descripcion: { type: string, nullable: true }
+            objetivo: { type: string, nullable: true }
+            dirigidoA: { type: string, nullable: true }
+            vigenciaDocumento: { type: string, nullable: true }
+            temporalidad: { type: string, nullable: true }
+            solUrl: { type: string, nullable: true, maxLength: 500 }
+            solVerificadoEl: { type: string, format: date-time, nullable: true }
+            ultimaRevision:
+              type: string
+              format: date-time
+              description: "UpdatedAt ?? UltimaModificacion ?? CreatedAt (M-05). Nunca el campo editable del formulario."
+            enlacePrincipal: { type: string, nullable: true }
+            pasos: { type: array, items: { $ref: "#/components/schemas/PasoDto" } }
+            requisitos: { type: array, items: { $ref: "#/components/schemas/RequisitoDto" } }
+            entregables: { type: array, items: { $ref: "#/components/schemas/EntregableDto" } }
+            lugaresAtencion: { type: array, items: { $ref: "#/components/schemas/LugarAtencionDto" } }
+            enlaces: { type: array, items: { $ref: "#/components/schemas/EnlaceDto" } }
+
+    PagedResultTramiteResumen:
+      type: object
+      required: [items, total, pagina, tamano]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/TramiteResumenDto" } }
+        total: { type: integer }
+        pagina: { type: integer }
+        tamano: { type: integer }
+
+    InstitucionDto:
+      type: object
+      required: [id, nombre]
+      properties:
+        id: { type: string }
+        nombre: { type: string }
+        nombreCorto: { type: string, nullable: true, maxLength: 30 }
+        logoUrl: { type: string, nullable: true }
+        telefono: { type: string, nullable: true, maxLength: 60 }
+        sitioWeb: { type: string, nullable: true, maxLength: 300 }
+        direccion: { type: string, nullable: true, maxLength: 300 }
+        horario: { type: string, nullable: true, maxLength: 200 }
+        tipo: { type: string, nullable: true, maxLength: 60 }
+        conteoTramitesPublicados:
+          type: integer
+          description: Calculado en vivo en cada petición — nunca almacenado.
+
+    CategoriaDto:
+      type: object
+      required: [id, nombre, orden]
+      properties:
+        id: { type: integer }
+        nombre: { type: string }
+        icono: { type: string, nullable: true }
+        orden: { type: integer }
+        conteoTramitesPublicados:
+          type: integer
+          description: Calculado en vivo en cada petición — nunca almacenado.
+
+    CambiosDto:
+      type: object
+      required: [codigos, generadoEl]
+      properties:
+        codigos:
+          type: array
+          items: { type: string }
+          description: Códigos a refrescar (upsert). No distingue alta de cambio a propósito.
+        generadoEl:
+          type: string
+          format: date-time
+          description: Hora del servidor al momento de responder — el cliente la guarda como el próximo `desde`.

@@ -24,6 +24,8 @@ internal sealed class FakeGlobalCurrentUser : ICurrentUserService
     public bool        EsSoloLectura         => false;
     public bool        EsSupervisor          => true;
     public bool        EsTecnicoSoporte      => true;
+    public bool        EsJefeDeArea          => false;
+    public bool        EsPmo                 => false;
     public string?     ActiveInstitucionId   => null;
     public string?     ActiveAreaId          => null;
     public string?     ActiveUnidadId        => null;

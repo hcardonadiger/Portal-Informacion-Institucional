@@ -30,6 +30,28 @@ public sealed class CompromisoDetalleModel(
         }
     }
 
+    /// <summary>
+    /// Sirve el archivo adjunto de un comentario del compromiso.
+    ///
+    /// <para>Resuelve el compromiso con la misma consulta que pinta la pantalla, así que hereda su
+    /// alcance. Antes el enlace iba directo a <c>/uploads/…</c>, servido sin sesión — ver
+    /// <see cref="ArchivosProtegidos"/>.</para>
+    /// </summary>
+    public async Task<IActionResult> OnGetAdjuntoAsync(int id, int comentarioId, CancellationToken ct)
+    {
+        try { Compromiso = await sender.Send(new GetCompromisoDetalleQuery(id), ct); }
+        catch (NotFoundException) { return NotFound(); }
+
+        var comentario = Compromiso.Comentarios.FirstOrDefault(c => c.Id == comentarioId);
+        if (comentario is null) return NotFound();
+
+        var ruta = ArchivosProtegidos.Resolver(env, comentario.ArchivoUrl);
+        if (ruta is null) return NotFound();
+
+        var nombre = comentario.ArchivoNombre ?? "adjunto";
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(nombre), nombre);
+    }
+
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostComentarAsync(int id, string? comentario, List<IFormFile>? archivos, CancellationToken ct)
     {

@@ -127,6 +127,10 @@ public interface ICurrentUserService
     bool EsSupervisor { get; }
     /// <summary>El rol activo atiende el chat de soporte.</summary>
     bool EsTecnicoSoporte { get; }
+    /// <summary>El rol activo es jefe de área.</summary>
+    bool EsJefeDeArea { get; }
+    /// <summary>El rol activo es PMO.</summary>
+    bool EsPmo { get; }
 
     /// <summary>Contexto activo: Institución.</summary>
     string? ActiveInstitucionId { get; }
@@ -180,6 +184,7 @@ public interface IApplicationDbContext
     DbSet<TicketComentario>         TicketComentarios { get; }
     DbSet<CategoriaTicket>          CategoriasTicket { get; }
     DbSet<TemaTicket>               TemasTicket   { get; }
+    DbSet<PrioridadTicket>          PrioridadesTicket { get; }
     DbSet<UsuarioTema>              UsuarioTemas  { get; }
     DbSet<RolModuloAcceso>          RolModuloAccesos { get; }
     DbSet<Rol>                      Roles            { get; }
@@ -205,11 +210,29 @@ public interface IApplicationDbContext
     DbSet<Recurso>                 Recursos               { get; }
     DbSet<TramiteSiger>            TramitesSiger          { get; }
     DbSet<PasoSiger>               PasosSiger             { get; }
+    DbSet<CategoriaTramite>        CategoriasTramite      { get; }
     DbSet<RequisitoSiger>          RequisitosSiger        { get; }
     DbSet<EntregableSiger>         EntregablesSiger       { get; }
     DbSet<LugarAtencionSiger>      LugaresAtencionSiger   { get; }
     DbSet<EnlaceSiger>             EnlacesSiger           { get; }
     DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
+    DbSet<Proyecto>                Proyectos              { get; }
+    DbSet<PrioridadProyecto>       PrioridadesProyecto    { get; }
+    DbSet<CategoriaProyecto>       CategoriasProyecto     { get; }
+    DbSet<EntregableProyecto>      ProyectoEntregables    { get; }
+    DbSet<ActividadProyecto>       ProyectoActividades    { get; }
+    DbSet<AvanceProyecto>          ProyectoAvances        { get; }
+    DbSet<DependenciaActividad>    ProyectoDependencias   { get; }
+    DbSet<CategoriaDocumento>      CategoriasDocumento    { get; }
+    DbSet<DocumentoProyecto>       ProyectoDocumentos     { get; }
+    DbSet<VersionDocumento>        ProyectoDocumentoVersiones { get; }
+    DbSet<DescargaDocumento>       ProyectoDocumentoDescargas { get; }
+    DbSet<ProyectoReunion>         ProyectoReuniones      { get; }
+    DbSet<ProyectoExpediente>      ProyectoExpedientes    { get; }
+    DbSet<ProyectoTicket>          ProyectoTickets        { get; }
+    DbSet<BitacoraProyecto>        BitacorasProyecto      { get; }
+    DbSet<RiesgoProyecto>          ProyectoRiesgos        { get; }
+    DbSet<InteresadoProyecto>      ProyectoInteresados    { get; }
     Task<int> SaveChangesAsync(CancellationToken ct);
 }

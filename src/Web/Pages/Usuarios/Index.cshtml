@@ -38,6 +38,17 @@
         <input type="search" name="q" value="@Model.Q" placeholder="Buscar por nombre o correo…" />
         <button class="btns" type="submit">Buscar</button>
         @if (!string.IsNullOrEmpty(Model.Q)) { <a class="btns" asp-page="/Usuarios/Index">Limpiar</a> }
+        @* Solo para el administrador: es el único que elimina y restaura, y para el resto los
+           eliminados sencillamente no existen. Sin esta casilla, un borrado por error solo se
+           desharía tocando la base de datos. *@
+        @if (Model.PuedeEliminar)
+        {
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-left:auto">
+                <input type="checkbox" name="eliminados" value="true" checked="@Model.VerEliminados"
+                       onchange="this.form.submit()" style="width:auto;margin:0" />
+                <span>Mostrar eliminados</span>
+            </label>
+        }
     </form>
 
     <table class="seg-table">
@@ -53,8 +64,20 @@
         <tbody>
             @foreach (var u in Model.Resultado.Items)
             {
-                <tr>
-                    <td><a class="seg-inst" asp-page="/Usuarios/Editor" asp-route-id="@u.Id">@u.Nombre</a></td>
+                <tr style="@(u.Eliminado ? "opacity:.55" : "")">
+                    <td>
+                        @if (u.Eliminado)
+                        {
+                            @* Sin enlace al editor: el filtro global lo esconde y la página daría
+                               «no encontrado». Primero se restaura, después se edita. *@
+                            <span>@u.Nombre</span>
+                            <span class="badge badge-secondary" style="margin-left:6px">Eliminado</span>
+                        }
+                        else
+                        {
+                            <a class="seg-inst" asp-page="/Usuarios/Editor" asp-route-id="@u.Id">@u.Nombre</a>
+                        }
+                    </td>
                     <td class="res-meta">@u.Correo</td>
                     <td>
                         @{
@@ -75,9 +98,43 @@
                             <span style="color:#94a3b8;font-size:13px;font-weight:600">○ Inactivo</span>
                         }
                     </td>
-                    <td style="text-align:right">
-                        <a class="btns" asp-page="/Usuarios/Editor" asp-route-id="@u.Id"
-                           style="font-size:12.5px;padding:6px 12px">Editar</a>
+                    <td style="text-align:right;white-space:nowrap">
+                        @* Un formulario POR FILA, con el handler en su propio action.
+                           No se puede colgar el handler del botón: diger.js intercepta el submit de
+                           cualquier .hist-del, muestra su modal y reenvía con form.submit(), que usa
+                           el action del FORMULARIO y descarta el formaction del botón. Con el handler
+                           solo en el botón, el POST caía en /Usuarios sin ?handler=, Razor Pages no
+                           encontraba handler y renderizaba la página sin ejecutar nada: la lista salía
+                           vacía y no se borraba a nadie. *@
+                        @if (u.Eliminado)
+                        {
+                            <form method="post" asp-page-handler="Restaurar" style="display:inline">
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <input type="hidden" name="q" value="@Model.Q" />
+                                <button type="submit" class="btns"
+                                        style="font-size:12.5px;padding:6px 12px">Restaurar</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a class="btns" asp-page="/Usuarios/Editor" asp-route-id="@u.Id"
+                               style="font-size:12.5px;padding:6px 12px">Editar</a>
+                            @if (Model.PuedeEliminar)
+                            {
+                                <form method="post" asp-page-handler="Eliminar" style="display:inline">
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <input type="hidden" name="q" value="@Model.Q" />
+                                    <input type="hidden" name="eliminados" value="@Model.VerEliminados.ToString().ToLowerInvariant()" />
+                                    @* data-confirm y no onclick: el modal ya lo pone diger.js al ver
+                                       .hist-del. Con un confirm() propio encima salían DOS diálogos
+                                       seguidos para la misma acción. *@
+                                    <button type="submit" class="hist-del"
+                                            data-confirm="¿Eliminar a @u.Nombre? Dejará de aparecer en el portal y no podrá iniciar sesión. Puede recuperarlo con «Mostrar eliminados»."
+                                            title="Eliminar a @u.Nombre"
+                                            aria-label="Eliminar a @u.Nombre">&#10005;</button>
+                                </form>
+                            }
+                        }
                     </td>
                 </tr>
             }

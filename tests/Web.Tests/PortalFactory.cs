@@ -37,6 +37,21 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
 {
     private SqliteConnection? _conexion;
 
+    /// <summary>
+    /// Id de la prioridad «Media» en la base de pruebas, la que traen los proyectos que arma una
+    /// suite a mano. Constante y no una lectura de la base porque varios ayudantes que construyen
+    /// proyectos son estáticos y no tienen la fábrica a mano. <see cref="PrepararAsync"/> verifica
+    /// que el sembrado efectivamente la deje en este Id.
+    /// </summary>
+    public const int PrioridadPorDefecto = 2;
+
+    /// <summary>
+    /// Id de «Media» en el catálogo de prioridades de ticket. Es 3 y no 2 porque ese catálogo va
+    /// ordenado de lo urgente a lo leve —Crítica, Alta, Media, Baja— y el sembrado respeta ese
+    /// orden. <see cref="PrepararAsync"/> lo verifica.
+    /// </summary>
+    public const int PrioridadTicketPorDefecto = 3;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -103,6 +118,54 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
                     esSoloLectura: true, esSistema: true));
 
             await db.SaveChangesAsync();
+        }
+
+        // El catálogo de prioridades: un proyecto apunta a una fila de acá por llave foránea, así
+        // que sin sembrarlo cualquier suite que cree un proyecto muere con FOREIGN KEY constraint
+        // failed. En producción las deja la migración; acá las deja esto.
+        if (!await db.PrioridadesProyecto.AnyAsync())
+        {
+            var alta  = PrioridadProyecto.Crear("Alta",  1, ColorEtiqueta.Naranja);
+            var media = PrioridadProyecto.Crear("Media", 2, ColorEtiqueta.Azul);
+            var baja  = PrioridadProyecto.Crear("Baja",  3, ColorEtiqueta.Gris);
+            media.FijarPredeterminada(true);
+
+            db.PrioridadesProyecto.AddRange(alta, media, baja);
+            await db.SaveChangesAsync();
+
+            // Se comprueba en vez de darse por supuesto: PrioridadPorDefecto es una constante
+            // —los ayudantes estáticos que arman proyectos no tienen la fábrica a mano— y si el
+            // orden de inserción cambiara, es preferible un mensaje que diga exactamente esto a
+            // un centenar de pruebas cayendo por violación de llave foránea.
+            if (media.Id != PrioridadPorDefecto)
+                throw new InvalidOperationException(
+                    $"El sembrado dejó «Media» con Id {media.Id} y las pruebas esperan {PrioridadPorDefecto}.");
+        }
+
+        // Una categoría, para que la pantalla del catálogo tenga algo que pintar. No hace falta
+        // para crear proyectos —la categoría es opcional— pero sí para poder mirar su tabla.
+        if (!await db.CategoriasProyecto.AnyAsync())
+        {
+            db.CategoriasProyecto.Add(
+                CategoriaProyecto.Crear("Digitalización de trámites", 1, ColorEtiqueta.Azul));
+            await db.SaveChangesAsync();
+        }
+
+        // Lo mismo para los tickets, que tienen su propio catálogo.
+        if (!await db.PrioridadesTicket.AnyAsync())
+        {
+            var critica = PrioridadTicket.Crear("Critica", 1, ColorEtiqueta.Rojo, esCritica: true);
+            var alta    = PrioridadTicket.Crear("Alta",    2, ColorEtiqueta.Naranja);
+            var mediaTk = PrioridadTicket.Crear("Media",   3, ColorEtiqueta.Azul);
+            var baja    = PrioridadTicket.Crear("Baja",    4, ColorEtiqueta.Gris);
+            mediaTk.FijarPredeterminada(true);
+
+            db.PrioridadesTicket.AddRange(critica, alta, mediaTk, baja);
+            await db.SaveChangesAsync();
+
+            if (mediaTk.Id != PrioridadTicketPorDefecto)
+                throw new InvalidOperationException(
+                    $"El sembrado dejó «Media» de tickets con Id {mediaTk.Id} y las pruebas esperan {PrioridadTicketPorDefecto}.");
         }
 
         // Usuarios reales: varias páginas (Perfil, por ejemplo) consultan al usuario de la

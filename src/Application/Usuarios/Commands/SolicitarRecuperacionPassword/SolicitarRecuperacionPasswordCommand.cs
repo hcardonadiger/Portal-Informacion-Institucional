@@ -64,10 +64,10 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>DIGER — Portal de Trámites del Estado</h1>
+                        <h1>{{Marca.Nombre}}</h1>
                     </div>
                     <p>Hola <strong>{{usuario.Nombre}}</strong>,</p>
-                    <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en el Portal de Trámites de la DIGER.</p>
+                    <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en {{Marca.Nombre}}.</p>
                     <p>Haz clic en el siguiente botón para ingresar tu nueva contraseña:</p>
                     <div style="text-align: center;">
                         <a href="{{resetUrl}}" class="btn" target="_blank">Restablecer mi Contraseña</a>
@@ -85,7 +85,7 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
             </html>
             """;
 
-        await emailService.SendEmailAsync(usuario.Correo, "Restablecimiento de contraseña — DIGER", bodyHtml, ct);
+        await emailService.SendEmailAsync(usuario.Correo, $"Restablecimiento de contraseña — {Marca.Nombre}", bodyHtml, ct);
 
         return Unit.Value;
     }

@@ -69,7 +69,8 @@ public class RolTests
         var rol = Rol.Crear("Auditor", "Auditor", NivelAlcance.Unidad);
 
         rol.Actualizar("Auditor interno", NivelAlcance.Institucion, "Revisa expedientes", "#6d4c00",
-            esAdministrador: false, esSoloLectura: true, esSupervisor: true, esTecnicoSoporte: false);
+            esAdministrador: false, esSoloLectura: true, esSupervisor: true, esTecnicoSoporte: false,
+            esJefeDeArea: false, esPmo: false);
 
         rol.Nombre.Should().Be("Auditor interno");
         rol.NivelAlcance.Should().Be(NivelAlcance.Institucion);
@@ -84,7 +85,8 @@ public class RolTests
         var rol = Rol.Crear("Auditor", "Auditor", NivelAlcance.Unidad);
 
         var act = () => rol.Actualizar("Auditor", NivelAlcance.Unidad, null, null,
-            esAdministrador: true, esSoloLectura: true, esSupervisor: false, esTecnicoSoporte: false);
+            esAdministrador: true, esSoloLectura: true, esSupervisor: false, esTecnicoSoporte: false,
+            esJefeDeArea: false, esPmo: false);
 
         act.Should().Throw<DomainException>();
     }
@@ -99,5 +101,29 @@ public class RolTests
 
         rol.Activar();
         rol.Activo.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Crear_ConEsJefeDeAreaYEsPmo_LasPersiste()
+    {
+        var rol = Rol.Crear(
+            "JefeArea", "Jefe de Área", NivelAlcance.Area,
+            esJefeDeArea: true, esPmo: false);
+
+        rol.EsJefeDeArea.Should().BeTrue();
+        rol.EsPmo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Actualizar_CambiaEsJefeDeAreaYEsPmo()
+    {
+        var rol = Rol.Crear("Pmo", "PMO", NivelAlcance.Unidad);
+
+        rol.Actualizar(
+            "PMO", NivelAlcance.Unidad, null, null,
+            esAdministrador: false, esSoloLectura: false, esSupervisor: false, esTecnicoSoporte: false,
+            esJefeDeArea: false, esPmo: true);
+
+        rol.EsPmo.Should().BeTrue();
     }
 }

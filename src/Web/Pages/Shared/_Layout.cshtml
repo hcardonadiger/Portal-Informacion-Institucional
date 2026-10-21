@@ -44,22 +44,40 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    @* Setea el tema ANTES de que se carguen las hojas de estilo, para no
-       parpadear claro→oscuro en cada carga si el usuario ya eligió oscuro. *@
+    @* ───────────────────────────────────────────────────────────────────────────────
+       2026-09-18 — MODO OSCURO DESHABILITADO TEMPORALMENTE. Este es el interruptor.
+
+       Se fija «light» en el <html> antes de cargar las hojas de estilo, que es lo que
+       tapa de un golpe las dos vías automáticas: la preferencia del sistema operativo
+       y la que el navegador de cada quien tuviera guardada de antes. Gana porque
+       :root[data-theme="light"] (tokens.css) tiene más especificidad que el :root del
+       bloque @media, y porque los tres bloques oscuros con reglas propias —panel de
+       notificaciones acá abajo, modal de confirmación en diger.css y Cronograma—
+       llevan la guarda html:not([data-theme="light"]).
+
+       Lo guardado en localStorage NO se borra a propósito: el día que se reactive,
+       cada quien recupera el tema que tenía.
+
+       PARA RESTAURAR: descomentar la lectura de abajo, quitar el display:none de
+       #themeToggleBtn (más abajo en este archivo) y listo. Las guardas de los tres
+       bloques pueden quedarse: corrigen un fallo anterior —elegir claro a mano no
+       aclaraba esas reglas— y no estorban con el modo oscuro activo.
+       ─────────────────────────────────────────────────────────────────────────────── *@
     <script>
-        (function () {
-            try {
-                var saved = localStorage.getItem('diger-theme');
-                if (saved === 'dark' || saved === 'light') {
-                    document.documentElement.setAttribute('data-theme', saved);
-                }
-            } catch (e) { }
-        })();
+        document.documentElement.setAttribute('data-theme', 'light');
+        // (function () {
+        //     try {
+        //         var saved = localStorage.getItem('diger-theme');
+        //         if (saved === 'dark' || saved === 'light') {
+        //             document.documentElement.setAttribute('data-theme', saved);
+        //         }
+        //     } catch (e) { }
+        // })();
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="@(_instBranding?.Color ?? "#02395e")" />
-    <title>@ViewData["Title"] — @_inst.NombreCorto</title>
+    <title>@ViewData["Title"] — @Marca.Nombre</title>
 
     <link rel="icon" type="image/png" sizes="32x32" href="~/img/favicon-32.png" asp-append-version="true">
     <link rel="icon" type="image/png" sizes="192x192" href="~/img/favicon-192.png" asp-append-version="true">
@@ -91,6 +109,7 @@
         var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
         var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
         var puedeSoporte     = await Acceso.EsSoporteAsync();   // atiende el chat de soporte
+        var puedeProyectos   = await Acceso.PuedeAsync(ModulosPortal.Proyectos);
 
         var asignacionesJson = User.FindFirstValue(AppClaims.AsignacionesJson);
         List<AsignacionAuthDto>? asignaciones = null;
@@ -131,7 +150,7 @@
                         }
                         else
                         {
-                            <span class="app-brand-title">Digitalización de Trámites</span>
+                            <span class="app-brand-title">@Marca.Nombre</span>
                         }
                     </a>
 
@@ -139,10 +158,12 @@
 
                     <nav class="main-nav" id="mainNav" aria-label="Menú principal">
                         @*
-                            Seis grupos, uno por pregunta que se hace el usuario: qué trabajo tengo,
-                            qué hay en SIGER, cómo vamos, qué tengo agendado, qué me están pidiendo,
-                            y qué administro. Ningún menú pasa de seis entradas a propósito: el grupo
-                            "Digitalización" anterior acumulaba nueve y mezclaba las tres primeras.
+                            Un grupo por pregunta que se hace el usuario: qué trabajo tengo, qué hay
+                            en SIGER, qué estamos ejecutando, cómo vamos, qué tengo agendado, qué me
+                            están pidiendo, y qué administro. Ningún menú pasa de seis entradas a
+                            propósito: el grupo "Digitalización" anterior acumulaba nueve y mezclaba
+                            las tres primeras. Por eso Proyectos abre su propio grupo en vez de
+                            sumarse a Expedientes, que trata de racionalización de trámites.
                         *@
                         @if (puedeExpedientes)
                         {
@@ -166,6 +187,22 @@
                                     @if (await Acceso.PuedeClaveAsync("Siger.Conciliacion.Editar"))
                                     {
                                         <a class="nav-item @(EsRuta("/Siger/Conciliacion") ? "on" : "")" asp-page="/Siger/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (puedeProyectos)
+                        {
+                            @* Dejó de ser un destino único: la biblioteca es la consulta
+                               transversal de la documentación, y no cuelga de ningún proyecto. *@
+                            <div class="nav-group @(EsRuta("/Proyectos") ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Proyectos<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    <a class="nav-item @(EsRuta("/Proyectos") && !EsRuta("/Proyectos/Biblioteca") && !EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/Index">Portafolio</a>
+                                    <a class="nav-item @(EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/MisActividades">Mis actividades</a>
+                                    @if (await Acceso.PuedeClaveAsync("Proyectos.Documentos.Ver"))
+                                    {
+                                        <a class="nav-item @(EsRuta("/Proyectos/Biblioteca") ? "on" : "")" asp-page="/Proyectos/Biblioteca">Biblioteca</a>
                                     }
                                 </div>
                             </div>
@@ -227,33 +264,80 @@
                                 </div>
                             </div>
                         }
-                        @if (Acceso.EsAdministrador || User.FindFirstValue(AppClaims.ActiveRol) == "JefeInstitucion")
+                        @* «Administración» agrupa lo que se administra: los datos maestros, que entran
+                           por la portada de Catálogos, y el control de acceso. Los catálogos no cuelgan
+                           uno por uno como antes —el menú crecía con cada uno— sino detrás de una sola
+                           entrada; la portada decide qué tarjetas mostrar, y lo hace con la clave de
+                           cada destino, no con el nombre del rol.
+
+                           El grupo se abre para el administrador O para quien alcance algún catálogo.
+                           Si dependiera solo de EsAdministrador, los roles que administran un catálogo
+                           sin ser administradores —hoy varios tienen Tickets.Temas.Editar— se quedarían
+                           sin ninguna puerta hacia él en el menú. Adentro, cada entrada se gatea por su
+                           cuenta, así que un rol de esos ve Catálogos y nada más. *@
+                        @{
+                            var puedeInstituciones = await Acceso.PuedeAsync("Instituciones");
+                            var puedeAreas         = await Acceso.PuedeAsync("Areas");
+                            var puedeUnidades      = await Acceso.PuedeAsync("Unidades");
+                            var puedeTemasTicket   = await Acceso.PuedeClaveAsync("Tickets.Temas.Editar");
+                            var puedeCategorias    = await Acceso.PuedeClaveAsync("Categorias.Proyectos.Editar");
+                            var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar")
+                                                  || await Acceso.PuedeClaveAsync("Prioridades.Tickets.Editar");
+
+                            var puedeCatalogos = puedeInstituciones || puedeAreas || puedeUnidades
+                                              || puedeTemasTicket || puedePrioridades || puedeCategorias;
+
+                            // Cada entrada por su propia clave, no por «es administrador». Un rol
+                            // puede tener Usuarios.Ver sin ser administrador, y antes eso no le
+                            // abría nada: el menú miraba la capacidad del rol en vez de mirar el
+                            // permiso de cada destino.
+                            var puedeUsuarios = await Acceso.PuedeAsync("Usuarios");
+                            var puedeRoles    = await Acceso.PuedeAsync("Accesos.Roles");
+                            var puedePermisos = await Acceso.PuedeAsync("Accesos.Permisos");
+                            var puedeMigrar   = HostEnv.IsDevelopment()
+                                             && await Acceso.PuedeClaveAsync("Admin.Migraciones.Crear");
+                        }
+                        @if (puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeMigrar)
                         {
-                            var grpAdmin = EsRuta("/Instituciones") || EsRuta("/Areas") || EsRuta("/Unidades")
+                            var grpAdmin = EsRuta("/Catalogos") || EsRuta("/Instituciones")
+                                        || EsRuta("/Areas") || EsRuta("/Unidades")
                                         || EsRuta("/Usuarios") || EsRuta("/Accesos") || EsRuta("/Admin");
                             <div class="nav-group @(grpAdmin ? "on" : "")">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Administración<span class="nav-caret">&#9662;</span></button>
                                 <div class="nav-group-menu">
-                                    @if (Acceso.EsAdministrador)
+                                    @if (puedeCatalogos)
                                     {
-                                        <a class="nav-item @(EsRuta("/Instituciones") ? "on" : "")" asp-page="/Instituciones/Index"><svg class="ico"><use href="#i-institucion"></use></svg>Instituciones</a>
+                                        <a class="nav-item @(EsRuta("/Catalogos", "/Instituciones", "/Areas", "/Unidades") ? "on" : "")" asp-page="/Catalogos/Index"><svg class="ico"><use href="#i-recursos"></use></svg>Catálogos</a>
                                     }
-                                    <a class="nav-item @(EsRuta("/Areas") ? "on" : "")" asp-page="/Areas/Index"><svg class="ico"><use href="#i-area"></use></svg>Áreas</a>
-                                    <a class="nav-item @(EsRuta("/Unidades") ? "on" : "")" asp-page="/Unidades/Index"><svg class="ico"><use href="#i-unidad"></use></svg>Unidades</a>
-                                    @if (Acceso.EsAdministrador)
+                                    @if (puedeUsuarios)
                                     {
                                         <a class="nav-item @(EsRuta("/Usuarios") ? "on" : "")" asp-page="/Usuarios/Index"><svg class="ico"><use href="#i-usuarios"></use></svg>Usuarios</a>
+                                    }
+                                    @if (puedeRoles)
+                                    {
                                         <a class="nav-item @(EsRuta("/Accesos/Roles") ? "on" : "")" asp-page="/Accesos/Roles"><svg class="ico"><use href="#i-accesos"></use></svg>Roles</a>
+                                    }
+                                    @if (puedePermisos)
+                                    {
                                         <a class="nav-item @(EsRuta("/Accesos/Permisos") ? "on" : "")" asp-page="/Accesos/Permisos"><svg class="ico"><use href="#i-accesos"></use></svg>Permisos</a>
-                                        @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
-                                        @if (HostEnv.IsDevelopment())
-                                        {
-                                            <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
-                                        }
+                                    }
+                                    @* Migración de datos: estaba bajo Agenda, donde nada tenía que ver. *@
+                                    @if (puedeMigrar)
+                                    {
+                                        <a class="nav-item @(EsRuta("/Admin/MigrarSupabase") ? "on" : "")" asp-page="/Admin/MigrarSupabase"><svg class="ico"><use href="#i-migrar"></use></svg>Migrar desde Supabase</a>
                                     }
                                 </div>
                             </div>
                         }
+
+                        @* La ayuda va al final del menú y SIN condición de permiso: documenta cómo
+                           se usa el portal, no expone datos de nadie —es la misma razón por la que
+                           la página lleva [PermisoNoRequerido]—. Hasta ahora solo estaba dentro del
+                           panel de usuario, donde no la encontraba quien no supiera que existía.
+                           Un solo destino, así que enlaza directo en vez de desplegar un menú. *@
+                        <div class="nav-group @(EsRuta("/Ayuda") ? "on" : "")">
+                            <a class="nav-group-btn" asp-page="/Ayuda/Index" title="Manual de usuario del portal">Ayuda</a>
+                        </div>
                     </nav>
 
                     @{
@@ -284,7 +368,10 @@
                         };
                     }
                     <div class="header-right">
-                        <button type="button" class="header-icon" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Cambiar a modo oscuro" title="Cambiar tema">🌙</button>
+                        @* Oculto mientras el modo oscuro esté deshabilitado: un botón que no hace
+                           nada es peor que no tenerlo. Se oculta en vez de borrarse para que
+                           reactivarlo sea quitar el style. Ver el interruptor en el <head>. *@
+                        <button type="button" class="header-icon" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Cambiar a modo oscuro" title="Cambiar tema" style="display:none">🌙</button>
                         <div class="notif-wrap" id="notifWrap">
                             <button type="button" class="header-icon notif-btn" onclick="toggleNotifPanel(event)" title="Notificaciones" aria-haspopup="true">
                                 &#128276;
@@ -499,13 +586,18 @@
     background: var(--diger-bg-soft); flex: none;
 }
 .notif-ver-todas:hover { background: var(--diger-blue-light); }
+@* Mismo criterio que los otros dos bloques oscuros del portal: html:not([data-theme="light"])
+   para que un modo claro forzado gane sobre la preferencia del sistema. Acá todas las reglas
+   van por tokens y ya se aclaraban solas, pero se guarda igual para que apagar el modo oscuro
+   sea una sola operacion uniforme y no haya que recordar cuál bloque hacía falta. *@
 @@media (prefers-color-scheme: dark) {
-    .notif-panel { background: var(--diger-surface); border-color: var(--diger-border); }
-    .notif-item:hover { background: var(--diger-bg); }
-    .ni-titulo { color: var(--diger-text); }
-    .notif-panel-title { color: var(--diger-text-strong); }
-    .ni-check, .ni-go { background: var(--diger-bg); border-color: var(--diger-border); }
-    .notif-ver-todas { background: var(--diger-surface); color: var(--diger-cyan); }
+    html:not([data-theme="light"]) .notif-panel { background: var(--diger-surface); border-color: var(--diger-border); }
+    html:not([data-theme="light"]) .notif-item:hover { background: var(--diger-bg); }
+    html:not([data-theme="light"]) .ni-titulo { color: var(--diger-text); }
+    html:not([data-theme="light"]) .notif-panel-title { color: var(--diger-text-strong); }
+    html:not([data-theme="light"]) .ni-check,
+    html:not([data-theme="light"]) .ni-go { background: var(--diger-bg); border-color: var(--diger-border); }
+    html:not([data-theme="light"]) .notif-ver-todas { background: var(--diger-surface); color: var(--diger-cyan); }
 }
 </style>
 <script>

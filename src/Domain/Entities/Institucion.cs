@@ -13,6 +13,13 @@ public sealed class Institucion : BaseAuditableEntity<string>
     public string? InfoExtra   { get; private set; }
     public bool   Activo      { get; private set; } = true;
 
+    // ── Contacto institucional (ficha pública) ─────────────────────────────
+    public string? Telefono  { get; private set; }
+    public string? SitioWeb  { get; private set; }
+    public string? Direccion { get; private set; }
+    public string? Horario   { get; private set; }
+    public string? Tipo      { get; private set; }
+
     private readonly List<TramiteDefinicion> _tramites = [];
     public IReadOnlyCollection<TramiteDefinicion> Tramites => _tramites.AsReadOnly();
 
@@ -23,10 +30,10 @@ public sealed class Institucion : BaseAuditableEntity<string>
         ValidarId(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
         
-        return new Institucion 
-        { 
+        return new Institucion
+        {
             Id = id.Trim().ToUpper(),
-            Nombre = nombre.Trim().ToUpper(), 
+            Nombre = nombre.Trim(),
             Descripcion = descripcion?.Trim(),
             NombreCorto = nombreCorto?.Trim().ToUpper(),
             LogoUrl = logoUrl?.Trim(),
@@ -47,9 +54,9 @@ public sealed class Institucion : BaseAuditableEntity<string>
     public void Renombrar(string nombre)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
-        Nombre = nombre.Trim().ToUpper();
+        Nombre = nombre.Trim();
     }
-    
+
     public void ActualizarDetalles(string? descripcion, string? nombreCorto, string? logoUrl, string? infoExtra, string? color = null)
     {
         Descripcion = descripcion?.Trim();
@@ -57,6 +64,21 @@ public sealed class Institucion : BaseAuditableEntity<string>
         LogoUrl = logoUrl?.Trim();
         InfoExtra = infoExtra?.Trim();
         Color = string.IsNullOrWhiteSpace(color) ? null : color.Trim();
+    }
+
+    /// <summary>Datos de contacto para la ficha pública. Rechaza un sitio web que no sea
+    /// una URL absoluta http(s) — misma regla que valida el trámite individual.</summary>
+    public void RegistrarContacto(string? telefono, string? sitioWeb, string? direccion, string? horario, string? tipo)
+    {
+        var sitioWebLimpio = string.IsNullOrWhiteSpace(sitioWeb) ? null : sitioWeb.Trim();
+        if (sitioWebLimpio is not null && !sitioWebLimpio.StartsWith("http://") && !sitioWebLimpio.StartsWith("https://"))
+            throw new DomainException("El sitio web debe ser una URL absoluta (http:// o https://).");
+
+        Telefono  = string.IsNullOrWhiteSpace(telefono)  ? null : telefono.Trim();
+        SitioWeb  = sitioWebLimpio;
+        Direccion = string.IsNullOrWhiteSpace(direccion) ? null : direccion.Trim();
+        Horario   = string.IsNullOrWhiteSpace(horario)   ? null : horario.Trim();
+        Tipo      = string.IsNullOrWhiteSpace(tipo)      ? null : tipo.Trim();
     }
 
     public void Activar()    => Activo = true;

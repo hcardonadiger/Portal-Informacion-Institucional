@@ -1,0 +1,73 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Siger.CompletitudModel
+@{
+    ViewData["Title"] = "Completitud de fichas — SIGER";
+    string ClasePct(int pct) => pct >= 90 ? "wf-completada" : pct >= 40 ? "wf-enproceso" : "wf-registrada";
+}
+
+<div class="container" style="max-width:1100px">
+    <div class="hist-header">
+        <div>
+            <h2>Completitud de fichas <span class="help-tip tip-down" data-tip="Por institución, qué porcentaje de trámites ya tiene categoría, modalidad, tiempo, costo y enlace a SOL capturados. Es el criterio para saber si el piloto está listo para publicarse.">?</span></h2>
+            <p>Solo cuenta trámites con institución vinculada. Los sin vincular quedan fuera hasta que se resuelva la Fase 2.</p>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a class="btns" asp-page="/Siger/CapturaLote">Ir a captura por lotes</a>
+            <a class="btns" asp-page="/Siger/Index">← Inventario</a>
+        </div>
+    </div>
+
+    @if (Model.Filas.Count == 0)
+    {
+        <div class="hist-empty">
+            <div class="ico"></div>
+            <p>No hay trámites con institución vinculada todavía.</p>
+        </div>
+    }
+    else
+    {
+        <div class="tabla-envoltura" style="overflow-x:auto">
+        <table class="seg-table">
+            <thead>
+                <tr>
+                    <th>Institución</th>
+                    <th style="text-align:center">Fichas</th>
+                    <th style="text-align:center">Publicadas</th>
+                    <th style="text-align:center">Categoría</th>
+                    <th style="text-align:center">Modalidad</th>
+                    <th style="text-align:center">Tiempo</th>
+                    <th style="text-align:center">Costo</th>
+                    <th style="text-align:center">En SOL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Filas)
+                {
+                    <tr>
+                        <td>
+                            <a class="seg-inst" asp-page="/Siger/CapturaLote" asp-route-InstitucionId="@f.InstitucionId">@f.Institucion</a>
+                        </td>
+                        <td style="text-align:center">@f.Fichas</td>
+                        <td style="text-align:center">
+                            <span class="wf-badge @ClasePct(f.PctPublicables)">@f.Publicables (@f.PctPublicables%)</span>
+                        </td>
+                        <td style="text-align:center">
+                            <span class="wf-badge @ClasePct(f.PctCategoria)">@f.ConCategoria (@f.PctCategoria%)</span>
+                        </td>
+                        <td style="text-align:center">
+                            <span class="wf-badge @ClasePct(f.PctModalidad)">@f.ConModalidad (@f.PctModalidad%)</span>
+                        </td>
+                        <td style="text-align:center">
+                            <span class="wf-badge @ClasePct(f.PctTiempo)">@f.ConTiempo (@f.PctTiempo%)</span>
+                        </td>
+                        <td style="text-align:center">
+                            <span class="wf-badge @ClasePct(f.PctCosto)">@f.ConCosto (@f.PctCosto%)</span>
+                        </td>
+                        <td style="text-align:center">@f.EnSol</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    }
+</div>
