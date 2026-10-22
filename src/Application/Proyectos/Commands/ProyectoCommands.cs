@@ -50,13 +50,27 @@ internal static class ResponsablesProyecto
             .Select(i => i.UsuarioId)
             .ToListAsync(ct)).ToHashSet();
 
-    public static void Exigir(Guid? nuevo, Guid? actual, HashSet<Guid> interesados, string que, string nombre)
+    /// <summary>
+    /// Para los riesgos vale además el responsable del proyecto, aunque no figure como interesado:
+    /// los proyectos anteriores a que se registrara solo no lo tienen, y el responsable de un riesgo
+    /// es casi siempre el del proyecto.
+    /// </summary>
+    public static async Task<HashSet<Guid>> ElegiblesParaRiesgoAsync(
+        IApplicationDbContext ctx, int proyectoId, Guid? responsableDelProyecto, CancellationToken ct)
+    {
+        var elegibles = await InteresadosAsync(ctx, proyectoId, ct);
+        if (responsableDelProyecto is { } r) elegibles.Add(r);
+        return elegibles;
+    }
+
+    public static void Exigir(Guid? nuevo, Guid? actual, HashSet<Guid> interesados, string que, string nombre,
+                              string aCargoDe = "un interesado del proyecto")
     {
         if (nuevo is null || nuevo == actual) return;
         if (interesados.Contains(nuevo.Value)) return;
 
         throw new DomainException(
-            $"«{nombre}»: {que} solo puede quedar a cargo de un interesado del proyecto. " +
+            $"«{nombre}»: {que} solo puede quedar a cargo de {aCargoDe}. " +
             "Agregue primero a esa persona en la sección Interesados y vuelva a intentarlo.");
     }
 }
