@@ -8,6 +8,35 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-22 (noche, 6) — Menú lateral contraíble y encabezado a la orilla
+Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo). Solo
+el layout compartido (`_Layout.cshtml`, `diger.css` y `diger.js`). Sin cambiar los elementos, los
+nombres ni el orden del menú, y sin tocar `src/Web/Mcp`.
+- **Secciones contraíbles:**
+  - todas nacen contraídas; el servidor abre la sección de la página, así que no hay un parpadeo
+    con el menú cerrado;
+  - un clic abre o cierra, y abrir una cierra la otra;
+  - en las páginas sin sección (Ayuda, perfil) se abre la última que eligió el usuario, guardada en
+    el navegador (`localStorage`, protegido con `try/catch`); sin dato, o con el almacenamiento
+    bloqueado, todo queda contraído y el menú sigue funcionando;
+  - el título es un botón con `aria-expanded` y `aria-controls`, y ese atributo es el que contrae
+    en el CSS: lo que se ve y lo que oye un lector de pantalla no pueden separarse;
+  - Escape, un clic fuera u ocultar el cajón ya no contraen la sección (venía de los desplegables
+    de la barra horizontal que el cajón reemplazó el 2026-10-13).
+- **Encabezado:** sin ancho máximo; la hamburguesa y el logo quedan en x=12 a cualquier ancho
+  (antes, a 1920 px, en x≈225), en la misma vertical que los títulos del menú.
+- **375 px:** la cabecera ya no se sale del ancho; el logo se reduce en vez de empujar al usuario, y
+  el panel de notificaciones se ancla a la cabecera.
+- **`diger-ui`:** propuesta aplicada; revisión «aprobado con cambios menores», 3 de 4 aplicados (el
+  cuarto, la línea guía en oscuro, es decorativa y no tiene token mejor).
+- **Navegador** (claro y oscuro; 375, 768, 1366 y 1920 px, y una ventana de 420 px de alto): todos
+  los criterios se comprobaron con medidas, sin espacio entre cabecera y menú en ninguna posición
+  del scroll, y con el menú llegando hasta «Ayuda».
+- **Visual Studio** tenía el portal abierto y bloqueaba `src/Web/bin`; no se tocó. Se compiló y se
+  probó en una carpeta temporal, con el portal en los puertos 49185 a 49187.
+- **Pruebas:** `MenuLateralTests` (8). Suite completa: 1455 pruebas (1 omitida), sin advertencias
+  nuevas.
+
 ### 2026-10-22 (noche, 5) — Entrega 4: catálogo de insumos y ventana por actividad
 Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo). Diseño
 aceptado por Jamil, de la investigación de la tanda 2 de GestionDigital (sección 5). Sin tocar
@@ -201,6 +230,7 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - Tanda 1, entrega 2 (notificaciones y correo) (2026-10-22, rama `Jamil-GestionGD`).
 - Tanda 1, entrega 3 (responsable de los riesgos) (2026-10-22, rama `Jamil-GestionGD`).
 - Entrega 4 (catálogo de insumos y ventana por actividad) (2026-10-22, rama `Jamil-GestionGD`).
+- Menú lateral contraíble y encabezado a la orilla (2026-10-22, rama `Jamil-GestionGD`).
 - Tablero ejecutivo de proyectos (2026-10-19, rama `DashBoards`). Sin cambios de base de datos.
 
 ## En curso
@@ -224,6 +254,16 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - (nada registrado)
 
 ## Decisiones
+- 2026-10-22 — Ingeniería (menú lateral y encabezado):
+  - Cerrar una sección borra la sección recordada: quien la contrae no la quiere abierta en la
+    próxima página sin sección.
+  - Si la sección de la página no se ve (sin permiso), la página cuenta como «sin sección» y se usa
+    la recordada.
+  - El hueco se corrige midiendo al desplazar, no volviendo pegajosa la cinta de entorno: la cinta
+    seguiría quitando 22 px de alto en todas las páginas.
+  - La cabecera va de orilla a orilla, con el mismo relleno lateral que el cajón (12 px).
+  - Se borraron las reglas de la barra horizontal que el cajón ya pisaba (desplegable flotante,
+    ajuste de 901 a 1180 px). Esta última achicaba los títulos del cajón a 12,5 px.
 - 2026-10-22 — Ingeniería (entrega 4):
   - Una sola clave, `Insumos.Catalogo.Editar`, para las dos páginas: es un solo catálogo.
   - Las categorías iniciales se siembran solo si la tabla está vacía, no nombre por nombre.
@@ -268,6 +308,18 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
   tableros se limita al tablero ejecutivo.
 
 ## Bugs
+- **2026-10-22 — Espacio vacío entre la cabecera y el menú lateral.**
+  - Síntoma: al bajar la página quedaban 22 px vacíos entre la cabecera y el inicio del menú, con
+    la página asomando por el hueco.
+  - Causa raíz: encima de la cabecera está la cinta de entorno («Entorno de pruebas · base …»),
+    que no es pegajosa. El menú toma su borde superior de una medida que se hacía solo al cargar
+    (100 px con la cinta a la vista). Al bajar, la cabecera sube a 78 y el menú se quedaba en 100.
+    El 2026-10-19 se había quitado la medida al desplazar, creyendo que la cabecera ya empezaba
+    siempre en el borde superior.
+  - Solución: se vuelve a medir al desplazar, una vez por cuadro y solo con el menú abierto.
+  - Archivos: `wwwroot/js/diger.js` (`ajustarTopDelCajon`) y el comentario en `diger.css`.
+  - Pruebas: no hay pruebas de JavaScript en la solución. Se reprodujo y se midió en el navegador:
+    antes, 22 px; después, 0 px a 0, 5, 11, 22 y 200 px de scroll, en cuatro anchos.
 - **2026-10-22 — S1. Token de recuperación y cuerpo del correo en el registro.**
   - Síntoma: cuando un envío fallaba o no había servidor configurado, el registro (en IIS, el
     Visor de eventos) guardaba el correo completo, con el enlace y el token.
@@ -334,8 +386,12 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - **Detalles de interfaz que ya estaban antes de la tanda 1**, vistos el 2026-10-22:
   - a 375 px, la fila de botones de arriba del editor de expedientes y los KPI de Tableros se
     salen del ancho;
-  - a 375 px, el menú de usuario de la cabecera se sale del ancho en todas las páginas (visto en
-    Catálogos el 2026-10-22, entrega 4);
+  - a 375 px, el menú de usuario de la cabecera se salía del ancho en todas las páginas (visto en
+    Catálogos el 2026-10-22, entrega 4). **Corregido** el 2026-10-22 con el menú lateral;
+  - el cajón del menú, cuando está oculto, sigue en el orden del tabulador: está corrido fuera de
+    la pantalla, pero no inerte (visto por `diger-ui` el 2026-10-22);
+  - en tema oscuro, parte del texto de la Ayuda tiene muy poco contraste (visto por `diger-ui`
+    el 2026-10-22);
   - al imprimir el acta salen la franja «Entorno de pruebas», el botón del chat y una segunda
     página en blanco;
   - `diger-ui` advierte que el tema oscuro existe en esta rama aunque su doctrina lo daba por
