@@ -8,6 +8,33 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-22 (noche, 4) — Tanda 1, entrega 3: responsable de los riesgos
+Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo).
+Referencia: commit `cd6c912` de GestionDigital. Sin migraciones ni cambios en `src/Web/Mcp`, y
+sin tocar el responsable del proyecto.
+- **Servidor** (commit `4d5955b`): registrar y actualizar un riesgo aceptan como responsable solo
+  a un interesado del proyecto o a su responsable, con la misma regla que entregables y
+  actividades. Solo se valida lo que cambia: un riesgo antiguo con otro responsable se sigue
+  editando sin tocarlo. Antes bastaba con cambiar el valor del selector en la petición.
+- **Selector** (commits `73eb136` y `a4c6311`): ofrece los interesados más el responsable del
+  proyecto, sin duplicados. Si no hay nadie, avisa que hay que registrar interesados. En la tabla,
+  un responsable guardado que ya no es elegible se marca «fuera de los interesados». Propuesta y
+  revisión de `diger-ui`: aprobado con cambios menores, ya aplicados.
+- **Ayuda:** explica de quién puede ser responsable un riesgo.
+- **Herramienta MCP `registrar_riesgo`:** cambia lo que hace. Antes aceptaba cualquier
+  `responsableId`; ahora rechaza a quien no sea del equipo del proyecto. No se corrigió: solo se
+  reporta.
+- Resultado: compila sin advertencias nuevas y pasan 1392 pruebas (1 omitida).
+- **Base local nueva `GestionGD_Jamil`** en `SQL2025`: creada con las migraciones más
+  `database/2026-09-24_poner_al_dia.sql`, que agrega las tres columnas que ninguna migración crea
+  (sin ellas el acta no abre). Usuarios de `DbSeeder` y datos de prueba ficticios. Se apunta con
+  User Secrets; `appsettings.Development.json` no cambió.
+- **Revisión en el navegador** (con el correo apagado):
+  - selector de riesgos en claro, oscuro y a 375 px;
+  - advertencia del recordatorio en el acta y el compromiso en tema oscuro;
+  - impresión del acta: la advertencia no se imprime;
+  - editor de expedientes a 375 px: la advertencia cabe.
+
 ### 2026-10-22 (noche, 3) — Entregas 1 y 2 integradas en `ike_opt`
 Pedido del Analista. Entrega 2 aceptada.
 - `Jamil-GestionGD` se subió a origin. `ike_opt` traía 70 commits nuevos de origin (entre ellos la
@@ -110,6 +137,7 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 ## Hecho
 - Tanda 1, entrega 1 (seguridad): S1 a S5 (2026-10-22, rama `Jamil-GestionGD`).
 - Tanda 1, entrega 2 (notificaciones y correo) (2026-10-22, rama `Jamil-GestionGD`).
+- Tanda 1, entrega 3 (responsable de los riesgos) (2026-10-22, rama `Jamil-GestionGD`).
 - Tablero ejecutivo de proyectos (2026-10-19, rama `DashBoards`). Sin cambios de base de datos.
 
 ## En curso
@@ -218,16 +246,23 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
   con texto oscuro en tema oscuro.
 
 ## Riesgos y bloqueos
-- **La base local no sirve para revisar en el navegador** (2026-10-22). `GestionGD_new`, a la que
-  apunta `appsettings.Development.json`, ya no existe en `SQL2025`; de ahí el error 4060.
-  `GestionGD_DashBoards` tiene la última migración, pero a su tabla `Reuniones` le falta
-  `Duracion` y a las fichas SIGER del expediente les faltan columnas nuevas (`ClaveEstable`,
-  `EstaEnSol` y otras). Por eso el acta, el compromiso y el editor de expedientes dan error 500.
-  Sí se vio: la advertencia en tema oscuro se lee bien (ámbar sobre fondo oscuro, unos 8,8:1) y
-  cabe en 375 px. No se vio: la impresión del acta y el editor de expedientes en móvil. Necesita:
-  que Jamil decida si se corren los guiones de puesta al día sobre esa base o si se usa otra.
-- **Desborde horizontal en móvil en Tableros** (unos 23 px a 375 px): el menú de usuario de la
-  cabecera y los KPI. Ya estaba antes de la integración; no viene de la tanda 1.
+- **`GestionGD_DashBoards` no está completa** (2026-10-22): tiene la última migración, pero a su
+  tabla `Reuniones` le falta `Duracion` y a las fichas SIGER del expediente les faltan columnas
+  (`ClaveEstable`, `EstaEnSol` y otras). Por eso el acta, el compromiso y el editor de expedientes
+  dan error 500 con esa base. No se tocó (decisión de Jamil). Esta rama usa `GestionGD_Jamil`.
+- **`appsettings.Development.json` apunta a `GestionGD_new`, que ya no existe en `SQL2025`.** En
+  esta máquina lo tapa el User Secret de `GestionGD_Jamil`. Ese secreto vale para todas las copias
+  del portal en esta máquina y este usuario, porque comparten el mismo `UserSecretsId`.
+- **La herramienta MCP `registrar_riesgo` ahora rechaza a un responsable fuera del equipo del
+  proyecto** (entrega 3). Antes lo aceptaba. No se tocó `src/Web/Mcp`; si hace falta ajustar su
+  descripción, lo decide Jamil.
+- **Detalles de interfaz que ya estaban antes de la tanda 1**, vistos el 2026-10-22:
+  - a 375 px, la fila de botones de arriba del editor de expedientes y los KPI de Tableros se
+    salen del ancho;
+  - al imprimir el acta salen la franja «Entorno de pruebas», el botón del chat y una segunda
+    página en blanco;
+  - `diger-ui` advierte que el tema oscuro existe en esta rama aunque su doctrina lo daba por
+    retirado el 2026-09-24. Volvió con `ike_opt` (trabajo de Henry).
 - **Correos ya escritos en el Visor de eventos del servidor** (de antes de S1): pueden tener datos
   de personas y enlaces de recuperación ya vencidos. Necesita: decisión de Jamil sobre vaciar ese
   registro o restringir quién lo lee.
