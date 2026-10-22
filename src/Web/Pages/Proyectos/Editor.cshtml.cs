@@ -36,6 +36,13 @@ public sealed class EditorModel(
     public IReadOnlyList<RiesgoProyectoDto> Riesgos { get; private set; } = [];
     public IReadOnlyList<InteresadoProyectoDto> Interesados { get; private set; } = [];
 
+    /// <summary>Quién puede quedar a cargo de un riesgo: los interesados más el responsable del
+    /// proyecto, sin duplicados. Misma regla que exigen RegistrarRiesgoCommand y
+    /// ActualizarRiesgoCommand en el servidor.</summary>
+    public IReadOnlyList<OpcionResponsable> ResponsablesRiesgo { get; private set; } = [];
+
+    public sealed record OpcionResponsable(Guid UsuarioId, string Nombre);
+
     /// <summary>Reuniones, expedientes y tickets vinculados, más el conteo de los que existen pero quedan
     /// fuera del alcance de quien mira. Ver la nota de GetVinculosProyectoQuery.</summary>
     public VinculosProyectoDto Vinculos { get; private set; } = new([], [], [], 0, 0, 0);
@@ -975,6 +982,17 @@ public sealed class EditorModel(
         Riesgos     = await sender.Send(new GetRiesgosProyectoQuery(id), ct);
         Interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);
         Vinculos    = await sender.Send(new GetVinculosProyectoQuery(id), ct);
+
+        // El responsable del proyecto puede no figurar entre los interesados: los proyectos
+        // anteriores a que se registrara solo no lo tienen.
+        ResponsablesRiesgo = Interesados
+            .Select(i => new OpcionResponsable(i.UsuarioId, i.Nombre))
+            .Concat(dto.ResponsableId is { } rid
+                ? [new OpcionResponsable(rid, dto.Responsable ?? "Responsable del proyecto")]
+                : [])
+            .DistinctBy(o => o.UsuarioId)
+            .OrderBy(o => o.Nombre, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
 
         var vinculables = await sender.Send(new GetVinculablesQuery(id), ct);
         ReunionesVinculables   = vinculables.Reuniones;

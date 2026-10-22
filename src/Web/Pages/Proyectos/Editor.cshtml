@@ -2034,7 +2034,8 @@
             <span class="ico" aria-hidden="true">🔑</span>
             <div>
                 De esta lista salen los <strong>responsables de entregables y actividades</strong> de la
-                <a href="#estructura">estructura</a>. Además, registrar a alguien acá <strong>le da acceso
+                <a href="#estructura">estructura</a> y, junto con el responsable del proyecto, los
+                <strong>responsables de los riesgos</strong>. Además, registrar a alguien acá <strong>le da acceso
                 al proyecto</strong> aunque quede fuera de su área o su institución — por eso el interesado
                 tiene que ser un usuario del portal.
             </div>
@@ -2218,7 +2219,15 @@
                                     <span class="res-meta" style="display:block;margin-top:3px">@r.Probabilidad × @r.Impacto</span>
                                 </td>
                                 <td>@r.Estrategia</td>
-                                <td style="white-space:normal">@(r.Responsable ?? "— sin asignar —")</td>
+                                <td style="white-space:normal">
+                                    @(r.Responsable ?? "— sin asignar —")
+                                    @* Solo con id: un riesgo con el nombre a mano y sin usuario no se puede
+                                       comparar, y marcarlo afirmaría algo que no se sabe. *@
+                                    @if (r.ResponsableId is { } rr && Model.ResponsablesRiesgo.All(o => o.UsuarioId != rr))
+                                    {
+                                        <span class="res-meta">· fuera de los interesados</span>
+                                    }
+                                </td>
                                 <td>
                                     @if (Model.PuedeEditar)
                                     {
@@ -2256,6 +2265,18 @@
             <details style="margin-top:1rem">
                 <summary class="btns" style="display:inline-block;cursor:pointer">+ Registrar riesgo</summary>
                 <form method="post" asp-page-handler="GuardarRiesgo" asp-route-id="@p.Id" style="margin-top:.8rem">
+                    @if (!Model.ResponsablesRiesgo.Any())
+                    {
+                        <div class="hint" style="margin-bottom:1rem">
+                            <span class="ico" aria-hidden="true">💡</span>
+                            <div>
+                                Todavía no hay a quién asignar este riesgo: el responsable se elige entre los
+                                interesados del proyecto y su responsable, y este proyecto no tiene ninguno.
+                                <a href="#interesados">Registre interesados</a> más arriba, en esta misma pestaña,
+                                y vuelva acá.
+                            </div>
+                        </div>
+                    }
                     <div style="display:flex;gap:12px;flex-wrap:wrap">
                         <div class="field" style="width:100%">
                             <label for="r-desc">Riesgo *</label>
@@ -2300,13 +2321,18 @@
                         </div>
                         <div class="field" style="flex:1;min-width:190px">
                             <label for="r-resp">Responsable</label>
-                            <select id="r-resp" name="RiesgoResponsable">
+                            @* Interesados más el responsable del proyecto: la misma regla que exigen
+                               RegistrarRiesgoCommand y ActualizarRiesgoCommand en el servidor. *@
+                            <select id="r-resp" name="RiesgoResponsable" aria-describedby="r-resp-ayuda">
                                 <option value="">—</option>
-                                @foreach (var u in Model.Usuarios)
+                                @foreach (var u in Model.ResponsablesRiesgo)
                                 {
-                                    <option value="@u.Id">@u.Nombre</option>
+                                    <option value="@u.UsuarioId">@u.Nombre</option>
                                 }
                             </select>
+                            <div class="res-meta" id="r-resp-ayuda" style="margin-top:4px">
+                                Se elige entre los interesados del proyecto y su responsable.
+                            </div>
                         </div>
                         <div class="field" style="flex:1;min-width:190px">
                             <label for="r-rev">Revisar el</label>
