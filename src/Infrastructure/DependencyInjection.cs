@@ -102,7 +102,12 @@ public static class DependencyInjection
 
         // Servicio de correo SMTP (Office 365 / Configurable)
         services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
-        services.AddScoped<IEmailService, SmtpEmailService>();
+        // Una sola instancia por petición para las dos interfaces. Las pruebas Web reemplazan
+        // IEmailService; IProbadorCorreo sigue hablando con el servidor de verdad.
+        services.AddScoped<SmtpEmailService>();
+        services.AddScoped<IEmailService>(sp => sp.GetRequiredService<SmtpEmailService>());
+        services.AddScoped<IProbadorCorreo>(sp => sp.GetRequiredService<SmtpEmailService>());
+        services.AddScoped<IDespachadorCorreos, DespachadorCorreos>();
 
         // Seguridad / identidad
         services.AddHttpContextAccessor();

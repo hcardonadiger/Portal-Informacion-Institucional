@@ -25,8 +25,8 @@ public static class AvisosDeConfiguracion
         var smtp = configuracion.GetSection(SmtpSettings.SectionName).Get<SmtpSettings>() ?? new SmtpSettings();
         if (!smtp.EstaConfigurado)
             logger.LogWarning(
-                "El servidor de correo no está configurado: no se enviará ningún correo (recuperación de " +
-                "contraseña ni recordatorios); los avisos de la campana siguen funcionando. Revise la " +
-                "sección Smtp (servidor y usuario).");
+                "La sección Smtp no está configurada. Si el correo saliente se configuró en Panel de control → " +
+                "Notificaciones, ignore este aviso; si no, no saldrá ningún correo (recuperación de contraseña " +
+                "ni recordatorios) y los avisos de la campana siguen funcionando.");
     }
 }

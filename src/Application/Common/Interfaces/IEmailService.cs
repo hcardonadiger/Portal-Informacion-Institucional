@@ -9,6 +9,10 @@ public enum TipoCorreo
     RecordatorioExpediente,
     RecordatorioReunion,
     RecordatorioCompromiso,
+    /// <summary>Resumen de los avisos de una persona, desde la bandeja de salida.</summary>
+    ResumenAvisos,
+    /// <summary>El correo de prueba del Panel de control.</summary>
+    Prueba,
 }
 
 /// <summary>Cómo terminó un envío. Lo usa la pantalla del recordatorio para decir la verdad: que el
@@ -27,4 +31,17 @@ public interface IEmailService
     /// <summary>Envía un correo. No lanza si el envío falla: lo registra (sin el contenido) y lo
     /// devuelve como resultado.</summary>
     Task<ResultadoCorreo> SendEmailAsync(string to, string subject, string bodyHtml, TipoCorreo tipo, CancellationToken ct = default);
+}
+
+/// <summary>Lo que pasó con el correo de prueba, con un motivo que se le puede mostrar al administrador.</summary>
+public sealed record ResultadoPruebaCorreo(ResultadoCorreo Resultado, string Detalle);
+
+/// <summary>
+/// El correo de prueba del Panel de control. Está aparte de <see cref="IEmailService"/> porque las
+/// pruebas Web reemplazan el servicio de correo por uno que solo captura, y la prueba tiene que
+/// hablar con el servidor de verdad.
+/// </summary>
+public interface IProbadorCorreo
+{
+    Task<ResultadoPruebaCorreo> ProbarAsync(string destino, CancellationToken ct = default);
 }

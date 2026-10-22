@@ -2,7 +2,6 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Infrastructure.Email;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Diger.TramitesEstado.Application.Tests.Notificaciones;
@@ -36,10 +35,10 @@ public sealed class CorreoSeguridadTests
         // Servidor configurado pero inalcanzable: el puerto 9 de la propia máquina rechaza la
         // conexión en el acto.
         var registro = new RegistroEnMemoria<SmtpEmailService>();
-        var smtp = new SmtpEmailService(Options.Create(new SmtpSettings
+        var smtp = new SmtpEmailService(new AjustesDePrueba
         {
-            Host = "127.0.0.1", Port = 9, EnableSsl = false, Username = "usuario", Password = "x",
-        }), registro);
+            Smtp = AjustesDePrueba.ConSmtp("127.0.0.1", "usuario") with { Puerto = 9, Ssl = false },
+        }, registro);
 
         var resultado = await smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecuperacionContrasena, CancellationToken.None);
 
@@ -64,11 +63,10 @@ public sealed class CorreoSeguridadTests
         {
             var puerto   = ((System.Net.IPEndPoint)mudo.LocalEndpoint).Port;
             var registro = new RegistroEnMemoria<SmtpEmailService>();
-            var smtp = new SmtpEmailService(Options.Create(new SmtpSettings
+            var smtp = new SmtpEmailService(new AjustesDePrueba
             {
-                Host = "127.0.0.1", Port = puerto, EnableSsl = false, Username = "usuario", Password = "x",
-                TimeoutSegundos = 1,
-            }), registro);
+                Smtp = AjustesDePrueba.ConSmtp("127.0.0.1", "usuario") with { Puerto = puerto, Ssl = false, TimeoutSegundos = 1 },
+            }, registro);
 
             var envio  = smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecordatorioTicket, CancellationToken.None);
             var limite = Task.Delay(TimeSpan.FromSeconds(10));
@@ -88,7 +86,7 @@ public sealed class CorreoSeguridadTests
     public async Task El_registro_sin_servidor_configurado_no_lleva_el_cuerpo()
     {
         var registro = new RegistroEnMemoria<SmtpEmailService>();
-        var smtp = new SmtpEmailService(Options.Create(new SmtpSettings { Host = "", Username = "" }), registro);
+        var smtp = new SmtpEmailService(new AjustesDePrueba { Smtp = AjustesDePrueba.ConSmtp("", "") }, registro);
 
         var resultado = await smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecuperacionContrasena, CancellationToken.None);
 

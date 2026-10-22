@@ -61,6 +61,6 @@ public sealed class AvisosDeConfiguracionTests
     {
         var sinSmtp = new Dictionary<string, string?>(Completa) { ["Smtp:Username"] = "" };
 
-        Revisar(sinSmtp).Should().ContainSingle().Which.Should().Contain("servidor de correo");
+        Revisar(sinSmtp).Should().ContainSingle().Which.Should().Contain("sección Smtp");
     }
 }
