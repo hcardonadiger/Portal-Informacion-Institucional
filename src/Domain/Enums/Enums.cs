@@ -167,6 +167,24 @@ public enum TipoNotificacion
     ProyectoCambioEstado          = 13,
 }
 
+// ── Módulo al que pertenece un aviso, para los interruptores del Panel de control ──
+public enum ModuloNotificacion
+{
+    Tickets     = 1,
+    Reuniones   = 2,
+    Expedientes = 3,
+    Proyectos   = 4,
+    Soporte     = 5,
+}
+
+// ── Estado de un correo en la bandeja de salida ───────────────────────────
+public enum EstadoCorreoPendiente
+{
+    Pendiente = 1,
+    Enviado   = 2,
+    Fallido   = 3,
+}
+
 // ── Estado de una sesión de chat de soporte ───────────────────────────────
 public enum ChatEstado
 {
