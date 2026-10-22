@@ -3,18 +3,26 @@ using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Common.Models;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Application.Usuarios.Commands.SolicitarRecuperacionPassword;
 
-public sealed record SolicitarRecuperacionPasswordCommand(string Correo, string BaseUrl) : IRequest<Unit>;
+/// <summary>
+/// Pide el correo de recuperación de contraseña.
+///
+/// <para>El enlace se arma solo con <see cref="CorreoOptions.UrlBase"/>, nunca con la dirección de
+/// la petición, que la manda quien pide la recuperación (corregido el 2026-10-22). Si la dirección
+/// no está configurada no se envía nada y queda una advertencia en el registro; quien lo pidió ve el
+/// mismo mensaje genérico de siempre.</para>
+/// </summary>
+public sealed record SolicitarRecuperacionPasswordCommand(string Correo) : IRequest<Unit>;
 
 public sealed class SolicitarRecuperacionPasswordCommandValidator : AbstractValidator<SolicitarRecuperacionPasswordCommand>
 {
     public SolicitarRecuperacionPasswordCommandValidator()
     {
         RuleFor(x => x.Correo).NotEmpty().EmailAddress().MaximumLength(200);
-        RuleFor(x => x.BaseUrl).NotEmpty();
     }
 }
 
@@ -22,10 +30,21 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
     IApplicationDbContext ctx,
     IUnitOfWork uow,
     IEmailService emailService,
-    IOptions<AuthOptions> authOptions) : IRequestHandler<SolicitarRecuperacionPasswordCommand, Unit>
+    IOptions<AuthOptions> authOptions,
+    IOptions<CorreoOptions> correoOptions,
+    ILogger<SolicitarRecuperacionPasswordCommandHandler> logger) : IRequestHandler<SolicitarRecuperacionPasswordCommand, Unit>
 {
     public async Task<Unit> Handle(SolicitarRecuperacionPasswordCommand cmd, CancellationToken ct)
     {
+        var urlBase = correoOptions.Value.UrlBaseValida();
+        if (urlBase is null)
+        {
+            logger.LogWarning(
+                "Correo {Tipo} no enviado: falta la dirección pública del portal (Correo:UrlBase) o no es válida.",
+                TipoCorreo.RecuperacionContrasena);
+            return Unit.Value;
+        }
+
         var correoNormalizado = cmd.Correo.Trim().ToLowerInvariant();
         var usuario = await ctx.Usuarios
             .FirstOrDefaultAsync(u => u.Correo == correoNormalizado && u.Activo, ct);
@@ -45,7 +64,7 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
         usuario.GenerarTokenRecuperacion(token, TimeSpan.FromMinutes(validezMinutos));
         await uow.SaveChangesAsync(ct);
 
-        var resetUrl = $"{cmd.BaseUrl.TrimEnd('/')}/Cuenta/RestablecerPassword?token={Uri.EscapeDataString(token)}&correo={Uri.EscapeDataString(usuario.Correo)}";
+        var resetUrl = $"{urlBase}/Cuenta/RestablecerPassword?token={Uri.EscapeDataString(token)}&correo={Uri.EscapeDataString(usuario.Correo)}";
 
         var bodyHtml = $$"""
             <!DOCTYPE html>

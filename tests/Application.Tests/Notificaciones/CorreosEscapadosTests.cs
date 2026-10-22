@@ -127,8 +127,10 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Usuarios.Add(u);
         await _ctx.SaveChangesAsync();
 
-        await new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _email, Options.Create(new AuthOptions()))
-            .Handle(new SolicitarRecuperacionPasswordCommand("juan@prueba.local", "https://portal.prueba.local"), CancellationToken.None);
+        await new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _email, Options.Create(new AuthOptions()),
+                Options.Create(new CorreoOptions { UrlBase = "https://portal.prueba.local" }),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<SolicitarRecuperacionPasswordCommandHandler>.Instance)
+            .Handle(new SolicitarRecuperacionPasswordCommand("juan@prueba.local"), CancellationToken.None);
 
         var cuerpo = _cuerpos.Should().ContainSingle().Subject;
         cuerpo.Should().NotContain("<b>Pérez</b>").And.Contain("Juan &lt;b&gt;Pérez&lt;/b&gt;");

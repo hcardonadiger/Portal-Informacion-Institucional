@@ -10,7 +10,8 @@ namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 public sealed class AsistenciaModel(
     ISender sender,
     AccesoModulosService acceso,
-    IOptions<InstitucionOptions> institucion) : PageModel
+    IOptions<InstitucionOptions> institucion,
+    IOptions<CorreoOptions> correo) : PageModel
 {
     public bool EsAdmin { get; private set; }
     public AsistenciaAdminDto Data { get; private set; } = default!;
@@ -29,8 +30,20 @@ public sealed class AsistenciaModel(
     [BindProperty(SupportsGet = true)] public bool TodosLosContactos   { get; set; }
     [BindProperty(SupportsGet = true)] public bool VerTodosPreregistro { get; set; }
 
-    private string BuildPublicUrl(Guid token) =>
-        $"{Request.Scheme}://{Request.Host}{Url.Page("/Asistencia/Registro", new { token })}";
+    /// <summary>El enlace del QR. Con <see cref="CorreoOptions.UrlBase"/> configurada se arma con
+    /// ella —que ya incluye la carpeta virtual, por eso se le quita a la ruta—; sin ella, como
+    /// siempre, con la dirección de la petición.</summary>
+    private string BuildPublicUrl(Guid token)
+    {
+        var ruta = Url.Page("/Asistencia/Registro", new { token }) ?? "";
+        if (correo.Value.UrlBaseValida() is not { } urlBase)
+            return $"{Request.Scheme}://{Request.Host}{ruta}";
+
+        var pathBase = Request.PathBase.Value ?? "";
+        if (pathBase.Length > 0 && ruta.StartsWith(pathBase, StringComparison.OrdinalIgnoreCase))
+            ruta = ruta[pathBase.Length..];
+        return urlBase + ruta;
+    }
 
     private async Task CargarAsync(int id, CancellationToken ct)
     {

@@ -73,6 +73,10 @@ public static class DependencyInjection
         // Identidad institucional (nombre, logo, contacto — usados en layout/login)
         services.Configure<InstitucionOptions>(configuration.GetSection("Institucion"));
 
+        // Dirección pública del portal, para los enlaces que salen de él (recuperación de
+        // contraseña, QR de asistencia). Nunca se toma de la petición.
+        services.Configure<CorreoOptions>(configuration.GetSection(CorreoOptions.Seccion));
+
         // Chat de soporte
         services.AddScoped<IChatService, ChatService>();
 
