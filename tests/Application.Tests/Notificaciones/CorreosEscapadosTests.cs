@@ -68,7 +68,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Tickets.Add(t);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioTicketCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email)
+        await new EnviarRecordatorioTicketCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
             .Handle(new EnviarRecordatorioTicketCommand(t.Id, Peligroso), CancellationToken.None);
 
         _cuerpos.Should().HaveCount(2);
@@ -89,7 +89,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Reuniones.Add(r);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioReunionCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email)
+        await new EnviarRecordatorioReunionCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
             .Handle(new EnviarRecordatorioReunionCommand(r.Id, Peligroso), CancellationToken.None);
 
         var cuerpo = _cuerpos.Should().ContainSingle().Subject;
@@ -112,7 +112,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Acuerdos.Add(a);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioCompromisoCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email)
+        await new EnviarRecordatorioCompromisoCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
             .Handle(new EnviarRecordatorioCompromisoCommand(a.Id, Peligroso), CancellationToken.None);
 
         var cuerpo = _cuerpos.Should().ContainSingle().Subject;
@@ -129,6 +129,7 @@ public sealed class CorreosEscapadosTests : IDisposable
 
         await new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _email, Options.Create(new AuthOptions()),
                 Options.Create(new CorreoOptions { UrlBase = "https://portal.prueba.local" }),
+                Options.Create(new InstitucionOptions()),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<SolicitarRecuperacionPasswordCommandHandler>.Instance)
             .Handle(new SolicitarRecuperacionPasswordCommand("juan@prueba.local"), CancellationToken.None);
 
@@ -148,7 +149,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Expedientes.Add(exp);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioExpedienteCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email)
+        await new EnviarRecordatorioExpedienteCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
             .Handle(new EnviarRecordatorioExpedienteCommand(exp.Id, Peligroso), CancellationToken.None);
 
         _cuerpos.Should().HaveCount(2);

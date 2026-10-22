@@ -36,7 +36,7 @@ public sealed class RecuperacionUrlBaseTests : IDisposable
 
     private Task PedirAsync(string? urlBase) =>
         new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _email, Options.Create(new AuthOptions()),
-                Options.Create(new CorreoOptions { UrlBase = urlBase }), _registro)
+                Options.Create(new CorreoOptions { UrlBase = urlBase }), Options.Create(new InstitucionOptions()), _registro)
             .Handle(new SolicitarRecuperacionPasswordCommand(Correo), CancellationToken.None);
 
     [Theory]

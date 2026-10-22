@@ -38,6 +38,7 @@ public class PasswordRecoveryTests : IDisposable
     private SolicitarRecuperacionPasswordCommandHandler Handler(string? urlBase = "https://portal.prueba.local") =>
         new(_ctx, _ctx, _emailService, _authOptions,
             Microsoft.Extensions.Options.Options.Create(new CorreoOptions { UrlBase = urlBase }),
+            Microsoft.Extensions.Options.Options.Create(new InstitucionOptions()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SolicitarRecuperacionPasswordCommandHandler>.Instance);
 
     [Fact]

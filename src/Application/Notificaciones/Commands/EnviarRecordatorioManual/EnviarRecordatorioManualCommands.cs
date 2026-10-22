@@ -1,7 +1,9 @@
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Domain.Enums;
+using Diger.TramitesEstado.Application.Common.Models;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using static Diger.TramitesEstado.Application.Notificaciones.PlantillasCorreo;
 
@@ -13,7 +15,9 @@ public sealed record EnviarRecordatorioTicketCommand(int TicketId, string? Mensa
 public sealed class EnviarRecordatorioTicketCommandHandler(
     IApplicationDbContext ctx,
     INotificacionService notifSvc,
-    IEmailService emailSvc)
+    IEmailService emailSvc,
+    IOptions<CorreoOptions> correo,
+    IOptions<InstitucionOptions> institucion)
     : IRequestHandler<EnviarRecordatorioTicketCommand, int>
 {
     public async Task<int> Handle(EnviarRecordatorioTicketCommand request, CancellationToken ct)
@@ -42,8 +46,8 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
                                $"<p>Se le ha enviado un recordatorio respecto al ticket de soporte <strong>{E(ticket.Numero)}</strong>: {E(ticket.Titulo)}.</p>" +
                                $"{msgExtra}" +
                                $"<p>Puede dar seguimiento haciendo clic en el siguiente enlace:</p>" +
-                               $"<p><a href='{url}'>Ver Detalle del Ticket</a></p>";
-                    await emailSvc.SendEmailAsync(agente.Correo, $"Recordatorio Ticket {ticket.Numero} — DIGER", body, TipoCorreo.RecordatorioTicket, ct);
+                               $"<p><a href='{E(correo.Value.Enlace(url))}'>Ver Detalle del Ticket</a></p>";
+                    await emailSvc.SendEmailAsync(agente.Correo, $"Recordatorio Ticket {ticket.Numero} — {institucion.Value.NombreCorto}", body, TipoCorreo.RecordatorioTicket, ct);
                 }
             }
         }
@@ -65,7 +69,7 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
                           $"<p>Le enviamos un recordatorio sobre su ticket de soporte <strong>{E(ticket.Numero)}</strong>: {E(ticket.Titulo)}.</p>" +
                           $"{msgExtraRep}" +
                           $"<p>Puede revisar el estado de su solicitud en el portal.</p>";
-            await emailSvc.SendEmailAsync(ticket.ReportanteCorreo, $"Recordatorio Ticket {ticket.Numero} — DIGER", bodyRep, TipoCorreo.RecordatorioTicket, ct);
+            await emailSvc.SendEmailAsync(ticket.ReportanteCorreo, $"Recordatorio Ticket {ticket.Numero} — {institucion.Value.NombreCorto}", bodyRep, TipoCorreo.RecordatorioTicket, ct);
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -79,7 +83,9 @@ public sealed record EnviarRecordatorioExpedienteCommand(int ExpedienteId, strin
 public sealed class EnviarRecordatorioExpedienteCommandHandler(
     IApplicationDbContext ctx,
     INotificacionService notifSvc,
-    IEmailService emailSvc)
+    IEmailService emailSvc,
+    IOptions<CorreoOptions> correo,
+    IOptions<InstitucionOptions> institucion)
     : IRequestHandler<EnviarRecordatorioExpedienteCommand, int>
 {
     public async Task<int> Handle(EnviarRecordatorioExpedienteCommand request, CancellationToken ct)
@@ -107,8 +113,8 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
                     var body = $"<p>Estimado(a) <strong>{E(analista.Nombre)}</strong>,</p>" +
                                $"<p>Se le ha enviado un recordatorio relativo al expediente <strong>{E(exp.Codigo)}</strong> de la institución <strong>{E(exp.Institucion)}</strong>.</p>" +
                                $"{msgExtra}" +
-                               $"<p><a href='{url}'>Abrir Expediente</a></p>";
-                    await emailSvc.SendEmailAsync(analista.Correo, $"Recordatorio Expediente {exp.Codigo} — DIGER", body, TipoCorreo.RecordatorioExpediente, ct);
+                               $"<p><a href='{E(correo.Value.Enlace(url))}'>Abrir Expediente</a></p>";
+                    await emailSvc.SendEmailAsync(analista.Correo, $"Recordatorio Expediente {exp.Codigo} — {institucion.Value.NombreCorto}", body, TipoCorreo.RecordatorioExpediente, ct);
                 }
             }
         }
@@ -129,7 +135,7 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
             var bodyContact = $"<p>Estimado(a) <strong>{E(exp.ContactoNombre ?? "Contacto Institucional")}</strong>,</p>" +
                               $"<p>Le enviamos un recordatorio sobre el expediente de digitalización <strong>{E(exp.Codigo)}</strong> correspondiente a {E(exp.Institucion)}.</p>" +
                               $"{msgExtraContact}";
-            await emailSvc.SendEmailAsync(exp.ContactoCorreo, $"Recordatorio Expediente {exp.Codigo} — DIGER", bodyContact, TipoCorreo.RecordatorioExpediente, ct);
+            await emailSvc.SendEmailAsync(exp.ContactoCorreo, $"Recordatorio Expediente {exp.Codigo} — {institucion.Value.NombreCorto}", bodyContact, TipoCorreo.RecordatorioExpediente, ct);
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -143,7 +149,9 @@ public sealed record EnviarRecordatorioReunionCommand(int ReunionId, string? Men
 public sealed class EnviarRecordatorioReunionCommandHandler(
     IApplicationDbContext ctx,
     INotificacionService notifSvc,
-    IEmailService emailSvc)
+    IEmailService emailSvc,
+    IOptions<CorreoOptions> correo,
+    IOptions<InstitucionOptions> institucion)
     : IRequestHandler<EnviarRecordatorioReunionCommand, int>
 {
     public async Task<int> Handle(EnviarRecordatorioReunionCommand request, CancellationToken ct)
@@ -176,9 +184,9 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
             var body = $"<p>Estimado(a) <strong>{E(asist.Nombre)}</strong>,</p>" +
                        $"<p>Le enviamos un recordatorio sobre la reunión: <strong>{E(reunion.Titulo)}</strong> programada para el <strong>{fechaStr}</strong>.</p>" +
                        $"{msgExtra}" +
-                       $"<p><a href='{url}'>Ver Acta / Detalles de la Reunión</a></p>";
+                       $"<p><a href='{E(correo.Value.Enlace(url))}'>Ver Acta / Detalles de la Reunión</a></p>";
 
-            await emailSvc.SendEmailAsync(asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — DIGER", body, TipoCorreo.RecordatorioReunion, ct);
+            await emailSvc.SendEmailAsync(asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — {institucion.Value.NombreCorto}", body, TipoCorreo.RecordatorioReunion, ct);
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -192,7 +200,9 @@ public sealed record EnviarRecordatorioCompromisoCommand(int CompromisoId, strin
 public sealed class EnviarRecordatorioCompromisoCommandHandler(
     IApplicationDbContext ctx,
     INotificacionService notifSvc,
-    IEmailService emailSvc)
+    IEmailService emailSvc,
+    IOptions<CorreoOptions> correo,
+    IOptions<InstitucionOptions> institucion)
     : IRequestHandler<EnviarRecordatorioCompromisoCommand, int>
 {
     public async Task<int> Handle(EnviarRecordatorioCompromisoCommand request, CancellationToken ct)
@@ -244,8 +254,8 @@ public sealed class EnviarRecordatorioCompromisoCommandHandler(
                        $"<p>Le enviamos un recordatorio sobre el compromiso pendiente derivado de la reunión <strong>{E(reunion.Titulo)}</strong>:</p>" +
                        $"<blockquote style='border-left:4px solid #1455a4;padding-left:10px;color:#334155'><strong>Compromiso:</strong> {E(acuerdo.Compromiso)}<br><strong>Plazo:</strong> {plazoStr}</blockquote>" +
                        $"{msgExtra}" +
-                       $"<p><a href='{url}'>Ver Avance y Detalle del Compromiso</a></p>";
-            await emailSvc.SendEmailAsync(correoTarget, $"Recordatorio de Compromiso — DIGER", body, TipoCorreo.RecordatorioCompromiso, ct);
+                       $"<p><a href='{E(correo.Value.Enlace(url))}'>Ver Avance y Detalle del Compromiso</a></p>";
+            await emailSvc.SendEmailAsync(correoTarget, $"Recordatorio de Compromiso — {institucion.Value.NombreCorto}", body, TipoCorreo.RecordatorioCompromiso, ct);
         }
 
         await ctx.SaveChangesAsync(ct);

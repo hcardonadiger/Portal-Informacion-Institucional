@@ -26,4 +26,9 @@ public sealed class CorreoOptions
         if (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp) return null;
         return uri.GetLeftPart(UriPartial.Path).TrimEnd('/');
     }
+
+    /// <summary>Convierte una ruta del portal («/Tickets/Detalle/5») en un enlace absoluto para un
+    /// correo: un enlace relativo no se abre desde el programa de correo. Sin una
+    /// <see cref="UrlBase"/> válida la ruta queda relativa, como antes; el arranque lo advierte.</summary>
+    public string Enlace(string ruta) => UrlBaseValida() is { } b ? b + ruta : ruta;
 }

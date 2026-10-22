@@ -32,6 +32,7 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
     IEmailService emailService,
     IOptions<AuthOptions> authOptions,
     IOptions<CorreoOptions> correoOptions,
+    IOptions<InstitucionOptions> institucion,
     ILogger<SolicitarRecuperacionPasswordCommandHandler> logger) : IRequestHandler<SolicitarRecuperacionPasswordCommand, Unit>
 {
     public async Task<Unit> Handle(SolicitarRecuperacionPasswordCommand cmd, CancellationToken ct)
@@ -98,7 +99,7 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
                     <p style="font-size: 13px; color: #475569;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:<br />
                     <a href="{{resetUrl}}" style="color: #2563eb; word-break: break-all;">{{resetUrl}}</a></p>
                     <div class="footer">
-                        Este es un mensaje automático enviado por la Dirección de Gestión de Riesgos (DIGER). Por favor no respondas a este correo.
+                        Este es un mensaje automático enviado por {{PlantillasCorreo.E(institucion.Value.Nombre)}} ({{PlantillasCorreo.E(institucion.Value.NombreCorto)}}). Por favor no respondas a este correo.
                     </div>
                 </div>
             </body>
