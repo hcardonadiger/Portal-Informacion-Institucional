@@ -37,7 +37,6 @@ public sealed class CambioPasswordObligatorioPageFilter(IOptions<AuthOptions> op
         "/Cuenta/LoginCertificado",
         "/Cuenta/Logout",
         "/Cuenta/Denegado",
-        "/Cuenta/AccessDenied",
         "/Cuenta/AyudaCertificado",
         "/Error"
     };

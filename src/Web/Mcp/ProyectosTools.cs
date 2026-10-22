@@ -114,7 +114,7 @@ public sealed class ProyectosTools(ISender sender, McpPermisos permisos)
         [Description("Objetivo o descripción.")] string? objetivo = null,
         [Description("Id del área que lo acota.")] string? areaId = null,
         [Description("Id de la unidad que lo acota.")] string? unidadId = null,
-        [Description("Id del usuario responsable.")] Guid? responsableId = null,
+        [Description("Id del usuario responsable. Si se omite, el responsable es quien crea el proyecto.")] Guid? responsableId = null,
         [Description("Id de la prioridad del catálogo.")] int? prioridadId = null,
         [Description("Id de la categoría del catálogo.")] int? categoriaId = null,
         [Description("Fecha de inicio planificada (aaaa-mm-dd).")] DateOnly? fechaInicioPlan = null,

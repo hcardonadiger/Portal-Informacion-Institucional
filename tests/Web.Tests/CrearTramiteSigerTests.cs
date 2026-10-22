@@ -10,7 +10,7 @@ using Xunit;
 namespace Diger.TramitesEstado.Web.Tests;
 
 /// <summary>
-/// Alta de trámites SIGER desde <c>/Siger/Editor</c>.
+/// Alta de trámites SIGER desde <c>/HondurasSimple/Editor</c>.
 ///
 /// <para>Fija un fallo reportado desde el portal: se llenaba el formulario, se pulsaba crear y la
 /// pantalla saltaba a «Ocurrió un error inesperado» sin guardar nada. La causa: <c>IdSiger</c> y
@@ -57,7 +57,7 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
     private async Task<(HttpClient Cliente, string Token, string Html)> EditorNuevoAsync()
     {
         var cliente = _portal.ClienteComo("Administrador");
-        var html    = await cliente.GetStringAsync("/Siger/Editor");
+        var html    = await cliente.GetStringAsync("/HondurasSimple/Editor");
         var token   = Regex.Match(html,
             """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;
 
@@ -92,7 +92,7 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
     {
         var (cliente, token, _) = await EditorNuevoAsync();
 
-        var r = await cliente.PostAsync("/Siger/Editor",
+        var r = await cliente.PostAsync("/HondurasSimple/Editor",
             Alta(token, idSiger: 9001, codigo: CodigoOcupado));
 
         // El fallo reportado era exactamente esto: un 302 hacia /Error en vez de la página de vuelta.
@@ -112,7 +112,7 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
     {
         var (cliente, token, _) = await EditorNuevoAsync();
 
-        var r = await cliente.PostAsync("/Siger/Editor",
+        var r = await cliente.PostAsync("/HondurasSimple/Editor",
             Alta(token, idSiger: IdSigerOcupado, codigo: "999-999"));
 
         r.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -124,13 +124,17 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task El_editor_vacio_precarga_el_siguiente_IdSiger_libre()
+    public async Task El_editor_vacio_sugiere_el_siguiente_IdSiger_libre()
     {
-        // Sin esto el campo llega en 0 y el usuario tiene que adivinar un hueco entre los ocupados.
+        // Sin esto hay que adivinar un hueco entre los ocupados.
+        //
+        // Se SUGIERE, no se precarga. En dev el campo venia relleno; en esta rama el vacio
+        // significa algo —una ficha promovida desde un expediente no existe en SIGER y no tiene
+        // identificador, y el indice unico esta filtrado por IS NOT NULL justamente para eso, lo
+        // que fija FichaSinIdSigerTests—. Rellenarlo le quitaria ese significado sin avisar.
         var (_, _, html) = await EditorNuevoAsync();
 
-        Regex.Match(html, """id="Form_IdSiger"[^>]*value="(\d+)""").Groups[1].Value
-            .Should().Be((IdSigerOcupado + 1).ToString());
+        html.Should().Contain($"El siguiente libre es {IdSigerOcupado + 1}.");
     }
 
     [Fact]
@@ -139,7 +143,7 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
         // La contraparte: la validación nueva no puede haber bloqueado el alta legítima.
         var (cliente, token, _) = await EditorNuevoAsync();
 
-        var r = await cliente.PostAsync("/Siger/Editor",
+        var r = await cliente.PostAsync("/HondurasSimple/Editor",
             Alta(token, idSiger: 9002, codigo: "912-001"));
 
         r.StatusCode.Should().Be(HttpStatusCode.Redirect);

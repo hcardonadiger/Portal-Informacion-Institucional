@@ -1,5 +1,7 @@
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
+using Diger.TramitesEstado.Application.Siger.Promocion.Commands.PasarASiger;
+using Diger.TramitesEstado.Application.Siger.Promocion.Queries.GetVistaPreviaPase;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -24,6 +26,19 @@ public sealed class EditorModel(
     public string  Codigo  { get; private set; } = "";
     public string? ExpJson { get; private set; }   // OriginalExpedienteDto serializado (edición)
     public List<string> Plantillas { get; private set; } = [];
+
+    /// <summary>El catálogo de categorías, para el desplegable de la ficha pública (Fase 8).
+    /// Es la misma tabla que usa la ficha SIGER: dos catálogos distintos harían que promover un
+    /// trámite cambiara su categoría.</summary>
+    public List<CategoriaTramite> Categorias { get; private set; } = [];
+
+    /// <summary>Si quien mira puede además escribir en el inventario SIGER. Sin esto el botón de
+    /// «Pasar a SIGER» se ofrecería a quien el servidor va a rechazar.</summary>
+    public bool PuedeSiger { get; private set; }
+
+    /// <summary>Cada ficha enlazada al expediente, con su código y si nació acá o vino de SIGER.
+    /// La clave es el id como texto porque viaja a JavaScript como objeto.</summary>
+    public Dictionary<string, FichaEnlazadaVm> FichasEnlazadas { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto> Usuarios { get; private set; } = [];
 
     public bool EsContraparte { get; private set; }
@@ -57,6 +72,8 @@ public sealed class EditorModel(
             Proyectos = await sender.Send(new GetProyectosDeExpedienteQuery(expId), ct);
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
         Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
+        Categorias = await db.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
+        PuedeSiger = await acceso.PuedeEditarAsync("Siger", ct);
         if (id is null && !EsAdmin)
             return Forbid();
 
@@ -79,6 +96,29 @@ public sealed class EditorModel(
 
             if (!EsAdmin && !EsContraparte)
                 return Forbid();
+
+            // ── De dónde salió cada ficha enlazada (Fase 11) ──────────────
+            //
+            // Un trámite enlazado puede venir de dos sitios opuestos: se trajo del inventario de
+            // SIGER, o la ficha nació acá y se promovió. La pantalla los pintaba iguales, y no lo
+            // son: en el primero DIGER está modelando algo que ya existía; en el segundo está
+            // publicando algo que no existía. Confundirlos lleva a buscar en SIGER una ficha que
+            // nunca estuvo ahí.
+            //
+            // La diferencia la da IdSiger: vacío significa que la ficha no existe en SIGER.
+            var enlazados = detalle.Datos.Tramites
+                .Where(t => t.TramiteSigerId is not null)
+                .Select(t => t.TramiteSigerId!.Value)
+                .Distinct().ToList();
+
+            if (enlazados.Count > 0)
+            {
+                FichasEnlazadas = await db.TramitesSiger.AsNoTracking()
+                    .Where(f => enlazados.Contains(f.Id))
+                    .Select(f => new { f.Id, f.Codigo, EsPromovida = f.IdSiger == null })
+                    .ToDictionaryAsync(f => f.Id.ToString(),
+                                       f => new FichaEnlazadaVm(f.Codigo, f.EsPromovida), ct);
+            }
 
             var original = OriginalShapeMapper.FromInput(detalle.Datos);
             ExpJson = JsonSerializer.Serialize(original, JsonOpts);
@@ -134,6 +174,50 @@ public sealed class EditorModel(
         return new JsonResult(plantilla);
     }
 
+
+    // ── Pasar a SIGER (Fase 9) ────────────────────────────────────────────
+    //
+    // Los dos manejadores trabajan sobre lo GUARDADO, no sobre lo que hay en pantalla. El editor
+    // es un formulario que vive en el navegador y no manda nada hasta que alguien guarda; leer de
+    // la base es lo único honesto, y por eso el diálogo lo dice con todas sus letras.
+    //
+    // Piden permiso de edición sobre SIGER además del de expedientes que cubre la página entera:
+    // pasar un trámite crea o sobrescribe una ficha del inventario, y poder modelar un expediente
+    // no es lo mismo que poder escribir en el catálogo que ve el ciudadano.
+
+    public async Task<IActionResult> OnGetVistaPreviaPaseAsync(int id, int tramiteIndex, CancellationToken ct)
+    {
+        if (!await acceso.PuedeEditarAsync("Siger", ct)) return Forbid();
+
+        try
+        {
+            var previa = await sender.Send(new GetVistaPreviaPaseQuery(id, tramiteIndex), ct);
+            return new JsonResult(previa);
+        }
+        catch (NotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    public async Task<IActionResult> OnPostPasarASigerAsync(int id, int tramiteIndex, CancellationToken ct)
+    {
+        if (!await acceso.PuedeEditarAsync("Siger", ct)) return Forbid();
+
+        try
+        {
+            var r = await sender.Send(new PasarASigerCommand(id, tramiteIndex), ct);
+            return new JsonResult(new { ok = true, r.TramiteSigerId, r.Codigo, r.FueCreada, r.VersionArchivada });
+        }
+        catch (NotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainException ex)
+        {
+            return new JsonResult(new { ok = false, error = ex.Message });
+        }
+    }
     public async Task<IActionResult> OnGetBuscarSigerAsync(string? q, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
@@ -307,3 +391,8 @@ public sealed class EditorModel(
         }
     }
 }
+
+/// <summary>Lo que la pantalla necesita saber de una ficha SIGER enlazada a un trámite.</summary>
+/// <param name="EsPromovida">Cierto si la ficha nació en este portal y no existe en el inventario
+/// de SIGER. Es lo que distingue las dos insignias.</param>
+public sealed record FichaEnlazadaVm(string Codigo, bool EsPromovida);

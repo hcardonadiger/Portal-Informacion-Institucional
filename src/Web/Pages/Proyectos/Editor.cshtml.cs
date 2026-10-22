@@ -9,6 +9,11 @@ using Diger.TramitesEstado.Application.Tickets.Common;
 using Diger.TramitesEstado.Application.Tickets.Queries.GetUsuariosAsignables;
 using Diger.TramitesEstado.Infrastructure.Security;
 using Diger.TramitesEstado.Web.Common;
+// La fusion del 27-08-2026 junto dos tipos con el mismo nombre: el EntregableInput de
+// Expedientes (que entra solo por GlobalUsings.cs) y el de Proyectos, que es el que esta
+// pagina quiere. El alias lo fija aqui sin renombrar ninguno de los dos ni tocar los
+// usings globales, que arrastrarian el cambio a todo el proyecto Web.
+using EntregableInput = Diger.TramitesEstado.Application.Proyectos.Common.EntregableInput;
 
 namespace Diger.TramitesEstado.Web.Pages.Proyectos;
 

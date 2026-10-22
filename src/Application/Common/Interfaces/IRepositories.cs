@@ -212,6 +212,8 @@ public interface IApplicationDbContext
     DbSet<Expediente>               Expedientes   { get; }
     DbSet<ExpedienteTramite>        Tramites      { get; }
     DbSet<TramiteRequisito>         Requisitos    { get; }
+    DbSet<ExpedienteTramiteEntregable> EntregablesTramite { get; }
+    DbSet<ExpedienteTramiteLugar>     LugaresTramite     { get; }
     DbSet<FlujoNodo>                Flujos        { get; }
     DbSet<FundamentoLegal>          Legal         { get; }
     DbSet<DocumentoSolicitado>      DocsSolicitados { get; }
@@ -265,6 +267,8 @@ public interface IApplicationDbContext
     DbSet<EnlaceSiger>             EnlacesSiger           { get; }
     DbSet<TareaDigitalizacionSiger> TareasDigitalizacionSiger { get; }
     DbSet<ConciliacionSiger>       ConciliacionesSiger    { get; }
+    DbSet<FotoTramiteSiger>        FotosTramiteSiger      { get; }
+    DbSet<PropuestaLlenado>        PropuestasLlenado      { get; }
     DbSet<Proyecto>                Proyectos              { get; }
     DbSet<PrioridadProyecto>       PrioridadesProyecto    { get; }
     DbSet<CategoriaProyecto>       CategoriasProyecto     { get; }

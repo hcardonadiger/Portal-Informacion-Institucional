@@ -872,6 +872,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<Guid>("ClaveTramite")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -881,7 +884,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<int>("Decision")
                         .HasColumnType("int");
 
-                    b.Property<int>("ExpedienteTramiteId")
+                    b.Property<int>("ExpedienteId")
                         .HasColumnType("int");
 
                     b.Property<string>("Nota")
@@ -899,8 +902,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ExpedienteTramiteId")
+                    b.HasIndex("ClaveTramite")
                         .IsUnique();
+
+                    b.HasIndex("ExpedienteId");
 
                     b.HasIndex("TramiteSigerId");
 
@@ -1704,6 +1709,12 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("CategoriaId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ClaveEstable")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Descripcion")
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
@@ -1719,6 +1730,14 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("EmailTramite")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool?>("EsGratuito")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EstaEnSol")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<int>("EstadoTramite")
                         .ValueGeneratedOnAdd()
@@ -1743,6 +1762,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<string>("ModalidadDetalle")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("NombreCorto")
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
@@ -1755,6 +1778,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Objetivo")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ObservacionesDiger")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<string>("PagoBanco")
                         .HasMaxLength(120)
@@ -1772,7 +1799,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("SolTramo")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<string>("Telefono")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Temporalidad")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
@@ -1802,13 +1837,104 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<int?>("TramiteSigerId")
                         .HasColumnType("int");
 
+                    b.Property<string>("VigenciaDocumento")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId")
+                        .HasFilter("[CategoriaId] IS NOT NULL");
+
+                    b.HasIndex("ClaveEstable")
+                        .IsUnique();
 
                     b.HasIndex("TramiteSigerId");
 
                     b.HasIndex("ExpedienteId", "TramiteIndex");
 
-                    b.ToTable("ExpedienteTramites", (string)null);
+                    b.ToTable("ExpedienteTramites", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ExpedienteTramites_Modalidad", "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')");
+                        });
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteTramiteEntregable", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Entregable")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("ExpedienteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Formato")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Presentacion")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("TramiteIndex")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpedienteId", "TramiteIndex");
+
+                    b.ToTable("ExpedienteTramiteEntregables", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteTramiteLugar", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Ciudad")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Direccion")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("ExpedienteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Lugar")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Telefonos")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("TramiteIndex")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpedienteId", "TramiteIndex");
+
+                    b.ToTable("ExpedienteTramiteLugares", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.FlujoNodo", b =>
@@ -1867,6 +1993,62 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("ExpedienteId", "TramiteIndex", "Fase");
 
                     b.ToTable("FlujoNodos", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.FotoTramiteSiger", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CapturadaEl")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Contenido")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("IdSiger")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Origen")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("TramiteSigerId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo");
+
+                    b.HasIndex("TramiteSigerId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("FotosTramiteSiger", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.FundamentoLegal", b =>
@@ -2049,6 +2231,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("NombreCorto")
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("RutaSol")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("SitioWeb")
                         .HasMaxLength(300)
@@ -3253,6 +3439,65 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("Orden");
 
                     b.ToTable("PrioridadesTicket", (string)null);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PropuestaLlenado", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Campo")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Certeza")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DecididaEl")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DecididaPor")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Justificacion")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<int>("TramiteSigerId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ValorPropuesto")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Estado", "Certeza");
+
+                    b.HasIndex("TramiteSigerId", "Campo")
+                        .IsUnique()
+                        .HasFilter("[Estado] = 0");
+
+                    b.ToTable("PropuestasLlenado", (string)null);
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Proyecto", b =>
@@ -4618,7 +4863,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<DateTime?>("FechaIngreso")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("IdSiger")
+                    b.Property<int?>("IdSiger")
                         .HasColumnType("int");
 
                     b.Property<string>("Institucion")
@@ -4656,6 +4901,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("Sigla")
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("SolTramo")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("SolUrl")
                         .HasMaxLength(500)
@@ -4700,12 +4949,13 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("EstaEnSol")
                         .HasFilter("[EstaEnSol] = 1");
 
-                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("EstaEnSol"), new[] { "SolUrl" });
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("EstaEnSol"), new[] { "SolUrl", "SolTramo" });
 
                     b.HasIndex("EstadoSiger");
 
                     b.HasIndex("IdSiger")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IdSiger] IS NOT NULL");
 
                     b.HasIndex("Institucion");
 
@@ -4727,7 +4977,7 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_TramitesSiger_Modalidad", "[Modalidad] IS NULL OR [Modalidad] IN ('Virtual', 'Presencial', 'Hibrido')");
 
-                            t.HasCheckConstraint("CK_TramitesSiger_Sol", "[EstaEnSol] = 0 OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
+                            t.HasCheckConstraint("CK_TramitesSiger_Sol", "[EstaEnSol] = 0 OR [SolTramo] IS NOT NULL OR ([SolUrl] IS NOT NULL AND ([SolUrl] LIKE 'http://%' OR [SolUrl] LIKE 'https://%'))");
                         });
                 });
 
@@ -5042,9 +5292,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ConciliacionSiger", b =>
                 {
-                    b.HasOne("Diger.TramitesEstado.Domain.Entities.ExpedienteTramite", null)
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
                         .WithMany()
-                        .HasForeignKey("ExpedienteTramiteId")
+                        .HasForeignKey("ExpedienteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -5214,6 +5464,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteTramite", b =>
                 {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.CategoriaTramite", null)
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
                         .WithMany("Tramites")
                         .HasForeignKey("ExpedienteId")
@@ -5224,6 +5479,24 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("TramiteSigerId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteTramiteEntregable", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
+                        .WithMany("Entregables")
+                        .HasForeignKey("ExpedienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ExpedienteTramiteLugar", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
+                        .WithMany("Lugares")
+                        .HasForeignKey("ExpedienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.FlujoNodo", b =>
@@ -5357,6 +5630,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.PlantillaTramite", null)
                         .WithMany("Requisitos")
                         .HasForeignKey("PlantillaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PropuestaLlenado", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.TramiteSiger", null)
+                        .WithMany()
+                        .HasForeignKey("TramiteSigerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -5718,9 +6000,13 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     b.Navigation("DocsSolicitados");
 
+                    b.Navigation("Entregables");
+
                     b.Navigation("Flujos");
 
                     b.Navigation("Legal");
+
+                    b.Navigation("Lugares");
 
                     b.Navigation("Perfiles");
 

@@ -1706,7 +1706,11 @@ tr.contacto-inactivo td {
     top: calc(100% + 8px);
     right: 0;
     width: 280px;
-    background: var(--diger-surface);
+    /* --diger-panel, no --diger-surface: el panel FLOTA sobre la página. En
+       oscuro --diger-surface es translúcido y el contenido de abajo se veía a
+       través. La regla de oscuro que lo cubría nombraba .side-user-panel, el
+       panel de la barra lateral de antes, y nunca alcanzó a éste. */
+    background: var(--diger-panel);
     border: 1px solid var(--diger-border);
     border-radius: var(--diger-radius-md);
     box-shadow: 0 12px 30px rgba(2, 57, 94, .16);
@@ -3215,6 +3219,14 @@ tr.contacto-inactivo td {
 
 .seg-table tr:hover td {
     background: var(--diger-bg-blue-alt);
+}
+
+/* La barra de arriba es sticky y mide 48px: sin este margen, una fila a la que se llega
+   desplazandose —por ancla, por foco de teclado o por scrollIntoView— queda debajo de ella y
+   el clic aterriza en la barra. En la corrida de pruebas eso se reporto como "la casilla no
+   respondio": respondia, pero el puntero nunca llegaba a tocarla. */
+.seg-table tr {
+    scroll-margin-top: 64px;
 }
 
 /* ── IDENTIDAD DEL PROYECTO: los cuatro datos en columna ──
@@ -7416,6 +7428,31 @@ textarea.form-control { resize: vertical; }
 }
 .vinc-sum:focus-visible { outline: 2px solid var(--diger-blue, #02395e); outline-offset: 2px; }
 
+/* ── CONF-TANDA: confirmar una accion masiva sin bloquear la pestaña ──
+   Las acciones que escriben en cientos de fichas llevaban su aviso en un confirm() del
+   navegador. Un modal nativo congela la pestaña hasta que alguien lo despacha a mano, de modo
+   que para quien prueba —o para cualquier navegador automatizado— el boton simplemente no hace
+   nada. El aviso se conserva; lo que cambia es que vive en la pagina. */
+.conf-tanda {
+    display: inline-block;
+}
+
+.conf-tanda > summary::-webkit-details-marker {
+    display: none;
+}
+
+.conf-tanda-cuerpo {
+    margin-top: .5rem;
+    padding: .75rem .9rem;
+    border: 1px solid #fcd9a4;
+    border-left: 3px solid #b45309;
+    border-radius: var(--diger-radius-md);
+    background: #fffbeb;
+    font-size: var(--diger-fs-sm);
+    color: #7c5010;
+    max-width: 520px;
+}
+
 /* ── PORTADA DE CATÁLOGOS ───────────────────────────────────── */
 /* Rejilla de tarjetas de /Catalogos. auto-fill y no auto-fit: con pocas tarjetas
    auto-fit las estira a lo ancho de la fila y quedan desproporcionadas; auto-fill
@@ -7594,6 +7631,15 @@ body.tema-claro {
     background: var(--diger-panel);
 }
 
+/* El avatar de la cabecera no entra en la regla de .side-avatar de arriba:
+   --diger-blue-fondo es justo el azul de la cabecera en oscuro, y el círculo
+   desaparecía. Conserva el celeste del tema claro, con texto --diger-panel
+   (aquí casi negro) en lugar de --diger-blue, que en oscuro se aclara. */
+.tema-oscuro .user-menu-btn .side-avatar {
+    background: var(--diger-celeste);
+    color: var(--diger-panel);
+}
+
 /* 2d. Los fondos claros escritos como literal. Son 33 y ningún token los
        alcanzaba, así que en oscuro se quedaban casi blancos con el texto ya
        claro encima. Agrupados por lo que HACEN, no por dónde están:
@@ -7762,4 +7808,178 @@ body.tema-claro {
         background: none;
         border: 1px solid #999;
     }
+}
+
+
+/* ── TABLERO EJECUTIVO (Tableros/Ejecutivo, banda del Inicio) ─────── */
+/* Especificación: docs/tableros/ejecutivo-proyectos.md, §5 y §6. Todo con
+   tokens: ningún literal de color, así que el tema oscuro lo resuelve
+   tokens.css. Lo único que pide regla propia en oscuro son los rellenos de
+   barra, que la regla general «.tema-oscuro .bar-fill» pinta de navy (2b)
+   y aquí tienen que conservar el color de la salud. */
+.ejec { max-width: 1280px; }
+
+.ejec-cab { align-items: flex-start; gap: var(--diger-space-4); flex-wrap: wrap; }
+.ejec-cab-der { display: flex; flex-direction: column; align-items: flex-end; gap: var(--diger-space-2); }
+.ejec-chips, .ejec-acciones { display: flex; flex-wrap: wrap; gap: var(--diger-space-2); justify-content: flex-end; }
+.ejec-chip {
+    display: inline-flex; align-items: center; gap: .35em;
+    padding: 4px 12px; border-radius: var(--diger-radius-pill);
+    background: var(--diger-bg-soft); color: var(--diger-text-secondary);
+    border: 1px solid var(--diger-border);
+    font-size: var(--diger-fs-xs); font-weight: 600;
+}
+.ejec-chip.is-viejo { background: var(--diger-warning-bg); color: var(--diger-warning-strong); border-color: transparent; }
+.ejec-logo-impreso, .ejec-filtros-impresos { display: none; }
+.ejec-logo-impreso { height: 40px; margin-bottom: var(--diger-space-2); }
+
+.ejec-kpis .kpi-cell-num { font-size: var(--diger-text-3xl); }
+.ejec-kpi-avance small { font-size: .55em; font-weight: 600; }
+.ejec-kpi-sub { flex-wrap: wrap; }
+
+.ejec-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    gap: var(--diger-space-4);
+    align-items: start;
+}
+.ejec-lateral { display: grid; gap: var(--diger-space-4); }
+
+/* Lista «Avance y salud por proyecto»: cada fila es un solo enlace. */
+.ejec-lista { list-style: none; margin: 0; padding: 0; }
+.ejec-fila + .ejec-fila { border-top: 1px solid var(--diger-border); }
+.ejec-fila-link {
+    display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: var(--diger-space-3);
+    padding: var(--diger-space-3) var(--diger-space-2);
+    color: inherit; text-decoration: none;
+    border-radius: var(--diger-radius-sm);
+}
+.ejec-fila-link:hover, .ejec-fila-link:focus-visible { background: var(--diger-bg-soft); }
+.ejec-num {
+    width: 1.75rem; height: 1.75rem; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--diger-bg-soft); color: var(--diger-text-muted);
+    font-size: var(--diger-fs-xs); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.ejec-fila-cuerpo { display: grid; gap: 4px; min-width: 0; }
+.ejec-fila-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--diger-space-3); }
+.ejec-nombre { font-size: var(--diger-fs-base); font-weight: 700; color: var(--diger-text); }
+.ejec-codigo { font-size: var(--diger-fs-xs); font-weight: 500; color: var(--diger-text-faint); margin-left: .35em; white-space: nowrap; }
+/* Revisión 1, R2: dos renglones por fila. Arriba nombre y, a la derecha en la misma línea, la
+   etiqueta de salud con su motivo; abajo meta, barra y cifras. */
+.ejec-salud { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 2px var(--diger-space-2); text-align: right; flex-shrink: 0; max-width: 55%; }
+.ejec-motivo { font-size: var(--diger-fs-xs); }
+.ejec-fila-pie { display: flex; align-items: center; gap: var(--diger-space-3); min-width: 0; }
+.ejec-sub {
+    font-size: var(--diger-fs-sm); max-width: 42%; flex-shrink: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ejec-barra { position: relative; overflow: visible; display: block; flex: 1; min-width: 220px; }
+.ejec-barra .bar-fill { display: block; }
+.ejec-cifras { font-size: var(--diger-fs-sm); font-weight: 600; color: var(--diger-text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Marca del avance esperado sobre la barra. */
+.bar-mark {
+    position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px;
+    background: var(--diger-text); opacity: .85; pointer-events: none;
+}
+
+/* Etiqueta de salud: texto + icono, nunca solo color. */
+.salud-badge, .tablero-badge {
+    display: inline-flex; align-items: center; gap: .35em;
+    padding: 2px 10px; border-radius: var(--diger-radius-pill);
+    font-size: var(--diger-fs-2xs); font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; border: 1px solid transparent; white-space: nowrap;
+}
+.salud-badge.rojo   { background: var(--diger-danger-bg);  color: var(--diger-danger-text); }
+.salud-badge.ambar  { background: var(--diger-warning-bg); color: var(--diger-warning-strong); }
+.salud-badge.verde  { background: var(--diger-success-bg); color: var(--diger-success-strong); }
+.salud-badge.neutro { background: var(--diger-bg-soft);    color: var(--diger-text-muted); border-color: var(--diger-border); }
+
+/* Insignia del catálogo de tableros (Inicio y cabeceras marcadas). */
+.tablero-badge.nuevo    { background: var(--diger-blue-light);   color: var(--diger-blue-mid); }
+.tablero-badge.repetido { background: var(--diger-warning-bg);   color: var(--diger-warning-strong); }
+.tablero-badge.rediseno { background: var(--diger-bg-blue-pale); color: var(--diger-blue-mid); border-color: var(--diger-blue-pale); }
+.tablero-badge.retirar  { background: var(--diger-danger-bg);    color: var(--diger-danger-text); }
+.tablero-marca { display: flex; flex-wrap: wrap; align-items: center; gap: var(--diger-space-2); margin: 4px 0; }
+
+/* Dona por estado: conic-gradient con tokens, sin canvas. */
+.ejec-dona-caja { display: flex; align-items: center; gap: var(--diger-space-4); flex-wrap: wrap; }
+.ejec-dona { position: relative; width: 150px; height: 150px; border-radius: 50%; flex-shrink: 0; }
+.ejec-dona-centro {
+    position: absolute; inset: 22px; border-radius: 50%;
+    background: var(--diger-panel);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--diger-text-muted); font-size: var(--diger-fs-xs);
+}
+.ejec-dona-centro strong { font-size: var(--diger-text-3xl); color: var(--diger-blue); line-height: 1; }
+.ejec-leyenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; flex: 1; min-width: 140px; }
+.ejec-leyenda li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: var(--diger-space-2); font-size: var(--diger-fs-sm); color: var(--diger-text-secondary); }
+.ejec-leyenda strong { color: var(--diger-text); font-variant-numeric: tabular-nums; }
+.ejec-cuadro { width: 12px; height: 12px; border-radius: 3px; }
+.ejec-nota { margin: var(--diger-space-3) 0 0; }
+
+/* Necesita decisión. */
+.ejec-decisiones { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--diger-space-3); }
+.ejec-decision { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr); gap: var(--diger-space-2); font-size: var(--diger-fs-sm); }
+.ejec-dec-ico { margin-top: 2px; color: var(--diger-text-muted); }
+.ejec-decision.tipo-bloqueovigente .ejec-dec-ico { color: var(--diger-danger-text); }
+.ejec-decision.tipo-cierrevencido .ejec-dec-ico { color: var(--diger-warning-strong); }
+.ejec-dec-cab a { font-weight: 700; color: var(--diger-blue); }
+.ejec-dec-tx { color: var(--diger-text-secondary); overflow-wrap: anywhere; word-break: break-word; }
+.ejec-dec-autor { display: block; }
+
+/* Grupo neutro plegado (R2). El texto del summary cambia con el estado del details. */
+.ejec-neutros { margin-top: var(--diger-space-2); border-top: 1px solid var(--diger-border); }
+.ejec-neutros > summary {
+    cursor: pointer; padding: var(--diger-space-3) var(--diger-space-2);
+    font-size: var(--diger-fs-sm); font-weight: 600; color: var(--diger-blue);
+}
+.ejec-neutros-ocultar { display: none; }
+.ejec-neutros[open] .ejec-neutros-mostrar { display: none; }
+.ejec-neutros[open] .ejec-neutros-ocultar { display: inline; }
+.ejec-mas { display: inline-block; margin-top: var(--diger-space-3); font-size: var(--diger-fs-sm); }
+
+.ejec-pie { margin-top: var(--diger-space-6); display: grid; gap: var(--diger-space-2); }
+.ejec-pie p { margin: 0; }
+.ejec-reglas summary { cursor: pointer; font-weight: 600; color: var(--diger-blue); }
+.ejec-reglas ol { margin: var(--diger-space-2) 0; padding-left: 1.4rem; }
+
+/* Banda del Inicio y rejilla «Todos los tableros». */
+.ini-banda { margin-bottom: var(--diger-space-6); }
+.ini-banda-cab { display: flex; justify-content: space-between; align-items: center; gap: var(--diger-space-3); flex-wrap: wrap; margin-bottom: var(--diger-space-3); }
+.ini-banda-cab h3 { margin: 0; font-size: var(--diger-fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--diger-text-muted); }
+.ini-banda-cab h3 .ini-banda-sub { color: var(--diger-blue); text-transform: none; letter-spacing: 0; font-size: var(--diger-fs-base); margin-left: .4em; }
+.ini-banda-pie { display: flex; justify-content: space-between; align-items: center; gap: var(--diger-space-3); flex-wrap: wrap; margin-top: calc(-1 * var(--diger-space-2)); }
+.cat-tableros { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--diger-space-3); }
+.cat-tablero {
+    display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: var(--diger-space-3);
+    padding: var(--diger-space-3) var(--diger-space-4);
+    background: var(--diger-surface); border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md); color: inherit; text-decoration: none;
+}
+.cat-tablero:hover, .cat-tablero:focus-visible { border-color: var(--diger-blue-mid); }
+.cat-tablero-ico { font-size: 1.25rem; color: var(--diger-blue-mid); padding-top: 2px; }
+.cat-tablero-t1 { display: block; font-weight: 700; color: var(--diger-text); }
+.cat-tablero-t2 { display: block; font-size: var(--diger-fs-sm); color: var(--diger-text-muted); margin: 2px 0 6px; }
+
+/* Oscuro: la barra conserva el color de la salud (ver la nota de arriba). */
+.tema-oscuro .ejec-barra .bar-fill.c-red   { background: var(--diger-danger); }
+.tema-oscuro .ejec-barra .bar-fill.c-amber { background: var(--diger-warning); }
+.tema-oscuro .ejec-barra .bar-fill.c-green { background: var(--diger-success); }
+.tema-oscuro .ejec-barra .bar-fill.c-gray  { background: var(--diger-text-faint); }
+
+@media (max-width: 900px) {
+    .ejec-grid { grid-template-columns: minmax(0, 1fr); }
+    /* Bajo 900 px la fila vuelve a tres renglones: la meta encima de la barra. */
+    .ejec-fila-pie { flex-wrap: wrap; }
+    .ejec-sub { flex-basis: 100%; max-width: none; }
+    .ejec-cab-der { align-items: flex-start; }
+}
+@media (max-width: 600px) {
+    .ejec-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ejec-kpis .kpi-cell { border-bottom: 1px solid var(--diger-border); }
+    .ejec-fila-cab { flex-direction: column; }
+    .ejec-salud { justify-content: flex-start; text-align: left; max-width: none; }
+    .ejec-barra { min-width: 0; }
 }

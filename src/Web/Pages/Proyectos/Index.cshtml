@@ -299,11 +299,18 @@
                 <div style="display:flex;gap:12px;flex-wrap:wrap">
                     <div class="field" style="flex:1;min-width:190px">
                         <label for="n-resp">Responsable</label>
+                        @* Sin «— Sin asignar —»: el vacío ya no deja el proyecto huérfano, lo deja a
+                           cargo de quien lo crea (lo decide CrearProyectoCommand, igual que por MCP).
+                           Por eso llega preseleccionado él mismo, y el vacío solo aparece si por algún
+                           motivo no está en la lista — y dice lo que de verdad va a pasar. *@
                         <select id="n-resp" name="NuevoResponsable">
-                            <option value="">— Sin asignar —</option>
+                            @if (!Model.Usuarios.Any(u => u.Id == Model.ResponsablePropuesto))
+                            {
+                                <option value="">— Usted, quien lo crea —</option>
+                            }
                             @foreach (var u in Model.Usuarios)
                             {
-                                <option value="@u.Id" selected="@(Model.NuevoResponsable == u.Id)">@u.Nombre</option>
+                                <option value="@u.Id" selected="@(Model.ResponsablePropuesto == u.Id)">@u.Nombre</option>
                             }
                         </select>
                     </div>

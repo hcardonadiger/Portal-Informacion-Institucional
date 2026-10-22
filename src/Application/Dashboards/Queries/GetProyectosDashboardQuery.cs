@@ -79,7 +79,7 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                 Categoria      = p.CategoriaRef == null ? null : p.CategoriaRef.Nombre,
                 CategoriaColor = p.CategoriaRef == null ? (ColorEtiqueta?)null : p.CategoriaRef.Color,
                 CategoriaOrden = p.CategoriaRef == null ? (int?)null : p.CategoriaRef.Orden,
-                p.AvancePct, p.FechaFinPlan, p.UnidadId,
+                p.AvancePct, p.FechaFinPlan, p.UnidadId, p.FechaInicioPlan, p.FechaFinReal,
                 TotalEntregables       = p.Entregables.Count,
                 EntregablesCompletados = p.Entregables.Count(x => x.Estado == EstadoEntregable.Completado),
                 EntregablesVencidos    = p.Entregables.Count(x => x.FechaPlan.HasValue && x.FechaPlan < hoy
@@ -106,11 +106,34 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         // institución simplemente no aparece en el diccionario y el nombre queda null — el Id, que
         // es lo que identifica al grupo, sigue viajando intacto.
         var unidadIds = filas.Where(p => p.UnidadId != null).Select(p => p.UnidadId!).Distinct().ToList();
+        // Viaja también el nombre corto: el tablero ejecutivo lo pone en el subtítulo de cada fila,
+        // donde «DESARROLLO DE PROYECTOS DE TRANSFORMACIÓN» pesaría más que el nombre del proyecto.
         var nombresUnidad = unidadIds.Count == 0
-            ? new Dictionary<string, string>()
+            ? new Dictionary<string, (string Nombre, string? Corto)>()
             : await ctx.Unidades.AsNoTracking()
                 .Where(u => unidadIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => u.Nombre, ct);
+                .ToDictionaryAsync(u => u.Id, u => (Nombre: u.Nombre, Corto: u.NombreCorto), ct);
+
+        var idsFiltrados = filas.Select(f => f.Id).ToHashSet();
+
+        // ── Avance esperado por proyecto ─────────────────────────────────────
+        // Las ventanas de las actividades vigentes con las dos fechas planificadas, y en memoria la
+        // misma interpolación que el tablero de un proyecto (ProyectoEstadoReglas.AvanceEsperado).
+        // El cruce con Proyectos es lo que aplica el filtro de alcance —ProyectoActividades no lo
+        // lleva—, y el recorte por los ids ya filtrados se hace en memoria: con el portafolio en
+        // decenas de proyectos no compensa mandar la lista como parámetro.
+        var ventanas = (await ctx.ProyectoActividades.AsNoTracking()
+                .Where(a => a.FechaInicioPlan != null && a.FechaFinPlan != null && a.Estado != EstadoActividad.Cancelada)
+                .Join(ctx.ProyectoEntregables.AsNoTracking(), a => a.EntregableId, x => x.Id,
+                      (a, x) => new { x.ProyectoId, Ini = a.FechaInicioPlan!.Value, Fin = a.FechaFinPlan!.Value })
+                .Join(ctx.Proyectos.AsNoTracking(), z => z.ProyectoId, p => p.Id, (z, _) => z)
+                .ToListAsync(ct))
+            .Where(v => idsFiltrados.Contains(v.ProyectoId))
+            .GroupBy(v => v.ProyectoId)
+            .ToDictionary(g => g.Key, g => g.Select(v => (v.Ini, v.Fin)).ToList());
+
+        int? Esperado(int id) => ventanas.TryGetValue(id, out var v) ? ProyectoEstadoReglas.AvanceEsperado(v, hoy) : null;
+        int ConFechas(int id) => ventanas.TryGetValue(id, out var v) ? v.Count : 0;
 
         var semaforo = filas
             .Select(p => new ProyectoSemaforoDto(
@@ -124,8 +147,11 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                 ProyectoEstadoReglas.SinReportar(p.Estado, p.UltimoAvance, corte),
                 SinLineaBase(p.FechaFinPlan, p.Estado),
                 p.UnidadId,
-                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var un) ? un : null,
-                p.Categoria, p.CategoriaColor))
+                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var un) ? un.Nombre : null,
+                p.Categoria, p.CategoriaColor,
+                Esperado(p.Id), ConFechas(p.Id),
+                p.FechaInicioPlan, p.FechaFinReal,
+                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var uc) ? uc.Corto : null))
             // Primero lo que exige atención: atrasado, luego desatendido, luego prioridad.
             .OrderByDescending(p => p.Atrasado)
             .ThenByDescending(p => p.SinReportar)
@@ -133,7 +159,6 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
             .ThenBy(p => p.Nombre)
             .ToList();
 
-        var idsFiltrados = filas.Select(f => f.Id).ToHashSet();
         var limite = hoy.AddDays(DiasProximos);
 
         // ── Entregables vencidos y próximos ──────────────────────────────────
@@ -357,6 +382,21 @@ public static class Etiquetas
     public static string Estado(EstadoProyecto e) => e switch
     {
         EstadoProyecto.EnEjecucion => "En ejecución",
+        _                          => e.ToString()
+    };
+
+    /// <summary>
+    /// Nombre del estado en el tablero ejecutivo, que habla como una jefatura y no como el
+    /// módulo: «No iniciado» en vez de «Planificado», «Finalizado» en vez de «Cerrado». Es solo
+    /// la etiqueta; el estado de fondo es el mismo y el operativo conserva sus nombres.
+    /// </summary>
+    public static string EstadoEjecutivo(EstadoProyecto e) => e switch
+    {
+        EstadoProyecto.Planificado => "No iniciado",
+        EstadoProyecto.EnEjecucion => "En proceso",
+        EstadoProyecto.Suspendido  => "Suspendido",
+        EstadoProyecto.Cerrado     => "Finalizado",
+        EstadoProyecto.Cancelado   => "Cancelado",
         _                          => e.ToString()
     };
 

@@ -119,10 +119,13 @@ public sealed class PermisosModel(ISender sender) : PageModel
 
         try
         {
-            await sender.Send(new GuardarMatrizPermisosCommand(
+            var cambios = await sender.Send(new GuardarMatrizPermisosCommand(
                 new Dictionary<string, IReadOnlyList<string>> { [rol] = final }), ct);
 
-            TempData["SuccessMsg"] = "Permisos actualizados.";
+            // Un aviso que sale siempre deja de ser informacion: en la corrida de pruebas se
+            // leyo "Permisos actualizados" tras un guardado que no toco una sola casilla, y se
+            // reporto como si el portal hubiera confirmado un cambio inexistente (H-06).
+            TempData["SuccessMsg"] = Resumen(cambios);
             return RedirectToPage(new { rol, q });
         }
         catch (DomainException ex)
@@ -132,5 +135,21 @@ public sealed class PermisosModel(ISender sender) : PageModel
             await CargarAsync(rol, ct);
             return Page();
         }
+    }
+
+    /// <summary>
+    /// Qué se le dice a quien guardó. Enumera lo que de verdad cambió, y dice con todas sus
+    /// letras cuando no cambió nada: es lo único que distingue «tu clic hizo algo» de «tu clic
+    /// no llegó a la casilla», que era justo la duda del hallazgo H-06.
+    /// </summary>
+    private static string Resumen(CambiosDeMatrizDto c)
+    {
+        if (!c.HuboCambios) return "No habia cambios que guardar.";
+
+        var partes = new List<string>(2);
+        if (c.Otorgados > 0) partes.Add($"{c.Otorgados} otorgado{(c.Otorgados == 1 ? "" : "s")}");
+        if (c.Revocados > 0) partes.Add($"{c.Revocados} revocado{(c.Revocados == 1 ? "" : "s")}");
+
+        return $"Permisos actualizados: {string.Join(", ", partes)}.";
     }
 }

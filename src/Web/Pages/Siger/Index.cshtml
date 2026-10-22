@@ -3,7 +3,12 @@
 @inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Inventario de Tramites SIGER";
-    var esAdmin = await Acceso.PuedeEditarAsync("Siger");
+    // Estas tres puertas ya no son de SIGER: llevan a Honduras Simple. Se preguntan por su
+    // permiso, no por el del inventario, o quien solo consulta veria botones que le van a
+    // cerrar la puerta en la cara.
+    var puedeVerFichas    = await Acceso.PuedeAsync(ModulosPortal.HondurasSimple);
+    var puedeEditarFichas = await Acceso.PuedeEditarAsync(ModulosPortal.HondurasSimple);
+    var puedePublicar     = await Acceso.PuedeClaveAsync("HondurasSimple.Publicacion.Ver");
 }
 
 <div class="container lista">
@@ -14,11 +19,19 @@
             <p>Registro de tramites del Portal de Tramites y Servicios</p>
         </div>
         <div style="display:flex;gap:8px">
-            <a class="btns" asp-page="/Siger/Completitud">Completitud</a>
-            @if (esAdmin)
+            @if (puedeVerFichas)
             {
-                <a class="btns" asp-page="/Siger/CapturaLote">Captura por lotes</a>
-                <a class="btnp" asp-page="/Siger/Editor">+ Nuevo tramite</a>
+                <a class="btns" asp-page="/HondurasSimple/Completitud">Completitud</a>
+            }
+            @if (puedePublicar)
+            {
+                <a class="btns" asp-page="/HondurasSimple/Publicacion">Publicado</a>
+            }
+            @if (puedeEditarFichas)
+            {
+                <a class="btns" asp-page="/HondurasSimple/CapturaLote">Captura por lotes</a>
+                <a class="btns" asp-page="/HondurasSimple/Archivo">Archivo del original</a>
+                <a class="btnp" asp-page="/HondurasSimple/Editor">+ Nuevo tramite</a>
             }
         </div>
     </div>
@@ -42,6 +55,16 @@
             <div class="prog-label">Instituciones</div>
         </div>
     </div>
+
+    @* ── Aviso de fichas incompletas ──────────────────────────── *@
+    @if (Model.TotalIncompletas > 0)
+    {
+        <div class="card" style="margin:0 0 1.25rem;border-left:4px solid #b45309;background:#fffbeb">
+            <strong style="color:#b45309">@Model.TotalIncompletas de @Model.TotalRegistros fichas están incompletas.</strong>
+            <span>Ninguna de ellas se publica en el Portal de Trámites y Servicios hasta que se capture lo que falta.</span>
+            <a class="btns" style="margin-left:8px" asp-page="/Siger/Index" asp-route-Completa="No">Ver solo las incompletas</a>
+        </div>
+    }
 
     @* ── Filtros ───────────────────────────────────────────────── *@
     <form method="get" class="seg-filters">
@@ -85,6 +108,22 @@
                 <option value="No">No</option>
             </select>
         </div>
+        <div class="field" style="min-width:130px">
+            <label>Ficha publica <span class="help-tip tip-down" data-tip="Una ficha está completa cuando tiene categoría, modalidad, tiempo, costo y, si el trámite está en SOL, su enlace. Solo las completas se publican.">?</span></label>
+            <select asp-for="Completa">
+                <option value="">Todas</option>
+                <option value="No">Incompletas</option>
+                <option value="Si">Completas</option>
+            </select>
+        </div>
+        <div class="field" style="min-width:150px">
+            <label>Origen <span class="help-tip tip-down" data-tip="«Del inventario» son las fichas que llegaron de SIGER. «Promovidas» nacieron en este portal desde un expediente y no existen en SIGER; su código lleva la marca -P.">?</span></label>
+            <select asp-for="Origen">
+                <option value="">Todos</option>
+                <option value="Siger">Del inventario SIGER</option>
+                <option value="Promovida">Promovidas desde un expediente</option>
+            </select>
+        </div>
         <button class="btnp" type="submit">Filtrar</button>
         <a class="btns" asp-page="/Siger/Index">Limpiar</a>
     </form>
@@ -119,11 +158,25 @@
                     @foreach (var t in Model.Resultado.Items)
                     {
                         <tr>
-                            <td style="white-space:nowrap;font-weight:600">@t.Codigo</td>
+                            @* La marca -P ya distingue el código, pero solo si uno sabe qué
+                               significa. La insignia lo dice sin que haga falta saberlo. *@
+                            <td style="white-space:nowrap;font-weight:600">
+                                @t.Codigo
+                                @if (t.IdSiger is null)
+                                {
+                                    <span title="Nació en este portal; no existe en el inventario de SIGER"
+                                          style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;vertical-align:middle">P</span>
+                                }
+                            </td>
                             <td>
                                 <a asp-page="/Siger/Detalle" asp-route-id="@t.Id" style="color:var(--diger-text);text-decoration:none">
                                     @(t.Nombre.Length > 80 ? t.Nombre[..80] + "..." : t.Nombre)
                                 </a>
+                                @if (!t.FichaCompleta)
+                                {
+                                    <span class="wf-registrada" style="margin-left:6px;font-size:11px;white-space:nowrap"
+                                          title="@t.TextoFaltantes">Ficha incompleta</span>
+                                }
                             </td>
                             <td style="white-space:nowrap">
                                 @if (t.InstitucionId != null)
@@ -167,9 +220,9 @@
                                     <a class="btns" style="font-size:12px;padding:4px 10px" href="@t.DiagramaUrl.Replace("~/", "https://beta.sigpret.gob.hn/")" target="_blank" rel="noopener" title="Ver diagrama del proceso">Diagrama</a>
                                 }
                                 <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/Siger/Detalle" asp-route-id="@t.Id">Ver</a>
-                                @if (esAdmin)
+                                @if (puedeEditarFichas)
                                 {
-                                    <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/Siger/Editor" asp-route-id="@t.Id">Editar</a>
+                                    <a class="btns" style="font-size:12px;padding:4px 10px" asp-page="/HondurasSimple/Editor" asp-route-id="@t.Id">Editar</a>
                                 }
                             </td>
                         </tr>

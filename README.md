@@ -242,7 +242,7 @@ dotnet ef database update          --project src/Infrastructure --startup-projec
 2. **Autocompletado de asistentes/enlace** desde el Directorio de Contactos (hoy el flujo es
    Reunión → Contactos; falta el sentido inverso en el formulario de reuniones).
 3. **Seguimiento de acuerdos** — vista/tablero de acuerdos pendientes por responsable y plazo.
-4. **Exponer Expediente y Reuniones en la API** (`Presentation`) además del Web (Razor Pages).
+4. **Exponer Expediente y Reuniones en la API** (`src/Api`) además del Web (Razor Pages). Ojo: desde la separación, el API no referencia el código de PortalDigital — habría que ampliar su modelo de lectura.
 5. **Endpoints de catálogo TGR cacheados** (SEFIN).
 6. **Legal/Docs/Proceso por-trámite** (hoy a nivel de expediente, como en el formulario original).
 > Hecho: ✅ Reuniones + Acta PDF · ✅ Tickets de soporte (+ filtros) · ✅ Gestión de usuarios ·

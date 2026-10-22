@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    API pública de trámites — v1.
+
+    NO REFERENCIA NINGÚN PROYECTO DE PORTALDIGITAL, Y ESO ES EL PUNTO.
+
+    Antes referenciaba Application, Domain e Infrastructure. Con eso, cualquier cambio en
+    PortalDigital —una entidad nueva, un servicio, una dependencia— entraba en el proceso de
+    esta API aunque no tuviera nada que ver con publicar trámites, y obligaba a desplegarla.
+    Arrastraba además, sin usarlos: SMTP, el cliente del agente de IA, ocho repositorios, el
+    cliente de Supabase, un servicio de recordatorios en segundo plano, el catálogo de roles
+    y la caché de permisos.
+
+    Lo que esta API necesita de PortalDigital es un CONTRATO DE DATOS: ocho tablas, de solo
+    lectura, descritas en Lectura/. PortalDigital sigue siendo el dueño del esquema y de las
+    migraciones; acá solo se leen columnas.
+
+    Consecuencia buscada: esta carpeta se puede mover a su propio repositorio tal cual está,
+    sin tocar una línea.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Diger.TramitesEstado.Api</RootNamespace>
+    <AssemblyName>Diger.TramitesEstado.Api</AssemblyName>
+    <UserSecretsId>diger-tramites-estado-api</UserSecretsId>
+
+    <!-- Los controladores ya llevan su documentación escrita; sin esto el compilador no
+         genera el .xml y Swagger no puede mostrarla. CS1591 se silencia porque exigir un
+         comentario en cada miembro público convertiría el aviso en ruido.
+         1573 también: el CancellationToken de cada acción es fontanería del framework, no
+         viaja en el contrato y no aparece en Swagger; documentarlo sería ruido. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591;1573</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Solo para que las pruebas puedan sembrar: ver ApiDbContext.SembrandoEnPruebas. -->
+    <InternalsVisibleTo Include="Diger.TramitesEstado.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+  </ItemGroup>
+
+</Project>
