@@ -134,5 +134,30 @@ public sealed class CorreosEscapadosTests : IDisposable
         cuerpo.Should().NotContain("<b>Pérez</b>").And.Contain("Juan &lt;b&gt;Pérez&lt;/b&gt;");
     }
 
+    [Fact]
+    public async Task Recordatorio_de_expediente_escapa_analista_contacto_institucion_y_mensaje()
+    {
+        var analista = Usuario.Crear("Eva <b>Analista</b>", "analista@prueba.local", "hash");
+        _ctx.Usuarios.Add(analista);
+        var exp = Expediente.Crear("EXP-1", "INST", null, null, "Instituto <i>X</i>", analista.Nombre);
+        exp.AnalistaId     = analista.Id;
+        exp.ContactoNombre = "Raúl <u>Contacto</u>";
+        exp.ContactoCorreo = "contacto@prueba.local";
+        _ctx.Expedientes.Add(exp);
+        await _ctx.SaveChangesAsync();
+
+        await new EnviarRecordatorioExpedienteCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email)
+            .Handle(new EnviarRecordatorioExpedienteCommand(exp.Id, Peligroso), CancellationToken.None);
+
+        _cuerpos.Should().HaveCount(2);
+        _cuerpos.Should().AllSatisfy(c =>
+        {
+            c.Should().NotContain("<script>").And.NotContain("<i>X</i>");
+            c.Should().Contain(Escapado).And.Contain("Instituto &lt;i&gt;X&lt;/i&gt;");
+        });
+        _cuerpos.Should().Contain(c => c.Contains("Eva &lt;b&gt;Analista&lt;/b&gt;"));
+        _cuerpos.Should().Contain(c => c.Contains("Raúl &lt;u&gt;Contacto&lt;/u&gt;"));
+    }
+
     public void Dispose() => _ctx.Dispose();
 }

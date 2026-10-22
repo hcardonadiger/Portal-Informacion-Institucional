@@ -103,9 +103,9 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
 
                 if (!string.IsNullOrWhiteSpace(analista.Correo))
                 {
-                    var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {request.Mensaje}</p>";
-                    var body = $"<p>Estimado(a) <strong>{analista.Nombre}</strong>,</p>" +
-                               $"<p>Se le ha enviado un recordatorio relativo al expediente <strong>{exp.Codigo}</strong> de la institución <strong>{exp.Institucion}</strong>.</p>" +
+                    var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
+                    var body = $"<p>Estimado(a) <strong>{E(analista.Nombre)}</strong>,</p>" +
+                               $"<p>Se le ha enviado un recordatorio relativo al expediente <strong>{E(exp.Codigo)}</strong> de la institución <strong>{E(exp.Institucion)}</strong>.</p>" +
                                $"{msgExtra}" +
                                $"<p><a href='{url}'>Abrir Expediente</a></p>";
                     await emailSvc.SendEmailAsync(analista.Correo, $"Recordatorio Expediente {exp.Codigo} — DIGER", body, TipoCorreo.RecordatorioExpediente, ct);
@@ -125,9 +125,9 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
                 notificados++;
             }
 
-            var msgExtraContact = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {request.Mensaje}</p>";
-            var bodyContact = $"<p>Estimado(a) <strong>{exp.ContactoNombre ?? "Contacto Institucional"}</strong>,</p>" +
-                              $"<p>Le enviamos un recordatorio sobre el expediente de digitalización <strong>{exp.Codigo}</strong> correspondiente a {exp.Institucion}.</p>" +
+            var msgExtraContact = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
+            var bodyContact = $"<p>Estimado(a) <strong>{E(exp.ContactoNombre ?? "Contacto Institucional")}</strong>,</p>" +
+                              $"<p>Le enviamos un recordatorio sobre el expediente de digitalización <strong>{E(exp.Codigo)}</strong> correspondiente a {E(exp.Institucion)}.</p>" +
                               $"{msgExtraContact}";
             await emailSvc.SendEmailAsync(exp.ContactoCorreo, $"Recordatorio Expediente {exp.Codigo} — DIGER", bodyContact, TipoCorreo.RecordatorioExpediente, ct);
         }
