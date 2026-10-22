@@ -248,6 +248,11 @@ public interface IApplicationDbContext
     DbSet<PlantillaEntregable>      PlantillaEntregables { get; }
     DbSet<PlantillaActividad>       PlantillaActividades { get; }
     DbSet<Notificacion>             Notificaciones      { get; }
+    DbSet<NotificacionElemento>     NotificacionElementos { get; }
+    DbSet<AjustesNotificaciones>    AjustesNotificaciones { get; }
+    DbSet<InterruptorNotificacion>  InterruptoresNotificacion { get; }
+    DbSet<CorreoPendiente>          CorreosPendientes { get; }
+    DbSet<PanelControlBitacora>     PanelControlBitacora { get; }
     DbSet<ChatSesion>               ChatSesiones           { get; }
     DbSet<ChatMensaje>              ChatMensajes           { get; }
     DbSet<ExpedienteEtapaCronograma> EtapaCronogramas      { get; }

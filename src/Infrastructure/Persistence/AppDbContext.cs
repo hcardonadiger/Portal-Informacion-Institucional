@@ -64,6 +64,11 @@ public sealed class AppDbContext(
     public DbSet<PlantillaEntregable>      PlantillaEntregables { get; init; } = default!;
     public DbSet<PlantillaActividad>       PlantillaActividades { get; init; } = default!;
     public DbSet<Notificacion>             Notificaciones       { get; init; } = default!;
+    public DbSet<NotificacionElemento>    NotificacionElementos     { get; init; } = default!;
+    public DbSet<AjustesNotificaciones>   AjustesNotificaciones     { get; init; } = default!;
+    public DbSet<InterruptorNotificacion> InterruptoresNotificacion { get; init; } = default!;
+    public DbSet<CorreoPendiente>         CorreosPendientes         { get; init; } = default!;
+    public DbSet<PanelControlBitacora>    PanelControlBitacora      { get; init; } = default!;
     public DbSet<ChatSesion>                ChatSesiones          { get; init; } = default!;
     public DbSet<ChatMensaje>               ChatMensajes          { get; init; } = default!;
     public DbSet<ExpedienteEtapaCronograma> EtapaCronogramas      { get; init; } = default!;
@@ -1729,11 +1734,88 @@ public sealed class NotificacionConfiguration : IEntityTypeConfiguration<Notific
         b.ToTable("Notificaciones");
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedOnAdd();
-        b.Property(x => x.Titulo).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Titulo).HasMaxLength(Notificacion.LargoTitulo).IsRequired();
         b.Property(x => x.Url).HasMaxLength(500);
         b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.Cantidad).HasDefaultValue(1);
+        b.Ignore(x => x.Destino);
+        b.HasMany(x => x.Elementos).WithOne().HasForeignKey(e => e.NotificacionId).OnDelete(DeleteBehavior.Cascade);
+        b.Navigation(x => x.Elementos).UsePropertyAccessMode(PropertyAccessMode.Field);
         b.HasIndex(x => new { x.DestinatarioId, x.Leida });
         b.HasIndex(x => x.FechaCreacion);
+    }
+}
+
+public sealed class NotificacionElementoConfiguration : IEntityTypeConfiguration<NotificacionElemento>
+{
+    public void Configure(EntityTypeBuilder<NotificacionElemento> b)
+    {
+        b.ToTable("NotificacionElementos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Clave).HasMaxLength(NotificacionElemento.LargoClave).IsRequired();
+        b.Property(x => x.Titulo).HasMaxLength(Notificacion.LargoTitulo).IsRequired();
+        b.Property(x => x.Url).HasMaxLength(500);
+        b.HasIndex(x => x.NotificacionId);
+        b.HasIndex(x => new { x.Clave, x.FechaUtc });
+    }
+}
+
+public sealed class AjustesNotificacionesConfiguration : IEntityTypeConfiguration<AjustesNotificaciones>
+{
+    public void Configure(EntityTypeBuilder<AjustesNotificaciones> b)
+    {
+        b.ToTable("AjustesNotificaciones");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedNever();
+        b.Property(x => x.SmtpHost).HasMaxLength(200);
+        b.Property(x => x.SmtpUsuario).HasMaxLength(200);
+        b.Property(x => x.SmtpRemitente).HasMaxLength(200);
+        b.Property(x => x.SmtpNombreRemitente).HasMaxLength(200);
+        b.Property(x => x.CreatedBy).HasMaxLength(200);
+        b.Property(x => x.UpdatedBy).HasMaxLength(200);
+    }
+}
+
+public sealed class InterruptorNotificacionConfiguration : IEntityTypeConfiguration<InterruptorNotificacion>
+{
+    public void Configure(EntityTypeBuilder<InterruptorNotificacion> b)
+    {
+        b.ToTable("ModulosNotificacion");
+        b.HasKey(x => x.Modulo);
+        b.Property(x => x.Modulo).HasConversion<string>().HasMaxLength(30).ValueGeneratedNever();
+    }
+}
+
+public sealed class CorreoPendienteConfiguration : IEntityTypeConfiguration<CorreoPendiente>
+{
+    public void Configure(EntityTypeBuilder<CorreoPendiente> b)
+    {
+        b.ToTable("CorreosPendientes");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Modulo).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(30);
+        b.Property(x => x.Estado).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.Titulo).HasMaxLength(Notificacion.LargoTitulo).IsRequired();
+        b.Property(x => x.Url).HasMaxLength(500);
+        b.Property(x => x.Clave).HasMaxLength(NotificacionElemento.LargoClave).IsRequired();
+        b.Property(x => x.UltimoError).HasMaxLength(500);
+        b.HasIndex(x => new { x.Estado, x.DestinatarioId });
+    }
+}
+
+public sealed class PanelControlBitacoraConfiguration : IEntityTypeConfiguration<PanelControlBitacora>
+{
+    public void Configure(EntityTypeBuilder<PanelControlBitacora> b)
+    {
+        b.ToTable("PanelControlBitacora");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Seccion).HasMaxLength(100).IsRequired();
+        b.Property(x => x.Detalle).HasMaxLength(1000).IsRequired();
+        b.Property(x => x.Actor).HasMaxLength(200).IsRequired();
+        b.HasIndex(x => x.Fecha);
     }
 }
 
