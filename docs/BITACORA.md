@@ -8,6 +8,34 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-22 (noche, 2) — Tanda 1, entrega 2: notificaciones y correo
+Pedido del Analista. Rama `Jamil-GestionGD`. Cada defecto tiene una prueba que fallaba antes. Sin
+migraciones, sin tocar `src/Web/Mcp` ni el servidor, el usuario o la contraseña del correo.
+- **Hora de Honduras:** los recordatorios automáticos (reunión de mañana, compromisos vencidos y
+  próximos), su deduplicación diaria y el cronograma de la ficha del proyecto usaban la fecha UTC.
+  Desde las 6:00 p. m. daban por vencido lo que vence ese día. Ahora usan
+  `Notificaciones:ZonaHoraria` (`America/Tegucigalpa`; UTC-6 fijo con advertencia si el servidor
+  no la reconoce). Commit `044e5b7`. Las etapas de cronograma de Expedientes van aparte, en el
+  commit `4209a94`.
+- **Enlaces absolutos y nombre de la institución:** los enlaces de los recordatorios se arman con
+  `Correo:UrlBase`. Los seis asuntos y la firma de la recuperación toman el nombre de la sección
+  `Institucion`. Commit `7f0e155`.
+- **Tiempo máximo de envío:** 15 s, configurable con `Smtp:TimeoutSegundos`. Commit `bed99dd`.
+- **La pantalla dice si el correo no salió:** el correo y los recordatorios devuelven lo que pasó
+  (commit `d1cd68c`). Las cuatro pantallas de recordatorio muestran una advertencia si la campana
+  llegó y el correo no (commit `b56f26b`). Con el correo bien, cada una conserva su texto. Los
+  textos los propuso y revisó el agente de interfaz `diger-ui`. Veredicto: aprobado con cambios
+  menores, ya aplicados.
+- **Advertencia al arrancar** si falta `Correo:UrlBase` o el servidor de correo. Commit `d43edac`.
+- **Ayuda:** la pregunta frecuente de notificaciones explica los avisos automáticos con la hora de
+  Honduras y qué pasa si el correo no sale.
+- Notas de despliegue con los pasos de IIS (siempre activo, precarga y comprobar Application
+  Initialization): `docs/despliegue/2026-10-22_tanda1_entrega2_notificaciones.md`.
+- Resultado: compila sin advertencias nuevas y pasan 1035 pruebas (1 omitida). Antes eran 989.
+- Pruebas existentes modificadas, solo por la firma o el tipo de retorno nuevos:
+  `EnviarRecordatorioTests` (la de reunión ahora mira los correos intentados, porque el asistente no
+  tiene usuario), `CorreosEscapadosTests`, `PasswordRecoveryTests` y `RecuperacionUrlBaseTests`.
+
 ### 2026-10-22 (noche) — Tanda 1, entrega 1: seguridad (S1 a S5)
 Pedido del Analista. Rama `Jamil-GestionGD`. Cada falla tiene una prueba que fallaba antes de la
 corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` ni la sección `Smtp`.
@@ -68,14 +96,19 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 
 ## Hecho
 - Tanda 1, entrega 1 (seguridad): S1 a S5 (2026-10-22, rama `Jamil-GestionGD`).
+- Tanda 1, entrega 2 (notificaciones y correo) (2026-10-22, rama `Jamil-GestionGD`).
 - Tablero ejecutivo de proyectos (2026-10-19, rama `DashBoards`). Sin cambios de base de datos.
 
 ## En curso
 - (nada abierto)
 
 ## Pendiente
-0. **Tanda 1**, según el plan del Analista. La entrega 1 (seguridad) está hecha; siguen las que
-   defina el Analista. Antes de publicar la entrega 1 hay que configurar `Correo__UrlBase` en IIS.
+0. **Tanda 1**, según el plan del Analista. Las entregas 1 (seguridad) y 2 (notificaciones y
+   correo) están hechas; siguen las que defina el Analista. Antes de publicar hay que configurar
+   `Correo__UrlBase` en IIS y seguir los pasos de IIS de la entrega 2.
+1. **Decisión de Jamil:** el editor de expedientes no muestra el mensaje de éxito. Ese mensaje
+   queda guardado y aparece en la siguiente pantalla que muestre mensajes de éxito. Mostrarlo en el
+   editor corrige el desvío, pero cambia lo que hoy se ve.
 1. Decidir el siguiente paso de tableros: rediseñar los tableros marcados
    (Proyectos operativo, Reuniones, Tickets, Digitalización, Trámites, Expedientes)
    o unificar los tres tableros de Proyectos por alcance. Decide Jamil.
@@ -89,6 +122,18 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - (nada registrado)
 
 ## Decisiones
+- 2026-10-22 — Ingeniería (entrega 2):
+  - El agente de interfaz de GestionGD es `diger-ui`; aquí no existe `ux-ui`.
+  - Los textos dicen «el portal» y no «esta institución», porque el servidor de correo es uno
+    solo para toda la instalación.
+  - No se sugiere «intentarlo de nuevo», porque cada intento vuelve a dejar el aviso en la campana.
+  - Sin `Correo:UrlBase`, los enlaces de los recordatorios quedan relativos, como antes; el arranque
+    lo advierte.
+  - `Smtp:TimeoutSegundos` y `Notificaciones:ZonaHoraria` tienen valor por defecto en el código.
+    `ZonaHoraria` además quedó escrita en `appsettings.json`.
+  - El tiempo máximo de envío, si se agota, cuenta como correo fallido.
+  - En los pasos de IIS se recomienda además quitar el tiempo de inactividad del grupo: si no,
+    IIS lo apaga a los 20 minutos aunque esté en `AlwaysRunning`.
 - 2026-10-22 — Jamil: la tanda 1 se hace en la rama `Jamil-GestionGD`, sacada de `ike_opt`, en
   esta carpeta y sin worktrees nuevos. La rama `Jamil` no se toca.
 - 2026-10-22 — Ingeniería (entrega 1):
@@ -162,6 +207,10 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
   con texto oscuro en tema oscuro.
 
 ## Riesgos y bloqueos
+- **La base local `GestionGD_new` no abre con la cuenta de Windows** (error 4060, visto el
+  2026-10-22 al intentar levantar el portal desde esta rama). No se pudo revisar la interfaz en el
+  navegador. Quedan pendientes: la advertencia en tema oscuro, la impresión del acta y el ancho
+  del editor de expedientes en móvil. Necesita: que Jamil confirme qué base local usa esta rama.
 - **Correos ya escritos en el Visor de eventos del servidor** (de antes de S1): pueden tener datos
   de personas y enlaces de recuperación ya vencidos. Necesita: decisión de Jamil sobre vaciar ese
   registro o restringir quién lo lee.
