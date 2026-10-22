@@ -3,6 +3,7 @@ using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using static Diger.TramitesEstado.Application.Notificaciones.PlantillasCorreo;
 
 namespace Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual;
 
@@ -36,9 +37,9 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
 
                 if (!string.IsNullOrWhiteSpace(agente.Correo))
                 {
-                    var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {request.Mensaje}</p>";
-                    var body = $"<p>Estimado(a) <strong>{agente.Nombre}</strong>,</p>" +
-                               $"<p>Se le ha enviado un recordatorio respecto al ticket de soporte <strong>{ticket.Numero}</strong>: {ticket.Titulo}.</p>" +
+                    var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
+                    var body = $"<p>Estimado(a) <strong>{E(agente.Nombre)}</strong>,</p>" +
+                               $"<p>Se le ha enviado un recordatorio respecto al ticket de soporte <strong>{E(ticket.Numero)}</strong>: {E(ticket.Titulo)}.</p>" +
                                $"{msgExtra}" +
                                $"<p>Puede dar seguimiento haciendo clic en el siguiente enlace:</p>" +
                                $"<p><a href='{url}'>Ver Detalle del Ticket</a></p>";
@@ -59,9 +60,9 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
                 notificados++;
             }
 
-            var msgExtraRep = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {request.Mensaje}</p>";
-            var bodyRep = $"<p>Estimado(a) <strong>{ticket.ReportanteNombre ?? "Usuario"}</strong>,</p>" +
-                          $"<p>Le enviamos un recordatorio sobre su ticket de soporte <strong>{ticket.Numero}</strong>: {ticket.Titulo}.</p>" +
+            var msgExtraRep = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
+            var bodyRep = $"<p>Estimado(a) <strong>{E(ticket.ReportanteNombre ?? "Usuario")}</strong>,</p>" +
+                          $"<p>Le enviamos un recordatorio sobre su ticket de soporte <strong>{E(ticket.Numero)}</strong>: {E(ticket.Titulo)}.</p>" +
                           $"{msgExtraRep}" +
                           $"<p>Puede revisar el estado de su solicitud en el portal.</p>";
             await emailSvc.SendEmailAsync(ticket.ReportanteCorreo, $"Recordatorio Ticket {ticket.Numero} — DIGER", bodyRep, TipoCorreo.RecordatorioTicket, ct);
@@ -170,10 +171,10 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
                 notificados++;
             }
 
-            var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota adicional:</strong> {request.Mensaje}</p>";
+            var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota adicional:</strong> {E(request.Mensaje)}</p>";
             var fechaStr = reunion.Fecha?.ToString("dd/MM/yyyy") ?? "Próximamente";
-            var body = $"<p>Estimado(a) <strong>{asist.Nombre}</strong>,</p>" +
-                       $"<p>Le enviamos un recordatorio sobre la reunión: <strong>{reunion.Titulo}</strong> programada para el <strong>{fechaStr}</strong>.</p>" +
+            var body = $"<p>Estimado(a) <strong>{E(asist.Nombre)}</strong>,</p>" +
+                       $"<p>Le enviamos un recordatorio sobre la reunión: <strong>{E(reunion.Titulo)}</strong> programada para el <strong>{fechaStr}</strong>.</p>" +
                        $"{msgExtra}" +
                        $"<p><a href='{url}'>Ver Acta / Detalles de la Reunión</a></p>";
 
@@ -238,10 +239,10 @@ public sealed class EnviarRecordatorioCompromisoCommandHandler(
         if (!string.IsNullOrWhiteSpace(correoTarget))
         {
             var plazoStr = acuerdo.Plazo?.ToString("dd/MM/yyyy") ?? "Sin plazo fijo";
-            var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {request.Mensaje}</p>";
-            var body = $"<p>Estimado(a) <strong>{acuerdo.Responsable ?? "Responsable"}</strong>,</p>" +
-                       $"<p>Le enviamos un recordatorio sobre el compromiso pendiente derivado de la reunión <strong>{reunion.Titulo}</strong>:</p>" +
-                       $"<blockquote style='border-left:4px solid #1455a4;padding-left:10px;color:#334155'><strong>Compromiso:</strong> {acuerdo.Compromiso}<br><strong>Plazo:</strong> {plazoStr}</blockquote>" +
+            var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
+            var body = $"<p>Estimado(a) <strong>{E(acuerdo.Responsable ?? "Responsable")}</strong>,</p>" +
+                       $"<p>Le enviamos un recordatorio sobre el compromiso pendiente derivado de la reunión <strong>{E(reunion.Titulo)}</strong>:</p>" +
+                       $"<blockquote style='border-left:4px solid #1455a4;padding-left:10px;color:#334155'><strong>Compromiso:</strong> {E(acuerdo.Compromiso)}<br><strong>Plazo:</strong> {plazoStr}</blockquote>" +
                        $"{msgExtra}" +
                        $"<p><a href='{url}'>Ver Avance y Detalle del Compromiso</a></p>";
             await emailSvc.SendEmailAsync(correoTarget, $"Recordatorio de Compromiso — DIGER", body, TipoCorreo.RecordatorioCompromiso, ct);

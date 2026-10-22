@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Common.Models;
 using FluentValidation;
 using Microsoft.Extensions.Options;
@@ -66,7 +67,7 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
                     <div class="header">
                         <h1>{{Marca.Nombre}}</h1>
                     </div>
-                    <p>Hola <strong>{{usuario.Nombre}}</strong>,</p>
+                    <p>Hola <strong>{{PlantillasCorreo.E(usuario.Nombre)}}</strong>,</p>
                     <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en {{Marca.Nombre}}.</p>
                     <p>Haz clic en el siguiente botón para ingresar tu nueva contraseña:</p>
                     <div style="text-align: center;">
