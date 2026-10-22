@@ -21,7 +21,9 @@ public sealed class EditorModel(
     AccesoModulosService acceso,
     ICurrentUserService currentUser,
     IProyectoPdfService proyectoPdf,
-    IWebHostEnvironment env) : PageModel
+    IWebHostEnvironment env,
+    TimeProvider reloj,
+    Microsoft.Extensions.Options.IOptions<NotificacionesOptions> notificaciones) : PageModel
 {
     public ProyectoDetailDto Proyecto { get; private set; } = default!;
     public IReadOnlyList<AvanceProyectoDto> Avances { get; private set; } = [];
@@ -958,9 +960,12 @@ public sealed class EditorModel(
 
         DiasSinReportar = Avances.Count == 0
             ? null
-            : (int)(DateTime.UtcNow - Avances.Max(a => a.Fecha)).TotalDays;
+            : (int)(reloj.GetUtcNow().UtcDateTime - Avances.Max(a => a.Fecha)).TotalDays;
 
-        Cronograma  = CronogramaProyecto.Construir(dto, DateOnly.FromDateTime(DateTime.UtcNow));
+        // «Hoy» es el de Honduras: comparar con la fecha UTC daba por vencido, desde las 6:00 p. m.,
+        // lo que vence hoy.
+        var zona = CalendarioLocal.Resolver(notificaciones.Value.ZonaHoraria).Zona;
+        Cronograma  = CronogramaProyecto.Construir(dto, CalendarioLocal.Dia(reloj.GetUtcNow(), zona).Hoy);
         Auditoria   = await sender.Send(new GetBitacoraProyectoQuery(id), ct);
         Riesgos     = await sender.Send(new GetRiesgosProyectoQuery(id), ct);
         Interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);

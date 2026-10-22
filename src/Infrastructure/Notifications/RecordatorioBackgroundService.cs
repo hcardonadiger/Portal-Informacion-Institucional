@@ -9,10 +9,19 @@ namespace Diger.TramitesEstado.Infrastructure.Notifications;
 public sealed class RecordatorioBackgroundService(
     IServiceScopeFactory scopeFactory,
     IOptions<NotificacionesOptions> options,
+    TimeProvider reloj,
     ILogger<RecordatorioBackgroundService> logger) : BackgroundService
 {
+    // «Hoy» y «mañana» son los de la zona configurada (Notificaciones:ZonaHoraria), no los de UTC.
+    private readonly (TimeZoneInfo Zona, bool Encontrada) _zona = CalendarioLocal.Resolver(options.Value.ZonaHoraria);
+
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
+        if (!_zona.Encontrada)
+            logger.LogWarning(
+                "Notificaciones:ZonaHoraria «{Zona}» no existe en este servidor; los recordatorios usan UTC-6 fijo.",
+                options.Value.ZonaHoraria);
+
         // La cancelación es el apagado normal del host: se captura aquí para que no
         // escape como excepción no controlada (el depurador rompería en cada Task.Delay).
         try { await EjecutarBucleAsync(ct); }
@@ -37,15 +46,18 @@ public sealed class RecordatorioBackgroundService(
         }
     }
 
-    private async Task ProcesarAsync(CancellationToken ct)
+    /// <summary>Una corrida completa. La llama el bucle; es pública para poder probarla con un
+    /// reloj fijo sin esperar al intervalo.</summary>
+    public async Task ProcesarAsync(CancellationToken ct)
     {
         await using var scope   = scopeFactory.CreateAsyncScope();
         var ctx      = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var notifSvc = scope.ServiceProvider.GetRequiredService<INotificacionService>();
 
-        var hoyUtc = DateTime.UtcNow.Date;
-        var mañana = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
-        var hoy    = DateOnly.FromDateTime(DateTime.UtcNow);
+        // Plazos y fechas de reunión se escriben en hora local. hoyUtc es el instante UTC en que
+        // empezó el día local: con él se mide «ya se avisó hoy» contra FechaCreacion, que es UTC.
+        var (hoy, mañana, hoyUtc) = CalendarioLocal.Dia(reloj.GetUtcNow(), _zona.Zona);
+        var hoyEtapas = DateOnly.FromDateTime(reloj.GetUtcNow().UtcDateTime);
 
         // ── Pre-carga de notificaciones ya enviadas hoy (evita duplicados) ──
         var enviadas = await ctx.Notificaciones
@@ -137,10 +149,10 @@ public sealed class RecordatorioBackgroundService(
         }
 
         // ── Etapas de cronograma vencidas / próximas → notificar por nombre ──
-        var tresDias = hoy.AddDays(3);
+        var tresDias = hoyEtapas.AddDays(3);
 
         var etapasVencidas = await ctx.EtapaCronogramas
-            .Where(e => e.FechaFin < hoy && e.FechaRealFin == null)
+            .Where(e => e.FechaFin < hoyEtapas && e.FechaRealFin == null)
             .Join(ctx.Expedientes.IgnoreQueryFilters(),
                   e => e.ExpedienteId, x => x.Id,
                   (e, x) => new { e.ExpedienteId, e.TramiteIndex, e.EtapaNum, e.Responsable, x.Codigo })
@@ -148,7 +160,7 @@ public sealed class RecordatorioBackgroundService(
             .ToListAsync(ct);
 
         var etapasProximas = await ctx.EtapaCronogramas
-            .Where(e => e.FechaFin >= hoy && e.FechaFin <= tresDias && e.FechaRealFin == null)
+            .Where(e => e.FechaFin >= hoyEtapas && e.FechaFin <= tresDias && e.FechaRealFin == null)
             .Join(ctx.Expedientes.IgnoreQueryFilters(),
                   e => e.ExpedienteId, x => x.Id,
                   (e, x) => new { e.ExpedienteId, e.TramiteIndex, e.EtapaNum, e.Responsable, x.Codigo })

@@ -65,6 +65,8 @@ public static class DependencyInjection
         // Notificaciones
         services.Configure<NotificacionesOptions>(configuration.GetSection("Notificaciones"));
         services.AddScoped<INotificacionService, NotificacionService>();
+        // El reloj se inyecta para poder probar los recordatorios y el cronograma a una hora fija.
+        services.TryAddSingleton(TimeProvider.System);
         services.AddHostedService<RecordatorioBackgroundService>();
 
         // Autenticación (expiración de cookie/token de recuperación)
