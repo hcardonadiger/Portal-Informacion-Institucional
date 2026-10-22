@@ -1,7 +1,9 @@
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Infrastructure.Email;
+using Diger.TramitesEstado.Application.Notificaciones;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using NSubstitute;
 using Xunit;
 
 namespace Diger.TramitesEstado.Application.Tests.Notificaciones;
@@ -92,6 +94,30 @@ public sealed class CorreoSeguridadTests
 
         resultado.Should().Be(ResultadoCorreo.SinConfigurar, "sin servidor no se intenta");
         registro.Lineas.Should().NotBeEmpty("se deja constancia de que no salió");
+        registro.Lineas.Should().NotContain(l => LlevaContenido(l));
+    }
+
+    /// <summary>
+    /// Desde que la configuración se lee de la base, leerla puede fallar (caché fría y base caída).
+    /// Eso no puede escaparse del envío: <see cref="IEmailService"/> promete no lanzar, y de eso
+    /// dependen la recuperación de contraseña y los recordatorios manuales.
+    /// </summary>
+    [Fact]
+    public async Task Si_no_se_puede_leer_la_configuracion_el_envio_falla_sin_lanzar()
+    {
+        var ajustes = Substitute.For<IAjustesNotificaciones>();
+        ajustes.SmtpAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<SmtpVigente>>(_ => throw new InvalidOperationException("la base no responde"));
+        var registro = new RegistroEnMemoria<SmtpEmailService>();
+        var smtp = new SmtpEmailService(ajustes, registro);
+
+        var envio  = await smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecuperacionContrasena, CancellationToken.None);
+        var prueba = await smtp.ProbarAsync(Destino, CancellationToken.None);
+
+        envio.Should().Be(ResultadoCorreo.Fallido);
+        prueba.Resultado.Should().Be(ResultadoCorreo.Fallido);
+        prueba.Detalle.Should().NotBeNullOrWhiteSpace();
+        registro.Lineas.Should().NotBeEmpty("la falla se registra");
         registro.Lineas.Should().NotContain(l => LlevaContenido(l));
     }
 }

@@ -40,7 +40,21 @@ public sealed class SmtpEmailService(
     private async Task<ResultadoPruebaCorreo> EnviarAsync(string to, string subject, string bodyHtml, TipoCorreo tipo, CancellationToken ct)
     {
         var envio = Guid.NewGuid().ToString("N")[..8];
-        var s     = await ajustes.SmtpAsync(ct);
+
+        // La configuración sale de la base: con la caché fría, leerla puede fallar. Eso tampoco
+        // se escapa del envío (este servicio promete no lanzar); solo se deja pasar la cancelación
+        // pedida por quien llama.
+        SmtpVigente s;
+        try
+        {
+            s = await ajustes.SmtpAsync(ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Correo {Tipo} (envío {Envio}) no enviado: no se pudo leer la configuración del correo.",
+                tipo, envio);
+            return new(ResultadoCorreo.Fallido, "No se pudo leer la configuración del correo.");
+        }
 
         if (s.PasswordIlegible)
         {
