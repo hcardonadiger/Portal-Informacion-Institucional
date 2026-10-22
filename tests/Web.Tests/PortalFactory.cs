@@ -278,6 +278,9 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
     public HttpClient ClienteAnonimo() =>
         CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
+    /// <summary>Id del usuario sembrado para el rol (para sembrar datos suyos, como su conexión Outlook).</summary>
+    public Guid UsuarioDe(string rolId) => _usuarios[rolId];
+
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);

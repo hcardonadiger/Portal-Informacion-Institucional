@@ -4,6 +4,7 @@ using MediatR;
 using Diger.TramitesEstado.Application.Usuarios.Commands.ActualizarMiPerfil;
 using Diger.TramitesEstado.Application.Usuarios.Queries.GetUsuarioById;
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.CuentaMicrosoft;
 using Diger.TramitesEstado.Infrastructure.Security;
 
 namespace Diger.TramitesEstado.Web.Pages.Cuenta;
@@ -29,6 +30,11 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
     /// módulo. Es adonde el login la manda, porque el perfil es de lo poco que sí puede ver.</summary>
     public bool SinAsignacion { get; private set; }
 
+    public MiConexionOutlookDto Outlook { get; private set; } = new(false, false, null, null, false);
+
+    /// <summary>Resultado del ida y vuelta con Microsoft (lo deja OutlookCallback).</summary>
+    [TempData] public string? OutlookAviso { get; set; }
+
     public async Task<IActionResult> OnGetAsync(bool sinAsignacion, CancellationToken ct)
     {
         if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
@@ -43,7 +49,37 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
         Telefono = dto.Telefono;
 
         CargarContexto();
+        Outlook = await sender.Send(new GetMiConexionOutlookQuery(), ct);
         return Page();
+    }
+
+    public async Task<IActionResult> OnPostConectarOutlookAsync(CancellationToken ct)
+    {
+        var urlRetorno = Url.PageLink("/Cuenta/OutlookCallback")!;
+        try
+        {
+            var inicio = await sender.Send(new IniciarConexionOutlookQuery(urlRetorno), ct);
+
+            // Estado y verificador PKCE viajan en TempData (cookie cifrada con Data Protection):
+            // nunca a la base ni a un log.
+            TempData["OutlookEstado"]      = inicio.Estado;
+            TempData["OutlookVerificador"] = inicio.Verificador;
+            return Redirect(inicio.Url);
+        }
+        catch (DomainException ex)
+        {
+            // Sin app registrada (o MSAL caído) no hay adónde mandarlo: se avisa en la tarjeta.
+            OutlookAviso = ex.Message;
+            return RedirectToPage();
+        }
+    }
+
+    public async Task<IActionResult> OnPostDesconectarOutlookAsync(CancellationToken ct)
+    {
+        await sender.Send(new DesconectarOutlookCommand(), ct);
+        // "SuccessMessage" es la clave que pinta _CuentaLayout; "SuccessMsg" no se mostraría aquí.
+        TempData["SuccessMessage"] = "Outlook desconectado. Las citas ya enviadas siguen en su calendario.";
+        return RedirectToPage();
     }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
@@ -55,6 +91,7 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
         if (!ModelState.IsValid)
         {
             CargarContexto();
+            Outlook = await sender.Send(new GetMiConexionOutlookQuery(), ct);
             return Page();
         }
 
@@ -70,6 +107,7 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
         {
             TempData["ErrorMessage"] = ex.Message;
             CargarContexto();
+            Outlook = await sender.Send(new GetMiConexionOutlookQuery(), ct);
             return Page();
         }
     }
