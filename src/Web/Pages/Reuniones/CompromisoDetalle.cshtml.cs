@@ -126,8 +126,18 @@ public sealed class CompromisoDetalleModel(
     {
         try
         {
-            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioCompromisoCommand(id, mensaje), ct);
-            TempData["SuccessMsg"] = "Notificación de recordatorio enviada al responsable del compromiso.";
+            var r = await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioCompromisoCommand(id, mensaje), ct);
+            var (nivel, texto) = AvisoRecordatorio.Para(r,
+                "Notificación de recordatorio enviada al responsable del compromiso.", destinatarioUnico: true);
+            if (nivel == AvisoRecordatorio.Nivel.Error)
+            {
+                // Se carga el compromiso para que la página muestre el error sobre la ficha, no sola.
+                Compromiso = await sender.Send(new GetCompromisoDetalleQuery(id), ct);
+                EsAdmin    = await acceso.PuedeEditarAsync("Reuniones", ct);
+                Error      = texto;
+                return Page();
+            }
+            TempData[nivel == AvisoRecordatorio.Nivel.Exito ? "SuccessMsg" : AvisoRecordatorio.ClaveAdvertencia] = texto;
             return RedirectToPage("/Reuniones/CompromisoDetalle", new { id });
         }
         catch (Exception ex)

@@ -1148,8 +1148,10 @@ tr.contacto-inactivo td {
 }
 
 /* Faltaba el tercer caso: «esto no está mal, pero léalo antes de creerle al número de al lado».
-   Se usa donde un indicador sale de una muestra parcial. A diferencia de sus dos hermanos, va
-   sobre tokens y no sobre literales, así que sí acompaña al modo oscuro. */
+   Se usa donde un indicador sale de una muestra parcial, y tras una acción que se cumplió solo en
+   parte (un recordatorio cuyo aviso quedó en la campana pero cuyo correo no salió; ver
+   _WarningBanner). A diferencia de sus dos hermanos, va sobre tokens y no sobre literales, así que
+   sí acompaña a .tema-oscuro. */
 .alert-warn {
     background: var(--diger-warning-bg);
     border: 1px solid var(--diger-warning);

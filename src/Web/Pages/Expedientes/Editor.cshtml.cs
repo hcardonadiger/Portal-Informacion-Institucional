@@ -290,8 +290,14 @@ public sealed class EditorModel(
     {
         try
         {
-            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioExpedienteCommand(id, mensaje), ct);
-            TempData["SuccessMsg"] = "Notificación de recordatorio enviada exitosamente.";
+            var r = await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioExpedienteCommand(id, mensaje), ct);
+            var (nivel, texto) = AvisoRecordatorio.Para(r, "Notificación de recordatorio enviada exitosamente.");
+            TempData[nivel switch
+            {
+                AvisoRecordatorio.Nivel.Exito       => "SuccessMsg",
+                AvisoRecordatorio.Nivel.Advertencia => AvisoRecordatorio.ClaveAdvertencia,
+                _                                   => "ErrorMsg",
+            }] = texto;
             return RedirectToPage(new { id });
         }
         catch (Exception ex)

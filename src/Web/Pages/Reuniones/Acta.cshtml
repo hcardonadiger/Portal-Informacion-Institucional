@@ -46,9 +46,14 @@
 {
     <div class="alert-success hilo-panel" style="max-width:900px;margin:0 auto 1rem">@TempData["SuccessMessage"]</div>
 }
+@* hilo-panel: la regla de impresión lo oculta, así que la advertencia no sale impresa en el acta. *@
+@if (TempData[AvisoRecordatorio.ClaveAdvertencia] is string aviso)
+{
+    <div class="alert-warn hilo-panel" role="status" style="max-width:900px;margin:0 auto 1rem">@aviso</div>
+}
 @if (TempData["ErrorMessage"] != null)
 {
-    <div class="alert-error hilo-panel" style="max-width:900px;margin:0 auto 1rem">@TempData["ErrorMessage"]</div>
+    <div class="alert-error hilo-panel" role="alert" style="max-width:900px;margin:0 auto 1rem">@TempData["ErrorMessage"]</div>
 }
 
 <section class="card hilo-panel" style="max-width:900px;margin:0 auto 1.25rem">

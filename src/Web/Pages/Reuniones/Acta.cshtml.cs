@@ -280,8 +280,14 @@ public sealed class ActaModel(
     {
         try
         {
-            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioReunionCommand(id, mensaje), ct);
-            TempData["SuccessMessage"] = "Notificaciones de recordatorio enviadas a los asistentes con correo.";
+            var r = await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioReunionCommand(id, mensaje), ct);
+            var (nivel, texto) = AvisoRecordatorio.Para(r, "Notificaciones de recordatorio enviadas a los asistentes con correo.");
+            TempData[nivel switch
+            {
+                AvisoRecordatorio.Nivel.Exito       => "SuccessMessage",
+                AvisoRecordatorio.Nivel.Advertencia => AvisoRecordatorio.ClaveAdvertencia,
+                _                                   => "ErrorMessage",
+            }] = texto;
         }
         catch (Exception ex)
         {
