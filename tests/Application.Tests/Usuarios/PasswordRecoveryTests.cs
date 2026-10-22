@@ -35,6 +35,12 @@ public class PasswordRecoveryTests : IDisposable
         _passwordHasher = new PasswordHasher();
     }
 
+    private SolicitarRecuperacionPasswordCommandHandler Handler(string? urlBase = "https://portal.prueba.local") =>
+        new(_ctx, _ctx, _emailService, _authOptions,
+            Microsoft.Extensions.Options.Options.Create(new CorreoOptions { UrlBase = urlBase }),
+            Microsoft.Extensions.Options.Options.Create(new InstitucionOptions()),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SolicitarRecuperacionPasswordCommandHandler>.Instance);
+
     [Fact]
     public async Task SolicitarRecuperacion_UsuarioExistente_GeneraTokenYEnviaCorreo()
     {
@@ -43,11 +49,11 @@ public class PasswordRecoveryTests : IDisposable
         await _ctx.Usuarios.AddAsync(usuario);
         await _ctx.SaveChangesAsync();
 
-        var handler = new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _emailService, _authOptions);
+        var handler = Handler();
 
         // Act
         var result = await handler.Handle(
-            new SolicitarRecuperacionPasswordCommand("juan.perez@diger.gob.hn", "https://localhost:49175"),
+            new SolicitarRecuperacionPasswordCommand("juan.perez@diger.gob.hn"),
             CancellationToken.None);
 
         // Assert
@@ -59,6 +65,7 @@ public class PasswordRecoveryTests : IDisposable
             Arg.Is<string>(e => e == "juan.perez@diger.gob.hn"),
             Arg.Is<string>(s => s.Contains("Restablecimiento")),
             Arg.Is<string>(b => b.Contains(savedUser.PasswordResetToken!)),
+            Arg.Is<TipoCorreo>(t => t == TipoCorreo.RecuperacionContrasena),
             Arg.Any<CancellationToken>());
     }
 
@@ -66,17 +73,17 @@ public class PasswordRecoveryTests : IDisposable
     public async Task SolicitarRecuperacion_UsuarioInexistente_NoGeneraErrorNiEnviaCorreo()
     {
         // Arrange
-        var handler = new SolicitarRecuperacionPasswordCommandHandler(_ctx, _ctx, _emailService, _authOptions);
+        var handler = Handler();
 
         // Act
         var act = async () => await handler.Handle(
-            new SolicitarRecuperacionPasswordCommand("inexistente@diger.gob.hn", "https://localhost:49175"),
+            new SolicitarRecuperacionPasswordCommand("inexistente@diger.gob.hn"),
             CancellationToken.None);
 
         // Assert
         await act.Should().NotThrowAsync();
         await _emailService.DidNotReceive().SendEmailAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -1,0 +1,6 @@
+@* Advertencia tras un POST: la acción principal se hizo pero una parte no (por ejemplo, el aviso
+   quedó en la campana y el correo no salió). Hermana de _SuccessBanner. *@
+@if (TempData[AvisoRecordatorio.ClaveAdvertencia] is string aviso)
+{
+    <div class="alert-warn" role="status" style="margin-bottom:1rem">@aviso</div>
+}

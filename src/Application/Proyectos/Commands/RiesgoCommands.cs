@@ -2,6 +2,35 @@ using Diger.TramitesEstado.Application.Proyectos.Common;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Commands;
 
+// ── Riesgo dentro del alcance ─────────────────────────────────────────────
+/// <summary>
+/// Carga un riesgo para editarlo, cambiarle el estado o eliminarlo, solo si quien lo pide alcanza
+/// el proyecto del riesgo y, cuando se indica un proyecto, si el riesgo es de ese proyecto.
+///
+/// <para>La tabla de riesgos no tiene filtro de alcance propio, así que buscar por el número del
+/// riesgo a secas encontraba cualquiera: bastaba con cambiar ese número en la petición para tocar un
+/// riesgo de un proyecto ajeno (corregido el 2026-10-22). El alcance se comprueba contra
+/// <c>Proyectos</c>, que sí lleva el filtro. Si algo no cuadra se responde «no encontrado», no
+/// «prohibido»: no se confirma que el riesgo exista.</para>
+///
+/// <para><paramref name="proyectoId"/> nulo es la herramienta MCP de cambio de estado, que recibe
+/// solo el número del riesgo: sin proyecto que comparar, el alcance se exige igual.</para>
+/// </summary>
+internal static class RiesgoEnAlcance
+{
+    public static async Task<RiesgoProyecto> CargarAsync(
+        IApplicationDbContext ctx, int? proyectoId, int riesgoId, CancellationToken ct)
+    {
+        var riesgo = await ctx.ProyectoRiesgos
+            .FirstOrDefaultAsync(r => r.Id == riesgoId && (proyectoId == null || r.ProyectoId == proyectoId), ct);
+
+        if (riesgo is null || !await ctx.Proyectos.AnyAsync(p => p.Id == riesgo.ProyectoId, ct))
+            throw new NotFoundException(nameof(RiesgoProyecto), riesgoId);
+
+        return riesgo;
+    }
+}
+
 // ── Registrar riesgo ──────────────────────────────────────────────────────
 public sealed record RegistrarRiesgoCommand(
     int              ProyectoId,
@@ -55,7 +84,8 @@ public sealed record ActualizarRiesgoCommand(
     string?          Mitigacion,
     Guid?            ResponsableId,
     string?          Responsable,
-    DateOnly?        FechaRevision) : IRequest<Unit>;
+    DateOnly?        FechaRevision,
+    int?             ProyectoId = null) : IRequest<Unit>;
 
 public sealed class ActualizarRiesgoCommandHandler(
     IApplicationDbContext ctx,
@@ -64,8 +94,7 @@ public sealed class ActualizarRiesgoCommandHandler(
 {
     public async Task<Unit> Handle(ActualizarRiesgoCommand cmd, CancellationToken ct)
     {
-        var riesgo = await ctx.ProyectoRiesgos.FirstOrDefaultAsync(r => r.Id == cmd.RiesgoId, ct)
-            ?? throw new NotFoundException(nameof(RiesgoProyecto), cmd.RiesgoId);
+        var riesgo = await RiesgoEnAlcance.CargarAsync(ctx, cmd.ProyectoId, cmd.RiesgoId, ct);
 
         var severidadAntes = riesgo.Severidad;
 
@@ -86,7 +115,7 @@ public sealed class ActualizarRiesgoCommandHandler(
 }
 
 // ── Cambiar el estado de un riesgo ────────────────────────────────────────
-public sealed record CambiarEstadoRiesgoCommand(int RiesgoId, EstadoRiesgo Nuevo) : IRequest<Unit>;
+public sealed record CambiarEstadoRiesgoCommand(int RiesgoId, EstadoRiesgo Nuevo, int? ProyectoId = null) : IRequest<Unit>;
 
 public sealed class CambiarEstadoRiesgoCommandHandler(
     IApplicationDbContext ctx,
@@ -95,8 +124,7 @@ public sealed class CambiarEstadoRiesgoCommandHandler(
 {
     public async Task<Unit> Handle(CambiarEstadoRiesgoCommand cmd, CancellationToken ct)
     {
-        var riesgo = await ctx.ProyectoRiesgos.FirstOrDefaultAsync(r => r.Id == cmd.RiesgoId, ct)
-            ?? throw new NotFoundException(nameof(RiesgoProyecto), cmd.RiesgoId);
+        var riesgo = await RiesgoEnAlcance.CargarAsync(ctx, cmd.ProyectoId, cmd.RiesgoId, ct);
 
         var anterior = riesgo.Estado;
         riesgo.CambiarEstado(cmd.Nuevo);
@@ -116,7 +144,7 @@ public sealed class CambiarEstadoRiesgoCommandHandler(
 /// Borrado real, no lógico: un riesgo mal cargado es ruido, no historia. Lo que sí queda es la
 /// entrada de auditoría, que es la que sostiene el rastro.
 /// </summary>
-public sealed record EliminarRiesgoCommand(int RiesgoId) : IRequest<Unit>;
+public sealed record EliminarRiesgoCommand(int RiesgoId, int? ProyectoId = null) : IRequest<Unit>;
 
 public sealed class EliminarRiesgoCommandHandler(
     IApplicationDbContext ctx,
@@ -125,8 +153,7 @@ public sealed class EliminarRiesgoCommandHandler(
 {
     public async Task<Unit> Handle(EliminarRiesgoCommand cmd, CancellationToken ct)
     {
-        var riesgo = await ctx.ProyectoRiesgos.FirstOrDefaultAsync(r => r.Id == cmd.RiesgoId, ct)
-            ?? throw new NotFoundException(nameof(RiesgoProyecto), cmd.RiesgoId);
+        var riesgo = await RiesgoEnAlcance.CargarAsync(ctx, cmd.ProyectoId, cmd.RiesgoId, ct);
 
         // Los avances que señalaban este riesgo se desvinculan a mano antes de borrarlo.
         // La FK está en NoAction —un SetNull en la base abriría una segunda ruta de cascada hacia

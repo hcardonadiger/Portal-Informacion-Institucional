@@ -43,12 +43,12 @@ public class EnviarRecordatorioTests : IDisposable
         _ctx.Tickets.Add(t);
         await _ctx.SaveChangesAsync();
 
-        var handler = new EnviarRecordatorioTicketCommandHandler(_ctx, _notifSvc, _emailSvc);
+        var handler = new EnviarRecordatorioTicketCommandHandler(_ctx, _notifSvc, _emailSvc, Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.CorreoOptions()), Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.InstitucionOptions()));
         var result = await handler.Handle(new EnviarRecordatorioTicketCommand(t.Id, "Recordatorio urgente"), CancellationToken.None);
 
-        result.Should().BeGreaterThan(0);
+        result.AvisosCampana.Should().BeGreaterThan(0);
         _notifSvc.Received(1).Encolar(agenteId, Domain.Enums.TipoNotificacion.RecordatorioManualTicket, Arg.Any<string>(), Arg.Any<string>());
-        await _emailSvc.Received(1).SendEmailAsync("cliente@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _emailSvc.Received(1).SendEmailAsync("cliente@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -59,11 +59,12 @@ public class EnviarRecordatorioTests : IDisposable
         _ctx.Reuniones.Add(r);
         await _ctx.SaveChangesAsync();
 
-        var handler = new EnviarRecordatorioReunionCommandHandler(_ctx, _notifSvc, _emailSvc);
+        var handler = new EnviarRecordatorioReunionCommandHandler(_ctx, _notifSvc, _emailSvc, Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.CorreoOptions()), Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.InstitucionOptions()));
         var result = await handler.Handle(new EnviarRecordatorioReunionCommand(r.Id, "Mensaje personalizado"), CancellationToken.None);
 
-        result.Should().BeGreaterThan(0);
-        await _emailSvc.Received(1).SendEmailAsync("asistente1@diger.gob.hn", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // El asistente no tiene usuario en el portal: no hay aviso de campana, solo correo.
+        result.CorreosIntentados.Should().Be(1);
+        await _emailSvc.Received(1).SendEmailAsync("asistente1@diger.gob.hn", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
     }
 
     public void Dispose() => _ctx.Dispose();

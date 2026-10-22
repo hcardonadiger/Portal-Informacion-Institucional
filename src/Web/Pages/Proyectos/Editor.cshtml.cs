@@ -26,7 +26,9 @@ public sealed class EditorModel(
     AccesoModulosService acceso,
     ICurrentUserService currentUser,
     IProyectoPdfService proyectoPdf,
-    IWebHostEnvironment env) : PageModel
+    IWebHostEnvironment env,
+    TimeProvider reloj,
+    Microsoft.Extensions.Options.IOptions<NotificacionesOptions> notificaciones) : PageModel
 {
     public ProyectoDetailDto Proyecto { get; private set; } = default!;
     public IReadOnlyList<AvanceProyectoDto> Avances { get; private set; } = [];
@@ -533,7 +535,7 @@ public sealed class EditorModel(
                 await sender.Send(new ActualizarRiesgoCommand(
                     RiesgoId, RiesgoDescripcion ?? "", RiesgoCategoria, RiesgoProbabilidad,
                     RiesgoImpacto, RiesgoEstrategia, RiesgoMitigacion, RiesgoResponsable,
-                    nombre, RiesgoRevision), ct);
+                    nombre, RiesgoRevision, ProyectoId: id), ct);
                 TempData["SuccessMsg"] = "Riesgo actualizado.";
             }
             else
@@ -556,7 +558,7 @@ public sealed class EditorModel(
     {
         try
         {
-            await sender.Send(new CambiarEstadoRiesgoCommand(RiesgoId, RiesgoEstado), ct);
+            await sender.Send(new CambiarEstadoRiesgoCommand(RiesgoId, RiesgoEstado, ProyectoId: id), ct);
             TempData["SuccessMsg"] = $"El riesgo pasó a «{RiesgoEstado}».";
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
@@ -570,7 +572,7 @@ public sealed class EditorModel(
     {
         try
         {
-            await sender.Send(new EliminarRiesgoCommand(RiesgoId), ct);
+            await sender.Send(new EliminarRiesgoCommand(RiesgoId, ProyectoId: id), ct);
             TempData["SuccessMsg"] = "Riesgo eliminado.";
         }
         catch (NotFoundException) { return NotFound(); }
@@ -598,7 +600,7 @@ public sealed class EditorModel(
                 // Al editar solo cambia el papel: la persona es la que es. Para cambiarla se
                 // quita el registro y se agrega otro, porque eso además mueve quién tiene acceso.
                 await sender.Send(new ActualizarInteresadoCommand(
-                    IntId, IntRol, IntInfluencia, IntInstitucion, IntCargo, IntNotas), ct);
+                    IntId, IntRol, IntInfluencia, IntInstitucion, IntCargo, IntNotas, ProyectoId: id), ct);
                 TempData["SuccessMsg"] = "Interesado actualizado.";
             }
             else if (IntUsuarioId == Guid.Empty)
@@ -624,7 +626,7 @@ public sealed class EditorModel(
     {
         try
         {
-            await sender.Send(new QuitarInteresadoCommand(IntId), ct);
+            await sender.Send(new QuitarInteresadoCommand(IntId, ProyectoId: id), ct);
             TempData["SuccessMsg"] = "Interesado quitado.";
         }
         catch (NotFoundException) { return NotFound(); }
@@ -963,9 +965,12 @@ public sealed class EditorModel(
 
         DiasSinReportar = Avances.Count == 0
             ? null
-            : (int)(DateTime.UtcNow - Avances.Max(a => a.Fecha)).TotalDays;
+            : (int)(reloj.GetUtcNow().UtcDateTime - Avances.Max(a => a.Fecha)).TotalDays;
 
-        Cronograma  = CronogramaProyecto.Construir(dto, DateOnly.FromDateTime(DateTime.UtcNow));
+        // «Hoy» es el de Honduras: comparar con la fecha UTC daba por vencido, desde las 6:00 p. m.,
+        // lo que vence hoy.
+        var zona = CalendarioLocal.Resolver(notificaciones.Value.ZonaHoraria).Zona;
+        Cronograma  = CronogramaProyecto.Construir(dto, CalendarioLocal.Dia(reloj.GetUtcNow(), zona).Hoy);
         Auditoria   = await sender.Send(new GetBitacoraProyectoQuery(id), ct);
         Riesgos     = await sender.Send(new GetRiesgosProyectoQuery(id), ct);
         Interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);

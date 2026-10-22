@@ -174,8 +174,14 @@ public sealed class DetalleModel(ISender sender, ICurrentUserService currentUser
         if (!await CargarAsync(id, ct)) return NotFound();
         try
         {
-            await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioTicketCommand(id, mensaje), ct);
-            TempData["SuccessMsg"] = "Notificación de recordatorio enviada exitosamente.";
+            var r = await sender.Send(new Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual.EnviarRecordatorioTicketCommand(id, mensaje), ct);
+            var (nivel, texto) = AvisoRecordatorio.Para(r, "Notificación de recordatorio enviada exitosamente.");
+            if (nivel == AvisoRecordatorio.Nivel.Error)
+            {
+                Error = texto;
+                return Page();
+            }
+            TempData[nivel == AvisoRecordatorio.Nivel.Exito ? "SuccessMsg" : AvisoRecordatorio.ClaveAdvertencia] = texto;
             return RedirectToPage(new { id });
         }
         catch (Exception ex)

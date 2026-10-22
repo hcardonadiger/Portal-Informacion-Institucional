@@ -24,11 +24,9 @@ public sealed class OlvidarPasswordModel(ISender sender) : PageModel
             return Page();
         }
 
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
-
         try
         {
-            await sender.Send(new SolicitarRecuperacionPasswordCommand(Correo, baseUrl), ct);
+            await sender.Send(new SolicitarRecuperacionPasswordCommand(Correo), ct);
             Mensaje = "Si el correo electrónico está registrado en el sistema, se ha enviado un enlace con las instrucciones para restablecer su contraseña. Por favor revise su bandeja de entrada (y carpeta de correo no deseado).";
         }
         catch (Exception)

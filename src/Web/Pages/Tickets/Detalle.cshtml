@@ -20,9 +20,10 @@
 
 <div class="container lista">
     <partial name="_SuccessBanner" />
+    <partial name="_WarningBanner" />
     @if (!string.IsNullOrEmpty(Model.Error))
     {
-        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+        <div class="alert-error" role="alert" style="margin-bottom:1rem">@Model.Error</div>
     }
 
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.3rem;flex-wrap:wrap">

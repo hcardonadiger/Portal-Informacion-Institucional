@@ -30,6 +30,19 @@
     </div>
 </div>
 
+@* Resultado del recordatorio cuando no salió todo: advertencia (la campana sí, el correo no) o
+   error. El éxito no se pinta aquí, como antes de este cambio. *@
+@if (TempData.Peek(AvisoRecordatorio.ClaveAdvertencia) is not null || TempData.Peek("ErrorMsg") is not null)
+{
+    <div style="max-width:1280px;margin:0 auto;padding:0 1rem">
+        <partial name="_WarningBanner" />
+        @if (TempData["ErrorMsg"] is string errorMsg)
+        {
+            <div class="alert-error" role="alert" style="margin-bottom:1rem">@errorMsg</div>
+        }
+    </div>
+}
+
 @* ── Proyectos vinculados ───────────────────────────────────────────────────
    Se vincula desde acá además de desde la ficha del proyecto: la misma relación
    se gestiona por los dos extremos, porque quien trabaja el expediente es quien

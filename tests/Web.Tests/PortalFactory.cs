@@ -61,6 +61,15 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
     /// </summary>
     public string CorteCambioPassword { get; set; } = "";
 
+    /// <summary>Configuración adicional para ESTA instancia del host (por ejemplo,
+    /// <c>Correo:UrlBase</c>). Como <see cref="CorteCambioPassword"/>, hay que fijarla antes de la
+    /// primera petición.</summary>
+    public Dictionary<string, string?> Configuracion { get; } = [];
+
+    /// <summary>Reemplazos de servicios para ESTA instancia del host (por ejemplo, un
+    /// <c>IEmailService</c> que captura los correos en vez de enviarlos). Se aplican al final.</summary>
+    public Action<IServiceCollection>? ServiciosDePrueba { get; set; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -68,7 +77,7 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
         // Va como fuente en memoria y no por UseSetting: appsettings.json se superpone a la
         // configuración del host, y pisaría el valor de la prueba.
         builder.ConfigureAppConfiguration(cfg => cfg.AddInMemoryCollection(
-            new Dictionary<string, string?>
+            new Dictionary<string, string?>(Configuracion)
             {
                 ["Auth:CambioPasswordObligatorioDesde"] = CorteCambioPassword
             }));
@@ -105,6 +114,8 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
 
             services.AddAuthentication(TestAuthHandler.Esquema)
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.Esquema, _ => { });
+
+            ServiciosDePrueba?.Invoke(services);
         });
     }
 

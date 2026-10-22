@@ -65,6 +65,8 @@ public static class DependencyInjection
         // Notificaciones
         services.Configure<NotificacionesOptions>(configuration.GetSection("Notificaciones"));
         services.AddScoped<INotificacionService, NotificacionService>();
+        // El reloj se inyecta para poder probar los recordatorios y el cronograma a una hora fija.
+        services.TryAddSingleton(TimeProvider.System);
         services.AddHostedService<RecordatorioBackgroundService>();
 
         // Autenticación (expiración de cookie/token de recuperación)
@@ -76,6 +78,10 @@ public static class DependencyInjection
         // Dónde vive SOL. Va por configuración y no en código porque desde la Fase 7 la
         // dirección de cada trámite se compone: un host equivocado no rompe un enlace, rompe mil.
         services.Configure<SolOptions>(configuration.GetSection("Sol"));
+
+        // Dirección pública del portal, para los enlaces que salen de él (recuperación de
+        // contraseña, QR de asistencia). Nunca se toma de la petición.
+        services.Configure<CorreoOptions>(configuration.GetSection(CorreoOptions.Seccion));
 
         // Chat de soporte
         services.AddScoped<IChatService, ChatService>();
