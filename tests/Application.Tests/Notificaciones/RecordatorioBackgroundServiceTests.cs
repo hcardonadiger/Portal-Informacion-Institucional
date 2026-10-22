@@ -167,6 +167,43 @@ public sealed class RecordatorioBackgroundServiceTests : IDisposable
         (await AvisosAsync()).Should().Contain(TipoNotificacion.CompromisoVencido);
     }
 
+    // ── Etapas de cronograma de Expedientes ───────────────────────────────
+
+    private void EtapaDeAna(DateOnly fin)
+    {
+        var exp = Expediente.Crear("EXP-1", "INST", null, null, "Institución", _ana.Nombre);
+        _ctx.Expedientes.Add(exp);
+        _ctx.SaveChanges();
+        _ctx.EtapaCronogramas.Add(new ExpedienteEtapaCronograma
+        {
+            ExpedienteId = exp.Id, TramiteIndex = 0, EtapaNum = "I",
+            FechaInicio  = fin.AddDays(-10), FechaFin = fin, Responsable = _ana.Nombre,
+        });
+        _ctx.SaveChanges();
+    }
+
+    [Fact]
+    public async Task A_las_siete_de_la_noche_una_etapa_que_vence_hoy_no_sale_como_vencida()
+    {
+        EtapaDeAna(Hoy);
+
+        await Servicio(SieteDeLaNoche).ProcesarAsync(CancellationToken.None);
+
+        var avisos = await AvisosAsync();
+        avisos.Should().NotContain(TipoNotificacion.EtapaCronogramaVencida);
+        avisos.Should().Contain(TipoNotificacion.EtapaCronogramaProxima, "vence hoy: está por vencer");
+    }
+
+    [Fact]
+    public async Task A_las_siete_de_la_noche_la_etapa_de_ayer_si_esta_vencida()
+    {
+        EtapaDeAna(Hoy.AddDays(-1));
+
+        await Servicio(SieteDeLaNoche).ProcesarAsync(CancellationToken.None);
+
+        (await AvisosAsync()).Should().Contain(TipoNotificacion.EtapaCronogramaVencida);
+    }
+
     [Theory]
     [InlineData("America/Tegucigalpa")]
     [InlineData("Central America Standard Time")]

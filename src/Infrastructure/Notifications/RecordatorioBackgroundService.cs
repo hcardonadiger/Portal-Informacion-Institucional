@@ -57,7 +57,6 @@ public sealed class RecordatorioBackgroundService(
         // Plazos y fechas de reunión se escriben en hora local. hoyUtc es el instante UTC en que
         // empezó el día local: con él se mide «ya se avisó hoy» contra FechaCreacion, que es UTC.
         var (hoy, mañana, hoyUtc) = CalendarioLocal.Dia(reloj.GetUtcNow(), _zona.Zona);
-        var hoyEtapas = DateOnly.FromDateTime(reloj.GetUtcNow().UtcDateTime);
 
         // ── Pre-carga de notificaciones ya enviadas hoy (evita duplicados) ──
         var enviadas = await ctx.Notificaciones
@@ -149,10 +148,10 @@ public sealed class RecordatorioBackgroundService(
         }
 
         // ── Etapas de cronograma vencidas / próximas → notificar por nombre ──
-        var tresDias = hoyEtapas.AddDays(3);
+        var tresDias = hoy.AddDays(3);
 
         var etapasVencidas = await ctx.EtapaCronogramas
-            .Where(e => e.FechaFin < hoyEtapas && e.FechaRealFin == null)
+            .Where(e => e.FechaFin < hoy && e.FechaRealFin == null)
             .Join(ctx.Expedientes.IgnoreQueryFilters(),
                   e => e.ExpedienteId, x => x.Id,
                   (e, x) => new { e.ExpedienteId, e.TramiteIndex, e.EtapaNum, e.Responsable, x.Codigo })
@@ -160,7 +159,7 @@ public sealed class RecordatorioBackgroundService(
             .ToListAsync(ct);
 
         var etapasProximas = await ctx.EtapaCronogramas
-            .Where(e => e.FechaFin >= hoyEtapas && e.FechaFin <= tresDias && e.FechaRealFin == null)
+            .Where(e => e.FechaFin >= hoy && e.FechaFin <= tresDias && e.FechaRealFin == null)
             .Join(ctx.Expedientes.IgnoreQueryFilters(),
                   e => e.ExpedienteId, x => x.Id,
                   (e, x) => new { e.ExpedienteId, e.TramiteIndex, e.EtapaNum, e.Responsable, x.Codigo })
