@@ -1,7 +1,8 @@
 /* ════════════════════════════════════════════════════════════════════════════
    2026-10-22 · Panel de control → Notificaciones
-   Va DESPUÉS de 2026-10-19_cambio_password_obligatorio.sql. Corra antes
-   00_diagnostico.sql si no sabe en qué estado está la base.
+   Va DESPUÉS de 2026-10-22_poner_al_dia.sql (el de la mañana del 2026-10-22, que
+   trae las migraciones de Jamil). Corra antes 00_diagnostico.sql si no
+   sabe en qué estado está la base.
 
    QUÉ TRAE (todo es la migración EF 20261022223203_PanelControlNotificaciones):
      1. Notificaciones.Cantidad y Notificaciones.FechaActualizacion: avisos agrupados.
