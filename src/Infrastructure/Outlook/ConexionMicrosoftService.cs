@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using Diger.TramitesEstado.Domain.Entities;
@@ -87,7 +88,10 @@ public sealed class ConexionMicrosoftService(
             throw new OutlookNoDisponibleException($"Microsoft rechazó la conexión ({ex.ErrorCode}).");
         }
 
-        var cifrada = protector.Cifrar(cacheNueva ?? []);
+        if (cacheNueva is null)
+            throw new OutlookNoDisponibleException("Microsoft no devolvió una caché de tokens.");
+
+        var cifrada = protector.Cifrar(cacheNueva);
         var fila = await ctx.ConexionesMicrosoft.FirstOrDefaultAsync(c => c.Id == usuarioId, ct);
         if (fila is null)
             ctx.ConexionesMicrosoft.Add(ConexionMicrosoft.Crear(usuarioId, res.Account.Username, res.Account.HomeAccountId.Identifier, cifrada, DateTime.UtcNow));
@@ -97,42 +101,68 @@ public sealed class ConexionMicrosoftService(
         await ctx.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Un candado por usuario alrededor de leer caché → renovar en silencio → guardar caché. MSAL
+    /// rota el refresh token al renovar: con dos escritores en paralelo, el último podía guardar una
+    /// caché ya vieja y dejar la conexión inservible. El portal corre en un solo proceso, así que un
+    /// candado en memoria por usuario basta; una granja de servidores necesitaría un rowversion.
+    /// </summary>
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> Candados = new();
+
     public async Task<string> ObtenerTokenAsync(Guid usuarioId, CancellationToken ct)
     {
-        var fila = await ctx.ConexionesMicrosoft.FirstOrDefaultAsync(c => c.Id == usuarioId, ct)
-            ?? throw new OutlookConexionVencidaException("El usuario no tiene Outlook conectado.");
-        if (fila.RequiereReconexion)
-            throw new OutlookConexionVencidaException(fila.UltimoError ?? "Requiere reconexión.");
-
-        var clara = protector.Descifrar(fila.CacheTokens);
-        if (clara is null)
-            return await VencerAsync(fila, "La caché no se pudo descifrar (¿cambiaron las llaves del servidor?).", ct);
-
-        byte[]? cacheNueva = null;
-        var app = Cliente(null, clara, c => cacheNueva = c);
-
+        var candado = Candados.GetOrAdd(usuarioId, _ => new SemaphoreSlim(1, 1));
+        await candado.WaitAsync(ct);
         try
         {
-            var cuenta = await app.GetAccountAsync(fila.HomeAccountId);
-            if (cuenta is null)
-                return await VencerAsync(fila, "La cuenta no está en la caché.", ct);
+            // Se lee dentro del candado: así se ve la caché que dejó quien renovó antes.
+            var fila = await ctx.ConexionesMicrosoft.FirstOrDefaultAsync(c => c.Id == usuarioId, ct)
+                ?? throw new OutlookConexionVencidaException("El usuario no tiene Outlook conectado.");
+            if (fila.RequiereReconexion)
+                throw new OutlookConexionVencidaException(fila.UltimoError ?? "Requiere reconexión.");
 
-            var res = await app.AcquireTokenSilent(Alcances, cuenta).ExecuteAsync(ct);
-            if (cacheNueva is not null)
+            var clara = protector.Descifrar(fila.CacheTokens);
+            if (clara is null)
+                return await VencerAsync(fila, "La caché no se pudo descifrar (¿cambiaron las llaves del servidor?).", ct);
+
+            byte[]? cacheNueva = null;
+            var app = Cliente(null, clara, c => cacheNueva = c);
+
+            try
             {
-                fila.GuardarCache(protector.Cifrar(cacheNueva));
-                await ctx.SaveChangesAsync(ct);
+                var cuenta = await app.GetAccountAsync(fila.HomeAccountId);
+                if (cuenta is null)
+                    return await VencerAsync(fila, "La cuenta no está en la caché.", ct);
+
+                var res = await app.AcquireTokenSilent(Alcances, cuenta).ExecuteAsync(ct);
+                if (cacheNueva is not null)
+                {
+                    fila.GuardarCache(protector.Cifrar(cacheNueva));
+                    await ctx.SaveChangesAsync(ct);
+                }
+                return res.AccessToken;
             }
-            return res.AccessToken;
+            catch (MsalUiRequiredException ex)
+            {
+                return await VencerAsync(fila, ex.ErrorCode, ct);
+            }
+            catch (MsalServiceException ex)
+            {
+                log.LogWarning("Microsoft no entregó token para {UsuarioId}: {Codigo}", usuarioId, ex.ErrorCode);
+                throw new OutlookNoDisponibleException($"Microsoft no respondió ({ex.ErrorCode}).");
+            }
+            catch (MsalClientException ex)
+            {
+                // Falla de MSAL del lado del cliente sobre la caché guardada (p. ej. una caché que se
+                // descifra pero está malformada): la conexión guardada no sirve, hay que reconectar.
+                // Nunca ex.Message: podría llevar fragmentos de tokens.
+                log.LogWarning("MSAL no pudo usar la caché guardada de {UsuarioId}: {Codigo}", usuarioId, ex.ErrorCode);
+                return await VencerAsync(fila, ex.ErrorCode, ct);
+            }
         }
-        catch (MsalUiRequiredException ex)
+        finally
         {
-            return await VencerAsync(fila, ex.ErrorCode, ct);
-        }
-        catch (MsalServiceException ex)
-        {
-            log.LogWarning("Microsoft no entregó token para {UsuarioId}: {Codigo}", usuarioId, ex.ErrorCode);
-            throw new OutlookNoDisponibleException($"Microsoft no respondió ({ex.ErrorCode}).");
+            candado.Release();
         }
     }
 

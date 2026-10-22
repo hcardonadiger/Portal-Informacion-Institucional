@@ -10,8 +10,17 @@ public sealed record IniciarConexionOutlookQuery(string UrlRetorno) : IRequest<I
 public sealed class IniciarConexionOutlookQueryHandler(IConexionMicrosoft conexion)
     : IRequestHandler<IniciarConexionOutlookQuery, InicioConexionDto>
 {
-    public Task<InicioConexionDto> Handle(IniciarConexionOutlookQuery q, CancellationToken ct) =>
-        conexion.IniciarAsync(q.UrlRetorno, ct);
+    public async Task<InicioConexionDto> Handle(IniciarConexionOutlookQuery q, CancellationToken ct)
+    {
+        try
+        {
+            return await conexion.IniciarAsync(q.UrlRetorno, ct);
+        }
+        catch (OutlookNoDisponibleException ex)
+        {
+            throw new DomainException($"No se pudo conectar Outlook: {ex.Message}");
+        }
+    }
 }
 
 public sealed record CompletarConexionOutlookCommand(string Codigo, string Verificador, string UrlRetorno) : IRequest<Unit>;

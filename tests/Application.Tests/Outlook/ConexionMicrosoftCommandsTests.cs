@@ -1,6 +1,7 @@
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Application.CuentaMicrosoft;
 using Diger.TramitesEstado.Application.Reuniones.Outlook;
+using Diger.TramitesEstado.Domain.Common;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Infrastructure.Persistence;
 using FluentAssertions;
@@ -37,6 +38,18 @@ public class ConexionMicrosoftCommandsTests : IDisposable
             .Handle(new CompletarConexionOutlookCommand("codigo", "verif", "https://x/cb"), default);
 
         await _conexion.Received(1).CompletarAsync(_ana.Id, "codigo", "verif", "https://x/cb", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Iniciar_sin_configuracion_se_traduce_a_aviso()
+    {
+        _conexion.IniciarAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<InicioConexionDto>>(_ => throw new OutlookNoDisponibleException("no configurada"));
+
+        var act = () => new IniciarConexionOutlookQueryHandler(_conexion)
+            .Handle(new IniciarConexionOutlookQuery("https://x/cb"), default);
+
+        await act.Should().ThrowAsync<DomainException>().WithMessage("*no configurada*");
     }
 
     [Fact]
