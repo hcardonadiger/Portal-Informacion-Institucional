@@ -8,6 +8,19 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-22 (noche, 3) — Entregas 1 y 2 integradas en `ike_opt`
+Pedido del Analista. Entrega 2 aceptada.
+- `Jamil-GestionGD` se subió a origin. `ike_opt` traía 70 commits nuevos de origin (entre ellos la
+  rama Jamil y la rama DashBoards); se puso al día por avance rápido.
+- Merge `7a6ecb8` (sin rebase ni force), subido a origin. Hubo un solo conflicto, mecánico, en
+  `Infrastructure/DependencyInjection.cs`: `ike_opt` registró `SolOptions` y nosotros
+  `CorreoOptions` en el mismo lugar. Quedaron las dos. `src/Web/Mcp` no cambió con el merge.
+- En `ike_opt`: compila con las 3 advertencias de siempre y pasan 1380 pruebas (1 omitida).
+- `ike_opt` se trajo de vuelta a `Jamil-GestionGD`; las dos ramas quedan con el mismo contenido.
+- Revisión en el navegador con la base `GestionGD_DashBoards` (la eligió Jamil; `GestionGD_new`
+  ya no existe en la instancia). El portal corrió solo en la sesión, sin tocar appsettings y con
+  el correo apagado. Resultado en Riesgos y bloqueos.
+
 ### 2026-10-22 (noche, 2) — Tanda 1, entrega 2: notificaciones y correo
 Pedido del Analista. Rama `Jamil-GestionGD`. Cada defecto tiene una prueba que fallaba antes. Sin
 migraciones, sin tocar `src/Web/Mcp` ni el servidor, el usuario o la contraseña del correo.
@@ -106,9 +119,6 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 0. **Tanda 1**, según el plan del Analista. Las entregas 1 (seguridad) y 2 (notificaciones y
    correo) están hechas; siguen las que defina el Analista. Antes de publicar hay que configurar
    `Correo__UrlBase` en IIS y seguir los pasos de IIS de la entrega 2.
-1. **Decisión de Jamil:** el editor de expedientes no muestra el mensaje de éxito. Ese mensaje
-   queda guardado y aparece en la siguiente pantalla que muestre mensajes de éxito. Mostrarlo en el
-   editor corrige el desvío, pero cambia lo que hoy se ve.
 1. Decidir el siguiente paso de tableros: rediseñar los tableros marcados
    (Proyectos operativo, Reuniones, Tickets, Digitalización, Trámites, Expedientes)
    o unificar los tres tableros de Proyectos por alcance. Decide Jamil.
@@ -116,7 +126,8 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
    (`DESIGN.md` y `.claude/agents/references/lengua-de-casa-diger.md` como base).
 
 ## Descartado
-- (nada registrado)
+- 2026-10-22 — Mostrar el mensaje de éxito en el editor de expedientes. Decidió Jamil: queda como
+  está.
 
 ## Para después
 - (nada registrado)
@@ -207,10 +218,16 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
   con texto oscuro en tema oscuro.
 
 ## Riesgos y bloqueos
-- **La base local `GestionGD_new` no abre con la cuenta de Windows** (error 4060, visto el
-  2026-10-22 al intentar levantar el portal desde esta rama). No se pudo revisar la interfaz en el
-  navegador. Quedan pendientes: la advertencia en tema oscuro, la impresión del acta y el ancho
-  del editor de expedientes en móvil. Necesita: que Jamil confirme qué base local usa esta rama.
+- **La base local no sirve para revisar en el navegador** (2026-10-22). `GestionGD_new`, a la que
+  apunta `appsettings.Development.json`, ya no existe en `SQL2025`; de ahí el error 4060.
+  `GestionGD_DashBoards` tiene la última migración, pero a su tabla `Reuniones` le falta
+  `Duracion` y a las fichas SIGER del expediente les faltan columnas nuevas (`ClaveEstable`,
+  `EstaEnSol` y otras). Por eso el acta, el compromiso y el editor de expedientes dan error 500.
+  Sí se vio: la advertencia en tema oscuro se lee bien (ámbar sobre fondo oscuro, unos 8,8:1) y
+  cabe en 375 px. No se vio: la impresión del acta y el editor de expedientes en móvil. Necesita:
+  que Jamil decida si se corren los guiones de puesta al día sobre esa base o si se usa otra.
+- **Desborde horizontal en móvil en Tableros** (unos 23 px a 375 px): el menú de usuario de la
+  cabecera y los KPI. Ya estaba antes de la integración; no viene de la tanda 1.
 - **Correos ya escritos en el Visor de eventos del servidor** (de antes de S1): pueden tener datos
   de personas y enlaces de recuperación ya vencidos. Necesita: decisión de Jamil sobre vaciar ese
   registro o restringir quién lo lee.
@@ -223,10 +240,10 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - **Documentos de Expedientes sin descarga.** La subida guarda una dirección `/uploads/...` que
   ya no se sirve desde el 2026-08-26, así que el enlace probablemente no abre. No está reproducido
   todavía.
-- **Respaldo de base de datos dentro del repositorio** (`TramitesEstado.bak`,
-  13 MB, versionado desde el commit `2d8fa08`). Puede contener datos reales. Sacarlo
-  del repositorio requiere decisión de Jamil; borrarlo del historial implicaría
-  reescribirlo, cosa que no se hace sin aprobación.
+- **Respaldo de base de datos en el historial del repositorio** (`TramitesEstado.bak`,
+  13 MB, versionado desde el commit `2d8fa08`). Puede contener datos reales. `ike_opt` ya lo
+  quitó del árbol (llegó con la rama Jamil), pero sigue en el historial. Borrarlo de ahí
+  implicaría reescribirlo, cosa que no se hace sin aprobación.
 - **`appsettings.json` del Web apunta a una base que ya no existe en local**
   (`GestionGD_TEST`). Cualquier arranque fuera de `Development` falla en la primera
   consulta. El valor real de producción se configura en el servidor.
