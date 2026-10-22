@@ -1,4 +1,3 @@
-
 namespace Diger.TramitesEstado.Application.Reuniones.Outlook;
 
 /// <summary>Primer envío de la reunión al calendario del usuario actual, que pasa a ser su
@@ -13,6 +12,9 @@ public sealed class EnviarReunionAOutlookCommandHandler(
     IUnitOfWork uow)
     : IRequestHandler<EnviarReunionAOutlookCommand, Unit>
 {
+    private const string ConexionVencida =
+        "Su conexión de Outlook venció. Reconéctela desde «Mi perfil» y vuelva a enviar.";
+
     public async Task<Unit> Handle(EnviarReunionAOutlookCommand cmd, CancellationToken ct)
     {
         var usuarioId = currentUser.UserId
@@ -21,7 +23,7 @@ public sealed class EnviarReunionAOutlookCommandHandler(
         var conexion = await ctx.ConexionesMicrosoft.AsNoTracking().FirstOrDefaultAsync(c => c.Id == usuarioId, ct)
             ?? throw new DomainException("Conecte su Outlook desde «Mi perfil» antes de enviar reuniones.");
         if (conexion.RequiereReconexion)
-            throw new DomainException("Su conexión de Outlook venció. Reconéctela desde «Mi perfil» y vuelva a enviar.");
+            throw new DomainException(ConexionVencida);
 
         var r = await repo.GetByIdWithDetailsAsync(cmd.ReunionId, ct)
             ?? throw new NotFoundException(nameof(Reunion), cmd.ReunionId);
@@ -40,7 +42,7 @@ public sealed class EnviarReunionAOutlookCommandHandler(
         }
         catch (OutlookConexionVencidaException)
         {
-            throw new DomainException("Su conexión de Outlook venció. Reconéctela desde «Mi perfil» y vuelva a enviar.");
+            throw new DomainException(ConexionVencida);
         }
         catch (OutlookNoDisponibleException ex)
         {
@@ -78,8 +80,9 @@ public sealed class SincronizarReunionOutlookCommandHandler(
         {
             evento = EventoOutlookBuilder.Construir(r, conexion?.Upn, cmd.UrlFicha);
         }
-        catch (DomainException ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // DomainException (fecha u hora ilegibles) u otro fallo del armado: guardar no falla por Outlook.
             r.MarcarOutlookPendiente($"No se actualizó en Outlook: {ex.Message}");
             await uow.SaveChangesAsync(ct);
             return Unit.Value;
@@ -106,6 +109,11 @@ public sealed class SincronizarReunionOutlookCommandHandler(
         {
             r.MarcarOutlookPendiente($"No se pudo actualizar en Outlook: {ex.Message}");
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Respuesta ilegible, fallo del token u otro imprevisto: guardar nunca falla por Outlook.
+            r.MarcarOutlookPendiente($"No se pudo actualizar en Outlook: {ex.Message}");
+        }
 
         await uow.SaveChangesAsync(ct);
         return Unit.Value;
@@ -129,8 +137,9 @@ public sealed class CancelarReunionOutlookCommandHandler(IReunionRepository repo
             await outlook.CancelarAsync(r.OutlookOrganizadorId!.Value, r.OutlookEventId!,
                 $"La reunión se canceló en {Marca.Nombre}.", ct);
         }
-        catch (Exception ex) when (ex is OutlookConexionVencidaException or OutlookNoDisponibleException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // Cualquier fallo se traduce al aviso: quien llama atrapa DomainException y borra igual.
             throw new DomainException("No se pudo cancelar la cita en Outlook: cancélela a mano desde el calendario del organizador.");
         }
 

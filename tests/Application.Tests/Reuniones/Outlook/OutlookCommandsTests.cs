@@ -198,6 +198,36 @@ public class OutlookCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task Un_fallo_inesperado_al_actualizar_queda_pendiente_y_no_lanza()
+    {
+        var r = await EnviadaAsync();
+        r.Hora = "11:00";
+        await _ctx.SaveChangesAsync();
+        _outlook.ActualizarAsync(default, default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new InvalidOperationException("respuesta ilegible"));
+
+        await Sincronizar().Handle(new SincronizarReunionOutlookCommand(r.Id, Url), default);
+
+        var fila = await _ctx.Reuniones.AsNoTracking().SingleAsync();
+        fila.OutlookPendiente.Should().BeTrue();
+        fila.OutlookError.Should().Contain("respuesta ilegible");
+    }
+
+    [Fact]
+    public async Task La_cancelacion_del_pedido_no_se_traga()
+    {
+        var r = await EnviadaAsync();
+        r.Hora = "11:00";
+        await _ctx.SaveChangesAsync();
+        _outlook.ActualizarAsync(default, default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new OperationCanceledException());
+
+        var acto = () => Sincronizar().Handle(new SincronizarReunionOutlookCommand(r.Id, Url), default);
+
+        await acto.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task Un_pendiente_se_reintenta_aunque_la_huella_no_haya_cambiado()
     {
         var r = await EnviadaAsync();
@@ -253,6 +283,18 @@ public class OutlookCommandsTests : IDisposable
         var r = await EnviadaAsync();
         _outlook.CancelarAsync(default, default!, default!, default)
             .ThrowsAsyncForAnyArgs(new OutlookNoDisponibleException("503"));
+
+        var acto = () => Cancelar().Handle(new CancelarReunionOutlookCommand(r.Id), default);
+
+        await acto.Should().ThrowAsync<DomainException>().WithMessage("*a mano*");
+    }
+
+    [Fact]
+    public async Task Un_fallo_inesperado_al_cancelar_se_traduce_a_cancelar_a_mano()
+    {
+        var r = await EnviadaAsync();
+        _outlook.CancelarAsync(default, default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new InvalidOperationException("x"));
 
         var acto = () => Cancelar().Handle(new CancelarReunionOutlookCommand(r.Id), default);
 
