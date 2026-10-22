@@ -224,6 +224,8 @@ builder.Services
 
 var app = builder.Build();
 
+AvisosDeConfiguracion.Revisar(app.Configuration, app.Logger);
+
 if (app.Environment.IsDevelopment())
 {
     // Apagado por defecto: una cadena de Development mal apuntada no debe poder migrar
