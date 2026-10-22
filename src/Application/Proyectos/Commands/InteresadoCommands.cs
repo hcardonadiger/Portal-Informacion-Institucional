@@ -3,6 +3,32 @@ using Diger.TramitesEstado.Application.Proyectos.Services;
 
 namespace Diger.TramitesEstado.Application.Proyectos.Commands;
 
+// ── Interesado dentro del alcance ─────────────────────────────────────────
+/// <summary>
+/// Carga un interesado para editarlo o quitarlo, solo si quien lo pide alcanza el proyecto del
+/// interesado y, cuando se indica un proyecto, si el interesado es de ese proyecto.
+///
+/// <para>Mismo defecto y misma solución que <see cref="RiesgoEnAlcance"/>: la tabla de interesados
+/// no tiene filtro de alcance propio, así que buscar por el número a secas encontraba cualquiera.
+/// Bastaba con cambiar ese número en la petición para tocar un interesado de un proyecto ajeno, y
+/// quitarlo le quitaba a esa persona el acceso al proyecto (corregido el 2026-10-22). El alcance se
+/// comprueba contra <c>Proyectos</c>, que sí lleva el filtro; si algo no cuadra, «no encontrado».</para>
+/// </summary>
+internal static class InteresadoEnAlcance
+{
+    public static async Task<InteresadoProyecto> CargarAsync(
+        IApplicationDbContext ctx, int? proyectoId, int interesadoId, CancellationToken ct)
+    {
+        var interesado = await ctx.ProyectoInteresados
+            .FirstOrDefaultAsync(i => i.Id == interesadoId && (proyectoId == null || i.ProyectoId == proyectoId), ct);
+
+        if (interesado is null || !await ctx.Proyectos.AnyAsync(p => p.Id == interesado.ProyectoId, ct))
+            throw new NotFoundException(nameof(InteresadoProyecto), interesadoId);
+
+        return interesado;
+    }
+}
+
 // ── Agregar interesado ────────────────────────────────────────────────────
 /// <summary>
 /// Suma a un usuario del portal como interesado del proyecto.
@@ -74,16 +100,15 @@ public sealed record ActualizarInteresadoCommand(
     NivelCualitativo Influencia,
     string?          Institucion,
     string?          Cargo,
-    string?          Notas) : IRequest<Unit>;
+    string?          Notas,
+    int?             ProyectoId = null) : IRequest<Unit>;
 
 public sealed class ActualizarInteresadoCommandHandler(IApplicationDbContext ctx)
     : IRequestHandler<ActualizarInteresadoCommand, Unit>
 {
     public async Task<Unit> Handle(ActualizarInteresadoCommand cmd, CancellationToken ct)
     {
-        var interesado = await ctx.ProyectoInteresados
-            .FirstOrDefaultAsync(i => i.Id == cmd.InteresadoId, ct)
-            ?? throw new NotFoundException(nameof(InteresadoProyecto), cmd.InteresadoId);
+        var interesado = await InteresadoEnAlcance.CargarAsync(ctx, cmd.ProyectoId, cmd.InteresadoId, ct);
 
         interesado.Actualizar(cmd.Rol, cmd.Influencia, cmd.Institucion, cmd.Cargo, cmd.Notas);
 
@@ -93,7 +118,7 @@ public sealed class ActualizarInteresadoCommandHandler(IApplicationDbContext ctx
 }
 
 // ── Quitar interesado ─────────────────────────────────────────────────────
-public sealed record QuitarInteresadoCommand(int InteresadoId) : IRequest<Unit>;
+public sealed record QuitarInteresadoCommand(int InteresadoId, int? ProyectoId = null) : IRequest<Unit>;
 
 public sealed class QuitarInteresadoCommandHandler(
     IApplicationDbContext ctx,
@@ -103,9 +128,7 @@ public sealed class QuitarInteresadoCommandHandler(
 {
     public async Task<Unit> Handle(QuitarInteresadoCommand cmd, CancellationToken ct)
     {
-        var interesado = await ctx.ProyectoInteresados
-            .FirstOrDefaultAsync(i => i.Id == cmd.InteresadoId, ct)
-            ?? throw new NotFoundException(nameof(InteresadoProyecto), cmd.InteresadoId);
+        var interesado = await InteresadoEnAlcance.CargarAsync(ctx, cmd.ProyectoId, cmd.InteresadoId, ct);
 
         // Se pregunta por el DERECHO VIGENTE, no por la bandera Automatico de la fila. Son dos
         // preguntas distintas y la que importa es esta:

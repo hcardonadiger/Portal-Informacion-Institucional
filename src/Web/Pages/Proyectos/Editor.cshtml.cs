@@ -593,7 +593,7 @@ public sealed class EditorModel(
                 // Al editar solo cambia el papel: la persona es la que es. Para cambiarla se
                 // quita el registro y se agrega otro, porque eso además mueve quién tiene acceso.
                 await sender.Send(new ActualizarInteresadoCommand(
-                    IntId, IntRol, IntInfluencia, IntInstitucion, IntCargo, IntNotas), ct);
+                    IntId, IntRol, IntInfluencia, IntInstitucion, IntCargo, IntNotas, ProyectoId: id), ct);
                 TempData["SuccessMsg"] = "Interesado actualizado.";
             }
             else if (IntUsuarioId == Guid.Empty)
@@ -619,7 +619,7 @@ public sealed class EditorModel(
     {
         try
         {
-            await sender.Send(new QuitarInteresadoCommand(IntId), ct);
+            await sender.Send(new QuitarInteresadoCommand(IntId, ProyectoId: id), ct);
             TempData["SuccessMsg"] = "Interesado quitado.";
         }
         catch (NotFoundException) { return NotFound(); }
