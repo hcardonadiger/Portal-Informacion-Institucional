@@ -8,6 +8,68 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-22 (noche, 5) — Entrega 4: catálogo de insumos y ventana por actividad
+Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo). Diseño
+aceptado por Jamil, de la investigación de la tanda 2 de GestionDigital (sección 5). Sin tocar
+`src/Web/Mcp`, «Recursos y plantillas», las plantillas de proyecto ni el responsable del proyecto.
+- **Catálogo:** dos páginas nuevas en Catálogos, «Categorías de insumo» e «Insumos», con el patrón
+  de Categorías de proyecto. Solo para el Administrador: clave nueva `Insumos.Catalogo.Editar`, que
+  no se le otorga a ningún rol. No se borra nada: insumos y categorías se desactivan. El nombre del
+  insumo no se repite dentro de su categoría. La página de insumos filtra por texto y categoría y
+  dice en cuántas actividades está cada uno.
+- **Categorías iniciales:** Materiales, Equipo y maquinaria, Herramientas, Equipo informático,
+  Servicios y Otros. Se siembran solo si la tabla está vacía, para que una renombrada no vuelva a
+  aparecer.
+- **En la actividad:** botón «+ insumos…» bajo cada actividad, con una ventana de casillas
+  agrupadas por categoría y un buscador, como la de dependencias. Sin cantidad, costo ni
+  inventario. Los insumos viajan con el guardado de la estructura del proyecto.
+- **Regla en el servidor:** solo se valida lo que cambia. Un insumo nuevo tiene que estar activo y
+  en una categoría activa. Uno ya asignado que después se desactivó se conserva, y la ficha lo
+  marca «desactivado».
+- **Alcance:** la tabla de asignación no tiene acceso propio: se llega a ella solo por el
+  proyecto, que ya filtra por alcance. Un guardado armado a mano contra un proyecto fuera de
+  alcance responde «no encontrado», y una actividad de otro proyecto colada en el formulario se
+  ignora.
+- **Herramienta MCP:** no cambia. La de estructura no manda insumos, y eso significa «no tocarlos».
+- **Ficha y PDF:** una línea «Insumos: …» bajo cada actividad que tenga.
+- **Base de datos:** migración `20261022203532_AgregarCatalogoDeInsumos`, script
+  `database/2026-10-22_poner_al_dia.sql` y reversión `database/2026-10-22_revertir_insumos.sql`.
+  Probados en `GestionGD_Jamil`:
+  - la migración se instaló, se revirtió con su `Down` y se volvió a instalar;
+  - el script corrido sobre la base migrada no cambió nada, y una segunda vez tampoco;
+  - la reversión retiró todo, y una segunda vez no hizo nada;
+  - el script instaló todo desde cero y una segunda corrida no cambió nada;
+  - una categoría renombrada no se volvió a sembrar.
+- **Ayuda:** sección de insumos en Proyectos y en la guía de administración.
+- **Pruebas:**
+  - de dominio, la regla de la actividad;
+  - de comandos, el catálogo, la asignación y el alcance;
+  - de página, solo el Administrador, la ventana, lo conservado y el alcance;
+  - y la línea del PDF.
+- **Interfaz compartida, corregida de paso:**
+  - las ventanas de dependencias y de insumos se abrían pegadas a la esquina superior izquierda
+    por un reinicio global de márgenes; ahora se centran;
+  - los avisos `.hint` que la página esconde salían siempre, porque `display:flex` le ganaba al
+    atributo `hidden`. Entre ellos, «Cambió el orden» de la estructura, que aparecía al cargar.
+- **`diger-ui`:**
+  - Propuesta: aplicada.
+  - Revisión: aprobado con 6 cambios menores, todos aplicados:
+    - espaciado de la ventana;
+    - rótulos de grupo del catálogo;
+    - el foco al quitar un insumo;
+    - y el orden de tres reglas del CSS.
+  - Fuera de alcance, señaló:
+    - el mismo problema de foco al quitar una dependencia;
+    - el contraste del texto atenuado en tema claro (4.05:1, por debajo de 4.5), en todo el portal;
+    - dos `radius-pill` que la doctrina no admite;
+    - que su doctrina todavía dice que no hay tema oscuro.
+- **Revisión en el navegador** (`GestionGD_Jamil`, correo apagado, datos ficticios):
+  - catálogo, ventana y ficha en tema claro, oscuro y a 375 px;
+  - el foco entra al buscador y vuelve al botón;
+  - un insumo desactivado deja de ofrecerse y se conserva marcado;
+  - el PDF real trae la línea «Insumos: …».
+- Resultado: compila sin advertencias nuevas y pasan 1447 pruebas (1 omitida).
+
 ### 2026-10-22 (noche, 4) — Tanda 1, entrega 3: responsable de los riesgos
 Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo).
 Referencia: commit `cd6c912` de GestionDigital. Sin migraciones ni cambios en `src/Web/Mcp`, y
@@ -138,6 +200,7 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - Tanda 1, entrega 1 (seguridad): S1 a S5 (2026-10-22, rama `Jamil-GestionGD`).
 - Tanda 1, entrega 2 (notificaciones y correo) (2026-10-22, rama `Jamil-GestionGD`).
 - Tanda 1, entrega 3 (responsable de los riesgos) (2026-10-22, rama `Jamil-GestionGD`).
+- Entrega 4 (catálogo de insumos y ventana por actividad) (2026-10-22, rama `Jamil-GestionGD`).
 - Tablero ejecutivo de proyectos (2026-10-19, rama `DashBoards`). Sin cambios de base de datos.
 
 ## En curso
@@ -161,6 +224,18 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - (nada registrado)
 
 ## Decisiones
+- 2026-10-22 — Ingeniería (entrega 4):
+  - Una sola clave, `Insumos.Catalogo.Editar`, para las dos páginas: es un solo catálogo.
+  - Las categorías iniciales se siembran solo si la tabla está vacía, no nombre por nombre.
+  - El nombre repetido se compara sin distinguir mayúsculas, igual que el índice único en SQL
+    Server.
+  - Los insumos viajan con el guardado de la estructura, igual que las dependencias, y no con un
+    comando propio. Así heredan la carga del proyecto con su alcance.
+  - Si la estructura llega sin insumos (null), no se tocan; una lista vacía los quita todos. Por
+    eso la herramienta MCP de estructura no cambia de comportamiento.
+  - Un insumo de una categoría desactivada tampoco se ofrece ni se puede agregar.
+  - En el PDF, los insumos desactivados salen sin marca: al lector no le sirve un estado del
+    catálogo que no puede cambiar.
 - 2026-10-22 — Ingeniería (entrega 2):
   - El agente de interfaz de GestionGD es `diger-ui`; aquí no existe `ux-ui`.
   - Los textos dicen «el portal» y no «esta institución», porque el servidor de correo es uno
@@ -259,6 +334,8 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - **Detalles de interfaz que ya estaban antes de la tanda 1**, vistos el 2026-10-22:
   - a 375 px, la fila de botones de arriba del editor de expedientes y los KPI de Tableros se
     salen del ancho;
+  - a 375 px, el menú de usuario de la cabecera se sale del ancho en todas las páginas (visto en
+    Catálogos el 2026-10-22, entrega 4);
   - al imprimir el acta salen la franja «Entorno de pruebas», el botón del chat y una segunda
     página en blanco;
   - `diger-ui` advierte que el tema oscuro existe en esta rama aunque su doctrina lo daba por
@@ -266,6 +343,10 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - **Correos ya escritos en el Visor de eventos del servidor** (de antes de S1): pueden tener datos
   de personas y enlaces de recuperación ya vencidos. Necesita: decisión de Jamil sobre vaciar ese
   registro o restringir quién lo lee.
+- **`database/DESPLIEGUE.md` llega solo hasta `2026-10-02_poner_al_dia.sql`** (visto el
+  2026-10-22). No nombra los scripts del 10-12, 10-14 y 10-19 ni el de insumos del 10-22. Cada uno
+  dice en su encabezado después de cuál va, pero la guía de despliegue no los recorre. Tampoco
+  `00_diagnostico.sql` los detecta.
 - **Publicar `Jamil-GestionGD` lleva todo `ike_opt` a producción**, no solo la tanda 1. Su
   despliegue va primero (`database/DESPLIEGUE.md`).
 - **Contraseña del correo saliente versionada** desde el commit `b709609` (2026-08-07). Está en
