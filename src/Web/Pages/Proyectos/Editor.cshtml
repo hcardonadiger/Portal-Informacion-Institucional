@@ -2225,7 +2225,7 @@
                                        comparar, y marcarlo afirmaría algo que no se sabe. *@
                                     @if (r.ResponsableId is { } rr && Model.ResponsablesRiesgo.All(o => o.UsuarioId != rr))
                                     {
-                                        <span class="res-meta">· fuera de los interesados</span>
+                                        <span class="res-meta" style="display:block;margin-top:3px">fuera de los interesados</span>
                                     }
                                 </td>
                                 <td>
@@ -2271,7 +2271,7 @@
                             <span class="ico" aria-hidden="true">💡</span>
                             <div>
                                 Todavía no hay a quién asignar este riesgo: el responsable se elige entre los
-                                interesados del proyecto y su responsable, y este proyecto no tiene ninguno.
+                                interesados del proyecto y el responsable del proyecto, y este no tiene ninguno.
                                 <a href="#interesados">Registre interesados</a> más arriba, en esta misma pestaña,
                                 y vuelva acá.
                             </div>
@@ -2331,7 +2331,7 @@
                                 }
                             </select>
                             <div class="res-meta" id="r-resp-ayuda" style="margin-top:4px">
-                                Se elige entre los interesados del proyecto y su responsable.
+                                Se elige entre los interesados del proyecto y el responsable del proyecto.
                             </div>
                         </div>
                         <div class="field" style="flex:1;min-width:190px">
