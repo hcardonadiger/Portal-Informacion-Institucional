@@ -15,10 +15,13 @@ public sealed class CorreosCapturados : IEmailService
 {
     public List<(string Para, string Cuerpo, TipoCorreo Tipo)> Enviados { get; } = [];
 
-    public Task SendEmailAsync(string to, string subject, string bodyHtml, TipoCorreo tipo, CancellationToken ct = default)
+    /// <summary>Lo que devuelve cada envío: permite simular un servidor caído o sin configurar.</summary>
+    public ResultadoCorreo Resultado { get; set; } = ResultadoCorreo.Enviado;
+
+    public Task<ResultadoCorreo> SendEmailAsync(string to, string subject, string bodyHtml, TipoCorreo tipo, CancellationToken ct = default)
     {
         lock (Enviados) Enviados.Add((to, bodyHtml, tipo));
-        return Task.CompletedTask;
+        return Task.FromResult(Resultado);
     }
 }
 

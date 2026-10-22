@@ -45,7 +45,7 @@ public sealed class CorreosEnlacesYNombreTests : IDisposable
     {
         _email.SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+            .Returns(Task.FromResult(ResultadoCorreo.Enviado))
             .AndDoes(c => _correos.Add((c.ArgAt<string>(1), c.ArgAt<string>(2))));
     }
 

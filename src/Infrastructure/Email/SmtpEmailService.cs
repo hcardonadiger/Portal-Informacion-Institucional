@@ -24,21 +24,19 @@ public sealed class SmtpEmailService(
 {
     private readonly SmtpSettings _settings = settingsOpt.Value;
 
-    public async Task SendEmailAsync(string to, string subject, string bodyHtml, TipoCorreo tipo, CancellationToken ct = default)
+    public async Task<ResultadoCorreo> SendEmailAsync(string to, string subject, string bodyHtml, TipoCorreo tipo, CancellationToken ct = default)
     {
         var envio = Guid.NewGuid().ToString("N")[..8];
 
         // Sin credenciales configuradas (ambiente local) no se intenta: se deja constancia de que
         // el correo no salió, sin su contenido. Para ver los correos en local, un servidor SMTP
         // de prueba como smtp4dev.
-        if (string.IsNullOrWhiteSpace(_settings.Host) ||
-            string.IsNullOrWhiteSpace(_settings.Username) ||
-            _settings.Username.Contains("ejemplo", StringComparison.OrdinalIgnoreCase))
+        if (!_settings.EstaConfigurado)
         {
             logger.LogWarning(
                 "Correo {Tipo} (envío {Envio}) no enviado: el servidor de correo (sección Smtp) no está configurado.",
                 tipo, envio);
-            return;
+            return ResultadoCorreo.SinConfigurar;
         }
 
         try
@@ -64,18 +62,21 @@ public sealed class SmtpEmailService(
 
             await client.SendMailAsync(message, tiempo.Token);
             logger.LogInformation("Correo {Tipo} (envío {Envio}) enviado.", tipo, envio);
+            return ResultadoCorreo.Enviado;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             logger.LogError(
                 "Correo {Tipo} (envío {Envio}) no enviado: el servidor de correo no respondió en {Segundos} s.",
                 tipo, envio, _settings.TimeoutSegundos);
+            return ResultadoCorreo.Fallido;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // La excepción describe la falla de conexión o la respuesta del servidor; no lleva el
             // cuerpo del mensaje.
             logger.LogError(ex, "Correo {Tipo} (envío {Envio}) no enviado.", tipo, envio);
+            return ResultadoCorreo.Fallido;
         }
     }
 }

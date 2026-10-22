@@ -31,7 +31,7 @@ public sealed class CorreosEscapadosTests : IDisposable
     public CorreosEscapadosTests()
     {
         _email.SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Do<string>(b => _cuerpos.Add(b)),
-            Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+            Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(ResultadoCorreo.Enviado));
     }
 
     private const string Peligroso = "<script>robar()</script>";

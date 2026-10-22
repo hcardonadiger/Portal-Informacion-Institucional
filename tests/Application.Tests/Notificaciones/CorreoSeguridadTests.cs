@@ -41,8 +41,9 @@ public sealed class CorreoSeguridadTests
             Host = "127.0.0.1", Port = 9, EnableSsl = false, Username = "usuario", Password = "x",
         }), registro);
 
-        await smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecuperacionContrasena, CancellationToken.None);
+        var resultado = await smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecuperacionContrasena, CancellationToken.None);
 
+        resultado.Should().Be(ResultadoCorreo.Fallido);
         registro.Lineas.Should().NotBeEmpty("el fallo se registra");
         registro.Lineas.Should().NotContain(l => LlevaContenido(l));
         registro.Lineas.Should().Contain(l => l.Contains(nameof(TipoCorreo.RecuperacionContrasena)),
@@ -89,8 +90,9 @@ public sealed class CorreoSeguridadTests
         var registro = new RegistroEnMemoria<SmtpEmailService>();
         var smtp = new SmtpEmailService(Options.Create(new SmtpSettings { Host = "", Username = "" }), registro);
 
-        await smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecuperacionContrasena, CancellationToken.None);
+        var resultado = await smtp.SendEmailAsync(Destino, "Asunto", Cuerpo, TipoCorreo.RecuperacionContrasena, CancellationToken.None);
 
+        resultado.Should().Be(ResultadoCorreo.SinConfigurar, "sin servidor no se intenta");
         registro.Lineas.Should().NotBeEmpty("se deja constancia de que no salió");
         registro.Lineas.Should().NotContain(l => LlevaContenido(l));
     }
