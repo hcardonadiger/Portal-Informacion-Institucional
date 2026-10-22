@@ -14,6 +14,9 @@ namespace Diger.TramitesEstado.Infrastructure.Email;
 /// de destino. Antes, cada falla —y cada envío simulado sin servidor— escribía el cuerpo completo,
 /// y en IIS eso terminaba en el Visor de eventos (corregido el 2026-10-22). Ahora se registra el
 /// tipo de correo, un identificador del envío para cruzarlo con otros registros, y el error.</para>
+///
+/// <para>El envío tiene un tiempo máximo (<see cref="SmtpSettings.TimeoutSegundos"/>, 15 s por
+/// defecto) para que la página no se quede colgada esperando a un servidor que no responde.</para>
 /// </summary>
 public sealed class SmtpEmailService(
     IOptions<SmtpSettings> settingsOpt,
@@ -47,16 +50,28 @@ public sealed class SmtpEmailService(
             message.Body = bodyHtml;
             message.IsBodyHtml = true;
 
+            var limite = TimeSpan.FromSeconds(Math.Max(1, _settings.TimeoutSegundos));
             using var client = new SmtpClient(_settings.Host, _settings.Port)
             {
                 EnableSsl = _settings.EnableSsl,
-                Credentials = new NetworkCredential(_settings.Username, _settings.Password)
+                Credentials = new NetworkCredential(_settings.Username, _settings.Password),
+                Timeout = (int)limite.TotalMilliseconds,
             };
 
-            await client.SendMailAsync(message, ct);
+            // SmtpClient.Timeout solo rige el envío sincrónico; el asincrónico se corta con el token.
+            using var tiempo = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            tiempo.CancelAfter(limite);
+
+            await client.SendMailAsync(message, tiempo.Token);
             logger.LogInformation("Correo {Tipo} (envío {Envio}) enviado.", tipo, envio);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            logger.LogError(
+                "Correo {Tipo} (envío {Envio}) no enviado: el servidor de correo no respondió en {Segundos} s.",
+                tipo, envio, _settings.TimeoutSegundos);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // La excepción describe la falla de conexión o la respuesta del servidor; no lleva el
             // cuerpo del mensaje.
