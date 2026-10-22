@@ -42,7 +42,7 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
                                $"{msgExtra}" +
                                $"<p>Puede dar seguimiento haciendo clic en el siguiente enlace:</p>" +
                                $"<p><a href='{url}'>Ver Detalle del Ticket</a></p>";
-                    await emailSvc.SendEmailAsync(agente.Correo, $"Recordatorio Ticket {ticket.Numero} — DIGER", body, ct);
+                    await emailSvc.SendEmailAsync(agente.Correo, $"Recordatorio Ticket {ticket.Numero} — DIGER", body, TipoCorreo.RecordatorioTicket, ct);
                 }
             }
         }
@@ -64,7 +64,7 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
                           $"<p>Le enviamos un recordatorio sobre su ticket de soporte <strong>{ticket.Numero}</strong>: {ticket.Titulo}.</p>" +
                           $"{msgExtraRep}" +
                           $"<p>Puede revisar el estado de su solicitud en el portal.</p>";
-            await emailSvc.SendEmailAsync(ticket.ReportanteCorreo, $"Recordatorio Ticket {ticket.Numero} — DIGER", bodyRep, ct);
+            await emailSvc.SendEmailAsync(ticket.ReportanteCorreo, $"Recordatorio Ticket {ticket.Numero} — DIGER", bodyRep, TipoCorreo.RecordatorioTicket, ct);
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -107,7 +107,7 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
                                $"<p>Se le ha enviado un recordatorio relativo al expediente <strong>{exp.Codigo}</strong> de la institución <strong>{exp.Institucion}</strong>.</p>" +
                                $"{msgExtra}" +
                                $"<p><a href='{url}'>Abrir Expediente</a></p>";
-                    await emailSvc.SendEmailAsync(analista.Correo, $"Recordatorio Expediente {exp.Codigo} — DIGER", body, ct);
+                    await emailSvc.SendEmailAsync(analista.Correo, $"Recordatorio Expediente {exp.Codigo} — DIGER", body, TipoCorreo.RecordatorioExpediente, ct);
                 }
             }
         }
@@ -128,7 +128,7 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
             var bodyContact = $"<p>Estimado(a) <strong>{exp.ContactoNombre ?? "Contacto Institucional"}</strong>,</p>" +
                               $"<p>Le enviamos un recordatorio sobre el expediente de digitalización <strong>{exp.Codigo}</strong> correspondiente a {exp.Institucion}.</p>" +
                               $"{msgExtraContact}";
-            await emailSvc.SendEmailAsync(exp.ContactoCorreo, $"Recordatorio Expediente {exp.Codigo} — DIGER", bodyContact, ct);
+            await emailSvc.SendEmailAsync(exp.ContactoCorreo, $"Recordatorio Expediente {exp.Codigo} — DIGER", bodyContact, TipoCorreo.RecordatorioExpediente, ct);
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -177,7 +177,7 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
                        $"{msgExtra}" +
                        $"<p><a href='{url}'>Ver Acta / Detalles de la Reunión</a></p>";
 
-            await emailSvc.SendEmailAsync(asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — DIGER", body, ct);
+            await emailSvc.SendEmailAsync(asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — DIGER", body, TipoCorreo.RecordatorioReunion, ct);
         }
 
         await ctx.SaveChangesAsync(ct);
@@ -244,7 +244,7 @@ public sealed class EnviarRecordatorioCompromisoCommandHandler(
                        $"<blockquote style='border-left:4px solid #1455a4;padding-left:10px;color:#334155'><strong>Compromiso:</strong> {acuerdo.Compromiso}<br><strong>Plazo:</strong> {plazoStr}</blockquote>" +
                        $"{msgExtra}" +
                        $"<p><a href='{url}'>Ver Avance y Detalle del Compromiso</a></p>";
-            await emailSvc.SendEmailAsync(correoTarget, $"Recordatorio de Compromiso — DIGER", body, ct);
+            await emailSvc.SendEmailAsync(correoTarget, $"Recordatorio de Compromiso — DIGER", body, TipoCorreo.RecordatorioCompromiso, ct);
         }
 
         await ctx.SaveChangesAsync(ct);

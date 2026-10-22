@@ -48,7 +48,7 @@ public class EnviarRecordatorioTests : IDisposable
 
         result.Should().BeGreaterThan(0);
         _notifSvc.Received(1).Encolar(agenteId, Domain.Enums.TipoNotificacion.RecordatorioManualTicket, Arg.Any<string>(), Arg.Any<string>());
-        await _emailSvc.Received(1).SendEmailAsync("cliente@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _emailSvc.Received(1).SendEmailAsync("cliente@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class EnviarRecordatorioTests : IDisposable
         var result = await handler.Handle(new EnviarRecordatorioReunionCommand(r.Id, "Mensaje personalizado"), CancellationToken.None);
 
         result.Should().BeGreaterThan(0);
-        await _emailSvc.Received(1).SendEmailAsync("asistente1@diger.gob.hn", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _emailSvc.Received(1).SendEmailAsync("asistente1@diger.gob.hn", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
     }
 
     public void Dispose() => _ctx.Dispose();

@@ -59,6 +59,7 @@ public class PasswordRecoveryTests : IDisposable
             Arg.Is<string>(e => e == "juan.perez@diger.gob.hn"),
             Arg.Is<string>(s => s.Contains("Restablecimiento")),
             Arg.Is<string>(b => b.Contains(savedUser.PasswordResetToken!)),
+            Arg.Is<TipoCorreo>(t => t == TipoCorreo.RecuperacionContrasena),
             Arg.Any<CancellationToken>());
     }
 
@@ -76,7 +77,7 @@ public class PasswordRecoveryTests : IDisposable
         // Assert
         await act.Should().NotThrowAsync();
         await _emailService.DidNotReceive().SendEmailAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

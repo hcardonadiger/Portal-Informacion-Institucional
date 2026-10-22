@@ -85,7 +85,7 @@ public sealed class SolicitarRecuperacionPasswordCommandHandler(
             </html>
             """;
 
-        await emailService.SendEmailAsync(usuario.Correo, $"Restablecimiento de contraseña — {Marca.Nombre}", bodyHtml, ct);
+        await emailService.SendEmailAsync(usuario.Correo, $"Restablecimiento de contraseña — {Marca.Nombre}", bodyHtml, TipoCorreo.RecuperacionContrasena, ct);
 
         return Unit.Value;
     }
