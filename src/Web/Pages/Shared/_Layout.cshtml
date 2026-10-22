@@ -444,11 +444,13 @@
                             var puedeUnidades      = await Acceso.PuedeAsync("Unidades");
                             var puedeTemasTicket   = await Acceso.PuedeClaveAsync("Tickets.Temas.Editar");
                             var puedeCategorias    = await Acceso.PuedeClaveAsync("Categorias.Proyectos.Editar");
+                            var puedeInsumos       = await Acceso.PuedeClaveAsync(Diger.TramitesEstado.Web.Pages.Catalogos.CategoriasInsumoModel.Clave);
                             var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar")
                                                   || await Acceso.PuedeClaveAsync("Prioridades.Tickets.Editar");
 
                             var puedeCatalogos = puedeInstituciones || puedeAreas || puedeUnidades
-                                              || puedeTemasTicket || puedePrioridades || puedeCategorias;
+                                              || puedeTemasTicket || puedePrioridades || puedeCategorias
+                                              || puedeInsumos;
 
                             // Cada entrada por su propia clave, no por «es administrador». Un rol
                             // puede tener Usuarios.Ver sin ser administrador, y antes eso no le

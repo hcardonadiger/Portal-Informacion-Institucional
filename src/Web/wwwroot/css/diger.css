@@ -3629,6 +3629,11 @@ tr.contacto-inactivo td {
     color: var(--diger-warning-strong);
 }
 
+/* El display:flex de arriba le gana al atributo hidden: los avisos que la página esconde hasta
+   que hacen falta —el de «no hay nada» de los diálogos, el de «Cambió el orden» de la
+   estructura— salían siempre. */
+.hint[hidden] { display: none; }
+
 .hint .ico {
     flex-shrink: 0;
     font-size: 15px;
@@ -4800,7 +4805,19 @@ a.kpi-cell:hover .kpi-cell-arw {
     background: var(--diger-bg-soft);
 }
 
-.lista-buscar input[type=search]:focus {
+/* Un filtro por desplegable al lado del buscador (Catálogos › Insumos, y también
+   HondurasSimple/CapturaLote): misma caja, para que no quede con el aspecto del navegador. */
+.lista-buscar select {
+    padding: 9px 13px;
+    border: 1.5px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-base);
+    background: var(--diger-bg-soft);
+    color: var(--diger-text);
+}
+
+.lista-buscar input[type=search]:focus,
+.lista-buscar select:focus {
     outline: none;
     border-color: var(--diger-blue-mid);
     background: var(--diger-surface);
@@ -6826,7 +6843,10 @@ textarea.form-control { resize: vertical; }
    las actividades no depende de nada, así que una novena columna estaría vacía casi siempre.
    Todos los colores salen de tokens que sí cambian con el tema — --diger-blue-pale y compañía no
    lo hacen y dejarían líneas claras sobre fondo oscuro. */
-.dep-lista {
+/* .ins-lista es la fila de insumos de la actividad (entrega 4): misma forma que la de
+   dependencias, con otra clase porque el diálogo de dependencias busca .dep-lista en la fila. */
+.dep-lista,
+.ins-lista {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -6913,6 +6933,8 @@ textarea.form-control { resize: vertical; }
     padding: 1.1rem 1.25rem;
     min-width: min(420px, 90vw);
     max-width: 92vw;
+    /* El reinicio global de márgenes le quitaba el margin:auto con que el navegador lo centra. */
+    margin: auto;
     /* Lengua de casa, apartado 7: un diálogo es lo único del portal que de
        verdad flota, así que lleva el token que lo dice. Al 18% de shadow-lg
        dejaría de leerse como algo que está encima. */
@@ -6928,6 +6950,58 @@ textarea.form-control { resize: vertical; }
     gap: .5rem;
     margin-top: 1rem;
 }
+
+/* Ventana de insumos. Lo único que crece es la lista: el buscador y el pie quedan a la vista
+   aunque el catálogo tenga cientos de filas. */
+.ins-opciones {
+    max-height: min(50vh, 360px);
+    overflow-y: auto;
+    margin-top: .4rem;
+    border-top: 1px solid var(--diger-border-soft);
+}
+.ins-grupo { border: 0; margin: 0; padding: .4rem 0; }
+.ins-grupo legend {
+    padding: 0;
+    font-size: var(--diger-fs-xs);
+    font-weight: 700;
+    color: var(--diger-text-secondary);
+}
+.ins-grupo .chk { margin-top: .3rem; }
+/* .chk es flex y le ganaría al atributo hidden con que el buscador esconde lo que no coincide. */
+.ins-grupo[hidden],
+.ins-grupo .chk[hidden] { display: none; }
+.dep-dialog input[type=search] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-base);
+    background: var(--diger-bg-soft);
+    color: var(--diger-text);
+}
+.dep-dialog input[type=search]:focus {
+    outline: none;
+    border-color: var(--diger-blue-mid);
+    box-shadow: var(--diger-ring);
+}
+.ins-dialog .cel-lbl { display: block; margin: .6rem 0 .25rem; }
+.ins-dialog input[type=search] + .res-meta { margin-top: .3rem; }
+
+/* El rótulo de grupo del catálogo de insumos es una fila, no otra cabecera de columna: lo
+   distingue el peso, no un relleno. */
+.seg-table .ins-grupo-fila th {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text);
+    background: none;
+    text-align: left;
+}
+
+/* Un insumo desactivado en el catálogo que la actividad conserva. Ni tachado —en las
+   dependencias eso dice «ya terminada»— ni punteado —eso dice «agregar»—: apagado y con su
+   insignia. */
+.dep-chip.baja { background: transparent; color: var(--diger-text-muted); }
 /* ── Repositorio documental (pestaña Documentos y biblioteca) ──────────────
    Prefijo repo-doc- y no doc-: `.doc-item` YA EXISTE desde la línea 721, para los documentos de
    expedientes, y trae su propio display:flex. Reusar el nombre puso el encabezado y las acciones

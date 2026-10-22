@@ -53,6 +53,8 @@ public sealed class CatalogosTests : IAsyncLifetime
         html.Should().Contain(@"href=""/Catalogos/Prioridades""");
         html.Should().Contain(@"href=""/Catalogos/PrioridadesTicket""");
         html.Should().Contain(@"href=""/Catalogos/Categorias""");
+        html.Should().Contain(@"href=""/Catalogos/CategoriasInsumo""");
+        html.Should().Contain(@"href=""/Catalogos/Insumos""");
         html.Should().Contain(@"href=""/Tickets/Temas""");
     }
 
@@ -138,6 +140,8 @@ public sealed class CatalogosTests : IAsyncLifetime
     [InlineData("/Catalogos/Prioridades")]
     [InlineData("/Catalogos/PrioridadesTicket")]
     [InlineData("/Catalogos/Categorias")]
+    [InlineData("/Catalogos/CategoriasInsumo")]
+    [InlineData("/Catalogos/Insumos")]
     [InlineData("/Tickets/Temas")]
     public async Task Cada_catalogo_ofrece_su_regreso_a_la_portada(string ruta)
     {
@@ -187,6 +191,7 @@ public sealed class CatalogosTests : IAsyncLifetime
     [Theory]
     [InlineData("/Catalogos/Prioridades")]
     [InlineData("/Catalogos/Categorias")]
+    [InlineData("/Catalogos/CategoriasInsumo")]
     [InlineData("/Catalogos/PrioridadesTicket")]
     public async Task Cada_fila_tiene_tantas_celdas_como_encabezados(string ruta)
     {

@@ -194,6 +194,16 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
             await db.SaveChangesAsync();
         }
 
+        // Las seis categorías de insumo que siembra la migración AgregarCatalogoDeInsumos.
+        if (!await db.CategoriasInsumo.AnyAsync())
+        {
+            var orden = 1;
+            db.CategoriasInsumo.AddRange(
+                new[] { "Materiales", "Equipo y maquinaria", "Herramientas", "Equipo informático", "Servicios", "Otros" }
+                    .Select(n => CategoriaInsumo.Crear(n, orden++)));
+            await db.SaveChangesAsync();
+        }
+
         // Lo mismo para los tickets, que tienen su propio catálogo.
         if (!await db.PrioridadesTicket.AnyAsync())
         {

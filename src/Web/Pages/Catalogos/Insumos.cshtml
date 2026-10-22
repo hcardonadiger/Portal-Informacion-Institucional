@@ -1,0 +1,156 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Catalogos.InsumosModel
+@{
+    ViewData["Title"] = "Insumos";
+    var activas = Model.Categorias.Where(c => c.Activo).ToList();
+    var grupos  = Model.Insumos.GroupBy(i => (i.CategoriaId, i.Categoria, i.CategoriaActiva)).ToList();
+    var nuevaCat = Model.NuevoCategoriaId > 0 ? Model.NuevoCategoriaId : Model.Cat ?? 0;
+}
+
+<div class="container lista">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string terr)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@terr</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Insumos</h2>
+            <p>Materiales, equipo y servicios que se asignan a las actividades de un proyecto. Se agrupan por <a asp-page="/Catalogos/CategoriasInsumo">categoría de insumo</a>.</p>
+        </div>
+        <a class="btns" asp-page="/Catalogos/Index" style="font-size:13px">← Catálogos</a>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">Nuevo insumo</h3>
+        @if (activas.Count == 0)
+        {
+            <p class="res-meta">No hay ninguna categoría activa. <a asp-page="/Catalogos/CategoriasInsumo">Cree o active una categoría</a> para registrar insumos.</p>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Crear" asp-route-q="@Model.Q" asp-route-cat="@Model.Cat"
+                  style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+                <div class="field" style="margin:0;width:200px">
+                    <label for="ins-cat">Categoría <span style="color:var(--diger-danger)">*</span></label>
+                    <select id="ins-cat" name="NuevoCategoriaId" required>
+                        @foreach (var c in activas)
+                        {
+                            <option value="@c.Id" selected="@(c.Id == nuevaCat)">@c.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="field" style="margin:0;flex:1;min-width:200px">
+                    <label for="ins-nombre">Nombre <span style="color:var(--diger-danger)">*</span></label>
+                    <input id="ins-nombre" name="NuevoNombre" value="@Model.NuevoNombre" placeholder="p. ej. Cable UTP categoría 6" maxlength="120" required />
+                </div>
+                <div class="field" style="margin:0;flex:2;min-width:200px">
+                    <label for="ins-desc">Descripción</label>
+                    <input id="ins-desc" name="NuevoDescripcion" value="@Model.NuevoDescripcion" placeholder="Opcional" maxlength="500" />
+                </div>
+                <button class="btnp" type="submit" style="margin-bottom:.1rem">Agregar insumo</button>
+            </form>
+        }
+    </div>
+
+    <form method="get" class="lista-buscar">
+        <input type="search" name="q" value="@Model.Q" placeholder="Buscar insumo…" aria-label="Buscar insumo" />
+        <select name="cat" aria-label="Categoría">
+            <option value="">Todas las categorías</option>
+            @foreach (var c in Model.Categorias)
+            {
+                <option value="@c.Id" selected="@(c.Id == Model.Cat)">@c.Nombre@(c.Activo ? "" : " · desactivada")</option>
+            }
+        </select>
+        <button class="btns" type="submit">Buscar</button>
+        @if (Model.Filtrado) { <a class="btns" asp-page="/Catalogos/Insumos">Limpiar</a> }
+    </form>
+
+    <div class="card">
+        <h3 class="sec-h">Catálogo</h3>
+        @if (Model.Insumos.Count == 0)
+        {
+            <p class="res-meta">
+                @if (!Model.HayAlguno)
+                {
+                    <text>Aún no hay insumos. Mientras no haya ninguno, las actividades no tienen qué elegir.</text>
+                }
+                else if (!string.IsNullOrWhiteSpace(Model.Q))
+                {
+                    <text>Ningún insumo coincide con «@Model.Q».</text>
+                }
+                else
+                {
+                    <text>Esa categoría todavía no tiene insumos.</text>
+                }
+            </p>
+        }
+        else
+        {
+            <div style="overflow-x:auto">
+            <table class="seg-table edit-grid">
+                <thead>
+                    <tr>
+                        <th style="width:170px">Categoría</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th style="width:64px">Activo</th>
+                        <th style="width:72px">En uso</th>
+                        <th style="width:96px"></th>
+                    </tr>
+                </thead>
+                @foreach (var g in grupos)
+                {
+                    <tbody>
+                        @* Un tbody por categoría, con su rótulo como encabezado del grupo: es lo que
+                           le dice al lector de pantalla a qué categoría pertenece cada fila. *@
+                        <tr class="ins-grupo-fila">
+                            <th colspan="6" scope="rowgroup">
+                                @g.Key.Categoria
+                                <span class="res-meta" style="font-weight:400">· @g.Count() insumo@(g.Count() == 1 ? "" : "s")</span>
+                                @if (!g.Key.CategoriaActiva)
+                                {
+                                    <span class="badge badge-secondary">desactivada</span>
+                                }
+                            </th>
+                        </tr>
+                        @foreach (var i in g)
+                        {
+                            <tr>
+                                <form method="post" asp-page-handler="Actualizar" asp-route-q="@Model.Q" asp-route-cat="@Model.Cat">
+                                    <input type="hidden" name="id" value="@i.Id" />
+                                    <td>
+                                        <select name="categoriaId" aria-label="Categoría de «@i.Nombre»" style="width:100%">
+                                            @foreach (var c in Model.Categorias.Where(c => c.Activo || c.Id == i.CategoriaId))
+                                            {
+                                                <option value="@c.Id" selected="@(c.Id == i.CategoriaId)">@c.Nombre@(c.Activo ? "" : " · desactivada")</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td><input name="nombre" value="@i.Nombre" maxlength="120" style="width:100%" aria-label="Nombre del insumo" /></td>
+                                    <td><input name="descripcion" value="@i.Descripcion" maxlength="500" style="width:100%" placeholder="—" aria-label="Descripción de «@i.Nombre»" /></td>
+                                    <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@i.Activo" aria-label="«@i.Nombre» activo" /></td>
+                                    <td class="res-meta" style="text-align:center" title="Actividades que lo tienen asignado">@i.Actividades</td>
+                                    <td style="text-align:right">
+                                        <button class="btns" type="submit" style="font-size:12.5px;padding:6px 12px">Guardar</button>
+                                    </td>
+                                </form>
+                            </tr>
+                        }
+                    </tbody>
+                }
+            </table>
+            </div>
+        }
+        <p class="res-meta" style="margin-top:.75rem">
+            Un insumo no se elimina: desactívelo y dejará de ofrecerse. Las actividades que ya lo
+            tienen lo conservan, marcado como desactivado. Lo mismo ocurre con los insumos de una
+            categoría desactivada.
+        </p>
+    </div>
+</div>
