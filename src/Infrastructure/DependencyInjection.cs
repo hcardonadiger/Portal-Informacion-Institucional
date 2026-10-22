@@ -86,6 +86,11 @@ public static class DependencyInjection
         services.Configure<MicrosoftGraphOptions>(configuration.GetSection(MicrosoftGraphOptions.Seccion));
         services.AddSingleton<CacheTokensProtector>();
         services.AddScoped<IConexionMicrosoft, ConexionMicrosoftService>();
+        services.AddHttpClient<IOutlookCalendario, GraphOutlookCalendario>(c =>
+        {
+            c.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
+            c.Timeout = TimeSpan.FromSeconds(20);
+        });
 
         // Dirección pública del portal, para los enlaces que salen de él (recuperación de
         // contraseña, QR de asistencia). Nunca se toma de la petición.
