@@ -5,12 +5,14 @@ using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Reuniones.Common;
 using Diger.TramitesEstado.Application.Reuniones.Import;
+using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using Diger.TramitesEstado.Application.Common.Interfaces;
 using Diger.TramitesEstado.Infrastructure.AI;
 using Diger.TramitesEstado.Infrastructure.Chat;
 using Diger.TramitesEstado.Infrastructure.Email;
 using Diger.TramitesEstado.Infrastructure.Import;
 using Diger.TramitesEstado.Infrastructure.Notifications;
+using Diger.TramitesEstado.Infrastructure.Outlook;
 using Diger.TramitesEstado.Infrastructure.Persistence.Repositories;
 using Diger.TramitesEstado.Infrastructure.Reports;
 using Diger.TramitesEstado.Infrastructure.Security;
@@ -78,6 +80,12 @@ public static class DependencyInjection
         // Dónde vive SOL. Va por configuración y no en código porque desde la Fase 7 la
         // dirección de cada trámite se compone: un host equivocado no rompe un enlace, rompe mil.
         services.Configure<SolOptions>(configuration.GetSection("Sol"));
+
+        // Reuniones a Outlook (fase 1). Sin TenantId/ClientId/ClientSecret la integración se
+        // apaga sola: la UI lo dice y no se llama a Microsoft.
+        services.Configure<MicrosoftGraphOptions>(configuration.GetSection(MicrosoftGraphOptions.Seccion));
+        services.AddSingleton<CacheTokensProtector>();
+        services.AddScoped<IConexionMicrosoft, ConexionMicrosoftService>();
 
         // Dirección pública del portal, para los enlaces que salen de él (recuperación de
         // contraseña, QR de asistencia). Nunca se toma de la petición.
