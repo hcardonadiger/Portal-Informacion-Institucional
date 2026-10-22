@@ -85,7 +85,7 @@ public sealed class RecordatorioBackgroundService(
             var url = $"/Reuniones/Editor/{r.Id}";
             if (!YaEnviada(uid, TipoNotificacion.ReuniónMañana, url))
                 await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.ReuniónMañana,
-                    $"Reunión mañana: {r.Titulo}", url, ct);
+                    $"Reunión mañana: {r.Titulo}", url, ct: ct);
         }
 
         // ── Compromisos vencidos sin cumplir → notificar por nombre (best-effort) ─
@@ -113,7 +113,7 @@ public sealed class RecordatorioBackgroundService(
                 var url  = $"/Reuniones/Compromisos?reunion={a.ReunionId}";
                 var tit  = $"Compromiso vencido: {a.Compromiso[..Math.Min(80, a.Compromiso.Length)]}";
                 if (!YaEnviada(uid, TipoNotificacion.CompromisoVencido, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoVencido, tit, url, ct);
+                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoVencido, tit, url, ct: ct);
             }
         }
 
@@ -143,7 +143,7 @@ public sealed class RecordatorioBackgroundService(
                 var url  = $"/Reuniones/Compromisos?reunion={a.ReunionId}";
                 var tit  = $"Compromiso próximo a vencer ({a.Plazo:dd/MM}): {a.Compromiso[..Math.Min(80, a.Compromiso.Length)]}";
                 if (!YaEnviada(uid, TipoNotificacion.CompromisoProximo, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoProximo, tit, url, ct);
+                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoProximo, tit, url, ct: ct);
             }
         }
 
@@ -188,7 +188,7 @@ public sealed class RecordatorioBackgroundService(
                 var url = $"/Expedientes/Cronograma/{e.ExpedienteId}?t={e.TramiteIndex}";
                 var tit = $"Etapa {e.EtapaNum} vencida – {e.Codigo}";
                 if (!YaEnviada(uid, TipoNotificacion.EtapaCronogramaVencida, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaVencida, tit, url, ct);
+                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaVencida, tit, url, ct: ct);
             }
 
             foreach (var e in etapasProximas)
@@ -197,7 +197,7 @@ public sealed class RecordatorioBackgroundService(
                 var url = $"/Expedientes/Cronograma/{e.ExpedienteId}?t={e.TramiteIndex}";
                 var tit = $"Etapa {e.EtapaNum} próxima a vencer – {e.Codigo}";
                 if (!YaEnviada(uid, TipoNotificacion.EtapaCronogramaProxima, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaProxima, tit, url, ct);
+                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaProxima, tit, url, ct: ct);
             }
         }
 

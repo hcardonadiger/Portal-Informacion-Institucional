@@ -39,3 +39,12 @@ internal sealed class AjustesDePrueba : IAjustesNotificaciones
         new(host, 587, true, usuario, password, "no-reply@prueba.local", "Prueba", 15,
             DesdePanel: false, HayPassword: password.Length > 0, PasswordIlegible: false);
 }
+
+internal static class NotificacionesDePrueba
+{
+    public static Diger.TramitesEstado.Infrastructure.Notifications.NotificacionService Servicio(
+        Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext ctx,
+        IAjustesNotificaciones? ajustes = null, TimeProvider? reloj = null, NotificacionesOptions? opciones = null) =>
+        new(ctx, ctx, ajustes ?? new AjustesDePrueba(), reloj ?? TimeProvider.System,
+            Microsoft.Extensions.Options.Options.Create(opciones ?? new NotificacionesOptions()));
+}

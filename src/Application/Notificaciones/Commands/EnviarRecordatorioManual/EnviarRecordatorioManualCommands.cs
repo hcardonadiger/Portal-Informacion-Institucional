@@ -70,7 +70,7 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Ticket {ticket.Numero}: {ticket.Titulo}";
                 var url = $"/Tickets/Detalle/{ticket.Id}";
-                notifSvc.Encolar(agente.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url);
+                await notifSvc.EncolarAsync(agente.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url, ct: ct);
                 notificados++;
 
                 if (!string.IsNullOrWhiteSpace(agente.Correo))
@@ -94,7 +94,7 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Ticket {ticket.Numero}: {ticket.Titulo}";
                 var url = $"/Tickets/Detalle/{ticket.Id}";
-                notifSvc.Encolar(reportante.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url);
+                await notifSvc.EncolarAsync(reportante.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url, ct: ct);
                 notificados++;
             }
 
@@ -139,7 +139,7 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Expediente {exp.Codigo}: {exp.Institucion}";
                 var url = $"/Expedientes/Editor/{exp.Id}";
-                notifSvc.Encolar(analista.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url);
+                await notifSvc.EncolarAsync(analista.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url, ct: ct);
                 notificados++;
 
                 if (!string.IsNullOrWhiteSpace(analista.Correo))
@@ -162,7 +162,7 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Expediente {exp.Codigo}: {exp.Institucion}";
                 var url = $"/Expedientes/Editor/{exp.Id}";
-                notifSvc.Encolar(contactoUser.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url);
+                await notifSvc.EncolarAsync(contactoUser.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url, ct: ct);
                 notificados++;
             }
 
@@ -211,7 +211,7 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
             var user = await ctx.Usuarios.FirstOrDefaultAsync(u => u.Correo.ToLower() == correoNorm, ct);
             if (user != null)
             {
-                notifSvc.Encolar(user.Id, TipoNotificacion.RecordatorioManualReunion, $"Recordatorio de Reunión: {reunion.Titulo}", url);
+                await notifSvc.EncolarAsync(user.Id, TipoNotificacion.RecordatorioManualReunion, $"Recordatorio de Reunión: {reunion.Titulo}", url, ct: ct);
                 notificados++;
             }
 
@@ -279,7 +279,7 @@ public sealed class EnviarRecordatorioCompromisoCommandHandler(
 
         if (usuarioTargetId is Guid uid)
         {
-            notifSvc.Encolar(uid, TipoNotificacion.RecordatorioManualCompromiso, $"Recordatorio de Compromiso: {acuerdo.Compromiso}", url);
+            await notifSvc.EncolarAsync(uid, TipoNotificacion.RecordatorioManualCompromiso, $"Recordatorio de Compromiso: {acuerdo.Compromiso}", url, ct: ct);
             notificados++;
         }
 

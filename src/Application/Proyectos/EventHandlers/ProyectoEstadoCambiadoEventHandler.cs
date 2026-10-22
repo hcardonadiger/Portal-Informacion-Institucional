@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Application.Notificaciones;
+
 namespace Diger.TramitesEstado.Application.Proyectos.EventHandlers;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace Diger.TramitesEstado.Application.Proyectos.EventHandlers;
 /// aviso se omite cuando el propio responsable es quien hizo el cambio —notificarle su propia
 /// acción es ruido— y cuando el proyecto no tiene responsable asignado.</para>
 /// </summary>
-public sealed class ProyectoEstadoCambiadoEventHandler(IApplicationDbContext ctx)
+public sealed class ProyectoEstadoCambiadoEventHandler(IApplicationDbContext ctx, INotificacionService notifSvc)
     : INotificationHandler<ProyectoEstadoCambiadoEvent>
 {
     public async Task Handle(ProyectoEstadoCambiadoEvent e, CancellationToken ct)
@@ -25,11 +27,11 @@ public sealed class ProyectoEstadoCambiadoEventHandler(IApplicationDbContext ctx
         if (proyecto?.ResponsableId is { } destinatario
             && !string.Equals(proyecto.Responsable, e.Actor, StringComparison.OrdinalIgnoreCase))
         {
-            ctx.Notificaciones.Add(Notificacion.Crear(
+            await notifSvc.EncolarAsync(
                 destinatario,
                 TipoNotificacion.ProyectoCambioEstado,
                 $"{e.Codigo} pasó a «{e.EstadoNuevo}»",
-                $"/Proyectos/Editor/{e.ProyectoId}"));
+                $"/Proyectos/Editor/{e.ProyectoId}", ct: ct);
         }
 
         await ctx.SaveChangesAsync(ct);

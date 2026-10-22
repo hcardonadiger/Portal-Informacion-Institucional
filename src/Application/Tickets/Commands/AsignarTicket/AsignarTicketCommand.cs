@@ -23,9 +23,9 @@ public sealed class AsignarTicketCommandHandler(
         t.Asignar(cmd.UsuarioId, nombre, autor);
 
         if (cmd.UsuarioId.HasValue)
-            notifSvc.Encolar(cmd.UsuarioId.Value, TipoNotificacion.TicketAsignado,
+            await notifSvc.EncolarAsync(cmd.UsuarioId.Value, TipoNotificacion.TicketAsignado,
                 $"Ticket asignado: [{t.Numero}] {t.Titulo}",
-                url: $"/Tickets/Detalle/{t.Id}");
+                url: $"/Tickets/Detalle/{t.Id}", ct: ct);
 
         repo.Update(t);
         await uow.SaveChangesAsync(ct);

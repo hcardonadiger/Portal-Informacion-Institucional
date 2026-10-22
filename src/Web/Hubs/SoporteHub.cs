@@ -154,7 +154,7 @@ public sealed class SoporteHub(
             TipoNotificacion.ChatRecibido,
             $"Nuevo chat de {usuarioNombre}" + (temaNombre != null ? $" · {temaNombre}" : ""),
             $"/Chat#{sesionId}",
-            ct);
+            ct: ct);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

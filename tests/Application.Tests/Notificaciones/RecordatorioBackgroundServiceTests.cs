@@ -51,15 +51,16 @@ public sealed class RecordatorioBackgroundServiceTests : IDisposable
 
     private RecordatorioBackgroundService Servicio(DateTimeOffset ahora, NotificacionesOptions? opciones = null)
     {
+        var reloj    = new RelojFijo(ahora);
         var services = new ServiceCollection();
         services.AddSingleton<IApplicationDbContext>(_ctx);
-        services.AddSingleton<INotificacionService>(new NotificacionService(_ctx, _ctx));
+        services.AddSingleton<INotificacionService>(NotificacionesDePrueba.Servicio(_ctx, reloj: reloj));
         var proveedor = services.BuildServiceProvider();
 
         return new RecordatorioBackgroundService(
             proveedor.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(opciones ?? new NotificacionesOptions()),
-            new RelojFijo(ahora),
+            reloj,
             NullLogger<RecordatorioBackgroundService>.Instance);
     }
 

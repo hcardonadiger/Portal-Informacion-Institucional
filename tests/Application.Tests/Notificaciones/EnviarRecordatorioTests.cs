@@ -47,7 +47,7 @@ public class EnviarRecordatorioTests : IDisposable
         var result = await handler.Handle(new EnviarRecordatorioTicketCommand(t.Id, "Recordatorio urgente"), CancellationToken.None);
 
         result.AvisosCampana.Should().BeGreaterThan(0);
-        _notifSvc.Received(1).Encolar(agenteId, Domain.Enums.TipoNotificacion.RecordatorioManualTicket, Arg.Any<string>(), Arg.Any<string>());
+        await _notifSvc.Received(1).EncolarAsync(agenteId, Domain.Enums.TipoNotificacion.RecordatorioManualTicket, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _emailSvc.Received(1).SendEmailAsync("cliente@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
     }
 

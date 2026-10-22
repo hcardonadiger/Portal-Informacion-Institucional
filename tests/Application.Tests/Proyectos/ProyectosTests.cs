@@ -1271,7 +1271,7 @@ public class ProyectosTests : IDisposable
         await LimpiarAuditoriaAsync();
         var e  = new ProyectoEstadoCambiadoEvent(id, "PRY-2026-01", "Planificado", "EnEjecucion", "Otra persona");
 
-        await new ProyectoEstadoCambiadoEventHandler(_ctx).Handle(e, CancellationToken.None);
+        await new ProyectoEstadoCambiadoEventHandler(_ctx, Notificaciones.NotificacionesDePrueba.Servicio(_ctx)).Handle(e, CancellationToken.None);
 
         var entrada = await _ctx.BitacorasProyecto.SingleAsync();
         entrada.Tipo.Should().Be(TipoEventoProyecto.CambioEstado);
@@ -1290,7 +1290,7 @@ public class ProyectosTests : IDisposable
         await LimpiarAuditoriaAsync();
         var e  = new ProyectoEstadoCambiadoEvent(id, "PRY-2026-01", "Planificado", "EnEjecucion", "Dueño del proyecto");
 
-        await new ProyectoEstadoCambiadoEventHandler(_ctx).Handle(e, CancellationToken.None);
+        await new ProyectoEstadoCambiadoEventHandler(_ctx, Notificaciones.NotificacionesDePrueba.Servicio(_ctx)).Handle(e, CancellationToken.None);
 
         (await _ctx.BitacorasProyecto.CountAsync()).Should().Be(1, "la auditoría se escribe igual");
         (await _ctx.Notificaciones.CountAsync()).Should().Be(0, "notificarle su propia acción es ruido");
