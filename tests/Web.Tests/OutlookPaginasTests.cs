@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +66,87 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
     {
         var resp = await _portal.ClienteAnonimo().GetAsync("/Cuenta/OutlookCallback?code=abc&state=x");
 
-        resp.StatusCode.Should().NotBe(HttpStatusCode.OK);
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().Contain("/Cuenta/Login");
+        await _conexion.DidNotReceiveWithAnyArgs().CompletarAsync(default, default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Un_estado_distinto_no_canjea_y_no_rompe_la_conexion_en_curso()
+    {
+        var cliente = await ConexionIniciadaAsync();
+
+        var falsa = await cliente.GetAsync("/Cuenta/OutlookCallback?code=abc&state=OTRO");
+
+        falsa.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        falsa.Headers.Location!.ToString().Should().Contain("/Cuenta/Perfil");
+        await _conexion.DidNotReceiveWithAnyArgs().CompletarAsync(default, default!, default!, default!, default);
+
+        // La respuesta real, que llega después del enlace falsificado, todavía canjea.
+        var real = await cliente.GetAsync("/Cuenta/OutlookCallback?code=abc&state=ESTADO-OK");
+
+        real.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        await _conexion.Received(1).CompletarAsync(
+            _portal.UsuarioDe("Empleado"), "abc", "VERIF-OK", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task El_estado_correcto_canjea_y_vuelve_al_perfil()
+    {
+        var cliente = await ConexionIniciadaAsync();
+
+        var resp = await cliente.GetAsync("/Cuenta/OutlookCallback?code=abc&state=ESTADO-OK");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().Contain("/Cuenta/Perfil");
+        await _conexion.Received(1).CompletarAsync(
+            _portal.UsuarioDe("Empleado"), "abc", "VERIF-OK", Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        // El estado se gastó: repetir la misma URL no vuelve a canjear.
+        var repetida = await cliente.GetAsync("/Cuenta/OutlookCallback?code=abc&state=ESTADO-OK");
+
+        repetida.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        repetida.Headers.Location!.ToString().Should().Contain("/Cuenta/Perfil");
+        await _conexion.ReceivedWithAnyArgs(1).CompletarAsync(default, default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Un_error_de_Microsoft_no_se_refleja()
+    {
+        var cliente = await ConexionIniciadaAsync();
+
+        var resp = await cliente.GetAsync("/Cuenta/OutlookCallback?error=%3Cb%3Einventado%3C%2Fb%3E&state=ESTADO-OK");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().Contain("/Cuenta/Perfil");
+
+        // El aviso sale por una expresión Razor, que codifica los acentos: se decodifica para leerlo.
+        var html = WebUtility.HtmlDecode(await cliente.GetStringAsync("/Cuenta/Perfil"));
+
+        html.Should().NotContain("inventado");
+        html.Should().Contain("Microsoft no completó la conexión");
+        await _conexion.DidNotReceiveWithAnyArgs().CompletarAsync(default, default!, default!, default!, default);
+    }
+
+    /// <summary>Pulsa «Conectar mi Outlook» como Empleado: deja el estado y el verificador en el
+    /// TempData de ese cliente (el cliente de la fábrica conserva las cookies).</summary>
+    private async Task<HttpClient> ConexionIniciadaAsync()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _conexion.IniciarAsync(default!, default).ReturnsForAnyArgs(
+            new InicioConexionDto("https://login.microsoftonline.com/x/authorize", "ESTADO-OK", "VERIF-OK"));
+
+        var cliente = _portal.ClienteComo("Empleado");
+        var perfil  = await cliente.GetStringAsync("/Cuenta/Perfil");
+        var token   = Regex.Match(perfil,
+            """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;
+        token.Should().NotBeEmpty();
+
+        var resp = await cliente.PostAsync("/Cuenta/Perfil?handler=ConectarOutlook",
+            new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().Be("https://login.microsoftonline.com/x/authorize");
+        return cliente;
     }
 }

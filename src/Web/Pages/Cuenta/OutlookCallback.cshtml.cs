@@ -13,23 +13,42 @@ namespace Diger.TramitesEstado.Web.Pages.Cuenta;
 /// esta misma sesión emitió en Perfil: sin eso, un enlace preparado por otro podría conectar la
 /// cuenta Microsoft de un tercero al usuario que lo abra.
 /// </summary>
-// [Authorize] explícito: la carpeta /Cuenta está exenta por convención.
+// [Authorize] declara la intención, pero no basta: AllowAnonymousToFolder("/Cuenta") gana en el
+// pipeline de autorización y la página corre igual sin sesión. Por eso el handler se guarda solo,
+// como Perfil.
 [Authorize]
 [PermisoNoRequerido("Autoservicio: cada usuario conecta su propia cuenta Microsoft.")]
 public sealed class OutlookCallbackModel(ISender sender) : PageModel
 {
-    public async Task<IActionResult> OnGetAsync(string? code, string? state, string? error, string? error_description, CancellationToken ct)
-    {
-        var esperado    = TempData["OutlookEstado"] as string;
-        var verificador = TempData["OutlookVerificador"] as string;
+    private const string NoCorresponde =
+        "La respuesta de Microsoft no corresponde a esta sesión. Vuelva a pulsar «Conectar mi Outlook».";
 
+    public async Task<IActionResult> OnGetAsync(string? code, string? state, string? error, CancellationToken ct)
+    {
+        if (User.Identity?.IsAuthenticated != true) return RedirectToPage("/Cuenta/Login");
+
+        // Peek y no lectura: un enlace falsificado que llegue antes que la respuesta real no debe
+        // consumir el estado y el verificador de una conexión en curso.
+        var esperado    = TempData.Peek("OutlookEstado") as string;
+        var verificador = TempData.Peek("OutlookVerificador") as string;
+
+        // El estado se valida antes que nada, también en las respuestas de error (Microsoft
+        // devuelve el state en ellas): lo que no venga de esta sesión no toca nada.
+        if (esperado is null || verificador is null || !Iguales(state, esperado))
+            return Volver(NoCorresponde);
+
+        // Desde aquí la respuesta es la de esta sesión: el estado se gasta, no se repite.
+        TempData.Remove("OutlookEstado");
+        TempData.Remove("OutlookVerificador");
+
+        // Mensajes fijos: lo que trae la URL nunca llega al aviso.
         if (!string.IsNullOrEmpty(error))
             return Volver(error == "access_denied"
                 ? "No se conectó: la solicitud se canceló en Microsoft."
-                : $"Microsoft no completó la conexión ({error}).");
+                : "Microsoft no completó la conexión. Vuelva a intentarlo; si se repite, avise a TI.");
 
-        if (string.IsNullOrEmpty(code) || esperado is null || verificador is null || !Iguales(state, esperado))
-            return Volver("La respuesta de Microsoft no corresponde a esta sesión. Vuelva a pulsar «Conectar mi Outlook».");
+        if (string.IsNullOrEmpty(code))
+            return Volver(NoCorresponde);
 
         try
         {

@@ -95,7 +95,11 @@
             <div class="alert-warn">Su conexión venció. Las reuniones que envió no se actualizarán hasta que reconecte.</div>
         }
         <p>Conectado como <strong>@Model.Outlook.Upn</strong>
-           <span class="hint">desde @Model.Outlook.ConectadaEl?.ToLocalTime().ToString("dd/MM/yyyy")</span></p>
+           @if (Model.Outlook.ConectadaEl is { } conectadaEl)
+           {
+               <span class="hint">desde @conectadaEl.ToLocalTime().ToString("dd/MM/yyyy")</span>
+           }
+        </p>
         <div style="display:flex;gap:8px">
             <form method="post" asp-page-handler="ConectarOutlook">
                 <button type="submit" class="btns">@(Model.Outlook.RequiereReconexion ? "Reconectar" : "Cambiar de cuenta")</button>
