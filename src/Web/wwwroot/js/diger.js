@@ -34,31 +34,75 @@ document.addEventListener('click', function (e) {
     container.appendChild(div);
 });
 
-/* ── Navegación de cabecera: grupos desplegables + menú de usuario ────── */
-function closeAllNavGroups(except) {
-    document.querySelectorAll('.nav-group.open').forEach(function (g) {
-        if (g !== except) g.classList.remove('open');
-    });
+/* ── Secciones del menú lateral (acordeón) — 2026-10-22 ──────────────────
+   Una sola sección abierta a la vez. El estado ES el aria-expanded del título:
+   el CSS contrae por ese atributo, así que lo que se ve y lo que oye un lector
+   de pantalla no pueden separarse.
+
+   La sección de la página la abre el servidor. Este archivo solo atiende el
+   clic y, en las páginas que no pertenecen a ninguna sección —la ayuda, el
+   perfil—, repone la última que eligió el usuario.
+
+   Antes los grupos se cerraban con cualquier clic fuera, con Escape y al
+   ocultar el cajón: eran desplegables de una barra horizontal que ya no existe.
+   En el cajón eso contraería la sección cada vez que alguien toca la página. */
+var CLAVE_SECCION = 'diger-menu-seccion';
+
+// localStorage puede no estar —modo privado, almacenamiento bloqueado— o lanzar al
+// tocarlo. Sin él solo se pierde el recuerdo: el menú sigue funcionando.
+function leerSeccionGuardada() {
+    try { return localStorage.getItem(CLAVE_SECCION); } catch (e) { return null; }
 }
 
-function closeUserPanel() {
-    var p = document.getElementById('sideUserPanel');
-    if (p) p.classList.remove('open');
+function guardarSeccion(id) {
+    try {
+        if (id) localStorage.setItem(CLAVE_SECCION, id);
+        else localStorage.removeItem(CLAVE_SECCION);
+    } catch (e) { }
 }
 
 function toggleNavGroup(btn) {
     var g = btn.closest('.nav-group');
     if (!g) return;
-    var willOpen = !g.classList.contains('open');
-    closeAllNavGroups(g);
-    closeUserPanel();
-    g.classList.toggle('open', willOpen);
+    var abrir = btn.getAttribute('aria-expanded') !== 'true';
+    document.querySelectorAll('#mainNav .nav-group-btn[aria-expanded="true"]').forEach(function (b) {
+        if (b !== btn) b.setAttribute('aria-expanded', 'false');
+    });
+    btn.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    // Cerrar también es elegir: quien contrae su sección no la quiere abierta en la
+    // próxima página sin sección.
+    guardarSeccion(abrir ? g.getAttribute('data-seccion') : null);
+}
+
+// Corre al cargar el script, que va al final del <body>: el menú ya está en el DOM y
+// así no espera a DOMContentLoaded para abrirse.
+(function reponerSeccion() {
+    var nav = document.getElementById('mainNav');
+    if (!nav || nav.querySelector('.nav-group-btn[aria-expanded="true"]')) return;
+    var id = leerSeccionGuardada();
+    if (!id) return;
+    // Se compara en vez de armar un selector con el valor guardado: lo que venga de
+    // localStorage no se mete en un querySelector. Si la sección ya no se ve —le
+    // quitaron el permiso— no se encuentra y todo queda contraído.
+    var grupos = nav.querySelectorAll('.nav-group[data-seccion]');
+    for (var i = 0; i < grupos.length; i++) {
+        if (grupos[i].getAttribute('data-seccion') === id) {
+            var btn = grupos[i].querySelector('.nav-group-btn');
+            if (btn) btn.setAttribute('aria-expanded', 'true');
+            return;
+        }
+    }
+})();
+
+/* ── Menú de usuario ───────────────────────────────────────────────────── */
+function closeUserPanel() {
+    var p = document.getElementById('sideUserPanel');
+    if (p) p.classList.remove('open');
 }
 
 function toggleUserPanel() {
     var p = document.getElementById('sideUserPanel');
     if (!p) return;
-    closeAllNavGroups();
     p.classList.toggle('open');
 }
 
@@ -110,16 +154,33 @@ function cambiarTema() {
    borde inferior a la hamburguesa —justo el botón que vuelve a cerrarlo—. Al
    bajar, la franja se iba y el valor volvía a coincidir solo.
 
-   Esa franja ya no existe, así que la cabecera empieza en el borde superior
-   pase lo que pase. Por eso se fue el listener de scroll: no quedaba nada que
-   pudiera mover el borde inferior al desplazarse, y recalcularlo en cada píxel
-   era trabajo tirado. El de resize se queda, que es el que sí cambia el alto. */
+   El 2026-10-19 se quitó esa franja y con ella el listener de scroll, creyendo
+   que la cabecera ya empezaba siempre en el borde superior. No era así: encima
+   sigue la cinta de entorno («Entorno de pruebas · base …», 22px), que tampoco
+   es pegajosa. Medido al cargar, sin scroll, el borde daba 100px; al bajar, la
+   cabecera subía a 78 y el cajón se quedaba en 100. Eran los 22px vacíos entre
+   la cabecera y el menú, con la página asomando por el hueco.
+
+   Por eso el scroll vuelve, pero barato: un cuadro de animación por lote de
+   eventos, y solo con el cajón abierto. El valor deja de cambiar en cuanto la
+   cinta sale de la pantalla. */
 function ajustarTopDelCajon() {
     var h = document.querySelector('.app-header');
     if (!h) return;
-    var y = Math.round(h.getBoundingClientRect().bottom);
-    document.documentElement.style.setProperty('--diger-nav-top', y + 'px');
+    var y = Math.round(h.getBoundingClientRect().bottom) + 'px';
+    var raiz = document.documentElement.style;
+    if (raiz.getPropertyValue('--diger-nav-top') !== y) raiz.setProperty('--diger-nav-top', y);
 }
+
+var _topDelCajonPendiente = false;
+window.addEventListener('scroll', function () {
+    if (_topDelCajonPendiente || !cajonAbierto()) return;
+    _topDelCajonPendiente = true;
+    requestAnimationFrame(function () {
+        _topDelCajonPendiente = false;
+        ajustarTopDelCajon();
+    });
+}, { passive: true });
 
 function cajonAbierto() {
     var nav = document.getElementById('mainNav');
@@ -208,7 +269,6 @@ function toggleMainNav(open) {
     // clase, así que leerla antes de moverla daría la respuesta vieja.
     if (shell) shell.classList.toggle('nav-anclado', open);
     sincronizarVelo();
-    if (!open) closeAllNavGroups();
 
     document.cookie = 'diger_menu=' + (open ? 'anclado' : 'oculto')
         + ';path=/;max-age=31536000;samesite=lax';
@@ -235,7 +295,6 @@ function toggleMainNav(open) {
 }
 
 document.addEventListener('click', function (e) {
-    if (!e.target.closest('.nav-group')) closeAllNavGroups();
     var panel = document.getElementById('sideUserPanel');
     if (panel && panel.classList.contains('open') && !e.target.closest('.user-menu')) {
         panel.classList.remove('open');
@@ -244,7 +303,6 @@ document.addEventListener('click', function (e) {
 
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-        closeAllNavGroups();
         closeUserPanel();
         // Solo si el cajón es pasajero. Anclado, Escape lo habría desanclado cada
         // vez que alguien lo teclea para salir de un desplegable, y volver a

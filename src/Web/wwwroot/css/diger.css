@@ -1356,10 +1356,15 @@ tr.contacto-inactivo td {
     align-items: center;
     gap: .35rem;
     /* .6rem vertical con el logo a 56px da los 79px de --diger-header-h,
-       contando los 3px del borde celeste de abajo. */
-    padding: .6rem 1.4rem;
-    max-width: 1500px;
-    margin: 0 auto;
+       contando los 3px del borde celeste de abajo.
+
+       Sin ancho máximo desde el 2026-10-22: con 1500px centrados, a 1920 la
+       hamburguesa quedaba en x≈225, lejos del cajón que abre. La cabecera es del
+       armazón, no de la página —cada página tiene su propio ancho de contenedor—,
+       así que va de orilla a orilla: hamburguesa y logo a la izquierda, usuario a
+       la derecha, con el mismo relleno que el cajón para que la hamburguesa caiga
+       en la vertical de los títulos del menú. */
+    padding: .6rem var(--diger-space-3);
 }
 
 .app-brand {
@@ -1451,49 +1456,16 @@ tr.contacto-inactivo td {
     white-space: nowrap;
 }
 
-.nav-group-btn:hover {
-    background: rgba(255, 255, 255, .12);
-    color: #fff;
-}
-
-.nav-group.on > .nav-group-btn {
-    color: #fff;
-    background: rgba(255, 255, 255, .1);
-}
-
-.nav-group.open > .nav-group-btn {
-    background: rgba(255, 255, 255, .16);
-    color: #fff;
-}
-
 .nav-caret {
     font-size: var(--diger-fs-2xs);
     opacity: .6;
-    transition: transform .18s ease;
 }
 
-.nav-group.open .nav-caret {
-    transform: rotate(180deg);
-}
-
-.nav-group-menu {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    min-width: 210px;
-    background: var(--diger-surface);
-    border: 1px solid var(--diger-border);
-    border-radius: var(--diger-radius-md);
-    box-shadow: 0 12px 30px rgba(2, 57, 94, .15);
-    padding: 6px;
-    display: none;
-    z-index: 120;
-}
-
-.nav-group.open .nav-group-menu {
-    display: block;
-}
-
+/* Lo que vivía acá —el submenú flotante con sombra, la flecha que giraba 180°,
+   los fondos de .on y .open sobre el navy— era de la barra horizontal que el
+   cajón reemplazó el 2026-10-13. El cajón lo pisaba casi todo, pero no el fondo
+   del submenú, que en tema oscuro pintaba una placa translúcida. Se fue el
+   2026-10-22 con las secciones contraíbles; sus reglas están en «MENÚ EN CAJÓN». */
 /* Entradas del desplegable del navbar.
    Se escriben con dos clases a propósito: más abajo, la fila de atajos a tableros
    redefine `.nav-item` (borde, gap y color propios) y, con igual especificidad,
@@ -1540,15 +1512,6 @@ tr.contacto-inactivo td {
 .nav-group-menu .nav-item:hover .ico,
 .nav-group-menu .nav-item.on .ico {
     opacity: 1;
-}
-
-/* Con seis grupos el ancho aprieta en la franja previa al menú lateral (900px).
-   Acotado por abajo para no encoger también los botones del drawer, que ya van a lo ancho. */
-@media (min-width: 901px) and (max-width: 1180px) {
-    .nav-group-btn {
-        padding: 9px 9px;
-        font-size: var(--diger-fs-sm);
-    }
 }
 
 /* Lado derecho: notificaciones + usuario */
@@ -1799,13 +1762,13 @@ tr.contacto-inactivo td {
        Hasta el 2026-10-19 el token no bastaba: encima de la cabecera había una
        franja de gobierno que NO era pegajosa, así que sin scroll la cabecera
        empezaba 28px más abajo y el cajón anclado al token le mordía el borde
-       inferior a la hamburguesa. Al quitarse la franja, la cabecera empieza en
-       el borde superior siempre y el token YA es el valor correcto.
+       inferior a la hamburguesa. Quitarla no bastó: encima sigue la cinta de
+       entorno (22px), que tampoco es pegajosa (ver ajustarTopDelCajon en
+       diger.js, 2026-10-22).
 
-       --diger-nav-top se conserva porque sigue siendo más fiel: lo mide el JS
-       sobre la cabecera real, así que acierta también cuando el responsive le
-       cambia el alto. El token es el respaldo para cuando el JS no corre, y
-       ahora ese respaldo es exacto en vez de quedarse corto. */
+       Por eso manda --diger-nav-top: lo mide el JS sobre la cabecera real, al
+       cargar, al cambiar el ancho y al desplazar. El token es el respaldo para
+       cuando el JS no corre, y vale con la cinta ya fuera de la pantalla. */
     top: var(--diger-nav-top, var(--diger-header-h));
     left: 0;
     bottom: 0;
@@ -1818,7 +1781,9 @@ tr.contacto-inactivo td {
     flex-direction: column;
     align-items: stretch;
     gap: 2px;
-    padding: 1rem .7rem;
+    /* El mismo relleno lateral que .app-header-inner: la hamburguesa y los
+       títulos de sección caen en la misma vertical. */
+    padding: var(--diger-space-4) var(--diger-space-3);
     transform: translateX(-100%);
     transition: transform .22s ease;
     z-index: 200;
@@ -1838,26 +1803,102 @@ tr.contacto-inactivo td {
     color: var(--diger-text-secondary);
 }
 
-.nav-group-btn:hover,
-.nav-group.on > .nav-group-btn,
-.nav-group.open > .nav-group-btn {
+/* ── Secciones contraíbles — 2026-10-22 ────────────────────────────────
+   Todas nacen contraídas salvo la de la página (la abre el servidor) y solo
+   una se abre a la vez (diger.js). El estado se lee de aria-expanded y no de
+   una clase: así lo que se ve no puede contradecir lo que se anuncia.
+
+   La jerarquía la lleva el peso de la letra; el color se reserva para «estás
+   aquí», y se sigue viendo con la sección contraída. Solo gira la flecha: no
+   se anima la altura, porque las secciones de abajo se correrían bajo el
+   cursor mientras se apunta. */
+.main-nav .nav-group > .nav-group-btn:hover {
     background: var(--diger-blue-light);
     color: var(--diger-blue-mid);
 }
 
-/* Los submenús se despliegan en su sitio, no flotando al lado: dentro de
-   un cajón vertical un menú absoluto se saldría de la pantalla. */
-.nav-group-menu {
-    position: static;
-    display: block;
-    min-width: 0;
-    border: 0;
-    box-shadow: none;
-    padding: 0 0 .3rem .6rem;
+.main-nav .nav-group-btn[aria-expanded="true"] {
+    color: var(--diger-text-strong);
+    font-weight: 700;
 }
 
+.main-nav .nav-group.on > .nav-group-btn {
+    color: var(--diger-blue-mid);
+    font-weight: 700;
+}
+
+.main-nav .nav-caret {
+    display: block;
+    width: 14px;
+    height: 14px;
+    flex: none;
+    color: var(--diger-text-muted);
+    opacity: 1;
+    transition: transform .15s ease;
+}
+
+.main-nav .nav-group-btn[aria-expanded="true"] .nav-caret {
+    transform: rotate(90deg);
+}
+
+/* Los submenús se despliegan en su sitio, no flotando al lado: dentro de
+   un cajón vertical un menú absoluto se saldría de la pantalla. Cuelgan del
+   título con una línea guía, sin placa. */
+.nav-group-menu {
+    position: static;
+    min-width: 0;
+    margin: 2px 0 var(--diger-space-2) 14px;
+    padding: 0 0 0 var(--diger-space-2);
+    border-left: 1px solid var(--diger-border);
+}
+
+.main-nav .nav-group-btn[aria-expanded="false"] + .nav-group-menu {
+    display: none;
+}
+
+/* Ayuda es un destino, no una sección: va aparte, al pie, y se marca como
+   cualquier entrada cuando es la página actual. */
+.main-nav > .nav-group-pie {
+    margin-top: var(--diger-space-2);
+    padding-top: var(--diger-space-2);
+    border-top: 1px solid var(--diger-border);
+}
+
+.main-nav a.nav-group-btn {
+    text-decoration: none;
+}
+
+.main-nav .nav-group-pie.on > a.nav-group-btn {
+    background: var(--diger-blue);
+    color: #fff;
+}
+
+/* En oscuro, --diger-blue-mid sobre el tinte del hover queda en 4.3:1. El
+   --diger-blue de ese tema es el celeste claro y da unos 8:1. */
+.tema-oscuro .main-nav .nav-group > .nav-group-btn:hover {
+    color: var(--diger-blue);
+}
+
+/* Ayuda, cuando es la página actual, sigue blanca sobre su relleno aunque se pase
+   el ratón: sin esto la regla de arriba, más específica, la teñía de celeste. */
+.tema-oscuro .main-nav .nav-group-pie.on > a.nav-group-btn {
+    color: #fff;
+}
+
+/* La flecha del menú de usuario sigue callada: a 375px no hay sitio para ella. */
 .nav-caret {
     display: none;
+}
+
+/* El contorno de foco general es --diger-blue, que sobre el navy de la cabecera
+   mide 1:1: no se ve. Los controles de la barra lo cambian por el celeste
+   (6.5:1). No va como `.app-header :focus-visible` porque el cajón y los
+   paneles blancos también viven dentro de <header>, y ahí el celeste no se lee. */
+.nav-toggle:focus-visible,
+.app-brand:focus-visible,
+.header-icon:focus-visible,
+.user-menu-btn:focus-visible {
+    outline-color: var(--diger-celeste);
 }
 
 .nav-backdrop.open {
@@ -1917,7 +1958,8 @@ tr.contacto-inactivo td {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .main-nav {
+    .main-nav,
+    .main-nav .nav-caret {
         transition: none;
     }
 
@@ -1948,13 +1990,55 @@ tr.contacto-inactivo td {
        del tamaño grande porque a este ancho la hamburguesa y el avatar del
        usuario comparten renglón con la marca. */
     .app-brand-logo {
-        height: 34px;
+        height: auto;
+        max-height: 34px;
+        max-width: 100%;
     }
 
     .app-brand-divider,
     .app-brand-inst,
     .app-brand-inst-logo {
         display: none;
+    }
+
+    /* A 375px la cabecera se salía 23px del ancho (38 con barra de desplazamiento
+       clásica): nada en ella podía encogerse —ni la marca, ni el lado derecho, con
+       su gap de 14px— y el avatar del usuario quedaba fuera de la pantalla. Ahora
+       la marca es lo único elástico: se reduce proporcionalmente en vez de empujar
+       al usuario. A 375 el logo queda en 32px; el límite está cerca de 320. */
+    .nav-toggle {
+        margin-right: var(--diger-space-1);
+    }
+
+    .app-brand {
+        flex: 0 1 auto;
+        min-width: 0;
+        margin-right: 0;
+    }
+
+    .header-right {
+        gap: var(--diger-space-1);
+    }
+
+    /* Cerrar el hueco no puede achicar el blanco táctil. */
+    .header-icon {
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    /* Con la campana más a la izquierda, su panel de 340px anclado a ella se salía
+       por la izquierda. Se ancla a la cabecera (sticky, así que es su bloque
+       contenedor) y ocupa el ancho con el mismo margen. Dos clases para ganarle a
+       las reglas del <style> de _Layout, que se cargan después. */
+    .header-right .notif-wrap {
+        position: static;
+    }
+
+    .header-right .notif-panel {
+        left: var(--diger-space-3);
+        right: var(--diger-space-3);
+        width: auto;
+        top: calc(100% + 4px);
     }
 }
 
@@ -7682,6 +7766,7 @@ body.tema-claro {
 .tema-oscuro .hist-avatar,
 .tema-oscuro .iavt,
 .tema-oscuro .ic0,
+.tema-oscuro .main-nav .nav-group-pie.on > a.nav-group-btn,
 .tema-oscuro .nav-group-menu .nav-item.on,
 .tema-oscuro .nav-item.on,
 .tema-oscuro .prog-bar,
