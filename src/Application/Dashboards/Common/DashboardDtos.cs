@@ -275,7 +275,25 @@ public sealed record ProyectoSemaforoDto(
     /// <summary>Color con que el catálogo pinta esa categoría. Viaja junto al nombre porque la
     /// insignia se arma con los dos, y va nullable por lo mismo que <see cref="Categoria"/>:
     /// sin categoría no hay color que pintar.</summary>
-    ColorEtiqueta?    CategoriaColor = null)
+    ColorEtiqueta?    CategoriaColor = null,
+
+    /// <summary>Avance que el plan dice que debería llevar hoy: interpolación de las actividades
+    /// vigentes con las dos fechas planificadas (<see cref="ProyectoEstadoReglas.AvanceEsperado"/>).
+    /// <c>null</c> = sin línea base. Lo usa el tablero ejecutivo; los de Institución y Área todavía
+    /// no lo muestran.</summary>
+    int?              AvanceEsperado = null,
+
+    /// <summary>Cuántas actividades entraron en <see cref="AvanceEsperado"/>.</summary>
+    int               ActividadesConFechas = 0,
+
+    /// <summary>Para los motivos del semáforo ejecutivo («inicio planificado el…», «cerrado
+    /// el…»). Van con valor por defecto por la misma razón que la unidad.</summary>
+    DateOnly?         FechaInicioPlan = null,
+    DateOnly?         FechaFinReal = null,
+
+    /// <summary>Nombre corto de la unidad («DAI», «DITRA»), para el subtítulo de las filas del
+    /// ejecutivo. Null si el catálogo no lo tiene o la unidad no resuelve.</summary>
+    string?           UnidadNombreCorto = null)
 {
     /// <summary>Entregables cerrados sobre el total: lo que está efectivamente entregado, frente
     /// a <see cref="AvancePct"/>, que promedia el trabajo reportado en las actividades.</summary>
