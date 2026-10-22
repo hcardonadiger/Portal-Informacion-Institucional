@@ -62,13 +62,18 @@ internal static class ResponsablesProyecto
 }
 
 // ── Crear ─────────────────────────────────────────────────────────────────
+/// <summary>
+/// Alta de un proyecto. <see cref="ResponsableId"/> en null no significa «sin responsable»: el
+/// proyecto queda a cargo de quien lo crea. El nombre del responsable no viaja en el comando —lo
+/// resuelve el handler contra el padrón—, así que las dos puertas del alta (el modal del listado y
+/// la herramienta MCP) guardan el mismo snapshot sin que ninguna tenga que acordarse de mandarlo.
+/// </summary>
 public sealed record CrearProyectoCommand(
     string            Nombre,
     string?           Objetivo        = null,
     string?           AreaId          = null,
     string?           UnidadId        = null,
     Guid?             ResponsableId   = null,
-    string?           Responsable     = null,
     int?              PrioridadId     = null,
     int?              CategoriaId     = null,
     AccionProyecto?   Accion          = null,
@@ -86,6 +91,8 @@ public sealed class CrearProyectoCommandHandler(
         if (cmd.FechaInicioPlan is { } ini && cmd.FechaFinPlan is { } fin && fin < ini)
             throw new DomainException("La fecha de cierre planificada no puede ser anterior a la de inicio.");
 
+        var (responsableId, responsable) = await ResponsableInicialAsync(cmd.ResponsableId, ct);
+
         var anio = (cmd.FechaInicioPlan?.Year) ?? DateTime.UtcNow.Year;
         var proyecto = Proyecto.Crear(await SiguienteCodigoAsync(ctx, anio, ct), cmd.Nombre, cmd.Objetivo);
 
@@ -94,8 +101,8 @@ public sealed class CrearProyectoCommandHandler(
         proyecto.InstitucionId   = currentUser.ActiveInstitucionId;
         proyecto.AreaId          = string.IsNullOrWhiteSpace(cmd.AreaId) ? null : cmd.AreaId.Trim();
         proyecto.UnidadId        = string.IsNullOrWhiteSpace(cmd.UnidadId) ? null : cmd.UnidadId.Trim();
-        proyecto.ResponsableId   = cmd.ResponsableId;
-        proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
+        proyecto.ResponsableId   = responsableId;
+        proyecto.Responsable     = responsable;
         proyecto.PrioridadId     = await PrioridadProyectoResolver.ResolverAsync(ctx, cmd.PrioridadId, ct);
         proyecto.CategoriaId     = await CategoriaProyectoResolver.ResolverAsync(ctx, cmd.CategoriaId, ct);
         proyecto.Accion          = cmd.Accion;
@@ -109,6 +116,32 @@ public sealed class CrearProyectoCommandHandler(
             await sync.SincronizarProyectoAsync(proyecto.Id, ct);
 
         return proyecto.Id;
+    }
+
+    /// <summary>
+    /// Quién queda a cargo al nacer, con su nombre tomado del padrón.
+    ///
+    /// <para>Un responsable elegido tiene que ser un usuario activo: si no, el proyecto quedaría con
+    /// un dueño que no puede entrar a ejercer como tal. El que se pone por defecto —quien crea— no
+    /// se le exige igual: si su cuenta no aparece en el padrón el alta sigue, sin responsable, en
+    /// vez de impedirle crear a alguien que ya pasó la puerta del permiso.</para>
+    /// </summary>
+    private async Task<(Guid? Id, string? Nombre)> ResponsableInicialAsync(Guid? elegido, CancellationToken ct)
+    {
+        var id = elegido ?? currentUser.UserId;
+        if (id is null) return (null, null);
+
+        var nombre = await ctx.Usuarios.AsNoTracking()
+            .Where(u => u.Id == id && u.Activo)
+            .Select(u => u.Nombre)
+            .FirstOrDefaultAsync(ct);
+
+        if (nombre is not null) return (id, nombre);
+        if (elegido is null)    return (null, null);
+
+        throw new DomainException(
+            "El responsable elegido no es un usuario activo del portal. Elija a otra persona o deje " +
+            "el campo como está para quedar usted a cargo.");
     }
 
     /// <summary>

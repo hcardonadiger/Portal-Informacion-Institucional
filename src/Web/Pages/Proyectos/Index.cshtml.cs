@@ -15,7 +15,7 @@ namespace Diger.TramitesEstado.Web.Pages.Proyectos;
 
 [Authorize]
 [Permission("Proyectos", AccionModulo.Ver, "Ver proyectos")]
-public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : PageModel
+public sealed class IndexModel(ISender sender, AccesoModulosService acceso, ICurrentUserService currentUser) : PageModel
 {
     [BindProperty(SupportsGet = true)] public EstadoProyecto?    Estado        { get; set; }
     [BindProperty(SupportsGet = true)] public Guid?              ResponsableId { get; set; }
@@ -51,6 +51,10 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
     public IReadOnlyList<OpcionCategoriaDto>   Categorias  { get; private set; } = [];
     public bool PuedeCrear { get; private set; }
 
+    /// <summary>Quién queda de responsable en el modal de alta: el elegido si se vuelve de un
+    /// rechazo, y si no quien crea, que es lo que hace el comando cuando no se elige a nadie.</summary>
+    public Guid? ResponsablePropuesto => NuevoResponsable ?? currentUser.UserId;
+
     /// <summary>
     /// El rechazo del alta rápida, dicho dentro del propio modal.
     ///
@@ -81,17 +85,13 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso) : Pa
 
         try
         {
-            // El nombre del responsable se guarda como snapshot junto al Id: el listado y el
-            // histórico lo muestran aunque después el usuario cambie de nombre o se desactive.
-            var usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
-            var responsable = usuarios.FirstOrDefault(u => u.Id == NuevoResponsable)?.Nombre;
-
             // Área y unidad nacen vacías: el proyecto queda transversal a la institución y se
             // acota después desde la ficha, si hace falta. La institución la pone el comando
-            // con la del usuario que crea.
+            // con la del usuario que crea; el responsable también, si no se eligió otro, y el
+            // nombre que se guarda como snapshot lo resuelve el comando contra el padrón.
             var id = await sender.Send(new CrearProyectoCommand(
                 NuevoNombre, NuevoObjetivo, AreaId: null, UnidadId: null,
-                ResponsableId: NuevoResponsable, Responsable: responsable,
+                ResponsableId: NuevoResponsable,
                 PrioridadId: NuevaPrioridadId, CategoriaId: NuevaCategoriaId, Accion: NuevaAccion,
                 FechaInicioPlan: NuevaFechaInicio, FechaFinPlan: NuevaFechaFin), ct);
 
