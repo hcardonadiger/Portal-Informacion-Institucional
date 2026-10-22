@@ -272,6 +272,8 @@ public interface IApplicationDbContext
     DbSet<Proyecto>                Proyectos              { get; }
     DbSet<PrioridadProyecto>       PrioridadesProyecto    { get; }
     DbSet<CategoriaProyecto>       CategoriasProyecto     { get; }
+    DbSet<CategoriaInsumo>         CategoriasInsumo       { get; }
+    DbSet<Insumo>                  Insumos                { get; }
     DbSet<EntregableProyecto>      ProyectoEntregables    { get; }
     DbSet<ActividadProyecto>       ProyectoActividades    { get; }
     DbSet<AvanceProyecto>          ProyectoAvances        { get; }

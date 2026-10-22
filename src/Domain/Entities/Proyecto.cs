@@ -530,6 +530,13 @@ public sealed class ActividadProyecto : BaseAuditableEntity
 
     public IEnumerable<int> PredecesoraIds => _predecesoras.Select(d => d.PredecesoraId);
 
+    /// <summary>Lo que la actividad necesita, elegido del catálogo de insumos. Ver
+    /// <see cref="FijarInsumos"/>.</summary>
+    private readonly List<InsumoActividad> _insumos = [];
+    public IReadOnlyCollection<InsumoActividad> Insumos => _insumos.AsReadOnly();
+
+    public IEnumerable<int> InsumoIds => _insumos.Select(i => i.InsumoId);
+
     private ActividadProyecto() { }   // EF
 
     public static ActividadProyecto Crear(string nombre, int orden)
@@ -663,6 +670,41 @@ public sealed class ActividadProyecto : BaseAuditableEntity
         _predecesoras.RemoveAll(d => !nuevas.Contains(d.PredecesoraId));
         foreach (var id in nuevas.Where(id => !actuales.Contains(id)))
             _predecesoras.Add(DependenciaActividad.Crear(id));
+
+        return true;
+    }
+
+    /// <summary>
+    /// Deja los insumos de la actividad exactamente en la lista recibida.
+    ///
+    /// <para><b>Se valida solo lo que cambia.</b> Un insumo que la actividad todavía no tenía tiene
+    /// que estar entre los <paramref name="elegibles"/> —activo, y en una categoría activa—. Uno
+    /// que ya tenía se conserva aunque después se haya desactivado: desactivarlo en el catálogo
+    /// dice «no lo ofrezcan más», no «bórrenlo de lo que ya se planificó». Y quitarlo se puede
+    /// siempre.</para>
+    ///
+    /// <para><b>Null no toca nada</b>, a diferencia de una lista vacía, que los quita todos. Es lo
+    /// que permite que quien guarda la estructura sin conocer los insumos —la herramienta MCP, que
+    /// no los manda— no se los lleve por delante.</para>
+    /// </summary>
+    /// <returns><c>true</c> si el conjunto cambió, para que la bitácora no registre un no-cambio.</returns>
+    public bool FijarInsumos(IEnumerable<int>? ids, IReadOnlySet<int> elegibles, string agregadoPor, DateTime ahora)
+    {
+        if (ids is null) return false;
+
+        var nuevos   = ids.Where(id => id > 0).ToHashSet();
+        var actuales = _insumos.Select(i => i.InsumoId).ToHashSet();
+        if (actuales.SetEquals(nuevos)) return false;
+
+        // Antes de tocar la colección: un rechazo no puede dejarla a medias.
+        if (nuevos.Any(id => !actuales.Contains(id) && !elegibles.Contains(id)))
+            throw new DomainException(
+                $"«{Nombre}»: uno de los insumos elegidos ya no está disponible en el catálogo. " +
+                "Recargue la página y vuelva a elegirlos.");
+
+        _insumos.RemoveAll(i => !nuevos.Contains(i.InsumoId));
+        foreach (var id in nuevos.Where(id => !actuales.Contains(id)))
+            _insumos.Add(InsumoActividad.Crear(id, agregadoPor, ahora));
 
         return true;
     }

@@ -88,6 +88,8 @@ public sealed class AppDbContext(
     public DbSet<Proyecto>                  Proyectos             { get; init; } = default!;
     public DbSet<PrioridadProyecto>         PrioridadesProyecto   { get; init; } = default!;
     public DbSet<CategoriaProyecto>         CategoriasProyecto    { get; init; } = default!;
+    public DbSet<CategoriaInsumo>           CategoriasInsumo      { get; init; } = default!;
+    public DbSet<Insumo>                    Insumos               { get; init; } = default!;
     public DbSet<EntregableProyecto>        ProyectoEntregables   { get; init; } = default!;
     public DbSet<ActividadProyecto>         ProyectoActividades   { get; init; } = default!;
     public DbSet<AvanceProyecto>            ProyectoAvances       { get; init; } = default!;
@@ -2235,6 +2237,69 @@ public sealed class CategoriaProyectoConfiguration : IEntityTypeConfiguration<Ca
     }
 }
 
+// ── Catálogo de insumos ───────────────────────────────────────────────────
+// Global y sin alcance, como el de categorías de proyecto: son etiquetas, no datos de ninguna
+// institución. Lo que sí cuelga del alcance es su asignación a una actividad, y a esa se llega
+// solo por el proyecto (ver InsumoActividadConfiguration).
+public sealed class CategoriaInsumoConfiguration : IEntityTypeConfiguration<CategoriaInsumo>
+{
+    public void Configure(EntityTypeBuilder<CategoriaInsumo> b)
+    {
+        b.ToTable("CategoriasInsumo");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(CategoriaInsumo.MaxNombre).IsRequired();
+        b.Property(x => x.Orden).HasDefaultValue(0);
+        b.Property(x => x.Activo).HasDefaultValue(true);
+        b.HasIndex(x => x.Nombre).IsUnique();
+        b.HasIndex(x => x.Orden);
+    }
+}
+
+public sealed class InsumoConfiguration : IEntityTypeConfiguration<Insumo>
+{
+    public void Configure(EntityTypeBuilder<Insumo> b)
+    {
+        b.ToTable("Insumos");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        b.Property(x => x.Nombre).HasMaxLength(Insumo.MaxNombre).IsRequired();
+        b.Property(x => x.Descripcion).HasMaxLength(Insumo.MaxDescripcion);
+        b.Property(x => x.Activo).HasDefaultValue(true);
+
+        // Restrict y no Cascade: quitar una categoría no puede llevarse sus insumos —y con ellos
+        // lo asignado a las actividades—. El módulo no borra; esto es la red por si alguien lo
+        // hace a mano.
+        b.HasOne(x => x.Categoria).WithMany()
+            .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.Restrict);
+
+        // El nombre se repite entre categorías pero no dentro de una. Arranca por la categoría,
+        // así que sirve también para la FK y para listar el catálogo agrupado.
+        b.HasIndex(x => new { x.CategoriaId, x.Nombre }).IsUnique();
+    }
+}
+
+public sealed class InsumoActividadConfiguration : IEntityTypeConfiguration<InsumoActividad>
+{
+    public void Configure(EntityTypeBuilder<InsumoActividad> b)
+    {
+        b.ToTable("ProyectoActividadInsumos");
+        b.HasKey(x => new { x.ActividadId, x.InsumoId });
+        b.Property(x => x.AgregadoPor).HasMaxLength(InsumoActividad.MaxAgregadoPor).IsRequired();
+
+        // Del lado del insumo, Restrict: el catálogo no borra, y si alguien lo intentara a mano no
+        // puede llevarse en silencio lo que las actividades ya tenían asignado. Del lado de la
+        // actividad la cascada la pone ActividadProyectoConfiguration: es la única ruta desde
+        // Proyectos, así que no choca con el error 1785.
+        b.HasOne<Insumo>().WithMany()
+            .HasForeignKey(x => x.InsumoId).OnDelete(DeleteBehavior.Restrict);
+
+        // «¿En cuántas actividades está este insumo?», que pregunta el catálogo. La llave arranca
+        // por la actividad y no la cubre.
+        b.HasIndex(x => x.InsumoId);
+    }
+}
+
 public sealed class PrioridadProyectoConfiguration : IEntityTypeConfiguration<PrioridadProyecto>
 {
     public void Configure(EntityTypeBuilder<PrioridadProyecto> b)
@@ -2343,6 +2408,13 @@ public sealed class ActividadProyectoConfiguration : IEntityTypeConfiguration<Ac
         b.HasMany(x => x.Predecesoras)
             .WithOne()
             .HasForeignKey(d => d.SucesoraId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Los insumos asignados también se van con ella. Sin DbSet propio: se llega a ellos solo a
+        // través del proyecto, que es el que lleva el filtro de alcance.
+        b.HasMany(x => x.Insumos)
+            .WithOne()
+            .HasForeignKey(i => i.ActividadId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
