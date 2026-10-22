@@ -528,7 +528,7 @@ public sealed class EditorModel(
                 await sender.Send(new ActualizarRiesgoCommand(
                     RiesgoId, RiesgoDescripcion ?? "", RiesgoCategoria, RiesgoProbabilidad,
                     RiesgoImpacto, RiesgoEstrategia, RiesgoMitigacion, RiesgoResponsable,
-                    nombre, RiesgoRevision), ct);
+                    nombre, RiesgoRevision, ProyectoId: id), ct);
                 TempData["SuccessMsg"] = "Riesgo actualizado.";
             }
             else
@@ -551,7 +551,7 @@ public sealed class EditorModel(
     {
         try
         {
-            await sender.Send(new CambiarEstadoRiesgoCommand(RiesgoId, RiesgoEstado), ct);
+            await sender.Send(new CambiarEstadoRiesgoCommand(RiesgoId, RiesgoEstado, ProyectoId: id), ct);
             TempData["SuccessMsg"] = $"El riesgo pasó a «{RiesgoEstado}».";
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
@@ -565,7 +565,7 @@ public sealed class EditorModel(
     {
         try
         {
-            await sender.Send(new EliminarRiesgoCommand(RiesgoId), ct);
+            await sender.Send(new EliminarRiesgoCommand(RiesgoId, ProyectoId: id), ct);
             TempData["SuccessMsg"] = "Riesgo eliminado.";
         }
         catch (NotFoundException) { return NotFound(); }
