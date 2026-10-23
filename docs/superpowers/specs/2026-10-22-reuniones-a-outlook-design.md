@@ -209,11 +209,13 @@ exitoso, si la reunión tiene `OutlookEventId`, la página llama a
 
 1. Reconstruye el evento. Si el builder lo rechaza (p. ej. borraron la hora), marca pendiente
    con ese motivo.
-2. **Si la cita ya terminó** (fin del evento anterior a la hora actual de Honduras), no hace
-   nada: ni Graph, ni pendiente, ni guardado. Llenar la memoria después de la reunión cambia
+2. **Si la cita ya terminó** (fin del evento anterior a la hora actual de Honduras), no llama a
+   Graph y no marca pendiente; si la reunión tenía un aviso pendiente, lo descarta (ya no hay
+   nada que mandar) y guarda solo eso. Llenar la memoria después de la reunión cambia
    `ObjetivoAgenda`, que va en el cuerpo de la cita, y avisaba «reunión actualizada» a todos los
-   invitados de una reunión que ya pasó. Borrar la reunión sigue cancelando la cita. Agregado en
-   la fase 2 parte A (2026-10-23).
+   invitados de una reunión que ya pasó. Borrar la reunión sigue cancelando la cita. El primer
+   envío («Enviar a Outlook») de una reunión ya terminada sigue permitido: es una acción
+   explícita de la persona. Agregado en la fase 2 parte A (2026-10-23).
 3. Si `Huella()` == `OutlookHuella` → no hace nada (evita mandar «reunión actualizada» a todos
    los invitados en cada guardado).
 4. Si difiere → `ActualizarAsync` con la conexión de **`OutlookOrganizadorId`** (no la de quien
@@ -368,6 +370,8 @@ Sus reglas vivían en el JavaScript de `Reuniones/Editor.cshtml`. Ahora:
   que ya tienen seguimiento (estado distinto de Pendiente, fecha de cumplimiento, nota o
   comentarios), ni con `sobreescribir`. El `responsable` de un acuerdo se guarda como texto.
   Un valor vacío de la IA (`""`, `[]`) no borra el campo.
+- **Las cifras de capacitación** aceptan el mismo entero escrito como `80.0`, `"24.0"` o `"80%"`;
+  una fracción (`24.5`) o un negativo no se aplican.
 - **Herramientas MCP:** `instrucciones_memoria_reunion(id)` (`Reuniones.Ver`) y
   `llenar_memoria_reunion(id, json, sobreescribir=false)` (`Reuniones.Editar`). No sincroniza
   Outlook: con la regla de reunión terminada (Actualizar al guardar, paso 2) no haría nada.
