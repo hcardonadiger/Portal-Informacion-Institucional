@@ -1,0 +1,25 @@
+@page "/Notificaciones/{id:int}"
+@model Diger.TramitesEstado.Web.Pages.Notificaciones.DetalleModel
+@{
+    ViewData["Title"] = Model.Aviso.Titulo;
+}
+
+<div class="container lista" style="max-width:820px">
+    <div class="hist-header">
+        <div>
+            <h2>@Model.Aviso.Titulo</h2>
+            <p>Último: @Model.Aviso.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+        </div>
+    </div>
+    <p class="hint"><a asp-page="/Notificaciones/Index">← Todas las notificaciones</a></p>
+
+    <ul class="notif-detalle">
+        @foreach (var e in Model.Aviso.Elementos)
+        {
+            <li>
+                @if (!string.IsNullOrEmpty(e.Url)) { <a href="@e.Url">@e.Titulo</a> } else { @e.Titulo }
+                <span class="hint"> · @e.FechaUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
+            </li>
+        }
+    </ul>
+</div>
