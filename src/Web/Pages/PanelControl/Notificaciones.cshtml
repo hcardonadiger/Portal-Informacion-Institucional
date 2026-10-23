@@ -1,0 +1,154 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.PanelControl.NotificacionesModel
+@{
+    ViewData["Title"] = "Notificaciones · Panel de control";
+    var p   = Model.Panel;
+    var dis = Model.PuedeEditar ? null : "disabled";
+    string Hora(DateTime? utc) => utc is { } u ? u.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "—";
+}
+
+<div class="container" style="max-width:1040px">
+    <div class="hist-header">
+        <div>
+            <h2>Notificaciones</h2>
+            <p>Lo que se guarda aquí aplica sin reiniciar el portal.</p>
+        </div>
+    </div>
+    <p class="hint"><a asp-page="/PanelControl/Index">← Panel de control</a></p>
+
+    @if (!string.IsNullOrEmpty(Model.Aviso)) { <div class="alert alert-ok">@Model.Aviso</div> }
+    @if (!Model.PuedeEditar) { <div class="alert alert-warn">Puede ver esta configuración, pero no cambiarla.</div> }
+
+    <section class="dash-card" aria-labelledby="pc-rev-t">
+        <h3 id="pc-rev-t">Revisión automática</h3>
+        <p class="hint">Cada cuánto el sistema revisa plazos y genera los avisos. Cada aviso sale una vez por día y elemento, aunque la revisión sea seguida.</p>
+        @if (!string.IsNullOrEmpty(Model.Error)) { <div class="alert alert-error">@Model.Error</div> }
+        <form method="post" asp-page-handler="Revision" id="form-revision" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="field" style="width:110px">
+                <label for="pc-horas">Horas</label>
+                <input id="pc-horas" name="Horas" type="number" min="0" max="24" value="@Model.Horas" required disabled="@(dis is not null)" />
+            </div>
+            <div class="field" style="width:110px">
+                <label for="pc-min">Minutos</label>
+                <input id="pc-min" name="Minutos" type="number" min="0" max="59" value="@Model.Minutos" required disabled="@(dis is not null)" />
+            </div>
+            <button type="submit" class="btnp" disabled="@(dis is not null)">Guardar</button>
+        </form>
+        <p class="hint">Última revisión: @Hora(p.UltimaRevisionUtc) · Próxima: @Hora(p.ProximaRevisionUtc)</p>
+    </section>
+
+    <section class="dash-card" aria-labelledby="pc-mod-t">
+        <h3 id="pc-mod-t">Módulos</h3>
+        <p class="hint">Qué módulos avisan en la campana y cuáles también por correo. «Agrupar» junta los avisos parecidos en uno («Tiene 6 compromisos vencidos»).</p>
+        <form method="post" asp-page-handler="Modulos">
+            <table class="tabla">
+                <thead><tr><th>Módulo</th><th>Campana</th><th>Correo</th><th>Agrupar</th></tr></thead>
+                <tbody>
+                @for (var i = 0; i < Model.Modulos.Count; i++)
+                {
+                    var info = p.Modulos.First(m => m.Modulo == Model.Modulos[i].Modulo);
+                    <tr>
+                        <td>
+                            <strong>@info.Nombre</strong>
+                            <input type="hidden" asp-for="Modulos[i].Modulo" />
+                            <div class="hint">@string.Join(" · ", info.Avisos)</div>
+                        </td>
+                        <td><input type="checkbox" asp-for="Modulos[i].Campana" disabled="@(dis is not null)" aria-label="Campana de @info.Nombre" /></td>
+                        <td>
+                            @if (info.AdmiteCorreo)
+                            {
+                                <input type="checkbox" asp-for="Modulos[i].Correo" disabled="@(dis is not null)" aria-label="Correo de @info.Nombre" />
+                            }
+                            else
+                            {
+                                <span class="hint" title="Un correo por cada chat sería ruido">no aplica</span>
+                            }
+                        </td>
+                        <td><input type="checkbox" asp-for="Modulos[i].Agrupar" disabled="@(dis is not null)" aria-label="Agrupar en @info.Nombre" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            <button type="submit" class="btnp" disabled="@(dis is not null)">Guardar módulos</button>
+        </form>
+        <p class="hint">Correos en espera: @p.CorreosEnEspera · Fallidos: @p.CorreosFallidos</p>
+    </section>
+
+    <section class="dash-card" aria-labelledby="pc-mail-t">
+        <h3 id="pc-mail-t">Correo saliente</h3>
+        <p class="hint">
+            @(p.Correo.DesdePanel ? "Configurado desde este panel." : "Todavía se usa la configuración del servidor (appsettings). El primer guardado aquí toma el control.")
+        </p>
+        @if (p.Correo.PasswordIlegible)
+        {
+            <div class="alert alert-error">La contraseña guardada no se puede leer en este servidor; vuelva a escribirla.</div>
+        }
+        @if (!string.IsNullOrEmpty(Model.ErrorCorreo)) { <div class="alert alert-error">@Model.ErrorCorreo</div> }
+        @if (Model.Prueba is { } prueba)
+        {
+            <div class="alert @(prueba.Resultado == Diger.TramitesEstado.Application.Common.Interfaces.ResultadoCorreo.Enviado ? "alert-ok" : "alert-error")">Correo de prueba: @prueba.Detalle</div>
+        }
+        <form method="post" asp-page-handler="Correo" id="form-correo">
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div class="field" style="flex:2;min-width:220px">
+                    <label for="pc-host">Servidor</label>
+                    <input id="pc-host" asp-for="Correo.Host" required maxlength="200" disabled="@(dis is not null)" />
+                </div>
+                <div class="field" style="width:110px">
+                    <label for="pc-puerto">Puerto</label>
+                    <input id="pc-puerto" asp-for="Correo.Puerto" type="number" min="1" max="65535" required disabled="@(dis is not null)" />
+                </div>
+                <div class="field" style="width:110px">
+                    <label><input type="checkbox" asp-for="Correo.Ssl" disabled="@(dis is not null)" /> SSL</label>
+                </div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div class="field" style="flex:1;min-width:220px">
+                    <label for="pc-usuario">Usuario</label>
+                    <input id="pc-usuario" asp-for="Correo.Usuario" required maxlength="200" autocomplete="off" disabled="@(dis is not null)" />
+                </div>
+                <div class="field" style="flex:1;min-width:220px">
+                    <label for="pc-pass">Contraseña</label>
+                    <input id="pc-pass" name="Correo.Password" type="password" maxlength="200" autocomplete="new-password"
+                           placeholder="@(p.Correo.HayPassword ? "Hay una contraseña guardada (déjelo vacío para conservarla)" : "Sin contraseña guardada")"
+                           disabled="@(dis is not null)" />
+                    @if (p.Correo.HayPassword) { <div class="hint">Hay una contraseña guardada.</div> }
+                    <label class="hint"><input type="checkbox" asp-for="Correo.QuitarPassword" disabled="@(dis is not null)" /> Quitar la contraseña</label>
+                </div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div class="field" style="flex:1;min-width:220px">
+                    <label for="pc-rem">Correo remitente</label>
+                    <input id="pc-rem" asp-for="Correo.Remitente" type="email" required maxlength="200" disabled="@(dis is not null)" />
+                </div>
+                <div class="field" style="flex:1;min-width:220px">
+                    <label for="pc-nom">Nombre del remitente</label>
+                    <input id="pc-nom" asp-for="Correo.NombreRemitente" maxlength="200" placeholder="@Diger.TramitesEstado.Application.Common.Models.Marca.Nombre" disabled="@(dis is not null)" />
+                </div>
+            </div>
+            <div style="display:flex;gap:12px">
+                <button type="submit" class="btnp" disabled="@(dis is not null)">Guardar correo</button>
+                <button type="submit" class="btns" formaction="?handler=Probar" formnovalidate disabled="@(dis is not null)">Enviar correo de prueba</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+@section Scripts {
+<script>
+    (function () {
+        /* 0 h 0 min no se manda: es la regla de GuardarRevisionValidator, revisada antes del POST. */
+        var form = document.getElementById('form-revision');
+        if (!form || !window._dgPrevalidar) return;
+        window._dgPrevalidar.enlazar(form, [
+            function () {
+                var h = parseInt(document.getElementById('pc-horas').value || '0', 10);
+                var m = parseInt(document.getElementById('pc-min').value || '0', 10);
+                var total = h * 60 + m;
+                if (total < 5 || total > 1440)
+                    return { campo: document.getElementById('pc-min'), mensaje: 'La revisión tiene que ser de entre 5 minutos y 24 horas.' };
+            }
+        ]);
+    })();
+</script>
+}

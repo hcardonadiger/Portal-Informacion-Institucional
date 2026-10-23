@@ -427,6 +427,17 @@
                                 </div>
                             </div>
                         }
+                        @* «Panel de control»: configuración del portal que antes solo se tocaba en el
+                           servidor. Se gatea con la clave de su destino, como el resto del menú. *@
+                        @if (await Acceso.PuedeClaveAsync("PanelControl.Notificaciones.Ver"))
+                        {
+                            <div class="nav-group @(EsRuta("/PanelControl") ? "on" : "")">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Panel de control<span class="nav-caret">&#9662;</span></button>
+                                <div class="nav-group-menu">
+                                    <a class="nav-item @(EsRuta("/PanelControl/Notificaciones") ? "on" : "")" asp-page="/PanelControl/Notificaciones"><svg class="ico"><use href="#i-accesos"></use></svg>Notificaciones</a>
+                                </div>
+                            </div>
+                        }
                         @* «Administración» agrupa lo que se administra: los datos maestros, que entran
                            por la portada de Catálogos, y el control de acceso. Los catálogos no cuelgan
                            uno por uno como antes —el menú crecía con cada uno— sino detrás de una sola

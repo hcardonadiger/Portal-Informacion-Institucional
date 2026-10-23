@@ -1,0 +1,22 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.PanelControl.IndexModel
+@{
+    ViewData["Title"] = "Panel de control";
+}
+
+<div class="container" style="max-width:1040px">
+    <div class="hist-header">
+        <div>
+            <h2>Panel de control</h2>
+            <p>Configuración del portal que antes solo se cambiaba en el servidor. Los cambios aplican sin reiniciar.</p>
+        </div>
+    </div>
+
+    <div class="cat-grid">
+        <a class="cat-card" asp-page="/PanelControl/Notificaciones">
+            <span class="cat-ico"><svg class="ico" aria-hidden="true"><use href="#i-accesos"></use></svg></span>
+            <span class="cat-titulo">Notificaciones</span>
+            <span class="cat-desc">Cada cuánto se revisa, qué módulos avisan por campana y por correo, y desde qué cuenta sale el correo.</span>
+        </a>
+    </div>
+</div>
