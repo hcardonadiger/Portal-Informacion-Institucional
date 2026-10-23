@@ -84,6 +84,14 @@ Registro inmutable: `Asunto`, `Inicio`, `Fin` (en `Central America Standard Time
 Windows para America/Tegucigalpa), `Ubicacion` (`Lugar`), `Cuerpo` (`ObjetivoAgenda` + enlace a
 la reunión en el portal), `Invitados` (lista de `{ Correo, Nombre }`), `EsTeams`.
 
+El enlace a la ficha (`/Reuniones/Acta/{id}`) se arma con la dirección pública configurada
+(`Correo:UrlBase`), **no con la de la petición**. El cuerpo entra en la huella: armado con el
+host de la petición, el mismo guardado sin cambios hecho por otro host —el subdominio `cert.*`,
+que comparte la sesión, http en vez de https, un nombre interno del servidor— cambiaba la huella,
+provocaba un `PATCH` y un «reunión actualizada» a cada invitado, con un enlace a ese host. Solo
+si `Correo:UrlBase` falta o no es válida se usa la petición, como antes (el arranque ya advierte
+que falta). Editor y asistencia usan el mismo ayudante (`SincronizacionOutlook`).
+
 `Huella()` = SHA-256 de la representación canónica del evento (invitados ordenados y en
 minúsculas). Es lo que decide si un guardado justifica llamar a Graph.
 
@@ -92,7 +100,8 @@ minúsculas). Es lo que decide si un guardado justifica llamar a Graph.
 `Reunion` → `EventoOutlook`, o un motivo de rechazo legible:
 
 - Sin `Fecha` o sin `Hora` válida → rechazo «La reunión necesita fecha y hora para ir a Outlook».
-- `Hora` debe ser `HH:mm` (0–23 / 0–59). Otra forma → rechazo con el valor encontrado.
+- `Hora` debe ser `HH:mm` o `H:mm` (0–23 / 0–59; «9:00» vale igual que «09:00»). Otra forma →
+  rechazo con el valor encontrado.
 - `Duracion`: vacía → **1 hora**. Acepta `"N"` (horas), `"N hora(s)"`, `"N h"`, `"N min"`,
   `"N minutos"`, `"H:mm"`. Cualquier otra cosa → rechazo con el valor encontrado (no se adivina).
 - `EsTeams` = `Reunion.OutlookConTeams`, que nace en **true** sin mirar la `Modalidad`. Una
@@ -148,7 +157,11 @@ Entrega: migración EF `20261022221928_ReunionesAOutlook` en `Persistence\Migrat
 - `Cuenta/Perfil` gana una tarjeta «Microsoft Outlook»: sin conexión → «Conectar mi Outlook»;
   con conexión → cuenta conectada, fecha y «Desconectar»; vencida → aviso y «Reconectar».
 - «Conectar» redirige a Microsoft (authorization code + PKCE) con los alcances
-  `Calendars.ReadWrite User.Read offline_access`, y `state` atado a la sesión.
+  `Calendars.ReadWrite User.Read offline_access`, y `state` atado a la sesión. El `state` y el
+  verificador PKCE viajan en **TempData** (la cookie de TempData, cifrada con Data Protection),
+  no en una sesión del servidor ni en la base: el portal no usa `ISession`.
+- Los handlers «Conectar» y «Desconectar» del perfil, como `OnGetAsync`, empiezan exigiendo un
+  usuario: `AllowAnonymousToFolder("/Cuenta")` gana sobre el `[Authorize]` de la página.
 - `/Cuenta/OutlookCallback` canjea el código, guarda la caché cifrada y vuelve al perfil.
   Lleva `[PermisoNoRequerido]` (autoservicio) y `[Authorize]`, como las demás de `/Cuenta`
   que exigen sesión.
@@ -157,6 +170,9 @@ Entrega: migración EF `20261022221928_ReunionesAOutlook` en `Persistence\Migrat
   falsificado **no consume** el estado pendiente: lo lee sin gastarlo, así un enlace preparado
   que llegue antes no arruina la conexión en curso. El texto de `error` de Microsoft nunca se
   refleja en la página: el aviso es un mensaje fijo.
+- Ni el retorno ni «Conectar» terminan en la página de error: un imprevisto al canjear (la base,
+  MSAL) o un rechazo de MSAL al armar la URL vuelven al perfil con un aviso fijo («Microsoft no
+  completó la conexión…» o el código de error de MSAL, nunca su mensaje).
 - MSAL refresca la caché al pedir un token; ese refresco se serializa **por usuario** con un
   candado en memoria. Basta con un solo proceso de IIS; una granja de servidores necesitaría
   un `rowversion` en la fila.
@@ -203,6 +219,12 @@ exitoso, si la reunión tiene `OutlookEventId`, la página llama a
 
 «Reintentar» es el mismo comando.
 
+**También desde la asistencia.** Agregar o quitar pre-registrados desde `Reuniones/Asistencia`
+(pre-registrar, agregar del directorio, eliminar un registro) cambia a quién se invita, así que
+tras el cambio la página llama al mismo comando, con la misma ficha. Un fallo no deshace ni
+convierte en error el cambio de la lista: se agrega al aviso de éxito de esa página («Pero no se
+pudo actualizar la cita en Outlook…»).
+
 **Cualquier** fallo del lado de Outlook —no solo los dos tipados: también una respuesta
 ilegible o un fallo del token— deja la reunión pendiente. Y si lo que falla es el propio
 comando de sincronización (p. ej. el guardado sacó la reunión del alcance de quien edita), la
@@ -233,8 +255,10 @@ desde el calendario del organizador.» El portal no bloquea un borrado por Micro
 2. Permisos **delegados**: `Calendars.ReadWrite`, `User.Read`, `offline_access`; para la
    fase 2, además `OnlineMeetingTranscript.Read.All`, que exige consentimiento de
    administrador.
-3. URIs de redirección: `https://localhost:49175/Cuenta/OutlookCallback` (desarrollo) y la
-   de producción.
+3. URIs de redirección, **las tres**: `https://localhost:49175/Cuenta/OutlookCallback` y
+   `https://localhost:49176/Cuenta/OutlookCallback` (desarrollo: el portal escucha en los dos
+   puertos https y la dirección de retorno sale del puerto por el que se entró) y la de
+   producción. Una que falte hace que Microsoft rechace el retorno.
 4. Crear un secreto de cliente y entregarlo por canal seguro.
 5. Si el tenant restringe el consentimiento de usuarios, otorgar consentimiento de
    administrador una vez.
@@ -272,6 +296,29 @@ Ninguna prueba automática llama a Graph.
   como POST entre sitios, sin la cookie de sesión (`SameSite=Lax`), y el retorno no
   encontraría ni la sesión ni el estado.
 - Si un `PATCH` sobre una cita que ya tiene Teams conserva el mismo enlace para unirse.
+
+### Límites conocidos de la fase 1
+
+- **Un 401 de Graph no marca la conexión.** Deja la reunión pendiente con el aviso de conexión
+  vencida, pero no enciende `RequiereReconexion` en el perfil del organizador: la tarjeta del
+  perfil sigue diciendo «conectada» hasta que MSAL mismo pida interacción al renovar.
+- **«Cambiar de cuenta» deja las citas en la cuenta vieja.** Si quien ya organizó citas reconecta
+  con otra cuenta Microsoft, esas citas siguen en el calendario de la cuenta anterior; la próxima
+  actualización va a la cuenta nueva, recibe 404 y la reunión queda pendiente con «la cita ya no
+  existe en Outlook».
+- **Un fallo de Graph se registra** con el estado HTTP, el `error.code` del cuerpo y la ruta (que
+  lleva el id de la cita, que no es secreto); nunca las cabeceras ni el resto del cuerpo.
+
+### Nota de despliegue
+
+- El candado por usuario alrededor de la caché de tokens vive en memoria: supone **un solo
+  proceso**. En IIS, el grupo de aplicaciones sin *web garden* (un solo proceso de trabajo). En un
+  reciclado con solapamiento conviven dos procesos durante unos segundos; una renovación que caiga
+  justo ahí puede perder la caché y pedir reconexión, nada peor.
+- **Recomendación pendiente para el operador, antes de la prueba real:** proteger el anillo de
+  llaves de Data Protection con `ProtectKeysWithDpapi()` (o el equivalente del servidor). Esas
+  llaves ahora cifran *refresh tokens* de larga vida, no solo cookies de sesión. No se cambia
+  `Program.cs` en esta fase: queda como decisión del despliegue.
 
 ## Fuera de alcance
 
