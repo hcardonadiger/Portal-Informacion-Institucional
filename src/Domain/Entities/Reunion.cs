@@ -113,6 +113,33 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public string? Foto2Url  { get; set; }
     public string? Foto2Desc { get; set; }
 
+    // ── Outlook (fase 1 de reuniones a Outlook) ───────────────────
+    // Ver docs/superpowers/specs/2026-10-22-reuniones-a-outlook-design.md. El portal es la
+    // fuente de la verdad: estas columnas solo recuerdan qué cita le corresponde en Outlook y si
+    // la última sincronización llegó.
+
+    /// <summary>Id de la cita en el calendario del organizador. null = nunca se envió.</summary>
+    public string?   OutlookEventId        { get; private set; }
+    /// <summary>transactionId de Graph: se genera una vez y se reusa en cada reintento del
+    /// envío, para que Graph descarte la creación repetida en vez de duplicar la cita.</summary>
+    public Guid?     OutlookTransaccionId  { get; private set; }
+    /// <summary>Usuario en cuyo calendario vive la cita. Actualizar y cancelar van siempre con
+    /// SU conexión, aunque edite otra persona.</summary>
+    public Guid?     OutlookOrganizadorId  { get; private set; }
+    /// <summary>Teams nace encendido para toda modalidad: las presenciales también se graban
+    /// para sacar la transcripción. Queda fijo tras el envío (Graph no le quita el Teams a una
+    /// cita que ya lo tiene).</summary>
+    public bool      OutlookConTeams       { get; private set; } = true;
+    public string?   OutlookEnlaceTeams    { get; private set; }
+    /// <summary>SHA-256 del último evento enviado. Guardar sin cambios visibles no llama a Graph:
+    /// cada PATCH le manda «reunión actualizada» a todos los invitados.</summary>
+    public string?   OutlookHuella         { get; private set; }
+    public DateTime? OutlookSincronizadaEl { get; private set; }
+    public bool      OutlookPendiente      { get; private set; }
+    public string?   OutlookError          { get; private set; }
+
+    public bool EstaEnOutlook => OutlookEventId is not null;
+
     // ── Hijos ─────────────────────────────────────────────────────
     private readonly List<Asistente>          _asistentes  = [];
     private readonly List<AcuerdoReunion>     _acuerdos    = [];
@@ -210,6 +237,47 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     {
         var a = _asistentes.FirstOrDefault(x => x.Id == asistenteId);
         if (a is not null) { _asistentes.Remove(a); NumAsistentes = _asistentes.Count; }
+    }
+
+    /// <summary>Fija la transacción del envío (la misma en cada reintento) y si lleva Teams.</summary>
+    public Guid PrepararEnvioOutlook(bool conTeams)
+    {
+        if (EstaEnOutlook)
+            throw new DomainException("La reunión ya está en Outlook: los cambios se envían al guardar.");
+
+        OutlookConTeams = conTeams;
+        OutlookTransaccionId ??= Guid.NewGuid();
+        return OutlookTransaccionId.Value;
+    }
+
+    public void RegistrarEnvioOutlook(string eventId, Guid organizadorId, string? enlaceTeams, string huella, DateTime utcAhora)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(huella);
+        if (organizadorId == Guid.Empty) throw new ArgumentException("La cita necesita organizador.", nameof(organizadorId));
+
+        OutlookEventId       = eventId;
+        OutlookOrganizadorId = organizadorId;
+        RegistrarSincronizacionOutlook(enlaceTeams, huella, utcAhora);
+    }
+
+    public void RegistrarSincronizacionOutlook(string? enlaceTeams, string huella, DateTime utcAhora)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(huella);
+
+        OutlookEnlaceTeams    = enlaceTeams ?? OutlookEnlaceTeams;
+        OutlookHuella         = huella;
+        OutlookSincronizadaEl = utcAhora;
+        OutlookPendiente      = false;
+        OutlookError          = null;
+    }
+
+    public void MarcarOutlookPendiente(string motivo)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(motivo);
+
+        OutlookPendiente = true;
+        OutlookError     = motivo.Length > 500 ? motivo[..500] : motivo;
     }
 }
 

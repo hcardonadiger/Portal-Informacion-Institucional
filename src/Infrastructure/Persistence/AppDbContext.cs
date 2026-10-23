@@ -18,6 +18,7 @@ public sealed class AppDbContext(
     public DbSet<Unidad>                   Unidades           { get; init; } = default!;
     public DbSet<AsignacionUsuario>        AsignacionesUsuario{ get; init; } = default!;
     public DbSet<TokenAccesoMcp>           TokensAccesoMcp    { get; init; } = default!;
+    public DbSet<ConexionMicrosoft>        ConexionesMicrosoft { get; init; } = default!;
     public DbSet<Movimiento>               Movimientos        { get; init; } = default!;
     public DbSet<Prefijo>                  Prefijos           { get; init; } = default!;
     public DbSet<TramiteDefinicion>        TramitesDefinicion { get; init; } = default!;
@@ -705,6 +706,16 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
             .HasForeignKey(a => a.ReunionId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.InstitucionesParticipantes).WithOne()
             .HasForeignKey(x => x.ReunionId).OnDelete(DeleteBehavior.Cascade);
+
+        // Outlook (fase 1). OutlookConTeams nace en 1 también en la base: las filas existentes
+        // quedan con Teams encendido, que es el comportamiento por defecto.
+        b.Property(x => x.OutlookEventId).HasMaxLength(400);
+        b.Property(x => x.OutlookEnlaceTeams).HasMaxLength(1000);
+        b.Property(x => x.OutlookHuella).HasMaxLength(64).IsFixedLength();
+        b.Property(x => x.OutlookError).HasMaxLength(500);
+        b.Property(x => x.OutlookConTeams).HasDefaultValue(true);
+        b.Property(x => x.OutlookPendiente).HasDefaultValue(false);
+        b.Ignore(x => x.EstaEnOutlook);
     }
 }
 
@@ -1507,6 +1518,23 @@ public sealed class TokenAccesoMcpConfiguration : IEntityTypeConfiguration<Token
         // La asignación NO va en cascada: borrarla debe dejar el token huérfano y que la
         // autenticación lo rechace por contexto inexistente, no desaparecer la evidencia
         // de que el token existió. Sin FK declarada para no forzar ese borrado.
+    }
+}
+
+public sealed class ConexionMicrosoftConfiguration : IEntityTypeConfiguration<ConexionMicrosoft>
+{
+    public void Configure(EntityTypeBuilder<ConexionMicrosoft> b)
+    {
+        b.ToTable("ConexionesMicrosoft");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedNever(); // es el id del usuario
+        b.Property(x => x.Upn).HasMaxLength(256).IsRequired();
+        b.Property(x => x.HomeAccountId).HasMaxLength(200).IsRequired();
+        b.Property(x => x.CacheTokens).IsRequired();
+        b.Property(x => x.UltimoError).HasMaxLength(500);
+
+        // Cascada: la conexión no tiene sentido sin su usuario, y es una credencial.
+        b.HasOne<Usuario>().WithOne().HasForeignKey<ConexionMicrosoft>(x => x.Id).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

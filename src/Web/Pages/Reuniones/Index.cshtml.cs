@@ -1,3 +1,5 @@
+using Diger.TramitesEstado.Application.Reuniones.Outlook;
+
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
@@ -53,9 +55,20 @@ public sealed class IndexModel(ISender sender) : PageModel
     [Permission("Reuniones", AccionModulo.Eliminar, "Eliminar reuniones")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, CancellationToken ct)
     {
-        // El chequeo de rol por nombre que había acá lo sustituye el [Permission] de arriba.
+        // Primero se cancela la cita (Graph avisa a los invitados). Si no se puede, se borra
+        // igual y se dice: el portal no bloquea un borrado por Microsoft.
+        string? avisoOutlook = null;
+        try
+        {
+            await sender.Send(new CancelarReunionOutlookCommand(id), ct);
+        }
+        catch (DomainException ex)
+        {
+            avisoOutlook = ex.Message;
+        }
+
         await sender.Send(new EliminarReunionCommand(id), ct);
-        TempData["SuccessMsg"] = "Reunión eliminada.";
+        TempData["SuccessMsg"] = avisoOutlook is null ? "Reunión eliminada." : $"Reunión eliminada. {avisoOutlook}";
         return RedirectToPage();
     }
 }

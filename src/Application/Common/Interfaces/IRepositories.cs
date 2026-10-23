@@ -239,6 +239,7 @@ public interface IApplicationDbContext
     DbSet<PermisoAuditoria>         PermisosAuditoria { get; }
     DbSet<AsignacionUsuario>        AsignacionesUsuario { get; }
     DbSet<TokenAccesoMcp>           TokensAccesoMcp     { get; }
+    DbSet<ConexionMicrosoft>        ConexionesMicrosoft { get; }
     DbSet<Area>                     Areas               { get; }
     DbSet<Unidad>                   Unidades            { get; }
     DbSet<Movimiento>               Movimientos         { get; }

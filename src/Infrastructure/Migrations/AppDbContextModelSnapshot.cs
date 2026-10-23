@@ -970,6 +970,52 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("ConciliacionesSiger", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ConexionMicrosoft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("CacheTokens")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime>("ConectadaEl")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HomeAccountId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("RequiereReconexion")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UltimoError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Upn")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ConexionesMicrosoft", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Contacto", b =>
                 {
                     b.Property<int>("Id")
@@ -4163,6 +4209,42 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<bool>("OutlookConTeams")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("OutlookEnlaceTeams")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OutlookError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("OutlookEventId")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("OutlookHuella")
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .IsFixedLength();
+
+                    b.Property<Guid?>("OutlookOrganizadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("OutlookPendiente")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("OutlookSincronizadaEl")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("OutlookTransaccionId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int?>("PctAsistencia")
                         .HasColumnType("int");
 
@@ -5518,6 +5600,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("TramiteSigerId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ConexionMicrosoft", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Usuario", null)
+                        .WithOne()
+                        .HasForeignKey("Diger.TramitesEstado.Domain.Entities.ConexionMicrosoft", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.Contacto", b =>

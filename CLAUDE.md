@@ -136,6 +136,18 @@ Idempotent import paths pull data from the demo's Supabase project (`diger_tram`
 
 Idempotency: reuniones/expedientes dedupe on `OrigenExternoId` (unique filtered index; calendar events use a `cal:<id>` prefix); levantamientos dedupe on institution+encargado; instituciones on name (with an alias map for long-name↔sigla duplicates). Institution Ids are derived from the name and must be `A-Z0-9` only — strip accents before filtering (`char.IsLetterOrDigit` wrongly accepts `Í`/`Ó`).
 
+### Reuniones a Outlook
+
+Portal → Outlook, nunca al revés. Cada usuario conecta su cuenta Microsoft desde su perfil
+(OAuth delegado, MSAL); la caché de tokens se guarda cifrada en `ConexionesMicrosoft` y la
+integración se apaga sola sin `MicrosoftGraph:TenantId/ClientId/ClientSecret` (el secreto va en
+User Secrets, nunca en appsettings). Application arma un `EventoOutlook` puro y habla con
+`IOutlookCalendario`; solo `Infrastructure/Outlook/` conoce Graph. Guardar una reunión nunca
+falla por Outlook (queda `OutlookPendiente`) y borrar nunca se bloquea. Actualizar y cancelar
+usan la conexión del **organizador**, no la de quien edita. Spec:
+`docs/superpowers/specs/2026-10-22-reuniones-a-outlook-design.md`.
+Hasta que TI registre la aplicación en Entra ID la integración queda apagada.
+
 ### Expediente aggregate
 
 `Expediente` is the most complex aggregate (7 sections, 10 child collections). Child collections are always replaced in bulk: call `LimpiarHijos()` then `Agregar(...)` for each item. The command handler (`ActualizarExpedienteCommand`) and `ExpedienteMapper.Aplicar()` implement this pattern — use the same pattern when adding new child types.
