@@ -335,8 +335,8 @@
           <label class="cw-lbl">JSON devuelto por la IA</label>
           <textarea id="cowork-json" rows="6" style="width:100%;font-family:monospace;font-size:12.5px" placeholder="Pegue aquí el JSON…"></textarea>
           <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-            <button type="button" class="btnp" onclick="aplicarJsonCowork(false)">Aplicar al formulario</button>
-            <button type="button" class="btns" onclick="aplicarJsonCowork(true)">Sobreescribir</button>
+            <button type="button" id="cowork-aplicar" class="btnp" onclick="aplicarJsonCowork(false)">Aplicar al formulario</button>
+            <button type="button" id="cowork-sobreescribir" class="btns" onclick="aplicarJsonCowork(true)">Sobreescribir</button>
             <button type="button" class="btns" onclick="document.getElementById('cowork-json').value=''">Limpiar</button>
           </div>
           <div id="cowork-error" class="alert-error" style="display:none;margin-top:8px;font-size:12.5px"></div>
@@ -1299,106 +1299,120 @@
     setTimeout(function(){ btn.textContent = original; }, 1800);
   }
 
+  // Un doble clic mandaría dos pedidos y el segundo, al volver, llenaría de nuevo lo que el
+  // primero ya llenó (y sin sobreescribir chocaría con él). Mientras uno está en curso los dos
+  // botones quedan apagados y otro clic no hace nada.
+  var cwOcupado = false;
+
   // Llena Memoria, Capacitación y Cierre a partir del JSON resumido de una transcripción. El
   // servidor interpreta el JSON con las mismas reglas que el MCP y devuelve lo que corresponde
   // llenar ya filtrado (sin «Generales», sin el bloque de capacitación fuera de una, sin la segunda
   // firma con la encuesta apagada) y el mensaje con lo descartado. No guarda nada.
   async function aplicarJsonCowork(sobreescribir){
-    var errBox = document.getElementById('cowork-error');
-    var okBox  = document.getElementById('cowork-ok');
-    errBox.style.display = 'none';
-    okBox.style.display = 'none';
-    var raw = document.getElementById('cowork-json').value.trim();
-    if (!raw) return;
-
-    // Tipo y encuesta del formulario, no de la base: pueden haber cambiado sin guardarse.
-    var fd = new FormData();
-    fd.append('json', raw);
-    fd.append('esCapacitacion', getEsCap() ? 'true' : 'false');
-    fd.append('conEncuesta', encuestaActiva() ? 'true' : 'false');
-    var csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-
-    var p;
+    if (cwOcupado) return;
+    cwOcupado = true;
+    var botones = [document.getElementById('cowork-aplicar'), document.getElementById('cowork-sobreescribir')];
+    botones.forEach(function(b){ if (b) b.disabled = true; });
     try {
-      var resp = await fetch('?handler=InterpretarMemoria', {
-        method: 'POST', headers: { 'RequestVerificationToken': csrf }, body: fd
-      });
-      if (resp.status === 400) {
-        var e = await resp.json();
-        errBox.textContent = e.error;
+      var errBox = document.getElementById('cowork-error');
+      var okBox  = document.getElementById('cowork-ok');
+      errBox.style.display = 'none';
+      okBox.style.display = 'none';
+      var raw = document.getElementById('cowork-json').value.trim();
+      if (!raw) return;
+
+      // Tipo y encuesta del formulario, no de la base: pueden haber cambiado sin guardarse.
+      var fd = new FormData();
+      fd.append('json', raw);
+      fd.append('esCapacitacion', getEsCap() ? 'true' : 'false');
+      fd.append('conEncuesta', encuestaActiva() ? 'true' : 'false');
+      var csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+      var p;
+      try {
+        var resp = await fetch('?handler=InterpretarMemoria', {
+          method: 'POST', headers: { 'RequestVerificationToken': csrf }, body: fd
+        });
+        if (resp.status === 400) {
+          var e = await resp.json();
+          errBox.textContent = e.error;
+          errBox.style.display = '';
+          return;
+        }
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        p = await resp.json();
+      } catch (e) {
+        // Red caída, sesión vencida (la respuesta es el login en HTML) o un 500.
+        errBox.textContent = 'No se pudo interpretar el JSON. Vuelva a intentarlo.';
         errBox.style.display = '';
         return;
       }
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      p = await resp.json();
-    } catch (e) {
-      // Red caída, sesión vencida (la respuesta es el login en HTML) o un 500.
-      errBox.textContent = 'No se pudo interpretar el JSON. Vuelva a intentarlo.';
-      errBox.style.display = '';
-      return;
-    }
 
-    // Lo que ya filtró el servidor: un valor null es «no viene» y no se toca.
-    var campos = [
-      ['Datos.ObjetivoAgenda', p.objetivo],
-      ['Datos.DocsRecursos',   p.documentos],
-      ['Datos.ValDiger',       p.validadorDiger],
-      ['Datos.ValInst',        p.validadorInstitucion],
-      ['Datos.Compromisos',    p.compromisos],
-      ['Datos.Convocados',     p.convocados],
-      ['Datos.NumAsistentes',  p.numAsistentes],
-      ['Datos.PctAsistencia',  p.pctAsistencia]
-    ];
-    var acuerdos = Array.isArray(p.acuerdos) ? p.acuerdos : [];
+      // Lo que ya filtró el servidor: un valor null es «no viene» y no se toca.
+      var campos = [
+        ['Datos.ObjetivoAgenda', p.objetivo],
+        ['Datos.DocsRecursos',   p.documentos],
+        ['Datos.ValDiger',       p.validadorDiger],
+        ['Datos.ValInst',        p.validadorInstitucion],
+        ['Datos.Compromisos',    p.compromisos],
+        ['Datos.Convocados',     p.convocados],
+        ['Datos.NumAsistentes',  p.numAsistentes],
+        ['Datos.PctAsistencia',  p.pctAsistencia]
+      ];
+      var acuerdos = Array.isArray(p.acuerdos) ? p.acuerdos : [];
 
-    // Sin sobreescribir: si algún campo ya tiene información distinta a la del JSON,
-    // se bloquea la acción y se pide usar «Sobreescribir».
-    if (!sobreescribir) {
-      var hayConflicto = false;
+      // Sin sobreescribir: si algún campo ya tiene información distinta a la del JSON,
+      // se bloquea la acción y se pide usar «Sobreescribir».
+      if (!sobreescribir) {
+        var hayConflicto = false;
+        campos.forEach(function(c){
+          if (c[1] == null) return;
+          var el = document.querySelector('[name="' + c[0] + '"]');
+          if (el && el.value.trim() !== '' && el.value.trim() !== String(c[1]).trim()) hayConflicto = true;
+        });
+        if (p.desarrollo != null) {
+          var devActual = (document.getElementById('dev-val').value || '').trim();
+          if (devActual !== '' && devActual !== String(p.desarrollo).trim()) hayConflicto = true;
+        }
+        if (acuerdos.length && document.querySelectorAll('#acuerdos-list .acuerdo-item').length > 0) {
+          hayConflicto = true;
+        }
+        if (hayConflicto) {
+          errBox.textContent = 'Ya hay campos con información. Use «Sobreescribir» para borrar los campos existentes.';
+          errBox.style.display = '';
+          return;
+        }
+      }
+
       campos.forEach(function(c){
         if (c[1] == null) return;
         var el = document.querySelector('[name="' + c[0] + '"]');
-        if (el && el.value.trim() !== '' && el.value.trim() !== String(c[1]).trim()) hayConflicto = true;
+        if (el) el.value = c[1];
       });
+
       if (p.desarrollo != null) {
-        var devActual = (document.getElementById('dev-val').value || '').trim();
-        if (devActual !== '' && devActual !== String(p.desarrollo).trim()) hayConflicto = true;
+        document.getElementById('dev-rte').innerHTML = p.desarrollo;
+        syncDev();
       }
-      if (acuerdos.length && document.querySelectorAll('#acuerdos-list .acuerdo-item').length > 0) {
-        hayConflicto = true;
+
+      if (acuerdos.length) {
+        document.getElementById('acuerdos-list').innerHTML = '';
+        acuerdos.forEach(function (a) {
+          addAcuerdo();
+          var item = document.querySelector('#acuerdos-list .acuerdo-item:last-child');
+          if (a.compromiso) item.querySelector('[name$=".Compromiso"]').value = a.compromiso;
+          if (a.plazo) item.querySelector('[name$=".Plazo"]').value = a.plazo;
+          if (a.responsable) item.querySelector('.resp-select').dataset.selected = a.responsable;
+        });
+        actualizarResponsables();
       }
-      if (hayConflicto) {
-        errBox.textContent = 'Ya hay campos con información. Use «Sobreescribir» para borrar los campos existentes.';
-        errBox.style.display = '';
-        return;
-      }
+
+      okBox.textContent = p.mensaje;
+      okBox.style.display = '';
+    } finally {
+      cwOcupado = false;
+      botones.forEach(function(b){ if (b) b.disabled = false; });
     }
-
-    campos.forEach(function(c){
-      if (c[1] == null) return;
-      var el = document.querySelector('[name="' + c[0] + '"]');
-      if (el) el.value = c[1];
-    });
-
-    if (p.desarrollo != null) {
-      document.getElementById('dev-rte').innerHTML = p.desarrollo;
-      syncDev();
-    }
-
-    if (acuerdos.length) {
-      document.getElementById('acuerdos-list').innerHTML = '';
-      acuerdos.forEach(function (a) {
-        addAcuerdo();
-        var item = document.querySelector('#acuerdos-list .acuerdo-item:last-child');
-        if (a.compromiso) item.querySelector('[name$=".Compromiso"]').value = a.compromiso;
-        if (a.plazo) item.querySelector('[name$=".Plazo"]').value = a.plazo;
-        if (a.responsable) item.querySelector('.resp-select').dataset.selected = a.responsable;
-      });
-      actualizarResponsables();
-    }
-
-    okBox.textContent = p.mensaje;
-    okBox.style.display = '';
   }
 
   function syncTodo(){ otroSync('md'); otroSync('tp'); syncDev(); }
