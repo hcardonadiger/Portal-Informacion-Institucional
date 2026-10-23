@@ -21,5 +21,8 @@ public sealed class ProtectorSecretos(IDataProtectionProvider proveedor) : IProt
     {
         try { return _protector.Unprotect(cifrado); }
         catch (CryptographicException) { return null; }
+        // Hoy Data Protection ya convierte el base64 roto en CryptographicException; esto queda por si
+        // una versión deja de hacerlo, para que un cifrado editado a mano no tumbe el panel con un 500.
+        catch (FormatException) { return null; }
     }
 }

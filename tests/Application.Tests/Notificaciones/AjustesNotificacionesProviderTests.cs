@@ -86,6 +86,12 @@ public sealed class AjustesNotificacionesProviderTests : IDisposable
     }
 
     [Fact]
+    public void Un_cifrado_que_ni_siquiera_es_base64_se_lee_como_ilegible()
+    {
+        _protector.Descifrar("%%%").Should().BeNull();
+    }
+
+    [Fact]
     public async Task Invalidar_hace_releer_la_base()
     {
         var p = Proveedor();
