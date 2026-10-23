@@ -49,7 +49,8 @@
         {
             <span class="hint">En el calendario de @o.Organizador
                 @(o.SincronizadaEl is { } s ? $"· actualizada {s.ToLocalTime():dd/MM/yyyy HH:mm}" : "")</span>
-            @if (!string.IsNullOrEmpty(o.EnlaceTeams))
+            @* Solo un enlace https absoluto: lo que viene de Graph no se pinta como href a ciegas. *@
+            @if (Uri.TryCreate(o.EnlaceTeams, UriKind.Absolute, out var teams) && teams.Scheme == Uri.UriSchemeHttps)
             {
                 <a class="btns" href="@o.EnlaceTeams" target="_blank" rel="noopener">Abrir en Teams</a>
             }

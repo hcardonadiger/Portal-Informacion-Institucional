@@ -38,7 +38,8 @@
             <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
         }
         <a class="btns" asp-page-handler="Json" asp-route-id="@Model.ReunionId">📄 Exportar JSON</a>
-        @if (!string.IsNullOrEmpty(Model.EnlaceTeams))
+        @* Solo un enlace https absoluto: lo que viene de Graph no se pinta como href a ciegas. *@
+        @if (Uri.TryCreate(Model.EnlaceTeams, UriKind.Absolute, out var teams) && teams.Scheme == Uri.UriSchemeHttps)
         {
             <a class="btns" href="@Model.EnlaceTeams" target="_blank" rel="noopener">Unirse por Teams</a>
         }

@@ -237,10 +237,72 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
 
         resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
         await _calendario.ReceivedWithAnyArgs(1).CancelarAsync(default, default!, default!, default);
+        var lista = WebUtility.HtmlDecode(await c.GetStringAsync("/Reuniones"));
+        lista.Should().Contain("Reunión eliminada.").And.Contain("a mano");
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
         (await db.Reuniones.IgnoreQueryFilters().SingleAsync(r => r.Id == id)).IsDeleted
             .Should().BeTrue("el portal no bloquea un borrado por Microsoft");
+    }
+
+    [Fact]
+    public async Task Desmarcar_Teams_envia_sin_Teams()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        var id = await SembrarReunionAsync(conectada: true);
+        var c = Jefe();
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+
+        // Casilla desmarcada: el navegador no manda el campo conTeams.
+        var resp = await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = token }));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        await _calendario.Received(1).CrearAsync(
+            Arg.Any<Guid>(), Arg.Is<EventoOutlook>(e => !e.EsTeams), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Si_la_sincronizacion_revienta_tras_guardar_el_guardado_sigue_siendo_exitoso()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        var id = await SembrarReunionAsync(conectada: true);
+        var c = Jefe();
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+        await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = token, ["conTeams"] = "true" }));
+
+        // La reunión la creó otra persona. Al volverla privada, el guardado la saca del alcance de
+        // quien edita: ya confirmado el cambio, la sincronización no la encuentra (NotFoundException).
+        using (var scope = _portal.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
+            var r = await db.Reuniones.IgnoreQueryFilters().SingleAsync(x => x.Id == id);
+            r.OutlookEventId.Should().Be("AAMk-9", "la reunión tiene que estar ya en Outlook");
+            r.CreadoPorId = _portal.UsuarioDe("Empleado");
+            await db.SaveChangesAsync();
+        }
+
+        token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+        var resp = await c.PostAsync($"/Reuniones/Editor?id={id}", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["Datos.Titulo"] = "Mesa técnica (editada)",
+            ["Datos.Visibilidad"] = "Privada",
+            ["Datos.Fecha"] = "2026-10-23",
+            ["Datos.Hora"] = "09:00"
+        }));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().NotContain("/Error");
+        using var verif = _portal.Services.CreateScope();
+        var dbv = verif.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
+        (await dbv.Reuniones.IgnoreQueryFilters().SingleAsync(x => x.Id == id)).Titulo
+            .Should().Be("Mesa técnica (editada)", "el guardado se confirmó antes de que Outlook fallara");
+        WebUtility.HtmlDecode(await c.GetStringAsync("/Reuniones"))
+            .Should().Contain("Reunión actualizada.").And.Contain("no se pudo actualizar en Outlook");
     }
 
     /// <summary>Pulsa «Conectar mi Outlook» como Empleado: deja el estado y el verificador en el

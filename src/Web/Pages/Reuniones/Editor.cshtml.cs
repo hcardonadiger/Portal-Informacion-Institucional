@@ -199,8 +199,23 @@ public sealed class EditorModel(
 
     /// <summary>Tras guardar: actualiza la cita si cambió para los invitados. Nunca lanza por
     /// Outlook (un fallo queda como pendiente y se ve en la tarjeta).</summary>
-    private Task SincronizarOutlookAsync(int id, CancellationToken ct) =>
-        sender.Send(new SincronizarReunionOutlookCommand(id, UrlFicha(id)), ct);
+    /// <remarks>El comando ya absorbe los fallos de Graph, pero no todo: si el guardado sacó la
+    /// reunión del alcance de quien edita (NotFoundException), o falla su propio guardado del
+    /// estado, la excepción llegaría al handler con la reunión ya confirmada — y se vería como
+    /// si el guardado hubiera fallado.</remarks>
+    private async Task SincronizarOutlookAsync(int id, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new SincronizarReunionOutlookCommand(id, UrlFicha(id)), ct);
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // La reunión ya quedó guardada: lo de Outlook no puede convertir eso en un error.
+            // LoggingBehavior ya registró la excepción.
+            OutlookAviso = "La reunión se guardó, pero no se pudo actualizar en Outlook. Use «Reintentar» en la tarjeta de Outlook.";
+        }
+    }
 
     public async Task<IActionResult> OnPostEnviarOutlookAsync(int id, bool conTeams, CancellationToken ct)
     {
@@ -283,6 +298,13 @@ public sealed class EditorModel(
             await GuardarAsync(id, ct);
             if (id is not null) await SincronizarOutlookAsync(id.Value, ct);
             TempData["SuccessMsg"] = id is null ? "Reunión creada." : "Reunión actualizada.";
+            // Este guardado vuelve al listado, que no tiene tarjeta de Outlook: el aviso viaja con
+            // el mensaje en vez de quedar esperando y salir después en la tarjeta de otra reunión.
+            if (OutlookAviso is { } aviso)
+            {
+                TempData["SuccessMsg"] += " " + aviso;
+                OutlookAviso = null;
+            }
             return RedirectToPage("/Reuniones/Index");
         }
         catch (DomainException ex)
