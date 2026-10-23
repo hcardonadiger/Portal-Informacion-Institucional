@@ -173,10 +173,12 @@ public static class MemoriaDesdeTranscripcion
 
     public static MemoriaPropuesta Interpretar(string json, bool esCapacitacion, bool conEncuesta)
     {
+        if (string.IsNullOrWhiteSpace(json)) throw new DomainException(JsonInvalido);
+
         JsonElement d;
         try
         {
-            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "x" : json);
+            using var doc = JsonDocument.Parse(json);
             d = doc.RootElement.Clone();
         }
         catch (JsonException) { throw new DomainException(JsonInvalido); }
@@ -263,16 +265,20 @@ public static class MemoriaDesdeTranscripcion
         return lineas.Count == 0 ? null : string.Join("\n", lineas);
     }
 
-    /// <summary>Un entero no negativo, como número o como texto numérico («24»).</summary>
+    /// <summary>
+    /// Un entero no negativo, como número o como texto numérico («24»). La IA a veces escribe el
+    /// mismo entero como «80.0», «3e1» o «"80%"»: valen. Una fracción («24.5»), un negativo o algo
+    /// que no cabe en un <c>int</c> no son una cifra de asistencia y no se aplican.
+    /// </summary>
     private static int? Entero(JsonElement d, string clave)
     {
         if (!d.TryGetProperty(clave, out var v)) return null;
-        var n = 0;
+        var x = 0d;
         var ok = v.ValueKind == JsonValueKind.Number
-            ? v.TryGetInt32(out n)
+            ? v.TryGetDouble(out x)
             : v.ValueKind == JsonValueKind.String
-              && int.TryParse(v.GetString()?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out n);
-        return ok && n >= 0 ? n : null;
+              && double.TryParse(v.GetString()?.Trim().TrimEnd('%'), NumberStyles.Float, CultureInfo.InvariantCulture, out x);
+        return ok && x >= 0 && x <= int.MaxValue && x == Math.Floor(x) ? (int)x : null;
     }
 
     /// <summary>Un entero de 0 a 100; fuera de rango no se aplica.</summary>

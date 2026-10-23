@@ -170,11 +170,36 @@ public class MemoriaDesdeTranscripcionTests
     [InlineData("no es json")]
     [InlineData("[1,2]")]
     [InlineData("")]
+    [InlineData("   ")]
     public void Lo_que_no_es_un_objeto_JSON_se_rechaza(string json)
     {
         var acto = () => MemoriaDesdeTranscripcion.Interpretar(json, false, false);
 
         acto.Should().Throw<DomainException>().WithMessage("El texto pegado no es un JSON válido.");
+    }
+
+    /// <summary>
+    /// La IA no siempre escribe «80»: a veces «80.0», «3e1», «"24.0"» o «"80%"». Son el mismo
+    /// entero y se aplican; una fracción o un negativo no son una cifra de asistencia y no.
+    /// </summary>
+    [Theory]
+    [InlineData("80.0", 80)]
+    [InlineData("\"24.0\"", 24)]
+    [InlineData("3e1", 30)]
+    [InlineData("\"80%\"", 80)]
+    [InlineData("\" 24 \"", 24)]
+    [InlineData("24.5", null)]
+    [InlineData("\"24.5\"", null)]
+    [InlineData("\"-3\"", null)]
+    [InlineData("-3", null)]
+    [InlineData("3000000000", null)]
+    public void Las_cifras_de_capacitacion_aceptan_decimales_enteros_y_el_signo_de_porcentaje(string valor, int? esperado)
+    {
+        var p = MemoriaDesdeTranscripcion.Interpretar(
+            "{ \"convocados\": " + valor + ", \"pct_asistencia\": " + valor + " }", esCapacitacion: true, conEncuesta: false);
+
+        p.Convocados.Should().Be(esperado);
+        p.PctAsistencia.Should().Be(esperado is <= 100 ? esperado : null, "el rango 0..100 del porcentaje sigue igual");
     }
 
     [Theory]
