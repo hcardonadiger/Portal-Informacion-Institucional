@@ -119,6 +119,17 @@ public sealed record InterruptoresInput(ModuloNotificacion Modulo, bool Campana,
 
 public sealed record GuardarModulosCommand(IReadOnlyList<InterruptoresInput> Modulos) : IRequest<Unit>;
 
+public sealed class GuardarModulosValidator : AbstractValidator<GuardarModulosCommand>
+{
+    public GuardarModulosValidator()
+    {
+        RuleFor(x => x.Modulos).NotNull().WithMessage("Falta la lista de módulos.");
+        // Un valor manipulado en el formulario crearía una fila de un módulo que no existe.
+        RuleForEach(x => x.Modulos).ChildRules(m =>
+            m.RuleFor(i => i.Modulo).IsInEnum().WithMessage("Módulo de notificación desconocido."));
+    }
+}
+
 public sealed class GuardarModulosCommandHandler(
     IApplicationDbContext ctx, IAjustesNotificaciones ajustes, ICurrentUserService usuario, TimeProvider reloj)
     : IRequestHandler<GuardarModulosCommand, Unit>

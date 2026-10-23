@@ -67,6 +67,18 @@ public sealed class PanelNotificacionesTests : IDisposable
     }
 
     [Fact]
+    public void El_validador_de_modulos_rechaza_un_modulo_desconocido()
+    {
+        var malo = new GuardarModulosCommand([new InterruptoresInput((ModuloNotificacion)99, true, false, true)]);
+        var r = new GuardarModulosValidator().Validate(malo);
+        r.IsValid.Should().BeFalse();
+        r.Errors.Should().Contain(e => e.ErrorMessage == "Módulo de notificación desconocido.");
+
+        var bueno = new GuardarModulosCommand([new InterruptoresInput(ModuloNotificacion.Reuniones, true, true, true)]);
+        new GuardarModulosValidator().Validate(bueno).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task La_contrasena_queda_cifrada_y_la_bitacora_no_la_dice()
     {
         await GuardarCorreoAsync("Secreta#123");
