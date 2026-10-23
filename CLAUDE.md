@@ -146,7 +146,11 @@ User Secrets, nunca en appsettings). Application arma un `EventoOutlook` puro y 
 falla por Outlook (queda `OutlookPendiente`) y borrar nunca se bloquea. Actualizar y cancelar
 usan la conexión del **organizador**, no la de quien edita. Spec:
 `docs/superpowers/specs/2026-10-22-reuniones-a-outlook-design.md`.
-Hasta que TI registre la aplicación en Entra ID la integración queda apagada.
+Hasta que TI registre la aplicación en Entra ID la integración queda apagada. Una reunión cuya
+cita ya terminó no se actualiza en Outlook al guardar (llenar la memoria avisaría a todos los
+invitados). Las reglas para llenar la ayuda memoria desde una transcripción viven en
+`Application/Reuniones/Memoria/MemoriaDesdeTranscripcion`, que usan el editor y el MCP
+(`llenar_memoria_reunion`); no las reescribas en el JavaScript del editor.
 
 ### Expediente aggregate
 
