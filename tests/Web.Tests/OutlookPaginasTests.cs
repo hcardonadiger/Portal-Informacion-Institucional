@@ -2,19 +2,23 @@ using System.Net;
 using System.Text.RegularExpressions;
 using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Diger.TramitesEstado.Web.Tests;
 
 /// <summary>El retorno de Microsoft solo se acepta con el estado que la propia sesión emitió
-/// (anti-CSRF); el perfil apaga la tarjeta cuando el servidor no tiene la app registrada.</summary>
+/// (anti-CSRF); el perfil apaga la tarjeta cuando el servidor no tiene la app registrada.
+/// En las reuniones: el editor envía la cita a Outlook, y borrar no se bloquea por Microsoft.</summary>
 public sealed class OutlookPaginasTests : IAsyncLifetime
 {
     private readonly PortalFactory _portal = new();
     private readonly IConexionMicrosoft _conexion = Substitute.For<IConexionMicrosoft>();
+    private readonly IOutlookCalendario _calendario = Substitute.For<IOutlookCalendario>();
 
     public async Task InitializeAsync()
     {
@@ -22,8 +26,11 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
         {
             s.RemoveAll<IConexionMicrosoft>();
             s.AddScoped(_ => _conexion);
+            s.RemoveAll<IOutlookCalendario>();
+            s.AddScoped(_ => _calendario);
         };
         await _portal.PrepararAsync();
+        await _portal.OtorgarAsync("JefeArea", "Reuniones.Ver", "Reuniones.Editar", "Reuniones.Eliminar");
     }
 
     public Task DisposeAsync() { _portal.Dispose(); return Task.CompletedTask; }
@@ -126,6 +133,114 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
         html.Should().NotContain("inventado");
         html.Should().Contain("Microsoft no completó la conexión");
         await _conexion.DidNotReceiveWithAnyArgs().CompletarAsync(default, default!, default!, default!, default);
+    }
+
+    // ── Reuniones: editor, listado ────────────────────────────────
+
+    private async Task<int> SembrarReunionAsync(bool conectada)
+    {
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
+        var r = Diger.TramitesEstado.Domain.Entities.Reunion.Crear("Mesa técnica");
+        r.InstitucionId = "DIGER"; r.InstitucionDuenaId = "DIGER";
+        r.AreaId = PortalFactory.AreaDeCasa; r.UnidadId = PortalFactory.UnidadDeCasa;
+        r.Fecha = new DateOnly(2026, 10, 23); r.Hora = "09:00";
+        db.Reuniones.Add(r);
+        if (conectada)
+            db.ConexionesMicrosoft.Add(Diger.TramitesEstado.Domain.Entities.ConexionMicrosoft.Crear(
+                _portal.UsuarioDe("JefeArea"), "jefe@diger.gob.hn", "h", [1], DateTime.UtcNow));
+        await db.SaveChangesAsync();
+        return r.Id;
+    }
+
+    private HttpClient Jefe() => _portal.ClienteComo("JefeArea", "DIGER", PortalFactory.AreaDeCasa, PortalFactory.UnidadDeCasa);
+
+    private static async Task<string> TokenAsync(HttpClient c, string url)
+    {
+        var html = await c.GetStringAsync(url);
+        var m = System.Text.RegularExpressions.Regex.Match(html, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"");
+        return m.Groups[1].Value;
+    }
+
+    [Fact]
+    public async Task El_editor_ofrece_enviar_con_Teams_marcado_si_el_usuario_esta_conectado()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        var id = await SembrarReunionAsync(conectada: true);
+
+        var html = await Jefe().GetStringAsync($"/Reuniones/Editor?id={id}");
+
+        html.Should().Contain("Enviar a Outlook");
+        html.Should().MatchRegex("name=\"conTeams\"[^>]*checked");
+    }
+
+    [Fact]
+    public async Task Enviar_desde_el_editor_deja_la_reunion_en_Outlook()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", "https://teams/z"));
+        var id = await SembrarReunionAsync(conectada: true);
+        var c = Jefe();
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+
+        var resp = await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token, ["conTeams"] = "true"
+        }));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
+        // IgnoreQueryFilters: este scope no tiene sesión, y el filtro de alcance lo dejaría sin filas.
+        (await db.Reuniones.IgnoreQueryFilters().SingleAsync(r => r.Id == id)).OutlookEventId.Should().Be("AAMk-9");
+    }
+
+    [Fact]
+    public async Task Un_fallo_inesperado_al_enviar_muestra_aviso_y_no_500()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new InvalidOperationException("x"));
+        var id = await SembrarReunionAsync(conectada: true);
+        var c = Jefe();
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+
+        var resp = await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token, ["conTeams"] = "true"
+        }));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        // WebExceptionHandler también responde 302, pero hacia /Error?code=500: el código solo no basta.
+        resp.Headers.Location!.ToString().Should().NotContain("/Error");
+        // El aviso sale por una expresión Razor, que codifica los acentos: se decodifica para leerlo.
+        WebUtility.HtmlDecode(await c.GetStringAsync($"/Reuniones/Editor?id={id}"))
+            .Should().Contain("No se pudo enviar a Outlook");
+    }
+
+    [Fact]
+    public async Task Borrar_una_reunion_cuya_cita_no_se_pudo_cancelar_la_borra_igual()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        _calendario.CancelarAsync(default, default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new OutlookNoDisponibleException("503"));
+        var id = await SembrarReunionAsync(conectada: true);
+        var c = Jefe();
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+        await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = token, ["conTeams"] = "true" }));
+
+        var tokenIndex = await TokenAsync(c, "/Reuniones");
+        var resp = await c.PostAsync($"/Reuniones?handler=Eliminar&id={id}", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = tokenIndex }));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        await _calendario.ReceivedWithAnyArgs(1).CancelarAsync(default, default!, default!, default);
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
+        (await db.Reuniones.IgnoreQueryFilters().SingleAsync(r => r.Id == id)).IsDeleted
+            .Should().BeTrue("el portal no bloquea un borrado por Microsoft");
     }
 
     /// <summary>Pulsa «Conectar mi Outlook» como Empleado: deja el estado y el verificador en el

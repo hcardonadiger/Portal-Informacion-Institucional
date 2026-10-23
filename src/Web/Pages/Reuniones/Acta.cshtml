@@ -38,6 +38,10 @@
             <a class="btns" asp-page="/Reuniones/Editor" asp-route-id="@Model.ReunionId">Editar</a>
         }
         <a class="btns" asp-page-handler="Json" asp-route-id="@Model.ReunionId">📄 Exportar JSON</a>
+        @if (!string.IsNullOrEmpty(Model.EnlaceTeams))
+        {
+            <a class="btns" href="@Model.EnlaceTeams" target="_blank" rel="noopener">Unirse por Teams</a>
+        }
         <a class="btnp" asp-page-handler="Pdf" asp-route-id="@Model.ReunionId">⬇ Descargar PDF</a>
     </div>
 </div>

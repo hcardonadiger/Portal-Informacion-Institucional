@@ -1,4 +1,6 @@
-﻿namespace Diger.TramitesEstado.Web.Pages.Reuniones;
+﻿using Diger.TramitesEstado.Application.Reuniones.Outlook;
+
+namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
 [Authorize]
 [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
@@ -188,6 +190,45 @@ public sealed class EditorModel(
 
     public string? Error { get; set; }
 
+    /// <summary>Estado de la cita de Outlook. null en una reunión nueva (aún no existe).</summary>
+    public EstadoOutlookDto? Outlook { get; private set; }
+
+    [TempData] public string? OutlookAviso { get; set; }
+
+    private string UrlFicha(int id) => Url.PageLink("/Reuniones/Acta", values: new { id })!;
+
+    /// <summary>Tras guardar: actualiza la cita si cambió para los invitados. Nunca lanza por
+    /// Outlook (un fallo queda como pendiente y se ve en la tarjeta).</summary>
+    private Task SincronizarOutlookAsync(int id, CancellationToken ct) =>
+        sender.Send(new SincronizarReunionOutlookCommand(id, UrlFicha(id)), ct);
+
+    public async Task<IActionResult> OnPostEnviarOutlookAsync(int id, bool conTeams, CancellationToken ct)
+    {
+        try
+        {
+            await sender.Send(new EnviarReunionAOutlookCommand(id, conTeams, UrlFicha(id)), ct);
+            TempData["SuccessMsg"] = conTeams
+                ? "La reunión se envió a Outlook, con reunión de Teams."
+                : "La reunión se envió a Outlook.";
+        }
+        catch (DomainException ex)
+        {
+            OutlookAviso = ex.Message;
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // Un imprevisto (respuesta ilegible, fallo del token…) se dice en la tarjeta; no es un 500.
+            OutlookAviso = "No se pudo enviar a Outlook. Vuelva a intentarlo; si se repite, avise a TI.";
+        }
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostReintentarOutlookAsync(int id, CancellationToken ct)
+    {
+        await SincronizarOutlookAsync(id, ct);
+        return RedirectToPage(new { id });
+    }
+
     public string[] Modalidades => ["Presencial", "Virtual", "Híbrida", "Otro"];
     public string[] Tipos =>
         ["Taller", "Seminario", "Charla", "Curso", "Reunión técnica", "Capacitación", "Inducción", "Conferencia", "Otro"];
@@ -214,6 +255,7 @@ public sealed class EditorModel(
             Asistentes = d.Asistentes;
             Acuerdos   = d.Acuerdos;
             RepartirAdjuntos(d.Datos);
+            Outlook = await sender.Send(new GetEstadoOutlookQuery(d.Id), ct);
             return Page();
         }
         catch (NotFoundException)
@@ -239,6 +281,7 @@ public sealed class EditorModel(
         try
         {
             await GuardarAsync(id, ct);
+            if (id is not null) await SincronizarOutlookAsync(id.Value, ct);
             TempData["SuccessMsg"] = id is null ? "Reunión creada." : "Reunión actualizada.";
             return RedirectToPage("/Reuniones/Index");
         }
@@ -267,6 +310,7 @@ public sealed class EditorModel(
         try
         {
             var reunionId = await GuardarAsync(id, ct);
+            if (id is not null) await SincronizarOutlookAsync(reunionId, ct);
             TempData["SuccessMsg"] = "Cambios guardados.";
             return RedirectToPage(new { id = reunionId, paso = paso });
         }

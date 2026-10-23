@@ -29,6 +29,62 @@
     <div class="container" style="max-width:1280px;padding-top:0"><div class="alert-error">@Model.Error</div></div>
 }
 
+@* Esta página no pintaba TempData["SuccessMsg"]: lo que dejaban «Guardar y continuar» y el envío
+   a Outlook (que vuelven acá) se quedaba esperando y salía después, fuera de lugar, en el listado. *@
+@if (TempData.Peek("SuccessMsg") is string)
+{
+    <div class="container" style="max-width:1280px;padding-top:0"><partial name="_SuccessBanner" /></div>
+}
+
+@if (Model.ReunionId is not null && Model.Outlook is { Configurado: true } o)
+{
+    <div class="container" style="max-width:1280px;padding-top:0">
+      <div class="card" style="padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <strong>Outlook</strong>
+        @if (!string.IsNullOrEmpty(Model.OutlookAviso))
+        {
+            <div class="alert-warn" style="flex-basis:100%">@Model.OutlookAviso</div>
+        }
+        @if (o.EnOutlook)
+        {
+            <span class="hint">En el calendario de @o.Organizador
+                @(o.SincronizadaEl is { } s ? $"· actualizada {s.ToLocalTime():dd/MM/yyyy HH:mm}" : "")</span>
+            @if (!string.IsNullOrEmpty(o.EnlaceTeams))
+            {
+                <a class="btns" href="@o.EnlaceTeams" target="_blank" rel="noopener">Abrir en Teams</a>
+            }
+            @if (o.Pendiente)
+            {
+                <div class="alert-warn" style="flex-basis:100%;display:flex;gap:8px;align-items:center;justify-content:space-between">
+                    <span>@o.Error</span>
+                    <form method="post" asp-page-handler="ReintentarOutlook" asp-route-id="@Model.ReunionId">
+                        <button type="submit" class="btns">Reintentar</button>
+                    </form>
+                </div>
+            }
+        }
+        else if (!o.UsuarioConectado || o.UsuarioRequiereReconexion)
+        {
+            <span class="hint">Para enviar esta reunión a su calendario,
+                <a asp-page="/Cuenta/Perfil">@(o.UsuarioRequiereReconexion ? "reconecte" : "conecte") su Outlook</a> desde su perfil.</span>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="EnviarOutlook" asp-route-id="@Model.ReunionId"
+                  style="display:flex;gap:12px;align-items:center;margin:0">
+                <label style="display:flex;gap:6px;align-items:center;margin:0">
+                    @* Sin hidden de respaldo a propósito: desmarcada, la casilla no se envía y el
+                       parámetro bool conTeams del handler queda en false. *@
+                    <input type="checkbox" name="conTeams" value="true" checked /> Crear reunión de Teams
+                </label>
+                <button type="submit" class="btnp">Enviar a Outlook</button>
+            </form>
+            <span class="hint">Llega a usted y a los pre-registrados con correo, al enlace y al facilitador.</span>
+        }
+      </div>
+    </div>
+}
+
 <form method="post" enctype="multipart/form-data" id="reu-form">
 <input type="hidden" name="paso" id="paso-hidden" value="0" />
 <div class="wrap">

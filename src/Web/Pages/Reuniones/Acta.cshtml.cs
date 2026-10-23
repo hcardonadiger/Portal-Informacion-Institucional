@@ -1,5 +1,6 @@
 ﻿using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
+using Diger.TramitesEstado.Application.Reuniones.Outlook;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
@@ -40,6 +41,9 @@ public sealed class ActaModel(
     /// su clave y no la de reuniones. La misma acción pide el mismo permiso desde donde se haga.</summary>
     public bool PuedeVincular { get; private set; }
 
+    /// <summary>Enlace de la reunión de Teams, si la cita se envió a Outlook con Teams.</summary>
+    public string? EnlaceTeams { get; private set; }
+
     public async Task<IActionResult> OnGetAsync(int id, CancellationToken ct)
     {
         try
@@ -52,6 +56,7 @@ public sealed class ActaModel(
             Acuerdos   = d.Acuerdos;
             InstitucionNombre = d.InstitucionNombre;  // snapshot (sirve aunque la institución no esté catalogada)
             InstitucionesParticipantes = d.InstitucionesParticipantes;
+            EnlaceTeams = (await sender.Send(new GetEstadoOutlookQuery(ReunionId), ct)).EnlaceTeams;
 
             Hilo       = await sender.Send(new GetHiloDeReunionQuery(id), ct);
             Enlazables = await sender.Send(new GetReunionesEnlazablesQuery(id), ct);
