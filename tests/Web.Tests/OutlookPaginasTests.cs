@@ -78,6 +78,30 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
         await _conexion.DidNotReceiveWithAnyArgs().CompletarAsync(default, default!, default!, default!, default);
     }
 
+    /// <summary>AllowAnonymousToFolder("/Cuenta") gana sobre el [Authorize] de Perfil, así que sin
+    /// la guarda del handler un POST anónimo llegaba a él. Con un token antiforgery anónimo válido
+    /// —el del login, que cualquiera obtiene— el antiforgery no lo frena: lo frena la guarda.</summary>
+    [Theory]
+    [InlineData("DesconectarOutlook")]
+    [InlineData("ConectarOutlook")]
+    public async Task Sin_sesion_los_handlers_de_Outlook_del_perfil_mandan_al_login(string handler)
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _conexion.IniciarAsync(default!, default).ReturnsForAnyArgs(
+            new InicioConexionDto("https://login.microsoftonline.com/x/authorize", "E", "V"));
+        var anonimo = _portal.ClienteAnonimo();
+        var login = await anonimo.GetStringAsync("/Cuenta/Login");
+        var token = Regex.Match(login, """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;
+        token.Should().NotBeEmpty();
+
+        var resp = await anonimo.PostAsync($"/Cuenta/Perfil?handler={handler}",
+            new FormUrlEncodedContent([new KeyValuePair<string, string>("__RequestVerificationToken", token)]));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().Contain("/Cuenta/Login");
+        await _conexion.DidNotReceiveWithAnyArgs().IniciarAsync(default!, default);
+    }
+
     [Fact]
     public async Task Un_estado_distinto_no_canjea_y_no_rompe_la_conexion_en_curso()
     {

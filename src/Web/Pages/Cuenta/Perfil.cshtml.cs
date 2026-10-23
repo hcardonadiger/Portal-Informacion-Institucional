@@ -55,6 +55,9 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
 
     public async Task<IActionResult> OnPostConectarOutlookAsync(CancellationToken ct)
     {
+        // Misma guarda que OnGetAsync: AllowAnonymousToFolder("/Cuenta") deja pasar sin sesión.
+        if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
+
         var urlRetorno = Url.PageLink("/Cuenta/OutlookCallback")!;
         try
         {
@@ -76,6 +79,8 @@ public sealed class PerfilModel(ISender sender, ICurrentUserService currentUser)
 
     public async Task<IActionResult> OnPostDesconectarOutlookAsync(CancellationToken ct)
     {
+        if (currentUser.UserId == null) return RedirectToPage("/Cuenta/Login");
+
         await sender.Send(new DesconectarOutlookCommand(), ct);
         // "SuccessMessage" es la clave que pinta _CuentaLayout; "SuccessMsg" no se mostraría aquí.
         TempData["SuccessMessage"] = "Outlook desconectado. Las citas ya enviadas siguen en su calendario.";
