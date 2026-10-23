@@ -16,8 +16,11 @@ namespace Diger.TramitesEstado.Application.Tests.Notificaciones;
 
 public sealed class DespachadorCorreosTests : IDisposable
 {
-    private readonly AppDbContext _ctx = new(
-        new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options,
+    private readonly string _base = Guid.NewGuid().ToString();
+    private readonly AppDbContext _ctx;
+
+    private AppDbContext Contexto() => new(
+        new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(_base).Options,
         new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
 
     private readonly IEmailService _email = Substitute.For<IEmailService>();
@@ -25,6 +28,7 @@ public sealed class DespachadorCorreosTests : IDisposable
 
     public DespachadorCorreosTests()
     {
+        _ctx = Contexto();
         _ctx.Usuarios.Add(_ana);
         _ctx.SaveChanges();
     }
@@ -89,6 +93,31 @@ public sealed class DespachadorCorreosTests : IDisposable
         await _email.Received(1).SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(),
             Arg.Is<string>(b => b.Contains("&lt;b&gt;x&lt;/b&gt;") && !b.Contains("<b>x</b>")),
             Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Si_la_vuelta_se_cancela_a_mitad_lo_ya_enviado_queda_guardado()
+    {
+        var beto = Usuario.Crear("Beto", "beto@prueba.local", "hash");
+        _ctx.Usuarios.Add(beto);
+        var antes = DateTime.UtcNow.AddMinutes(-10);
+        _ctx.CorreosPendientes.Add(CorreoPendiente.Crear(_ana.Id, ModuloNotificacion.Reuniones,
+            TipoNotificacion.CompromisoVencido, "Compromiso /c/1", "/c/1", "/c/1", antes));
+        _ctx.CorreosPendientes.Add(CorreoPendiente.Crear(beto.Id, ModuloNotificacion.Reuniones,
+            TipoNotificacion.CompromisoVencido, "Compromiso /c/2", "/c/2", "/c/2", antes.AddMinutes(1)));
+        await _ctx.SaveChangesAsync();
+        _email.SendEmailAsync("ana@prueba.local", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>())
+            .Returns(ResultadoCorreo.Enviado);
+        _email.SendEmailAsync("beto@prueba.local", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ResultadoCorreo>(new OperationCanceledException()));
+
+        var act = () => Despachador().DespacharAsync();
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        // Otro contexto: lo que cuenta es lo que llegó a la base, no lo que quedó en memoria.
+        await using var otro = Contexto();
+        (await otro.CorreosPendientes.SingleAsync(c => c.DestinatarioId == _ana.Id)).Estado.Should().Be(EstadoCorreoPendiente.Enviado);
+        (await otro.CorreosPendientes.SingleAsync(c => c.DestinatarioId == beto.Id)).Estado.Should().Be(EstadoCorreoPendiente.Pendiente);
     }
 
     public void Dispose() => _ctx.Dispose();

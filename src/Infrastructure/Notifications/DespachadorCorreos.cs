@@ -43,6 +43,7 @@ public sealed class DespachadorCorreos(
             if (!usuarios.TryGetValue(grupo.Key, out var u) || !u.Activo || string.IsNullOrWhiteSpace(u.Correo))
             {
                 foreach (var p in grupo) p.Descartar("El destinatario no está activo o no tiene correo registrado.");
+                await ctx.SaveChangesAsync(CancellationToken.None);
                 continue;
             }
 
@@ -59,8 +60,14 @@ public sealed class DespachadorCorreos(
             }
 
             if (resultado == ResultadoCorreo.Enviado) enviados++;
+
+            // Se guarda por persona: si el sitio se recicla a mitad de la vuelta, a quien ya le salió
+            // su correo no se le vuelve a mandar en la siguiente. Sin el token: el correo ya salió y
+            // anotarlo no puede quedarse a medias porque el host se esté apagando.
+            await ctx.SaveChangesAsync(CancellationToken.None);
         }
 
+        // Red de seguridad: normalmente ya no queda nada por guardar.
         await ctx.SaveChangesAsync(ct);
         if (enviados > 0) logger.LogInformation("Bandeja de correo: {Enviados} resúmenes enviados.", enviados);
         return enviados;
