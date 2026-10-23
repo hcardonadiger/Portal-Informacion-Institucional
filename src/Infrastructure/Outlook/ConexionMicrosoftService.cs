@@ -70,7 +70,10 @@ public sealed class ConexionMicrosoftService(
                 // El estado solo viaja en la URL: no tiene por qué entrar en la llave de la caché.
                 .WithExtraQueryParameters(new Dictionary<string, (string, bool)> { ["state"] = (estado, false) })
                 .ExecuteAsync(ct);
-            return new InicioConexionDto(url.ToString(), estado, verificador);
+            // AbsoluteUri y no ToString(): ToString() des-escapa los %20 que separan los alcances y
+            // la cabecera Location salía con espacios literales — una URL inválida que el navegador
+            // suele reparar pero un proxy o una pasarela pueden romper. Medido el 2026-10-23.
+            return new InicioConexionDto(url.AbsoluteUri, estado, verificador);
         }
         catch (MsalException ex)
         {

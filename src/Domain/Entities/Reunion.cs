@@ -179,6 +179,24 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public void Agregar(AcuerdoReunion a) => _acuerdos.Add(a);
     public void Agregar(ReunionAdjunto a) => _adjuntos.Add(a);
 
+    /// <summary>
+    /// Reemplaza solo los acuerdos, numerándolos 0..n-1 en el orden recibido. Existe porque
+    /// <see cref="LimpiarHijos"/> vacía también asistentes y adjuntos, y llenar la memoria desde una
+    /// transcripción no debe llevárselos. Quien llama decide si los acuerdos actuales se pueden
+    /// perder (los que tienen seguimiento no).
+    /// </summary>
+    public void ReemplazarAcuerdos(IEnumerable<AcuerdoReunion> nuevos)
+    {
+        ArgumentNullException.ThrowIfNull(nuevos);
+        var lista = nuevos.ToList();
+        _acuerdos.Clear();
+        for (var i = 0; i < lista.Count; i++)
+        {
+            lista[i].Orden = i;
+            _acuerdos.Add(lista[i]);
+        }
+    }
+
     /// <summary>Vacía la lista de instituciones convocadas (reemplazo en bloque).</summary>
     public void LimpiarInstituciones() => _institucionesParticipantes.Clear();
 
@@ -278,6 +296,14 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 
         OutlookPendiente = true;
         OutlookError     = motivo.Length > 500 ? motivo[..500] : motivo;
+    }
+
+    /// <summary>Quita el aviso sin haber mandado nada: la huella y la fecha de sincronización siguen
+    /// siendo las de la última vez que la cita se envió de verdad.</summary>
+    public void DescartarOutlookPendiente()
+    {
+        OutlookPendiente = false;
+        OutlookError     = null;
     }
 }
 

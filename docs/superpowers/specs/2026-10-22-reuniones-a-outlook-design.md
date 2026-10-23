@@ -209,11 +209,18 @@ exitoso, si la reunión tiene `OutlookEventId`, la página llama a
 
 1. Reconstruye el evento. Si el builder lo rechaza (p. ej. borraron la hora), marca pendiente
    con ese motivo.
-2. Si `Huella()` == `OutlookHuella` → no hace nada (evita mandar «reunión actualizada» a todos
+2. **Si la cita ya terminó** (fin del evento anterior a la hora actual de Honduras), no llama a
+   Graph y no marca pendiente; si la reunión tenía un aviso pendiente, lo descarta (ya no hay
+   nada que mandar) y guarda solo eso. Llenar la memoria después de la reunión cambia
+   `ObjetivoAgenda`, que va en el cuerpo de la cita, y avisaba «reunión actualizada» a todos los
+   invitados de una reunión que ya pasó. Borrar la reunión sigue cancelando la cita. El primer
+   envío («Enviar a Outlook») de una reunión ya terminada sigue permitido: es una acción
+   explícita de la persona. Agregado en la fase 2 parte A (2026-10-23).
+3. Si `Huella()` == `OutlookHuella` → no hace nada (evita mandar «reunión actualizada» a todos
    los invitados en cada guardado).
-3. Si difiere → `ActualizarAsync` con la conexión de **`OutlookOrganizadorId`** (no la de quien
+4. Si difiere → `ActualizarAsync` con la conexión de **`OutlookOrganizadorId`** (no la de quien
    edita). Guarda huella, enlace y fecha; limpia pendiente.
-4. Fallo → `OutlookPendiente = 1`, `OutlookError` con el motivo. El editor y la ficha muestran
+5. Fallo → `OutlookPendiente = 1`, `OutlookError` con el motivo. El editor y la ficha muestran
    «No se pudo actualizar en Outlook · Reintentar»; con conexión vencida el texto nombra al
    organizador: «La conexión de Outlook de *Nombre* venció; debe reconectarse desde su perfil».
 
@@ -338,16 +345,39 @@ Ninguna prueba automática llama a Graph.
 Va después de la fase 1 y la reutiliza entera: la misma conexión de cada usuario, y la
 reunión ya guarda su `OutlookEventId` y su enlace de Teams.
 
-### Qué existe hoy
+Se parte en dos. **La parte A está hecha** (2026-10-23, plan
+`docs/superpowers/plans/2026-10-23-memoria-por-mcp-fase2a.md`): las reglas en el servidor y el
+MCP que llena la memoria con un JSON que la IA redacta desde la transcripción que la persona le
+pega. No depende de TI. **La parte B** —que el portal descargue la transcripción de Teams— sigue
+pendiente, con su propio plan, y es la que necesita el permiso nuevo y la conexión real.
 
-El editor (paso 3, Memoria) ya tiene «Llenar automáticamente desde una transcripción»: arma un
+### Parte A — hecha
+
+El editor (paso 3, Memoria) ya tenía «Llenar automáticamente desde una transcripción»: un
 prompt que **cambia según el tipo** (reunión normal: objetivo, desarrollo, acuerdos;
-capacitación: además convocados, asistentes, % y compromisos de seguimiento; ambos: cierre),
-el usuario lo pasa a su IA con la transcripción y pega el JSON que vuelve. Las reglas de
-«Aplicar» —no tocar Generales, el bloque de capacitación solo si el tipo lo es, la segunda
-firma solo con encuesta— viven hoy en el JavaScript de `Reuniones/Editor.cshtml`.
+capacitación: además convocados, asistentes, % y compromisos de seguimiento; ambos: cierre).
+Sus reglas vivían en el JavaScript de `Reuniones/Editor.cshtml`. Ahora:
 
-### Qué se agrega
+- **Una sola copia de las reglas:** `Application/Reuniones/Memoria/MemoriaDesdeTranscripcion`
+  (`Instrucciones(esCap, conEncuesta)` da el prompt, el formato y los campos de las cuatro
+  variantes; `Interpretar(json, …)` da la propuesta y el mensaje). El editor y el MCP la llaman;
+  ninguno las reescribe.
+- **El editor sigue llenando el formulario, no guarda** (`?handler=InterpretarMemoria` devuelve la
+  propuesta). Desvía de lo que decía el punto 3 de abajo («el botón Aplicar pasa a llamar al
+  comando»): eso habría escrito en la base y perdido lo que la persona tecleó sin guardar.
+- **`LlenarMemoriaReunionCommand`** escribe en la reunión, para el MCP. Sin `sobreescribir`,
+  un campo con un valor distinto detiene todo, como en el editor. **Nunca** reemplaza acuerdos
+  que ya tienen seguimiento (estado distinto de Pendiente, fecha de cumplimiento, nota o
+  comentarios), ni con `sobreescribir`. El `responsable` de un acuerdo se guarda como texto.
+  Un valor vacío de la IA (`""`, `[]`) no borra el campo.
+- **Las cifras de capacitación** aceptan el mismo entero escrito como `80.0`, `"24.0"` o `"80%"`;
+  una fracción (`24.5`) o un negativo no se aplican.
+- **Herramientas MCP:** `instrucciones_memoria_reunion(id)` (`Reuniones.Ver`) y
+  `llenar_memoria_reunion(id, json, sobreescribir=false)` (`Reuniones.Editar`). No sincroniza
+  Outlook: con la regla de reunión terminada (Actualizar al guardar, paso 2) no haría nada.
+- **Outlook no actualiza una reunión que ya terminó** (fase 1, Actualizar al guardar, paso 2).
+
+### Parte B — pendiente: lo que el diseño original agregaba
 
 1. **Permiso nuevo en la misma conexión:** `OnlineMeetingTranscript.Read.All` (delegado; pide
    consentimiento de administrador). «Conectar mi Outlook» lo pide junto con los de la fase 1;
@@ -356,14 +386,15 @@ firma solo con encuesta— viven hoy en el JavaScript de `Reuniones/Editor.cshtm
    localiza la reunión en línea por su enlace (`/me/onlineMeetings?$filter=JoinWebUrl eq …`),
    lista sus transcripciones y descarga la más reciente en texto. Solo funciona con la conexión
    del **organizador** (`OutlookOrganizadorId`).
-3. **Las reglas de «Aplicar» pasan al servidor:** un `AplicarMemoriaReunionCommand` que recibe
-   el JSON y lo aplica con las mismas reglas. El botón «Aplicar» del editor pasa a llamarlo, y
-   el MCP también. Una sola copia de las reglas; dejarlas en dos sitios es esperar a que diverjan.
-4. **Dos herramientas MCP nuevas** en `src/Web/Mcp`:
-   - `obtener_transcripcion_reunion(id)` — devuelve el tipo de la reunión, el prompt que le
-     corresponde y la transcripción. Permiso `Reuniones.Ver`.
-   - `llenar_memoria_reunion(id, json)` — aplica el JSON con `AplicarMemoriaReunionCommand`.
-     Permiso `Reuniones.Editar`. Devuelve qué campos llenó y cuáles descartó.
+3. ~~Las reglas de «Aplicar» pasan al servidor~~ — **hecho en la parte A**, con otro nombre
+   (`MemoriaDesdeTranscripcion` + `LlenarMemoriaReunionCommand`) y con el editor llenando el
+   formulario en lugar de guardar.
+4. **Herramientas MCP** en `src/Web/Mcp`:
+   - `obtener_transcripcion_reunion(id)` — **pendiente**: devuelve el tipo de la reunión, el
+     prompt que le corresponde y la transcripción. Permiso `Reuniones.Ver`. Hasta entonces,
+     `instrucciones_memoria_reunion(id)` da el prompt y la persona pega la transcripción.
+   - `llenar_memoria_reunion(id, json, sobreescribir)` — **hecho en la parte A**. Permiso
+     `Reuniones.Editar`. Devuelve qué campos llenó y cuáles descartó.
 
 ### El flujo
 
@@ -389,7 +420,7 @@ el editor como hoy. El portal no llama a ninguna IA ni necesita llave propia.
 
 ### Pruebas
 
-- `AplicarMemoriaReunionCommand` con los casos que hoy cubre el JavaScript: Generales intactos,
+- (Hecho en la parte A, en `MemoriaDesdeTranscripcionTests` y `LlenarMemoriaReunionCommandTests`.) Las reglas con los casos que cubría el JavaScript: Generales intactos,
   capacitación solo si el tipo lo es, validador de institución solo con encuesta, claves
   desconocidas descartadas y reportadas.
 - `ITranscripcionesTeams` falso para las herramientas MCP: sin transcripción, no disponible,
