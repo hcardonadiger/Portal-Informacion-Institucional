@@ -83,8 +83,13 @@ PRINT 'FichaCompleta creada.';
 IF NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = '20260825190000_ColumnaFichaCompleta')
     INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion)
     SELECT '20260825190000_ColumnaFichaCompleta', MAX(ProductVersion) FROM __EFMigrationsHistory;
+GO
 
 -- Qué quedó, para que quien lo corra lo vea sin tener que preguntar.
+-- Va en su propio lote: SQL Server compila el lote entero antes de ejecutarlo, y en
+-- el mismo lote que el ALTER esta consulta muere con «Invalid column name
+-- 'FichaCompleta'» —la columna aún no existe al compilar— y se lleva consigo el
+-- ALTER, que nunca llega a correr. Medido el 2026-10-22 contra GestionGD_new.
 SELECT  'publicadas'            = COUNT(*),
         'de esas, completas'    = SUM(CASE WHEN FichaCompleta = 1 THEN 1 ELSE 0 END),
         'de esas, incompletas'  = SUM(CASE WHEN FichaCompleta = 0 THEN 1 ELSE 0 END)
