@@ -51,19 +51,23 @@ Web (Perfil, Editor de reunión)
                  ├─ CancelarReunionOutlookCommand
                  ├─ EventoOutlookBuilder        (puro, sin E/S)
                  ├─ HorarioReunion              (parser puro de Fecha/Hora/Duracion)
-                 └─ IOutlookCalendario, IConexionMicrosoftStore   (interfaces)
-Infrastructure
-  ├─ GraphOutlookCalendario   : IOutlookCalendario   (Microsoft.Graph + MSAL)
-  ├─ ConexionMicrosoftStore   : IConexionMicrosoftStore (caché MSAL cifrada en SQL)
+                 └─ IOutlookCalendario, IConexionMicrosoft   (interfaces)
+Infrastructure/Outlook
+  ├─ GraphOutlookCalendario   : IOutlookCalendario   (MSAL + HttpClient contra Graph v1.0)
+  ├─ ConexionMicrosoftService : IConexionMicrosoft   (caché MSAL cifrada en SQL)
   └─ AppDbContext             (tabla ConexionesMicrosoft, columnas nuevas en Reuniones)
 ```
 
 Ninguna otra parte del portal conoce Graph. Los handlers solo ven `IOutlookCalendario`.
 
+**Sin SDK de Graph.** Se usa MSAL (`Microsoft.Identity.Client`) para los tokens y un
+`HttpClient` simple contra Graph v1.0: son tres llamadas (`POST me/events`,
+`PATCH me/events/{id}`, `POST me/events/{id}/cancel`) y no justifican el SDK entero.
+
 ### `IOutlookCalendario`
 
 ```csharp
-Task<ResultadoOutlook> CrearAsync(Guid organizadorId, EventoOutlook evento, Guid transactionId, CancellationToken ct);
+Task<ResultadoOutlook> CrearAsync(Guid organizadorId, EventoOutlook evento, Guid transaccionId, CancellationToken ct);
 Task<ResultadoOutlook> ActualizarAsync(Guid organizadorId, string eventId, EventoOutlook evento, CancellationToken ct);
 Task CancelarAsync(Guid organizadorId, string eventId, string comentario, CancellationToken ct);
 ```
@@ -71,6 +75,8 @@ Task CancelarAsync(Guid organizadorId, string eventId, string comentario, Cancel
 `ResultadoOutlook` = `{ EventId, EnlaceTeams }`. Los fallos se expresan con dos excepciones
 propias: `OutlookConexionVencidaException` (MSAL pide interacción: token revocado o expirado) y
 `OutlookNoDisponibleException` (red, 5xx, throttling). Nada de tipos de Graph cruza la interfaz.
+Una respuesta de Graph ilegible o incompleta (JSON roto, sin `id`) también se trata como
+«Outlook no disponible»: no se deja escapar una `JsonException` por el puerto.
 
 ### `EventoOutlook`
 
@@ -102,12 +108,16 @@ minúsculas). Es lo que decide si un guardado justifica llamar a Graph.
 
 | Columna | Tipo | Nota |
 |---|---|---|
-| `UsuarioId` | uniqueidentifier, PK, FK `Usuarios` | una conexión por usuario |
+| `Id` | uniqueidentifier, PK, FK `Usuarios` | **es el id del usuario**: una conexión por usuario |
 | `Upn` | nvarchar(256) | cuenta Microsoft conectada, para mostrarla |
+| `HomeAccountId` | nvarchar(200) | lo necesita MSAL para encontrar la cuenta dentro de la caché |
 | `CacheTokens` | varbinary(max) | caché MSAL **cifrada con Data Protection** (propósito propio) |
 | `ConectadaEl` | datetime2 | |
 | `RequiereReconexion` | bit | se enciende con `OutlookConexionVencidaException` |
 | `UltimoError` | nvarchar(500) NULL | |
+
+Lleva además las columnas de auditoría de `BaseAuditableEntity` (`CreatedAt`/`CreatedBy`,
+`UpdatedAt`/`UpdatedBy`).
 
 No lleva filtro de alcance institucional (igual que `Usuario`). Si se pierden las llaves de
 Data Protection, la caché deja de poder leerse: se trata como conexión vencida y el usuario
@@ -122,13 +132,14 @@ reconecta.
 | `OutlookOrganizadorId` | uniqueidentifier NULL |
 | `OutlookConTeams` | bit NOT NULL DEFAULT 1 |
 | `OutlookEnlaceTeams` | nvarchar(1000) NULL |
-| `OutlookHuella` | char(64) NULL |
+| `OutlookHuella` | nchar(64) NULL |
 | `OutlookSincronizadaEl` | datetime2 NULL |
 | `OutlookPendiente` | bit NOT NULL DEFAULT 0 |
 | `OutlookError` | nvarchar(500) NULL |
 
-Entrega: migración EF en `Persistence\Migrations` **y** `database/<fecha>_poner_al_dia.sql`
-idempotente contra el catálogo, con su comprobación `presente`/`FALTA` (convención del repo).
+Entrega: migración EF `20261022221928_ReunionesAOutlook` en `Persistence\Migrations` **y**
+`database/2026-10-23_poner_al_dia.sql`, idempotente contra el catálogo, con su comprobación
+`presente`/`FALTA` (convención del repo).
 
 ## Flujos
 
@@ -138,9 +149,17 @@ idempotente contra el catálogo, con su comprobación `presente`/`FALTA` (conven
   con conexión → cuenta conectada, fecha y «Desconectar»; vencida → aviso y «Reconectar».
 - «Conectar» redirige a Microsoft (authorization code + PKCE) con los alcances
   `Calendars.ReadWrite User.Read offline_access`, y `state` atado a la sesión.
-- `/Cuenta/Microsoft/Callback` canjea el código, guarda la caché cifrada y vuelve al perfil.
+- `/Cuenta/OutlookCallback` canjea el código, guarda la caché cifrada y vuelve al perfil.
   Lleva `[PermisoNoRequerido]` (autoservicio) y `[Authorize]`, como las demás de `/Cuenta`
   que exigen sesión.
+- El retorno valida el `state` (comparación de tiempo constante) **antes que nada**, también
+  en las respuestas de error de Microsoft, que lo traen. Un retorno que no corresponde o
+  falsificado **no consume** el estado pendiente: lo lee sin gastarlo, así un enlace preparado
+  que llegue antes no arruina la conexión en curso. El texto de `error` de Microsoft nunca se
+  refleja en la página: el aviso es un mensaje fijo.
+- MSAL refresca la caché al pedir un token; ese refresco se serializa **por usuario** con un
+  candado en memoria. Basta con un solo proceso de IIS; una granja de servidores necesitaría
+  un `rowversion` en la fila.
 - «Desconectar» borra la fila. Las citas ya enviadas quedan en Outlook; sus actualizaciones
   futuras quedarán pendientes con el aviso de conexión vencida.
 
@@ -162,7 +181,9 @@ visible solo si el usuario tiene conexión y la reunión aún no está en Outloo
    `OutlookHuella`, `OutlookSincronizadaEl`; `OutlookPendiente = 0`.
 
 Si Graph falla, solo queda guardado el `OutlookTransaccionId`; la reunión sigue «sin enviar» y
-el usuario ve el motivo y puede reintentar.
+el usuario ve el motivo y puede reintentar. Un fallo imprevisto (no uno de los dos tipados)
+tampoco es una página de error: la tarjeta dice «No se pudo enviar a Outlook. Vuelva a
+intentarlo; si se repite, avise a TI.»
 
 ### Actualizar al guardar
 
@@ -182,13 +203,19 @@ exitoso, si la reunión tiene `OutlookEventId`, la página llama a
 
 «Reintentar» es el mismo comando.
 
+**Cualquier** fallo del lado de Outlook —no solo los dos tipados: también una respuesta
+ilegible o un fallo del token— deja la reunión pendiente. Y si lo que falla es el propio
+comando de sincronización (p. ej. el guardado sacó la reunión del alcance de quien edita), la
+reunión ya quedó guardada y la página no lo convierte en error: muestra «La reunión se guardó,
+pero no se pudo actualizar en Outlook. Use «Reintentar» en la tarjeta de Outlook.»
+
 ### Cancelar al borrar
 
 Antes de `EliminarReunionCommand`, si hay `OutlookEventId`, la página llama a
 `CancelarReunionOutlookCommand`, que invoca `CancelarAsync` con la conexión del organizador
-(Graph avisa a los invitados). **Si falla, la reunión se borra igual** y el usuario ve:
-«La reunión se eliminó, pero no se pudo cancelar en Outlook: cancélela a mano.» El portal no
-bloquea un borrado por Microsoft.
+(Graph avisa a los invitados). **Si falla —por cualquier motivo—, la reunión se borra igual**
+y el usuario ve: «Reunión eliminada. No se pudo cancelar la cita en Outlook: cancélela a mano
+desde el calendario del organizador.» El portal no bloquea un borrado por Microsoft.
 
 ## Seguridad
 
@@ -206,7 +233,7 @@ bloquea un borrado por Microsoft.
 2. Permisos **delegados**: `Calendars.ReadWrite`, `User.Read`, `offline_access`; para la
    fase 2, además `OnlineMeetingTranscript.Read.All`, que exige consentimiento de
    administrador.
-3. URIs de redirección: `https://localhost:49175/Cuenta/Microsoft/Callback` (desarrollo) y la
+3. URIs de redirección: `https://localhost:49175/Cuenta/OutlookCallback` (desarrollo) y la
    de producción.
 4. Crear un secreto de cliente y entregarlo por canal seguro.
 5. Si el tenant restringe el consentimiento de usuarios, otorgar consentimiento de
@@ -237,6 +264,14 @@ puede hacer la prueba real de punta a punta.
   cada paso comprobar Outlook.
 
 Ninguna prueba automática llama a Graph.
+
+**Pendiente:** la prueba manual de punta a punta con una cuenta real espera el registro de TI
+(`ClientId` y secreto). En ella hay que mirar en especial:
+
+- Que Microsoft vuelva por **GET** (`response_mode=query`). Un retorno por `form_post` llegaría
+  como POST entre sitios, sin la cookie de sesión (`SameSite=Lax`), y el retorno no
+  encontraría ni la sesión ni el estado.
+- Si un `PATCH` sobre una cita que ya tiene Teams conserva el mismo enlace para unirse.
 
 ## Fuera de alcance
 
