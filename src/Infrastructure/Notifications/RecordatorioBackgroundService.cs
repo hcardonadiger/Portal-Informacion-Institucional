@@ -10,6 +10,7 @@ public sealed class RecordatorioBackgroundService(
     IServiceScopeFactory scopeFactory,
     IOptions<NotificacionesOptions> options,
     TimeProvider reloj,
+    SenalRevision senal,
     ILogger<RecordatorioBackgroundService> logger) : BackgroundService
 {
     // «Hoy» y «mañana» son los de la zona configurada (Notificaciones:ZonaHoraria), no los de UTC.
@@ -30,10 +31,9 @@ public sealed class RecordatorioBackgroundService(
 
     private async Task EjecutarBucleAsync(CancellationToken ct)
     {
-        var opts = options.Value;
-
-        // Esperar al arranque para no competir con las migraciones EF del startup
-        await Task.Delay(TimeSpan.FromMinutes(opts.DelayInicialMinutos), ct);
+        // Esperar al arranque para no competir con las migraciones EF del startup. Guardar el panel
+        // durante esa espera la corta, igual que la de cada vuelta.
+        await senal.EsperarAsync(TimeSpan.FromMinutes(options.Value.DelayInicialMinutos), ct);
 
         while (!ct.IsCancellationRequested)
         {
@@ -42,7 +42,23 @@ public sealed class RecordatorioBackgroundService(
             {
                 logger.LogError(ex, "Error en RecordatorioBackgroundService");
             }
-            await Task.Delay(TimeSpan.FromHours(opts.IntervaloHoras), ct);
+
+            // El intervalo se lee en cada vuelta: lo cambia el Panel de control sin reiniciar.
+            await senal.EsperarAsync(TimeSpan.FromMinutes(await IntervaloAsync(ct)), ct);
+        }
+    }
+
+    private async Task<int> IntervaloAsync(CancellationToken ct)
+    {
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            return (await scope.ServiceProvider.GetRequiredService<IAjustesNotificaciones>().ObtenerAsync(ct)).IntervaloMinutos;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "No se pudo leer el intervalo de revisión; se usa el de por defecto.");
+            return AjustesNotificaciones.IntervaloPorDefecto;
         }
     }
 
@@ -54,23 +70,9 @@ public sealed class RecordatorioBackgroundService(
         var ctx      = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         var notifSvc = scope.ServiceProvider.GetRequiredService<INotificacionService>();
 
-        // Plazos y fechas de reunión se escriben en hora local. hoyUtc es el instante UTC en que
-        // empezó el día local: con él se mide «ya se avisó hoy» contra FechaCreacion, que es UTC.
-        var (hoy, mañana, hoyUtc) = CalendarioLocal.Dia(reloj.GetUtcNow(), _zona.Zona);
-
-        // ── Pre-carga de notificaciones ya enviadas hoy (evita duplicados) ──
-        var enviadas = await ctx.Notificaciones
-            .Where(n => n.FechaCreacion >= hoyUtc
-                     && (n.Tipo == TipoNotificacion.ReuniónMañana
-                      || n.Tipo == TipoNotificacion.CompromisoVencido
-                      || n.Tipo == TipoNotificacion.CompromisoProximo
-                      || n.Tipo == TipoNotificacion.EtapaCronogramaVencida
-                      || n.Tipo == TipoNotificacion.EtapaCronogramaProxima))
-            .Select(n => new { n.DestinatarioId, n.Tipo, n.Url })
-            .ToListAsync(ct);
-
-        bool YaEnviada(Guid uid, TipoNotificacion tipo, string? url) =>
-            enviadas.Any(e => e.DestinatarioId == uid && e.Tipo == tipo && e.Url == url);
+        // Plazos y fechas de reunión se escriben en hora local. «Ya se avisó hoy» ya no se mide
+        // aquí: lo controla NotificacionService elemento por elemento.
+        var (hoy, mañana, _) = CalendarioLocal.Dia(reloj.GetUtcNow(), _zona.Zona);
 
         // ── Reuniones de mañana → notificar al creador ───────────────────────
         var reunionesMañana = await ctx.Reuniones
@@ -83,9 +85,8 @@ public sealed class RecordatorioBackgroundService(
         {
             var uid = r.CreadoPorId!.Value;
             var url = $"/Reuniones/Editor/{r.Id}";
-            if (!YaEnviada(uid, TipoNotificacion.ReuniónMañana, url))
-                await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.ReuniónMañana,
-                    $"Reunión mañana: {r.Titulo}", url, ct: ct);
+            await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.ReuniónMañana,
+                $"Reunión mañana: {r.Titulo}", url, ct: ct);
         }
 
         // ── Compromisos vencidos sin cumplir → notificar por nombre (best-effort) ─
@@ -112,8 +113,7 @@ public sealed class RecordatorioBackgroundService(
                 if (!mapaUsuario.TryGetValue(a.Responsable!, out var uid)) continue;
                 var url  = $"/Reuniones/Compromisos?reunion={a.ReunionId}";
                 var tit  = $"Compromiso vencido: {a.Compromiso[..Math.Min(80, a.Compromiso.Length)]}";
-                if (!YaEnviada(uid, TipoNotificacion.CompromisoVencido, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoVencido, tit, url, ct: ct);
+                await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoVencido, tit, url, ct: ct);
             }
         }
 
@@ -142,8 +142,7 @@ public sealed class RecordatorioBackgroundService(
                 if (!mapaUsuarioP.TryGetValue(a.Responsable!, out var uid)) continue;
                 var url  = $"/Reuniones/Compromisos?reunion={a.ReunionId}";
                 var tit  = $"Compromiso próximo a vencer ({a.Plazo:dd/MM}): {a.Compromiso[..Math.Min(80, a.Compromiso.Length)]}";
-                if (!YaEnviada(uid, TipoNotificacion.CompromisoProximo, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoProximo, tit, url, ct: ct);
+                await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.CompromisoProximo, tit, url, ct: ct);
             }
         }
 
@@ -187,8 +186,7 @@ public sealed class RecordatorioBackgroundService(
                 if (e.Responsable is null || !mapaCrono.TryGetValue(e.Responsable, out var uid)) continue;
                 var url = $"/Expedientes/Cronograma/{e.ExpedienteId}?t={e.TramiteIndex}";
                 var tit = $"Etapa {e.EtapaNum} vencida – {e.Codigo}";
-                if (!YaEnviada(uid, TipoNotificacion.EtapaCronogramaVencida, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaVencida, tit, url, ct: ct);
+                await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaVencida, tit, url, ct: ct);
             }
 
             foreach (var e in etapasProximas)
@@ -196,13 +194,28 @@ public sealed class RecordatorioBackgroundService(
                 if (e.Responsable is null || !mapaCrono.TryGetValue(e.Responsable, out var uid)) continue;
                 var url = $"/Expedientes/Cronograma/{e.ExpedienteId}?t={e.TramiteIndex}";
                 var tit = $"Etapa {e.EtapaNum} próxima a vencer – {e.Codigo}";
-                if (!YaEnviada(uid, TipoNotificacion.EtapaCronogramaProxima, url))
-                    await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaProxima, tit, url, ct: ct);
+                await notifSvc.CrearYGuardarAsync(uid, TipoNotificacion.EtapaCronogramaProxima, tit, url, ct: ct);
             }
         }
 
         logger.LogInformation(
             "RecordatorioBackgroundService: {Reuniones} reuniones, {Compromisos} compromisos, {Vencidas} etapas vencidas, {Proximas} etapas próximas procesadas.",
             reunionesMañana.Count, acuerdosVencidos.Count, etapasVencidas.Count, etapasProximas.Count);
+
+        // ── Última revisión (la muestra el panel) y correo de la bandeja ──────
+        var ajustes = scope.ServiceProvider.GetRequiredService<IAjustesNotificaciones>();
+        var fila = await ctx.AjustesNotificaciones.FirstOrDefaultAsync(a => a.Id == AjustesNotificaciones.IdUnico, ct);
+        if (fila is null)
+        {
+            // Sin fila nace con el intervalo vigente (el de appsettings), no con el de por defecto:
+            // si no, la primera revisión cambiaría en silencio un intervalo que nadie tocó.
+            fila = AjustesNotificaciones.CrearPorDefecto((await ajustes.ObtenerAsync(ct)).IntervaloMinutos);
+            ctx.AjustesNotificaciones.Add(fila);
+        }
+        fila.MarcarRevision(reloj.GetUtcNow().UtcDateTime);
+        await ctx.SaveChangesAsync(ct);
+        ajustes.Invalidar();
+
+        await scope.ServiceProvider.GetRequiredService<IDespachadorCorreos>().DespacharAsync(ct);
     }
 }

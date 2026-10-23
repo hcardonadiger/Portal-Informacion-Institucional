@@ -49,18 +49,23 @@ public sealed class RecordatorioBackgroundServiceTests : IDisposable
         _ctx.SaveChanges();
     }
 
+    private readonly AjustesDePrueba _ajustes = new();
+    private readonly IDespachadorCorreos _despachador = Substitute.For<IDespachadorCorreos>();
+
     private RecordatorioBackgroundService Servicio(DateTimeOffset ahora, NotificacionesOptions? opciones = null)
     {
-        var reloj    = new RelojFijo(ahora);
+        var reloj = new RelojFijo(ahora);
+        var opts  = opciones ?? new NotificacionesOptions();
         var services = new ServiceCollection();
         services.AddSingleton<IApplicationDbContext>(_ctx);
-        services.AddSingleton<INotificacionService>(NotificacionesDePrueba.Servicio(_ctx, reloj: reloj));
+        services.AddSingleton<IAjustesNotificaciones>(_ajustes);
+        services.AddSingleton<INotificacionService>(NotificacionesDePrueba.Servicio(_ctx, _ajustes, reloj, opts));
+        services.AddSingleton(_despachador);
         var proveedor = services.BuildServiceProvider();
 
         return new RecordatorioBackgroundService(
             proveedor.GetRequiredService<IServiceScopeFactory>(),
-            Options.Create(opciones ?? new NotificacionesOptions()),
-            reloj,
+            Options.Create(opts), reloj, new SenalRevision(),
             NullLogger<RecordatorioBackgroundService>.Instance);
     }
 
@@ -166,6 +171,25 @@ public sealed class RecordatorioBackgroundServiceTests : IDisposable
             .ProcesarAsync(CancellationToken.None);
 
         (await AvisosAsync()).Should().Contain(TipoNotificacion.CompromisoVencido);
+    }
+
+    [Fact]
+    public async Task Cada_revision_queda_anotada_y_despacha_el_correo()
+    {
+        await Servicio(NueveDeLaManana).ProcesarAsync(CancellationToken.None);
+
+        (await _ctx.AjustesNotificaciones.SingleAsync()).UltimaRevisionUtc.Should().Be(NueveDeLaManana.UtcDateTime);
+        await _despachador.Received(1).DespacharAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task La_primera_revision_crea_la_fila_con_el_intervalo_vigente()
+    {
+        _ajustes.IntervaloMinutos = 30;
+
+        await Servicio(NueveDeLaManana).ProcesarAsync(CancellationToken.None);
+
+        (await _ctx.AjustesNotificaciones.SingleAsync()).IntervaloMinutos.Should().Be(30);
     }
 
     // ── Etapas de cronograma de Expedientes ───────────────────────────────
