@@ -3,6 +3,8 @@ using System.Text.Json;
 using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using Diger.TramitesEstado.Infrastructure.Outlook;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
@@ -27,13 +29,24 @@ public class GraphOutlookCalendarioTests
     private static readonly EventoOutlook Evento = new("Mesa técnica", new DateTime(2026, 10, 23, 9, 0, 0),
         new DateTime(2026, 10, 23, 10, 0, 0), "Sala 2", "<p>x</p>", [new("ana@ihtt.gob.hn", "Ana")], true);
 
-    private static (GraphOutlookCalendario cal, Manejador m) Armar(HttpStatusCode codigo, string cuerpo = "{}")
+    /// <summary>Guarda los mensajes ya formateados, para ver qué llega al log (y qué no).</summary>
+    private sealed class LogCapturado : ILogger<GraphOutlookCalendario>
+    {
+        public readonly List<(LogLevel Nivel, string Mensaje)> Entradas = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Entradas.Add((logLevel, formatter(state, exception)));
+    }
+
+    private static (GraphOutlookCalendario cal, Manejador m) Armar(HttpStatusCode codigo, string cuerpo = "{}",
+        ILogger<GraphOutlookCalendario>? log = null)
     {
         var m = new Manejador(codigo, cuerpo);
         var conexion = Substitute.For<IConexionMicrosoft>();
         conexion.ObtenerTokenAsync(Org, Arg.Any<CancellationToken>()).Returns("tok-123");
         var http = new HttpClient(m) { BaseAddress = new Uri("https://graph.microsoft.com/v1.0/") };
-        return (new GraphOutlookCalendario(http, conexion), m);
+        return (new GraphOutlookCalendario(http, conexion, log ?? NullLogger<GraphOutlookCalendario>.Instance), m);
     }
 
     [Fact]
@@ -129,13 +142,41 @@ public class GraphOutlookCalendarioTests
     }
 
     [Fact]
+    public async Task Un_403_registra_el_codigo_de_Graph_y_nada_mas()
+    {
+        var log = new LogCapturado();
+        var (cal, _) = Armar(HttpStatusCode.Forbidden,
+            """{"error":{"code":"ErrorAccessDenied","message":"detalle-del-cuerpo"}}""", log);
+
+        var acto = () => cal.ActualizarAsync(Org, "AAMk-1", Evento, default);
+
+        await acto.Should().ThrowAsync<OutlookNoDisponibleException>();
+        var aviso = log.Entradas.Should().ContainSingle(e => e.Nivel == LogLevel.Warning).Subject.Mensaje;
+        aviso.Should().Be("Graph respondió 403 (ErrorAccessDenied) en PATCH me/events/AAMk-1");
+        aviso.Should().NotContain("tok-123").And.NotContain("detalle-del-cuerpo");
+    }
+
+    [Fact]
+    public async Task Un_error_con_cuerpo_ilegible_se_registra_sin_codigo()
+    {
+        var log = new LogCapturado();
+        var (cal, _) = Armar(HttpStatusCode.ServiceUnavailable, "<html>no es json</html>", log);
+
+        var acto = () => cal.CrearAsync(Org, Evento, Guid.NewGuid(), default);
+
+        await acto.Should().ThrowAsync<OutlookNoDisponibleException>();
+        log.Entradas.Should().ContainSingle(e => e.Nivel == LogLevel.Warning)
+            .Which.Mensaje.Should().Be("Graph respondió 503 (sin código) en POST me/events");
+    }
+
+    [Fact]
     public async Task Sin_red_es_no_disponible()
     {
         var conexion = Substitute.For<IConexionMicrosoft>();
         conexion.ObtenerTokenAsync(Org, Arg.Any<CancellationToken>()).Returns("tok");
         var http = new HttpClient(new FallaRed()) { BaseAddress = new Uri("https://graph.microsoft.com/v1.0/") };
 
-        var acto = () => new GraphOutlookCalendario(http, conexion).CrearAsync(Org, Evento, Guid.NewGuid(), default);
+        var acto = () => new GraphOutlookCalendario(http, conexion, NullLogger<GraphOutlookCalendario>.Instance).CrearAsync(Org, Evento, Guid.NewGuid(), default);
 
         await acto.Should().ThrowAsync<OutlookNoDisponibleException>();
     }

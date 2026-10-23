@@ -5,14 +5,20 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Diger.TramitesEstado.Application.Reuniones.Outlook;
+using Microsoft.Extensions.Logging;
 
 namespace Diger.TramitesEstado.Infrastructure.Outlook;
 
 /// <summary>
 /// Las tres llamadas a Graph que necesita el portal, sobre /me (el token es del organizador).
 /// Sin SDK de Graph a propósito: son tres peticiones y así se prueban con un HttpMessageHandler.
+///
+/// <para>Un fallo de Graph se registra con el estado HTTP, el <c>error.code</c> del cuerpo y la
+/// ruta (lleva el id de la cita, que no es secreto). Nunca las cabeceras —llevan el token— ni el
+/// resto del cuerpo.</para>
 /// </summary>
-public sealed class GraphOutlookCalendario(HttpClient http, IConexionMicrosoft conexion) : IOutlookCalendario
+public sealed class GraphOutlookCalendario(
+    HttpClient http, IConexionMicrosoft conexion, ILogger<GraphOutlookCalendario> log) : IOutlookCalendario
 {
     public async Task<ResultadoOutlook> CrearAsync(Guid organizadorId, EventoOutlook evento, Guid transaccionId, CancellationToken ct)
     {
@@ -80,13 +86,36 @@ public sealed class GraphOutlookCalendario(HttpClient http, IConexionMicrosoft c
         if (resp.IsSuccessStatusCode) return resp;
 
         var codigo = resp.StatusCode;
+        var codigoGraph = await CodigoDeErrorAsync(resp, ct);
         resp.Dispose();
+        log.LogWarning("Graph respondió {Estado} ({Codigo}) en {Metodo} {Ruta}",
+            (int)codigo, codigoGraph ?? "sin código", metodo.Method, ruta);
         throw codigo switch
         {
             HttpStatusCode.Unauthorized => new OutlookConexionVencidaException("Graph rechazó el token (401)"),
             HttpStatusCode.NotFound     => new OutlookNoDisponibleException("la cita ya no existe en Outlook (¿se borró desde el calendario?)"),
             _                           => new OutlookNoDisponibleException($"Graph respondió {(int)codigo}")
         };
+    }
+
+    /// <summary>El <c>error.code</c> de una respuesta de error de Graph («ErrorAccessDenied»…), o
+    /// <c>null</c> si el cuerpo no lo trae o no se puede leer: leerlo es solo para el log, así que
+    /// ningún fallo aquí cambia lo que se lanza.</summary>
+    private static async Task<string?> CodigoDeErrorAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try
+        {
+            using var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                   && doc.RootElement.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.Object
+                   && error.TryGetProperty("code", out var code) && code.ValueKind == JsonValueKind.String
+                ? code.GetString()
+                : null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
