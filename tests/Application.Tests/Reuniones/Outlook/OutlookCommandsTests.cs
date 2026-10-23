@@ -281,6 +281,24 @@ public class OutlookCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task Un_pendiente_de_una_reunion_que_ya_termino_se_descarta_sin_llamar_a_Graph()
+    {
+        // Ya no hay nada que mandarle a los invitados: dejar el aviso sería un pendiente que
+        // ningún guardado puede resolver.
+        var r = await EnviadaAsync();
+        r.MarcarOutlookPendiente("x");
+        await _ctx.SaveChangesAsync();
+
+        await Sincronizar(new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero))
+            .Handle(new SincronizarReunionOutlookCommand(r.Id, Url), default);
+
+        await _outlook.DidNotReceiveWithAnyArgs().ActualizarAsync(default, default!, default!, default);
+        var fila = await _ctx.Reuniones.AsNoTracking().SingleAsync();
+        fila.OutlookPendiente.Should().BeFalse();
+        fila.OutlookError.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Moverla_al_futuro_si_la_actualiza()
     {
         var r = await EnviadaAsync();

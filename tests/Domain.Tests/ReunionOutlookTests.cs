@@ -102,6 +102,23 @@ public class ReunionOutlookTests
     }
 
     [Fact]
+    public void Descartar_el_pendiente_no_toca_la_huella_ni_la_fecha_de_sincronizacion()
+    {
+        var r = Reunion.Crear("Mesa técnica");
+        var enviadaEl = new DateTime(2026, 10, 23, 15, 0, 0, DateTimeKind.Utc);
+        r.PrepararEnvioOutlook(true);
+        r.RegistrarEnvioOutlook("AAMk-1", Guid.NewGuid(), null, new string('a', 64), enviadaEl);
+        r.MarcarOutlookPendiente("falló");
+
+        r.DescartarOutlookPendiente();
+
+        r.OutlookPendiente.Should().BeFalse();
+        r.OutlookError.Should().BeNull();
+        r.OutlookHuella.Should().Be(new string('a', 64), "no se mandó nada: la cita sigue como se envió");
+        r.OutlookSincronizadaEl.Should().Be(enviadaEl);
+    }
+
+    [Fact]
     public void Una_conexion_vencida_conserva_el_motivo_y_reconectar_la_limpia()
     {
         var usuario = Guid.NewGuid();

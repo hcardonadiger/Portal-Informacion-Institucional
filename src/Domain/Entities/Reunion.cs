@@ -297,6 +297,14 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
         OutlookPendiente = true;
         OutlookError     = motivo.Length > 500 ? motivo[..500] : motivo;
     }
+
+    /// <summary>Quita el aviso sin haber mandado nada: la huella y la fecha de sincronización siguen
+    /// siendo las de la última vez que la cita se envió de verdad.</summary>
+    public void DescartarOutlookPendiente()
+    {
+        OutlookPendiente = false;
+        OutlookError     = null;
+    }
 }
 
 /// <summary>

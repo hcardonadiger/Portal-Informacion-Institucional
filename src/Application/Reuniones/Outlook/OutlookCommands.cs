@@ -93,8 +93,15 @@ public sealed class SincronizarReunionOutlookCommandHandler(
         // Una cita que ya terminó no se toca. Llenar la ayuda memoria después de la reunión cambia
         // ObjetivoAgenda, que va en el cuerpo de la cita, y cada PATCH le manda «reunión
         // actualizada» a todos los invitados de algo que ya pasó. No se marca pendiente: no es un
-        // fallo, y si alguien la mueve al futuro el próximo guardado la pone al día.
-        if (evento.Fin < HoraHonduras.Ahora(reloj)) return Unit.Value;
+        // fallo, y si alguien la mueve al futuro el próximo guardado la pone al día. Un pendiente
+        // que traía se descarta: ya no hay nada que mandar, y quedaría avisando para siempre.
+        if (evento.Fin < HoraHonduras.Ahora(reloj))
+        {
+            if (!r.OutlookPendiente) return Unit.Value;
+            r.DescartarOutlookPendiente();
+            await uow.SaveChangesAsync(ct);
+            return Unit.Value;
+        }
 
         var huella = evento.Huella();
         if (huella == r.OutlookHuella && !r.OutlookPendiente) return Unit.Value;
