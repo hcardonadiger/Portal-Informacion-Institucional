@@ -408,6 +408,40 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Preregistrar_desde_la_asistencia_invita_en_Outlook()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        _calendario.ActualizarAsync(default, default!, default!, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        var id = await SembrarReunionAsync(conectada: true);
+        int contactoId;
+        using (var scope = _portal.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
+            var contacto = Diger.TramitesEstado.Domain.Entities.Contacto.Crear("Ana Invitada", "DIGER", "DIGER",
+                PortalFactory.AreaDeCasa, PortalFactory.UnidadDeCasa, null, "ana.invitada@sefin.gob.hn", null, null);
+            db.Contactos.Add(contacto);
+            await db.SaveChangesAsync();
+            contactoId = contacto.Id;
+        }
+        var c = Jefe();
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+        await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = token }));
+        await _calendario.ReceivedWithAnyArgs(1).CrearAsync(default, default!, default, default);
+
+        var tokenAsistencia = await TokenAsync(c, $"/Reuniones/Asistencia/{id}");
+        var resp = await c.PostAsync($"/Reuniones/Asistencia/{id}?handler=Preregistrar", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = tokenAsistencia, ["contactoIds"] = contactoId.ToString() }));
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().NotContain("/Error");
+        await _calendario.Received(1).ActualizarAsync(Arg.Any<Guid>(), "AAMk-9",
+            Arg.Is<EventoOutlook>(e => e.Invitados.Any(i => i.Correo == "ana.invitada@sefin.gob.hn")),
+            Arg.Any<CancellationToken>());
+    }
+
     /// <summary>Pulsa «Conectar mi Outlook» como Empleado: deja el estado y el verificador en el
     /// TempData de ese cliente (el cliente de la fábrica conserva las cookies).</summary>
     private async Task<HttpClient> ConexionIniciadaAsync()

@@ -138,11 +138,21 @@ public sealed class AsistenciaModel(
         return RedirectToPage(new { id });
     }
 
+    /// <summary>Tras un cambio en la lista ya guardado: si la reunión está en Outlook y cambiaron
+    /// los invitados, se actualiza la cita, igual que al guardar desde el editor. Un fallo no
+    /// convierte el cambio en un error: se agrega al aviso de éxito, que es el que pinta esta página.</summary>
+    private async Task SincronizarOutlookAsync(int id, CancellationToken ct)
+    {
+        if (!await SincronizacionOutlook.SincronizarAsync(this, sender, correo.Value, id, ct))
+            TempData["SuccessMsg"] += " Pero no se pudo actualizar la cita en Outlook: use «Reintentar» en la tarjeta de Outlook del editor.";
+    }
+
     [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
     public async Task<IActionResult> OnPostEliminarAsync(int id, int asistenteId, CancellationToken ct)
     {
         await sender.Send(new EliminarAsistenteCommand(id, asistenteId), ct);
         TempData["SuccessMsg"] = "Registro eliminado.";
+        await SincronizarOutlookAsync(id, ct);
         return RedirectToPage(new { id });
     }
 
@@ -153,6 +163,7 @@ public sealed class AsistenciaModel(
         TempData["SuccessMsg"] = n == 0
             ? "No se agregaron contactos (¿ya estaban en la lista?)."
             : $"{n} contacto(s) agregado(s).";
+        if (n > 0) await SincronizarOutlookAsync(id, ct);
         return RedirectToPage(new { id });
     }
 
@@ -163,6 +174,7 @@ public sealed class AsistenciaModel(
         TempData["SuccessMsg"] = n == 0
             ? "No se pre-registraron contactos (¿ya estaban en la lista?)."
             : $"{n} invitado(s) pre-registrado(s). Confirmarán su asistencia al llegar o por QR.";
+        if (n > 0) await SincronizarOutlookAsync(id, ct);
         return RedirectToPage(new { id });
     }
 
