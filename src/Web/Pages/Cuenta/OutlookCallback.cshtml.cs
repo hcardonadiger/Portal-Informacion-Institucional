@@ -58,6 +58,12 @@ public sealed class OutlookCallbackModel(ISender sender) : PageModel
         {
             return Volver(ex.Message);
         }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // Un imprevisto (falla de la base al guardar la conexión, MSAL…) se dice en el perfil:
+            // el retorno de Microsoft no termina en la página de error. LoggingBehavior ya lo registró.
+            return Volver("Microsoft no completó la conexión. Vuelva a intentarlo; si se repite, avise a TI.");
+        }
 
         // "SuccessMessage" es la clave que pinta _CuentaLayout; "SuccessMsg" no se mostraría en Perfil.
         TempData["SuccessMessage"] = "Outlook conectado. Ya puede enviar reuniones a su calendario.";

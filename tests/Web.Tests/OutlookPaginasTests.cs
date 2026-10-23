@@ -159,6 +159,22 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
         await _conexion.DidNotReceiveWithAnyArgs().CompletarAsync(default, default!, default!, default!, default);
     }
 
+    [Fact]
+    public async Task Un_fallo_inesperado_al_canjear_vuelve_al_perfil_con_aviso_y_no_a_Error()
+    {
+        var cliente = await ConexionIniciadaAsync();
+        _conexion.CompletarAsync(default, default!, default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new InvalidOperationException("x"));
+
+        var resp = await cliente.GetAsync("/Cuenta/OutlookCallback?code=abc&state=ESTADO-OK");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        // WebExceptionHandler también responde 302, pero hacia /Error: el código solo no basta.
+        resp.Headers.Location!.ToString().Should().Contain("/Cuenta/Perfil").And.NotContain("/Error");
+        WebUtility.HtmlDecode(await cliente.GetStringAsync("/Cuenta/Perfil"))
+            .Should().Contain("Microsoft no completó la conexión");
+    }
+
     // ── Reuniones: editor, listado ────────────────────────────────
 
     private async Task<int> SembrarReunionAsync(bool conectada)

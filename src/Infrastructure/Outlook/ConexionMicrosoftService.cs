@@ -59,15 +59,25 @@ public sealed class ConexionMicrosoftService(
     public async Task<InicioConexionDto> IniciarAsync(string urlRetorno, CancellationToken ct)
     {
         var estado = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-        var url = await Cliente(urlRetorno, null, null)
-            .GetAuthorizationRequestUrl(Alcances)
-            .WithPkce(out var verificador)
-            .WithPrompt(Prompt.SelectAccount)
-            // MSAL 4.91 marcó obsoleta la sobrecarga Dictionary<string,string>; esta es la vigente.
-            // El estado solo viaja en la URL: no tiene por qué entrar en la llave de la caché.
-            .WithExtraQueryParameters(new Dictionary<string, (string, bool)> { ["state"] = (estado, false) })
-            .ExecuteAsync(ct);
-        return new InicioConexionDto(url.ToString(), estado, verificador);
+        var app = Cliente(urlRetorno, null, null);
+        try
+        {
+            var url = await app
+                .GetAuthorizationRequestUrl(Alcances)
+                .WithPkce(out var verificador)
+                .WithPrompt(Prompt.SelectAccount)
+                // MSAL 4.91 marcó obsoleta la sobrecarga Dictionary<string,string>; esta es la vigente.
+                // El estado solo viaja en la URL: no tiene por qué entrar en la llave de la caché.
+                .WithExtraQueryParameters(new Dictionary<string, (string, bool)> { ["state"] = (estado, false) })
+                .ExecuteAsync(ct);
+            return new InicioConexionDto(url.ToString(), estado, verificador);
+        }
+        catch (MsalException ex)
+        {
+            // Como en CompletarAsync: el código de error, nunca ex.Message.
+            log.LogWarning("No se pudo armar la URL de conexión Outlook: {Codigo}", ex.ErrorCode);
+            throw new OutlookNoDisponibleException($"Microsoft rechazó la conexión ({ex.ErrorCode}).");
+        }
     }
 
     public async Task CompletarAsync(Guid usuarioId, string codigo, string verificador, string urlRetorno, CancellationToken ct)
