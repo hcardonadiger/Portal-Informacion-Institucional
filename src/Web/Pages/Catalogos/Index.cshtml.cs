@@ -53,6 +53,17 @@ public sealed class IndexModel(AccesoModulosService acceso) : PageModel
                 "De qué trata cada proyecto. Se elige en la ficha y filtra el listado.",
                 "/Catalogos/Categorias", "i-inventario")),
 
+            // Los dos con la misma clave: es un solo catálogo, solo para el Administrador.
+            (CategoriasInsumoModel.Clave, new(
+                "Categorías de insumo",
+                "Cómo se agrupan los insumos al elegirlos en una actividad.",
+                "/Catalogos/CategoriasInsumo", "i-inventario")),
+
+            (CategoriasInsumoModel.Clave, new(
+                "Insumos",
+                "Materiales, equipo y servicios que se asignan a las actividades de un proyecto.",
+                "/Catalogos/Insumos", "i-inventario")),
+
             ("Prioridades.Tickets.Editar", new(
                 "Prioridades de tickets",
                 "Los niveles de urgencia que ofrece un ticket de soporte.",

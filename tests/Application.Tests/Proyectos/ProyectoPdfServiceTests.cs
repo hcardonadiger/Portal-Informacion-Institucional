@@ -141,4 +141,39 @@ public class ProyectoPdfServiceTests
         texto.Should().NotContain("Arial",
             "Arial no es tipografía de marca y era lo que el acta y los informes usaban");
     }
+
+    // ── Insumos (entrega 4) ───────────────────────────────────────
+    // El texto del PDF va comprimido y en glifos, así que no se puede buscar «Insumos:» en los
+    // bytes. Se prueba la línea que se escribe y, aparte, que el documento la dibuje sin reventar.
+
+    private static ActividadProyectoDto ConInsumos(ActividadProyectoDto a, params (string Nombre, bool Disponible)[] insumos) =>
+        a with { InsumosAsignados = insumos.Select((x, i) => new InsumoAsignadoDto(i + 1, x.Nombre, "Materiales", x.Disponible)).ToList() };
+
+    [Fact]
+    public void La_linea_de_insumos_lleva_los_nombres_en_el_orden_de_la_ficha_y_sin_marcar_los_desactivados()
+    {
+        var a = ConInsumos(Actividad(1, "Instalar el servidor"), ("Cable UTP", true), ("Rack", false), ("Switch", true));
+
+        ProyectoPdfService.LineaInsumos(a).Should().Be("Cable UTP, Rack, Switch");
+    }
+
+    [Fact]
+    public void Sin_insumos_no_hay_linea()
+    {
+        ProyectoPdfService.LineaInsumos(Actividad(1, "Sin insumos")).Should().BeNull();
+    }
+
+    [Fact]
+    public void Generar_ConActividadesConYSinInsumos_DevuelveUnPdf()
+    {
+        var proyecto = ProyectoCon([Entregable(
+            ConInsumos(Actividad(1, "Instalar el servidor", new DateOnly(2026, 6, 26), new DateOnly(2026, 7, 3)),
+                       ("Cable UTP", true), ("Rack", false)),
+            Actividad(2, "Configurar la red"))]);
+
+        var cronograma = CronogramaProyecto.Construir(proyecto, new DateOnly(2026, 9, 2));
+        var bytes = new ProyectoPdfService().Generar(DtoCon(proyecto, cronograma));
+
+        EsPdf(bytes).Should().BeTrue();
+    }
 }

@@ -29,6 +29,27 @@ internal static class RiesgoEnAlcance
 
         return riesgo;
     }
+
+    /// <summary>
+    /// Quien queda a cargo de un riesgo tiene que poder abrir el proyecto para atenderlo: un
+    /// interesado o su responsable. Misma regla que entregables y actividades, y como en ellos solo
+    /// se valida si el responsable cambia: un riesgo anterior a la regla se sigue editando sin que
+    /// haya que tocarle el responsable (2026-10-22).
+    /// </summary>
+    public static async Task ExigirResponsableAsync(
+        IApplicationDbContext ctx, int proyectoId, Guid? responsableDelProyecto,
+        Guid? nuevo, Guid? actual, string descripcion, CancellationToken ct)
+    {
+        if (nuevo is null || nuevo == actual) return;
+
+        var elegibles = await ResponsablesProyecto.ElegiblesParaRiesgoAsync(ctx, proyectoId, responsableDelProyecto, ct);
+        ResponsablesProyecto.Exigir(nuevo, actual, elegibles, "un riesgo", Nombre(descripcion),
+            "un interesado del proyecto o de su responsable");
+    }
+
+    /// <summary>La descripción, recortada, para nombrar al riesgo en un mensaje de error.</summary>
+    private static string Nombre(string descripcion) =>
+        descripcion.Trim() is var d && d.Length <= 60 ? d : d[..57].TrimEnd() + "…";
 }
 
 // ── Registrar riesgo ──────────────────────────────────────────────────────
@@ -56,6 +77,9 @@ public sealed class RegistrarRiesgoCommandHandler(
 
         if (proyecto.Estado is EstadoProyecto.Cerrado or EstadoProyecto.Cancelado)
             throw new DomainException($"El proyecto está «{proyecto.Estado}» y ya no admite riesgos nuevos.");
+
+        await RiesgoEnAlcance.ExigirResponsableAsync(
+            ctx, proyecto.Id, proyecto.ResponsableId, cmd.ResponsableId, null, cmd.Descripcion, ct);
 
         var actor  = currentUser.Nombre ?? "—";
         var riesgo = RiesgoProyecto.Crear(
@@ -95,6 +119,11 @@ public sealed class ActualizarRiesgoCommandHandler(
     public async Task<Unit> Handle(ActualizarRiesgoCommand cmd, CancellationToken ct)
     {
         var riesgo = await RiesgoEnAlcance.CargarAsync(ctx, cmd.ProyectoId, cmd.RiesgoId, ct);
+
+        var responsableDelProyecto = await ctx.Proyectos
+            .Where(p => p.Id == riesgo.ProyectoId).Select(p => p.ResponsableId).FirstOrDefaultAsync(ct);
+        await RiesgoEnAlcance.ExigirResponsableAsync(
+            ctx, riesgo.ProyectoId, responsableDelProyecto, cmd.ResponsableId, riesgo.ResponsableId, cmd.Descripcion, ct);
 
         var severidadAntes = riesgo.Severidad;
 

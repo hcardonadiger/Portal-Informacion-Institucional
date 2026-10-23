@@ -707,6 +707,43 @@
                                             </div>
                                         }
 
+                                        @* Los insumos, con el mismo armado que las dependencias: es la línea
+                                           «Insumos: …» de la actividad, que el PDF repite con los mismos nombres y
+                                           en el mismo orden. La clase NO es dep-lista: el diálogo de dependencias
+                                           busca esa clase en la fila y metería sus chips acá. *@
+                                        @if (a.Insumos.Count > 0 || Model.PuedeEditar)
+                                        {
+                                            <div class="ins-lista" role="group" aria-label="Insumos de @a.Nombre">
+                                                @if (a.Insumos.Count > 0)
+                                                {
+                                                    <span class="dep-rot" aria-hidden="true">insumos</span>
+                                                }
+                                                @foreach (var ins in a.Insumos)
+                                                {
+                                                    <span class="dep-chip@(ins.Disponible ? "" : " baja")" data-ins="@ins.Id"
+                                                          title="@(ins.Disponible ? $"{ins.Categoria} · {ins.Nombre}" : "Desactivado en el catálogo: ya no se ofrece, pero se conserva aquí.")">
+                                                        <input type="hidden" name="Entregables[@i].Actividades[@j].Insumos" value="@ins.Id" />
+                                                        <span class="dep-nom">@ins.Nombre</span>
+                                                        @if (!ins.Disponible)
+                                                        {
+                                                            <span class="badge badge-secondary">desactivado</span>
+                                                        }
+                                                        @if (Model.PuedeEditar)
+                                                        {
+                                                            <button type="button" class="dep-x" onclick="quitarInsumo(this)"
+                                                                    aria-label="Quitar el insumo @ins.Nombre">&#10005;</button>
+                                                        }
+                                                    </span>
+                                                }
+                                                @if (Model.PuedeEditar)
+                                                {
+                                                    <button type="button" class="dep-mas" onclick="abrirInsumos(this)"
+                                                            aria-label="Elegir los insumos de @a.Nombre"
+                                                            title="Elegir qué insumos usa esta actividad">+ insumos…</button>
+                                                }
+                                            </div>
+                                        }
+
                                         @* Una sola línea de campos rotulados: la actividad es la fila que más
                                            se repite —un entregable puede tener trece— y un bloque alto por
                                            cada una vuelve el árbol imposible de recorrer. *@
@@ -2034,7 +2071,8 @@
             <span class="ico" aria-hidden="true">🔑</span>
             <div>
                 De esta lista salen los <strong>responsables de entregables y actividades</strong> de la
-                <a href="#estructura">estructura</a>. Además, registrar a alguien acá <strong>le da acceso
+                <a href="#estructura">estructura</a> y, junto con el responsable del proyecto, los
+                <strong>responsables de los riesgos</strong>. Además, registrar a alguien acá <strong>le da acceso
                 al proyecto</strong> aunque quede fuera de su área o su institución — por eso el interesado
                 tiene que ser un usuario del portal.
             </div>
@@ -2218,7 +2256,15 @@
                                     <span class="res-meta" style="display:block;margin-top:3px">@r.Probabilidad × @r.Impacto</span>
                                 </td>
                                 <td>@r.Estrategia</td>
-                                <td style="white-space:normal">@(r.Responsable ?? "— sin asignar —")</td>
+                                <td style="white-space:normal">
+                                    @(r.Responsable ?? "— sin asignar —")
+                                    @* Solo con id: un riesgo con el nombre a mano y sin usuario no se puede
+                                       comparar, y marcarlo afirmaría algo que no se sabe. *@
+                                    @if (r.ResponsableId is { } rr && Model.ResponsablesRiesgo.All(o => o.UsuarioId != rr))
+                                    {
+                                        <span class="res-meta" style="display:block;margin-top:3px">fuera de los interesados</span>
+                                    }
+                                </td>
                                 <td>
                                     @if (Model.PuedeEditar)
                                     {
@@ -2256,6 +2302,18 @@
             <details style="margin-top:1rem">
                 <summary class="btns" style="display:inline-block;cursor:pointer">+ Registrar riesgo</summary>
                 <form method="post" asp-page-handler="GuardarRiesgo" asp-route-id="@p.Id" style="margin-top:.8rem">
+                    @if (!Model.ResponsablesRiesgo.Any())
+                    {
+                        <div class="hint" style="margin-bottom:1rem">
+                            <span class="ico" aria-hidden="true">💡</span>
+                            <div>
+                                Todavía no hay a quién asignar este riesgo: el responsable se elige entre los
+                                interesados del proyecto y el responsable del proyecto, y este no tiene ninguno.
+                                <a href="#interesados">Registre interesados</a> más arriba, en esta misma pestaña,
+                                y vuelva acá.
+                            </div>
+                        </div>
+                    }
                     <div style="display:flex;gap:12px;flex-wrap:wrap">
                         <div class="field" style="width:100%">
                             <label for="r-desc">Riesgo *</label>
@@ -2300,13 +2358,18 @@
                         </div>
                         <div class="field" style="flex:1;min-width:190px">
                             <label for="r-resp">Responsable</label>
-                            <select id="r-resp" name="RiesgoResponsable">
+                            @* Interesados más el responsable del proyecto: la misma regla que exigen
+                               RegistrarRiesgoCommand y ActualizarRiesgoCommand en el servidor. *@
+                            <select id="r-resp" name="RiesgoResponsable" aria-describedby="r-resp-ayuda">
                                 <option value="">—</option>
-                                @foreach (var u in Model.Usuarios)
+                                @foreach (var u in Model.ResponsablesRiesgo)
                                 {
-                                    <option value="@u.Id">@u.Nombre</option>
+                                    <option value="@u.UsuarioId">@u.Nombre</option>
                                 }
                             </select>
+                            <div class="res-meta" id="r-resp-ayuda" style="margin-top:4px">
+                                Se elige entre los interesados del proyecto y el responsable del proyecto.
+                            </div>
                         </div>
                         <div class="field" style="flex:1;min-width:190px">
                             <label for="r-rev">Revisar el</label>
@@ -2420,6 +2483,40 @@
             <button type="button" class="btns" onclick="cerrarDependencia()">Cancelar</button>
             <button type="button" class="btnp" id="dlg-dep-ok" onclick="confirmarDependencia()">Agregar</button>
         </div>
+    </dialog>
+
+    @* La ventana de insumos: una sola, fuera del formulario, por lo mismo que la de dependencias.
+       Las casillas se arman al abrirla desde catalogoIns; solo trae activos de categorías activas,
+       que es la misma regla con la que el servidor acepta un insumo nuevo. *@
+    <dialog id="dlg-ins" class="dep-dialog ins-dialog" aria-labelledby="dlg-ins-titulo" aria-describedby="dlg-ins-de">
+        <h3 id="dlg-ins-titulo">Insumos</h3>
+        <p class="res-meta" id="dlg-ins-de"></p>
+        <div id="dlg-ins-busca">
+            <label class="cel-lbl" for="dlg-ins-q">Buscar</label>
+            <input type="search" id="dlg-ins-q" placeholder="Nombre o categoría…" autocomplete="off" />
+            <p class="res-meta" id="dlg-ins-cuenta" aria-live="polite"></p>
+        </div>
+        <div class="ins-opciones" id="dlg-ins-lista"></div>
+        <p class="res-meta" id="dlg-ins-nada" hidden>Ningún insumo coincide con la búsqueda.</p>
+        <p class="hint" id="dlg-ins-vacio" hidden style="margin-top:.6rem">
+            <span class="ico" aria-hidden="true">💡</span>
+            <span>
+                Todavía no hay insumos en el catálogo.
+                @if (Model.PuedeAdministrarInsumos)
+                {
+                    <a href="/Catalogos/Insumos" target="_blank" rel="noopener">Abrir el catálogo de insumos</a><text> (se abre en otra pestaña).</text>
+                }
+                else
+                {
+                    <text>Pídale al administrador que los registre en Catálogos.</text>
+                }
+            </span>
+        </p>
+        <div class="dep-dialog-pie">
+            <button type="button" class="btns" onclick="cerrarInsumos()">Cancelar</button>
+            <button type="button" class="btnp" id="dlg-ins-ok" onclick="confirmarInsumos()">Aplicar</button>
+        </div>
+        <p class="res-meta" style="margin-top:.5rem;text-align:right">Los cambios se guardan al guardar el proyecto.</p>
     </dialog>
 }
 
@@ -2535,6 +2632,8 @@
                 // La fila nueva puede depender de actividades ya guardadas; ser predecesora,
                 // todavía no. Por eso lleva el botón pero no aparece en el catálogo.
                 '<div class="dep-lista"><button type="button" class="dep-mas" onclick="abrirDependencia(this)" title="Elegir qué actividad tiene que terminar antes que esta">+ depende de…</button></div>' +
+                // Los insumos sí se pueden elegir en una fila nueva: no apuntan a otra actividad.
+                '<div class="ins-lista" role="group" aria-label="Insumos de la actividad nueva"><button type="button" class="dep-mas" onclick="abrirInsumos(this)" aria-label="Elegir los insumos de la actividad nueva" title="Elegir qué insumos usa esta actividad">+ insumos…</button></div>' +
                 '<div class="edt-campos edt-campos-act">' +
                 '<div class="edt-campo"><label class="cel-lbl">Responsable</label>' +
                 '<select name="' + base + '.ResponsableId" aria-label="Responsable de la actividad nueva">' + optsResponsable() + '</select></div>' +
@@ -2700,6 +2799,159 @@
             refrescarLista(lista);
             cerrarDependencia();
         };
+
+        // ── Insumos ──────────────────────────────────────────────────────
+        // Lo que se puede elegir hoy. Un insumo ya asignado que se desactivó no está acá: su chip
+        // queda en la fila, marcado, y la ventana no lo toca.
+        var catalogoIns = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.InsumosElegibles.Select(x => new { id = x.Id, nombre = x.Nombre, cat = x.Categoria, desc = x.Descripcion })));
+
+        var filaIns = null;   // la fila para la que se abrió la ventana
+
+        // Sin mayúsculas ni tildes: «camion» tiene que encontrar «Camión».
+        function plano(s) {
+            return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        }
+
+        function refrescarInsumos(lista) {
+            if (!lista) return;
+            var hay = lista.querySelector('.dep-chip');
+            var rot = lista.querySelector('.dep-rot');
+            if (hay && !rot) {
+                rot = document.createElement('span');
+                rot.className = 'dep-rot';
+                rot.setAttribute('aria-hidden', 'true');
+                rot.textContent = 'insumos';
+                lista.insertBefore(rot, lista.firstChild);
+            } else if (!hay && rot) {
+                rot.remove();
+            }
+        }
+
+        window.quitarInsumo = function (btn) {
+            var chip = btn.closest('.dep-chip');
+            var lista = chip.parentNode;
+            chip.remove();
+            refrescarInsumos(lista);
+            // El botón que se pulsó ya no existe: sin esto el foco cae al principio de la página.
+            var mas = lista.querySelector('.dep-mas');
+            if (mas) mas.focus();
+        };
+
+        function filtrarInsumos() {
+            var q = plano(document.getElementById('dlg-ins-q').value.trim());
+            var visibles = 0;
+            [].forEach.call(document.querySelectorAll('#dlg-ins-lista .ins-grupo'), function (grupo) {
+                var enGrupo = 0;
+                [].forEach.call(grupo.querySelectorAll('label.chk'), function (lbl) {
+                    var ok = !q || lbl.getAttribute('data-busca').indexOf(q) >= 0;
+                    lbl.hidden = !ok;
+                    if (ok) enGrupo++;
+                });
+                grupo.hidden = enGrupo === 0;
+                visibles += enGrupo;
+            });
+            document.getElementById('dlg-ins-nada').hidden = visibles > 0 || catalogoIns.length === 0;
+            var marcados = document.querySelectorAll('#dlg-ins-lista input:checked').length;
+            document.getElementById('dlg-ins-cuenta').textContent =
+                marcados + (marcados === 1 ? ' marcado' : ' marcados') + ' · ' +
+                (q ? visibles + ' de ' + catalogoIns.length : catalogoIns.length + ' en el catálogo');
+        }
+
+        window.abrirInsumos = function (btn) {
+            var dlg = document.getElementById('dlg-ins');
+            if (!dlg) return;
+            filaIns = btn.closest('tr');
+
+            var puestos = {};
+            [].forEach.call(filaIns.querySelectorAll('.ins-lista .dep-chip'), function (c) {
+                puestos[c.getAttribute('data-ins')] = true;
+            });
+
+            // Agrupados por categoría, en el orden del catálogo: la consulta ya los trae así.
+            var html = [], actual = null, idx = 0;
+            catalogoIns.forEach(function (x) {
+                if (x.cat !== actual) {
+                    if (actual !== null) html.push('</fieldset>');
+                    html.push('<fieldset class="ins-grupo"><legend>' + esc(x.cat) + '</legend>');
+                    actual = x.cat;
+                }
+                var id = 'dlg-ins-c' + (idx++);
+                var titulo = x.desc ? ' title="' + esc(x.desc) + '"' : '';
+                var marcado = puestos[String(x.id)] ? ' checked' : '';
+                html.push('<label class="chk" for="' + id + '" data-busca="' + esc(plano(x.nombre + ' ' + x.cat)) + '"' + titulo + '>' +
+                          '<input type="checkbox" id="' + id + '" value="' + x.id + '"' + marcado + ' />' +
+                          '<span>' + esc(x.nombre) + '</span></label>');
+            });
+            if (actual !== null) html.push('</fieldset>');
+
+            var lista = document.getElementById('dlg-ins-lista');
+            lista.innerHTML = html.join('');
+
+            var vacio = catalogoIns.length === 0;
+            document.getElementById('dlg-ins-vacio').hidden = !vacio;
+            document.getElementById('dlg-ins-busca').hidden = vacio;
+            document.getElementById('dlg-ins-ok').disabled  = vacio;
+            lista.hidden = vacio;
+
+            var q = document.getElementById('dlg-ins-q');
+            q.value = '';
+            filtrarInsumos();
+
+            var nom = filaIns.querySelector('input[name$=".Nombre"]');
+            document.getElementById('dlg-ins-de').textContent =
+                nom && nom.value ? '«' + nom.value + '» usa:' : '';
+
+            dlg.showModal();
+            if (!vacio) q.focus();
+        };
+
+        window.cerrarInsumos = function () {
+            var dlg = document.getElementById('dlg-ins');
+            if (dlg && dlg.open) dlg.close();
+        };
+
+        // Aplicar sincroniza la fila con las casillas: agrega las marcadas que no estaban y quita
+        // las desmarcadas. Los chips de insumos desactivados no tienen casilla y quedan como están.
+        window.confirmarInsumos = function () {
+            if (!filaIns) { cerrarInsumos(); return; }
+
+            var idInput = filaIns.querySelector('input[name$=".Id"]');
+            var lista   = filaIns.querySelector('.ins-lista');
+            if (!idInput || !lista) { cerrarInsumos(); return; }
+            var base = idInput.getAttribute('name').replace(/\.Id$/, '');
+
+            [].forEach.call(document.querySelectorAll('#dlg-ins-lista input[type=checkbox]'), function (cb) {
+                var chip = lista.querySelector('.dep-chip[data-ins="' + cb.value + '"]');
+                if (!cb.checked && chip) { chip.remove(); return; }
+                if (!cb.checked || chip) return;
+
+                var x = catalogoIns.find(function (i) { return String(i.id) === cb.value; });
+                var nuevo = document.createElement('span');
+                nuevo.className = 'dep-chip';
+                nuevo.setAttribute('data-ins', cb.value);
+                nuevo.title = x.cat + ' · ' + x.nombre;
+                nuevo.innerHTML =
+                    '<input type="hidden" name="' + base + '.Insumos" value="' + esc(cb.value) + '" />' +
+                    '<span class="dep-nom">' + esc(x.nombre) + '</span>' +
+                    '<button type="button" class="dep-x" aria-label="Quitar el insumo ' + esc(x.nombre) + '" ' +
+                    'onclick="quitarInsumo(this)">&#10005;</button>';
+                lista.insertBefore(nuevo, lista.querySelector('.dep-mas'));
+            });
+
+            refrescarInsumos(lista);
+            cerrarInsumos();
+        };
+
+        (function () {
+            var dlg = document.getElementById('dlg-ins');
+            if (!dlg) return;
+            document.getElementById('dlg-ins-q').addEventListener('input', filtrarInsumos);
+            document.getElementById('dlg-ins-lista').addEventListener('change', filtrarInsumos);
+            // Escape cierra por el «cancel» nativo sin pasar por cerrarInsumos: el estado se
+            // limpia acá, en «close», que corre en los dos casos.
+            dlg.addEventListener('close', function () { filaIns = null; });
+        })();
 
         // ── Plegar grupos ────────────────────────────────────────────────
         // Un proyecto desglosado tiene decenas de filas. Plegar es solo visual: las filas siguen

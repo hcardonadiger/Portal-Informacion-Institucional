@@ -18,6 +18,14 @@ public sealed record PredecesoraDto(
 }
 
 /// <summary>
+/// Un insumo asignado a una actividad, con su categoría para agruparlo y mostrarlo.
+/// </summary>
+/// <param name="Disponible">Sigue activo, y en una categoría activa. Uno que no lo está se
+/// conserva en la actividad —desactivarlo no lo quita de lo ya planificado— pero la ficha lo
+/// marca, porque ya no se puede volver a elegir si se quita.</param>
+public sealed record InsumoAsignadoDto(int Id, string Nombre, string Categoria, bool Disponible);
+
+/// <summary>
 /// Una actividad del árbol, ya proyectada para la vista. El nivel donde se reporta el porcentaje
 /// y el único que lleva ventana de ejecución (inicio y fin).
 /// </summary>
@@ -41,9 +49,16 @@ public sealed record ActividadProyectoDto(
     /// y de la conversión de hitos no tienen una fecha real que rescatar. Se muestra vacío en vez
     /// de inventarle la de la migración.</summary>
     DateTime? CreadoEn = null,
-    string?   CreadoPor = null)
+    string?   CreadoPor = null,
+
+    /// <summary>Ver <see cref="Insumos"/>. Opcional en el constructor para que quien arma
+    /// actividades sin insumos —el tablero, las pruebas— no tenga que pasar una lista vacía.</summary>
+    IReadOnlyList<InsumoAsignadoDto>? InsumosAsignados = null)
 {
     private static DateOnly Hoy => DateOnly.FromDateTime(DateTime.UtcNow);
+
+    /// <summary>Lo que la actividad necesita, en el orden del catálogo: categoría y nombre.</summary>
+    public IReadOnlyList<InsumoAsignadoDto> Insumos => InsumosAsignados ?? [];
 
     public bool EstaAtrasada =>
         FechaFinPlan.HasValue
@@ -427,7 +442,12 @@ public sealed record ActividadInput(
     bool      Cancelada,
     Guid?     ResponsableId,
     string?   Responsable,
-    IReadOnlyList<int>? Predecesoras = null);
+    IReadOnlyList<int>? Predecesoras = null,
+
+    /// <summary>Ids del catálogo de insumos. <b>Null no los toca</b> —es lo que manda quien no
+    /// los conoce, como la herramienta MCP de estructura—; una lista vacía los quita todos. Ver
+    /// <c>ActividadProyecto.FijarInsumos</c>.</summary>
+    IReadOnlyList<int>? Insumos = null);
 
 /// <summary>Una opción de los selectores de alcance. <c>Padre</c> es el área a la que pertenece
 /// una unidad; null en las áreas.</summary>

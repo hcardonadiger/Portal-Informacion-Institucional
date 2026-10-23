@@ -38,6 +38,18 @@
         return false;
     }
 
+    // Las secciones del menú nacen contraídas, salvo la que contiene la página: esa la
+    // abre el servidor, para que no haya un fotograma con el menú cerrado antes de que
+    // un script lo abra. Solo UNA, la primera que la reclame, por si algún día dos
+    // grupos coincidieran en una ruta. Las páginas sin sección las resuelve diger.js
+    // con la última que eligió el usuario.
+    string? _seccionAbierta = null;
+    bool AbreSeccion(string id, bool contieneLaPagina)
+    {
+        if (contieneLaPagina && _seccionAbierta is null) _seccionAbierta = id;
+        return _seccionAbierta == id;
+    }
+
     string Iniciales(string? nombre)
     {
         if (string.IsNullOrWhiteSpace(nombre)) return "?";
@@ -281,9 +293,11 @@
                         @if (puedeExpedientes)
                         {
                             var grpExp = EsRuta("/", "/Expedientes") || EsRuta("/PlanTrabajo") || EsRuta("/Recursos");
-                            <div class="nav-group @(grpExp ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Expedientes<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreExpedientes = AbreSeccion("expedientes", grpExp);
+                            <div class="nav-group @(grpExp ? "on" : "")" data-seccion="expedientes">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreExpedientes ? "true" : "false")" aria-controls="nav-sec-expedientes">Expedientes<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-expedientes">
                                     <a class="nav-item @(EsRuta("/", "/Expedientes") ? "on" : "")" asp-page="/Index"><svg class="ico"><use href="#i-expediente"></use></svg>Expedientes</a>
                                     <a class="nav-item @(EsRuta("/PlanTrabajo") ? "on" : "")" asp-page="/PlanTrabajo/Index"><svg class="ico"><use href="#i-plan"></use></svg>Plan de Trabajo</a>
                                     <a class="nav-item @(EsRuta("/Recursos") ? "on" : "")" asp-page="/Recursos/Index"><svg class="ico"><use href="#i-recursos"></use></svg>Recursos y Plantillas</a>
@@ -298,9 +312,11 @@
                            después recibía «Acceso denegado» al entrar—. *@
                         @if (puedeSiger)
                         {
-                            <div class="nav-group @(EsRuta("/Siger") ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">SIGER<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreSiger = AbreSeccion("siger", EsRuta("/Siger"));
+                            <div class="nav-group @(EsRuta("/Siger") ? "on" : "")" data-seccion="siger">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreSiger ? "true" : "false")" aria-controls="nav-sec-siger">SIGER<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-siger">
                                     <a class="nav-item @(EsRuta("/Siger/Index") ? "on" : "")" asp-page="/Siger/Index"><svg class="ico"><use href="#i-inventario"></use></svg>Inventario</a>
                                     <a class="nav-item @(EsRuta("/Siger/Tablero") ? "on" : "")" asp-page="/Siger/Tablero"><svg class="ico"><use href="#i-grafica"></use></svg>Observatorio</a>
                                 </div>
@@ -311,9 +327,11 @@
                            empieza por él —se llega desde el inventario o desde una ficha—. *@
                         @if (puedeHondurasSimple)
                         {
-                            <div class="nav-group @(EsRuta("/HondurasSimple") ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Honduras Simple<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreHondurasSimple = AbreSeccion("honduras-simple", EsRuta("/HondurasSimple"));
+                            <div class="nav-group @(EsRuta("/HondurasSimple") ? "on" : "")" data-seccion="honduras-simple">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreHondurasSimple ? "true" : "false")" aria-controls="nav-sec-honduras-simple">Honduras Simple<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-honduras-simple">
                                     @if (hsConciliacion)
                                     {
                                         <a class="nav-item @(EsRuta("/HondurasSimple/Conciliacion") ? "on" : "")" asp-page="/HondurasSimple/Conciliacion"><svg class="ico"><use href="#i-enlace"></use></svg>Conciliación</a>
@@ -342,9 +360,11 @@
                         {
                             @* Dejó de ser un destino único: la biblioteca es la consulta
                                transversal de la documentación, y no cuelga de ningún proyecto. *@
-                            <div class="nav-group @(EsRuta("/Proyectos") ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Proyectos<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreProyectos = AbreSeccion("proyectos", EsRuta("/Proyectos"));
+                            <div class="nav-group @(EsRuta("/Proyectos") ? "on" : "")" data-seccion="proyectos">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreProyectos ? "true" : "false")" aria-controls="nav-sec-proyectos">Proyectos<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-proyectos">
                                     <a class="nav-item @(EsRuta("/Proyectos") && !EsRuta("/Proyectos/Biblioteca") && !EsRuta("/Proyectos/MisActividades") && !EsRuta("/Proyectos/Plantillas") ? "on" : "")" asp-page="/Proyectos/Index">Portafolio</a>
                                     <a class="nav-item @(EsRuta("/Proyectos/MisActividades") ? "on" : "")" asp-page="/Proyectos/MisActividades">Mis actividades</a>
                                     @if (await Acceso.PuedeClaveAsync("Proyectos.Documentos.Ver"))
@@ -369,9 +389,11 @@
                         @if (puedeTableros || puedeExpedientes || puedeEjecutivo)
                         {
                             var grpTab = EsRuta("/Tableros") || EsRuta("/Informes");
-                            <div class="nav-group @(grpTab ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Tableros<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreTableros = AbreSeccion("tableros", grpTab);
+                            <div class="nav-group @(grpTab ? "on" : "")" data-seccion="tableros">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreTableros ? "true" : "false")" aria-controls="nav-sec-tableros">Tableros<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-tableros">
                                     @if (puedeEjecutivo)
                                     {
                                         <a class="nav-item @(EsRuta("/Tableros/Ejecutivo") ? "on" : "")" asp-page="/Tableros/Ejecutivo"><svg class="ico"><use href="#i-plan"></use></svg>Ejecutivo</a>
@@ -391,9 +413,11 @@
                         @if (puedeCalendario || puedeReuniones)
                         {
                             var grpAgenda = EsRuta("/Calendario") || EsRuta("/Reuniones");
-                            <div class="nav-group @(grpAgenda ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Agenda<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreAgenda = AbreSeccion("agenda", grpAgenda);
+                            <div class="nav-group @(grpAgenda ? "on" : "")" data-seccion="agenda">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreAgenda ? "true" : "false")" aria-controls="nav-sec-agenda">Agenda<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-agenda">
                                     @if (puedeCalendario)
                                     {
                                         <a class="nav-item @(EsRuta("/Calendario") ? "on" : "")" asp-page="/Calendario/Index"><svg class="ico"><use href="#i-calendario"></use></svg>Calendario</a>
@@ -409,9 +433,11 @@
                         @if (puedeTickets || puedeContactos || puedeSoporte)
                         {
                             var grpSoporte = EsRuta("/Tickets") || EsRuta("/Contactos") || EsRuta("/Chat");
-                            <div class="nav-group @(grpSoporte ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Soporte<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreSoporte = AbreSeccion("soporte", grpSoporte);
+                            <div class="nav-group @(grpSoporte ? "on" : "")" data-seccion="soporte">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreSoporte ? "true" : "false")" aria-controls="nav-sec-soporte">Soporte<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-soporte">
                                     @if (puedeTickets)
                                     {
                                         <a class="nav-item @(EsRuta("/Tickets") ? "on" : "")" asp-page="/Tickets/Index"><svg class="ico"><use href="#i-ticket"></use></svg>Tickets</a>
@@ -455,11 +481,13 @@
                             var puedeUnidades      = await Acceso.PuedeAsync("Unidades");
                             var puedeTemasTicket   = await Acceso.PuedeClaveAsync("Tickets.Temas.Editar");
                             var puedeCategorias    = await Acceso.PuedeClaveAsync("Categorias.Proyectos.Editar");
+                            var puedeInsumos       = await Acceso.PuedeClaveAsync(Diger.TramitesEstado.Web.Pages.Catalogos.CategoriasInsumoModel.Clave);
                             var puedePrioridades   = await Acceso.PuedeClaveAsync("Prioridades.Proyectos.Editar")
                                                   || await Acceso.PuedeClaveAsync("Prioridades.Tickets.Editar");
 
                             var puedeCatalogos = puedeInstituciones || puedeAreas || puedeUnidades
-                                              || puedeTemasTicket || puedePrioridades || puedeCategorias;
+                                              || puedeTemasTicket || puedePrioridades || puedeCategorias
+                                              || puedeInsumos;
 
                             // Cada entrada por su propia clave, no por «es administrador». Un rol
                             // puede tener Usuarios.Ver sin ser administrador, y antes eso no le
@@ -483,9 +511,11 @@
                             var grpAdmin = EsRuta("/Catalogos") || EsRuta("/Instituciones")
                                         || EsRuta("/Areas") || EsRuta("/Unidades")
                                         || EsRuta("/Usuarios") || EsRuta("/Accesos") || EsRuta("/Admin");
-                            <div class="nav-group @(grpAdmin ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Administración<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
+                            var abreAdministracion = AbreSeccion("administracion", grpAdmin);
+                            <div class="nav-group @(grpAdmin ? "on" : "")" data-seccion="administracion">
+                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
+                                        aria-expanded="@(abreAdministracion ? "true" : "false")" aria-controls="nav-sec-administracion">Administración<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-administracion">
                                     @if (puedeCatalogos)
                                     {
                                         <a class="nav-item @(EsRuta("/Catalogos", "/Instituciones", "/Areas", "/Unidades") ? "on" : "")" asp-page="/Catalogos/Index"><svg class="ico"><use href="#i-recursos"></use></svg>Catálogos</a>
@@ -525,7 +555,7 @@
                            la página lleva [PermisoNoRequerido]—. Hasta ahora solo estaba dentro del
                            panel de usuario, donde no la encontraba quien no supiera que existía.
                            Un solo destino, así que enlaza directo en vez de desplegar un menú. *@
-                        <div class="nav-group @(EsRuta("/Ayuda") ? "on" : "")">
+                        <div class="nav-group nav-group-pie @(EsRuta("/Ayuda") ? "on" : "")">
                             <a class="nav-group-btn" asp-page="/Ayuda/Index" title="Manual de usuario del portal">Ayuda</a>
                         </div>
                     </nav>

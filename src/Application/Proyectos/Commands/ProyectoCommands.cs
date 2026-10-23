@@ -23,7 +23,31 @@ internal static class ProyectoConEstructura
         ctx.Proyectos
             .Include(p => p.Entregables).ThenInclude(e => e.Actividades)
                                         .ThenInclude(a => a.Predecesoras)
+            .Include(p => p.Entregables).ThenInclude(e => e.Actividades)
+                                        .ThenInclude(a => a.Insumos)
             .FirstOrDefaultAsync(p => p.Id == id, ct)!;
+}
+
+// ── Insumos ───────────────────────────────────────────────────────────────
+/// <summary>
+/// Qué insumos del catálogo se pueden asignar hoy: activos y en una categoría activa. Se consulta
+/// solo por los Ids que trae el guardado, no el catálogo entero.
+/// </summary>
+internal static class InsumosElegibles
+{
+    public static async Task<IReadOnlySet<int>> DeAsync(
+        IApplicationDbContext ctx, IReadOnlyList<EntregableInput> entrada, CancellationToken ct)
+    {
+        var pedidos = entrada.SelectMany(e => e.Actividades ?? [])
+                             .SelectMany(a => a.Insumos ?? [])
+                             .Distinct().ToList();
+        if (pedidos.Count == 0) return new HashSet<int>();
+
+        return (await ctx.Insumos.AsNoTracking()
+            .Where(i => pedidos.Contains(i.Id) && i.Activo && i.Categoria!.Activo)
+            .Select(i => i.Id)
+            .ToListAsync(ct)).ToHashSet();
+    }
 }
 
 // ── Responsables ──────────────────────────────────────────────────────────
@@ -50,13 +74,27 @@ internal static class ResponsablesProyecto
             .Select(i => i.UsuarioId)
             .ToListAsync(ct)).ToHashSet();
 
-    public static void Exigir(Guid? nuevo, Guid? actual, HashSet<Guid> interesados, string que, string nombre)
+    /// <summary>
+    /// Para los riesgos vale además el responsable del proyecto, aunque no figure como interesado:
+    /// los proyectos anteriores a que se registrara solo no lo tienen, y el responsable de un riesgo
+    /// es casi siempre el del proyecto.
+    /// </summary>
+    public static async Task<HashSet<Guid>> ElegiblesParaRiesgoAsync(
+        IApplicationDbContext ctx, int proyectoId, Guid? responsableDelProyecto, CancellationToken ct)
+    {
+        var elegibles = await InteresadosAsync(ctx, proyectoId, ct);
+        if (responsableDelProyecto is { } r) elegibles.Add(r);
+        return elegibles;
+    }
+
+    public static void Exigir(Guid? nuevo, Guid? actual, HashSet<Guid> interesados, string que, string nombre,
+                              string aCargoDe = "un interesado del proyecto")
     {
         if (nuevo is null || nuevo == actual) return;
         if (interesados.Contains(nuevo.Value)) return;
 
         throw new DomainException(
-            $"«{nombre}»: {que} solo puede quedar a cargo de un interesado del proyecto. " +
+            $"«{nombre}»: {que} solo puede quedar a cargo de {aCargoDe}. " +
             "Agregue primero a esa persona en la sección Interesados y vuelva a intentarlo.");
     }
 }
@@ -247,7 +285,9 @@ public sealed class ActualizarProyectoCommandHandler(
         proyecto.FechaFinPlan    = cmd.FechaFinPlan;
 
         var interesados = await ResponsablesProyecto.InteresadosAsync(ctx, proyecto.Id, ct);
-        var resultado   = ReconciliarEstructura(proyecto, cmd.Entregables, interesados, puedeOrdenar);
+        var insumos     = new AsignacionInsumos(
+            await InsumosElegibles.DeAsync(ctx, cmd.Entregables, ct), currentUser.Nombre ?? "—", DateTime.UtcNow);
+        var resultado   = ReconciliarEstructura(proyecto, cmd.Entregables, interesados, puedeOrdenar, insumos);
 
         // Las actividades que se van arrastran las imputaciones que las apuntan. Hay que soltarlas
         // a mano: su FK es NoAction —no puede ser SetNull sin chocar con el error 1785, ver la
@@ -360,6 +400,10 @@ public sealed class ActualizarProyectoCommandHandler(
     /// actividades que hay que desimputar antes de que EF las borre.</summary>
     private sealed record ResultadoEstructura(string Resumen, List<int> ActividadesBorradas);
 
+    /// <summary>Lo que hace falta para fijar los insumos de cada actividad: cuáles se pueden
+    /// agregar hoy, y quién y cuándo los agrega.</summary>
+    private sealed record AsignacionInsumos(IReadOnlySet<int> Elegibles, string Actor, DateTime Ahora);
+
     /// <summary>
     /// Reconcilia la estructura por Id en vez de reemplazarla en bloque.
     ///
@@ -382,7 +426,8 @@ public sealed class ActualizarProyectoCommandHandler(
         Proyecto proyecto,
         IReadOnlyList<EntregableInput> entrada,
         HashSet<Guid> interesados,
-        bool puedeOrdenar)
+        bool puedeOrdenar,
+        AsignacionInsumos insumos)
     {
         var hoy       = DateOnly.FromDateTime(DateTime.UtcNow);
         var validos   = entrada.Where(e => !string.IsNullOrWhiteSpace(e.Nombre)).ToList();
@@ -417,7 +462,7 @@ public sealed class ActualizarProyectoCommandHandler(
             cambio |= entregable.CambiarEstado(input.Estado);
 
             var (cambioAct, borradasAct, detalle) =
-                ReconciliarActividades(entregable, input.Actividades, interesados, hoy, puedeOrdenar);
+                ReconciliarActividades(entregable, input.Actividades, interesados, hoy, puedeOrdenar, insumos);
 
             borradas.AddRange(borradasAct);
             if (detalle is { Length: > 0 }) detalleActividades.Add($"«{entregable.Nombre}» → {detalle}");
@@ -438,7 +483,7 @@ public sealed class ActualizarProyectoCommandHandler(
             entregable.Definir(
                 input.Nombre, input.Descripcion, input.FechaPlan, input.ResponsableId, input.Responsable);
             entregable.CambiarEstado(input.Estado);
-            ReconciliarActividades(entregable, input.Actividades, interesados, hoy, puedeOrdenar);
+            ReconciliarActividades(entregable, input.Actividades, interesados, hoy, puedeOrdenar, insumos);
             proyecto.Agregar(entregable);
             creados.Add(entregable);
         }
@@ -477,7 +522,8 @@ public sealed class ActualizarProyectoCommandHandler(
         IReadOnlyList<ActividadInput> entrada,
         HashSet<Guid> interesados,
         DateOnly hoy,
-        bool puedeOrdenar)
+        bool puedeOrdenar,
+        AsignacionInsumos insumos)
     {
         var validas   = (entrada ?? []).Where(a => !string.IsNullOrWhiteSpace(a.Nombre)).ToList();
         var idsSiguen = validas.Where(a => a.Id > 0).Select(a => a.Id).ToHashSet();
@@ -493,6 +539,7 @@ public sealed class ActualizarProyectoCommandHandler(
         var porId    = entregable.Actividades.ToDictionary(a => a.Id);
         var editadas = 0;
         var conDeps  = 0;
+        var conIns   = 0;
         foreach (var input in validas.Where(a => a.Id > 0))
         {
             if (!porId.TryGetValue(input.Id, out var actividad)) continue;
@@ -500,9 +547,10 @@ public sealed class ActualizarProyectoCommandHandler(
             ResponsablesProyecto.Exigir(
                 input.ResponsableId, actividad.ResponsableId, interesados, "una actividad", input.Nombre.Trim());
 
-            var (cambio, dependencias) = Aplicar(actividad, input, hoy);
-            if (cambio)       editadas++;
-            if (dependencias) conDeps++;
+            var (cambio, dependencias, insumosCambiaron) = Aplicar(actividad, input, hoy, insumos);
+            if (cambio)           editadas++;
+            if (dependencias)     conDeps++;
+            if (insumosCambiaron) conIns++;
         }
 
         var nuevas  = validas.Where(a => a.Id <= 0).ToList();
@@ -514,7 +562,7 @@ public sealed class ActualizarProyectoCommandHandler(
                 input.ResponsableId, null, interesados, "una actividad", input.Nombre.Trim());
 
             var actividad = ActividadProyecto.Crear(input.Nombre, orden++);
-            Aplicar(actividad, input, hoy);
+            Aplicar(actividad, input, hoy, insumos);
             entregable.Agregar(actividad);
             creadas.Add(actividad);
         }
@@ -542,6 +590,8 @@ public sealed class ActualizarProyectoCommandHandler(
         // Aparte de «modificadas», aunque las incluya: cambiar de qué depende una actividad no se
         // ve en ninguna columna de la tabla y sin nombrarlo la auditoría no lo registraría.
         if (conDeps        > 0) partes.Add($"{conDeps} con dependencias cambiadas");
+        // Igual que las dependencias: los insumos no se ven en ninguna columna de la tabla.
+        if (conIns         > 0) partes.Add($"{conIns} con insumos cambiados");
 
         return (nuevas.Count + quitadas.Count + editadas > 0 || reordenadas, borradas, string.Join(", ", partes));
     }
@@ -556,8 +606,8 @@ public sealed class ActualizarProyectoCommandHandler(
     /// <returns>Qué cambió: el segundo miembro dice si se movieron las dependencias, que la
     /// bitácora nombra aparte — cambiar de quién depende una actividad no es lo mismo que
     /// corregirle el nombre.</returns>
-    private static (bool Cambio, bool Dependencias) Aplicar(
-        ActividadProyecto actividad, ActividadInput input, DateOnly hoy)
+    private static (bool Cambio, bool Dependencias, bool Insumos) Aplicar(
+        ActividadProyecto actividad, ActividadInput input, DateOnly hoy, AsignacionInsumos insumos)
     {
         var cambio = actividad.Definir(
             input.Nombre, input.Descripcion, input.FechaInicioPlan, input.FechaFinPlan,
@@ -578,7 +628,10 @@ public sealed class ActualizarProyectoCommandHandler(
         // para poder nombrarlo en la bitácora.
         var dependencias = actividad.FijarPredecesoras(input.Predecesoras);
 
-        return (cambio || dependencias, dependencias);
+        // Los insumos, aparte por lo mismo. La regla de «solo lo que cambia» vive en la actividad.
+        var cambioInsumos = actividad.FijarInsumos(input.Insumos, insumos.Elegibles, insumos.Actor, insumos.Ahora);
+
+        return (cambio || dependencias || cambioInsumos, dependencias, cambioInsumos);
     }
 }
 

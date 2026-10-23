@@ -2,6 +2,7 @@
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Categorias;
+using Diger.TramitesEstado.Application.Proyectos.Insumos;
 using Diger.TramitesEstado.Application.Proyectos.Prioridades;
 using Diger.TramitesEstado.Application.Proyectos.Plantillas;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
@@ -35,6 +36,21 @@ public sealed class EditorModel(
     public IReadOnlyList<BitacoraProyectoDto> Auditoria { get; private set; } = [];
     public IReadOnlyList<RiesgoProyectoDto> Riesgos { get; private set; } = [];
     public IReadOnlyList<InteresadoProyectoDto> Interesados { get; private set; } = [];
+
+    /// <summary>Quién puede quedar a cargo de un riesgo: los interesados más el responsable del
+    /// proyecto, sin duplicados. Misma regla que exigen RegistrarRiesgoCommand y
+    /// ActualizarRiesgoCommand en el servidor.</summary>
+    public IReadOnlyList<OpcionResponsable> ResponsablesRiesgo { get; private set; } = [];
+
+    /// <summary>Lo que ofrece la ventana de insumos: activos y de categorías activas. Solo se
+    /// consulta si se puede editar.</summary>
+    public IReadOnlyList<InsumoElegibleDto> InsumosElegibles { get; private set; } = [];
+
+    /// <summary>Si quien mira administra el catálogo de insumos: con el catálogo vacío, la
+    /// ventana le ofrece ir a llenarlo en vez de pedírselo a otro.</summary>
+    public bool PuedeAdministrarInsumos { get; private set; }
+
+    public sealed record OpcionResponsable(Guid UsuarioId, string Nombre);
 
     /// <summary>Reuniones, expedientes y tickets vinculados, más el conteo de los que existen pero quedan
     /// fuera del alcance de quien mira. Ver la nota de GetVinculosProyectoQuery.</summary>
@@ -136,6 +152,11 @@ public sealed class EditorModel(
         /// con el mismo nombre —sin índice— porque son enteros sueltos: el binder los junta en la
         /// lista igual, y así quitar un chip en el navegador no obliga a renumerar nada.</summary>
         public List<int> Predecesoras { get; set; } = [];
+
+        /// <summary>Ids de los insumos de la actividad, con el mismo armado que las predecesoras.
+        /// El formulario siempre los manda —vacía significa «ninguno»—, a diferencia de la
+        /// herramienta MCP, que no los conoce y los deja como estaban.</summary>
+        public List<int> Insumos { get; set; } = [];
     }
 
     // ── Ficha ───────────────────────────────────────────────────────────────
@@ -327,7 +348,8 @@ public sealed class EditorModel(
                     a.Cancelada,
                     a.ResponsableId,
                     NombreDe(a.ResponsableId, actsPorId.TryGetValue(a.Id, out var pa) ? pa.Responsable : null),
-                    a.Predecesoras))
+                    a.Predecesoras,
+                    a.Insumos))
                     .ToList())).ToList();
 
             await sender.Send(new ActualizarProyectoCommand(
@@ -976,6 +998,17 @@ public sealed class EditorModel(
         Interesados = await sender.Send(new GetInteresadosProyectoQuery(id), ct);
         Vinculos    = await sender.Send(new GetVinculosProyectoQuery(id), ct);
 
+        // El responsable del proyecto puede no figurar entre los interesados: los proyectos
+        // anteriores a que se registrara solo no lo tienen.
+        ResponsablesRiesgo = Interesados
+            .Select(i => new OpcionResponsable(i.UsuarioId, i.Nombre))
+            .Concat(dto.ResponsableId is { } rid
+                ? [new OpcionResponsable(rid, dto.Responsable ?? "Responsable del proyecto")]
+                : [])
+            .DistinctBy(o => o.UsuarioId)
+            .OrderBy(o => o.Nombre, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
         var vinculables = await sender.Send(new GetVinculablesQuery(id), ct);
         ReunionesVinculables   = vinculables.Reuniones;
         ExpedientesVinculables = vinculables.Expedientes;
@@ -1003,7 +1036,12 @@ public sealed class EditorModel(
                                 && await acceso.PuedeClaveAsync("Proyectos.Avance.Editar", ct);
 
         if (PuedeEditar)
+        {
             Alcance = await sender.Send(new GetAlcanceOpcionesQuery(), ct);
+            InsumosElegibles = await sender.Send(new GetInsumosElegiblesQuery(), ct);
+            PuedeAdministrarInsumos = await acceso.PuedeClaveAsync(
+                Diger.TramitesEstado.Web.Pages.Catalogos.CategoriasInsumoModel.Clave, ct);
+        }
 
         if (PuedeEditar || PuedeReportarAvance)
             Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);

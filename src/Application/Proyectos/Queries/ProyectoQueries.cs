@@ -132,9 +132,32 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
             .Include(x => x.CategoriaRef)
             .Include(x => x.Entregables).ThenInclude(e => e.Actividades)
                                         .ThenInclude(a => a.Predecesoras)
+            .Include(x => x.Entregables).ThenInclude(e => e.Actividades)
+                                        .ThenInclude(a => a.Insumos)
             .FirstOrDefaultAsync(x => x.Id == query.Id, ct);
 
         if (p is null) return null;
+
+        // Los insumos se resuelven aparte contra el catálogo, que es global: la asignación se
+        // alcanzó por el proyecto —ya filtrado—, y el nombre de un insumo no es dato de nadie.
+        var idsInsumo = p.Entregables.SelectMany(e => e.Actividades).SelectMany(a => a.InsumoIds)
+                         .Distinct().ToList();
+        var insumos = idsInsumo.Count == 0
+            ? new Dictionary<int, (InsumoAsignadoDto Dto, int OrdenCategoria)>()
+            : await ctx.Insumos.AsNoTracking()
+                .Where(i => idsInsumo.Contains(i.Id))
+                .Select(i => new { i.Id, i.Nombre, Categoria = i.Categoria!.Nombre, i.Categoria.Orden,
+                                   Disponible = i.Activo && i.Categoria.Activo })
+                .ToDictionaryAsync(i => i.Id,
+                    i => (Dto: new InsumoAsignadoDto(i.Id, i.Nombre, i.Categoria, i.Disponible), OrdenCategoria: i.Orden), ct);
+
+        IReadOnlyList<InsumoAsignadoDto> Insumos(ActividadProyecto a) =>
+            a.InsumoIds
+             .Where(insumos.ContainsKey)
+             .Select(id => insumos[id])
+             .OrderBy(x => x.OrdenCategoria).ThenBy(x => x.Dto.Categoria).ThenBy(x => x.Dto.Nombre)
+             .Select(x => x.Dto)
+             .ToList();
 
         // Los estados a los que puede pasar los decide el dominio, no la vista: así el <select>
         // del editor nunca ofrece una transición que el comando va a rechazar.
@@ -179,7 +202,8 @@ public sealed class GetProyectoQueryHandler(IApplicationDbContext ctx)
                                               a.AvancePct, a.Estado, a.ResponsableId, a.Responsable,
                                               Predecesoras(a),
                                               // default = la fila es anterior a que la entidad llevara auditoría.
-                                              a.CreatedAt == default ? null : a.CreatedAt, a.CreatedBy))
+                                              a.CreatedAt == default ? null : a.CreatedAt, a.CreatedBy,
+                                              Insumos(a)))
                                           .ToList(),
                              e.CreatedAt == default ? null : e.CreatedAt, e.CreatedBy))
                          .ToList(),

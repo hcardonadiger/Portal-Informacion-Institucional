@@ -208,14 +208,32 @@ public sealed class ProyectoPdfService : IProyectoPdfService
                         foreach (var a in e.Actividades.OrderBy(x => x.Orden))
                         {
                             var bg = i++ % 2 == 0 ? "#ffffff" : "#f6f9fd";
-                            Celda(tbl, bg).Text(a.Orden.ToString()).FontSize(7.5f);
-                            Celda(tbl, bg).Text(a.Nombre).FontSize(7.5f);
-                            Celda(tbl, bg).Text(Ni(a.Responsable)).FontSize(7.5f);
-                            Celda(tbl, bg).Text(Fecha(a.FechaInicioPlan)).FontSize(7.5f);
-                            Celda(tbl, bg).Text(Fecha(a.FechaFinPlan)).FontSize(7.5f);
-                            Celda(tbl, bg).Text(Fecha(a.FechaFinReal)).FontSize(7.5f);
-                            Celda(tbl, bg).Text($"{a.AvancePct}").FontSize(7.5f);
-                            Celda(tbl, bg).Text(Etiquetas.Actividad(a.Estado)).FontSize(7.5f);
+
+                            // Con insumos, la fila de la actividad no dibuja su regla inferior: la
+                            // línea de abajo es parte del mismo registro y se lee junto con ella.
+                            var insumos = LineaInsumos(a);
+                            var regla   = insumos is null;
+                            Celda(tbl, bg, regla).Text(a.Orden.ToString()).FontSize(7.5f);
+                            Celda(tbl, bg, regla).Text(a.Nombre).FontSize(7.5f);
+                            Celda(tbl, bg, regla).Text(Ni(a.Responsable)).FontSize(7.5f);
+                            Celda(tbl, bg, regla).Text(Fecha(a.FechaInicioPlan)).FontSize(7.5f);
+                            Celda(tbl, bg, regla).Text(Fecha(a.FechaFinPlan)).FontSize(7.5f);
+                            Celda(tbl, bg, regla).Text(Fecha(a.FechaFinReal)).FontSize(7.5f);
+                            Celda(tbl, bg, regla).Text($"{a.AvancePct}").FontSize(7.5f);
+                            Celda(tbl, bg, regla).Text(Etiquetas.Actividad(a.Estado)).FontSize(7.5f);
+
+                            if (insumos is null) continue;
+
+                            // La línea «Insumos: …», bajo el nombre y abarcando el resto de la fila.
+                            // Gris y sin color: es dato secundario, y tiene que sobrevivir a una
+                            // impresión en blanco y negro.
+                            Celda(tbl, bg);
+                            tbl.Cell().ColumnSpan(7).Background(bg).BorderBottom(0.5f).BorderColor("#e2e8f0")
+                               .PaddingHorizontal(3).PaddingBottom(3).Text(t =>
+                               {
+                                   t.Span("Insumos: ").SemiBold().FontSize(7f).FontColor(Gris);
+                                   t.Span(insumos).FontSize(7f).FontColor(Gris);
+                               });
                         }
                     });
                 });
@@ -559,8 +577,16 @@ public sealed class ProyectoPdfService : IProyectoPdfService
 
     private static IContainer EncabezadoCelda(IContainer c) => c.Background(AzulMed).Padding(3);
 
-    private static IContainer Celda(TableDescriptor tbl, string bg) =>
-        tbl.Cell().Background(bg).BorderBottom(0.5f).BorderColor("#e2e8f0").Padding(3);
+    private static IContainer Celda(TableDescriptor tbl, string bg, bool regla = true) =>
+        tbl.Cell().Background(bg).BorderBottom(regla ? 0.5f : 0).BorderColor("#e2e8f0").Padding(3);
+
+    /// <summary>
+    /// Lo que va después de «Insumos: » bajo una actividad, o null si no tiene. Los mismos nombres
+    /// y en el mismo orden que la ficha —categoría y nombre—, y sin marcar los desactivados: a
+    /// quien lee el documento no le sirve un estado del catálogo que no puede cambiar.
+    /// </summary>
+    public static string? LineaInsumos(ActividadProyectoDto a) =>
+        a.Insumos.Count == 0 ? null : string.Join(", ", a.Insumos.Select(x => x.Nombre));
 
     // ── Helpers de datos ───────────────────────────────────────────────────────
     private static bool Hay(string? s) => !string.IsNullOrWhiteSpace(s);

@@ -48,6 +48,137 @@ Rama `panel-notificaciones`. Especificación:
 - Pendiente aparte: cambiar la contraseña de Gmail versionada en `appsettings.json` desde
   `0462b14` y escribir la nueva en el panel.
 
+### 2026-10-22 (noche, 6) — Menú lateral contraíble y encabezado a la orilla
+Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo). Solo
+el layout compartido (`_Layout.cshtml`, `diger.css` y `diger.js`). Sin cambiar los elementos, los
+nombres ni el orden del menú, y sin tocar `src/Web/Mcp`.
+- **Secciones contraíbles:**
+  - todas nacen contraídas; el servidor abre la sección de la página, así que no hay un parpadeo
+    con el menú cerrado;
+  - un clic abre o cierra, y abrir una cierra la otra;
+  - en las páginas sin sección (Ayuda, perfil) se abre la última que eligió el usuario, guardada en
+    el navegador (`localStorage`, protegido con `try/catch`); sin dato, o con el almacenamiento
+    bloqueado, todo queda contraído y el menú sigue funcionando;
+  - el título es un botón con `aria-expanded` y `aria-controls`, y ese atributo es el que contrae
+    en el CSS: lo que se ve y lo que oye un lector de pantalla no pueden separarse;
+  - Escape, un clic fuera u ocultar el cajón ya no contraen la sección (venía de los desplegables
+    de la barra horizontal que el cajón reemplazó el 2026-10-13).
+- **Encabezado:** sin ancho máximo; la hamburguesa y el logo quedan en x=12 a cualquier ancho
+  (antes, a 1920 px, en x≈225), en la misma vertical que los títulos del menú.
+- **375 px:** la cabecera ya no se sale del ancho; el logo se reduce en vez de empujar al usuario, y
+  el panel de notificaciones se ancla a la cabecera.
+- **`diger-ui`:** propuesta aplicada; revisión «aprobado con cambios menores», 3 de 4 aplicados (el
+  cuarto, la línea guía en oscuro, es decorativa y no tiene token mejor).
+- **Navegador** (claro y oscuro; 375, 768, 1366 y 1920 px, y una ventana de 420 px de alto): todos
+  los criterios se comprobaron con medidas, sin espacio entre cabecera y menú en ninguna posición
+  del scroll, y con el menú llegando hasta «Ayuda».
+- **Visual Studio** tenía el portal abierto y bloqueaba `src/Web/bin`; no se tocó. Se compiló y se
+  probó en una carpeta temporal, con el portal en los puertos 49185 a 49187.
+- **Pruebas:** `MenuLateralTests` (8). Suite completa: 1455 pruebas (1 omitida), sin advertencias
+  nuevas.
+
+### 2026-10-22 (noche, 5) — Entrega 4: catálogo de insumos y ventana por actividad
+Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo). Diseño
+aceptado por Jamil, de la investigación de la tanda 2 de GestionDigital (sección 5). Sin tocar
+`src/Web/Mcp`, «Recursos y plantillas», las plantillas de proyecto ni el responsable del proyecto.
+- **Catálogo:** dos páginas nuevas en Catálogos, «Categorías de insumo» e «Insumos», con el patrón
+  de Categorías de proyecto. Solo para el Administrador: clave nueva `Insumos.Catalogo.Editar`, que
+  no se le otorga a ningún rol. No se borra nada: insumos y categorías se desactivan. El nombre del
+  insumo no se repite dentro de su categoría. La página de insumos filtra por texto y categoría y
+  dice en cuántas actividades está cada uno.
+- **Categorías iniciales:** Materiales, Equipo y maquinaria, Herramientas, Equipo informático,
+  Servicios y Otros. Se siembran solo si la tabla está vacía, para que una renombrada no vuelva a
+  aparecer.
+- **En la actividad:** botón «+ insumos…» bajo cada actividad, con una ventana de casillas
+  agrupadas por categoría y un buscador, como la de dependencias. Sin cantidad, costo ni
+  inventario. Los insumos viajan con el guardado de la estructura del proyecto.
+- **Regla en el servidor:** solo se valida lo que cambia. Un insumo nuevo tiene que estar activo y
+  en una categoría activa. Uno ya asignado que después se desactivó se conserva, y la ficha lo
+  marca «desactivado».
+- **Alcance:** la tabla de asignación no tiene acceso propio: se llega a ella solo por el
+  proyecto, que ya filtra por alcance. Un guardado armado a mano contra un proyecto fuera de
+  alcance responde «no encontrado», y una actividad de otro proyecto colada en el formulario se
+  ignora.
+- **Herramienta MCP:** no cambia. La de estructura no manda insumos, y eso significa «no tocarlos».
+- **Ficha y PDF:** una línea «Insumos: …» bajo cada actividad que tenga.
+- **Base de datos:** migración `20261022203532_AgregarCatalogoDeInsumos`, script
+  `database/2026-10-22_catalogo_insumos.sql` y reversión `database/2026-10-22_revertir_insumos.sql`.
+  Probados en `GestionGD_Jamil`:
+  - la migración se instaló, se revirtió con su `Down` y se volvió a instalar;
+  - el script corrido sobre la base migrada no cambió nada, y una segunda vez tampoco;
+  - la reversión retiró todo, y una segunda vez no hizo nada;
+  - el script instaló todo desde cero y una segunda corrida no cambió nada;
+  - una categoría renombrada no se volvió a sembrar.
+- **Ayuda:** sección de insumos en Proyectos y en la guía de administración.
+- **Pruebas:**
+  - de dominio, la regla de la actividad;
+  - de comandos, el catálogo, la asignación y el alcance;
+  - de página, solo el Administrador, la ventana, lo conservado y el alcance;
+  - y la línea del PDF.
+- **Interfaz compartida, corregida de paso:**
+  - las ventanas de dependencias y de insumos se abrían pegadas a la esquina superior izquierda
+    por un reinicio global de márgenes; ahora se centran;
+  - los avisos `.hint` que la página esconde salían siempre, porque `display:flex` le ganaba al
+    atributo `hidden`. Entre ellos, «Cambió el orden» de la estructura, que aparecía al cargar.
+- **`diger-ui`:**
+  - Propuesta: aplicada.
+  - Revisión: aprobado con 6 cambios menores, todos aplicados:
+    - espaciado de la ventana;
+    - rótulos de grupo del catálogo;
+    - el foco al quitar un insumo;
+    - y el orden de tres reglas del CSS.
+  - Fuera de alcance, señaló:
+    - el mismo problema de foco al quitar una dependencia;
+    - el contraste del texto atenuado en tema claro (4.05:1, por debajo de 4.5), en todo el portal;
+    - dos `radius-pill` que la doctrina no admite;
+    - que su doctrina todavía dice que no hay tema oscuro.
+- **Revisión en el navegador** (`GestionGD_Jamil`, correo apagado, datos ficticios):
+  - catálogo, ventana y ficha en tema claro, oscuro y a 375 px;
+  - el foco entra al buscador y vuelve al botón;
+  - un insumo desactivado deja de ofrecerse y se conserva marcado;
+  - el PDF real trae la línea «Insumos: …».
+- Resultado: compila sin advertencias nuevas y pasan 1447 pruebas (1 omitida).
+
+### 2026-10-22 (noche, 4) — Tanda 1, entrega 3: responsable de los riesgos
+Pedido del Analista. Rama `Jamil-GestionGD`, con `ike_opt` ya al día (no traía nada nuevo).
+Referencia: commit `cd6c912` de GestionDigital. Sin migraciones ni cambios en `src/Web/Mcp`, y
+sin tocar el responsable del proyecto.
+- **Servidor** (commit `4d5955b`): registrar y actualizar un riesgo aceptan como responsable solo
+  a un interesado del proyecto o a su responsable, con la misma regla que entregables y
+  actividades. Solo se valida lo que cambia: un riesgo antiguo con otro responsable se sigue
+  editando sin tocarlo. Antes bastaba con cambiar el valor del selector en la petición.
+- **Selector** (commits `73eb136` y `a4c6311`): ofrece los interesados más el responsable del
+  proyecto, sin duplicados. Si no hay nadie, avisa que hay que registrar interesados. En la tabla,
+  un responsable guardado que ya no es elegible se marca «fuera de los interesados». Propuesta y
+  revisión de `diger-ui`: aprobado con cambios menores, ya aplicados.
+- **Ayuda:** explica de quién puede ser responsable un riesgo.
+- **Herramienta MCP `registrar_riesgo`:** cambia lo que hace. Antes aceptaba cualquier
+  `responsableId`; ahora rechaza a quien no sea del equipo del proyecto. No se corrigió: solo se
+  reporta.
+- Resultado: compila sin advertencias nuevas y pasan 1392 pruebas (1 omitida).
+- **Base local nueva `GestionGD_Jamil`** en `SQL2025`: creada con las migraciones más
+  `database/2026-09-24_poner_al_dia.sql`, que agrega las tres columnas que ninguna migración crea
+  (sin ellas el acta no abre). Usuarios de `DbSeeder` y datos de prueba ficticios. Se apunta con
+  User Secrets; `appsettings.Development.json` no cambió.
+- **Revisión en el navegador** (con el correo apagado):
+  - selector de riesgos en claro, oscuro y a 375 px;
+  - advertencia del recordatorio en el acta y el compromiso en tema oscuro;
+  - impresión del acta: la advertencia no se imprime;
+  - editor de expedientes a 375 px: la advertencia cabe.
+
+### 2026-10-22 (noche, 3) — Entregas 1 y 2 integradas en `ike_opt`
+Pedido del Analista. Entrega 2 aceptada.
+- `Jamil-GestionGD` se subió a origin. `ike_opt` traía 70 commits nuevos de origin (entre ellos la
+  rama Jamil y la rama DashBoards); se puso al día por avance rápido.
+- Merge `7a6ecb8` (sin rebase ni force), subido a origin. Hubo un solo conflicto, mecánico, en
+  `Infrastructure/DependencyInjection.cs`: `ike_opt` registró `SolOptions` y nosotros
+  `CorreoOptions` en el mismo lugar. Quedaron las dos. `src/Web/Mcp` no cambió con el merge.
+- En `ike_opt`: compila con las 3 advertencias de siempre y pasan 1380 pruebas (1 omitida).
+- `ike_opt` se trajo de vuelta a `Jamil-GestionGD`; las dos ramas quedan con el mismo contenido.
+- Revisión en el navegador con la base `GestionGD_DashBoards` (la eligió Jamil; `GestionGD_new`
+  ya no existe en la instancia). El portal corrió solo en la sesión, sin tocar appsettings y con
+  el correo apagado. Resultado en Riesgos y bloqueos.
+
 ### 2026-10-22 (noche, 2) — Tanda 1, entrega 2: notificaciones y correo
 Pedido del Analista. Rama `Jamil-GestionGD`. Cada defecto tiene una prueba que fallaba antes. Sin
 migraciones, sin tocar `src/Web/Mcp` ni el servidor, el usuario o la contraseña del correo.
@@ -138,6 +269,9 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - Panel de control → Notificaciones, entrega 1 (2026-10-22, rama `panel-notificaciones`).
 - Tanda 1, entrega 1 (seguridad): S1 a S5 (2026-10-22, rama `Jamil-GestionGD`).
 - Tanda 1, entrega 2 (notificaciones y correo) (2026-10-22, rama `Jamil-GestionGD`).
+- Tanda 1, entrega 3 (responsable de los riesgos) (2026-10-22, rama `Jamil-GestionGD`).
+- Entrega 4 (catálogo de insumos y ventana por actividad) (2026-10-22, rama `Jamil-GestionGD`).
+- Menú lateral contraíble y encabezado a la orilla (2026-10-22, rama `Jamil-GestionGD`).
 - Tablero ejecutivo de proyectos (2026-10-19, rama `DashBoards`). Sin cambios de base de datos.
 
 ## En curso
@@ -149,9 +283,6 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
    `Correo__UrlBase` en IIS y seguir los pasos de IIS de la entrega 2.
 0. **Panel de control → Notificaciones, entrega 2:** las reglas de correo. Antes de publicar la
    entrega 1 hay que correr su script y seguir sus notas de despliegue.
-1. **Decisión de Jamil:** el editor de expedientes no muestra el mensaje de éxito. Ese mensaje
-   queda guardado y aparece en la siguiente pantalla que muestre mensajes de éxito. Mostrarlo en el
-   editor corrige el desvío, pero cambia lo que hoy se ve.
 1. Decidir el siguiente paso de tableros: rediseñar los tableros marcados
    (Proyectos operativo, Reuniones, Tickets, Digitalización, Trámites, Expedientes)
    o unificar los tres tableros de Proyectos por alcance. Decide Jamil.
@@ -159,12 +290,35 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
    (`DESIGN.md` y `.claude/agents/references/lengua-de-casa-diger.md` como base).
 
 ## Descartado
-- (nada registrado)
+- 2026-10-22 — Mostrar el mensaje de éxito en el editor de expedientes. Decidió Jamil: queda como
+  está.
 
 ## Para después
 - (nada registrado)
 
 ## Decisiones
+- 2026-10-22 — Ingeniería (menú lateral y encabezado):
+  - Cerrar una sección borra la sección recordada: quien la contrae no la quiere abierta en la
+    próxima página sin sección.
+  - Si la sección de la página no se ve (sin permiso), la página cuenta como «sin sección» y se usa
+    la recordada.
+  - El hueco se corrige midiendo al desplazar, no volviendo pegajosa la cinta de entorno: la cinta
+    seguiría quitando 22 px de alto en todas las páginas.
+  - La cabecera va de orilla a orilla, con el mismo relleno lateral que el cajón (12 px).
+  - Se borraron las reglas de la barra horizontal que el cajón ya pisaba (desplegable flotante,
+    ajuste de 901 a 1180 px). Esta última achicaba los títulos del cajón a 12,5 px.
+- 2026-10-22 — Ingeniería (entrega 4):
+  - Una sola clave, `Insumos.Catalogo.Editar`, para las dos páginas: es un solo catálogo.
+  - Las categorías iniciales se siembran solo si la tabla está vacía, no nombre por nombre.
+  - El nombre repetido se compara sin distinguir mayúsculas, igual que el índice único en SQL
+    Server.
+  - Los insumos viajan con el guardado de la estructura, igual que las dependencias, y no con un
+    comando propio. Así heredan la carga del proyecto con su alcance.
+  - Si la estructura llega sin insumos (null), no se tocan; una lista vacía los quita todos. Por
+    eso la herramienta MCP de estructura no cambia de comportamiento.
+  - Un insumo de una categoría desactivada tampoco se ofrece ni se puede agregar.
+  - En el PDF, los insumos desactivados salen sin marca: al lector no le sirve un estado del
+    catálogo que no puede cambiar.
 - 2026-10-22 — Ingeniería (entrega 2):
   - El agente de interfaz de GestionGD es `diger-ui`; aquí no existe `ux-ui`.
   - Los textos dicen «el portal» y no «esta institución», porque el servidor de correo es uno
@@ -197,6 +351,18 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
   tableros se limita al tablero ejecutivo.
 
 ## Bugs
+- **2026-10-22 — Espacio vacío entre la cabecera y el menú lateral.**
+  - Síntoma: al bajar la página quedaban 22 px vacíos entre la cabecera y el inicio del menú, con
+    la página asomando por el hueco.
+  - Causa raíz: encima de la cabecera está la cinta de entorno («Entorno de pruebas · base …»),
+    que no es pegajosa. El menú toma su borde superior de una medida que se hacía solo al cargar
+    (100 px con la cinta a la vista). Al bajar, la cabecera sube a 78 y el menú se quedaba en 100.
+    El 2026-10-19 se había quitado la medida al desplazar, creyendo que la cabecera ya empezaba
+    siempre en el borde superior.
+  - Solución: se vuelve a medir al desplazar, una vez por cuadro y solo con el menú abierto.
+  - Archivos: `wwwroot/js/diger.js` (`ajustarTopDelCajon`) y el comentario en `diger.css`.
+  - Pruebas: no hay pruebas de JavaScript en la solución. Se reprodujo y se midió en el navegador:
+    antes, 22 px; después, 0 px a 0, 5, 11, 22 y 200 px de scroll, en cuatro anchos.
 - **2026-10-22 — S1. Token de recuperación y cuerpo del correo en el registro.**
   - Síntoma: cuando un envío fallaba o no había servidor configurado, el registro (en IIS, el
     Visor de eventos) guardaba el correo completo, con el enlace y el token.
@@ -250,13 +416,36 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
   con texto oscuro en tema oscuro.
 
 ## Riesgos y bloqueos
-- **La base local `GestionGD_new` no abre con la cuenta de Windows** (error 4060, visto el
-  2026-10-22 al intentar levantar el portal desde esta rama). No se pudo revisar la interfaz en el
-  navegador. Quedan pendientes: la advertencia en tema oscuro, la impresión del acta y el ancho
-  del editor de expedientes en móvil. Necesita: que Jamil confirme qué base local usa esta rama.
+- **`GestionGD_DashBoards` no está completa** (2026-10-22): tiene la última migración, pero a su
+  tabla `Reuniones` le falta `Duracion` y a las fichas SIGER del expediente les faltan columnas
+  (`ClaveEstable`, `EstaEnSol` y otras). Por eso el acta, el compromiso y el editor de expedientes
+  dan error 500 con esa base. No se tocó (decisión de Jamil). Esta rama usa `GestionGD_Jamil`.
+- **`appsettings.Development.json` apunta a `GestionGD_new`, que ya no existe en `SQL2025`.** En
+  esta máquina lo tapa el User Secret de `GestionGD_Jamil`. Ese secreto vale para todas las copias
+  del portal en esta máquina y este usuario, porque comparten el mismo `UserSecretsId`.
+- **La herramienta MCP `registrar_riesgo` ahora rechaza a un responsable fuera del equipo del
+  proyecto** (entrega 3). Antes lo aceptaba. No se tocó `src/Web/Mcp`; si hace falta ajustar su
+  descripción, lo decide Jamil.
+- **Detalles de interfaz que ya estaban antes de la tanda 1**, vistos el 2026-10-22:
+  - a 375 px, la fila de botones de arriba del editor de expedientes y los KPI de Tableros se
+    salen del ancho;
+  - a 375 px, el menú de usuario de la cabecera se salía del ancho en todas las páginas (visto en
+    Catálogos el 2026-10-22, entrega 4). **Corregido** el 2026-10-22 con el menú lateral;
+  - el cajón del menú, cuando está oculto, sigue en el orden del tabulador: está corrido fuera de
+    la pantalla, pero no inerte (visto por `diger-ui` el 2026-10-22);
+  - en tema oscuro, parte del texto de la Ayuda tiene muy poco contraste (visto por `diger-ui`
+    el 2026-10-22);
+  - al imprimir el acta salen la franja «Entorno de pruebas», el botón del chat y una segunda
+    página en blanco;
+  - `diger-ui` advierte que el tema oscuro existe en esta rama aunque su doctrina lo daba por
+    retirado el 2026-09-24. Volvió con `ike_opt` (trabajo de Henry).
 - **Correos ya escritos en el Visor de eventos del servidor** (de antes de S1): pueden tener datos
   de personas y enlaces de recuperación ya vencidos. Necesita: decisión de Jamil sobre vaciar ese
   registro o restringir quién lo lee.
+- **`database/DESPLIEGUE.md` llega solo hasta `2026-10-02_poner_al_dia.sql`** (visto el
+  2026-10-22). No nombra los scripts del 10-12, 10-14 y 10-19 ni el de insumos del 10-22. Cada uno
+  dice en su encabezado después de cuál va, pero la guía de despliegue no los recorre. Tampoco
+  `00_diagnostico.sql` los detecta.
 - **Publicar `Jamil-GestionGD` lleva todo `ike_opt` a producción**, no solo la tanda 1. Su
   despliegue va primero (`database/DESPLIEGUE.md`).
 - **Contraseña del correo saliente versionada** desde el commit `b709609` (2026-08-07). Está en
@@ -266,10 +455,10 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - **Documentos de Expedientes sin descarga.** La subida guarda una dirección `/uploads/...` que
   ya no se sirve desde el 2026-08-26, así que el enlace probablemente no abre. No está reproducido
   todavía.
-- **Respaldo de base de datos dentro del repositorio** (`TramitesEstado.bak`,
-  13 MB, versionado desde el commit `2d8fa08`). Puede contener datos reales. Sacarlo
-  del repositorio requiere decisión de Jamil; borrarlo del historial implicaría
-  reescribirlo, cosa que no se hace sin aprobación.
+- **Respaldo de base de datos en el historial del repositorio** (`TramitesEstado.bak`,
+  13 MB, versionado desde el commit `2d8fa08`). Puede contener datos reales. `ike_opt` ya lo
+  quitó del árbol (llegó con la rama Jamil), pero sigue en el historial. Borrarlo de ahí
+  implicaría reescribirlo, cosa que no se hace sin aprobación.
 - **`appsettings.json` del Web apunta a una base que ya no existe en local**
   (`GestionGD_TEST`). Cualquier arranque fuera de `Development` falla en la primera
   consulta. El valor real de producción se configura en el servidor.

@@ -1,0 +1,89 @@
+@page
+@model Diger.TramitesEstado.Web.Pages.Catalogos.CategoriasInsumoModel
+@{
+    ViewData["Title"] = "Categorías de insumo";
+}
+
+<div class="container lista">
+    <partial name="_SuccessBanner" />
+    @if (TempData["ErrorMsg"] is string terr)
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@terr</div>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert-error" style="margin-bottom:1rem">@Model.Error</div>
+    }
+
+    <div class="hist-header">
+        <div>
+            <h2>Categorías de insumo</h2>
+            <p>Cómo se agrupan los insumos al elegirlos en una actividad. Los insumos se administran en <a asp-page="/Catalogos/Insumos">Insumos</a>.</p>
+        </div>
+        <a class="btns" asp-page="/Catalogos/Index" style="font-size:13px">← Catálogos</a>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">Nueva categoría</h3>
+        <form method="post" asp-page-handler="Crear" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="field" style="margin:0;flex:1;min-width:200px">
+                <label for="cat-nombre">Nombre <span style="color:var(--diger-danger)">*</span></label>
+                <input id="cat-nombre" name="Nombre" value="@Model.Nombre" placeholder="p. ej. Materiales de oficina" maxlength="60" required />
+            </div>
+            <div class="field" style="margin:0;width:110px">
+                <label for="cat-orden">Orden</label>
+                <input id="cat-orden" type="number" name="Orden" min="0" max="999" placeholder="al final" />
+            </div>
+            <button class="btnp" type="submit" style="margin-bottom:.1rem">Agregar categoría</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3 class="sec-h">Catálogo</h3>
+        @if (Model.Categorias.Count == 0)
+        {
+            <p class="res-meta">Aún no hay categorías. Sin categorías no se pueden registrar insumos.</p>
+        }
+        else
+        {
+            @* Mismo armado que Categorías de proyecto: .edit-grid usa table-layout:fixed y el
+               contenedor con overflow-x es la red para pantallas angostas. *@
+            <div style="overflow-x:auto">
+            <table class="seg-table edit-grid">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th style="width:72px">Orden</th>
+                        <th style="width:68px">Activa</th>
+                        <th style="width:84px">Insumos</th>
+                        <th style="width:96px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Categorias)
+                    {
+                        <tr>
+                            @* El <form> como hijo directo de <tr> no envuelve nada, pero los
+                               controles quedan asociados a él. Ver Categorias.cshtml. *@
+                            <form method="post" asp-page-handler="Actualizar">
+                                <input type="hidden" name="id" value="@c.Id" />
+                                <td><input name="nombre" value="@c.Nombre" maxlength="60" style="width:100%" aria-label="Nombre de la categoría" /></td>
+                                <td><input type="number" name="orden" value="@c.Orden" min="0" max="999" style="width:100%" aria-label="Orden de «@c.Nombre»" /></td>
+                                <td style="text-align:center"><input type="checkbox" name="activo" value="true" checked="@c.Activo" aria-label="«@c.Nombre» activa" /></td>
+                                <td class="res-meta" style="text-align:center">@c.Insumos</td>
+                                <td style="text-align:right">
+                                    <button class="btns" type="submit" style="font-size:12.5px;padding:6px 12px">Guardar</button>
+                                </td>
+                            </form>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+            <p class="res-meta" style="margin-top:.75rem">
+                Una categoría no se elimina: desactívela y sus insumos dejarán de ofrecerse, sin
+                quitarlos de las actividades que ya los tienen.
+            </p>
+        }
+    </div>
+</div>
