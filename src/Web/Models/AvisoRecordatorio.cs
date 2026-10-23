@@ -32,6 +32,13 @@ public static class AvisoRecordatorio
             ? "el responsable no tiene usuario en el portal"
             : "ninguna de las personas tiene usuario en el portal";
 
+        if (r.CorreoApagado)
+            return campana
+                ? (Nivel.Advertencia,
+                   "El aviso quedó en la campana de notificaciones. No se envió correo porque el correo de este módulo está apagado en Panel de control → Notificaciones.")
+                : (Nivel.Error,
+                   $"No se pudo enviar el recordatorio: {quien}, y el correo de este módulo está apagado en Panel de control → Notificaciones.");
+
         if (!campana && r.CorreosEnviados == 0 && r.ServidorSinConfigurar)
             return (Nivel.Error,
                 $"No se pudo enviar el recordatorio: {quien}, y el portal todavía no tiene configurado su servidor de correo.");

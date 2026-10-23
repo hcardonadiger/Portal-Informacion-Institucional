@@ -26,12 +26,14 @@ public sealed class CorreosEscapadosTests : IDisposable
         new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
 
     private readonly IEmailService _email = Substitute.For<IEmailService>();
+    private readonly INotificacionService _notif = Substitute.For<INotificacionService>();
     private readonly List<string> _cuerpos = [];
 
     public CorreosEscapadosTests()
     {
         _email.SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Do<string>(b => _cuerpos.Add(b)),
             Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(ResultadoCorreo.Enviado));
+        _notif.EncolarAsync(default, default, default!).ReturnsForAnyArgs(true);
     }
 
     private const string Peligroso = "<script>robar()</script>";
@@ -68,7 +70,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Tickets.Add(t);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioTicketCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
+        await new EnviarRecordatorioTicketCommandHandler(_ctx, _notif, _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()), AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioTicketCommand(t.Id, Peligroso), CancellationToken.None);
 
         _cuerpos.Should().HaveCount(2);
@@ -89,7 +91,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Reuniones.Add(r);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioReunionCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
+        await new EnviarRecordatorioReunionCommandHandler(_ctx, _notif, _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()), AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioReunionCommand(r.Id, Peligroso), CancellationToken.None);
 
         var cuerpo = _cuerpos.Should().ContainSingle().Subject;
@@ -112,7 +114,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Acuerdos.Add(a);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioCompromisoCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
+        await new EnviarRecordatorioCompromisoCommandHandler(_ctx, _notif, _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()), AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioCompromisoCommand(a.Id, Peligroso), CancellationToken.None);
 
         var cuerpo = _cuerpos.Should().ContainSingle().Subject;
@@ -149,7 +151,7 @@ public sealed class CorreosEscapadosTests : IDisposable
         _ctx.Expedientes.Add(exp);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioExpedienteCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
+        await new EnviarRecordatorioExpedienteCommandHandler(_ctx, _notif, _email, Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()), AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioExpedienteCommand(exp.Id, Peligroso), CancellationToken.None);
 
         _cuerpos.Should().HaveCount(2);

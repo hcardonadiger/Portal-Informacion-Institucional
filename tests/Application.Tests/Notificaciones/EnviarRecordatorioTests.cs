@@ -24,6 +24,7 @@ public class EnviarRecordatorioTests : IDisposable
             .Options;
         _ctx = new AppDbContext(opts, new FakeCurrentUser(), NSubstitute.Substitute.For<MediatR.IPublisher>());
         _notifSvc = Substitute.For<INotificacionService>();
+        _notifSvc.EncolarAsync(default, default, default!).ReturnsForAnyArgs(true);
         _emailSvc = Substitute.For<IEmailService>();
     }
 
@@ -43,7 +44,7 @@ public class EnviarRecordatorioTests : IDisposable
         _ctx.Tickets.Add(t);
         await _ctx.SaveChangesAsync();
 
-        var handler = new EnviarRecordatorioTicketCommandHandler(_ctx, _notifSvc, _emailSvc, Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.CorreoOptions()), Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.InstitucionOptions()));
+        var handler = new EnviarRecordatorioTicketCommandHandler(_ctx, _notifSvc, _emailSvc, Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.CorreoOptions()), Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.InstitucionOptions()), AjustesDePrueba.CorreoEncendido());
         var result = await handler.Handle(new EnviarRecordatorioTicketCommand(t.Id, "Recordatorio urgente"), CancellationToken.None);
 
         result.AvisosCampana.Should().BeGreaterThan(0);
@@ -59,7 +60,7 @@ public class EnviarRecordatorioTests : IDisposable
         _ctx.Reuniones.Add(r);
         await _ctx.SaveChangesAsync();
 
-        var handler = new EnviarRecordatorioReunionCommandHandler(_ctx, _notifSvc, _emailSvc, Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.CorreoOptions()), Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.InstitucionOptions()));
+        var handler = new EnviarRecordatorioReunionCommandHandler(_ctx, _notifSvc, _emailSvc, Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.CorreoOptions()), Microsoft.Extensions.Options.Options.Create(new Diger.TramitesEstado.Application.Common.Models.InstitucionOptions()), AjustesDePrueba.CorreoEncendido());
         var result = await handler.Handle(new EnviarRecordatorioReunionCommand(r.Id, "Mensaje personalizado"), CancellationToken.None);
 
         // El asistente no tiene usuario en el portal: no hay aviso de campana, solo correo.

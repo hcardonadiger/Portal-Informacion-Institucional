@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecordatorioManual;
 using Diger.TramitesEstado.Domain.Entities;
+using Diger.TramitesEstado.Domain.Enums;
 using Diger.TramitesEstado.Infrastructure.Persistence;
 using Diger.TramitesEstado.Web.Models;
 using FluentAssertions;
@@ -63,6 +65,20 @@ public sealed class RecordatorioCorreoFallidoTests : IAsyncLifetime
         await db.SaveChangesAsync();
 
         _ticketId = t.Id; _reunionId = r.Id; _compromisoId = a.Id;
+
+        // Estas pruebas hablan del servidor de correo: el correo de los módulos va encendido en el
+        // Panel de control (sin fila, el despliegue lo deja apagado).
+        await CorreoEncendidoAsync(scope.ServiceProvider, ModuloNotificacion.Tickets, ModuloNotificacion.Reuniones);
+    }
+
+    /// <summary>Enciende el correo de los módulos en el Panel de control y descarta la caché.</summary>
+    internal static async Task CorreoEncendidoAsync(IServiceProvider servicios, params ModuloNotificacion[] modulos)
+    {
+        var db = servicios.GetRequiredService<AppDbContext>();
+        foreach (var m in modulos)
+            db.InterruptoresNotificacion.Add(InterruptorNotificacion.Crear(m, correo: true));
+        await db.SaveChangesAsync();
+        servicios.GetRequiredService<IAjustesNotificaciones>().Invalidar();
     }
 
     public Task DisposeAsync()
@@ -167,6 +183,8 @@ public sealed class RecordatorioExpedienteCorreoFallidoTests : IAsyncLifetime
         db.Expedientes.Add(exp);
         await db.SaveChangesAsync();
         _expedienteId = exp.Id;
+
+        await RecordatorioCorreoFallidoTests.CorreoEncendidoAsync(scope.ServiceProvider, ModuloNotificacion.Expedientes);
     }
 
     public Task DisposeAsync()

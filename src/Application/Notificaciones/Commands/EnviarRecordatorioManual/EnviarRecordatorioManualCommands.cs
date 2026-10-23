@@ -18,8 +18,9 @@ namespace Diger.TramitesEstado.Application.Notificaciones.Commands.EnviarRecorda
 /// <param name="CorreosIntentados">Correos que se intentó mandar.</param>
 /// <param name="CorreosEnviados">Correos que el servidor aceptó.</param>
 /// <param name="ServidorSinConfigurar">La instalación no tiene servidor de correo: no se intentó.</param>
+/// <param name="CorreoApagado">El correo del módulo está apagado en el Panel de control: no se intentó.</param>
 public sealed record ResultadoRecordatorio(
-    int AvisosCampana, int CorreosIntentados, int CorreosEnviados, bool ServidorSinConfigurar)
+    int AvisosCampana, int CorreosIntentados, int CorreosEnviados, bool ServidorSinConfigurar, bool CorreoApagado = false)
 {
     public int CorreosFallidos => ServidorSinConfigurar ? 0 : CorreosIntentados - CorreosEnviados;
 }
@@ -38,8 +39,8 @@ internal sealed class ConteoCorreos
         if (r == ResultadoCorreo.SinConfigurar) SinConfigurar = true;
     }
 
-    public ResultadoRecordatorio Resultado(int avisosCampana) =>
-        new(avisosCampana, Intentados, Enviados, SinConfigurar);
+    public ResultadoRecordatorio Resultado(int avisosCampana, bool correoApagado = false) =>
+        new(avisosCampana, Intentados, Enviados, SinConfigurar, correoApagado);
 }
 
 // ── 1. TICKET ─────────────────────────────────────────────────────────────
@@ -50,11 +51,15 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
     INotificacionService notifSvc,
     IEmailService emailSvc,
     IOptions<CorreoOptions> correo,
-    IOptions<InstitucionOptions> institucion)
+    IOptions<InstitucionOptions> institucion,
+    IAjustesNotificaciones ajustes)
     : IRequestHandler<EnviarRecordatorioTicketCommand, ResultadoRecordatorio>
 {
     public async Task<ResultadoRecordatorio> Handle(EnviarRecordatorioTicketCommand request, CancellationToken ct)
     {
+        var correoActivo = (await ajustes.ObtenerAsync(ct))
+            .De(CatalogoNotificaciones.De(TipoNotificacion.RecordatorioManualTicket).Modulo).Correo;
+
         var ticket = await ctx.Tickets.FirstOrDefaultAsync(t => t.Id == request.TicketId, ct)
             ?? throw new NotFoundException(nameof(Ticket), request.TicketId);
 
@@ -70,10 +75,10 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Ticket {ticket.Numero}: {ticket.Titulo}";
                 var url = $"/Tickets/Detalle/{ticket.Id}";
-                await notifSvc.EncolarAsync(agente.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url, ct: ct);
-                notificados++;
+                if (await notifSvc.EncolarAsync(agente.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url, ct: ct))
+                    notificados++;
 
-                if (!string.IsNullOrWhiteSpace(agente.Correo))
+                if (correoActivo && !string.IsNullOrWhiteSpace(agente.Correo))
                 {
                     var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
                     var body = $"<p>Estimado(a) <strong>{E(agente.Nombre)}</strong>,</p>" +
@@ -94,8 +99,8 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Ticket {ticket.Numero}: {ticket.Titulo}";
                 var url = $"/Tickets/Detalle/{ticket.Id}";
-                await notifSvc.EncolarAsync(reportante.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url, ct: ct);
-                notificados++;
+                if (await notifSvc.EncolarAsync(reportante.Id, TipoNotificacion.RecordatorioManualTicket, tituloNotif, url, ct: ct))
+                    notificados++;
             }
 
             var msgExtraRep = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
@@ -103,11 +108,14 @@ public sealed class EnviarRecordatorioTicketCommandHandler(
                           $"<p>Le enviamos un recordatorio sobre su ticket de soporte <strong>{E(ticket.Numero)}</strong>: {E(ticket.Titulo)}.</p>" +
                           $"{msgExtraRep}" +
                           $"<p>Puede revisar el estado de su solicitud en el portal.</p>";
-            correos.Anotar(await emailSvc.SendEmailAsync(ticket.ReportanteCorreo, $"Recordatorio Ticket {ticket.Numero} — {institucion.Value.NombreCorto}", bodyRep, TipoCorreo.RecordatorioTicket, ct));
+            if (correoActivo)
+            {
+                correos.Anotar(await emailSvc.SendEmailAsync(ticket.ReportanteCorreo, $"Recordatorio Ticket {ticket.Numero} — {institucion.Value.NombreCorto}", bodyRep, TipoCorreo.RecordatorioTicket, ct));
+            }
         }
 
         await ctx.SaveChangesAsync(ct);
-        return correos.Resultado(notificados);
+        return correos.Resultado(notificados, correoApagado: !correoActivo);
     }
 }
 
@@ -119,11 +127,15 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
     INotificacionService notifSvc,
     IEmailService emailSvc,
     IOptions<CorreoOptions> correo,
-    IOptions<InstitucionOptions> institucion)
+    IOptions<InstitucionOptions> institucion,
+    IAjustesNotificaciones ajustes)
     : IRequestHandler<EnviarRecordatorioExpedienteCommand, ResultadoRecordatorio>
 {
     public async Task<ResultadoRecordatorio> Handle(EnviarRecordatorioExpedienteCommand request, CancellationToken ct)
     {
+        var correoActivo = (await ajustes.ObtenerAsync(ct))
+            .De(CatalogoNotificaciones.De(TipoNotificacion.RecordatorioManualExpediente).Modulo).Correo;
+
         var exp = await ctx.Expedientes.FirstOrDefaultAsync(e => e.Id == request.ExpedienteId, ct)
             ?? throw new NotFoundException(nameof(Expediente), request.ExpedienteId);
 
@@ -139,10 +151,10 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Expediente {exp.Codigo}: {exp.Institucion}";
                 var url = $"/Expedientes/Editor/{exp.Id}";
-                await notifSvc.EncolarAsync(analista.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url, ct: ct);
-                notificados++;
+                if (await notifSvc.EncolarAsync(analista.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url, ct: ct))
+                    notificados++;
 
-                if (!string.IsNullOrWhiteSpace(analista.Correo))
+                if (correoActivo && !string.IsNullOrWhiteSpace(analista.Correo))
                 {
                     var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
                     var body = $"<p>Estimado(a) <strong>{E(analista.Nombre)}</strong>,</p>" +
@@ -162,19 +174,22 @@ public sealed class EnviarRecordatorioExpedienteCommandHandler(
             {
                 var tituloNotif = $"Recordatorio Expediente {exp.Codigo}: {exp.Institucion}";
                 var url = $"/Expedientes/Editor/{exp.Id}";
-                await notifSvc.EncolarAsync(contactoUser.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url, ct: ct);
-                notificados++;
+                if (await notifSvc.EncolarAsync(contactoUser.Id, TipoNotificacion.RecordatorioManualExpediente, tituloNotif, url, ct: ct))
+                    notificados++;
             }
 
             var msgExtraContact = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
             var bodyContact = $"<p>Estimado(a) <strong>{E(exp.ContactoNombre ?? "Contacto Institucional")}</strong>,</p>" +
                               $"<p>Le enviamos un recordatorio sobre el expediente de digitalización <strong>{E(exp.Codigo)}</strong> correspondiente a {E(exp.Institucion)}.</p>" +
                               $"{msgExtraContact}";
-            correos.Anotar(await emailSvc.SendEmailAsync(exp.ContactoCorreo, $"Recordatorio Expediente {exp.Codigo} — {institucion.Value.NombreCorto}", bodyContact, TipoCorreo.RecordatorioExpediente, ct));
+            if (correoActivo)
+            {
+                correos.Anotar(await emailSvc.SendEmailAsync(exp.ContactoCorreo, $"Recordatorio Expediente {exp.Codigo} — {institucion.Value.NombreCorto}", bodyContact, TipoCorreo.RecordatorioExpediente, ct));
+            }
         }
 
         await ctx.SaveChangesAsync(ct);
-        return correos.Resultado(notificados);
+        return correos.Resultado(notificados, correoApagado: !correoActivo);
     }
 }
 
@@ -186,11 +201,15 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
     INotificacionService notifSvc,
     IEmailService emailSvc,
     IOptions<CorreoOptions> correo,
-    IOptions<InstitucionOptions> institucion)
+    IOptions<InstitucionOptions> institucion,
+    IAjustesNotificaciones ajustes)
     : IRequestHandler<EnviarRecordatorioReunionCommand, ResultadoRecordatorio>
 {
     public async Task<ResultadoRecordatorio> Handle(EnviarRecordatorioReunionCommand request, CancellationToken ct)
     {
+        var correoActivo = (await ajustes.ObtenerAsync(ct))
+            .De(CatalogoNotificaciones.De(TipoNotificacion.RecordatorioManualReunion).Modulo).Correo;
+
         var reunion = await ctx.Reuniones
             .Include(r => r.Asistentes)
             .FirstOrDefaultAsync(r => r.Id == request.ReunionId, ct)
@@ -211,8 +230,8 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
             var user = await ctx.Usuarios.FirstOrDefaultAsync(u => u.Correo.ToLower() == correoNorm, ct);
             if (user != null)
             {
-                await notifSvc.EncolarAsync(user.Id, TipoNotificacion.RecordatorioManualReunion, $"Recordatorio de Reunión: {reunion.Titulo}", url, ct: ct);
-                notificados++;
+                if (await notifSvc.EncolarAsync(user.Id, TipoNotificacion.RecordatorioManualReunion, $"Recordatorio de Reunión: {reunion.Titulo}", url, ct: ct))
+                    notificados++;
             }
 
             var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota adicional:</strong> {E(request.Mensaje)}</p>";
@@ -222,11 +241,14 @@ public sealed class EnviarRecordatorioReunionCommandHandler(
                        $"{msgExtra}" +
                        $"<p><a href='{E(correo.Value.Enlace(url))}'>Ver Acta / Detalles de la Reunión</a></p>";
 
-            correos.Anotar(await emailSvc.SendEmailAsync(asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — {institucion.Value.NombreCorto}", body, TipoCorreo.RecordatorioReunion, ct));
+            if (correoActivo)
+            {
+                correos.Anotar(await emailSvc.SendEmailAsync(asist.Correo, $"Recordatorio de Reunión: {reunion.Titulo} — {institucion.Value.NombreCorto}", body, TipoCorreo.RecordatorioReunion, ct));
+            }
         }
 
         await ctx.SaveChangesAsync(ct);
-        return correos.Resultado(notificados);
+        return correos.Resultado(notificados, correoApagado: !correoActivo);
     }
 }
 
@@ -238,11 +260,15 @@ public sealed class EnviarRecordatorioCompromisoCommandHandler(
     INotificacionService notifSvc,
     IEmailService emailSvc,
     IOptions<CorreoOptions> correo,
-    IOptions<InstitucionOptions> institucion)
+    IOptions<InstitucionOptions> institucion,
+    IAjustesNotificaciones ajustes)
     : IRequestHandler<EnviarRecordatorioCompromisoCommand, ResultadoRecordatorio>
 {
     public async Task<ResultadoRecordatorio> Handle(EnviarRecordatorioCompromisoCommand request, CancellationToken ct)
     {
+        var correoActivo = (await ajustes.ObtenerAsync(ct))
+            .De(CatalogoNotificaciones.De(TipoNotificacion.RecordatorioManualCompromiso).Modulo).Correo;
+
         var item = await (
             from a in ctx.Acuerdos
             join r in ctx.Reuniones on a.ReunionId equals r.Id
@@ -279,11 +305,11 @@ public sealed class EnviarRecordatorioCompromisoCommandHandler(
 
         if (usuarioTargetId is Guid uid)
         {
-            await notifSvc.EncolarAsync(uid, TipoNotificacion.RecordatorioManualCompromiso, $"Recordatorio de Compromiso: {acuerdo.Compromiso}", url, ct: ct);
-            notificados++;
+            if (await notifSvc.EncolarAsync(uid, TipoNotificacion.RecordatorioManualCompromiso, $"Recordatorio de Compromiso: {acuerdo.Compromiso}", url, ct: ct))
+                notificados++;
         }
 
-        if (!string.IsNullOrWhiteSpace(correoTarget))
+        if (correoActivo && !string.IsNullOrWhiteSpace(correoTarget))
         {
             var plazoStr = acuerdo.Plazo?.ToString("dd/MM/yyyy") ?? "Sin plazo fijo";
             var msgExtra = string.IsNullOrWhiteSpace(request.Mensaje) ? "" : $"<p><strong>Nota:</strong> {E(request.Mensaje)}</p>";
@@ -296,6 +322,6 @@ public sealed class EnviarRecordatorioCompromisoCommandHandler(
         }
 
         await ctx.SaveChangesAsync(ct);
-        return correos.Resultado(notificados);
+        return correos.Resultado(notificados, correoApagado: !correoActivo);
     }
 }

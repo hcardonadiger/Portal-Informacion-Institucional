@@ -38,8 +38,11 @@ public sealed class ResultadoRecordatorioTests : IDisposable
         var email = Substitute.For<IEmailService>();
         email.SendEmailAsync(default!, default!, default!, default, default).ReturnsForAnyArgs(cadaEnvio);
 
-        return await new EnviarRecordatorioTicketCommandHandler(_ctx, Substitute.For<INotificacionService>(), email,
-                Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()))
+        var notif = Substitute.For<INotificacionService>();
+        notif.EncolarAsync(default, default, default!).ReturnsForAnyArgs(true);
+
+        return await new EnviarRecordatorioTicketCommandHandler(_ctx, notif, email,
+                Options.Create(new CorreoOptions()), Options.Create(new InstitucionOptions()), AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioTicketCommand(t.Id), CancellationToken.None);
     }
 

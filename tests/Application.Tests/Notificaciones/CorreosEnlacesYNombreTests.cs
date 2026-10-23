@@ -36,6 +36,7 @@ public sealed class CorreosEnlacesYNombreTests : IDisposable
         new FakeCurrentUser(), Substitute.For<MediatR.IPublisher>());
 
     private readonly IEmailService _email = Substitute.For<IEmailService>();
+    private readonly INotificacionService _notif = Substitute.For<INotificacionService>();
     private readonly List<(string Asunto, string Cuerpo)> _correos = [];
 
     private static readonly IOptions<CorreoOptions> Correo = Options.Create(new CorreoOptions { UrlBase = UrlBase });
@@ -47,6 +48,7 @@ public sealed class CorreosEnlacesYNombreTests : IDisposable
                 Arg.Any<TipoCorreo>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(ResultadoCorreo.Enviado))
             .AndDoes(c => _correos.Add((c.ArgAt<string>(1), c.ArgAt<string>(2))));
+        _notif.EncolarAsync(default, default, default!).ReturnsForAnyArgs(true);
     }
 
     private static IEnumerable<string> Enlaces(string cuerpo) =>
@@ -77,7 +79,7 @@ public sealed class CorreosEnlacesYNombreTests : IDisposable
         _ctx.Tickets.Add(t);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioTicketCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Correo, Inst)
+        await new EnviarRecordatorioTicketCommandHandler(_ctx, _notif, _email, Correo, Inst, AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioTicketCommand(t.Id), CancellationToken.None);
 
         _correos.Should().HaveCount(2);
@@ -96,7 +98,7 @@ public sealed class CorreosEnlacesYNombreTests : IDisposable
         _ctx.Expedientes.Add(exp);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioExpedienteCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Correo, Inst)
+        await new EnviarRecordatorioExpedienteCommandHandler(_ctx, _notif, _email, Correo, Inst, AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioExpedienteCommand(exp.Id), CancellationToken.None);
 
         _correos.Should().HaveCount(2);
@@ -112,7 +114,7 @@ public sealed class CorreosEnlacesYNombreTests : IDisposable
         _ctx.Reuniones.Add(r);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioReunionCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Correo, Inst)
+        await new EnviarRecordatorioReunionCommandHandler(_ctx, _notif, _email, Correo, Inst, AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioReunionCommand(r.Id), CancellationToken.None);
 
         _correos.Should().ContainSingle().Which.Cuerpo.Should().Contain($"{UrlBase}/Reuniones/Acta/{r.Id}");
@@ -129,7 +131,7 @@ public sealed class CorreosEnlacesYNombreTests : IDisposable
         _ctx.Acuerdos.Add(a);
         await _ctx.SaveChangesAsync();
 
-        await new EnviarRecordatorioCompromisoCommandHandler(_ctx, Substitute.For<INotificacionService>(), _email, Correo, Inst)
+        await new EnviarRecordatorioCompromisoCommandHandler(_ctx, _notif, _email, Correo, Inst, AjustesDePrueba.CorreoEncendido())
             .Handle(new EnviarRecordatorioCompromisoCommand(a.Id), CancellationToken.None);
 
         _correos.Should().ContainSingle().Which.Cuerpo.Should().Contain($"{UrlBase}/Reuniones/CompromisoDetalle/{a.Id}");
