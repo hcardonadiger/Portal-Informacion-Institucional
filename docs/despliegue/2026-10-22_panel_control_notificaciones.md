@@ -61,9 +61,19 @@ Igual que las entregas anteriores:
 3. comprobar que el perfil **no** tenga «Quitar archivos adicionales en el destino»;
 4. publicar.
 
-**Reversión:** volver a publicar la compilación anterior. Las tablas nuevas pueden quedarse: la
-versión anterior no las lee. Esa versión vuelve a mandar correo en los recordatorios manuales y a
-usar `Notificaciones__IntervaloHoras` y la sección `Smtp` de la configuración.
+**Reversión:** volver a publicar la compilación anterior. Lo que trajo el script puede quedarse.
+La versión anterior no usa las tablas nuevas. Las dos columnas nuevas de `Notificaciones` tienen
+valor por defecto en la base (`Cantidad` = 1, `FechaActualizacion` = `0001-01-01`), así que la
+versión anterior sigue guardando avisos sin error. Esa versión vuelve a mandar correo en los
+recordatorios manuales y a usar `Notificaciones__IntervaloHoras` y la sección `Smtp` de la
+configuración.
+
+Si después se vuelve a publicar esta versión, los avisos que creó la anterior mientras tanto
+quedan con `FechaActualizacion` en `0001-01-01` y salen al final de la campana. Se corrigen con:
+
+```sql
+UPDATE Notificaciones SET FechaActualizacion = FechaCreacion WHERE FechaActualizacion = '0001-01-01';
+```
 
 ## Verificación después de publicar
 
@@ -73,7 +83,8 @@ usar `Notificaciones__IntervaloHoras` y la sección `Smtp` de la configuración.
    módulos y «Correo saliente». «Correo» aparece apagado en Tickets, Reuniones, Expedientes y
    Proyectos. Soporte dice «no aplica», porque el chat nunca va por correo.
 4. **El intervalo.** Guardar, por ejemplo, 0 h 15 min. Después de la siguiente revisión, «Próxima»
-   queda unos 15 minutos después de «Última». Volver a dejar el valor que corresponda.
+   queda unos 15 minutos después de «Última». Después, volver a dejar **4 horas (240 minutos)**, o
+   el valor que tenía el servidor si era otro.
 5. **El correo.** Guardar el bloque «Correo saliente» con la contraseña y usar el correo de
    prueba. Encender «Correo» solo en los módulos que deban mandarlo.
 
