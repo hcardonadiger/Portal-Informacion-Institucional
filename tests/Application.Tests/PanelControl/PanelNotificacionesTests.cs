@@ -123,5 +123,29 @@ public sealed class PanelNotificacionesTests : IDisposable
         dto.Modulos.Should().HaveCount(5);
     }
 
+    private static GuardarCorreoCommand CorreoValido(string host = "smtp.office365.com", string remitente = "no-reply@diger.gob.hn") =>
+        new(host, 587, true, "no-reply@diger.gob.hn", "Secreta#123", false, remitente, "Gestión Digital");
+
+    [Fact]
+    public void Remitente_vacio_da_un_solo_error_y_en_espanol()
+    {
+        var r = new GuardarCorreoValidator().Validate(CorreoValido(remitente: ""));
+
+        r.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Falta el correo remitente.");
+    }
+
+    [Fact]
+    public void Servidor_demasiado_largo_se_rechaza_en_espanol()
+    {
+        var r = new GuardarCorreoValidator().Validate(CorreoValido(host: new string('a', 201)));
+
+        r.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotContain("must")
+            .And.Be("El servidor no puede pasar de 200 caracteres.");
+    }
+
+    [Fact]
+    public void Un_correo_completo_es_valido() =>
+        new GuardarCorreoValidator().Validate(CorreoValido()).IsValid.Should().BeTrue();
+
     public void Dispose() => _ctx.Dispose();
 }

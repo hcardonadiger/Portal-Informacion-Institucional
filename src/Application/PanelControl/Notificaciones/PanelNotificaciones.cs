@@ -171,12 +171,22 @@ public sealed class GuardarCorreoValidator : AbstractValidator<GuardarCorreoComm
 {
     public GuardarCorreoValidator()
     {
-        RuleFor(x => x.Host).NotEmpty().WithMessage("Falta el servidor de correo.").MaximumLength(200);
+        // WithMessage se ata solo a la regla que lo precede: cada regla lleva el suyo, o el mensaje
+        // por defecto de FluentValidation (en el idioma del servidor) llega a la pantalla.
+        // Stop: con el campo vacío basta «Falta…»; no se suman «no es válida» ni el largo.
+        RuleFor(x => x.Host).Cascade(CascadeMode.Stop)
+            .NotEmpty().WithMessage("Falta el servidor de correo.")
+            .MaximumLength(200).WithMessage("El servidor no puede pasar de 200 caracteres.");
         RuleFor(x => x.Puerto).InclusiveBetween(1, 65535).WithMessage("El puerto tiene que estar entre 1 y 65535.");
-        RuleFor(x => x.Usuario).NotEmpty().WithMessage("Falta el usuario del correo.").MaximumLength(200);
-        RuleFor(x => x.Remitente).NotEmpty().EmailAddress().WithMessage("El correo remitente no es una dirección válida.").MaximumLength(200);
-        RuleFor(x => x.NombreRemitente).MaximumLength(200);
-        RuleFor(x => x.Password).MaximumLength(200);
+        RuleFor(x => x.Usuario).Cascade(CascadeMode.Stop)
+            .NotEmpty().WithMessage("Falta el usuario del correo.")
+            .MaximumLength(200).WithMessage("El usuario no puede pasar de 200 caracteres.");
+        RuleFor(x => x.Remitente).Cascade(CascadeMode.Stop)
+            .NotEmpty().WithMessage("Falta el correo remitente.")
+            .EmailAddress().WithMessage("El correo remitente no es una dirección válida.")
+            .MaximumLength(200).WithMessage("El correo remitente no puede pasar de 200 caracteres.");
+        RuleFor(x => x.NombreRemitente).MaximumLength(200).WithMessage("El nombre del remitente no puede pasar de 200 caracteres.");
+        RuleFor(x => x.Password).MaximumLength(200).WithMessage("La contraseña no puede pasar de 200 caracteres.");
     }
 }
 
