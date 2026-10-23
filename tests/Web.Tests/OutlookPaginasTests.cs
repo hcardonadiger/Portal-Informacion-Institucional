@@ -20,8 +20,12 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
     private readonly IConexionMicrosoft _conexion = Substitute.For<IConexionMicrosoft>();
     private readonly IOutlookCalendario _calendario = Substitute.For<IOutlookCalendario>();
 
+    /// <summary>La dirección pública configurada: la ficha que va en la cita se arma con ella.</summary>
+    private const string UrlPublica = "https://portal.pruebas.gob.hn";
+
     public async Task InitializeAsync()
     {
+        _portal.Configuracion["Correo:UrlBase"] = UrlPublica;
         _portal.ServiciosDePrueba = s =>
         {
             s.RemoveAll<IConexionMicrosoft>();
@@ -343,6 +347,65 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
             .Should().Be("Mesa técnica (editada)", "el guardado se confirmó antes de que Outlook fallara");
         WebUtility.HtmlDecode(await c.GetStringAsync("/Reuniones"))
             .Should().Contain("Reunión actualizada.").And.Contain("no se pudo actualizar en Outlook");
+    }
+
+    /// <summary>Guarda la reunión desde el editor sin cambiarle nada (los mismos campos que sembró
+    /// <see cref="SembrarReunionAsync"/>).</summary>
+    private static async Task<HttpResponseMessage> GuardarSinCambiosAsync(HttpClient c, int id)
+    {
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+        return await c.PostAsync($"/Reuniones/Editor?id={id}", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["Datos.Titulo"] = "Mesa técnica",
+            ["Datos.Fecha"] = "2026-10-23",
+            ["Datos.Hora"] = "09:00"
+        }));
+    }
+
+    [Fact]
+    public async Task Guardar_sin_cambios_desde_otro_host_no_actualiza_la_cita()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        _calendario.ActualizarAsync(default, default!, default!, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        var id = await SembrarReunionAsync(conectada: true);
+        var c = Jefe();
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+        await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = token }));
+        await _calendario.ReceivedWithAnyArgs(1).CrearAsync(default, default!, default, default);
+
+        // Primer guardado por el host de siempre: deja la huella con lo que el formulario manda.
+        (await GuardarSinCambiosAsync(c, id)).StatusCode.Should().Be(HttpStatusCode.Redirect);
+        _calendario.ClearReceivedCalls();
+
+        // El mismo guardado, sin cambios, entrando por otro host (cert.*, http/https, nombre interno).
+        var otroHost = _portal.ClienteComo("JefeArea", "DIGER", PortalFactory.AreaDeCasa, PortalFactory.UnidadDeCasa,
+            new Uri("https://otro-host.local"));
+        var resp = await GuardarSinCambiosAsync(otroHost, id);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        resp.Headers.Location!.ToString().Should().NotContain("/Error");
+        await _calendario.DidNotReceiveWithAnyArgs().ActualizarAsync(default, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task La_ficha_de_la_cita_sale_de_la_direccion_configurada_y_no_del_host()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        _calendario.CrearAsync(default, default!, default, default).ReturnsForAnyArgs(new ResultadoOutlook("AAMk-9", null));
+        var id = await SembrarReunionAsync(conectada: true);
+        var c = _portal.ClienteComo("JefeArea", "DIGER", PortalFactory.AreaDeCasa, PortalFactory.UnidadDeCasa,
+            new Uri("https://otro-host.local"));
+        var token = await TokenAsync(c, $"/Reuniones/Editor?id={id}");
+
+        await c.PostAsync($"/Reuniones/Editor?id={id}&handler=EnviarOutlook", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["__RequestVerificationToken"] = token }));
+
+        await _calendario.Received(1).CrearAsync(Arg.Any<Guid>(),
+            Arg.Is<EventoOutlook>(e => e.CuerpoHtml.Contains($"{UrlPublica}/Reuniones/Acta/{id}") && !e.CuerpoHtml.Contains("otro-host")),
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     /// <summary>Pulsa «Conectar mi Outlook» como Empleado: deja el estado y el verificador en el

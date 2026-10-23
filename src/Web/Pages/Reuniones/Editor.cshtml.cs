@@ -1,4 +1,5 @@
 ﻿using Diger.TramitesEstado.Application.Reuniones.Outlook;
+using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 
@@ -6,7 +7,8 @@ namespace Diger.TramitesEstado.Web.Pages.Reuniones;
 [Permission("Reuniones", AccionModulo.Editar, "Crear y editar reuniones")]
 public sealed class EditorModel(
     ISender sender, IInstitucionRepository institucionRepo,
-    ICurrentUserService currentUser, IWebHostEnvironment env) : PageModel
+    ICurrentUserService currentUser, IWebHostEnvironment env,
+    IOptions<CorreoOptions> correo) : PageModel
 {
     /// <summary>Enciende el modo edición de la pantalla. Hoy siempre es true porque la clase
     /// entera exige Reuniones.Editar — la vista de solo lectura de una reunión es Acta.cshtml,
@@ -195,26 +197,17 @@ public sealed class EditorModel(
 
     [TempData] public string? OutlookAviso { get; set; }
 
-    private string UrlFicha(int id) => Url.PageLink("/Reuniones/Acta", values: new { id })!;
+    /// <summary>La ficha que va en la cita: de la dirección configurada, no de la petición (ver
+    /// <see cref="SincronizacionOutlook.UrlFicha"/>).</summary>
+    private string UrlFicha(int id) => SincronizacionOutlook.UrlFicha(this, correo.Value, id);
 
     /// <summary>Tras guardar: actualiza la cita si cambió para los invitados. Nunca lanza por
     /// Outlook (un fallo queda como pendiente y se ve en la tarjeta).</summary>
-    /// <remarks>El comando ya absorbe los fallos de Graph, pero no todo: si el guardado sacó la
-    /// reunión del alcance de quien edita (NotFoundException), o falla su propio guardado del
-    /// estado, la excepción llegaría al handler con la reunión ya confirmada — y se vería como
-    /// si el guardado hubiera fallado.</remarks>
     private async Task SincronizarOutlookAsync(int id, CancellationToken ct)
     {
-        try
-        {
-            await sender.Send(new SincronizarReunionOutlookCommand(id, UrlFicha(id)), ct);
-        }
-        catch (Exception) when (!ct.IsCancellationRequested)
-        {
-            // La reunión ya quedó guardada: lo de Outlook no puede convertir eso en un error.
-            // LoggingBehavior ya registró la excepción.
+        // La reunión ya quedó guardada: lo de Outlook no puede convertir eso en un error.
+        if (!await SincronizacionOutlook.SincronizarAsync(this, sender, correo.Value, id, ct))
             OutlookAviso = "La reunión se guardó, pero no se pudo actualizar en Outlook. Use «Reintentar» en la tarjeta de Outlook.";
-        }
     }
 
     public async Task<IActionResult> OnPostEnviarOutlookAsync(int id, bool conTeams, CancellationToken ct)

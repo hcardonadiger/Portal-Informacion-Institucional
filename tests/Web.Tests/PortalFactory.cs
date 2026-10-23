@@ -256,11 +256,15 @@ public sealed class PortalFactory : WebApplicationFactory<Program>
     /// asignación; sin usuario, una petición anónima.</summary>
     /// <remarks>Área y unidad van vacías por omisión a propósito: varias suites de proyectos
     /// comprueban justamente el comportamiento de un usuario que no las tiene. Las suites de
-    /// reuniones las piden explícitas, porque su filtro ancla en el dueño.</remarks>
+    /// reuniones las piden explícitas, porque su filtro ancla en el dueño.
+    /// <paramref name="direccion"/> cambia el host con el que llega la petición (por ejemplo, el
+    /// subdominio cert.*, que comparte la sesión): sin ella, el de siempre.</remarks>
     public HttpClient ClienteComo(string? rolId, string institucion = "DIGER",
-                                 string? area = null, string? unidad = null)
+                                 string? area = null, string? unidad = null, Uri? direccion = null)
     {
-        var cliente = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var opciones = new WebApplicationFactoryClientOptions { AllowAutoRedirect = false };
+        if (direccion is not null) opciones.BaseAddress = direccion;
+        var cliente = CreateClient(opciones);
 
         var usuarioId = _usuarios[rolId ?? SinRol];
 
