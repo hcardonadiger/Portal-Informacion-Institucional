@@ -65,7 +65,16 @@ public class OutlookCommandsTests : IDisposable
     }
 
     private EnviarReunionAOutlookCommandHandler Enviar() => new(_ctx, new ReunionRepository(_ctx), _usuario, _outlook, _ctx);
-    private SincronizarReunionOutlookCommandHandler Sincronizar() => new(_ctx, new ReunionRepository(_ctx), _outlook, _ctx);
+    /// <summary>Las reuniones sembradas son del 2026-10-23 a las 09:00: con este reloj son futuras.</summary>
+    private static readonly DateTimeOffset AntesDeLaReunion = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+
+    private sealed class RelojFijo(DateTimeOffset ahora) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => ahora;
+    }
+
+    private SincronizarReunionOutlookCommandHandler Sincronizar(DateTimeOffset? ahora = null) =>
+        new(_ctx, new ReunionRepository(_ctx), _outlook, _ctx, new RelojFijo(ahora ?? AntesDeLaReunion));
     private CancelarReunionOutlookCommandHandler Cancelar() => new(new ReunionRepository(_ctx), _outlook);
 
     private async Task<Reunion> EnviadaAsync()
@@ -253,6 +262,35 @@ public class OutlookCommandsTests : IDisposable
         fila.OutlookPendiente.Should().BeTrue();
         fila.OutlookError.Should().Contain("fecha y hora");
         await _outlook.DidNotReceiveWithAnyArgs().ActualizarAsync(default, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Una_reunion_que_ya_termino_no_se_actualiza_en_Outlook()
+    {
+        // Llenar la memoria después de la reunión cambia ObjetivoAgenda, que va en el cuerpo de la
+        // cita: actualizarla le avisaría «reunión actualizada» a todos los invitados.
+        var r = await EnviadaAsync();
+        r.Hora = "10:30";
+        await _ctx.SaveChangesAsync();
+
+        await Sincronizar(new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero))
+            .Handle(new SincronizarReunionOutlookCommand(r.Id, Url), default);
+
+        await _outlook.DidNotReceiveWithAnyArgs().ActualizarAsync(default, default!, default!, default);
+        (await _ctx.Reuniones.AsNoTracking().SingleAsync()).OutlookPendiente.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Moverla_al_futuro_si_la_actualiza()
+    {
+        var r = await EnviadaAsync();
+        r.Fecha = new DateOnly(2026, 10, 30);
+        await _ctx.SaveChangesAsync();
+
+        await Sincronizar(new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero))
+            .Handle(new SincronizarReunionOutlookCommand(r.Id, Url), default);
+
+        await _outlook.ReceivedWithAnyArgs(1).ActualizarAsync(default, default!, default!, default);
     }
 
     [Fact]

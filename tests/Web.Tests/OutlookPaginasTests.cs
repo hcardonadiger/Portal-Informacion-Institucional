@@ -181,6 +181,11 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
 
     // ── Reuniones: editor, listado ────────────────────────────────
 
+    /// <summary>Siempre futura: una cita que ya terminó no se actualiza en Outlook, y las pruebas
+    /// de sincronización dejarían de medir lo que dicen.</summary>
+    private static readonly DateOnly FechaReunion = DateOnly.FromDateTime(DateTime.Today.AddDays(30));
+    private static readonly string FechaReunionIso = FechaReunion.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
     private async Task<int> SembrarReunionAsync(bool conectada)
     {
         using var scope = _portal.Services.CreateScope();
@@ -188,7 +193,7 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
         var r = Diger.TramitesEstado.Domain.Entities.Reunion.Crear("Mesa técnica");
         r.InstitucionId = "DIGER"; r.InstitucionDuenaId = "DIGER";
         r.AreaId = PortalFactory.AreaDeCasa; r.UnidadId = PortalFactory.UnidadDeCasa;
-        r.Fecha = new DateOnly(2026, 10, 23); r.Hora = "09:00";
+        r.Fecha = FechaReunion; r.Hora = "09:00";
         db.Reuniones.Add(r);
         if (conectada)
             db.ConexionesMicrosoft.Add(Diger.TramitesEstado.Domain.Entities.ConexionMicrosoft.Crear(
@@ -335,7 +340,7 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
             ["__RequestVerificationToken"] = token,
             ["Datos.Titulo"] = "Mesa técnica (editada)",
             ["Datos.Visibilidad"] = "Privada",
-            ["Datos.Fecha"] = "2026-10-23",
+            ["Datos.Fecha"] = FechaReunionIso,
             ["Datos.Hora"] = "09:00"
         }));
 
@@ -358,7 +363,7 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
         {
             ["__RequestVerificationToken"] = token,
             ["Datos.Titulo"] = "Mesa técnica",
-            ["Datos.Fecha"] = "2026-10-23",
+            ["Datos.Fecha"] = FechaReunionIso,
             ["Datos.Hora"] = "09:00"
         }));
     }

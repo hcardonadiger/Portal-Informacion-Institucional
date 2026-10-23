@@ -56,14 +56,16 @@ public sealed class EnviarReunionAOutlookCommandHandler(
 }
 
 /// <summary>Después de guardar: si la cita cambió para los invitados, se actualiza en Outlook con
-/// la conexión del ORGANIZADOR. Nunca lanza por Outlook: un fallo queda como pendiente.</summary>
+/// la conexión del ORGANIZADOR. Nunca lanza por Outlook: un fallo queda como pendiente. Una cita
+/// que ya terminó no se actualiza (borrar la reunión sí la sigue cancelando).</summary>
 public sealed record SincronizarReunionOutlookCommand(int ReunionId, string UrlFicha) : IRequest<Unit>;
 
 public sealed class SincronizarReunionOutlookCommandHandler(
     IApplicationDbContext ctx,
     IReunionRepository repo,
     IOutlookCalendario outlook,
-    IUnitOfWork uow)
+    IUnitOfWork uow,
+    TimeProvider reloj)
     : IRequestHandler<SincronizarReunionOutlookCommand, Unit>
 {
     public async Task<Unit> Handle(SincronizarReunionOutlookCommand cmd, CancellationToken ct)
@@ -87,6 +89,12 @@ public sealed class SincronizarReunionOutlookCommandHandler(
             await uow.SaveChangesAsync(ct);
             return Unit.Value;
         }
+
+        // Una cita que ya terminó no se toca. Llenar la ayuda memoria después de la reunión cambia
+        // ObjetivoAgenda, que va en el cuerpo de la cita, y cada PATCH le manda «reunión
+        // actualizada» a todos los invitados de algo que ya pasó. No se marca pendiente: no es un
+        // fallo, y si alguien la mueve al futuro el próximo guardado la pone al día.
+        if (evento.Fin < HoraHonduras.Ahora(reloj)) return Unit.Value;
 
         var huella = evento.Huella();
         if (huella == r.OutlookHuella && !r.OutlookPendiente) return Unit.Value;
