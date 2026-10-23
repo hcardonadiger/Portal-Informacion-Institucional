@@ -70,6 +70,47 @@
     </div>
 </div>
 
+<div class="card" style="margin-top:1rem">
+    <h3 style="margin-top:0">Microsoft Outlook</h3>
+    @if (!string.IsNullOrEmpty(Model.OutlookAviso))
+    {
+        <div class="alert-warn">@Model.OutlookAviso</div>
+    }
+    @if (!Model.Outlook.Configurada)
+    {
+        <p class="hint">La integración con Outlook no está configurada en este servidor. Pídasela a TI.</p>
+    }
+    else if (!Model.Outlook.Conectada)
+    {
+        <p class="hint">Conecte su cuenta @@diger.gob.hn para enviar reuniones a su calendario de Outlook, con reunión de Teams.
+            Se inicia sesión en la página de Microsoft: el portal nunca ve su contraseña.</p>
+        <form method="post" asp-page-handler="ConectarOutlook">
+            <button type="submit" class="btnp">Conectar mi Outlook</button>
+        </form>
+    }
+    else
+    {
+        @if (Model.Outlook.RequiereReconexion)
+        {
+            <div class="alert-warn">Su conexión venció. Las reuniones que envió no se actualizarán hasta que reconecte.</div>
+        }
+        <p>Conectado como <strong>@Model.Outlook.Upn</strong>
+           @if (Model.Outlook.ConectadaEl is { } conectadaEl)
+           {
+               <span class="hint">desde @conectadaEl.ToLocalTime().ToString("dd/MM/yyyy")</span>
+           }
+        </p>
+        <div style="display:flex;gap:8px">
+            <form method="post" asp-page-handler="ConectarOutlook">
+                <button type="submit" class="btns">@(Model.Outlook.RequiereReconexion ? "Reconectar" : "Cambiar de cuenta")</button>
+            </form>
+            <form method="post" asp-page-handler="DesconectarOutlook">
+                <button type="submit" class="btns">Desconectar</button>
+            </form>
+        </div>
+    }
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
