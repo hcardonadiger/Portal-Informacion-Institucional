@@ -223,7 +223,8 @@ builder.Services
     })
     .WithHttpTransport(opts => opts.Stateless = true)
     .WithTools<Diger.TramitesEstado.Web.Mcp.ProyectosTools>()
-    .WithTools<Diger.TramitesEstado.Web.Mcp.VinculadosTools>();
+    .WithTools<Diger.TramitesEstado.Web.Mcp.VinculadosTools>()
+    .WithTools<Diger.TramitesEstado.Web.Mcp.ReunionesMemoriaTools>();
 
 var app = builder.Build();
 
