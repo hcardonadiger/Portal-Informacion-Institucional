@@ -8,6 +8,46 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-22 — Panel de control → Notificaciones (entrega 1)
+Rama `panel-notificaciones`. Especificación:
+`docs/superpowers/specs/2026-10-22-panel-control-notificaciones-design.md`. Plan:
+`docs/superpowers/plans/2026-10-22-panel-control-notificaciones-entrega1.md`.
+- **Panel de control nuevo** (`/PanelControl`), con su primer submódulo, **Notificaciones**
+  (`/PanelControl/Notificaciones`), y su grupo en el menú. Lo que antes estaba en
+  `appsettings.json` se cambia desde ahí, sin reiniciar. Commit `29b53db`.
+- **Revisión automática:** cada cuánto revisa el sistema, en horas y minutos (de 5 min a 24 h).
+  Arranca en 4 horas. El revisor lee el intervalo en cada vuelta y se despierta al guardar.
+  Commit `21ac0f6`.
+- **Interruptores por módulo** (Tickets, Reuniones, Expedientes, Proyectos, Soporte): Campana,
+  Correo y Agrupar. El correo arranca apagado en los cinco. Los recordatorios manuales respetan el
+  interruptor de correo de su módulo (commit `91538fd`). Cada tipo de aviso pertenece a un módulo
+  (commit `2c5a63b`).
+- **Una sola puerta para los avisos:** agrupación y bandeja de correo, un correo por persona por
+  revisión como máximo (commits `d358f8e` y `29bbb59`). El detalle de un aviso agrupado se ve en
+  `/Notificaciones/{id}` (commit `9c92cf0`).
+- **Correo saliente desde el panel:** servidor, usuario y remitente en la base, con la contraseña
+  cifrada con Data Protection (commit `ed1f1b3`). Si la configuración no se puede leer, el envío
+  falla sin romper la página (commit `fd422a0`). La primera vez que se guarda hay que escribir la
+  contraseña o marcar «Quitar la contraseña». Cada regla del validador tiene su mensaje en español
+  (commit `5cc9e1a`).
+- **Bitácora del panel:** quién cambió qué queda en `PanelControlBitacora`.
+- **Permiso** `PanelControl.Notificaciones` (Ver / Editar). Consultas y comandos en el commit
+  `f0ae64f`.
+- **Base de datos:** migración `20261022223203_PanelControlNotificaciones` y script
+  `database/2026-10-22_panel_control_notificaciones.sql`, que va después de
+  `2026-10-22_poner_al_dia.sql` (commits `85bdc68` y `86203cd`). Tablas nuevas:
+  `AjustesNotificaciones`, `ModulosNotificacion`, `NotificacionElementos`, `CorreosPendientes` y
+  `PanelControlBitacora`. Corrido dos veces sobre la base local: la segunda vuelta dice «ya estaba»
+  en todo y los controles dicen `presente`.
+- Notas de despliegue: `docs/despliegue/2026-10-22_panel_control_notificaciones.md`. Hay que
+  conservar la carpeta de claves de Data Protection entre despliegues.
+- Resultado: compila sin advertencias nuevas y pasan 1443 pruebas (1 omitida). Antes eran 1380.
+- Revisado en la app real con un administrador: la pantalla abre, muestra los tres bloques y el
+  correo apagado, y el menú tiene «Panel de control». No se guardó nada en la base local.
+- **Sigue la entrega 2: las reglas de correo.**
+- Pendiente aparte: cambiar la contraseña de Gmail versionada en `appsettings.json` desde
+  `0462b14` y escribir la nueva en el panel.
+
 ### 2026-10-22 (noche, 2) — Tanda 1, entrega 2: notificaciones y correo
 Pedido del Analista. Rama `Jamil-GestionGD`. Cada defecto tiene una prueba que fallaba antes. Sin
 migraciones, sin tocar `src/Web/Mcp` ni el servidor, el usuario o la contraseña del correo.
@@ -95,6 +135,7 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 ---
 
 ## Hecho
+- Panel de control → Notificaciones, entrega 1 (2026-10-22, rama `panel-notificaciones`).
 - Tanda 1, entrega 1 (seguridad): S1 a S5 (2026-10-22, rama `Jamil-GestionGD`).
 - Tanda 1, entrega 2 (notificaciones y correo) (2026-10-22, rama `Jamil-GestionGD`).
 - Tablero ejecutivo de proyectos (2026-10-19, rama `DashBoards`). Sin cambios de base de datos.
@@ -106,6 +147,8 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 0. **Tanda 1**, según el plan del Analista. Las entregas 1 (seguridad) y 2 (notificaciones y
    correo) están hechas; siguen las que defina el Analista. Antes de publicar hay que configurar
    `Correo__UrlBase` en IIS y seguir los pasos de IIS de la entrega 2.
+0. **Panel de control → Notificaciones, entrega 2:** las reglas de correo. Antes de publicar la
+   entrega 1 hay que correr su script y seguir sus notas de despliegue.
 1. **Decisión de Jamil:** el editor de expedientes no muestra el mensaje de éxito. Ese mensaje
    queda guardado y aparece en la siguiente pantalla que muestre mensajes de éxito. Mostrarlo en el
    editor corrige el desvío, pero cambia lo que hoy se ve.
