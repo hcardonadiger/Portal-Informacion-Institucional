@@ -1,4 +1,6 @@
-﻿using Diger.TramitesEstado.Application.Reuniones.Outlook;
+﻿using System.Text.Json;
+using Diger.TramitesEstado.Application.Reuniones.Memoria;
+using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Web.Pages.Reuniones;
@@ -235,6 +237,43 @@ public sealed class EditorModel(
     {
         await SincronizarOutlookAsync(id, ct);
         return RedirectToPage(new { id });
+    }
+
+    // ── Llenar automáticamente desde una transcripción ────────────
+
+    /// <summary>JSON en camelCase para el JavaScript del panel. El codificador por defecto se deja
+    /// a propósito: escapa <c>&lt;</c>, <c>&gt;</c> y <c>&amp;</c>, así que el prompt —que trae
+    /// HTML de ejemplo— no puede cerrar el <c>&lt;script&gt;</c> donde se incrusta.</summary>
+    public static readonly JsonSerializerOptions JsonPanel = new(JsonSerializerDefaults.Web);
+
+    /// <summary>Las cuatro variantes de lo que se le pide a la IA, una por combinación de tipo
+    /// (capacitación o no) y encuesta (encendida o no). Van todas a la página porque el Tipo y la
+    /// encuesta se cambian en «Generales» sin guardar, y el panel tiene que seguirlos al instante.
+    /// Claves: <c>"cap=0|enc=0"</c> … <c>"cap=1|enc=1"</c>.</summary>
+    public IReadOnlyDictionary<string, InstruccionesMemoria> VariantesMemoria { get; } =
+        new[] { false, true }
+            .SelectMany(cap => new[] { false, true }, (cap, enc) => (cap, enc))
+            .ToDictionary(
+                v => $"cap={(v.cap ? 1 : 0)}|enc={(v.enc ? 1 : 0)}",
+                v => MemoriaDesdeTranscripcion.Instrucciones(v.cap, v.enc));
+
+    /// <summary>
+    /// Lee el JSON que devolvió la IA con las reglas de <see cref="MemoriaDesdeTranscripcion"/> y
+    /// devuelve lo que corresponde llenar. <b>No toca la base</b>: el JavaScript llena el formulario
+    /// con la propuesta y la persona guarda cuando quiera, así que lo que tecleó sin guardar no se
+    /// pierde. Tipo y encuesta llegan del formulario —no de la base— por la misma razón: pueden
+    /// haber cambiado en «Generales» sin guardarse todavía.
+    /// </summary>
+    public IActionResult OnPostInterpretarMemoria([FromForm] string? json, [FromForm] bool esCapacitacion, [FromForm] bool conEncuesta)
+    {
+        try
+        {
+            return new JsonResult(MemoriaDesdeTranscripcion.Interpretar(json ?? "", esCapacitacion, conEncuesta), JsonPanel);
+        }
+        catch (DomainException ex)
+        {
+            return new JsonResult(new { error = ex.Message }, JsonPanel) { StatusCode = StatusCodes.Status400BadRequest };
+        }
     }
 
     public string[] Modalidades => ["Presencial", "Virtual", "Híbrida", "Otro"];
