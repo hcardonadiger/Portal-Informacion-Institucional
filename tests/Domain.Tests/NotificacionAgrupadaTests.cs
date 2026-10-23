@@ -49,6 +49,16 @@ public sealed class NotificacionAgrupadaTests
     }
 
     [Fact]
+    public void El_mismo_elemento_otra_vez_toma_la_fecha_nueva()
+    {
+        var n = Notificacion.Crear(Guid.NewGuid(), TipoNotificacion.CompromisoVencido, "Compromiso vencido: Acta", "/c/1", ahoraUtc: T0);
+
+        n.Sumar("/c/1", "Compromiso vencido: Acta", "/c/1", Plural, T0.AddDays(1));
+
+        n.Elementos.Single().FechaUtc.Should().Be(T0.AddDays(1));
+    }
+
+    [Fact]
     public void No_se_suma_a_un_aviso_leido()
     {
         var n = Notificacion.Crear(Guid.NewGuid(), TipoNotificacion.CompromisoVencido, "x", "/c/1", ahoraUtc: T0);

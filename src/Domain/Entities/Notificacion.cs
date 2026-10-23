@@ -58,7 +58,12 @@ public sealed class Notificacion : BaseEntity
             throw new InvalidOperationException("No se suma a un aviso ya leído: lo nuevo va en un aviso nuevo.");
 
         FechaActualizacion = ahoraUtc;
-        if (_elementos.Any(e => e.Clave == clave)) return false;
+        var existente = _elementos.FirstOrDefault(e => e.Clave == clave);
+        if (existente is not null)
+        {
+            existente.Tocar(ahoraUtc);
+            return false;
+        }
 
         _elementos.Add(NotificacionElemento.Crear(clave, titulo, url, ahoraUtc));
         Cantidad = _elementos.Count;

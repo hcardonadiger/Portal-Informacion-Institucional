@@ -82,6 +82,23 @@ public sealed class NotificacionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Un_diario_sin_leer_desde_ayer_no_sube_en_cada_revision_de_hoy()
+    {
+        var hoy = RecordatorioBackgroundServiceTests.NueveDeLaManana;
+        _reloj = new RelojFijo(hoy.AddDays(-1));
+        await AvisarAsync(TipoNotificacion.CompromisoVencido, "/c/1");
+
+        _reloj = new RelojFijo(hoy);
+        await AvisarAsync(TipoNotificacion.CompromisoVencido, "/c/1");
+        _reloj = new RelojFijo(hoy.AddMinutes(15));
+        (await AvisarAsync(TipoNotificacion.CompromisoVencido, "/c/1")).Should().BeFalse();
+
+        var n = await _ctx.Notificaciones.SingleAsync();
+        n.FechaActualizacion.Should().Be(hoy.UtcDateTime, "la segunda revisión del día ya no lo sube");
+        n.Cantidad.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Dos_avisos_del_mismo_chat_no_se_pierden_ni_cuentan_doble()
     {
         await AvisarAsync(TipoNotificacion.ChatRecibido, "/Chat#4");

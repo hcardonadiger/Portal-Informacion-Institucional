@@ -24,4 +24,10 @@ public sealed class NotificacionElemento : BaseEntity
         Url      = url,
         FechaUtc = fechaUtc,
     };
+
+    /// <summary>
+    /// El elemento volvió a avisarse: toma la fecha de ahora, para que «ya se avisó hoy» lo encuentre
+    /// en las revisiones siguientes del día aunque el aviso siga sin leer desde ayer.
+    /// </summary>
+    internal void Tocar(DateTime fechaUtc) => FechaUtc = fechaUtc;
 }
