@@ -16,15 +16,16 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetEjecutivoProyec
 /// <param name="AreaId">Cartera. <c>null</c> = todas las áreas visibles. Filtro de presentación:
 /// recorta lo que dejó pasar el alcance, nunca lo amplía.</param>
 /// <param name="UnidadId">Recorte por unidad dentro de la categoría, en memoria sobre el
-/// semáforo. Se ignora si ninguna fila de la categoría es de esa unidad.</param>
+/// semáforo. Se aplica aunque la unidad no tenga proyectos en la categoría: el filtro se mantiene
+/// al cambiar de categoría y el tablero dice que no hay proyectos, en vez de soltarlo.</param>
 /// <param name="ResponsableId">Recorte por responsable dentro de la categoría, con la misma
 /// regla.</param>
 /// <param name="CategoriaId">Categoría del catálogo (las «Q»). <c>null</c> = todas. Va a la
 /// consulta del portafolio: define la cartera sobre la que se ofrecen unidad y responsable.</param>
 /// <param name="ProyectoIds">«Solo estos proyectos», elegidos dentro de lo que dejaron área,
 /// categoría, unidad y responsable. Va antes de los agregados: KPI, dona, bloqueos y decisiones
-/// se calculan sobre la selección. Los que no están en esa cartera se descartan; si no queda
-/// ninguno, se ve la cartera entera.</param>
+/// se calculan sobre la selección. Los que no están en esa cartera no cuentan; si no queda
+/// ninguno, el tablero queda vacío, como con unidad y responsable.</param>
 public sealed record GetEjecutivoProyectosQuery(
     string? AreaId, string? UnidadId = null, Guid? ResponsableId = null, int? CategoriaId = null,
     IReadOnlyCollection<int>? ProyectoIds = null)
@@ -59,8 +60,8 @@ public sealed record EjecutivoProyectosDto(
     IReadOnlyList<OpcionFiltroDto> Unidades,
     IReadOnlyList<OpcionFiltroDto> Responsables,
 
-    /// <summary>El recorte que de verdad se aplicó: null si no se pidió o si no pertenecía a la
-    /// cartera.</summary>
+    /// <summary>El recorte aplicado: null solo si no se pidió. Puede no estar entre las opciones
+    /// (sin proyectos en esta categoría).</summary>
     string? UnidadAplicada,
     Guid?   ResponsableAplicado,
 
@@ -68,8 +69,8 @@ public sealed record EjecutivoProyectosDto(
     /// por ellos mismos: las opciones del filtro «Proyectos».</summary>
     IReadOnlyList<OpcionProyectoDto> ProyectosDisponibles,
 
-    /// <summary>La selección que de verdad se aplicó: vacía si no se pidió o si ninguno de los
-    /// pedidos pertenecía a la cartera.</summary>
+    /// <summary>Los proyectos elegidos que están en esta cartera. Puede quedar vacía aunque se
+    /// haya pedido una selección: entonces el tablero no tiene proyectos.</summary>
     IReadOnlyList<int> ProyectosAplicados)
 {
     /// <summary>En ejecución con salud roja: el subtítulo del KPI «En proceso».</summary>
@@ -124,7 +125,8 @@ public sealed class GetEjecutivoProyectosQueryHandler(ISender sender)
 
         // Unidad y responsable se recortan aquí, en memoria, y no en la consulta del portafolio:
         // así la misma pasada da las opciones del filtro (lo que hay en la cartera) y el recorte.
-        // Un recorte que no está entre las opciones se descarta en vez de dar un tablero vacío.
+        // Un recorte que no está entre las opciones se aplica igual (tablero vacío y la vista lo
+        // explica): así la unidad elegida sobrevive al pasar a una categoría donde no tiene proyectos.
         // Bloqueos y bloqueadas se recortan por el mismo conjunto de ids, para que las decisiones
         // cuadren con la lista.
         var unidades = d.Semaforo
@@ -141,9 +143,8 @@ public sealed class GetEjecutivoProyectosQueryHandler(ISender sender)
             .OrderBy(o => o.Nombre)
             .ToList();
 
-        var unidadAplicada = unidades.Any(o => o.Id == q.UnidadId) ? q.UnidadId : null;
-        var responsableAplicado = q.ResponsableId is { } r && responsables.Any(o => o.Id == r.ToString())
-            ? q.ResponsableId : null;
+        var unidadAplicada = string.IsNullOrWhiteSpace(q.UnidadId) ? null : q.UnidadId;
+        var responsableAplicado = q.ResponsableId;
 
         var cartera = d.Semaforo
             .Where(p => unidadAplicada is null || p.UnidadId == unidadAplicada)
@@ -158,7 +159,7 @@ public sealed class GetEjecutivoProyectosQueryHandler(ISender sender)
         var pedidos = q.ProyectoIds?.ToHashSet() ?? [];
         var proyectosAplicados = cartera.Where(p => pedidos.Contains(p.ProyectoId)).Select(p => p.ProyectoId).ToList();
 
-        var semaforo = proyectosAplicados.Count == 0
+        var semaforo = pedidos.Count == 0
             ? cartera
             : cartera.Where(p => pedidos.Contains(p.ProyectoId)).ToList();
 

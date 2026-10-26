@@ -10,8 +10,8 @@ de conexión, ni datos personales de ciudadanos).
 
 ### 2026-10-26 — Tablero ejecutivo: los filtros se conservan y se pueden elegir proyectos
 - **Persistencia:** al cambiar de categoría ya no se pierden la unidad ni el responsable; tampoco
-  al cambiar de área. Si lo elegido no tiene proyectos en la nueva categoría se muestra la
-  categoría completa con un aviso, y el filtro vuelve a aplicarse al regresar.
+  al cambiar de área. Si lo elegido no tiene proyectos en la nueva categoría (p. ej. de Q3 a Q2),
+  el filtro sigue aplicado y marcado, y el tablero dice que no hay proyectos con esos filtros.
 - **Nuevo filtro «Proyectos»:** casillas con los proyectos de la cartera, ya recortada por área,
   categoría, unidad o responsable y por el alcance del rol. Todo el tablero —KPI, dona, bloqueos,
   decisiones y lista— se calcula solo con los marcados. Con buscador y «Marcar todos / Ninguno».

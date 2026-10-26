@@ -180,12 +180,15 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Una_unidad_conservada_que_no_aplica_se_avisa()
+    public async Task Una_unidad_sin_proyectos_en_la_cartera_se_mantiene_y_se_explica()
     {
-        var html = await GetAsync(Ruta + "?Unidad=NOEXISTE");
+        // DAI solo tiene proyectos en GOBIERNO DIGITAL: en AREA-OTRA la cartera queda vacia.
+        var html = await GetAsync(Ruta + "?Area=AREA-OTRA&Unidad=DAI");
 
-        html.Should().Contain("class=\"res-meta ejec-aviso\"");
-        html.Should().Contain(Fila("Ventanilla unica"));
+        html.Should().NotContain(Fila("Monitoreo de resultados"), "la unidad sigue aplicada");
+        html.Should().Contain("<span>Unidad: DESARROLLO EN IA</span>", "el filtro sigue marcado con su nombre");
+        html.Should().Contain("class=\"empty-state\"");
+        html.Should().Contain("Los filtros se mantienen al cambiar de categor");
     }
 
     [Fact]

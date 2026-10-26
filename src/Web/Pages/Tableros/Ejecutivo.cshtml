@@ -94,32 +94,21 @@
     // Unidad o responsable: lo que de verdad se aplicó, con el nombre de su opción.
     var unidadSel = d.Unidades.FirstOrDefault(o => o.Id == d.UnidadAplicada);
     var respSel   = d.Responsables.FirstOrDefault(o => o.Id == d.ResponsableAplicado?.ToString());
+    // Lo aplicado puede no estar entre las opciones (sin proyectos en esta categoría): se mantiene
+    // y se sigue nombrando, para que cambiar de categoría no parezca soltar el filtro.
     var subfiltro = unidadSel is not null ? $"Unidad: {unidadSel.Nombre}"
+                  : d.UnidadAplicada is not null ? $"Unidad: {Model.UnidadFueraNombre ?? d.UnidadAplicada}"
                   : respSel   is not null ? $"Responsable: {respSel.Nombre}"
+                  : d.ResponsableAplicado is not null ? "Responsable elegido"
                   : null;
-    // «Solo estos proyectos»: lo aplicado, con su texto para el botón y la hoja impresa.
-    var elegidos = d.ProyectosAplicados.ToHashSet();
+    // «Solo estos proyectos»: lo pedido, aunque ninguno esté en esta cartera (se mantiene igual
+    // que la unidad); el texto va en el botón y en la hoja impresa.
+    var elegidos = Model.Proyecto.ToHashSet();
     string? proyTexto = elegidos.Count == 0 ? null
                       : $"{elegidos.Count} {(elegidos.Count == 1 ? "proyecto elegido" : "proyectos elegidos")}";
     var filtrosTexto = $"Área: {c.AreaNombre ?? "todas"} · Categoría: {c.CategoriaNombre ?? "todas"}"
                      + (subfiltro is null ? "" : $" · {subfiltro}")
                      + (proyTexto is null ? "" : $" · {proyTexto}");
-
-    // Lo pedido que no aplica en esta cartera: se conserva en la URL (vuelve a aplicarse al cambiar
-    // de categoría o de área) y se avisa, para que la lista completa no parezca un filtro roto.
-    var noAplican = new List<string>();
-    if (Model.Unidad is not null && d.UnidadAplicada is null) noAplican.Add("la unidad elegida");
-    if (Model.Responsable is not null && d.ResponsableAplicado is null) noAplican.Add("el responsable elegido");
-    if (Model.Proyecto.Count > 0 && elegidos.Count == 0) noAplican.Add("los proyectos elegidos");
-    string? avisoNoAplica = null;
-    if (noAplican.Count > 0)
-    {
-        var quien = string.Join(" ni ", noAplican);
-        var verbo = noAplican.Count == 1 && !noAplican[0].StartsWith("los") ? "tiene" : "tienen";
-        var donde = c.CategoriaNombre is null ? "esta cartera" : $"la categoría {c.CategoriaNombre}";
-        avisoNoAplica = $"{char.ToUpper(quien[0])}{quien[1..]} no {verbo} proyectos en {donde}: se muestra completa. "
-                      + "El filtro se conserva y vuelve a aplicarse donde corresponda.";
-    }
 }
 
 <div class="container ejec">
@@ -279,10 +268,6 @@
             <a class="ejec-limpiar" asp-page="/Tableros/Ejecutivo">Limpiar</a>
         }
     </div>
-    @if (avisoNoAplica is not null)
-    {
-        <p class="res-meta ejec-aviso" role="status">@avisoNoAplica</p>
-    }
 
     <partial name="_KpiEjecutivo" model="d" />
 
@@ -292,6 +277,10 @@
             <div class="empty-state">
                 <div class="empty-state-ico"><svg class="ico"><use href="#i-plan"></use></svg></div>
                 <div class="empty-state-t1">No hay proyectos en @(c.AreaNombre ?? inst.NombreCorto)@(c.CategoriaNombre is null ? "" : $" · {c.CategoriaNombre}") con estos filtros</div>
+                @if (subfiltro is not null || proyTexto is not null)
+                {
+                    <p class="res-meta">@string.Join(" · ", new[] { subfiltro, proyTexto }.Where(x => x is not null)). Los filtros se mantienen al cambiar de categoría.</p>
+                }
                 <div class="empty-state-t2">
                     <a asp-page="/Tableros/Ejecutivo">Limpiar filtros</a>
                     @if (puedeCrear)

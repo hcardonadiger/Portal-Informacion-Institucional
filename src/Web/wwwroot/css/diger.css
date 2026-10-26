@@ -8180,7 +8180,6 @@ body.tema-claro {
     padding-top: var(--diger-space-2); border-top: 1px solid var(--diger-border);
     font-size: var(--diger-fs-sm); font-weight: 600;
 }
-.ejec-aviso { margin: calc(-1 * var(--diger-space-2)) 0 var(--diger-space-4); }
 
 .ejec-area { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .ejec-area select { min-width: 200px; padding: 6px 10px; }

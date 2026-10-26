@@ -378,7 +378,7 @@ public class EjecutivoProyectosTests : IDisposable
     }
 
     [Fact]
-    public async Task Un_recorte_que_no_existe_en_la_categoria_se_ignora()
+    public async Task Un_recorte_sin_proyectos_en_la_categoria_se_mantiene()
     {
         var (q3, q1) = await SembrarCategoriasAsync();
         var henry = Guid.NewGuid();
@@ -388,13 +388,15 @@ public class EjecutivoProyectosTests : IDisposable
         await ClasificarAsync(a, q3, "DAI", henry, "Henry Ortez");
         await ClasificarAsync(c, q1, "DPD", brizzio, "Brizzio Zelaya");
 
-        // Un enlace viejo que trae la unidad o el responsable de otra categoría no deja el
-        // tablero vacío sin explicación: se descarta y se muestra la categoría completa.
+        // Pasar de Q1 a Q3 con DPD elegida no suelta la unidad: Q3 no tiene proyectos de DPD y
+        // el tablero queda vacío (la vista lo explica), en vez de mostrar Q3 completa.
         var d = await EjecutivoAsync(q3, "DPD", brizzio);
 
-        d.Proyectos.Should().ContainSingle().Which.ProyectoId.Should().Be(a);
-        d.UnidadAplicada.Should().BeNull();
-        d.ResponsableAplicado.Should().BeNull();
+        d.Proyectos.Should().BeEmpty();
+        d.Total.Should().Be(0);
+        d.UnidadAplicada.Should().Be("DPD");
+        d.ResponsableAplicado.Should().Be(brizzio);
+        d.Unidades.Select(u => u.Id).Should().Equal(["DAI"], "las opciones siguen siendo las de Q3");
     }
 
     private Task<EjecutivoProyectosDto> EjecutivoAsync(string? unidad, params int[] proyectos) =>
@@ -436,7 +438,7 @@ public class EjecutivoProyectosTests : IDisposable
     }
 
     [Fact]
-    public async Task Proyectos_fuera_de_la_cartera_se_descartan_y_sin_ninguno_valido_se_ve_toda()
+    public async Task Proyectos_fuera_de_la_cartera_no_cuentan_y_sin_ninguno_el_tablero_queda_vacio()
     {
         var a = await CrearAsync("A", EstadoProyecto.EnEjecucion);
         var b = await CrearAsync("B", EstadoProyecto.EnEjecucion);
@@ -446,9 +448,9 @@ public class EjecutivoProyectosTests : IDisposable
         parcial.ProyectosAplicados.Should().Equal(a);
 
         var ninguno = await EjecutivoAsync(null, 999_999);
-        ninguno.Proyectos.Select(p => p.ProyectoId).Should().BeEquivalentTo([a, b],
-            "una selección que no pertenece a la cartera no deja el tablero vacío");
+        ninguno.Proyectos.Should().BeEmpty("la selección se mantiene aunque no esté en esta cartera");
         ninguno.ProyectosAplicados.Should().BeEmpty();
+        ninguno.ProyectosDisponibles.Select(p => p.Id).Should().BeEquivalentTo([a, b]);
     }
 
     public void Dispose() => _ctx.Dispose();

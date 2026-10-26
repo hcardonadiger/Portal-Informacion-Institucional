@@ -1,4 +1,5 @@
 using Diger.TramitesEstado.Application.Dashboards.Queries.GetEjecutivoProyectos;
+using Diger.TramitesEstado.Application.Unidades.Queries;
 using Microsoft.Extensions.Options;
 
 namespace Diger.TramitesEstado.Web.Pages.Tableros;
@@ -26,6 +27,10 @@ public sealed class EjecutivoModel(
     public EjecutivoProyectosDto       Data     { get; private set; } = default!;
     public EjecutivoProyectosContexto  Contexto { get; private set; } = default!;
     public InstitucionOptions          Institucion => institucion.Value;
+
+    /// <summary>Nombre de la unidad aplicada cuando no tiene proyectos en esta cartera y por eso
+    /// no está entre las opciones del menú.</summary>
+    public string? UnidadFueraNombre { get; private set; }
 
     /// <summary>Hay algún recorte elegido por el usuario: se ofrece «Limpiar». Cuenta lo pedido,
     /// aunque no aplique en esta categoría: sigue en la URL y «Limpiar» es la forma de soltarlo.</summary>
@@ -69,5 +74,11 @@ public sealed class EjecutivoModel(
 
         Data = await sender.Send(new GetEjecutivoProyectosQuery(
             Contexto.AreaId, Unidad, Responsable, Contexto.CategoriaId, Proyecto), ct);
+
+        if (Data.UnidadAplicada is { } u && Data.Unidades.All(o => o.Id != u))
+        {
+            try { UnidadFueraNombre = (await sender.Send(new GetUnidadByIdQuery(u), ct)).Nombre; }
+            catch (NotFoundException) { UnidadFueraNombre = u; }
+        }
     }
 }
