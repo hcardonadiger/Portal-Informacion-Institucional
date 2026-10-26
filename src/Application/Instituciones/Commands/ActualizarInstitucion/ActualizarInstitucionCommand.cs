@@ -4,16 +4,14 @@ using Diger.TramitesEstado.Application.Instituciones.Commands.CrearInstitucion;
 
 namespace Diger.TramitesEstado.Application.Instituciones.Commands.ActualizarInstitucion;
 
-/// <param name="RutaSol">
-/// Ruta de la institución dentro de SOL (D-20). <b>Vacío no significa «no la toques»: significa
-/// «devuélvela a su valor por defecto», que es la llave.</b> Quien invoque este comando manda el
-/// estado completo del formulario, no un parche.
-/// </param>
+/// <remarks>
+/// No toca la ruta en SOL: ya no se edita desde la ficha de la institución, y la que tenga
+/// guardada (o la llave, si no tiene) sigue siendo la que arma las direcciones de los trámites.
+/// </remarks>
 public sealed record ActualizarInstitucionCommand(
     string Id, string Nombre, bool Activo,
     string? LogoUrl = null, string? NombreCorto = null,
-    string? Color = null, string? Descripcion = null,
-    string? RutaSol = null)
+    string? Color = null, string? Descripcion = null)
     : IRequest<Unit>;
 
 public sealed class ActualizarInstitucionCommandHandler(
@@ -32,7 +30,6 @@ public sealed class ActualizarInstitucionCommandHandler(
         inst.Renombrar(cmd.Nombre);
         if (cmd.Activo) inst.Activar(); else inst.Desactivar();
         inst.ActualizarDetalles(cmd.Descripcion, cmd.NombreCorto, cmd.LogoUrl, null, cmd.Color);
-        inst.FijarRutaSol(cmd.RutaSol);
 
         repo.Update(inst);
         await uow.SaveChangesAsync(ct);
