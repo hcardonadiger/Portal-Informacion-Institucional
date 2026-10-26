@@ -397,5 +397,59 @@ public class EjecutivoProyectosTests : IDisposable
         d.ResponsableAplicado.Should().BeNull();
     }
 
+    private Task<EjecutivoProyectosDto> EjecutivoAsync(string? unidad, params int[] proyectos) =>
+        new GetEjecutivoProyectosQueryHandler(_sender)
+            .Handle(new GetEjecutivoProyectosQuery(null, unidad, ProyectoIds: proyectos), CancellationToken.None);
+
+    [Fact]
+    public async Task Los_proyectos_elegidos_recortan_la_cartera_y_todos_sus_agregados()
+    {
+        var a = await CrearAsync("A", EstadoProyecto.EnEjecucion);
+        var b = await CrearAsync("B", EstadoProyecto.Cerrado);
+        var c = await CrearAsync("C", EstadoProyecto.EnEjecucion);
+
+        var d = await EjecutivoAsync(null, a, b);
+
+        d.Total.Should().Be(2);
+        d.Proyectos.Select(p => p.ProyectoId).Should().BeEquivalentTo([a, b]);
+        d.EnProceso.Should().Be(1, "los KPI se calculan sobre la selección");
+        d.Finalizados.Should().Be(1);
+        d.PorEstado.Sum(s => s.Cantidad).Should().Be(2, "la dona también");
+        d.ProyectosAplicados.Should().BeEquivalentTo([a, b]);
+        d.ProyectosDisponibles.Select(p => p.Id).Should().BeEquivalentTo([a, b, c],
+            "las opciones no se achican con la propia selección");
+    }
+
+    [Fact]
+    public async Task Las_opciones_de_proyecto_salen_de_la_cartera_ya_recortada_por_unidad()
+    {
+        var (q3, _) = await SembrarCategoriasAsync();
+        var a = await CrearAsync("A", EstadoProyecto.EnEjecucion);
+        var b = await CrearAsync("B", EstadoProyecto.EnEjecucion);
+        await ClasificarAsync(a, q3, "DAI", null, null);
+        await ClasificarAsync(b, q3, "DITRA", null, null);
+
+        var d = await EjecutivoAsync("DITRA");
+
+        d.ProyectosDisponibles.Should().ContainSingle().Which.Id.Should().Be(b);
+        d.ProyectosAplicados.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Proyectos_fuera_de_la_cartera_se_descartan_y_sin_ninguno_valido_se_ve_toda()
+    {
+        var a = await CrearAsync("A", EstadoProyecto.EnEjecucion);
+        var b = await CrearAsync("B", EstadoProyecto.EnEjecucion);
+
+        var parcial = await EjecutivoAsync(null, a, 999_999);
+        parcial.Proyectos.Should().ContainSingle().Which.ProyectoId.Should().Be(a);
+        parcial.ProyectosAplicados.Should().Equal(a);
+
+        var ninguno = await EjecutivoAsync(null, 999_999);
+        ninguno.Proyectos.Select(p => p.ProyectoId).Should().BeEquivalentTo([a, b],
+            "una selección que no pertenece a la cartera no deja el tablero vacío");
+        ninguno.ProyectosAplicados.Should().BeEmpty();
+    }
+
     public void Dispose() => _ctx.Dispose();
 }

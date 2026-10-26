@@ -27,6 +27,7 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
 {
     private const string Ruta = "/Tableros/Ejecutivo";
     private readonly PortalFactory _portal = new();
+    private int _idAgente;
 
     public async Task InitializeAsync()
     {
@@ -64,6 +65,7 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
             p.CambiarEstado(EstadoProyecto.EnEjecucion, "Pruebas");
         await db.SaveChangesAsync();
 
+        _idAgente = enDai.Id;
         db.ProyectoAvances.Add(AvanceProyecto.Crear(enDitra.Id, null, null, "Corte", null, "Henry Ortez",
             bloqueo: "Falta la firma del convenio"));
         await db.SaveChangesAsync();
@@ -124,6 +126,66 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
 
         html.Should().Contain(Fila("Agente de IA"));
         html.Should().NotContain(Fila("Ventanilla unica"));
+    }
+
+    [Fact]
+    public async Task Cambiar_de_categoria_conserva_la_unidad_elegida()
+    {
+        var html = await GetAsync(Ruta + "?Unidad=DAI");
+
+        // «Todas» es la primera categoria: su enlace ya no suelta la unidad.
+        html.Should().Contain("href=\"/Tableros/Ejecutivo?Unidad=DAI\"");
+    }
+
+    [Fact]
+    public async Task Cambiar_de_categoria_conserva_el_responsable_y_los_proyectos()
+    {
+        var resp = Guid.NewGuid();
+        var html = await GetAsync($"{Ruta}?Responsable={resp}&Proyecto={_idAgente}");
+
+        html.Should().Contain($"href=\"/Tableros/Ejecutivo?Responsable={resp}&amp;Proyecto={_idAgente}\"");
+    }
+
+    [Fact]
+    public async Task El_selector_de_area_conserva_unidad_y_proyectos()
+    {
+        var html = await GetAsync($"{Ruta}?Unidad=DAI&Proyecto={_idAgente}");
+
+        var area = html[html.IndexOf("class=\"ejec-area\"")..];
+        area = area[..area.IndexOf("</form>")];
+        area.Should().Contain("name=\"Unidad\" value=\"DAI\"");
+        area.Should().Contain($"name=\"Proyecto\" value=\"{_idAgente}\"");
+    }
+
+    [Fact]
+    public async Task Solo_los_proyectos_elegidos_entran_al_tablero()
+    {
+        var html = await GetAsync($"{Ruta}?Proyecto={_idAgente}");
+
+        html.Should().Contain(Fila("Agente de IA"));
+        html.Should().NotContain(Fila("Ventanilla unica"));
+        html.Should().NotContain("Falta la firma del convenio", "las decisiones tambien se recortan");
+        html.Should().Contain($"name=\"Proyecto\" value=\"{_idAgente}\" checked");
+        html.Should().Contain("1 proyecto elegido");
+    }
+
+    [Fact]
+    public async Task El_filtro_de_proyectos_ofrece_los_de_la_cartera()
+    {
+        var html = await GetAsync(Ruta);
+
+        html.Should().Contain("class=\"ejec-proy-op\"");
+        html.Should().Contain($"name=\"Proyecto\" value=\"{_idAgente}\"");
+        html.Should().NotContain("Monitoreo de resultados", "es de otra area: no se ofrece");
+    }
+
+    [Fact]
+    public async Task Una_unidad_conservada_que_no_aplica_se_avisa()
+    {
+        var html = await GetAsync(Ruta + "?Unidad=NOEXISTE");
+
+        html.Should().Contain("class=\"res-meta ejec-aviso\"");
+        html.Should().Contain(Fila("Ventanilla unica"));
     }
 
     [Fact]

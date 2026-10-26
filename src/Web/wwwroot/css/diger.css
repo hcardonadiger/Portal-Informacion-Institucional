@@ -8154,6 +8154,34 @@ body.tema-claro {
 .ejec-sub-grupo a:hover, .ejec-sub-grupo a:focus-visible { background: var(--diger-bg-soft); color: var(--diger-blue); }
 .ejec-sub-grupo a.is-on { background: var(--diger-blue-light); color: var(--diger-blue); font-weight: 700; }
 
+/* «Proyectos»: el mismo menú, con casillas en una columna y el botón Aplicar al pie. */
+.ejec-proy-panel { grid-template-columns: 1fr; width: min(460px, 90vw); gap: var(--diger-space-2); }
+.ejec-proy-ayuda { margin: 0; }
+.ejec-proy-herr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--diger-space-3); }
+.ejec-proy-herr[hidden] { display: none; }
+.ejec-proy-buscar { flex: 1 1 180px; padding: 6px 10px; }
+.ejec-proy-marcar {
+    padding: 0; border: 0; background: none; cursor: pointer;
+    color: var(--diger-blue); font-size: var(--diger-fs-sm); font-weight: 600;
+}
+.ejec-proy-marcar:hover, .ejec-proy-marcar:focus-visible { text-decoration: underline; }
+.ejec-proy-lista { display: grid; gap: 2px; max-height: 40vh; overflow: auto; }
+.ejec-proy-op {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+    padding: 5px 8px; border-radius: var(--diger-radius-sm); cursor: pointer;
+    font-size: var(--diger-fs-sm); color: var(--diger-text);
+}
+.ejec-proy-op[hidden] { display: none; }
+.ejec-proy-op:hover { background: var(--diger-bg-soft); }
+.ejec-proy-op:has(input:checked) { background: var(--diger-blue-light); color: var(--diger-blue); font-weight: 600; }
+.ejec-proy-op small { color: var(--diger-text-muted); font-variant-numeric: tabular-nums; }
+.ejec-proy-pie {
+    display: flex; align-items: center; gap: var(--diger-space-3);
+    padding-top: var(--diger-space-2); border-top: 1px solid var(--diger-border);
+    font-size: var(--diger-fs-sm); font-weight: 600;
+}
+.ejec-aviso { margin: calc(-1 * var(--diger-space-2)) 0 var(--diger-space-4); }
+
 .ejec-area { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .ejec-area select { min-width: 200px; padding: 6px 10px; }
 .ejec-limpiar { font-size: var(--diger-fs-sm); font-weight: 600; }

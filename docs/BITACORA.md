@@ -8,6 +8,16 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-26 — Tablero ejecutivo: los filtros se conservan y se pueden elegir proyectos
+- **Persistencia:** al cambiar de categoría ya no se pierden la unidad ni el responsable; tampoco
+  al cambiar de área. Si lo elegido no tiene proyectos en la nueva categoría se muestra la
+  categoría completa con un aviso, y el filtro vuelve a aplicarse al regresar.
+- **Nuevo filtro «Proyectos»:** casillas con los proyectos de la cartera, ya recortada por área,
+  categoría, unidad o responsable y por el alcance del rol. Todo el tablero —KPI, dona, bloqueos,
+  decisiones y lista— se calcula solo con los marcados. Con buscador y «Marcar todos / Ninguno».
+- **Código:** `GetEjecutivoProyectosQuery` (parámetro `ProyectoIds`), `Tableros/Ejecutivo`.
+- **Pruebas:** 3 nuevas en `EjecutivoProyectosTests` y 6 en `TableroEjecutivoTests`.
+
 ### 2026-10-26 — Una sesión de QA o desarrollo ya no abre producción
 - **Vulnerabilidad:** con la sesión de un entorno se entraba a otro, incluso como administrador, sin
   conocer la contraseña de ese entorno. Los tres sitios comparten servidor, nombre de aplicación y

@@ -97,8 +97,29 @@
     var subfiltro = unidadSel is not null ? $"Unidad: {unidadSel.Nombre}"
                   : respSel   is not null ? $"Responsable: {respSel.Nombre}"
                   : null;
+    // «Solo estos proyectos»: lo aplicado, con su texto para el botón y la hoja impresa.
+    var elegidos = d.ProyectosAplicados.ToHashSet();
+    string? proyTexto = elegidos.Count == 0 ? null
+                      : $"{elegidos.Count} {(elegidos.Count == 1 ? "proyecto elegido" : "proyectos elegidos")}";
     var filtrosTexto = $"Área: {c.AreaNombre ?? "todas"} · Categoría: {c.CategoriaNombre ?? "todas"}"
-                     + (subfiltro is null ? "" : $" · {subfiltro}");
+                     + (subfiltro is null ? "" : $" · {subfiltro}")
+                     + (proyTexto is null ? "" : $" · {proyTexto}");
+
+    // Lo pedido que no aplica en esta cartera: se conserva en la URL (vuelve a aplicarse al cambiar
+    // de categoría o de área) y se avisa, para que la lista completa no parezca un filtro roto.
+    var noAplican = new List<string>();
+    if (Model.Unidad is not null && d.UnidadAplicada is null) noAplican.Add("la unidad elegida");
+    if (Model.Responsable is not null && d.ResponsableAplicado is null) noAplican.Add("el responsable elegido");
+    if (Model.Proyecto.Count > 0 && elegidos.Count == 0) noAplican.Add("los proyectos elegidos");
+    string? avisoNoAplica = null;
+    if (noAplican.Count > 0)
+    {
+        var quien = string.Join(" ni ", noAplican);
+        var verbo = noAplican.Count == 1 && !noAplican[0].StartsWith("los") ? "tiene" : "tienen";
+        var donde = c.CategoriaNombre is null ? "esta cartera" : $"la categoría {c.CategoriaNombre}";
+        avisoNoAplica = $"{char.ToUpper(quien[0])}{quien[1..]} no {verbo} proyectos en {donde}: se muestra completa. "
+                      + "El filtro se conserva y vuelve a aplicarse donde corresponda.";
+    }
 }
 
 <div class="container ejec">
@@ -160,7 +181,7 @@
             <div class="ejec-sub-panel">
                 @if (subfiltro is not null)
                 {
-                    <a class="ejec-sub-todo" href="@Model.Enlace(c.CategoriaId)">Ver toda @(c.CategoriaNombre is null ? "la cartera" : $"la categoría {c.CategoriaNombre}")</a>
+                    <a class="ejec-sub-todo" href="@Model.EnlaceSub(null, null)">Ver toda @(c.CategoriaNombre is null ? "la cartera" : $"la categoría {c.CategoriaNombre}")</a>
                 }
                 @if (d.Unidades.Count == 0 && d.Responsables.Count == 0)
                 {
@@ -172,7 +193,7 @@
                         <h4><svg class="ico" aria-hidden="true"><use href="#i-unidad"></use></svg>Unidad</h4>
                         @foreach (var o in d.Unidades)
                         {
-                            <a class="@(o.Id == d.UnidadAplicada ? "is-on" : "")" href="@Model.Enlace(c.CategoriaId, unidad: o.Id)">
+                            <a class="@(o.Id == d.UnidadAplicada ? "is-on" : "")" href="@Model.EnlaceSub(o.Id, null)">
                                 <span>@o.Nombre</span><strong>@o.Cantidad</strong>
                             </a>
                         }
@@ -184,7 +205,7 @@
                         <h4><svg class="ico" aria-hidden="true"><use href="#i-usuarios"></use></svg>Responsable</h4>
                         @foreach (var o in d.Responsables)
                         {
-                            <a class="@(o.Id == d.ResponsableAplicado?.ToString() ? "is-on" : "")" href="@Model.Enlace(c.CategoriaId, responsable: Guid.Parse(o.Id))">
+                            <a class="@(o.Id == d.ResponsableAplicado?.ToString() ? "is-on" : "")" href="@Model.EnlaceSub(null, Guid.Parse(o.Id))">
                                 <span>@o.Nombre</span><strong>@o.Cantidad</strong>
                             </a>
                         }
@@ -193,10 +214,56 @@
             </div>
         </details>
 
+        @* «Solo estos proyectos»: casillas sobre la cartera ya recortada por los filtros de arriba y
+           por el alcance del rol. Es un formulario GET que lleva el resto del recorte en ocultos;
+           sin marcar ninguna se ve la cartera entera. *@
+        <details class="ejec-sub ejec-proy @(proyTexto is null ? "" : "is-on")">
+            <summary class="ejec-sub-btn">
+                <svg class="ico" aria-hidden="true"><use href="#i-plan"></use></svg>
+                <span>@(proyTexto ?? "Proyectos")</span>
+                <svg class="ico ejec-sub-flecha" aria-hidden="true"><use href="#i-chevron"></use></svg>
+            </summary>
+            <form method="get" action="/Tableros/Ejecutivo" class="ejec-sub-panel ejec-proy-panel">
+                @if (Request.Query.ContainsKey("Area")) { <input type="hidden" name="Area" value="@Model.Area" /> }
+                @if (c.CategoriaId is { } catP) { <input type="hidden" name="Categoria" value="@catP" /> }
+                @if (Model.Unidad is not null) { <input type="hidden" name="Unidad" value="@Model.Unidad" /> }
+                @if (Model.Responsable is not null) { <input type="hidden" name="Responsable" value="@Model.Responsable" /> }
+                @if (d.ProyectosDisponibles.Count == 0)
+                {
+                    <p class="res-meta">No hay proyectos en esta cartera.</p>
+                }
+                else
+                {
+                    <p class="res-meta ejec-proy-ayuda">Marque los proyectos que quiere ver: todo el tablero se calcula solo con ellos. Sin marcar, se ven todos.</p>
+                    <div class="ejec-proy-herr" hidden>
+                        <input type="search" class="ejec-proy-buscar" placeholder="Buscar proyecto…" aria-label="Buscar proyecto" />
+                        <button type="button" class="ejec-proy-marcar" data-marcar="1">Marcar todos</button>
+                        <button type="button" class="ejec-proy-marcar" data-marcar="0">Ninguno</button>
+                    </div>
+                    <div class="ejec-proy-lista">
+                        @foreach (var o in d.ProyectosDisponibles)
+                        {
+                            <label class="ejec-proy-op"><input type="checkbox" name="Proyecto" value="@o.Id" checked="@elegidos.Contains(o.Id)" /><span>@o.Nombre</span><small>@o.Codigo</small></label>
+                        }
+                    </div>
+                    <div class="ejec-proy-pie">
+                        <button type="submit" class="btnp">Aplicar</button>
+                        @if (proyTexto is not null)
+                        {
+                            <a href="@Model.EnlaceSinProyectos()">Ver todos</a>
+                        }
+                    </div>
+                }
+            </form>
+        </details>
+
         @if (c.PuedeElegirArea)
         {
             <form method="get" class="ejec-area">
                 @if (c.CategoriaId is { } catId) { <input type="hidden" name="Categoria" value="@catId" /> }
+                @if (Model.Unidad is not null) { <input type="hidden" name="Unidad" value="@Model.Unidad" /> }
+                @if (Model.Responsable is not null) { <input type="hidden" name="Responsable" value="@Model.Responsable" /> }
+                @foreach (var pid in Model.Proyecto.Distinct()) { <input type="hidden" name="Proyecto" value="@pid" /> }
                 <label for="f-area" class="ejec-barra-lbl">Área</label>
                 <select id="f-area" name="Area" onchange="this.form.submit()">
                     <option value="" selected="@(c.AreaId is null)">Todas las áreas</option>
@@ -212,6 +279,10 @@
             <a class="ejec-limpiar" asp-page="/Tableros/Ejecutivo">Limpiar</a>
         }
     </div>
+    @if (avisoNoAplica is not null)
+    {
+        <p class="res-meta ejec-aviso" role="status">@avisoNoAplica</p>
+    }
 
     <partial name="_KpiEjecutivo" model="d" />
 
@@ -443,11 +514,37 @@
       grupos.forEach(function (g, i) { g.open = !!antes[i]; });
     });
 
-    // Menú «Unidad o responsable»: se cierra al hacer clic fuera o con Escape.
-    var sub = document.querySelector('details.ejec-sub');
-    if (sub) {
+    // Menús «Unidad o responsable» y «Proyectos»: uno abierto a la vez; se cierran al hacer clic
+    // fuera o con Escape.
+    var menus = document.querySelectorAll('details.ejec-sub');
+    menus.forEach(function (sub) {
+      sub.addEventListener('toggle', function () {
+        if (sub.open) menus.forEach(function (o) { if (o !== sub) o.open = false; });
+      });
       document.addEventListener('click', function (e) { if (sub.open && !sub.contains(e.target)) sub.open = false; });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && sub.open) { sub.open = false; sub.querySelector('summary').focus(); } });
+    });
+
+    // «Proyectos»: buscar y marcar todos o ninguno. Solo con JS; sin él quedan las casillas.
+    var panel = document.querySelector('.ejec-proy-panel');
+    var herr = panel && panel.querySelector('.ejec-proy-herr');
+    if (herr) {
+      herr.hidden = false;
+      var ops = panel.querySelectorAll('.ejec-proy-op');
+      var buscar = herr.querySelector('.ejec-proy-buscar');
+      var norm = function (t) { return t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase(); };
+      buscar.addEventListener('input', function () {
+        var q = norm(buscar.value.trim());
+        ops.forEach(function (op) { op.hidden = q !== '' && norm(op.textContent).indexOf(q) < 0; });
+      });
+      // Enter en el buscador no envía el formulario a medio marcar.
+      buscar.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
+      herr.querySelectorAll('[data-marcar]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var v = b.getAttribute('data-marcar') === '1';
+          ops.forEach(function (op) { if (!op.hidden) op.querySelector('input').checked = v; });
+        });
+      });
     }
   })();
 </script>
