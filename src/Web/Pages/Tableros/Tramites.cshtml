@@ -140,7 +140,7 @@
     </div>
 
     @* ── Tabla ───────────────────────────────────────────────────── *@
-    <div class="dash-card" style="padding:0;overflow:hidden">
+    <div class="dash-card" style="padding:0;overflow:clip">
         @if (d.Total == 0)
         {
             <div class="empty-state">
@@ -151,7 +151,7 @@
         }
         else
         {
-            <table class="seg-table trm-tabla">
+            <table class="seg-table encabezado-fijo trm-tabla">
                 <thead>
                     <tr>
                         <th style="width:13%">Institución</th>

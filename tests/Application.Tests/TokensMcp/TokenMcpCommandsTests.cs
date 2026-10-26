@@ -156,6 +156,30 @@ public class TokenMcpCommandsTests : IDisposable
         (await _ctx.TokensAccesoMcp.SingleAsync()).ExpiraUtc.Should().BeNull();
     }
 
+    /// <summary>La auditoría solo sellaba las entidades con Id entero: el token (Id Guid)
+    /// salía con CreatedAt en 01/01/0001 y así lo mostraba la pantalla.</summary>
+    [Fact]
+    public async Task El_token_emitido_lleva_su_fecha_de_creacion()
+    {
+        await SembrarAsignacionAsync();
+
+        await Generador().Handle(
+            new GenerarTokenMcpCommand("Claude Code", null, null), CancellationToken.None);
+
+        (await _ctx.TokensAccesoMcp.SingleAsync()).CreatedAt
+            .Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+    }
+
+    /// <summary>Mismo defecto, otra entidad con Id Guid: el sello no puede depender del tipo
+    /// de la llave.</summary>
+    [Fact]
+    public async Task La_auditoria_sella_entidades_con_llave_guid()
+    {
+        var asignacion = await SembrarAsignacionAsync();
+
+        asignacion.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+    }
+
     // ── Revocación ────────────────────────────────────────────────────────────
 
     [Fact]
@@ -274,6 +298,24 @@ public class TokenMcpCommandsTests : IDisposable
             .Handle(new GetMisTokensMcpQuery(), CancellationToken.None);
         despues.Single().Estado.Should().Be("Revocado");
         despues.Single().EstaVigente.Should().BeFalse();
+    }
+
+    /// <summary>Los tokens emitidos antes del arreglo quedaron sin fecha en la base. No hay de
+    /// dónde reconstruirla, así que la lista dice que no la sabe en vez de mostrar 01/01/0001.</summary>
+    [Fact]
+    public async Task Un_token_sin_fecha_registrada_no_inventa_una()
+    {
+        await SembrarAsignacionAsync();
+        await Generador().Handle(new GenerarTokenMcpCommand("Viejo", null, null), CancellationToken.None);
+
+        var fila = await _ctx.TokensAccesoMcp.SingleAsync();
+        fila.CreatedAt = default;
+        await _ctx.SaveChangesAsync();
+
+        var mios = await new GetMisTokensMcpQueryHandler(_ctx, _currentUser)
+            .Handle(new GetMisTokensMcpQuery(), CancellationToken.None);
+
+        mios.Single().CreadoUtc.Should().BeNull();
     }
 
     public void Dispose() => _ctx.Dispose();

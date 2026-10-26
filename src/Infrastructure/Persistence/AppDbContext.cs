@@ -515,7 +515,9 @@ public sealed class AppDbContext(
 
         // ── Auditoría automática ──────────────────────────────────────────────
         var actor = currentUser.Nombre ?? currentUser.Correo;
-        foreach (var entry in ChangeTracker.Entries<BaseAuditableEntity>())
+        // IAuditable y no BaseAuditableEntity: esa es solo la de Id int, y por ella los
+        // tokens, usuarios, roles y asignaciones (Id Guid/string) se guardaban sin fecha.
+        foreach (var entry in ChangeTracker.Entries<IAuditable>())
         {
             if (entry.State == EntityState.Added)
             {

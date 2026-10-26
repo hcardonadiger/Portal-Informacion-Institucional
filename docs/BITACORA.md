@@ -351,6 +351,21 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
   tableros se limita al tablero ejecutivo.
 
 ## Bugs
+- **2026-10-26 — Recursos y Plantillas: descarga fallida y nombre fuera de la tarjeta.**
+  - Síntoma: en QA (`GestionGD_QA`), «Descargar Archivo» avisa que el archivo no está en el
+    servidor y aun así el contador sube (de 3 a 5 con dos clics). Además, un nombre de archivo
+    largo y sin espacios se sale de la tarjeta.
+  - Causa raíz: Recursos armaba la ruta a mano en vez de usar `ArchivosProtegidos`. Anotaba la
+    descarga antes de comprobar el archivo y no acotaba la ruta a `App_Data/uploads`: una fila con
+    `../` entregaba `appsettings.json` (lo demostró la prueba, con un 200). Que el archivo falte en
+    QA es otra cosa: el portal lo guarda y lo busca en la misma carpeta, así que en ese servidor
+    falta el archivo. Lo más probable es que una publicación borrara `App_Data` o que la base
+    viniera de otro servidor. No está verificado en el servidor.
+  - Solución: la descarga usa `ArchivosProtegidos.Resolver`, cuenta solo cuando sirve el archivo y
+    deja una advertencia en el registro con la ruta guardada. A quien puede editar le dice que lo
+    vuelva a subir con «Editar». El nombre se parte con `overflow-wrap:anywhere`.
+  - Archivos: `Pages/Recursos/Index.cshtml.cs` y `Pages/Recursos/Index.cshtml`.
+  - Pruebas: `RecursosDescargaTests` (4; dos fallaban antes de la corrección).
 - **2026-10-22 — Espacio vacío entre la cabecera y el menú lateral.**
   - Síntoma: al bajar la página quedaban 22 px vacíos entre la cabecera y el inicio del menú, con
     la página asomando por el hueco.

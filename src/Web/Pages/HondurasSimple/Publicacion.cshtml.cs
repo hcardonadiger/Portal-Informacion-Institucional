@@ -25,7 +25,7 @@ namespace Diger.TramitesEstado.Web.Pages.HondurasSimple;
 /// </para>
 /// </remarks>
 [Authorize]
-[Permission("HondurasSimple.Publicacion", AccionModulo.Ver, "Ver qué trámites están publicados en Honduras Simple")]
+[Permission("HondurasSimple.Publicacion", AccionModulo.Ver, "Ver qué trámites están publicados en Honduras Fácil")]
 public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
 {
     public const string TabPublicadas = "publicadas";
@@ -53,13 +53,13 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
 
     // ── Acciones ──────────────────────────────────────────────────────────────
 
-    [Permission("HondurasSimple.Publicacion", AccionModulo.Editar, "Publicar trámites en Honduras Simple")]
+    [Permission("HondurasSimple.Publicacion", AccionModulo.Editar, "Publicar trámites en Honduras Fácil")]
     public Task<IActionResult> OnPostPublicarAsync(CancellationToken ct)
         => CambiarPublicacionAsync(true, ct);
 
     /// <summary>Quitar de HA es despublicar, no borrar (D-16): la ficha se queda entera y se
     /// puede volver a publicar cuando se corrija lo que hiciera falta.</summary>
-    [Permission("HondurasSimple.Publicacion", AccionModulo.Editar, "Quitar trámites de Honduras Simple")]
+    [Permission("HondurasSimple.Publicacion", AccionModulo.Editar, "Quitar trámites de Honduras Fácil")]
     public Task<IActionResult> OnPostQuitarAsync(CancellationToken ct)
         => CambiarPublicacionAsync(false, ct);
 
@@ -88,8 +88,8 @@ public sealed class PublicacionModel(IApplicationDbContext ctx) : PageModel
         TempData["SuccessMsg"] = cambiadas == 0
             ? "Ninguna ficha cambió de estado."
             : publicar
-                ? $"{cambiadas} ficha(s) publicada(s) en Honduras Simple."
-                : $"{cambiadas} ficha(s) retirada(s) de Honduras Simple. Siguen completas en el inventario.";
+                ? $"{cambiadas} ficha(s) publicada(s) en Honduras Fácil."
+                : $"{cambiadas} ficha(s) retirada(s) de Honduras Fácil. Siguen completas en el inventario.";
 
         return Redirigir();
     }

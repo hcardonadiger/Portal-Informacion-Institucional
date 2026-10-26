@@ -1065,7 +1065,9 @@ tr.contacto-inactivo td {
     border: 1px solid var(--diger-border);
     border-radius: var(--diger-radius-md);
     margin-bottom: 14px;
-    overflow: hidden;
+    /* clip y no hidden: hidden la vuelve contenedor de desplazamiento y el encabezado
+       fijo de la tabla de adentro dejaría de pegarse a la cabecera del portal. */
+    overflow: clip;
     box-shadow: var(--diger-shadow-sm);
 }
 
@@ -2757,7 +2759,9 @@ tr.contacto-inactivo td {
 .tabla-caja {
     border: 1px solid var(--diger-border);
     border-radius: var(--diger-radius-md);
-    overflow: hidden;
+    /* clip y no hidden: hidden la vuelve contenedor de desplazamiento y el encabezado
+       fijo de la tabla (.encabezado-fijo) dejaría de pegarse a la cabecera del portal. */
+    overflow: clip;
     background: var(--diger-surface);
 }
 
@@ -7621,6 +7625,62 @@ textarea.form-control { resize: vertical; }
     font-size: var(--diger-fs-sm);
     color: #7c5010;
     max-width: 520px;
+}
+
+/* ── ENCABEZADO FIJO EN LAS LISTAS LARGAS ────────────────────────
+   En una lista de cientos de filas el encabezado se queda pegado bajo la cabecera del
+   portal, para que nadie tenga que subir a ver qué columna está leyendo. Es opt-in y no
+   va en .seg-table: dentro de un contenedor con desplazamiento propio (overflow-x:auto)
+   el top de 78px se mediría contra ese contenedor y el encabezado bajaría a tapar las
+   primeras filas. Por eso la tabla que lo lleva NO va envuelta en overflow-x.
+
+   Fondo opaco (--diger-panel) porque --diger-surface y --diger-bg-blue son translúcidos
+   en el tema oscuro y las filas se verían a través del encabezado. La regla de abajo se
+   dibuja con sombra: un border-bottom no viaja con la celda pegada en border-collapse. */
+.seg-table.encabezado-fijo thead th {
+    position: sticky;
+    top: var(--diger-nav-top, var(--diger-header-h));
+    z-index: 5;
+    background: var(--diger-panel);
+    box-shadow: 0 1px 0 var(--diger-text-muted);
+}
+
+/* La tabla moderna tiñe su encabezado: el tinte va encima del fondo opaco. */
+.seg-table.tabla-moderna.encabezado-fijo thead th {
+    background-image: linear-gradient(var(--diger-bg-blue), var(--diger-bg-blue));
+    box-shadow: 0 1px 0 var(--diger-border);
+}
+
+/* Bajo 600px .seg-table pasa a display:block con desplazamiento propio, y ahí el sticky
+   ya no tiene a qué pegarse; se suelta en vez de quedar a medias. */
+@media (max-width: 600px) {
+    .seg-table.encabezado-fijo thead th { position: static; box-shadow: none; }
+}
+
+/* ── TABLA DEL LLENADO ASISTIDO ──────────────────────────────────
+   «De dónde sale» es la columna que justifica la decisión, y en 780px quedaba en un
+   ataúd de seis palabras por renglón. Con el contenedor ancho se le da un tercio. */
+.seg-table.tabla-llenado td {
+    vertical-align: top;
+}
+
+.seg-table.tabla-llenado .col-tramite {
+    min-width: 220px;
+}
+
+.seg-table.tabla-llenado .col-origen {
+    width: 34%;
+    min-width: 300px;
+}
+
+.seg-table.tabla-llenado td.col-origen {
+    font-size: var(--diger-fs-sm);
+    line-height: 1.55;
+    color: var(--diger-text-secondary);
+}
+
+@media (max-width: 600px) {
+    .seg-table.tabla-llenado .col-origen { min-width: 240px; }
 }
 
 /* ── PORTADA DE CATÁLOGOS ───────────────────────────────────── */

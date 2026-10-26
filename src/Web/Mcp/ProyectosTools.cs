@@ -107,8 +107,8 @@ public sealed class ProyectosTools(ISender sender, McpPermisos permisos)
     // ── Escritura ─────────────────────────────────────────────────────────────
 
     [McpServerTool(Name = "crear_proyecto")]
-    [Description("Crea un proyecto con sus datos generales. No crea entregables ni actividades: " +
-                 "esos se cargan desde el portal.")]
+    [Description("Crea un proyecto con sus datos generales. Los entregables y las actividades se " +
+                 "agregan después con crear_entregable y crear_actividad.")]
     public async Task<object> CrearProyecto(
         [Description("Nombre del proyecto.")] string nombre,
         [Description("Objetivo o descripción.")] string? objetivo = null,
@@ -189,6 +189,66 @@ public sealed class ProyectosTools(ISender sender, McpPermisos permisos)
             Entregables:     entregables));
 
         return new { Id = id, Mensaje = "Ficha actualizada. La estructura del proyecto quedó intacta." };
+    }
+
+    /// <summary>
+    /// Agrega un entregable al final de la estructura y devuelve su Id.
+    ///
+    /// <para>No pasa por <c>ActualizarProyectoCommand</c>, por lo mismo que
+    /// <see cref="ActualizarFichaProyecto"/> no deja que el modelo arme la estructura: este solo
+    /// agrega, así que no hay nada que se pueda borrar por omisión. Y devolver el Id es lo que
+    /// permite encadenar con <c>crear_actividad</c> sin adivinar cuál es el entregable nuevo.</para>
+    /// </summary>
+    [McpServerTool(Name = "crear_entregable")]
+    [Description("Agrega un entregable al final de un proyecto y devuelve su Id, para colgarle " +
+                 "actividades con crear_actividad. No toca los entregables que ya existen. Un " +
+                 "proyecto cerrado o cancelado no admite entregables nuevos. Cambiar las fechas " +
+                 "de un entregable ya creado se hace desde el portal.")]
+    public async Task<object> CrearEntregable(
+        [Description("Id numérico del proyecto.")] int proyectoId,
+        [Description("Nombre del entregable.")] string nombre,
+        [Description("Descripción del entregable.")] string? descripcion = null,
+        [Description("Fecha comprometida de entrega (aaaa-mm-dd). Contra ella se mide el atraso.")] DateOnly? fechaPlan = null,
+        [Description("Id del usuario responsable. Tiene que ser interesado del proyecto (ver interesados_proyecto).")] Guid? responsableId = null)
+    {
+        await permisos.ExigirEscrituraAsync("Proyectos.Editar");
+
+        var id = await sender.Send(new AgregarEntregableCommand(
+            ProyectoId:    proyectoId,
+            Nombre:        nombre,
+            Descripcion:   descripcion,
+            FechaPlan:     fechaPlan,
+            ResponsableId: responsableId));
+
+        return new { Id = id, ProyectoId = proyectoId, Mensaje = "Entregable creado." };
+    }
+
+    [McpServerTool(Name = "crear_actividad")]
+    [Description("Agrega una actividad al final de un entregable y devuelve su Id. Nace en 0 % y " +
+                 "Pendiente; el avance se reporta después con registrar_avance. Si el entregable " +
+                 "no tenía actividades, desde esta pasa a promediarlas y su avance puede bajar. " +
+                 "Cambiar las fechas de una actividad ya creada se hace desde el portal.")]
+    public async Task<object> CrearActividad(
+        [Description("Id numérico del proyecto.")] int proyectoId,
+        [Description("Id del entregable del proyecto al que pertenece (ver obtener_proyecto o crear_entregable).")] int entregableId,
+        [Description("Nombre de la actividad.")] string nombre,
+        [Description("Descripción de la actividad.")] string? descripcion = null,
+        [Description("Fecha de inicio planificada (aaaa-mm-dd).")] DateOnly? fechaInicioPlan = null,
+        [Description("Fecha de fin planificada (aaaa-mm-dd). No puede ser anterior al inicio.")] DateOnly? fechaFinPlan = null,
+        [Description("Id del usuario responsable. Tiene que ser interesado del proyecto (ver interesados_proyecto).")] Guid? responsableId = null)
+    {
+        await permisos.ExigirEscrituraAsync("Proyectos.Editar");
+
+        var id = await sender.Send(new AgregarActividadCommand(
+            ProyectoId:      proyectoId,
+            EntregableId:    entregableId,
+            Nombre:          nombre,
+            Descripcion:     descripcion,
+            FechaInicioPlan: fechaInicioPlan,
+            FechaFinPlan:    fechaFinPlan,
+            ResponsableId:   responsableId));
+
+        return new { Id = id, ProyectoId = proyectoId, EntregableId = entregableId, Mensaje = "Actividad creada." };
     }
 
     [McpServerTool(Name = "cambiar_estado_proyecto")]

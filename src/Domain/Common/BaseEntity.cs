@@ -22,7 +22,18 @@ public abstract class BaseEntity<TId> : IHasDomainEvents
 public abstract class BaseEntity : BaseEntity<int> { }
 
 // ── Auditable base ────────────────────────────────────────────────────────
-public abstract class BaseAuditableEntity<TId> : BaseEntity<TId>
+/// <summary>Lo que la auditoría de <c>SaveChangesAsync</c> sella. Existe porque la base
+/// auditable es genérica en la llave: recorrer <c>BaseAuditableEntity</c> (que es la de
+/// <c>int</c>) dejaba sin fecha a toda entidad con Id <c>Guid</c> o <c>string</c>.</summary>
+public interface IAuditable
+{
+    DateTime  CreatedAt { get; set; }
+    string?   CreatedBy { get; set; }
+    DateTime? UpdatedAt { get; set; }
+    string?   UpdatedBy { get; set; }
+}
+
+public abstract class BaseAuditableEntity<TId> : BaseEntity<TId>, IAuditable
 {
     public DateTime  CreatedAt { get; set; }
     public string?   CreatedBy { get; set; }

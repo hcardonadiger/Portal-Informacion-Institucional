@@ -8,7 +8,7 @@
     var enPendientes = Model.Tab == "pendientes";
 }
 
-<div class="container">
+<div class="container lista">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
         <a class="btns" asp-page="/Siger/Index" style="font-size:13px">← Inventario</a>
         <h2 style="margin:0;font-size:18px;color:#0a2d6e">Llenado asistido</h2>
@@ -150,8 +150,11 @@
                 </p>
             }
 
-            <div style="overflow-x:auto">
-                <table class="seg-table">
+            @* Sin envoltorio overflow-x: un contenedor con desplazamiento propio le roba el
+               position:sticky al encabezado, y el encabezado fijo es lo que permite bajar por
+               cientos de propuestas sin volver arriba a ver qué columna es cuál. *@
+            <div>
+                <table class="seg-table tabla-llenado encabezado-fijo">
                     <thead>
                         <tr>
                             @if (puedeDecidir && enPendientes)
@@ -159,12 +162,12 @@
                                 <th style="width:34px"><input type="checkbox" onclick="document.querySelectorAll('.chk-prop').forEach(c=>c.checked=this.checked)" /></th>
                             }
                             <th>Código</th>
-                            <th>Trámite</th>
+                            <th class="col-tramite">Trámite</th>
                             <th>Inst.</th>
                             <th>Campo</th>
                             <th>Valor propuesto</th>
                             <th>Certeza</th>
-                            <th>De dónde sale</th>
+                            <th class="col-origen">De dónde sale</th>
                             @if (!enPendientes)
                             {
                                 <th>Decidió</th>
@@ -180,14 +183,14 @@
                                     <td><input class="chk-prop" type="checkbox" name="Seleccion" value="@f.Id" /></td>
                                 }
                                 <td style="white-space:nowrap">@f.Codigo</td>
-                                <td>@f.Nombre</td>
+                                <td class="col-tramite">@f.Nombre</td>
                                 <td style="white-space:nowrap">@f.Institucion</td>
                                 <td style="white-space:nowrap">@f.Campo</td>
                                 <td><strong>@f.Valor</strong></td>
                                 <td style="white-space:nowrap">
                                     <span style="font-size:11px;font-weight:700;background:@f.FondoCerteza;color:@f.ColorCerteza;padding:2px 8px;border-radius:4px">@f.Certeza</span>
                                 </td>
-                                <td style="font-size:12px;color:#4a5568;max-width:380px">@f.Justificacion</td>
+                                <td class="col-origen">@f.Justificacion</td>
                                 @if (!enPendientes)
                                 {
                                     <td style="white-space:nowrap;font-size:12px;color:#64748b">

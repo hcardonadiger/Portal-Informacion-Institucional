@@ -44,14 +44,30 @@ public sealed class MenuLateralTests : IAsyncLifetime
 
         Secciones(html).Select(s => s.Id).Should().Equal(
             "expedientes", "siger", "honduras-simple", "proyectos",
-            "tableros", "agenda", "soporte", "administracion");
-        html.IndexOf("data-seccion=\"administracion\"", StringComparison.Ordinal)
+            "tableros", "agenda", "soporte", "panel-control");
+        html.IndexOf("data-seccion=\"panel-control\"", StringComparison.Ordinal)
             .Should().BeLessThan(html.IndexOf(">Ayuda</a>", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Panel_de_control_absorbe_Administracion_en_una_sola_seccion()
+    {
+        // 2026-10-26: Panel de control y Administración se fusionaron; el título que queda es
+        // Panel de control, con Notificaciones y lo que antes colgaba de Administración.
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Ayuda");
+
+        html.Should().NotContain(">Administración<svg");
+        Regex.Matches(html, ">Panel de control<").Should().ContainSingle();
+        var menu = html[html.IndexOf("id=\"nav-sec-panel-control\"", StringComparison.Ordinal)..];
+        menu = menu[..menu.IndexOf("</div>", StringComparison.Ordinal)];
+        menu.Should().Contain("Notificaciones").And.Contain("Catálogos").And.Contain("Usuarios")
+            .And.Contain("Roles").And.Contain("Permisos").And.Contain("Alcance de módulos");
     }
 
     [Theory]
     [InlineData("/Proyectos", "proyectos")]
-    [InlineData("/Catalogos/Insumos", "administracion")]
+    [InlineData("/Catalogos/Insumos", "panel-control")]
+    [InlineData("/PanelControl/Notificaciones", "panel-control")]
     [InlineData("/Reuniones/Compromisos", "agenda")]
     [InlineData("/", "expedientes")]
     public async Task Al_cargar_una_pagina_solo_esta_abierta_su_seccion(string ruta, string seccion)
@@ -84,10 +100,10 @@ public sealed class MenuLateralTests : IAsyncLifetime
     [Fact]
     public async Task Una_seccion_sin_elementos_visibles_no_aparece()
     {
-        // El Consultor no administra nada: la sección Administración no se pinta, ni vacía
+        // El Consultor no administra nada: la sección Panel de control no se pinta, ni vacía
         // ni contraída.
         var secciones = await SeccionesEnAsync("/Ayuda", "Consultor");
 
-        secciones.Select(s => s.Id).Should().NotContain("administracion");
+        secciones.Select(s => s.Id).Should().NotContain("panel-control");
     }
 }

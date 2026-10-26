@@ -91,9 +91,17 @@
     // La condición se invierte entera: antes `!= "claro"`, ahora `== "oscuro"`.
     // Importa que sea comparación por igualdad y no negación: una cookie con
     // basura, o recortada, cae del lado claro, que es el seguro.
+    //
+    // OSCURO OCULTO desde el 2026-10-26: todos ven el claro. Se apagó con este
+    // interruptor y no borrando el tema, así que las reglas `.tema-oscuro` del
+    // CSS siguen ahí y volver a ofrecerlo es poner esto en true. Mientras esté
+    // apagado, la cookie de quien ya lo había elegido se ignora —si no, esa
+    // gente quedaría en oscuro sin botón para salir— y el botón no se dibuja.
+    const bool _temaOscuroDisponible = false;
     var _claseDeclarada = ViewData["BodyClass"] as string;
     var _participaDelTema = _claseDeclarada is null;
-    var _temaOscuro = _participaDelTema
+    var _temaOscuro = _temaOscuroDisponible
+        && _participaDelTema
         && Context.Request.Cookies["diger_tema"] == "oscuro";
     var _claseCuerpo = _participaDelTema
         ? (_temaOscuro ? "tema-oscuro" : "tema-claro")
@@ -330,7 +338,7 @@
                             var abreHondurasSimple = AbreSeccion("honduras-simple", EsRuta("/HondurasSimple"));
                             <div class="nav-group @(EsRuta("/HondurasSimple") ? "on" : "")" data-seccion="honduras-simple">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
-                                        aria-expanded="@(abreHondurasSimple ? "true" : "false")" aria-controls="nav-sec-honduras-simple">Honduras Simple<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                        aria-expanded="@(abreHondurasSimple ? "true" : "false")" aria-controls="nav-sec-honduras-simple">Honduras Fácil<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
                                 <div class="nav-group-menu" id="nav-sec-honduras-simple">
                                     @if (hsConciliacion)
                                     {
@@ -453,19 +461,15 @@
                                 </div>
                             </div>
                         }
-                        @* «Panel de control»: configuración del portal que antes solo se tocaba en el
-                           servidor. Se gatea con la clave de su destino, como el resto del menú. *@
-                        @if (await Acceso.PuedeClaveAsync("PanelControl.Notificaciones.Ver"))
-                        {
-                            <div class="nav-group @(EsRuta("/PanelControl") ? "on" : "")">
-                                <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)">Panel de control<span class="nav-caret">&#9662;</span></button>
-                                <div class="nav-group-menu">
-                                    <a class="nav-item @(EsRuta("/PanelControl/Notificaciones") ? "on" : "")" asp-page="/PanelControl/Notificaciones"><svg class="ico"><use href="#i-accesos"></use></svg>Notificaciones</a>
-                                </div>
-                            </div>
-                        }
-                        @* «Administración» agrupa lo que se administra: los datos maestros, que entran
-                           por la portada de Catálogos, y el control de acceso. Los catálogos no cuelgan
+                        @* «Panel de control» agrupa la configuración del portal y lo que se administra
+                           (2026-10-26: absorbió la sección «Administración», que desapareció). Antes
+                           eran dos grupos, y el de Panel de control nacía siempre abierto porque no
+                           seguía el mecanismo de secciones; ahora es una sección más y nace contraída
+                           salvo en sus propias páginas.
+
+                           Notificaciones es configuración que antes solo se tocaba en el servidor.
+                           Lo demás son los datos maestros, que entran por la portada de Catálogos,
+                           y el control de acceso. Los catálogos no cuelgan
                            uno por uno como antes —el menú crecía con cada uno— sino detrás de una sola
                            entrada; la portada decide qué tarjetas mostrar, y lo hace con la clave de
                            cada destino, no con el nombre del rol.
@@ -497,25 +501,30 @@
                             var puedeRoles    = await Acceso.PuedeAsync("Accesos.Roles");
                             var puedePermisos = await Acceso.PuedeAsync("Accesos.Permisos");
                             var puedeModulos  = await Acceso.PuedeAsync("Accesos.Modulos");
+                            var puedeNotificaciones = await Acceso.PuedeClaveAsync("PanelControl.Notificaciones.Ver");
                             // puedeMigrar salió con el enlace de "Migrar desde Supabase"
                             // (2026-10-19). Era lo único que lo usaba, y dejarlo habría
                             // mantenido vivo un permiso que ya no abre nada desde el menú.
                             // La guarda real vive en la página, que es donde importa.
                         }
                         @* Sin puedeMigrar en la condición: si se dejara, el grupo
-                           Administración aparecería en Development para quien tenga esa
+                           Panel de control aparecería en Development para quien tenga esa
                            clave aunque no pueda ver ninguna de sus entradas, y se abriría
                            vacío. *@
-                        @if (puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeModulos)
+                        @if (puedeNotificaciones || puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeModulos)
                         {
-                            var grpAdmin = EsRuta("/Catalogos") || EsRuta("/Instituciones")
+                            var grpPanel = EsRuta("/PanelControl") || EsRuta("/Catalogos") || EsRuta("/Instituciones")
                                         || EsRuta("/Areas") || EsRuta("/Unidades")
                                         || EsRuta("/Usuarios") || EsRuta("/Accesos") || EsRuta("/Admin");
-                            var abreAdministracion = AbreSeccion("administracion", grpAdmin);
-                            <div class="nav-group @(grpAdmin ? "on" : "")" data-seccion="administracion">
+                            var abrePanel = AbreSeccion("panel-control", grpPanel);
+                            <div class="nav-group @(grpPanel ? "on" : "")" data-seccion="panel-control">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
-                                        aria-expanded="@(abreAdministracion ? "true" : "false")" aria-controls="nav-sec-administracion">Administración<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
-                                <div class="nav-group-menu" id="nav-sec-administracion">
+                                        aria-expanded="@(abrePanel ? "true" : "false")" aria-controls="nav-sec-panel-control">Panel de control<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                <div class="nav-group-menu" id="nav-sec-panel-control">
+                                    @if (puedeNotificaciones)
+                                    {
+                                        <a class="nav-item @(EsRuta("/PanelControl") ? "on" : "")" asp-page="/PanelControl/Notificaciones"><svg class="ico"><use href="#i-accesos"></use></svg>Notificaciones</a>
+                                    }
                                     @if (puedeCatalogos)
                                     {
                                         <a class="nav-item @(EsRuta("/Catalogos", "/Instituciones", "/Areas", "/Unidades") ? "on" : "")" asp-page="/Catalogos/Index"><svg class="ico"><use href="#i-recursos"></use></svg>Catálogos</a>
@@ -538,7 +547,7 @@
                                     }
                                     @* "Migrar desde Supabase" salió del menú el 2026-10-19. Era una
                                        herramienta de traslado desde el portal demo, de un solo uso y
-                                       ya hecha, y ocupaba un renglón permanente en Administración
+                                       ya hecha, y ocupaba un renglón permanente en la sección
                                        para algo que no se repite.
 
                                        La PÁGINA sigue existiendo en /Admin/MigrarSupabase con sus
@@ -591,8 +600,9 @@
                         @* El conmutador de tema. Solo aparece donde el tema es del usuario:
                            una página que declara su propia BodyClass —hoy el registro público
                            de asistencia— queda fija y no lo muestra, porque ahí el botón
-                           mentiría. Un botón que no hace nada es peor que no tenerlo. *@
-                        @if (_participaDelTema)
+                           mentiría. Un botón que no hace nada es peor que no tenerlo.
+                           Tampoco aparece mientras el oscuro esté oculto (_temaOscuroDisponible). *@
+                        @if (_temaOscuroDisponible && _participaDelTema)
                         {
                             <button type="button" class="header-icon tema-btn" id="temaBtn"
                                     onclick="cambiarTema()"

@@ -92,7 +92,7 @@
             @foreach (var r in Model.Recursos)
             {
                 var icon = ObtenerIcono(r.ArchivoNombre);
-                <div class="card" style="padding:1.2rem;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease, box-shadow .15s ease">
+                <div class="card" style="min-width:0;padding:1.2rem;display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease, box-shadow .15s ease">
                     <div>
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
                             <div style="display:flex;align-items:center;gap:10px">
@@ -117,7 +117,10 @@
                             <p style="margin:0 0 10px 0;font-size:13px;color:var(--diger-text-slate-dark);line-height:1.45">@r.Descripcion</p>
                         }
 
-                        <div style="font-size:11.5px;color:#64748b;margin-bottom:12px">
+                        @* overflow-wrap:anywhere: los nombres de archivo vienen con guiones bajos y sin
+                           espacios, así que el navegador no encuentra dónde partirlos y se salen de la
+                           tarjeta. *@
+                        <div style="font-size:11.5px;color:#64748b;margin-bottom:12px;overflow-wrap:anywhere">
                             📎 <span style="font-weight:600;color:#334155">@r.ArchivoNombre</span> • @FormatoTamano(r.ArchivoTamano)
                             <div style="font-size:11px;color:var(--diger-text-slate);margin-top:2px">Publicado: @r.CreatedAt.ToString("dd/MM/yyyy")</div>
                         </div>

@@ -16,7 +16,8 @@ namespace Diger.TramitesEstado.Web.Pages.Recursos;
 public sealed class IndexModel(
     ISender sender,
     IWebHostEnvironment env,
-    AccesoModulosService acceso) : PageModel
+    AccesoModulosService acceso,
+    ILogger<IndexModel> logger) : PageModel
 {
     public IReadOnlyList<RecursoDto> Recursos { get; private set; } = [];
     public string? Q { get; private set; }
@@ -41,26 +42,32 @@ public sealed class IndexModel(
         var rec = recursos.FirstOrDefault(r => r.Id == id);
         if (rec is null) return NotFound();
 
-        // Incrementar contador de descargas
-        await sender.Send(new RegistrarDescargaRecursoCommand(id), ct);
-
-        // Resolver ruta física del archivo local
-        var relPath = rec.ArchivoUrl.TrimStart('/');
-        var fullPath = Path.Combine(env.ContentRootPath, "App_Data", relPath.Replace("uploads/", "uploads\\"));
-        if (!System.IO.File.Exists(fullPath))
+        // La ruta se resuelve como en el resto de los módulos: acotada a App_Data/uploads. Antes
+        // se armaba a mano, con un segundo intento en wwwroot, y una fila con «../» servía
+        // cualquier archivo del sitio, appsettings.json incluido.
+        var ruta = ArchivosProtegidos.Resolver(env, rec.ArchivoUrl);
+        if (ruta is null)
         {
-            // Intentar en wwwroot o ruta alternativa
-            fullPath = Path.Combine(env.WebRootPath, relPath.Replace('/', '\\'));
-        }
-
-        if (!System.IO.File.Exists(fullPath))
-        {
-            TempData["ErrorMsg"] = "El archivo físico solicitado no se encuentra disponible en el servidor.";
+            logger.LogWarning("Recurso {RecursoId}: el archivo {ArchivoUrl} no está en el servidor.",
+                rec.Id, rec.ArchivoUrl);
+            TempData["ErrorMsg"] = MensajeArchivoFaltante(await acceso.PuedeEditarAsync("Recursos", ct), rec.ArchivoNombre);
             return RedirectToPage();
         }
 
-        return PhysicalFile(fullPath, "application/octet-stream", rec.ArchivoNombre);
+        // Después de resolver la ruta y antes de servir: no se anota una descarga que no ocurrió
+        // porque el archivo ya no estaba.
+        await sender.Send(new RegistrarDescargaRecursoCommand(id), ct);
+
+        return PhysicalFile(ruta, ArchivosProtegidos.TipoContenido(rec.ArchivoNombre), rec.ArchivoNombre);
     }
+
+    /// <summary>
+    /// Quien puede editar el recurso es quien puede arreglarlo, así que se le dice cómo; a los
+    /// demás, solo que no está.
+    /// </summary>
+    private static string MensajeArchivoFaltante(bool puedeEditar, string archivo) => puedeEditar
+        ? $"«{archivo}» ya no está en el servidor. Use «Editar» para volver a subirlo."
+        : $"«{archivo}» ya no está disponible en el servidor. Avise a quien administra los recursos.";
 
     [Permission("Recursos", AccionModulo.Crear, "Publicar recursos")]
     public async Task<IActionResult> OnPostCrearAsync(

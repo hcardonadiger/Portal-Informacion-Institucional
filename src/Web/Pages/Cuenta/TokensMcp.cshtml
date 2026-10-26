@@ -72,7 +72,7 @@
                     <td>@t.Nombre</td>
                     <td><code>@t.Prefijo…</code></td>
                     <td>@t.InstitucionId@(t.AreaId is null ? "" : " · " + t.AreaId)@(t.UnidadId is null ? "" : " · " + t.UnidadId) — @t.Rol</td>
-                    <td>@t.CreadoUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td>@(t.CreadoUtc is null ? "—" : t.CreadoUtc.Value.ToLocalTime().ToString("dd/MM/yyyy"))</td>
                     <td>@(t.UltimoUsoUtc is null ? "Nunca" : t.UltimoUsoUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))</td>
                     <td>@(t.ExpiraUtc is null ? "Sin vencimiento" : t.ExpiraUtc.Value.ToLocalTime().ToString("dd/MM/yyyy"))</td>
                     <td>@t.Estado</td>

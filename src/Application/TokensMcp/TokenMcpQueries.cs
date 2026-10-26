@@ -10,7 +10,7 @@ public sealed record TokenMcpDto(
     string?   AreaId,
     string?   UnidadId,
     string    Rol,
-    DateTime  CreadoUtc,
+    DateTime? CreadoUtc,
     DateTime? ExpiraUtc,
     DateTime? UltimoUsoUtc,
     DateTime? RevocadoUtc)
@@ -52,7 +52,7 @@ public sealed class GetMisTokensMcpQueryHandler(IApplicationDbContext ctx, ICurr
                           a != null ? a.AreaId        : null,
                           a != null ? a.UnidadId      : null,
                           a != null ? a.Rol           : "—",
-                          t.CreatedAt,
+                          t.CreatedAt == default ? null : t.CreatedAt,
                           t.ExpiraUtc,
                           t.UltimoUsoUtc,
                           t.RevocadoUtc))
@@ -89,7 +89,7 @@ public sealed class GetTokensMcpAdminQueryHandler(IApplicationDbContext ctx)
                                     a != null ? a.AreaId        : null,
                                     a != null ? a.UnidadId      : null,
                                     a != null ? a.Rol           : "—",
-                                    t.CreatedAt, t.ExpiraUtc, t.UltimoUsoUtc, t.RevocadoUtc),
+                                    t.CreatedAt == default ? null : t.CreatedAt, t.ExpiraUtc, t.UltimoUsoUtc, t.RevocadoUtc),
                                 t.UsuarioId
                             })
                            .ToListAsync(ct);

@@ -22,6 +22,11 @@ namespace Diger.TramitesEstado.Web.Tests;
 /// justamente lo que falló aquella vez: que el registro de asistencia no obedece al tema
 /// pase lo que pase, y que el resto del portal sí.</para>
 ///
+/// <para>Desde el 2026-10-26 el oscuro está OCULTO (<c>_temaOscuroDisponible = false</c>):
+/// todos ven el claro, la cookie se ignora y el botón no se dibuja. Las reglas
+/// <c>.tema-oscuro</c> del CSS siguen vivas para poder reactivarlo, y por eso sus pruebas
+/// de hoja siguen acá.</para>
+///
 /// <para>Se prueba por HTML renderizado y no por el PageModel a propósito: el defecto de
 /// 2026-09 no estaba en ningún modelo, estaba en lo que terminaba en la página.</para>
 /// </summary>
@@ -84,14 +89,18 @@ public sealed class TemaConmutableTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Con_la_cookie_oscura_el_portal_sale_oscuro()
+    public async Task Con_el_oscuro_oculto_la_cookie_oscura_se_ignora()
     {
+        // Desde el 2026-10-26 el oscuro está oculto (_temaOscuroDisponible en
+        // _Layout). Quien lo había elegido conserva la cookie, y sin botón no
+        // tendría cómo salir: por eso la cookie se ignora, no solo el botón.
         var html = await ClienteDelPortal("oscuro").GetStringAsync("/Reuniones/Index");
 
-        html.Should().Contain("class=\"tema-oscuro\"");
-        html.Should().Contain("content=\"dark\"",
+        html.Should().Contain("class=\"tema-claro\"");
+        html.Should().NotContain("class=\"tema-oscuro\"");
+        html.Should().Contain("content=\"light\"",
             "el <meta name=color-scheme> es lo que pinta <select> y barras de " +
-            "desplazamiento; si queda en light, salen blancos sobre el navy");
+            "desplazamiento; tiene que acompañar al claro");
     }
 
     [Fact]
@@ -128,34 +137,22 @@ public sealed class TemaConmutableTests : IAsyncLifetime
         // El corazón del arreglo: la clase del cuerpo viene en el HTML, no la
         // pone un script. Si alguien vuelve a mover esto a JavaScript, el
         // registro de asistencia vuelve a romperse como en 2026-09.
-        var html = await ClienteDelPortal("oscuro").GetStringAsync("/Reuniones/Index");
+        var html = await ClienteDelPortal().GetStringAsync("/Reuniones/Index");
 
         var cuerpo = html.IndexOf("<body", StringComparison.Ordinal);
         cuerpo.Should().BeGreaterThan(0);
-        html[cuerpo..(cuerpo + 40)].Should().Contain("tema-oscuro",
+        html[cuerpo..(cuerpo + 40)].Should().Contain("tema-claro",
             "la clase tiene que estar en el marcado servido, no aplicarse después");
     }
 
     [Fact]
-    public async Task El_boton_esta_en_el_portal()
+    public async Task Con_el_oscuro_oculto_el_portal_no_muestra_el_boton()
     {
         var html = await ClienteDelPortal().GetStringAsync("/Reuniones/Index");
 
-        html.Should().Contain("id=\"temaBtn\"");
-        html.Should().Contain("cambiarTema()");
-        html.Should().Contain("#i-sol").And.Contain("#i-luna",
-            "van los dos iconos y el CSS esconde el que sobra, para que el " +
-            "correcto ya salga en el HTML sin esperar al JS");
-    }
-
-    [Fact]
-    public async Task El_boton_dice_a_donde_va_no_donde_esta()
-    {
-        var oscuro = await ClienteDelPortal("oscuro").GetStringAsync("/Reuniones/Index");
-        var claro = await ClienteDelPortal().GetStringAsync("/Reuniones/Index");
-
-        oscuro.Should().Contain("Cambiar a tema claro");
-        claro.Should().Contain("Cambiar a tema oscuro");
+        html.Should().NotContain("id=\"temaBtn\"",
+            "un botón que ofrece un tema oculto mentiría");
+        html.Should().NotContain("Cambiar a tema oscuro");
     }
 
     // ── El QR público: claro siempre, pase lo que pase ───────────────────
