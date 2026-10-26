@@ -14,6 +14,40 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
     public bool EsNuevo => Form.Id == 0;
     public IReadOnlyList<CategoriaTramite> Categorias { get; private set; } = [];
 
+    /// <summary>
+    /// Las instituciones que se pueden elegir, cada una con el prefijo de SOL que produce, para
+    /// que la pantalla lo cambie al elegir sin volver al servidor. Activas, más la que ya tenga
+    /// la ficha aunque se haya desactivado: si faltara, el select la soltaría al guardar.
+    /// </summary>
+    public IReadOnlyList<InstitucionOpcion> Instituciones { get; private set; } = [];
+
+    public sealed record InstitucionOpcion(string Id, string Nombre, string? Sigla, string Prefijo);
+
+    /// <summary>Lo que cabe en <c>TramitesSiger.Sigla</c> (nvarchar(30)).</summary>
+    private const int LargoSigla = 30;
+
+    /// <summary>
+    /// La sigla que se guarda: la llave, como al promover desde un expediente. Pero hay llaves
+    /// derivadas del nombre completo que no caben en la columna —«ADMINISTRACIONNACIONAL…», 85
+    /// caracteres—, y guardarlas tal cual reventaría el guardado; entonces el nombre corto, y si
+    /// tampoco hay, nada: la sigla vacía no rompe la dirección de SOL, que se arma con la llave.
+    /// </summary>
+    private static string? SiglaPara(string id, string? nombreCorto) =>
+        id.Length <= LargoSigla ? id
+        : nombreCorto is { Length: > 0 and <= LargoSigla } ? nombreCorto
+        : null;
+
+    /// <summary>
+    /// El texto de institución y sigla que la ficha trae de SIGER cuando no está enlazada al
+    /// catálogo (InstitucionId nulo). Es el caso de todo el inventario importado, y cientos de
+    /// esas fichas (432 de 1057 en GestionGD_new, 2026-10-26) son de instituciones que el
+    /// catálogo ni siquiera tiene: por eso al editar se
+    /// ofrece «dejarla como está» en vez de obligar a elegir, que dejaría esas fichas sin poder
+    /// guardarse.
+    /// </summary>
+    public string? InstitucionTexto { get; private set; }
+    public string? SiglaTexto { get; private set; }
+
     /// <summary>Solo informativo: recalculado en cada carga con la misma regla que usa la API
     /// pública (FichaPublicaCompletitud), para que el editor nunca contradiga lo que se publica.</summary>
     public IReadOnlyList<string> Faltantes { get; private set; } = [];
@@ -49,6 +83,20 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         return DireccionSol.Prefijo(sol.Value.UrlBase, ruta ?? institucionId);
     }
 
+    private async Task CargarInstitucionesAsync(string? actual, CancellationToken ct)
+    {
+        var filas = await ctx.Instituciones.AsNoTracking()
+            .Where(i => i.Activo || i.Id == actual)
+            .OrderBy(i => i.Nombre)
+            .Select(i => new { i.Id, i.Nombre, i.NombreCorto, Ruta = i.RutaSol ?? i.Id })
+            .ToListAsync(ct);
+
+        Instituciones = filas
+            .Select(i => new InstitucionOpcion(i.Id, i.Nombre, SiglaPara(i.Id, i.NombreCorto),
+                DireccionSol.Prefijo(sol.Value.UrlBase, i.Ruta)))
+            .ToList();
+    }
+
     public async Task<IActionResult> OnGetAsync(int? id, CancellationToken ct)
     {
         Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
@@ -57,10 +105,13 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         {
             var t = await ctx.TramitesSiger.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
             if (t is null) return NotFound();
+            InstitucionTexto = t.Institucion;
+            SiglaTexto       = t.Sigla;
+            await CargarInstitucionesAsync(t.InstitucionId, ct);
             Form = new TramiteSigerForm
             {
                 Id = t.Id, IdSiger = t.IdSiger, Codigo = t.Codigo, Nombre = t.Nombre,
-                Institucion = t.Institucion, Sigla = t.Sigla, Dependencia = t.Dependencia,
+                InstitucionId = t.InstitucionId, Dependencia = t.Dependencia,
                 Descripcion = t.Descripcion, Objetivo = t.Objetivo, DirigidoA = t.DirigidoA,
                 EstadoSiger = t.EstadoSiger,
                 DisponibleEnLinea = t.DisponibleEnLinea, EnPlanDigitalizacion = t.EnPlanDigitalizacion,
@@ -82,6 +133,7 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
         {
             // Ficha nueva: todavía no hay institución elegida, así que se enseña el host solo.
             PrefijoSol = DireccionSol.Prefijo(sol.Value.UrlBase, null);
+            await CargarInstitucionesAsync(null, ct);
 
             // Habia que adivinar un hueco libre: de los 1141 valores del rango en uso hay mas de
             // mil ocupados, asi que casi cualquier numero tecleado chocaba contra el indice unico.
@@ -181,8 +233,40 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
     {
         Categorias = await ctx.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
 
-        PrefijoSol = await PrefijoAsync(Form.Sigla, ct);
+        // Lo que la ficha tiene hoy se lee de la base, no del formulario: el select solo trae lo
+        // que se eligió, y el texto heredado de SIGER no viaja en el POST.
+        var actual = Form.Id == 0
+            ? null
+            : await ctx.TramitesSiger.AsNoTracking().Where(x => x.Id == Form.Id)
+                .Select(x => new { x.InstitucionId, x.Institucion, x.Sigla }).FirstOrDefaultAsync(ct);
+        InstitucionTexto = actual?.Institucion;
+        SiglaTexto       = actual?.Sigla;
+        await CargarInstitucionesAsync(actual?.InstitucionId, ct);
+
         if (Form.Id != 0) Bloqueo = await sender.Send(new GetBloqueoFichaQuery(Form.Id), ct);
+
+        // ── La institución ──────────────────────────────────────────────────
+        //
+        // Se elige del catálogo y de ahí salen nombre y sigla, igual que al promover desde un
+        // expediente (PromocionMapeo). Cuando era texto libre la ficha nacía sin InstitucionId, y
+        // sin él no aparece al filtrar por institución en la API pública ni en la captura en
+        // lote, ni puede importarse a su expediente contenedor.
+        //
+        // Obligatoria solo al crear. Al editar, vacío significa «sin vincular, como está»: es
+        // lo que tiene el inventario importado, y obligar a elegir dejaría sin poder guardarse
+        // las fichas de instituciones que el catálogo todavía no tiene.
+        var institucionId = string.IsNullOrWhiteSpace(Form.InstitucionId) ? null : Form.InstitucionId.Trim();
+        InstitucionOpcion? elegida = null;
+        if (institucionId is not null)
+        {
+            elegida = Instituciones.FirstOrDefault(i => i.Id == institucionId);
+            if (elegida is null)
+                ModelState.AddModelError("Form.InstitucionId", "La institución elegida no está en el catálogo o está inactiva.");
+        }
+        else if (Form.Id == 0)
+            ModelState.AddModelError("Form.InstitucionId", "Elija la institución del trámite.");
+
+        PrefijoSol = elegida?.Prefijo ?? await PrefijoAsync(actual?.InstitucionId ?? actual?.Sigla, ct);
 
         // ── El enlace a SOL (D-13, D-14) ──────────────────────────────────────
         //
@@ -225,7 +309,8 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             var entity = new TramiteSiger
             {
                 IdSiger = Form.IdSiger, Codigo = Form.Codigo!, Nombre = Form.Nombre!,
-                Institucion = Form.Institucion!, Sigla = Form.Sigla, Dependencia = Form.Dependencia,
+                InstitucionId = elegida!.Id, Institucion = elegida.Nombre, Sigla = elegida.Sigla,
+                Dependencia = Form.Dependencia,
                 Descripcion = Form.Descripcion, Objetivo = Form.Objetivo, DirigidoA = Form.DirigidoA,
                 EstadoSiger = Form.EstadoSiger,
                 DisponibleEnLinea = Form.DisponibleEnLinea, EnPlanDigitalizacion = Form.EnPlanDigitalizacion,
@@ -264,8 +349,15 @@ public sealed class EditorModel(IApplicationDbContext ctx, IOptions<SolOptions> 
             if (!Bloqueo.Bloqueada)
             {
                 entity.Nombre = Form.Nombre!;
-                entity.Institucion = Form.Institucion!;
-                entity.Sigla = Form.Sigla;
+                // Solo se reescriben nombre y sigla si cambia la institución. Volver a guardar
+                // una ficha ya enlazada no debe pisar el nombre que trae de SIGER con el del
+                // catálogo, que a veces se escribe distinto.
+                if (elegida is { } inst && !string.Equals(entity.InstitucionId, inst.Id, StringComparison.OrdinalIgnoreCase))
+                {
+                    entity.InstitucionId = inst.Id;
+                    entity.Institucion   = inst.Nombre;
+                    entity.Sigla         = inst.Sigla;
+                }
                 entity.Dependencia = Form.Dependencia;
                 entity.Descripcion = Form.Descripcion;
                 entity.Objetivo = Form.Objetivo;
@@ -324,8 +416,8 @@ public sealed class TramiteSigerForm
     public int? IdSiger { get; set; }
     public string? Codigo { get; set; }
     public string? Nombre { get; set; }
-    public string? Institucion { get; set; }
-    public string? Sigla { get; set; }
+    /// <summary>Del catálogo. De ella salen el nombre y la sigla que guarda la ficha.</summary>
+    public string? InstitucionId { get; set; }
     public string? Dependencia { get; set; }
     public string? Descripcion { get; set; }
     public string? Objetivo { get; set; }
