@@ -2,6 +2,7 @@ using System.Text;
 using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Categorias;
+using Diger.TramitesEstado.Application.Proyectos.Plantillas;
 using Diger.TramitesEstado.Application.Proyectos.Prioridades;
 using Diger.TramitesEstado.Application.Proyectos.Queries;
 using Diger.TramitesEstado.Application.Tickets.Common;
@@ -40,6 +41,20 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso, ICur
     [BindProperty] public AccionProyecto?   NuevaAccion     { get; set; }
     [BindProperty] public DateOnly?         NuevaFechaInicio{ get; set; }
     [BindProperty] public DateOnly?         NuevaFechaFin   { get; set; }
+
+    /// <summary>Plantilla cuya estructura se copia al proyecto nuevo. <c>0</c> es «sin plantilla»
+    /// elegido a propósito; null es que el formulario todavía no se envió, y entonces se propone
+    /// la genérica.</summary>
+    [BindProperty] public int?              NuevaPlantillaId{ get; set; }
+
+    /// <summary>Plantillas activas que alcanzan a quien crea, para el alta rápida.</summary>
+    public IReadOnlyList<PlantillaProyectoResumenDto> Plantillas { get; private set; } = [];
+
+    /// <summary>La plantilla que llega marcada en el modal: la elegida si se vuelve de un rechazo y,
+    /// si no, «Proyecto genérico», para que el proyecto no arranque con la estructura en blanco.</summary>
+    public int PlantillaPropuesta => NuevaPlantillaId
+        ?? Plantillas.FirstOrDefault(p => p.Nombre == PlantillaGenericaSeedService.Nombre)?.Id
+        ?? 0;
 
     public IReadOnlyList<ProyectoListItemDto>  Proyectos { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto>  Usuarios  { get; private set; } = [];
@@ -95,10 +110,28 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso, ICur
                 PrioridadId: NuevaPrioridadId, CategoriaId: NuevaCategoriaId, Accion: NuevaAccion,
                 FechaInicioPlan: NuevaFechaInicio, FechaFinPlan: NuevaFechaFin), ct);
 
+            // La estructura se trae con el mismo comando que usa la ficha, una vez creado el
+            // proyecto. Si la plantilla falla, el proyecto ya existe: se avisa y se sigue, porque
+            // devolver al modal haría crear un duplicado al reintentar.
+            var conPlantilla = "";
+            if (NuevaPlantillaId is > 0 and var plantillaId)
+            {
+                try
+                {
+                    var cuantos = await sender.Send(new TraerPlantillaAProyectoCommand(id, plantillaId), ct);
+                    conPlantilla = $" Se trajo la estructura de la plantilla: {cuantos} entregable{(cuantos == 1 ? "" : "s")}.";
+                }
+                catch (DomainException ex)
+                {
+                    TempData["ErrorMsg"] = $"El proyecto se creó, pero no se pudo traer la plantilla: {ex.Message}";
+                }
+            }
+
             // El alta sigue en el equipo y no en la estructura: de los interesados salen los
             // responsables de entregables y actividades, así que armar la estructura primero
             // obligaba a volver a ella después a asignarlos. El paso se puede omitir.
-            TempData["SuccessMsg"] = "Proyecto creado. Agregue a su equipo, o omita este paso, y siga con la estructura.";
+            TempData["SuccessMsg"] = "Proyecto creado." + conPlantilla +
+                                     " Agregue a su equipo, o omita este paso, y siga con la estructura.";
             return RedirectToPage("/Proyectos/Editor", pageHandler: null,
                 routeValues: new { id, alta = true }, fragment: "interesados");
         }
@@ -126,6 +159,7 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso, ICur
         Usuarios = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
         Prioridades = await sender.Send(new GetOpcionesPrioridadQuery(), ct);
         Categorias  = await sender.Send(new GetOpcionesCategoriaQuery(), ct);
+        if (PuedeCrear) Plantillas = await sender.Send(new GetPlantillasProyectoQuery(), ct);
     }
 
     /// <summary>

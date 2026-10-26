@@ -356,6 +356,19 @@
                         <input id="n-fin" type="date" name="NuevaFechaFin" value="@Model.NuevaFechaFin?.ToString("yyyy-MM-dd")" />
                     </div>
                 </div>
+                @* La estructura puede nacer de una plantilla: se copia al crear y después es del
+                   proyecto. Llega propuesta la genérica; «Sin plantilla» es 0 y no vacío para que
+                   elegirlo a propósito no se confunda con no haber tocado el campo. *@
+                <div class="field">
+                    <label for="n-plantilla">Estructura inicial</label>
+                    <select id="n-plantilla" name="NuevaPlantillaId">
+                        <option value="0" selected="@(Model.PlantillaPropuesta == 0)">— Sin plantilla: la estructura se arma a mano —</option>
+                        @foreach (var pl in Model.Plantillas)
+                        {
+                            <option value="@pl.Id" selected="@(Model.PlantillaPropuesta == pl.Id)">@pl.Nombre (@pl.NumEntregables entregables · @pl.NumActividades actividades)</option>
+                        }
+                    </select>
+                </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">
                     <button type="button" class="btns" onclick="document.getElementById('modal-nuevo').style.display='none'">Cancelar</button>
                     <button type="submit" class="btnp">Crear proyecto</button>
