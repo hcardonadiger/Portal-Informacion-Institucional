@@ -71,7 +71,8 @@ public sealed class EditorModel(
         if (id is int expId)
             Proyectos = await sender.Send(new GetProyectosDeExpedienteQuery(expId), ct);
         Plantillas = await sender.Send(new Diger.TramitesEstado.Application.Expedientes.Plantillas.GetNombresPlantillasActivasQuery(), ct);
-        Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery(), ct);
+        // Responsable del Acta: solo personas de la unidad a la que está limitado el módulo (DITRA).
+        Usuarios   = await sender.Send(new GetUsuariosAsignablesQuery("Expedientes"), ct);
         Categorias = await db.CategoriasTramite.AsNoTracking().Where(c => c.Activo).OrderBy(c => c.Orden).ToListAsync(ct);
         PuedeSiger = await acceso.PuedeEditarAsync("Siger", ct);
         if (id is null && !EsAdmin)
