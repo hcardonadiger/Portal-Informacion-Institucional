@@ -1,6 +1,28 @@
 # Desplegar `ike_opt` a producción — qué correr en la base
 
-Medido el 2026-10-02 contra los respaldos reales, no supuesto.
+## Vigente desde el 2026-10-26: un solo script
+
+Medido contra el respaldo de producción `GestionGD_021026` (copia del 2026-10-26, 74 migraciones,
+la última `20260923223127_AddReunionEncuestaActiva`). Esa base sigue en el estado que se midió el
+2026-10-02, más abajo, y el código de `ike_opt` ya trae **18 migraciones** que no tiene.
+
+```
+sqlcmd -S <servidor> -d <base> -b -I -f 65001 -i 2026-10-26_poner_al_dia.sql -o salida.txt
+```
+
+`2026-10-26_poner_al_dia.sql` reúne, sin reescribirlos, los nueve scripts que van del
+`2026-10-02` al `2026-10-23`. **Reemplaza** correrlos uno por uno: no hace falta correr también
+el de 2026-10-02 que nombra el diagnóstico. Va después de `2026-09-24_poner_al_dia.sql`; el script
+lo comprueba solo y se detiene si la base no llegó ahí. Pasos de publicación, configuración y
+reversión: `docs/despliegue/2026-10-26_produccion_poner_al_dia.md`.
+
+`00_diagnostico.sql` todavía no conoce los cambios posteriores al 2026-10-02: sobre la base de
+producción va a recomendar el script de esa fecha. Úselo para confirmar que la base es la correcta
+y que llegó al 2026-09-24, no para decidir qué correr.
+
+---
+
+Lo que sigue es lo medido el 2026-10-02. Queda como antecedente.
 
 ## Lo primero: ¿sobre cuál base?
 
