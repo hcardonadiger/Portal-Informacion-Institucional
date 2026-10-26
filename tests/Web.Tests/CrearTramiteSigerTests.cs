@@ -36,15 +36,23 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // Como todo el inventario importado de SIGER: institución en texto, sin InstitucionId.
         db.TramitesSiger.Add(new TramiteSiger
         {
             IdSiger     = IdSigerOcupado,
             Codigo      = CodigoOcupado,
             Nombre      = "Trámite que ya existe",
-            Institucion = "Dirección de Gestión por Resultados"
+            Institucion = "Dirección de Gestión por Resultados",
+            Sigla       = "DGR-SIGER"
         });
+
+        // Llave derivada del nombre completo, más larga que la columna Sigla (30).
+        db.Instituciones.Add(Institucion.Crear(InstitucionLlaveLarga,
+            "Administración Nacional de Servicio Civil", nombreCorto: "ANSEC"));
         await db.SaveChangesAsync();
     }
+
+    private const string InstitucionLlaveLarga = "ADMINISTRACIONNACIONALDESERVICIOCIVILANSEC";
 
     public Task DisposeAsync()
     {
@@ -67,7 +75,8 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
 
     /// <summary>El mínimo que el editor exige: los cuatro campos obligatorios más el token.</summary>
     private static FormUrlEncodedContent Alta(string token, int idSiger, string codigo,
-                                              string nombre = "Trámite nuevo de prueba")
+                                              string nombre = "Trámite nuevo de prueba",
+                                              string institucionId = "DIGER")
     {
         return new FormUrlEncodedContent(
         [
@@ -76,8 +85,15 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
             new KeyValuePair<string, string>("Form.IdSiger", idSiger.ToString()),
             new KeyValuePair<string, string>("Form.Codigo", codigo),
             new KeyValuePair<string, string>("Form.Nombre", nombre),
-            new KeyValuePair<string, string>("Form.Institucion", "Secretaría de prueba")
+            new KeyValuePair<string, string>("Form.InstitucionId", institucionId)
         ]);
+    }
+
+    private async Task<TramiteSiger> TramiteAsync(string codigo)
+    {
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.TramitesSiger.AsNoTracking().SingleAsync(t => t.Codigo == codigo);
     }
 
     private async Task<int> TramitesEnBaseAsync()
@@ -150,5 +166,77 @@ public sealed class CrearTramiteSigerTests : IAsyncLifetime
         r.Headers.Location!.OriginalString.Should().Contain("/Siger/Detalle");
 
         (await TramitesEnBaseAsync()).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task La_institucion_se_elige_del_catalogo_y_de_ella_salen_nombre_y_sigla()
+    {
+        // Cuando era texto libre la ficha nacía sin InstitucionId y no aparecía al filtrar por
+        // institución en la API pública ni en la captura en lote.
+        var (cliente, token, html) = await EditorNuevoAsync();
+        html.Should().Contain("<option value=\"DIGER\"");
+
+        var r = await cliente.PostAsync("/HondurasSimple/Editor", Alta(token, 9003, "912-002"));
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        var t = await TramiteAsync("912-002");
+        t.InstitucionId.Should().Be("DIGER");
+        t.Institucion.Should().Be("Dirección de Gestión por Resultados");
+        t.Sigla.Should().Be("DIGER");
+    }
+
+    [Fact]
+    public async Task Sin_institucion_no_se_crea()
+    {
+        var (cliente, token, _) = await EditorNuevoAsync();
+
+        var r = await cliente.PostAsync("/HondurasSimple/Editor", Alta(token, 9004, "912-003", institucionId: ""));
+
+        r.StatusCode.Should().Be(HttpStatusCode.OK);
+        WebUtility.HtmlDecode(await r.Content.ReadAsStringAsync()).Should().Contain("Elija la institución del trámite.");
+        (await TramitesEnBaseAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Una_llave_que_no_cabe_en_la_sigla_usa_el_nombre_corto()
+    {
+        // Copiar la llave tal cual reventaba el INSERT contra la columna de 30.
+        var (cliente, token, _) = await EditorNuevoAsync();
+
+        var r = await cliente.PostAsync("/HondurasSimple/Editor",
+            Alta(token, 9005, "912-004", institucionId: InstitucionLlaveLarga));
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        var t = await TramiteAsync("912-004");
+        t.InstitucionId.Should().Be(InstitucionLlaveLarga);
+        t.Sigla.Should().Be("ANSEC");
+    }
+
+    [Fact]
+    public async Task Editar_una_ficha_sin_vincular_sin_elegir_institucion_no_toca_su_texto()
+    {
+        // El inventario importado no tiene InstitucionId y parte de él es de instituciones que el
+        // catálogo no tiene. Guardarlo sin tocar el campo no puede ni fallar ni reescribirlo.
+        var id = (await TramiteAsync(CodigoOcupado)).Id;
+        var cliente = _portal.ClienteComo("Administrador");
+        var html = await cliente.GetStringAsync($"/HondurasSimple/Editor?id={id}");
+        WebUtility.HtmlDecode(html).Should().Contain("Sin vincular — Dirección de Gestión por Resultados (DGR-SIGER)");
+        var token = Regex.Match(html, """name="__RequestVerificationToken"[^>]*value="([^"]+)""").Groups[1].Value;
+
+        var r = await cliente.PostAsync("/HondurasSimple/Editor", new FormUrlEncodedContent(
+        [
+            new KeyValuePair<string, string>("__RequestVerificationToken", token),
+            new KeyValuePair<string, string>("Form.Id", id.ToString()),
+            new KeyValuePair<string, string>("Form.IdSiger", IdSigerOcupado.ToString()),
+            new KeyValuePair<string, string>("Form.Codigo", CodigoOcupado),
+            new KeyValuePair<string, string>("Form.Nombre", "Trámite que ya existe"),
+            new KeyValuePair<string, string>("Form.InstitucionId", "")
+        ]));
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        var t = await TramiteAsync(CodigoOcupado);
+        t.InstitucionId.Should().BeNull();
+        t.Institucion.Should().Be("Dirección de Gestión por Resultados");
+        t.Sigla.Should().Be("DGR-SIGER");
     }
 }

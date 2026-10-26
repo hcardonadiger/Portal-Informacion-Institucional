@@ -113,15 +113,34 @@
             <input asp-for="Form.Nombre" disabled="@bloq" required maxlength="600" />
         </div>
 
-        <div class="form-grid">
-            <div class="field">
-                <label asp-for="Form.Institucion">Institucion</label>
-                <input asp-for="Form.Institucion" disabled="@bloq" required maxlength="200" />
-            </div>
-            <div class="field">
-                <label asp-for="Form.Sigla">Sigla</label>
-                <input asp-for="Form.Sigla" disabled="@bloq" maxlength="30" />
-            </div>
+        @* La institución se elige del catálogo y de ella salen nombre y sigla. Al editar una ficha
+           que nunca se enlazó —todo el inventario importado de SIGER— la primera opción la deja
+           como está, con su texto original a la vista: así guardarla sin tocar este campo no
+           cambia nada, y enlazarla es una decisión explícita. *@
+        <div class="field">
+            <label asp-for="Form.InstitucionId">Institucion</label>
+            <select asp-for="Form.InstitucionId" id="sel-institucion" disabled="@bloq" required="@(Model.EsNuevo ? "required" : null)">
+                @if (Model.EsNuevo)
+                {
+                    <option value="" data-prefijo="@Model.PrefijoSol">— Elija la institución —</option>
+                }
+                else if (string.IsNullOrEmpty(Model.Form.InstitucionId))
+                {
+                    <option value="" data-prefijo="@Model.PrefijoSol">Sin vincular — @Model.InstitucionTexto@(string.IsNullOrWhiteSpace(Model.SiglaTexto) ? "" : $" ({Model.SiglaTexto})")</option>
+                }
+                @foreach (var i in Model.Instituciones)
+                {
+                    <option value="@i.Id" data-prefijo="@i.Prefijo">@i.Nombre</option>
+                }
+            </select>
+            <span asp-validation-for="Form.InstitucionId" class="field-error"></span>
+            @if (!Model.EsNuevo && string.IsNullOrEmpty(Model.Form.InstitucionId))
+            {
+                <span class="res-meta">
+                    Esta ficha no está enlazada al catálogo. Elija su institución para que aparezca
+                    al filtrar por institución; si no está en la lista, déjela así.
+                </span>
+            }
         </div>
 
         <div class="field">
@@ -255,7 +274,7 @@
             @* El prefijo va pegado al campo y no en un texto de ayuda debajo (D-13): quien
                escribe tiene que ver la dirección completa que va a producir, no imaginarla. *@
             <div style="display:flex;align-items:stretch;flex-wrap:wrap">
-                <span style="display:inline-flex;align-items:center;padding:0 10px;background:#f1f5f9;border:1px solid #cbd5e1;border-right:none;border-radius:6px 0 0 6px;font-family:monospace;font-size:13px;color:#475569;white-space:nowrap">@Model.PrefijoSol</span>
+                <span style="display:inline-flex;align-items:center;padding:0 10px;background:#f1f5f9;border:1px solid #cbd5e1;border-right:none;border-radius:6px 0 0 6px;font-family:monospace;font-size:13px;color:#475569;white-space:nowrap" id="prefijo-sol">@Model.PrefijoSol</span>
                 <input asp-for="Form.SolTramo" disabled="@bloq" maxlength="300" placeholder="tramo-final"
                        style="flex:1 1 180px;min-width:140px;border-radius:0 6px 6px 0;font-family:monospace" />
             </div>
@@ -332,4 +351,11 @@
         padding: 8px 0;
     }
 </style>
+<script>
+    // El prefijo de SOL depende de la institución: al cambiarla, se enseña el que va a producir.
+    document.getElementById('sel-institucion')?.addEventListener('change', e => {
+        const prefijo = e.target.selectedOptions[0]?.dataset.prefijo;
+        if (prefijo) document.getElementById('prefijo-sol').textContent = prefijo;
+    });
+</script>
 }
