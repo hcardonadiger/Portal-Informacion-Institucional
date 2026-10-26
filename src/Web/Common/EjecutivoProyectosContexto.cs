@@ -1,11 +1,12 @@
 using Diger.TramitesEstado.Application.Areas.Queries;
-using Diger.TramitesEstado.Application.Unidades.Queries;
+using Diger.TramitesEstado.Application.Proyectos.Categorias;
 
 namespace Diger.TramitesEstado.Web.Common;
 
 /// <summary>
-/// Qué cartera muestra el tablero ejecutivo de proyectos: área, unidad y responsable ya
-/// validados, con sus nombres y las opciones de los desplegables.
+/// Qué cartera muestra el tablero ejecutivo de proyectos: área y categoría ya validadas, con sus
+/// nombres y sus opciones. Unidad y responsable no van aquí: se eligen dentro de la cartera y sus
+/// opciones salen de la propia consulta del tablero (<c>GetEjecutivoProyectosQuery</c>).
 ///
 /// <para>Lo comparten <c>/Tableros/Ejecutivo</c> y la banda del Inicio, que tienen que mostrar la
 /// misma cartera por defecto: si cada una resolviera el área a su manera, el resumen del Inicio y
@@ -16,12 +17,9 @@ public sealed record EjecutivoProyectosContexto(
     string? AreaNombre,
     bool    PuedeElegirArea,
     IReadOnlyList<AreaListItemDto>     Areas,
-    string? UnidadId,
-    string? UnidadNombre,
-    IReadOnlyList<UnidadListItemDto>   Unidades,
-    Guid?   ResponsableId,
-    string? ResponsableNombre,
-    IReadOnlyList<UsuarioAsignableDto> Usuarios,
+    int?    CategoriaId,
+    string? CategoriaNombre,
+    IReadOnlyList<OpcionCategoriaDto>  Categorias,
     string  Titulo)
 {
     /// <summary>Clave de configuración del área predeterminada. Es configuración por despliegue,
@@ -39,10 +37,12 @@ public sealed record EjecutivoProyectosContexto(
     /// fuga: la consulta interseca sobre lo que ya recortó el alcance.</para>
     /// </summary>
     /// <param name="areaExplicita">El parámetro <c>Area</c> vino en la URL, aunque sea vacío.</param>
-    /// <param name="conOpciones">Cargar los desplegables. La banda del Inicio no los necesita.</param>
+    /// <param name="categoriaPedida">Categoría del catálogo. Una que no existe se descarta: se ve
+    /// la cartera entera.</param>
+    /// <param name="conOpciones">Cargar las opciones. La banda del Inicio no las necesita.</param>
     public static async Task<EjecutivoProyectosContexto> ResolverAsync(
         ISender sender, ICurrentUserService usuario, IConfiguration config, InstitucionOptions institucion,
-        string? areaPedida, bool areaExplicita, string? unidadPedida, Guid? responsablePedido,
+        string? areaPedida, bool areaExplicita, int? categoriaPedida,
         bool conOpciones, CancellationToken ct)
     {
         var puedeElegir = usuario.EsGlobal
@@ -72,26 +72,20 @@ public sealed record EjecutivoProyectosContexto(
 
         var areaNombre = areas.FirstOrDefault(a => a.Id == areaId)?.Nombre;
 
-        // Unidades: solo con un área elegida; sin área, el desplegable mezclaría las de todas.
-        IReadOnlyList<UnidadListItemDto> unidades = areaId is null
-            ? []
-            : await sender.Send(new GetUnidadesQuery(areaId), ct);
-        var unidad = unidades.FirstOrDefault(u => u.Id == unidadPedida);
-
-        IReadOnlyList<UsuarioAsignableDto> usuarios = conOpciones || responsablePedido is not null
-            ? await sender.Send(new GetUsuariosAsignablesQuery(), ct)
+        // Las «Q», en el orden del catálogo. Una retirada solo aparece si ya venía elegida.
+        IReadOnlyList<OpcionCategoriaDto> categorias = conOpciones || categoriaPedida is not null
+            ? await sender.Send(new GetOpcionesCategoriaQuery(categoriaPedida), ct)
             : [];
-        var responsable = usuarios.FirstOrDefault(u => u.Id == responsablePedido);
+        var categoria = categorias.FirstOrDefault(x => x.Id == categoriaPedida);
 
-        var titulo = $"Proyectos de {areaNombre ?? institucion.NombreCorto}";
+        var titulo = $"Proyectos de {areaNombre ?? institucion.NombreCorto}"
+                   + (categoria is null ? "" : $" · {categoria.Nombre}");
 
         return new EjecutivoProyectosContexto(
             areaId, areaNombre, puedeElegir,
             conOpciones ? areas.Where(a => a.Activo || a.Id == areaId).ToList() : [],
-            unidad?.Id, unidad?.Nombre,
-            conOpciones ? unidades.Where(u => u.Activo || u.Id == unidad?.Id).ToList() : [],
-            responsable?.Id, responsable?.Nombre,
-            conOpciones ? usuarios : [],
+            categoria?.Id, categoria?.Nombre,
+            categorias,
             titulo);
     }
 }

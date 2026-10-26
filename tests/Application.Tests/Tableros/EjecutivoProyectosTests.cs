@@ -64,7 +64,7 @@ public class EjecutivoProyectosTests : IDisposable
 
     private Task EstructurarAsync(int id, string nombre, DateOnly? finPlan, params ActividadInput[] actividades) =>
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, nombre, null, null, null, null, null, _prio.Media, null, null, null, finPlan,
+            id, nombre, null, null, null, null, _prio.Media, null, null, null, finPlan,
             [new EntregableInput(0, "Único", null, null, EstadoEntregable.EnProceso, null, null, actividades)]),
             CancellationToken.None);
 
@@ -307,6 +307,94 @@ public class EjecutivoProyectosTests : IDisposable
         fila.AvanceEsperado.Should().Be(tablero!.AvanceEsperado);
         fila.AvanceEsperado.Should().Be(44);
         fila.Desviacion.Should().Be(tablero.AvanceReal - tablero.AvanceEsperado);
+    }
+
+    // ── Categoría, y unidad o responsable dentro de ella ──────────────────
+
+    private async Task<(int Q3, int Q1)> SembrarCategoriasAsync()
+    {
+        var q3 = CategoriaProyecto.Crear("Q3", 1, ColorEtiqueta.Verde);
+        var q1 = CategoriaProyecto.Crear("Q1", 2, ColorEtiqueta.Gris);
+        _ctx.CategoriasProyecto.AddRange(q3, q1);
+        await _ctx.SaveChangesAsync();
+        return (q3.Id, q1.Id);
+    }
+
+    private async Task ClasificarAsync(int id, int categoria, string? unidad, Guid? responsableId, string? responsable)
+    {
+        var p = await _ctx.Proyectos.SingleAsync(x => x.Id == id);
+        p.CategoriaId   = categoria;
+        p.UnidadId      = unidad;
+        p.ResponsableId = responsableId;
+        p.Responsable   = responsable;
+        await _ctx.SaveChangesAsync();
+    }
+
+    private Task<EjecutivoProyectosDto> EjecutivoAsync(int? categoria, string? unidad, Guid? responsable) =>
+        new GetEjecutivoProyectosQueryHandler(_sender)
+            .Handle(new GetEjecutivoProyectosQuery(null, unidad, responsable, categoria), CancellationToken.None);
+
+    [Fact]
+    public async Task La_categoria_recorta_la_cartera_y_las_opciones_salen_de_ella()
+    {
+        var (q3, q1) = await SembrarCategoriasAsync();
+        var henry = Guid.NewGuid();
+        var brizzio = Guid.NewGuid();
+        var a = await CrearAsync("A", EstadoProyecto.EnEjecucion);
+        var b = await CrearAsync("B", EstadoProyecto.EnEjecucion);
+        var c = await CrearAsync("C", EstadoProyecto.EnEjecucion);
+        await ClasificarAsync(a, q3, "DAI", henry, "Henry Ortez");
+        await ClasificarAsync(b, q3, "DITRA", henry, "Henry Ortez");
+        await ClasificarAsync(c, q1, "DPD", brizzio, "Brizzio Zelaya");
+
+        var d = await EjecutivoAsync(q3, null, null);
+
+        d.Total.Should().Be(2);
+        d.Proyectos.Select(p => p.ProyectoId).Should().BeEquivalentTo([a, b]);
+        d.Unidades.Select(u => u.Id).Should().BeEquivalentTo(["DAI", "DITRA"], "DPD no tiene proyectos en Q3");
+        d.Responsables.Should().ContainSingle()
+            .Which.Should().Be(new OpcionFiltroDto(henry.ToString(), "Henry Ortez", 2));
+    }
+
+    [Fact]
+    public async Task Unidad_o_responsable_recortan_dentro_de_la_categoria()
+    {
+        var (q3, _) = await SembrarCategoriasAsync();
+        var henry = Guid.NewGuid();
+        var jamil = Guid.NewGuid();
+        var a = await CrearAsync("A", EstadoProyecto.EnEjecucion);
+        var b = await CrearAsync("B", EstadoProyecto.EnEjecucion);
+        await ClasificarAsync(a, q3, "DAI", henry, "Henry Ortez");
+        await ClasificarAsync(b, q3, "DITRA", jamil, "Jamil Garcia");
+
+        var porUnidad = await EjecutivoAsync(q3, "DITRA", null);
+        porUnidad.Proyectos.Should().ContainSingle().Which.ProyectoId.Should().Be(b);
+        porUnidad.UnidadAplicada.Should().Be("DITRA");
+        porUnidad.Unidades.Should().HaveCount(2, "las opciones no se achican con el propio recorte");
+
+        var porResponsable = await EjecutivoAsync(q3, null, henry);
+        porResponsable.Proyectos.Should().ContainSingle().Which.ProyectoId.Should().Be(a);
+        porResponsable.ResponsableAplicado.Should().Be(henry);
+    }
+
+    [Fact]
+    public async Task Un_recorte_que_no_existe_en_la_categoria_se_ignora()
+    {
+        var (q3, q1) = await SembrarCategoriasAsync();
+        var henry = Guid.NewGuid();
+        var brizzio = Guid.NewGuid();
+        var a = await CrearAsync("A", EstadoProyecto.EnEjecucion);
+        var c = await CrearAsync("C", EstadoProyecto.EnEjecucion);
+        await ClasificarAsync(a, q3, "DAI", henry, "Henry Ortez");
+        await ClasificarAsync(c, q1, "DPD", brizzio, "Brizzio Zelaya");
+
+        // Un enlace viejo que trae la unidad o el responsable de otra categoría no deja el
+        // tablero vacío sin explicación: se descarta y se muestra la categoría completa.
+        var d = await EjecutivoAsync(q3, "DPD", brizzio);
+
+        d.Proyectos.Should().ContainSingle().Which.ProyectoId.Should().Be(a);
+        d.UnidadAplicada.Should().BeNull();
+        d.ResponsableAplicado.Should().BeNull();
     }
 
     public void Dispose() => _ctx.Dispose();

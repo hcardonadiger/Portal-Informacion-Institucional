@@ -181,7 +181,6 @@ public sealed class ProyectosTools(ISender sender, McpPermisos permisos)
             AreaId:          areaId          ?? actual.AreaId,
             UnidadId:        unidadId        ?? actual.UnidadId,
             ResponsableId:   responsableId   ?? actual.ResponsableId,
-            Responsable:     actual.Responsable,
             PrioridadId:     prioridadId     ?? actual.PrioridadId,
             CategoriaId:     categoriaId     ?? actual.CategoriaId,
             Accion:          actual.Accion,

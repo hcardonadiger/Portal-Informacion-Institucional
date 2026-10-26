@@ -53,7 +53,7 @@ public class ProyectosFechasQueChocanTests : IDisposable
 
     private Task GuardarAsync(int id, IReadOnlyList<EntregableInput> entregables) =>
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "SOL — institución de prueba", null, null, null, null, null,
+            id, "SOL — institución de prueba", null, null, null, null,
             _prio.Media, null, null, null, null, entregables), CancellationToken.None);
 
     private Task<ProyectoDetailDto?> FichaAsync(int id) =>

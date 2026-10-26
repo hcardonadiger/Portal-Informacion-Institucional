@@ -274,9 +274,13 @@
                        reparto se respeta exactamente; sin él, el navegador volvería a
                        dárselo todo a la primera columna. *@
                     <th>Institución</th>
-                    <th style="width:150px">Código</th>
+                    @* Código a 210: el más largo hoy, «EXP-SECSEGURIDAD-2026-01», mide 173px
+                       más 28 de relleno, y a 150 se montaba sobre Estado. 40 salen de
+                       Responsable, que casi siempre dice «Sin asignar» y parte en dos
+                       renglones los nombres largos; los otros 20, de Institución. *@
+                    <th style="width:210px">Código</th>
                     <th style="width:150px">Estado <span class="help-tip tip-down" data-tip="Fase actual: Exploración → Levantamiento → Modelado → Validación → Cerrado.">?</span></th>
-                    <th style="width:170px">Responsable</th>
+                    <th style="width:130px">Responsable</th>
                     <th class="col-num" style="width:90px">Trámites <span class="help-tip tip-down tip-left" data-tip="Cuántos trámites tiene el expediente. El detalle se ve al pasar el cursor.">?</span></th>
                     <th class="col-num" style="width:110px">Apertura</th>
                     <th class="col-acciones" style="width:170px"><span class="sr-only">Acciones</span></th>
@@ -320,8 +324,8 @@
                            Va en monoespaciada y sin partir: «EXP-2026-14» no puede
                            aparecer cortado en «EXP-2026-» / «14». Es también el enlace
                            a la ficha, que antes colgaba de la sigla. *@
-                        <td data-rotulo="Código">
-                            <a class="exp-codigo" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a>
+                        <td data-rotulo="Código" class="col-codigo">
+                            <a class="exp-codigo" asp-page="/Expedientes/Editor" asp-route-id="@e.Id" title="@e.Codigo">@e.Codigo</a>
                         </td>
                         <td data-rotulo="Estado">
                             @* "Legado" ES el estado mientras nadie lo trabaje. Los 28 que
@@ -447,7 +451,7 @@
                                        igual que arriba: las dos vistas no pueden divergir. *@
                                     <th>Código</th>
                                     <th style="width:150px">Estado</th>
-                                    <th style="width:170px">Responsable</th>
+                                    <th style="width:130px">Responsable</th>
                                     <th class="col-num" style="width:90px">Trámites</th>
                                     <th class="col-num" style="width:110px">Apertura</th>
                                     <th class="col-acciones" style="width:170px"><span class="sr-only">Acciones</span></th>
@@ -461,8 +465,8 @@
                                     <tr>
                                         @* El código es la identidad de la fila acá: la institución
                                            ya la dice el encabezado del grupo. *@
-                                        <td data-rotulo="Código">
-                                            <a class="exp-codigo" asp-page="/Expedientes/Editor" asp-route-id="@e.Id">@e.Codigo</a>
+                                        <td data-rotulo="Código" class="col-codigo">
+                                            <a class="exp-codigo" asp-page="/Expedientes/Editor" asp-route-id="@e.Id" title="@e.Codigo">@e.Codigo</a>
                                         </td>
                                         <td data-rotulo="Estado">
                                             @if (e.EsLegado && !TieneResponsable(e.Analista))

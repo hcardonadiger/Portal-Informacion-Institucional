@@ -1581,6 +1581,15 @@ tr.contacto-inactivo td {
     text-decoration: underline;
 }
 
+/* La celda del código no se parte, pero tampoco invade la columna de al lado: un código más
+   largo que su ancho se recorta con «…» y queda entero en el title. Antes se montaba sobre
+   Estado («EXP-SECSEGURIDAD-2026-01» encima de «LEGADO»). */
+.seg-table td.col-codigo {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ── Conmutador de tema ───────────────────────────────────────────────
    El botón lleva los DOS iconos y el CSS esconde el que sobra según la
    clase del cuerpo. Se hace así y no eligiéndolo en el servidor ni en el
@@ -2878,6 +2887,9 @@ tr.contacto-inactivo td {
     color: var(--diger-blue);
     text-decoration: none;
     font-size: var(--diger-fs-base);
+    /* Hay siglas que son el nombre entero sin espacios («SECRETARIADEDESARROLLOECONOMICO»):
+       si no caben, se parten antes que salirse de la columna. */
+    overflow-wrap: anywhere;
 }
 
 .inst-sigla:hover {
@@ -7973,9 +7985,9 @@ body.tema-claro {
 /* ── TABLERO EJECUTIVO (Tableros/Ejecutivo, banda del Inicio) ─────── */
 /* Especificación: docs/tableros/ejecutivo-proyectos.md, §5 y §6. Todo con
    tokens: ningún literal de color, así que el tema oscuro lo resuelve
-   tokens.css. Lo único que pide regla propia en oscuro son los rellenos de
-   barra, que la regla general «.tema-oscuro .bar-fill» pinta de navy (2b)
-   y aquí tienen que conservar el color de la salud. */
+   tokens.css. Los rellenos de barra de la lista llevan su color por estado
+   en línea (un token), que gana a la regla general «.tema-oscuro .bar-fill»
+   que los pintaría de navy (2b). */
 .ejec { max-width: 1280px; }
 
 .ejec-cab { align-items: flex-start; gap: var(--diger-space-4); flex-wrap: wrap; }
@@ -7992,6 +8004,81 @@ body.tema-claro {
 .ejec-logo-impreso, .ejec-filtros-impresos { display: none; }
 .ejec-logo-impreso { height: 40px; margin-bottom: var(--diger-space-2); }
 
+/* Barra fija de filtros: categoría como botonera, el menú «Unidad o responsable» y el área.
+   Se pega bajo la cabecera del portal al bajar, con el mismo desplazamiento que el menú. */
+.ejec-barra-filtros {
+    position: sticky; top: var(--diger-nav-top, var(--diger-header-h)); z-index: 20;
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--diger-space-2) var(--diger-space-4);
+    margin: 0 0 var(--diger-space-4); padding: 10px var(--diger-space-4);
+    background: var(--diger-panel); border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md); box-shadow: var(--diger-shadow-sm);
+}
+.ejec-barra-lbl { font-size: var(--diger-fs-2xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--diger-text-muted); }
+.ejec-cats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ejec-cats .ejec-barra-lbl { margin-right: 4px; }
+.ejec-cat {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: var(--diger-radius-pill);
+    border: 1px solid var(--diger-border); background: var(--diger-surface);
+    color: var(--diger-text-secondary); font-size: var(--diger-fs-sm); font-weight: 600; text-decoration: none;
+}
+.ejec-cat:hover, .ejec-cat:focus-visible { border-color: var(--diger-blue-mid); color: var(--diger-blue); }
+.ejec-cat.is-on { background: var(--diger-blue-fondo, var(--diger-blue)); border-color: transparent; color: white; }
+.ejec-cat-punto.prio-badge { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: currentColor; }
+.ejec-cat.is-on .ejec-cat-punto.prio-badge { box-shadow: 0 0 0 2px white; }
+
+/* «Unidad o responsable»: un botón que abre la lista de lo que hay en la categoría. */
+.ejec-sub { position: relative; }
+.ejec-sub-btn {
+    list-style: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: var(--diger-radius-pill);
+    border: 1px solid var(--diger-border); background: var(--diger-surface);
+    color: var(--diger-text-secondary); font-size: var(--diger-fs-sm); font-weight: 600;
+}
+.ejec-sub-btn::-webkit-details-marker { display: none; }
+.ejec-sub-btn:hover, .ejec-sub-btn:focus-visible { border-color: var(--diger-blue-mid); color: var(--diger-blue); }
+.ejec-sub.is-on .ejec-sub-btn { background: var(--diger-blue-light); border-color: var(--diger-blue-mid); color: var(--diger-blue); }
+.ejec-sub-flecha { transform: rotate(90deg); transition: transform var(--diger-transition); }
+.ejec-sub[open] .ejec-sub-flecha { transform: rotate(-90deg); }
+.ejec-sub-panel {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
+    width: min(560px, 90vw); max-height: 60vh; overflow: auto;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--diger-space-3) var(--diger-space-4);
+    padding: var(--diger-space-3) var(--diger-space-4);
+    background: var(--diger-panel); border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-md); box-shadow: var(--diger-shadow-md);
+}
+.ejec-sub-todo { grid-column: 1 / -1; font-size: var(--diger-fs-sm); font-weight: 600; }
+.ejec-sub-grupo { display: grid; align-content: start; gap: 2px; }
+.ejec-sub-grupo h4 {
+    display: flex; align-items: center; gap: 6px; margin: 0 0 4px;
+    font-size: var(--diger-fs-2xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--diger-text-muted);
+}
+.ejec-sub-grupo a {
+    display: flex; justify-content: space-between; gap: var(--diger-space-3);
+    padding: 5px 8px; border-radius: var(--diger-radius-sm);
+    color: var(--diger-text); text-decoration: none; font-size: var(--diger-fs-sm); text-transform: uppercase;
+}
+.ejec-sub-grupo a strong { color: var(--diger-text-muted); font-variant-numeric: tabular-nums; }
+.ejec-sub-grupo a:hover, .ejec-sub-grupo a:focus-visible { background: var(--diger-bg-soft); color: var(--diger-blue); }
+.ejec-sub-grupo a.is-on { background: var(--diger-blue-light); color: var(--diger-blue); font-weight: 700; }
+
+.ejec-area { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.ejec-area select { min-width: 200px; padding: 6px 10px; }
+.ejec-limpiar { font-size: var(--diger-fs-sm); font-weight: 600; }
+
+/* KPI en tarjetas sueltas con un acento de color a la izquierda (referencia «Proyectos de
+   Gobierno Digital»). Cada celda declara su --kpi-acento en el parcial. */
+.ejec-kpis { background: none; border: 0; box-shadow: none; overflow: visible; gap: var(--diger-space-3); }
+.ejec-kpis .kpi-cell {
+    background: var(--diger-surface);
+    border: 1px solid var(--diger-border);
+    border-left: 5px solid var(--kpi-acento, var(--diger-blue));
+    border-radius: var(--diger-radius-md);
+    box-shadow: var(--diger-shadow-sm);
+}
+.ejec-kpis .kpi-cell.is-crit::before { content: none; }
 .ejec-kpis .kpi-cell-num { font-size: var(--diger-text-3xl); }
 .ejec-kpi-avance small { font-size: .55em; font-weight: 600; }
 .ejec-kpi-sub { flex-wrap: wrap; }
@@ -8008,7 +8095,7 @@ body.tema-claro {
 .ejec-lista { list-style: none; margin: 0; padding: 0; }
 .ejec-fila + .ejec-fila { border-top: 1px solid var(--diger-border); }
 .ejec-fila-link {
-    display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: var(--diger-space-3);
+    display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: var(--diger-space-3); align-items: start;
     padding: var(--diger-space-3) var(--diger-space-2);
     color: inherit; text-decoration: none;
     border-radius: var(--diger-radius-sm);
@@ -8017,25 +8104,36 @@ body.tema-claro {
 .ejec-num {
     width: 1.75rem; height: 1.75rem; border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
-    background: var(--diger-bg-soft); color: var(--diger-text-muted);
+    background: var(--diger-blue-light); color: var(--diger-blue-mid);
     font-size: var(--diger-fs-xs); font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.ejec-fila-cuerpo { display: grid; gap: 4px; min-width: 0; }
-.ejec-fila-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--diger-space-3); }
+.ejec-fila-cuerpo { display: grid; gap: 6px; min-width: 0; padding-top: 3px; }
+/* Nombre y, a su lado, responsable y unidad. Si no caben juntos no se mezclan: el nombre
+   ocupa su renglón y responsable y unidad bajan enteros al siguiente. */
+.ejec-titulo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px .6em; }
 .ejec-nombre { font-size: var(--diger-fs-base); font-weight: 700; color: var(--diger-text); }
-.ejec-codigo { font-size: var(--diger-fs-xs); font-weight: 500; color: var(--diger-text-faint); margin-left: .35em; white-space: nowrap; }
-/* Revisión 1, R2: dos renglones por fila. Arriba nombre y, a la derecha en la misma línea, la
-   etiqueta de salud con su motivo; abajo meta, barra y cifras. */
-.ejec-salud { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 2px var(--diger-space-2); text-align: right; flex-shrink: 0; max-width: 55%; }
-.ejec-motivo { font-size: var(--diger-fs-xs); }
-.ejec-fila-pie { display: flex; align-items: center; gap: var(--diger-space-3); min-width: 0; }
-.ejec-sub {
-    font-size: var(--diger-fs-sm); max-width: 42%; flex-shrink: 0;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+/* Responsable y unidad ocupan el sitio que tenía el código: pegados al nombre, en gris y
+   siempre en mayúscula en esta vista. */
+.ejec-resp { font-size: var(--diger-fs-xs); font-weight: 500; color: var(--diger-text-muted); text-transform: uppercase; letter-spacing: .02em; }
+.ejec-resp > span { white-space: nowrap; } /* cada dato salta entero, no a media frase */
+/* Debajo del nombre, barra corta de ancho fijo —todas arrancan y miden lo mismo— y su
+   porcentaje. La etiqueta de salud queda sola a la derecha de la fila. */
+.ejec-avance { display: flex; align-items: center; gap: var(--diger-space-3); }
+.ejec-barra {
+    position: relative; overflow: visible; display: block; flex: 0 1 14rem;
+    height: 10px; background: var(--diger-estado-riel); border-radius: var(--diger-radius-pill);
 }
-.ejec-barra { position: relative; overflow: visible; display: block; flex: 1; min-width: 220px; }
-.ejec-barra .bar-fill { display: block; }
-.ejec-cifras { font-size: var(--diger-fs-sm); font-weight: 600; color: var(--diger-text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ejec-barra .bar-fill { display: block; border-radius: var(--diger-radius-pill); }
+.ejec-cifras.is-sin-dato { color: var(--diger-text-faint); font-weight: 500; }
+.ejec-cifras { min-width: 3.2em; font-size: var(--diger-fs-sm); font-weight: 700; color: var(--diger-text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Cabecera de la lista: título a la izquierda y, en la misma línea, la leyenda de colores. */
+.ejec-lista-cab { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--diger-space-2) var(--diger-space-4); margin-bottom: 1rem; }
+.ejec-lista-cab h3 { margin: 0; }
+.ejec-leyenda-linea { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px var(--diger-space-4); font-size: var(--diger-fs-xs); color: var(--diger-text-muted); }
+.ejec-leyenda-linea li { display: inline-flex; align-items: center; gap: 6px; }
+.ejec-leyenda-linea .ejec-cuadro { width: 12px; height: 12px; }
+.ejec-cuadro.is-sin-dato { background: var(--diger-estado-sin-dato); }
 
 /* Marca del avance esperado sobre la barra. */
 .bar-mark {
@@ -8064,23 +8162,32 @@ body.tema-claro {
 
 /* Dona por estado: conic-gradient con tokens, sin canvas. */
 .ejec-dona-caja { display: flex; align-items: center; gap: var(--diger-space-4); flex-wrap: wrap; }
-.ejec-dona { position: relative; width: 150px; height: 150px; border-radius: 50%; flex-shrink: 0; }
+.ejec-dona { position: relative; width: 190px; height: 190px; border-radius: 50%; flex-shrink: 0; }
 .ejec-dona-centro {
-    position: absolute; inset: 22px; border-radius: 50%;
+    position: absolute; inset: 28px; border-radius: 50%;
     background: var(--diger-panel);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: var(--diger-text-muted); font-size: var(--diger-fs-xs);
+    color: var(--diger-text-muted); font-size: var(--diger-fs-sm);
 }
-.ejec-dona-centro strong { font-size: var(--diger-text-3xl); color: var(--diger-blue); line-height: 1; }
-.ejec-leyenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; flex: 1; min-width: 140px; }
-.ejec-leyenda li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: var(--diger-space-2); font-size: var(--diger-fs-sm); color: var(--diger-text-secondary); }
+.ejec-dona-centro strong { font-size: calc(var(--diger-text-3xl) * 1.25); color: var(--diger-blue); line-height: 1; }
+.ejec-leyenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; flex: 1; min-width: 150px; }
+.ejec-leyenda li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: var(--diger-space-2); font-size: var(--diger-fs-base); color: var(--diger-text-secondary); }
 .ejec-leyenda strong { color: var(--diger-text); font-variant-numeric: tabular-nums; }
-.ejec-cuadro { width: 12px; height: 12px; border-radius: 3px; }
+.ejec-cuadro { width: 14px; height: 14px; border-radius: 3px; }
 .ejec-nota { margin: var(--diger-space-3) 0 0; }
+
+/* Bloqueos por proyecto: barras horizontales, nombre | barra | cantidad. */
+.ejec-bloqueos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ejec-bloqueos li { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 2ch; align-items: center; gap: var(--diger-space-3); font-size: var(--diger-fs-sm); }
+.ejec-bloq-nombre { color: var(--diger-text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.ejec-bloq-nombre:hover, .ejec-bloq-nombre:focus-visible { color: var(--diger-blue); text-decoration: underline; }
+.ejec-bloq-barra { display: block; height: 12px; }
+.ejec-bloq-barra > span { display: block; height: 100%; min-width: 8px; background: var(--diger-estado-pendiente); border-radius: var(--diger-radius-sm); }
+.ejec-bloq-n { color: var(--diger-text); font-variant-numeric: tabular-nums; text-align: right; }
 
 /* Necesita decisión. */
 .ejec-decisiones { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--diger-space-3); }
-.ejec-decision { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr); gap: var(--diger-space-2); font-size: var(--diger-fs-sm); }
+.ejec-decision { display: grid; grid-template-columns: 1.2rem minmax(0, 1fr); gap: var(--diger-space-2); font-family: var(--diger-font-ui); font-size: var(--diger-fs-base); line-height: 1.45; }
 .ejec-dec-ico { margin-top: 2px; color: var(--diger-text-muted); }
 .ejec-decision.tipo-bloqueovigente .ejec-dec-ico { color: var(--diger-danger-text); }
 .ejec-decision.tipo-cierrevencido .ejec-dec-ico { color: var(--diger-warning-strong); }
@@ -8116,29 +8223,41 @@ body.tema-claro {
     padding: var(--diger-space-3) var(--diger-space-4);
     background: var(--diger-surface); border: 1px solid var(--diger-border);
     border-radius: var(--diger-radius-md); color: inherit; text-decoration: none;
+    box-shadow: var(--diger-shadow-sm);
 }
 .cat-tablero:hover, .cat-tablero:focus-visible { border-color: var(--diger-blue-mid); }
-.cat-tablero-ico { font-size: 1.25rem; color: var(--diger-blue-mid); padding-top: 2px; }
+.cat-tablero-ico {
+    width: 2rem; height: 2rem; border-radius: var(--diger-radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--diger-blue-light); color: var(--diger-blue-mid); font-size: 1.1rem;
+}
+/* Texto en columna: la insignia va al pie, así todas quedan a la misma altura en la fila. */
+.cat-tablero > span:last-child { display: flex; flex-direction: column; min-width: 0; }
 .cat-tablero-t1 { display: block; font-weight: 700; color: var(--diger-text); }
-.cat-tablero-t2 { display: block; font-size: var(--diger-fs-sm); color: var(--diger-text-muted); margin: 2px 0 6px; }
+.cat-tablero-t2 { display: block; font-size: var(--diger-fs-sm); color: var(--diger-text-muted); margin: 2px 0 8px; }
+/* La insignia del catálogo puede ser larga («Propuesto retirar · usa Digitalización»): aquí
+   baja de renglón dentro de la tarjeta en vez de salirse por el borde. */
+.cat-tablero .tablero-badge {
+    align-self: flex-start; margin-top: auto; max-width: 100%;
+    white-space: normal; line-height: 1.35; padding-top: 3px; padding-bottom: 3px;
+    border-radius: var(--diger-radius-sm);
+}
+.cat-tablero .tablero-badge .ico { flex-shrink: 0; }
 
-/* Oscuro: la barra conserva el color de la salud (ver la nota de arriba). */
-.tema-oscuro .ejec-barra .bar-fill.c-red   { background: var(--diger-danger); }
-.tema-oscuro .ejec-barra .bar-fill.c-amber { background: var(--diger-warning); }
-.tema-oscuro .ejec-barra .bar-fill.c-green { background: var(--diger-success); }
-.tema-oscuro .ejec-barra .bar-fill.c-gray  { background: var(--diger-text-faint); }
 
 @media (max-width: 900px) {
     .ejec-grid { grid-template-columns: minmax(0, 1fr); }
-    /* Bajo 900 px la fila vuelve a tres renglones: la meta encima de la barra. */
-    .ejec-fila-pie { flex-wrap: wrap; }
-    .ejec-sub { flex-basis: 100%; max-width: none; }
     .ejec-cab-der { align-items: flex-start; }
+    .ejec-area { margin-left: 0; }
 }
 @media (max-width: 600px) {
     .ejec-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .ejec-kpis .kpi-cell { border-bottom: 1px solid var(--diger-border); }
-    .ejec-fila-cab { flex-direction: column; }
-    .ejec-salud { justify-content: flex-start; text-align: left; max-width: none; }
-    .ejec-barra { min-width: 0; }
+    .ejec-kpis .kpi-cell { border-bottom: 1px solid var(--diger-border); border-right: 1px solid var(--diger-border); }
+    /* En teléfono la etiqueta de salud baja bajo la barra. */
+    .ejec-fila-link { grid-template-columns: 2rem minmax(0, 1fr); }
+    .ejec-fila-link > .salud-badge { grid-column: 2; justify-self: start; }
+    .ejec-barra { flex: 1; }
+    /* En teléfono la barra deja de ser fija: ocuparía media pantalla. */
+    .ejec-barra-filtros { position: static; }
+    .ejec-area select { min-width: 0; flex: 1; }
 }

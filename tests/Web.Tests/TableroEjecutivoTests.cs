@@ -93,6 +93,15 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
         return await respuesta.Content.ReadAsStringAsync();
     }
 
+    /// <summary>
+    /// La fila de un proyecto en la cartera, reconocida por su nombre. Hasta el 2026-10-22 la fila
+    /// llevaba el código (PRY-…) y estas pruebas lo buscaban; se quitó a propósito —es detalle del
+    /// proyecto y vive en su tablero— y en su lugar van responsable y unidad. Se busca el span del
+    /// nombre y no el nombre a secas porque el bloque de bloqueos por proyecto también lo escribe,
+    /// con otra clase, y un <c>Contain</c> suelto no distinguiría la cartera de ese bloque.
+    /// </summary>
+    private static string Fila(string nombre) => $"<span class=\"ejec-nombre\">{nombre}</span>";
+
     // ── /Tableros/Ejecutivo ────────────────────────────────────────────────
 
     [Fact]
@@ -101,8 +110,8 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
         var html = await GetAsync(Ruta);
 
         html.Should().Contain("Proyectos de GOBIERNO DIGITAL");
-        html.Should().Contain("PRY-EJ-01").And.Contain("PRY-EJ-02");
-        html.Should().NotContain("PRY-EJ-03", "es de otra area y la cartera es una sola area");
+        html.Should().Contain(Fila("Ventanilla unica")).And.Contain(Fila("Agente de IA"));
+        html.Should().NotContain("Monitoreo de resultados", "es de otra area y la cartera es una sola area");
         html.Should().Contain("href=\"/Tableros/Proyecto/", "cada fila lleva al tablero del proyecto");
         html.Should().Contain("Falta la firma del convenio", "el bloqueo vigente encabeza las decisiones");
         html.Should().Contain("class=\"salud-badge rojo\"");
@@ -113,8 +122,8 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
     {
         var html = await GetAsync(Ruta + "?Unidad=DAI");
 
-        html.Should().Contain("PRY-EJ-02");
-        html.Should().NotContain("PRY-EJ-01");
+        html.Should().Contain(Fila("Agente de IA"));
+        html.Should().NotContain(Fila("Ventanilla unica"));
     }
 
     [Fact]
@@ -123,7 +132,7 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
         var html = await GetAsync(Ruta + "?Area=NOEXISTE");
 
         html.Should().Contain("Proyectos de GOBIERNO DIGITAL");
-        html.Should().Contain("PRY-EJ-01");
+        html.Should().Contain(Fila("Ventanilla unica"));
     }
 
     [Fact]
@@ -131,7 +140,7 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
     {
         var html = await GetAsync(Ruta + "?Area=");
 
-        html.Should().Contain("PRY-EJ-01").And.Contain("PRY-EJ-03");
+        html.Should().Contain(Fila("Ventanilla unica")).And.Contain(Fila("Monitoreo de resultados"));
         html.Should().Contain("Proyectos de DIGER", "sin area el titulo es la institucion");
     }
 
@@ -171,8 +180,12 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
         grupo.Should().BePositive("el grupo neutro se sirve abierto y lo pliega el script");
         html.Should().Contain("No iniciados (1)");
 
-        html.IndexOf("PRY-EJ-04", StringComparison.Ordinal).Should().BeGreaterThan(grupo, "el planificado es neutro");
-        html.IndexOf("PRY-EJ-01", StringComparison.Ordinal).Should().BeLessThan(grupo, "el bloqueado queda fuera del pliegue");
+        html.IndexOf(Fila("Firma avanzada"), StringComparison.Ordinal).Should().BeGreaterThan(grupo, "el planificado es neutro");
+
+        // BePositive primero: un IndexOf que no encuentra devuelve -1, y -1 también es «antes del grupo».
+        var bloqueado = html.IndexOf(Fila("Ventanilla unica"), StringComparison.Ordinal);
+        bloqueado.Should().BePositive();
+        bloqueado.Should().BeLessThan(grupo, "el bloqueado queda fuera del pliegue");
     }
 
     // ── Inicio: índice de tableros ─────────────────────────────────────────
@@ -183,17 +196,17 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
         var html = await GetAsync("/Tableros/Index");
 
         var ejecutivo  = html.IndexOf("id=\"ini-ejec-t\"", StringComparison.Ordinal);
-        var hoy        = html.IndexOf("id=\"ini-hoy-t\"", StringComparison.Ordinal);
         var todos      = html.IndexOf("id=\"ini-todos-t\"", StringComparison.Ordinal);
         var operativos = html.IndexOf("id=\"ini-oper-t\"", StringComparison.Ordinal);
 
         ejecutivo.Should().BePositive();
-        hoy.Should().BeGreaterThan(ejecutivo);
-        todos.Should().BeGreaterThan(hoy);
+        todos.Should().BeGreaterThan(ejecutivo);
         operativos.Should().BeGreaterThan(todos, "lo que ya estaba se movio abajo, no se quito");
 
         html.Should().Contain("Abrir tablero ejecutivo");
         html.Should().Contain("Tickets abiertos", "los tres conteos siguen en el Inicio");
+        // «Atención hoy» se quitó del Inicio el 2026-10-22; los conteos quedaron en los operativos.
+        html.Should().NotContain("id=\"ini-hoy-t\"");
     }
 
     [Fact]

@@ -359,7 +359,6 @@ public sealed class EditorModel(
                 AreaId,
                 UnidadId,
                 ResponsableId,
-                usuarios.FirstOrDefault(u => u.Id == ResponsableId)?.Nombre ?? actual.Responsable,
                 PrioridadId,
                 CategoriaId,
                 Accion,

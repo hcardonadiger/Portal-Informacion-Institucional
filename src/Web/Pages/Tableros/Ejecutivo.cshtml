@@ -24,13 +24,6 @@
         SaludProyecto.Verde => "verde",
         _                   => "neutro"
     };
-    string ClaseBarra(SaludProyecto s) => s switch
-    {
-        SaludProyecto.Rojo  => "c-red",
-        SaludProyecto.Ambar => "c-amber",
-        SaludProyecto.Verde => "c-green",
-        _                   => "c-gray"
-    };
     string? IconoSalud(SaludProyecto s) => s switch
     {
         SaludProyecto.Rojo  => "i-alerta",
@@ -38,14 +31,11 @@
         SaludProyecto.Verde => "i-check",
         _                   => null
     };
-    string UltimoReporteTexto(ProyectoEjecutivoDto p) =>
-        p.UltimoAvance is null ? "sin reportes"
-        : p.DiasSinReporte is null or <= 0 ? "último reporte hoy"
-        : $"último reporte {FormatoEjecutivo.Hace(p.DiasSinReporte.Value)}";
+    // La fila solo dice cuánto va: el esperado, la desviación y la línea base se leen en el
+    // tablero del proyecto, a un clic. La marca de la barra sigue mostrando el esperado.
+    // El porcentaje siempre ocupa su sitio; sin entregables no hay avance que medir y va «—».
     string Cifras(ProyectoEjecutivoDto p) =>
-        p.SinEstructura ? "sin entregables cargados"
-        : p.AvanceEsperado is { } e ? $"{p.AvancePct} % · esp. {e} % · {FormatoEjecutivo.Puntos(p.Desviacion!.Value)}"
-        : $"{p.AvancePct} % · sin línea base";
+        p.SinEstructura ? "—" : $"{p.AvancePct} %";
     string AriaBarra(ProyectoEjecutivoDto p)
     {
         if (p.SinEstructura) return "Sin dato de avance: el proyecto no tiene entregables cargados";
@@ -56,15 +46,24 @@
     }
     string Corto(string t, int max) => t.Length <= max ? t : t[..max].TrimEnd() + "…";
 
-    // Dona: segmentos acumulados en conic-gradient, pintados con tokens (cambia sola con el tema).
+    // Un solo color por estado para la dona, su leyenda y las barras de la lista: la barra dice en
+    // qué etapa va el proyecto y la etiqueta de la derecha, cómo va. Son tokens, así que cambian
+    // solos con el tema. Sin dato (sin entregables) no pinta barra: queda el riel gris.
     string ColorEstado(EstadoProyecto e) => e switch
     {
-        EstadoProyecto.Cerrado     => "var(--diger-success)",
-        EstadoProyecto.EnEjecucion => "var(--diger-blue-mid)",
-        EstadoProyecto.Planificado => "var(--diger-text-faint)",
-        EstadoProyecto.Suspendido  => "var(--diger-warning)",
-        _                          => "var(--diger-text-slate)"
+        EstadoProyecto.Cerrado     => "var(--diger-estado-fin)",
+        EstadoProyecto.EnEjecucion => "var(--diger-estado-proceso)",
+        EstadoProyecto.Planificado => "var(--diger-estado-pendiente)",
+        EstadoProyecto.Suspendido  => "var(--diger-warning-strong)",
+        _                          => "var(--diger-text-slate-dark)"
     };
+
+    // Bloqueos por proyecto: reportes que declararon un bloqueo, en toda la historia.
+    const int MaxBloqueos = 10;
+    var conBloqueos = d.Proyectos.Where(p => p.BloqueosRegistrados > 0)
+        .OrderByDescending(p => p.BloqueosRegistrados).ThenBy(p => p.Nombre).ToList();
+    var maxBloqueos = conBloqueos.Count == 0 ? 1 : conBloqueos[0].BloqueosRegistrados;
+    var totalBloqueos = conBloqueos.Sum(p => p.BloqueosRegistrados);
     var tramos = new List<string>();
     var acumulado = 0.0;
     foreach (var s in d.PorEstado)
@@ -92,7 +91,14 @@
             : string.Join(", ", partes.Take(partes.Count - 1)) + " y " + partes[^1];
         return texto.Length == 0 ? texto : char.ToUpper(texto[0]) + texto[1..];
     }
-    var filtrosTexto = $"Área: {c.AreaNombre ?? "todas"} · Unidad: {c.UnidadNombre ?? "todas"} · Responsable: {c.ResponsableNombre ?? "todos"}";
+    // Unidad o responsable: lo que de verdad se aplicó, con el nombre de su opción.
+    var unidadSel = d.Unidades.FirstOrDefault(o => o.Id == d.UnidadAplicada);
+    var respSel   = d.Responsables.FirstOrDefault(o => o.Id == d.ResponsableAplicado?.ToString());
+    var subfiltro = unidadSel is not null ? $"Unidad: {unidadSel.Nombre}"
+                  : respSel   is not null ? $"Responsable: {respSel.Nombre}"
+                  : null;
+    var filtrosTexto = $"Área: {c.AreaNombre ?? "todas"} · Categoría: {c.CategoriaNombre ?? "todas"}"
+                     + (subfiltro is null ? "" : $" · {subfiltro}");
 }
 
 <div class="container ejec">
@@ -128,11 +134,70 @@
         </div>
     </div>
 
-    <form method="get" class="seg-filters ejec-filtros">
+    @* Barra fija: la categoría es la primera decisión de quien mira el tablero y se queda a la
+       vista al bajar. Unidad o responsable se eligen DENTRO de la categoría: el menú solo ofrece
+       las que tienen proyectos en ella. Son enlaces, no un formulario: funcionan sin JS. *@
+    <div class="ejec-barra-filtros ejec-filtros">
+        <nav class="ejec-cats" aria-label="Categoría">
+            <span class="ejec-barra-lbl">Categoría</span>
+            <a class="ejec-cat @(c.CategoriaId is null ? "is-on" : "")" href="@Model.Enlace(null)"
+               aria-current="@(c.CategoriaId is null ? "page" : null)">Todas</a>
+            @foreach (var cat in c.Categorias)
+            {
+                var on = c.CategoriaId == cat.Id;
+                <a class="ejec-cat @(on ? "is-on" : "")" href="@Model.Enlace(cat.Id)" aria-current="@(on ? "page" : null)">
+                    <span class="@Diger.TramitesEstado.Application.Dashboards.Queries.Etiquetas.ClaseColor(cat.Color) ejec-cat-punto" aria-hidden="true"></span>@cat.Nombre
+                </a>
+            }
+        </nav>
+
+        <details class="ejec-sub @(subfiltro is null ? "" : "is-on")">
+            <summary class="ejec-sub-btn">
+                <svg class="ico" aria-hidden="true"><use href="#i-usuarios"></use></svg>
+                <span>@(subfiltro ?? "Unidad o responsable")</span>
+                <svg class="ico ejec-sub-flecha" aria-hidden="true"><use href="#i-chevron"></use></svg>
+            </summary>
+            <div class="ejec-sub-panel">
+                @if (subfiltro is not null)
+                {
+                    <a class="ejec-sub-todo" href="@Model.Enlace(c.CategoriaId)">Ver toda @(c.CategoriaNombre is null ? "la cartera" : $"la categoría {c.CategoriaNombre}")</a>
+                }
+                @if (d.Unidades.Count == 0 && d.Responsables.Count == 0)
+                {
+                    <p class="res-meta">No hay unidades ni responsables asignados en esta cartera.</p>
+                }
+                @if (d.Unidades.Count > 0)
+                {
+                    <div class="ejec-sub-grupo">
+                        <h4><svg class="ico" aria-hidden="true"><use href="#i-unidad"></use></svg>Unidad</h4>
+                        @foreach (var o in d.Unidades)
+                        {
+                            <a class="@(o.Id == d.UnidadAplicada ? "is-on" : "")" href="@Model.Enlace(c.CategoriaId, unidad: o.Id)">
+                                <span>@o.Nombre</span><strong>@o.Cantidad</strong>
+                            </a>
+                        }
+                    </div>
+                }
+                @if (d.Responsables.Count > 0)
+                {
+                    <div class="ejec-sub-grupo">
+                        <h4><svg class="ico" aria-hidden="true"><use href="#i-usuarios"></use></svg>Responsable</h4>
+                        @foreach (var o in d.Responsables)
+                        {
+                            <a class="@(o.Id == d.ResponsableAplicado?.ToString() ? "is-on" : "")" href="@Model.Enlace(c.CategoriaId, responsable: Guid.Parse(o.Id))">
+                                <span>@o.Nombre</span><strong>@o.Cantidad</strong>
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </details>
+
         @if (c.PuedeElegirArea)
         {
-            <div class="field">
-                <label for="f-area">Área</label>
+            <form method="get" class="ejec-area">
+                @if (c.CategoriaId is { } catId) { <input type="hidden" name="Categoria" value="@catId" /> }
+                <label for="f-area" class="ejec-barra-lbl">Área</label>
                 <select id="f-area" name="Area" onchange="this.form.submit()">
                     <option value="" selected="@(c.AreaId is null)">Todas las áreas</option>
                     @foreach (var a in c.Areas)
@@ -140,36 +205,13 @@
                         <option value="@a.Id" selected="@(c.AreaId == a.Id)">@a.Nombre@(a.Activo ? "" : " (inactiva)")</option>
                     }
                 </select>
-            </div>
+            </form>
         }
-        @if (c.Unidades.Count > 0)
-        {
-            <div class="field">
-                <label for="f-unidad">Unidad</label>
-                <select id="f-unidad" name="Unidad" onchange="this.form.submit()">
-                    <option value="">Todas</option>
-                    @foreach (var u in c.Unidades)
-                    {
-                        <option value="@u.Id" selected="@(c.UnidadId == u.Id)">@u.Nombre</option>
-                    }
-                </select>
-            </div>
-        }
-        <div class="field">
-            <label for="f-resp">Responsable</label>
-            <select id="f-resp" name="Responsable" onchange="this.form.submit()">
-                <option value="">Todos</option>
-                @foreach (var u in c.Usuarios)
-                {
-                    <option value="@u.Id" selected="@(c.ResponsableId == u.Id)">@u.Nombre</option>
-                }
-            </select>
-        </div>
         @if (Model.HayFiltro)
         {
-            <a class="btns" asp-page="/Tableros/Ejecutivo" style="margin-bottom:.1rem">Limpiar</a>
+            <a class="ejec-limpiar" asp-page="/Tableros/Ejecutivo">Limpiar</a>
         }
-    </form>
+    </div>
 
     <partial name="_KpiEjecutivo" model="d" />
 
@@ -178,7 +220,7 @@
         <div class="dash-card">
             <div class="empty-state">
                 <div class="empty-state-ico"><svg class="ico"><use href="#i-plan"></use></svg></div>
-                <div class="empty-state-t1">No hay proyectos en @(c.AreaNombre ?? inst.NombreCorto) con estos filtros</div>
+                <div class="empty-state-t1">No hay proyectos en @(c.AreaNombre ?? inst.NombreCorto)@(c.CategoriaNombre is null ? "" : $" · {c.CategoriaNombre}") con estos filtros</div>
                 <div class="empty-state-t2">
                     <a asp-page="/Tableros/Ejecutivo">Limpiar filtros</a>
                     @if (puedeCrear)
@@ -191,41 +233,43 @@
     {
         <div class="ejec-grid">
             <section class="dash-card ejec-lista-card" id="ejec-lista" aria-labelledby="ejec-lista-t">
-                <h3 id="ejec-lista-t">Avance y salud por proyecto</h3>
+                <div class="ejec-lista-cab">
+                    <h3 id="ejec-lista-t">Avance y salud por proyecto</h3>
+                    <ul class="ejec-leyenda-linea" aria-label="Color de la barra según el estado">
+                        @foreach (var s in d.PorEstado)
+                        {
+                            <li><span class="ejec-cuadro" style="background:@ColorEstado(s.Estado)"></span>@s.Etiqueta</li>
+                        }
+                        @if (d.SinEstructura > 0)
+                        {<li><span class="ejec-cuadro is-sin-dato"></span>Sin dato</li>}
+                    </ul>
+                </div>
                 @{
-                    // Fila de dos renglones (R2): nombre y salud arriba; meta, barra y cifras abajo.
+                    // Fila (R2): arriba el nombre y, donde iba el código, responsable y unidad; debajo
+                    // una barra corta, pintada por estado, con su porcentaje. La salud, a la derecha.
                     void Fila(ProyectoEjecutivoDto p, int n)
                     {
                         var icono = IconoSalud(p.Salud);
-                        // El último reporte va primero: la línea se recorta con «…» a la derecha
-                        // y lo que una jefatura necesita ver es hace cuánto no se reporta, no
-                        // el final del nombre del responsable.
-                        var sub = new List<string> { UltimoReporteTexto(p), p.Responsable ?? "sin responsable" };
-                        if (c.UnidadId is null) sub.Add(p.UnidadEtiqueta ?? "sin unidad");
-                        var meta = string.Join(" · ", sub);
+                        // Sin código, «último reporte» ni motivo de la salud: son el detalle del
+                        // proyecto y viven en su tablero; aquí hacían ruido en cada fila.
+                        var sub = new List<string> { p.Responsable ?? "sin responsable" };
+                        if (d.UnidadAplicada is null) sub.Add(p.UnidadEtiqueta ?? "sin unidad");
                         <li class="ejec-fila">
                             <a class="ejec-fila-link" href="/Tableros/Proyecto/@p.ProyectoId">
                                 <span class="ejec-num">@n</span>
                                 <span class="ejec-fila-cuerpo">
-                                    <span class="ejec-fila-cab">
-                                        <span class="ejec-nombre">@p.Nombre <span class="ejec-codigo">@p.Codigo</span></span>
-                                        <span class="ejec-salud">
-                                            <span class="salud-badge @ClaseSalud(p.Salud)">@if (icono is not null) {<svg class="ico" aria-hidden="true"><use href="#@icono"></use></svg>}@p.EtiquetaSalud</span>
-                                            @if (!string.IsNullOrEmpty(p.MotivoSalud))
-                                            {<span class="res-meta ejec-motivo">@p.MotivoSalud</span>}
-                                        </span>
-                                    </span>
-                                    <span class="ejec-fila-pie">
-                                        <span class="res-meta ejec-sub" title="@meta">@meta</span>
+                                    <span class="ejec-titulo"><span class="ejec-nombre">@p.Nombre</span> <span class="ejec-resp">@for (var i = 0; i < sub.Count; i++) { if (i > 0) {<text> · </text>} <span>@sub[i]</span> }</span></span>
+                                    <span class="ejec-avance">
                                         <span class="bar-track ejec-barra" role="img" aria-label="@AriaBarra(p)">
                                             @if (!p.SinEstructura)
-                                            {<span class="bar-fill @ClaseBarra(p.Salud)" style="width:@(Math.Clamp(p.AvancePct, 0, 100))%"></span>}
+                                            {<span class="bar-fill" style="width:@(Math.Clamp(p.AvancePct, 0, 100))%;background:@ColorEstado(p.Estado)"></span>}
                                             @if (p.AvanceEsperado is { } esp)
                                             {<span class="bar-mark" style="left:@(Math.Clamp(esp, 0, 100))%"></span>}
                                         </span>
-                                        <span class="ejec-cifras">@Cifras(p)</span>
+                                        <span class="ejec-cifras @(p.SinEstructura ? "is-sin-dato" : "")" title="@(p.SinEstructura ? "sin entregables cargados" : null)">@Cifras(p)</span>
                                     </span>
                                 </span>
+                                <span class="salud-badge @ClaseSalud(p.Salud)" title="@p.MotivoSalud">@if (icono is not null) {<svg class="ico" aria-hidden="true"><use href="#@icono"></use></svg>}@p.EtiquetaSalud</span>
                             </a>
                         </li>
                     }
@@ -266,6 +310,31 @@
                     @if (d.SinEstructura > 0)
                     {
                         <p class="res-meta ejec-nota">@d.SinEstructura sin entregables (sin dato de avance)</p>
+                    }
+                </section>
+
+                <section class="dash-card" id="ejec-bloqueos" aria-labelledby="ejec-bloq-t">
+                    <h3 id="ejec-bloq-t">Bloqueos por proyecto</h3>
+                    @if (conBloqueos.Count == 0)
+                    {
+                        <p class="res-meta">Ningún reporte de avance ha declarado un bloqueo.</p>
+                    }
+                    else
+                    {
+                        <ol class="ejec-bloqueos">
+                            @foreach (var p in conBloqueos.Take(MaxBloqueos))
+                            {
+                                <li>
+                                    <a class="ejec-bloq-nombre" href="/Tableros/Proyecto/@p.ProyectoId" title="@p.Nombre">@p.Nombre</a>
+                                    <span class="ejec-bloq-barra" aria-hidden="true"><span style="width:@((p.BloqueosRegistrados * 100.0 / maxBloqueos).ToString("0.#", inv))%"></span></span>
+                                    <strong class="ejec-bloq-n">@p.BloqueosRegistrados</strong>
+                                </li>
+                            }
+                        </ol>
+                        <p class="res-meta ejec-nota">
+                            @totalBloqueos @(totalBloqueos == 1 ? "bloqueo registrado" : "bloqueos registrados") en @conBloqueos.Count @(conBloqueos.Count == 1 ? "proyecto" : "proyectos")@if (conBloqueos.Count > MaxBloqueos) {<text>; se muestran los @MaxBloqueos con más</text>}.
+                            @(d.Total - conBloqueos.Count) sin bloqueos.
+                        </p>
                     }
                 </section>
 
@@ -333,7 +402,7 @@
                 <li><strong>No iniciado</strong> (gris): planificado. Si ya muestra avance, es un dato por corregir en la ficha.</li>
                 <li><strong>En plan</strong> (verde): todo lo demás.</li>
             </ol>
-            <p>La prioridad del proyecto no cambia su color. La marca vertical de cada barra es el avance esperado hoy.</p>
+            <p>La prioridad del proyecto no cambia su color. El color de cada barra es el estado del proyecto; la marca vertical, el avance esperado hoy.</p>
         </details>
         <p>Trabajo futuro: tendencia mensual del avance.</p>
     </footer>
@@ -352,8 +421,8 @@
         .ejec-lateral { order: -1; }
         .ejec-neutros > summary { display: none; }
         .ejec-lateral > .dash-card, .ejec-lista-card { margin-bottom: 12px; }
-        .ejec-fila, .ejec-decision { break-inside: avoid; }
-        .ejec .bar-fill, .ejec .bar-mark, .ejec .salud-badge, .ejec-dona, .ejec-cuadro,
+        .ejec-fila, .ejec-decision, .ejec-bloqueos li { break-inside: avoid; }
+        .ejec .bar-fill, .ejec .bar-mark, .ejec .salud-badge, .ejec-dona, .ejec-cuadro, .ejec-bloq-barra > span,
         .ejec .kpi-cell.is-crit, .ejec-chip {
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
@@ -373,6 +442,13 @@
     window.addEventListener('afterprint', function () {
       grupos.forEach(function (g, i) { g.open = !!antes[i]; });
     });
+
+    // Menú «Unidad o responsable»: se cierra al hacer clic fuera o con Escape.
+    var sub = document.querySelector('details.ejec-sub');
+    if (sub) {
+      document.addEventListener('click', function (e) { if (sub.open && !sub.contains(e.target)) sub.open = false; });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && sub.open) { sub.open = false; sub.querySelector('summary').focus(); } });
+    }
   })();
 </script>
 }

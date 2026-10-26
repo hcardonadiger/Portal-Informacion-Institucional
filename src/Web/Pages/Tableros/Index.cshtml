@@ -9,13 +9,14 @@
     var d = Model.Data;
     var ej = Model.Ejecutivo;
     var J = (object o) => Html.Raw(JsonSerializer.Serialize(o));
-    string Tono(int valor, string tonoActivo) => valor == 0 ? "is-zero" : tonoActivo;
     var hayTickets = d.TicketsPorMes.Any(x => x.Cantidad > 0) || d.TicketsResueltosPorMes.Any(x => x.Cantidad > 0);
     var puedeDigitalizacion = await Acceso.PuedeClaveAsync("Expedientes.Ver");
 }
 
 @* Esta página es el destino del login, así que solo lleva lo que vale para
-   cualquier unidad: tickets, acuerdos de reunión, cumplimiento y capacitación.
+   cualquier unidad. La franja «Atención hoy» (tickets críticos, acuerdos vencidos,
+   cumplimiento, capacitados, resueltos) se quitó el 2026-10-22: repetía lo que ya dicen
+   los tableros de Tickets y de Reuniones, a un clic desde «Todos los tableros».
    El avance de digitalización de trámites salió de acá — era un resumen de un
    solo dominio presentado como si fuera el del portal — y vive en sus propios
    tableros (/Tableros/Digitalizacion y /Tableros/Tramites), bajo la clave de
@@ -25,7 +26,7 @@
     <div class="hist-header">
         <div>
             <h2>Tableros</h2>
-            <p>Resumen ejecutivo, lo que pide atención hoy y todos los tableros del portal</p>
+            <p>Resumen ejecutivo y todos los tableros del portal</p>
         </div>
     </div>
 
@@ -56,77 +57,6 @@
             </div>
         </section>
     }
-
-    @* ── B. Atención hoy: indicadores comunes a todas las unidades ──── *@
-    <section class="ini-banda" aria-labelledby="ini-hoy-t">
-    <div class="ini-banda-cab">
-        <h3 id="ini-hoy-t">Atención hoy <span class="help-tip tip-down" data-tip="Tickets de soporte, acuerdos de reunión, cumplimiento y personas capacitadas. Los valores en rojo requieren atención inmediata.">?</span></h3>
-    </div>
-    <div class="kpi-strip" style="--kpi-cols:5">
-        <a class="kpi-cell @Tono(d.TicketsCriticos, "is-crit")" asp-page="/Tableros/Tickets">
-            <div class="kpi-cell-top">
-                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-alerta"></use></svg></span>
-                <span class="kpi-cell-lbl">Tickets críticos</span>
-                <span class="kpi-cell-arw"><svg class="ico"><use href="#i-chevron"></use></svg></span>
-            </div>
-            <div class="kpi-cell-num">@d.TicketsCriticos</div>
-            <div class="kpi-cell-sub">
-                @if (d.TicketsCriticos == 0)
-                {<svg class="ico"><use href="#i-check"></use></svg><text>Sin pendientes</text>}
-                else
-                {<text>Requiere atención</text>}
-            </div>
-        </a>
-
-        <a class="kpi-cell @Tono(d.AcuerdosVencidos, "is-crit")" asp-page="/Reuniones/Compromisos" asp-route-soloVencidos="true">
-            <div class="kpi-cell-top">
-                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-vencido"></use></svg></span>
-                <span class="kpi-cell-lbl">Acuerdos vencidos</span>
-                <span class="kpi-cell-arw"><svg class="ico"><use href="#i-chevron"></use></svg></span>
-            </div>
-            <div class="kpi-cell-num">@d.AcuerdosVencidos</div>
-            <div class="kpi-cell-sub">
-                @if (d.AcuerdosVencidos == 0)
-                {<svg class="ico"><use href="#i-check"></use></svg><text>Sin pendientes</text>}
-                else
-                {<text>Requiere atención</text>}
-            </div>
-        </a>
-
-        <div class="kpi-cell @Tono(d.TasaCumplimiento, "is-ok")">
-            <div class="kpi-cell-top">
-                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-check"></use></svg></span>
-                <span class="kpi-cell-lbl">Cumplimiento</span>
-            </div>
-            <div class="kpi-cell-num">@d.TasaCumplimiento<span style="font-size:16px">%</span></div>
-            <div class="kpi-cell-sub">@d.AcuerdosCumplidos de @d.AcuerdosTotal acuerdos</div>
-        </div>
-
-        <div class="kpi-cell @Tono(d.PersonasCapacitadas, "")">
-            <div class="kpi-cell-top">
-                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-reunion"></use></svg></span>
-                <span class="kpi-cell-lbl">Personas capacitadas</span>
-            </div>
-            <div class="kpi-cell-num">@d.PersonasCapacitadas</div>
-            <div class="kpi-cell-sub">@d.AsistenciasCapacitacion asistencias registradas</div>
-        </div>
-
-        <div class="kpi-cell @Tono(d.TicketsResueltos, "is-ok")">
-            <div class="kpi-cell-top">
-                <span class="kpi-cell-ico"><svg class="ico"><use href="#i-ticket"></use></svg></span>
-                <span class="kpi-cell-lbl">Tickets resueltos</span>
-            </div>
-            <div class="kpi-cell-num">@d.TicketsResueltos</div>
-            <div class="kpi-cell-sub">
-                @if (d.TicketsDiasPromedioResolucion > 0)
-                {<text>~@d.TicketsDiasPromedioResolucion días promedio</text>}
-                else
-                {<text>de @d.TicketsTotal en total</text>}
-            </div>
-        </div>
-    </div>
-
-    </section>
 
     @* ── C. Todos los tableros ────────────────────────────────────────
        Sale del catálogo (Web/Common/TablerosCatalogo.cs): una tarjeta por tablero que el usuario

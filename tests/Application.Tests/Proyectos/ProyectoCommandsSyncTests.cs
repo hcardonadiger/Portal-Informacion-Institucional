@@ -3,6 +3,7 @@ using Diger.TramitesEstado.Application.Proyectos.Commands;
 using Diger.TramitesEstado.Application.Proyectos.Common;
 using Diger.TramitesEstado.Application.Proyectos.Services;
 using Diger.TramitesEstado.Application.Tests.Expedientes;
+using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Domain.Enums;
 using Diger.TramitesEstado.Infrastructure.Persistence;
 using FluentAssertions;
@@ -95,7 +96,11 @@ public class ProyectoCommandsSyncTests : IDisposable
     {
         var id = await CrearAsync(area: "GOBDIGITAL");
 
-        await ActualizarAsync(id, area: "GOBDIGITAL", objetivo: "Objetivo nuevo", responsable: "Otra persona");
+        var otra = Usuario.Crear("Otra persona", $"{Guid.NewGuid():N}@diger.gob.hn", "hash");
+        _ctx.Usuarios.Add(otra);
+        await _ctx.SaveChangesAsync();
+
+        await ActualizarAsync(id, area: "GOBDIGITAL", objetivo: "Objetivo nuevo", responsableId: otra.Id);
 
         var proyecto = await _ctx.Proyectos.FindAsync(id);
         proyecto!.Objetivo.Should().Be("Objetivo nuevo");
@@ -114,10 +119,10 @@ public class ProyectoCommandsSyncTests : IDisposable
     }
 
     private Task ActualizarAsync(
-        int id, string? area = null, string? unidad = null, string? objetivo = null, string? responsable = null) =>
+        int id, string? area = null, string? unidad = null, string? objetivo = null, Guid? responsableId = null) =>
         new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(
             new ActualizarProyectoCommand(
-                id, "Proyecto de prueba", objetivo, area, unidad, null, responsable,
+                id, "Proyecto de prueba", objetivo, area, unidad, responsableId,
                 _prio.Media, null, null, null, null, []),
             CancellationToken.None);
 

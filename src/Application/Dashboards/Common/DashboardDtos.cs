@@ -293,7 +293,16 @@ public sealed record ProyectoSemaforoDto(
 
     /// <summary>Nombre corto de la unidad («DAI», «DITRA»), para el subtítulo de las filas del
     /// ejecutivo. Null si el catálogo no lo tiene o la unidad no resuelve.</summary>
-    string?           UnidadNombreCorto = null)
+    string?           UnidadNombreCorto = null,
+
+    /// <summary>Reportes de avance de este proyecto que declararon un bloqueo, en toda su
+    /// historia —no solo el vigente—. Es lo que dice quién se traba seguido; el vigente lo dice
+    /// <see cref="BloqueoDto"/>.</summary>
+    int               BloqueosRegistrados = 0,
+
+    /// <summary>Id del responsable, para que el ejecutivo recorte por persona en memoria sobre la
+    /// misma pasada a la base con que arma las opciones del filtro.</summary>
+    Guid?             ResponsableId = null)
 {
     /// <summary>Entregables cerrados sobre el total: lo que está efectivamente entregado, frente
     /// a <see cref="AvancePct"/>, que promedia el trabajo reportado en las actividades.</summary>

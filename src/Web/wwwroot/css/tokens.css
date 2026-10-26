@@ -60,6 +60,18 @@
     --diger-danger-text: #b91c1c;
     --diger-danger-bg: #fee2e2;
 
+    /* Color — estado de proyecto en los tableros ejecutivos. Medidos sobre la
+       referencia «Proyectos de Gobierno Digital» (2026-10-22). Son rellenos de
+       barra, dona y acento de tarjeta, nunca texto: el valor siempre va escrito
+       al lado. El azul queda a 7° del azul medio del manual (214° contra 207°);
+       el marino de la referencia (#0b1f3a, a 9°) no entra: se usa --diger-blue. */
+    --diger-estado-fin:       #16a34a;
+    --diger-estado-proceso:   #1a73e8;
+    --diger-estado-pendiente: #f59e0b;
+    --diger-estado-sin-dato:  #9ca3af;
+    --diger-estado-riel:      #e2e8f0;
+    --diger-estado-turquesa:  #12b5a6;
+
     /* Color — nuevos, nombrados a partir de literales repetidos 4+ veces
        (agregado 2026-08-07, ver DESIGN.md "Deuda conocida"). NO son alias
        de los tokens de arriba: son hex realmente distintos (a32d2d vs
@@ -420,6 +432,14 @@
     --diger-danger-text:    #f2868a;
     --diger-danger-strong:  #f2868a;
     --diger-danger-bg:      rgba(242, 134, 138, .12);
+
+    /* Estado de proyecto: mismos tonos, levantados para leerse sobre el suelo. */
+    --diger-estado-fin:       #4ade80;
+    --diger-estado-proceso:   #5b9cf0;
+    --diger-estado-pendiente: #fbbf24;
+    --diger-estado-sin-dato:  #6b7a90;
+    --diger-estado-riel:      rgba(122, 203, 221, .12);
+    --diger-estado-turquesa:  #2dd4bf;
 
     /* Sombras: sobre oscuro una sombra negra no se ve. Lo que separa un
        plano de otro aquí es el borde, no la profundidad. */

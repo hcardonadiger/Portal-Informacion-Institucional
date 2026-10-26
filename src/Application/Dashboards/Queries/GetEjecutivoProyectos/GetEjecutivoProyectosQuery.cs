@@ -15,10 +15,15 @@ namespace Diger.TramitesEstado.Application.Dashboards.Queries.GetEjecutivoProyec
 /// </summary>
 /// <param name="AreaId">Cartera. <c>null</c> = todas las áreas visibles. Filtro de presentación:
 /// recorta lo que dejó pasar el alcance, nunca lo amplía.</param>
-/// <param name="UnidadId">Recorte por unidad, en memoria sobre el semáforo.</param>
-/// <param name="ResponsableId">Recorte por responsable del proyecto.</param>
+/// <param name="UnidadId">Recorte por unidad dentro de la categoría, en memoria sobre el
+/// semáforo. Se ignora si ninguna fila de la categoría es de esa unidad.</param>
+/// <param name="ResponsableId">Recorte por responsable dentro de la categoría, con la misma
+/// regla.</param>
+/// <param name="CategoriaId">Categoría del catálogo (las «Q»). <c>null</c> = todas. Va a la
+/// consulta del portafolio: define la cartera sobre la que se ofrecen unidad y responsable.</param>
 public sealed record GetEjecutivoProyectosQuery(
-    string? AreaId, string? UnidadId = null, Guid? ResponsableId = null) : IRequest<EjecutivoProyectosDto>;
+    string? AreaId, string? UnidadId = null, Guid? ResponsableId = null, int? CategoriaId = null)
+    : IRequest<EjecutivoProyectosDto>;
 
 public sealed record EjecutivoProyectosDto(
     int Total, int Finalizados, int EnProceso, int NoIniciados, int Suspendidos, int Cancelados, int SinEstructura,
@@ -42,11 +47,24 @@ public sealed record EjecutivoProyectosDto(
 
     /// <summary>Ya ordenadas: bloqueos, cierres vencidos, arrancadas bloqueadas; dentro de cada
     /// tipo, lo más antiguo primero.</summary>
-    IReadOnlyList<DecisionDto> Decisiones)
+    IReadOnlyList<DecisionDto> Decisiones,
+
+    /// <summary>Unidades y responsables con proyectos en la cartera (área y categoría), antes de
+    /// recortar por ellos: las opciones del filtro no se achican con la elección propia.</summary>
+    IReadOnlyList<OpcionFiltroDto> Unidades,
+    IReadOnlyList<OpcionFiltroDto> Responsables,
+
+    /// <summary>El recorte que de verdad se aplicó: null si no se pidió o si no pertenecía a la
+    /// cartera.</summary>
+    string? UnidadAplicada,
+    Guid?   ResponsableAplicado)
 {
     /// <summary>En ejecución con salud roja: el subtítulo del KPI «En proceso».</summary>
     public int EnProcesoEnRojo => Proyectos.Count(p => p.Estado == EstadoProyecto.EnEjecucion && p.Salud == SaludProyecto.Rojo);
 }
+
+/// <summary>Una opción del filtro «Unidad o responsable», con cuántos proyectos tiene.</summary>
+public sealed record OpcionFiltroDto(string Id, string Nombre, int Cantidad);
 
 /// <summary>Un segmento de la dona «Estado de los proyectos».</summary>
 public sealed record SegmentoEstadoDto(EstadoProyecto Estado, string Etiqueta, int Cantidad);
@@ -60,7 +78,11 @@ public sealed record ProyectoEjecutivoDto(
     string? UnidadId = null,
 
     /// <summary>Nombre corto de la unidad («DAI»), el que va en el subtítulo de la fila.</summary>
-    string? UnidadNombreCorto = null)
+    string? UnidadNombreCorto = null,
+
+    /// <summary>Reportes que declararon un bloqueo, en toda la historia del proyecto: la gráfica
+    /// «Bloqueos por proyecto».</summary>
+    int BloqueosRegistrados = 0)
 {
     /// <summary>Lo que se escribe como unidad en la fila: corto, si no el nombre, si no el Id.</summary>
     public string? UnidadEtiqueta => UnidadNombreCorto ?? UnidadNombre ?? UnidadId;
@@ -81,15 +103,36 @@ public sealed class GetEjecutivoProyectosQueryHandler(ISender sender)
         var hoy   = DateOnly.FromDateTime(ahora);
 
         var d = await sender.Send(new GetProyectosDashboardQuery(
-            ResponsableId: q.ResponsableId,
-            AreaIds: string.IsNullOrEmpty(q.AreaId) ? null : [q.AreaId]), ct);
+            AreaIds: string.IsNullOrEmpty(q.AreaId) ? null : [q.AreaId],
+            CategoriaId: q.CategoriaId), ct);
 
-        // El recorte por unidad se hace aquí y no en la consulta del portafolio: allá no existe ese
-        // filtro y el semáforo ya trae la unidad de cada proyecto. Bloqueos y bloqueadas se recortan
-        // por el mismo conjunto de ids, para que las decisiones cuadren con la lista.
-        var semaforo = string.IsNullOrEmpty(q.UnidadId)
-            ? d.Semaforo
-            : d.Semaforo.Where(p => p.UnidadId == q.UnidadId).ToList();
+        // Unidad y responsable se recortan aquí, en memoria, y no en la consulta del portafolio:
+        // así la misma pasada da las opciones del filtro (lo que hay en la cartera) y el recorte.
+        // Un recorte que no está entre las opciones se descarta en vez de dar un tablero vacío.
+        // Bloqueos y bloqueadas se recortan por el mismo conjunto de ids, para que las decisiones
+        // cuadren con la lista.
+        var unidades = d.Semaforo
+            .Where(p => p.UnidadId != null)
+            .GroupBy(p => p.UnidadId!)
+            .Select(g => new OpcionFiltroDto(g.Key,
+                g.First().UnidadNombre ?? g.First().UnidadNombreCorto ?? g.Key, g.Count()))
+            .OrderBy(o => o.Nombre)
+            .ToList();
+        var responsables = d.Semaforo
+            .Where(p => p.ResponsableId != null)
+            .GroupBy(p => p.ResponsableId!.Value)
+            .Select(g => new OpcionFiltroDto(g.Key.ToString(), g.First().Responsable ?? "sin nombre", g.Count()))
+            .OrderBy(o => o.Nombre)
+            .ToList();
+
+        var unidadAplicada = unidades.Any(o => o.Id == q.UnidadId) ? q.UnidadId : null;
+        var responsableAplicado = q.ResponsableId is { } r && responsables.Any(o => o.Id == r.ToString())
+            ? q.ResponsableId : null;
+
+        var semaforo = d.Semaforo
+            .Where(p => unidadAplicada is null || p.UnidadId == unidadAplicada)
+            .Where(p => responsableAplicado is null || p.ResponsableId == responsableAplicado)
+            .ToList();
 
         var ids        = semaforo.Select(p => p.ProyectoId).ToHashSet();
         var bloqueos   = d.Bloqueos.Where(b => ids.Contains(b.ProyectoId)).ToList();
@@ -108,7 +151,8 @@ public sealed class GetEjecutivoProyectosQueryHandler(ISender sender)
                     p.ProyectoId, p.Codigo, p.Nombre, p.Responsable, p.UnidadNombre,
                     p.Estado, p.AvancePct, p.AvanceEsperado, desviacion, p.TotalEntregables == 0,
                     p.UltimoAvance, p.DiasSinReporte, conBloqueo.Contains(p.ProyectoId),
-                    salud.Nivel, salud.Etiqueta, salud.Motivo, p.UnidadId, p.UnidadNombreCorto);
+                    salud.Nivel, salud.Etiqueta, salud.Motivo, p.UnidadId, p.UnidadNombreCorto,
+                    p.BloqueosRegistrados);
             })
             .OrderBy(p => ProyectoEstadoReglas.Orden(p.Salud))
             .ThenBy(p => p.Salud switch
@@ -208,7 +252,11 @@ public sealed class GetEjecutivoProyectosQueryHandler(ISender sender)
             CalculadoEnUtc: ahora,
             PorEstado:  porEstado,
             Proyectos:  proyectos,
-            Decisiones: decisiones);
+            Decisiones: decisiones,
+            Unidades:     unidades,
+            Responsables: responsables,
+            UnidadAplicada:      unidadAplicada,
+            ResponsableAplicado: responsableAplicado);
     }
 
     /// <summary>Orden dentro del rojo: lo que exige una decisión primero. Un cierre vencido es un

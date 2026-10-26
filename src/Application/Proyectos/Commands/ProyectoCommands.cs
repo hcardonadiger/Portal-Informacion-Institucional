@@ -205,6 +205,11 @@ public sealed class CrearProyectoCommandHandler(
 }
 
 // ── Actualizar ficha + estructura ─────────────────────────────────────────
+/// <summary>
+/// Guardado de la ficha. Como en el alta, el nombre del responsable no viaja en el comando: lo
+/// resuelve el handler, así el editor y la herramienta MCP <c>actualizar_ficha_proyecto</c> —que
+/// solo manda el Id— guardan el mismo snapshot.
+/// </summary>
 public sealed record ActualizarProyectoCommand(
     int               Id,
     string            Nombre,
@@ -212,7 +217,6 @@ public sealed record ActualizarProyectoCommand(
     string?           AreaId,
     string?           UnidadId,
     Guid?             ResponsableId,
-    string?           Responsable,
     int               PrioridadId,
     int?              CategoriaId,
     AccionProyecto?   Accion,
@@ -254,8 +258,10 @@ public sealed class ActualizarProyectoCommandHandler(
             .Where(c => c.Id == proyecto.CategoriaId || c.Id == categoriaNueva)
             .ToDictionaryAsync(c => c.Id, c => c.Nombre, ct);
 
+        var responsable = await ResponsableAsync(proyecto, cmd.ResponsableId, ct);
+
         // El diff se arma ANTES de tocar nada: después las propiedades ya son las nuevas.
-        var cambiosFicha = DiffFicha(proyecto, cmd, nombre, prioridadNueva, nombresPrioridad,
+        var cambiosFicha = DiffFicha(proyecto, cmd, nombre, responsable, prioridadNueva, nombresPrioridad,
                                      categoriaNueva, nombresCategoria);
 
         // Se compara ANTES de mutar: una vez asignadas, proyecto.AreaId/UnidadId ya son los valores
@@ -277,7 +283,7 @@ public sealed class ActualizarProyectoCommandHandler(
         proyecto.AreaId          = string.IsNullOrWhiteSpace(cmd.AreaId) ? null : cmd.AreaId.Trim();
         proyecto.UnidadId        = string.IsNullOrWhiteSpace(cmd.UnidadId) ? null : cmd.UnidadId.Trim();
         proyecto.ResponsableId   = cmd.ResponsableId;
-        proyecto.Responsable     = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
+        proyecto.Responsable     = responsable;
         proyecto.PrioridadId     = prioridadNueva;
         proyecto.CategoriaId     = categoriaNueva;
         proyecto.Accion          = cmd.Accion;
@@ -353,9 +359,36 @@ public sealed class ActualizarProyectoCommandHandler(
         return Unit.Value;
     }
 
+    /// <summary>
+    /// El nombre que se guarda junto al responsable que trae el formulario.
+    ///
+    /// <para>Se valida solo lo que <b>cambia</b>, como con los responsables de entregables: un
+    /// responsable nuevo tiene que ser un usuario activo, pero el que ya estaba se conserva aunque
+    /// se haya dado de baja después —exigírselo convertiría cada guardado en un error que el usuario
+    /// no provocó—. Si el que ya estaba no tiene nombre guardado (los creados por MCP antes de que
+    /// el alta lo resolviera), se toma del padrón.</para>
+    /// </summary>
+    private async Task<string?> ResponsableAsync(Proyecto proyecto, Guid? elegido, CancellationToken ct)
+    {
+        if (elegido is null) return null;
+
+        var sigue = elegido == proyecto.ResponsableId;
+        if (sigue && !string.IsNullOrWhiteSpace(proyecto.Responsable)) return proyecto.Responsable;
+
+        var usuario = await ctx.Usuarios.AsNoTracking()
+            .Where(u => u.Id == elegido)
+            .Select(u => new { u.Nombre, u.Activo })
+            .FirstOrDefaultAsync(ct);
+
+        if (sigue || usuario is { Activo: true }) return usuario?.Nombre;
+
+        throw new DomainException(
+            "El responsable elegido no es un usuario activo del portal. Elija a otra persona.");
+    }
+
     /// <summary>Resume qué campos de la ficha cambian, comparando contra el estado actual.</summary>
     private static string DiffFicha(
-        Proyecto p, ActualizarProyectoCommand cmd, string nombreLimpio,
+        Proyecto p, ActualizarProyectoCommand cmd, string nombreLimpio, string? responsable,
         int prioridadNueva, IReadOnlyDictionary<int, string> nombresPrioridad,
         int? categoriaNueva, IReadOnlyDictionary<int, string> nombresCategoria)
     {
@@ -368,7 +401,6 @@ public sealed class ActualizarProyectoCommandHandler(
 
         var partes = new List<string>();
         var objetivo = string.IsNullOrWhiteSpace(cmd.Objetivo) ? null : cmd.Objetivo.Trim();
-        var responsable = string.IsNullOrWhiteSpace(cmd.Responsable) ? null : cmd.Responsable.Trim();
 
         if (p.Nombre != nombreLimpio)          partes.Add($"nombre: «{p.Nombre}» → «{nombreLimpio}»");
         if (p.Objetivo != objetivo)            partes.Add("objetivo actualizado");

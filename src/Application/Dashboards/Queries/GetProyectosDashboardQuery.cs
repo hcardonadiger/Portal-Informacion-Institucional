@@ -135,6 +135,16 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         int? Esperado(int id) => ventanas.TryGetValue(id, out var v) ? ProyectoEstadoReglas.AvanceEsperado(v, hoy) : null;
         int ConFechas(int id) => ventanas.TryGetValue(id, out var v) ? v.Count : 0;
 
+        // Todos los reportes que declararon un bloqueo. De aquí salen el conteo histórico de cada
+        // proyecto y, más abajo, los bloqueos vigentes.
+        var ultimos = await ctx.ProyectoAvances.AsNoTracking()
+            .Where(a => a.Bloqueo != null)
+            .Select(a => new { a.ProyectoId, a.Fecha, a.Autor, a.Bloqueo })
+            .ToListAsync(ct);
+        var bloqueosRegistrados = ultimos
+            .GroupBy(a => a.ProyectoId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
         var semaforo = filas
             .Select(p => new ProyectoSemaforoDto(
                 p.Id, p.Codigo, p.Nombre, p.Responsable, p.Estado,
@@ -151,7 +161,9 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
                 p.Categoria, p.CategoriaColor,
                 Esperado(p.Id), ConFechas(p.Id),
                 p.FechaInicioPlan, p.FechaFinReal,
-                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var uc) ? uc.Corto : null))
+                p.UnidadId != null && nombresUnidad.TryGetValue(p.UnidadId, out var uc) ? uc.Corto : null,
+                bloqueosRegistrados.GetValueOrDefault(p.Id),
+                p.ResponsableId))
             // Primero lo que exige atención: atrasado, luego desatendido, luego prioridad.
             .OrderByDescending(p => p.Atrasado)
             .ThenByDescending(p => p.SinReportar)
@@ -279,11 +291,6 @@ public sealed class GetProyectosDashboardQueryHandler(IApplicationDbContext ctx)
         // ── Bloqueos vigentes ────────────────────────────────────────────────
         // Solo el último reporte de cada proyecto: un bloqueo que ya no se menciona en el
         // reporte siguiente se da por superado, sin obligar a nadie a cerrarlo a mano.
-        var ultimos = await ctx.ProyectoAvances.AsNoTracking()
-            .Where(a => a.Bloqueo != null)
-            .Select(a => new { a.ProyectoId, a.Fecha, a.Autor, a.Bloqueo })
-            .ToListAsync(ct);
-
         var fechaUltimo = filas.ToDictionary(f => f.Id, f => f.UltimoAvance);
         var bloqueos = ultimos
             .Where(a => idsFiltrados.Contains(a.ProyectoId)

@@ -52,7 +52,7 @@ public sealed class IndexModel(
         {
             var contexto = await EjecutivoProyectosContexto.ResolverAsync(
                 sender, currentUser, config, institucion.Value,
-                areaPedida: null, areaExplicita: false, unidadPedida: null, responsablePedido: null,
+                areaPedida: null, areaExplicita: false, categoriaPedida: null,
                 conOpciones: false, ct);
 
             Ejecutivo       = await sender.Send(new GetEjecutivoProyectosQuery(contexto.AreaId), ct);

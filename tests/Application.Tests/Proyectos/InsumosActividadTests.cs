@@ -102,7 +102,7 @@ public sealed class InsumosActividadTests : IDisposable
 
     private Task GuardarAsync(int id, IReadOnlyList<EntregableInput> entregables, AppDbContext? ctx = null) =>
         new ActualizarProyectoCommandHandler(ctx ?? _ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, $"Proyecto", null, null, null, null, null,
+            id, $"Proyecto", null, null, null, null,
             PrioridadesDePrueba.Media(_ctx), null, null, null, null, entregables), CancellationToken.None);
 
     private async Task AsignarAsync(params int[] insumos)

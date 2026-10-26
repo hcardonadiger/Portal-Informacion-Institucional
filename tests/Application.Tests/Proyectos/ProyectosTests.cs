@@ -33,12 +33,25 @@ public class ProyectosTests : IDisposable
         _prio = PrioridadesDePrueba.Sembrar(_ctx);
         _usuario.Nombre.Returns("Henry Cardona");
 
+        // Los responsables de proyecto tienen que existir en el padrón: el comando les toma el
+        // nombre de ahí y rechaza a quien no está.
+        SembrarUsuario(Duenio, "Dueño del proyecto");
+        SembrarUsuario(Ajeno,  "Otra persona");
+
         // Sin esto, el doble devuelve una tarea con null para CalcularDerechoVigenteAsync y todo
         // lo que consulta el derecho vigente —la guarda de quitar, la consulta de la ficha—
         // revienta con NRE. Un diccionario vacío es lo que corresponde acá: en esta suite nadie
         // tiene capacidad de jefe de área ni de PMO, así que todas las filas son removibles.
         _sync.CalcularDerechoVigenteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, RolInteresado>());
+    }
+
+    private void SembrarUsuario(Guid id, string nombre)
+    {
+        var u = Usuario.Crear(nombre, $"{id:N}@diger.gob.hn", "hash");
+        typeof(Usuario).GetProperty("Id")!.SetValue(u, id);
+        _ctx.Usuarios.Add(u);
+        _ctx.SaveChanges();
     }
 
     private Task<int> CrearAsync(string nombre = "Proyecto de prueba") =>
@@ -593,7 +606,7 @@ public class ProyectosTests : IDisposable
         var idB = await CrearAsync("B");
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            idB, "B", null, null, null, null, null, _prio.Media, null, null, null, null,
+            idB, "B", null, null, null, null, _prio.Media, null, null, null, null,
             [new EntregableInput(0, "Entregable de B", null, null, EstadoEntregable.Pendiente, null, null, [])]),
             CancellationToken.None);
 
@@ -626,7 +639,7 @@ public class ProyectosTests : IDisposable
         var id = await CrearAsync();
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Proyecto de prueba", null, null, null, null, null, _prio.Alta, null, null, null, null,
+            id, "Proyecto de prueba", null, null, null, null, _prio.Alta, null, null, null, null,
             [
                 new EntregableInput(0, "Segundo", null, null, EstadoEntregable.Pendiente,  null, null, []),
                 new EntregableInput(0, "   ",     null, null, EstadoEntregable.Pendiente,  null, null, []), // fila vacía del editor
@@ -866,7 +879,7 @@ public class ProyectosTests : IDisposable
         ICurrentUserService usuario, bool sinResponsable = false) =>
         new ActualizarProyectoCommandHandler(_ctx, usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null,
-            sinResponsable ? null : Duenio, sinResponsable ? null : "Dueño del proyecto",
+            sinResponsable ? null : Duenio,
             _prio.Media, null, null, null, null, entregables), CancellationToken.None);
 
     /// <summary>La estructura vigente con los entregables permutados según las posiciones pedidas,
@@ -942,7 +955,7 @@ public class ProyectosTests : IDisposable
         var id = await CrearAsync();
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
             id, "Proyecto de prueba", null, null, null,
-            responsable, responsable is null ? null : "Dueño del proyecto",
+            responsable,
             _prio.Media, null, null, null, null,
             [
                 new EntregableInput(0, "Primero", null, null, EstadoEntregable.Pendiente, null, null, []),
@@ -1310,7 +1323,7 @@ public class ProyectosTests : IDisposable
             .ToList();
 
         await new ActualizarProyectoCommandHandler(_ctx, _usuario, _sync).Handle(new ActualizarProyectoCommand(
-            id, "Proyecto con otro nombre", null, null, null, Duenio, "Dueño del proyecto",
+            id, "Proyecto con otro nombre", null, null, null, Duenio,
             _prio.Alta, null, null, null, null, entrada), CancellationToken.None);
 
         var auditoria = await _ctx.BitacorasProyecto.OrderBy(b => b.Id).ToListAsync();

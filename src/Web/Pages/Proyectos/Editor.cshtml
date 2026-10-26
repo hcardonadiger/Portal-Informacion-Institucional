@@ -910,6 +910,13 @@
                         <label for="f-resp">Responsable del proyecto</label>
                         <select id="f-resp" name="ResponsableId" disabled="@(!Model.PuedeEditar)">
                             <option value="">— Sin asignar —</option>
+                            @* El padrón trae solo usuarios activos. Un responsable dado de baja no
+                               estaría en la lista, y guardar la ficha lo cambiaría por «Sin asignar»
+                               sin que nadie lo pidiera: se ofrece él también, para que quede como está. *@
+                            @if (Model.Proyecto.ResponsableId is { } actual && !Model.Usuarios.Any(u => u.Id == actual))
+                            {
+                                <option value="@actual" selected="@(Model.ResponsableId == actual)">@(Model.Proyecto.Responsable ?? "Responsable actual") (inactivo)</option>
+                            }
                             @foreach (var u in Model.Usuarios)
                             {
                                 <option value="@u.Id" selected="@(Model.ResponsableId == u.Id)">@u.Nombre</option>
