@@ -502,6 +502,7 @@
                             var puedePermisos = await Acceso.PuedeAsync("Accesos.Permisos");
                             var puedeModulos  = await Acceso.PuedeAsync("Accesos.Modulos");
                             var puedeNotificaciones = await Acceso.PuedeClaveAsync("PanelControl.Notificaciones.Ver");
+                            var puedeProyectosPanel = await Acceso.PuedeClaveAsync("PanelControl.Proyectos.Ver");
                             // puedeMigrar salió con el enlace de "Migrar desde Supabase"
                             // (2026-10-19). Era lo único que lo usaba, y dejarlo habría
                             // mantenido vivo un permiso que ya no abre nada desde el menú.
@@ -511,7 +512,7 @@
                            Panel de control aparecería en Development para quien tenga esa
                            clave aunque no pueda ver ninguna de sus entradas, y se abriría
                            vacío. *@
-                        @if (puedeNotificaciones || puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeModulos)
+                        @if (puedeNotificaciones || puedeProyectosPanel || puedeCatalogos || puedeUsuarios || puedeRoles || puedePermisos || puedeModulos)
                         {
                             var grpPanel = EsRuta("/PanelControl") || EsRuta("/Catalogos") || EsRuta("/Instituciones")
                                         || EsRuta("/Areas") || EsRuta("/Unidades")
@@ -523,7 +524,11 @@
                                 <div class="nav-group-menu" id="nav-sec-panel-control">
                                     @if (puedeNotificaciones)
                                     {
-                                        <a class="nav-item @(EsRuta("/PanelControl") ? "on" : "")" asp-page="/PanelControl/Notificaciones"><svg class="ico"><use href="#i-accesos"></use></svg>Notificaciones</a>
+                                        <a class="nav-item @(EsRuta("/PanelControl") && !EsRuta("/PanelControl/Proyectos") ? "on" : "")" asp-page="/PanelControl/Notificaciones"><svg class="ico"><use href="#i-accesos"></use></svg>Notificaciones</a>
+                                    }
+                                    @if (puedeProyectosPanel)
+                                    {
+                                        <a class="nav-item @(EsRuta("/PanelControl/Proyectos") ? "on" : "")" asp-page="/PanelControl/Proyectos"><svg class="ico"><use href="#i-plan"></use></svg>Proyectos</a>
                                     }
                                     @if (puedeCatalogos)
                                     {

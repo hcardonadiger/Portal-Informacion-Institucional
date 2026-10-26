@@ -1,0 +1,107 @@
+@page
+@using Diger.TramitesEstado.Application.PanelControl.Proyectos
+@model Diger.TramitesEstado.Web.Pages.PanelControl.ProyectosModel
+@inject AccesoModulosService Acceso
+@{
+    ViewData["Title"] = "Proyectos · Panel de control";
+    var puedeArchivar = HttpContext.CanMutate()
+                     && await Acceso.PuedeClaveAsync($"{ProyectosModel.Clave}.{AccionModulo.Eliminar}");
+    string EstadoTxt(EstadoProyecto e) => e == EstadoProyecto.EnEjecucion ? "En ejecución" : e.ToString();
+    string Hora(DateTime? utc) => utc is { } u ? u.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "—";
+}
+
+<div class="container" style="max-width:1100px">
+    <div class="hist-header">
+        <div>
+            <h2>Proyectos</h2>
+            <p>Archivar saca un proyecto del portafolio sin borrar nada: su estructura, bitácora, documentos y auditoría se conservan, y se puede restaurar desde aquí.</p>
+        </div>
+    </div>
+    <p class="hint"><a asp-page="/PanelControl/Index">← Panel de control</a></p>
+
+    @if (!string.IsNullOrEmpty(Model.Aviso)) { <div class="alert alert-ok">@Model.Aviso</div> }
+    @if (!string.IsNullOrEmpty(Model.Error)) { <div class="alert alert-error">@Model.Error</div> }
+
+    <div class="ficha-tabs" role="tablist" style="margin-bottom:1rem">
+        @* Enlaces y no botones: cada pestaña es otra consulta al servidor, no un panel escondido. *@
+        <a role="tab" style="text-decoration:none" aria-selected="@(!Model.Archivados ? "true" : "false")"
+           asp-page="/PanelControl/Proyectos" asp-route-q="@Model.Q">Activos</a>
+        <a role="tab" style="text-decoration:none" aria-selected="@(Model.Archivados ? "true" : "false")"
+           asp-page="/PanelControl/Proyectos" asp-route-archivados="true" asp-route-q="@Model.Q">Archivados</a>
+    </div>
+
+    <form method="get" class="seg-filters">
+        @if (Model.Archivados) { <input type="hidden" name="Archivados" value="true" /> }
+        <div class="field">
+            <label for="pc-q">Buscar</label>
+            <input id="pc-q" type="search" name="Q" value="@Model.Q" placeholder="Código o nombre" />
+        </div>
+        <button class="btns" type="submit">Filtrar</button>
+    </form>
+
+    @if (!Model.Proyectos.Any())
+    {
+        <p class="res-meta">@(Model.Archivados ? "No hay proyectos archivados." : "No hay proyectos que coincidan.")</p>
+    }
+    else
+    {
+        <div style="overflow-x:auto">
+            <table class="seg-table" id="tabla-proyectos-admin">
+                <thead>
+                    <tr>
+                        <th style="width:130px">Código</th>
+                        <th>Proyecto</th>
+                        <th style="width:110px">Estado</th>
+                        <th style="width:110px">Institución</th>
+                        @if (Model.Archivados) { <th style="width:190px">Archivado</th> }
+                        @if (puedeArchivar) { <th style="width:200px"></th> }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var pr in Model.Proyectos)
+                    {
+                        <tr>
+                            <td>@pr.Codigo</td>
+                            <td style="white-space:normal">
+                                @if (pr.Archivado) { <strong>@pr.Nombre</strong> }
+                                else { <a asp-page="/Proyectos/Editor" asp-route-id="@pr.Id"><strong>@pr.Nombre</strong></a> }
+                                @if (pr.Responsable is { Length: > 0 }) { <span class="res-meta" style="display:block">@pr.Responsable</span> }
+                            </td>
+                            <td>@EstadoTxt(pr.Estado)</td>
+                            <td>@(pr.InstitucionId ?? "—")</td>
+                            @if (Model.Archivados)
+                            {
+                                <td><span class="res-meta">@Hora(pr.ModificadoEl)@(pr.ModificadoPor is { Length: > 0 } ? $" · {pr.ModificadoPor}" : "")</span></td>
+                            }
+                            @if (puedeArchivar)
+                            {
+                                <td style="text-align:right">
+                                    @if (pr.Archivado)
+                                    {
+                                        <form method="post" asp-page-handler="Restaurar" asp-route-id="@pr.Id" asp-route-q="@Model.Q">
+                                            <button type="submit" class="btns"
+                                                    data-confirm="¿Restaurar «@pr.Nombre» al portafolio?">Restaurar</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <details>
+                                            <summary class="btns" style="display:inline-block;cursor:pointer;color:var(--diger-danger-text);border-color:var(--diger-danger-text)">Archivar</summary>
+                                            <form method="post" asp-page-handler="Archivar" asp-route-id="@pr.Id" asp-route-q="@Model.Q"
+                                                  style="margin-top:.5rem;display:flex;flex-direction:column;gap:6px;align-items:stretch;text-align:left">
+                                                <label for="m-@pr.Id" class="res-meta">Motivo (opcional)</label>
+                                                <input id="m-@pr.Id" name="Motivo" maxlength="500" />
+                                                <button type="submit" class="btnp"
+                                                        data-confirm="¿Archivar «@pr.Nombre»? Deja de aparecer en el portafolio; nada se borra.">Confirmar archivo</button>
+                                            </form>
+                                        </details>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

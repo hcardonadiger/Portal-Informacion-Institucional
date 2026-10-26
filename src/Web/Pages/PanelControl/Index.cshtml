@@ -1,5 +1,6 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.PanelControl.IndexModel
+@inject AccesoModulosService Acceso
 @{
     ViewData["Title"] = "Panel de control";
 }
@@ -18,5 +19,13 @@
             <span class="cat-titulo">Notificaciones</span>
             <span class="cat-desc">Cada cuánto se revisa, qué módulos avisan por campana y por correo, y desde qué cuenta sale el correo.</span>
         </a>
+        @if (await Acceso.PuedeClaveAsync($"{ProyectosModel.Clave}.{AccionModulo.Ver}"))
+        {
+            <a class="cat-card" asp-page="/PanelControl/Proyectos">
+                <span class="cat-ico"><svg class="ico" aria-hidden="true"><use href="#i-plan"></use></svg></span>
+                <span class="cat-titulo">Proyectos</span>
+                <span class="cat-desc">Archivar proyectos para sacarlos del portafolio sin borrar nada, y restaurar los archivados.</span>
+            </a>
+        }
     </div>
 </div>
