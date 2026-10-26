@@ -8,6 +8,30 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-26 — Un solo script para poner al día la base de producción
+Pedido de Jamil. Rama `Jamil-GestionGD`, adelantada a `origin/ike_opt` (`b062f5d`), que ya tenía
+todo lo de esta rama y además 62 commits de Henry.
+- **Producción tiene 74 migraciones** (respaldo `GestionGD_021026`, copia del 2026-10-26); la
+  última es la del 2026-09-23. El código trae **18 más**. Todas estaban cubiertas por scripts que
+  ya existían, del 2026-10-02 al 2026-10-23.
+- **Nuevo:** `database/2026-10-26_poner_al_dia.sql` reúne esos nueve scripts en orden, sin
+  reescribirlos. Los SIGER 11 a 15, que se encadenaban con `:r`, van en línea, así que no hace falta
+  modo SQLCMD. Tiene una guarda inicial y una comprobación final con 55 controles.
+- **Probado** sobre una copia local de ese respaldo:
+  - primera corrida sin errores y 55 de 55 «presente»;
+  - el esquema queda igual al de una base creada con las migraciones de `ike_opt`, salvo las tres
+    columnas sin migración que producción ya tenía;
+  - la segunda corrida no cambió ningún dato en las 101 tablas;
+  - EF no ve migraciones pendientes ni cambios de modelo sin migración.
+- **Paquete de despliegue:** `docs/despliegue/2026-10-26_produccion_poner_al_dia.md`.
+  `database/DESPLIEGUE.md` ahora empieza por el script único.
+- **Bases locales nuevas:** `GestionGD_Prod_20261026` (copia de producción ya actualizada, con
+  datos reales; solo para pruebas locales) y `GestionGD_Ref_ikeopt` (vacía, creada con las
+  migraciones).
+- **Revisión visual del portal** (encargo del Analista): en pausa desde el 2026-10-23 por pedido
+  de Jamil. La primera pasada está medida; faltan la segunda pasada, los datos ficticios para las
+  listas largas y la revisión de `diger-ui`.
+
 ### 2026-10-22 — Panel de control → Notificaciones (entrega 1)
 Rama `panel-notificaciones`. Especificación:
 `docs/superpowers/specs/2026-10-22-panel-control-notificaciones-design.md`. Plan:
@@ -266,6 +290,8 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 ---
 
 ## Hecho
+- Script único para poner al día la base de producción con `ike_opt` (2026-10-26, rama
+  `Jamil-GestionGD`).
 - Panel de control → Notificaciones, entrega 1 (2026-10-22, rama `panel-notificaciones`).
 - Tanda 1, entrega 1 (seguridad): S1 a S5 (2026-10-22, rama `Jamil-GestionGD`).
 - Tanda 1, entrega 2 (notificaciones y correo) (2026-10-22, rama `Jamil-GestionGD`).
@@ -275,7 +301,9 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - Tablero ejecutivo de proyectos (2026-10-19, rama `DashBoards`). Sin cambios de base de datos.
 
 ## En curso
-- (nada abierto)
+- Revisión visual de todo el portal (investigación del Analista). En pausa: primera pasada medida
+  (2 temas × 3 anchos); faltan la segunda pasada (ventanas, validación, listas vacías, impresión
+  del acta), los datos ficticios para listas largas y la revisión de `diger-ui`.
 
 ## Pendiente
 0. **Tanda 1**, según el plan del Analista. Las entregas 1 (seguridad) y 2 (notificaciones y
@@ -297,6 +325,15 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - (nada registrado)
 
 ## Decisiones
+- 2026-10-26 — Ingeniería (script único de producción):
+  - Unir sin reescribir: cada parte es el script ya probado, con su encabezado. Dos versiones del
+    mismo cambio terminarían por divergir.
+  - No hay script SQL de reversión. La parte SIGER borra conciliaciones huérfanas y reescribe
+    modalidades, y eso no se puede deshacer con un script. La reversión es restaurar el respaldo
+    tomado antes de correrlo.
+  - El script sale de `2026-10-02_poner_al_dia.sql` en adelante y exige que la base haya llegado
+    al 2026-09-24. No incluye `2026-10-12_recuperar_legados.sql`, que es solo para bases locales
+    creadas sin los expedientes legados.
 - 2026-10-22 — Ingeniería (menú lateral y encabezado):
   - Cerrar una sección borra la sección recordada: quien la contrae no la quiere abierta en la
     próxima página sin sección.
@@ -442,10 +479,10 @@ corrección. Sin migraciones, sin cambios de interfaz, sin tocar `src/Web/Mcp` n
 - **Correos ya escritos en el Visor de eventos del servidor** (de antes de S1): pueden tener datos
   de personas y enlaces de recuperación ya vencidos. Necesita: decisión de Jamil sobre vaciar ese
   registro o restringir quién lo lee.
-- **`database/DESPLIEGUE.md` llega solo hasta `2026-10-02_poner_al_dia.sql`** (visto el
-  2026-10-22). No nombra los scripts del 10-12, 10-14 y 10-19 ni el de insumos del 10-22. Cada uno
-  dice en su encabezado después de cuál va, pero la guía de despliegue no los recorre. Tampoco
-  `00_diagnostico.sql` los detecta.
+- **`00_diagnostico.sql` no conoce nada posterior al 2026-10-02** (visto el 2026-10-22, vuelto a
+  ver el 2026-10-26). Sobre producción recomienda el script del 2026-10-02 y no nombra los demás.
+  `database/DESPLIEGUE.md` ya manda al script único del 2026-10-26, pero el diagnóstico sigue sin
+  detectar esos cambios. Necesita: ampliar el diagnóstico (tarea aparte).
 - **Publicar `Jamil-GestionGD` lleva todo `ike_opt` a producción**, no solo la tanda 1. Su
   despliegue va primero (`database/DESPLIEGUE.md`).
 - **Contraseña del correo saliente versionada** desde el commit `b709609` (2026-08-07). Está en
