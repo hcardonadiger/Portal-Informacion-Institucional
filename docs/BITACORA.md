@@ -8,6 +8,19 @@ de conexión, ni datos personales de ciudadanos).
 
 ## Registro por fecha
 
+### 2026-10-26 — Una sesión de QA o desarrollo ya no abre producción
+- **Vulnerabilidad:** con la sesión de un entorno se entraba a otro, incluso como administrador, sin
+  conocer la contraseña de ese entorno. Los tres sitios comparten servidor, nombre de aplicación y
+  carpeta de llaves de Data Protection, así que cualquiera descifraba la cookie de otro. Como se
+  llamaban igual y el navegador no separa cookies por puerto, la cookie viajaba sola.
+- **Corrección:** `Web/Security/AislamientoDeSesion`. El nombre de la cookie y el propósito con que
+  se cifra el ticket llevan un identificador del entorno, derivado del servidor y la base de la
+  cadena de conexión. No requiere configuración. Las llaves no cambian: la contraseña SMTP y la
+  caché de Outlook guardadas en la base se siguen leyendo.
+- **Efecto al desplegar:** quien tenga la sesión abierta debe volver a iniciar sesión una vez.
+- **Pruebas:** `AislamientoDeSesionTests` (5). Antes de la corrección, la cookie de administrador
+  emitida por QA se abría en producción.
+
 ### 2026-10-26 — Un solo script para poner al día la base de producción
 Pedido de Jamil. Rama `Jamil-GestionGD`, adelantada a `origin/ike_opt` (`b062f5d`), que ya tenía
 todo lo de esta rama y además 62 commits de Henry.

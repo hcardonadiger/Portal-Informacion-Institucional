@@ -153,6 +153,12 @@ builder.Services
     .AddScheme<AuthenticationSchemeOptions, Diger.TramitesEstado.Web.Security.McpTokenAuthenticationHandler>(
         Diger.TramitesEstado.Web.Security.McpTokenAuthenticationHandler.Scheme, null);
 
+// Una sesión de QA o de desarrollo no puede valer en producción: comparten servidor y llaves de
+// Data Protection. Ver AislamientoDeSesion.
+Diger.TramitesEstado.Web.Security.AislamientoDeSesion.AislarCookieDeSesion(builder.Services,
+    Diger.TramitesEstado.Web.Security.AislamientoDeSesion.EntornoDe(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
 // Todas las policies estáticas que vivían aquí (PuedeAdministrarCatalogo,
 // PuedeGestionarContactos, PuedeGestionarTickets, PuedeAdministrarUsuarios,
 // PuedeGestionarExpedientes, PuedeGestionarReuniones) ya se migraron a permisos dinámicos
