@@ -189,7 +189,7 @@ builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.PermisosSeed
 // Y DESPUES de la siembra: traslada a HondurasSimple.* lo que los roles tenian bajo Siger.*
 // cuando el trabajo del portal ciudadano vivia dentro del inventario. Tambien de una sola vez.
 builder.Services.AddHostedService<Diger.TramitesEstado.Web.Security.MigracionHondurasSimpleService>();
-// La plantilla «Proyecto genérico» que el alta propone por omisión. Una sola vez por base.
+// La plantilla «Proyecto genérico» que el alta ofrece (no la aplica sola). Una sola vez por base.
 builder.Services.AddHostedService<Diger.TramitesEstado.Web.Common.PlantillaGenericaSeedService>();
 
 

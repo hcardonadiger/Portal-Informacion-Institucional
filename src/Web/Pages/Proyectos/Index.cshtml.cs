@@ -42,19 +42,13 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso, ICur
     [BindProperty] public DateOnly?         NuevaFechaInicio{ get; set; }
     [BindProperty] public DateOnly?         NuevaFechaFin   { get; set; }
 
-    /// <summary>Plantilla cuya estructura se copia al proyecto nuevo. <c>0</c> es «sin plantilla»
-    /// elegido a propósito; null es que el formulario todavía no se envió, y entonces se propone
-    /// la genérica.</summary>
+    /// <summary>Plantilla cuya estructura se copia al proyecto nuevo. Vacía por omisión: un
+    /// proyecto que se arma de cero no puede llevarse una estructura que nadie pidió, porque
+    /// después habría que borrarla entregable por entregable.</summary>
     [BindProperty] public int?              NuevaPlantillaId{ get; set; }
 
     /// <summary>Plantillas activas que alcanzan a quien crea, para el alta rápida.</summary>
     public IReadOnlyList<PlantillaProyectoResumenDto> Plantillas { get; private set; } = [];
-
-    /// <summary>La plantilla que llega marcada en el modal: la elegida si se vuelve de un rechazo y,
-    /// si no, «Proyecto genérico», para que el proyecto no arranque con la estructura en blanco.</summary>
-    public int PlantillaPropuesta => NuevaPlantillaId
-        ?? Plantillas.FirstOrDefault(p => p.Nombre == PlantillaGenericaSeedService.Nombre)?.Id
-        ?? 0;
 
     public IReadOnlyList<ProyectoListItemDto>  Proyectos { get; private set; } = [];
     public IReadOnlyList<UsuarioAsignableDto>  Usuarios  { get; private set; } = [];

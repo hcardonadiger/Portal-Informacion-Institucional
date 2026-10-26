@@ -5,8 +5,9 @@ namespace Diger.TramitesEstado.Web.Common;
 
 /// <summary>
 /// Siembra la plantilla «Proyecto genérico»: el ciclo de vida de cualquier proyecto —inicio,
-/// planificación, ejecución, seguimiento y cierre— para que un proyecto nuevo no arranque con la
-/// estructura en blanco aunque nadie haya armado todavía una plantilla propia.
+/// planificación, ejecución, seguimiento y cierre— para que quien no quiera arrancar con la
+/// estructura en blanco tenga de dónde partir aunque nadie haya armado todavía una plantilla propia.
+/// El alta no la aplica sola: hay que elegirla.
 ///
 /// <para>No es una migración por lo mismo que <c>PermisosSeedService</c>: en producción el esquema
 /// llega por los scripts de despliegue, no por <c>MigrateAsync</c>, y un dato sembrado en una

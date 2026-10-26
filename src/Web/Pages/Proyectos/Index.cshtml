@@ -357,15 +357,15 @@
                     </div>
                 </div>
                 @* La estructura puede nacer de una plantilla: se copia al crear y después es del
-                   proyecto. Llega propuesta la genérica; «Sin plantilla» es 0 y no vacío para que
-                   elegirlo a propósito no se confunda con no haber tocado el campo. *@
+                   proyecto. Llega en «Sin plantilla»: aplicar una es una decisión, no un valor por
+                   omisión que alguien que arma de cero tendría que acordarse de quitar. *@
                 <div class="field">
                     <label for="n-plantilla">Estructura inicial</label>
                     <select id="n-plantilla" name="NuevaPlantillaId">
-                        <option value="0" selected="@(Model.PlantillaPropuesta == 0)">— Sin plantilla: la estructura se arma a mano —</option>
+                        <option value="">— Sin plantilla: la estructura se arma a mano —</option>
                         @foreach (var pl in Model.Plantillas)
                         {
-                            <option value="@pl.Id" selected="@(Model.PlantillaPropuesta == pl.Id)">@pl.Nombre (@pl.NumEntregables entregables · @pl.NumActividades actividades)</option>
+                            <option value="@pl.Id" selected="@(Model.NuevaPlantillaId == pl.Id)">@pl.Nombre (@pl.NumEntregables entregables · @pl.NumActividades actividades)</option>
                         }
                     </select>
                 </div>

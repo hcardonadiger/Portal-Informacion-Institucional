@@ -75,10 +75,13 @@ public sealed class PlantillaGenericaAltaTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task El_modal_de_alta_propone_la_generica()
+    public async Task El_modal_de_alta_ofrece_la_generica_pero_llega_sin_plantilla()
     {
         var html = await _portal.ClienteComo("JefeArea").GetStringAsync("/Proyectos");
-        html.Should().MatchRegex($"""<option value="{_plantilla}" selected="selected">Proyecto gen""");
+        html.Should().MatchRegex($"""<option value="{_plantilla}">Proyecto gen""",
+            "la genérica se ofrece, pero sin marcar");
+        Regex.Match(html, """<select id="n-plantilla"[\s\S]*?</select>""").Value
+            .Should().NotContain("selected", "un proyecto que se arma de cero no puede llevarse una estructura que nadie pidió");
     }
 
     [Fact]
@@ -96,7 +99,8 @@ public sealed class PlantillaGenericaAltaTests : IAsyncLifetime
     [Fact]
     public async Task Sin_plantilla_el_proyecto_nace_sin_estructura()
     {
-        var id = await CrearAsync("Proyecto sin plantilla", "0");
+        // Lo que manda el formulario sin tocar el campo: el valor vacío de «Sin plantilla».
+        var id = await CrearAsync("Proyecto sin plantilla", "");
 
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
