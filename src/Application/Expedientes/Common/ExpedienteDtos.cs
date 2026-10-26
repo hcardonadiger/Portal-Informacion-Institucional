@@ -81,6 +81,10 @@ public sealed record ChecklistInput(int Orden, string Grupo, string Requisito, I
 
 public sealed record SeccionInput(int Seccion, EstadoSeccion Estado, string? Nota);
 
+/// <summary>Un integrante del equipo institucional. <c>Prioridad</c> es el orden para atender
+/// consultas (1 = contacto principal); el mapeador la renumera 1..n al guardar.</summary>
+public sealed record MiembroEquipoInput(int Prioridad, string Nombre, string? Cargo, string? Correo, string? Telefono);
+
 // ── DTO raíz de entrada ───────────────────────────────────────────────────
 public sealed record ExpedienteInputDto(
     string   InstitucionId,
@@ -142,4 +146,9 @@ public sealed record ExpedienteInputDto(
     // Hijos del trámite agregados en la Fase 8. Anulables para no romper las llamadas que ya
     // existen; el mapeador los trata como lista vacía.
     List<EntregableInput>? Entregables = null,
-    List<LugarInput>?      Lugares     = null);
+    List<LugarInput>?      Lugares     = null,
+
+    // Equipo institucional. Null = quien llama no lo conoce (importadores, llamadas viejas):
+    // el equipo guardado se conserva y Contacto* se toma tal cual viene. Una lista, aunque
+    // esté vacía, reemplaza al equipo, y Contacto* pasa a ser el integrante de prioridad 1.
+    List<MiembroEquipoInput>? Equipo = null);

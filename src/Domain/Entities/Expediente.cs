@@ -30,6 +30,8 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     public int       NumTramitesProd { get; set; }
 
     // ── Contacto institucional ────────────────────────────────────
+    // Copia del integrante de prioridad 1 del equipo institucional (ver Equipo). Se conserva
+    // como columna porque el resumen, los recordatorios y los informes leen de aquí.
     public string? ContactoNombre { get; set; }
     public string? ContactoCargo  { get; set; }
     public string? ContactoCorreo { get; set; }
@@ -97,6 +99,7 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     private readonly List<ExpedienteSeccionEstado> _secciones  = [];
     private readonly List<ExpedienteTramiteEntregable> _entregables = [];
     private readonly List<ExpedienteTramiteLugar>      _lugares     = [];
+    private readonly List<MiembroEquipoExpediente>     _equipo      = [];
 
     public IReadOnlyCollection<ExpedienteTramite>       Tramites    => _tramites.AsReadOnly();
     public IReadOnlyCollection<TramiteRequisito>        Requisitos  => _requisitos.AsReadOnly();
@@ -114,6 +117,9 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     // lo que guarda una ficha SIGER.
     public IReadOnlyCollection<ExpedienteTramiteEntregable> Entregables => _entregables.AsReadOnly();
     public IReadOnlyCollection<ExpedienteTramiteLugar>      Lugares     => _lugares.AsReadOnly();
+
+    /// <summary>Equipo institucional, en orden de prioridad para atender consultas.</summary>
+    public IReadOnlyCollection<MiembroEquipoExpediente>     Equipo      => _equipo.AsReadOnly();
 
     private Expediente() { }
 
@@ -158,7 +164,7 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
         _tramites.Clear(); _requisitos.Clear(); _flujos.Clear();
         _legal.Clear(); _docsSolicitados.Clear(); _docsInternos.Clear();
         _perfiles.Clear(); _condiciones.Clear(); _checklistInfra.Clear(); _secciones.Clear();
-        _entregables.Clear(); _lugares.Clear();
+        _entregables.Clear(); _lugares.Clear(); _equipo.Clear();
     }
 
     public void Agregar(ExpedienteTramite t)       => _tramites.Add(t);
@@ -173,4 +179,5 @@ public sealed class Expediente : BaseAuditableEntity, ISoftDeletable
     public void Agregar(ExpedienteSeccionEstado s) => _secciones.Add(s);
     public void Agregar(ExpedienteTramiteEntregable e) => _entregables.Add(e);
     public void Agregar(ExpedienteTramiteLugar l)      => _lugares.Add(l);
+    public void Agregar(MiembroEquipoExpediente m)     => _equipo.Add(m);
 }

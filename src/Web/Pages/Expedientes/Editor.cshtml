@@ -288,20 +288,23 @@
         <span class="hint" style="display:block;margin-top:6px">Agregue tantos trámites como necesite; use ✕ para quitar uno.</span>
       </div>
 
+      @* Antes era un solo «Contacto institucional principal». Ahora es el equipo, y la prioridad 1
+         sigue siendo ese contacto: el servidor la copia a Expedientes.Contacto*, que es lo que
+         leen el resumen, los recordatorios y los informes. *@
       <div class="card">
-        <div class="ct">Contacto institucional principal</div>
-        <div class="f" style="margin-bottom:.9rem">
-          <label>Buscar enlace en registros de asistencia</label>
+        <div class="ct">Equipo institucional <span class="help-tip" data-tip="Personas de la institución que atienden las consultas del expediente. La prioridad 1 es el contacto principal; si no está disponible, se recurre a la 2, y así sucesivamente.">?</span></div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:.9rem">El orden es la prioridad para atender consultas: la persona 1 es el contacto principal y, si no está disponible, se recurre a la siguiente. Use ↑ ↓ para reordenar.</p>
+        <div class="f" style="margin-bottom:.9rem;max-width:420px">
+          <label>Agregar desde el directorio de contactos</label>
           <select id="contacto-buscar" onchange="seleccionarContacto(this)">
             <option value="">— Cargando contactos… —</option>
           </select>
         </div>
-        <div class="g3">
-          <div class="f"><label>Nombre</label><input type="text" id="contacto_nombre" placeholder="Nombre completo"></div>
-          <div class="f"><label>Cargo</label><input type="text" id="contacto_cargo" placeholder="Cargo / función"></div>
-          <div class="f"><label>Correo</label><input type="email" id="contacto_correo" placeholder="correo@@inst.gob.hn"></div>
-        </div>
-        <div class="f" style="max-width:50%"><label>Teléfono de contacto</label><input type="text" id="contacto_tel" placeholder="+504 0000-0000"></div>
+        <table class="dtbl" id="tbl-equipo">
+          <thead><tr><th style="width:70px">Prioridad</th><th>Nombre</th><th>Cargo / función</th><th>Correo</th><th>Teléfono</th><th style="width:104px"></th></tr></thead>
+          <tbody id="equipo-tbody"></tbody>
+        </table>
+        <button type="button" class="btn-add" onclick="agregarMiembroEquipo()">+ Agregar integrante</button>
       </div>
 
       <div class="nav">

@@ -798,15 +798,83 @@ async function filtrarContactosPorInstitucion(){
   }
 }
 
+// El contacto elegido del directorio entra al equipo: ocupa la primera fila vacía o, si no
+// hay, se agrega al final (la prioridad la decide quien llena, con ↑ ↓).
 function seleccionarContacto(sel){
   var idx = parseInt(sel.value);
   if(isNaN(idx) || idx < 0) return;
   var c = _contactosAsis[idx];
+  sel.value = '';
   if(!c) return;
-  sv('contacto_nombre', c.nombre||'');
-  sv('contacto_cargo', c.cargo||'');
-  sv('contacto_correo', c.correo||'');
-  sv('contacto_tel', c.telefono||'');
+  var m = { nombre:c.nombre||'', cargo:c.cargo||'', correo:c.correo||'', telefono:c.telefono||'' };
+  var tbody = document.getElementById('equipo-tbody');
+  var vacia = tbody && Array.from(tbody.rows).filter(function(tr){
+    return !tr.querySelector('input[data-campo="nombre"]').value.trim();
+  })[0];
+  if(vacia) llenarFilaEquipo(vacia, m);
+  else agregarMiembroEquipo(m);
+}
+
+// ── EQUIPO INSTITUCIONAL ─────────────────────────────────────
+// El orden de las filas es la prioridad: la fila 1 es el contacto principal.
+var EQUIPO_CAMPOS = ['nombre','cargo','correo','telefono'];
+
+function agregarMiembroEquipo(m){
+  var tbody = document.getElementById('equipo-tbody');
+  if(!tbody) return;
+  var tr = tbody.insertRow();
+  tr.innerHTML = '<td class="nc"></td>'
+    +'<td><input type="text" data-campo="nombre" placeholder="Nombre completo"></td>'
+    +'<td><input type="text" data-campo="cargo" placeholder="Cargo / función"></td>'
+    +'<td><input type="email" data-campo="correo" placeholder="correo@inst.gob.hn"></td>'
+    +'<td><input type="text" data-campo="telefono" placeholder="+504 0000-0000"></td>'
+    +'<td style="text-align:center;padding:6px;white-space:nowrap">'
+    +'<button type="button" class="btn-rm" title="Subir prioridad" aria-label="Subir prioridad" onclick="moverMiembroEquipo(this,-1)">↑</button> '
+    +'<button type="button" class="btn-rm" title="Bajar prioridad" aria-label="Bajar prioridad" onclick="moverMiembroEquipo(this,1)">↓</button> '
+    +'<button type="button" class="btn-rm" title="Quitar" aria-label="Quitar integrante" onclick="quitarMiembroEquipo(this)">✕</button></td>';
+  if(m) llenarFilaEquipo(tr, m);
+  renumerarEquipo();
+}
+
+function llenarFilaEquipo(tr, m){
+  EQUIPO_CAMPOS.forEach(function(c){ tr.querySelector('input[data-campo="'+c+'"]').value = m[c]||''; });
+}
+
+function moverMiembroEquipo(btn, dir){
+  var tr = btn.closest('tr'), tbody = tr.parentNode;
+  if(dir < 0 && tr.previousElementSibling) tbody.insertBefore(tr, tr.previousElementSibling);
+  if(dir > 0 && tr.nextElementSibling) tbody.insertBefore(tr.nextElementSibling, tr);
+  renumerarEquipo();
+}
+
+function quitarMiembroEquipo(btn){ btn.closest('tr').remove(); renumerarEquipo(); }
+
+function renumerarEquipo(){
+  var tbody = document.getElementById('equipo-tbody');
+  if(!tbody) return;
+  Array.from(tbody.rows).forEach(function(tr, i){ tr.cells[0].textContent = i + 1; });
+}
+
+function recolectarEquipo(){
+  var tbody = document.getElementById('equipo-tbody');
+  if(!tbody) return [];
+  return Array.from(tbody.rows).map(function(tr){
+    var m = {};
+    EQUIPO_CAMPOS.forEach(function(c){ m[c] = tr.querySelector('input[data-campo="'+c+'"]').value.trim(); });
+    return m;
+  }).filter(function(m){ return m.nombre || m.cargo || m.correo || m.telefono; });
+}
+
+// Un borrador guardado antes del equipo trae solo contacto_*: ese contacto es la prioridad 1.
+function cargarEquipo(d){
+  var tbody = document.getElementById('equipo-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  var equipo = d.equipo || [];
+  if(!equipo.length && d.contacto_nombre)
+    equipo = [{ nombre:d.contacto_nombre, cargo:d.contacto_cargo, correo:d.contacto_correo, telefono:d.contacto_tel }];
+  equipo.forEach(function(m){ agregarMiembroEquipo(m); });
+  if(!equipo.length) agregarMiembroEquipo();
 }
 
 // ── TRAMITES DINÁMICOS ──────────────────────────────────────
@@ -1927,8 +1995,10 @@ function recolectar(){
   var d = {};
 
   // Apertura
-  ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
-   'contacto_correo','contacto_tel'].forEach(function(id){ d[id]=gv(id); });
+  ['inst','fecha_apertura','analista','codigo_exp','dir_sede'].forEach(function(id){ d[id]=gv(id); });
+  // El contacto principal ya no se escribe aparte: es la prioridad 1 del equipo, y el
+  // servidor lo copia a Contacto* al guardar.
+  d.equipo = recolectarEquipo();
   // Con "Otra" el <select> vale '__otra__': lo que se guarda es el texto escrito.
   d.inst = institucionActual();
   var regChk = document.getElementById('inst_otra_registrar');
@@ -2104,6 +2174,7 @@ function borradorKey(){
 function borradorTieneContenido(d){
   if(!d) return false;
   if(d.inst || d.codigo_exp || d.dir_sede || d.contacto_nombre || d.obs_expediente) return true;
+  if((d.equipo||[]).length) return true;
   if((d.tramite_nombres||[]).some(function(n){ return n && String(n).trim(); })) return true;
   if((d.tramites||[]).some(function(t){ return t && Object.keys(t).some(function(k){ return t[k] && String(t[k]).trim(); }); })) return true;
   if((d.legal||[]).length || (d.docs||[]).length) return true;
@@ -2205,8 +2276,8 @@ function cargarTodos(){ return expCache; }
 
 function poblarFormulario(d){
   // Apertura
-  ['inst','fecha_apertura','analista','codigo_exp','dir_sede','contacto_nombre','contacto_cargo',
-   'contacto_correo','contacto_tel'].forEach(function(id){ sv(id, d[id]||''); });
+  ['inst','fecha_apertura','analista','codigo_exp','dir_sede'].forEach(function(id){ sv(id, d[id]||''); });
+  cargarEquipo(d);
   // Si la institución guardada no está en el catálogo, el <select> queda vacío tras
   // el sv() anterior. Ese es el caso de "Otra" (y el de expedientes importados con
   // el nombre en texto libre): se reabre en modo manual para no perder el dato.
@@ -2434,6 +2505,7 @@ function nuevoExp(){
   document.querySelectorAll('.tg .tp').forEach(function(p){ p.classList.remove('on','on-v'); });
   document.querySelectorAll('[id^="est-"]').forEach(function(el){ el.value='Pendiente'; });
   ['legal-tbody','docs-tbody','docint-tbody'].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; });
+  cargarEquipo({});        // una fila vacía: la prioridad 1 queda lista para llenar
   sv('num_tramites_prod','0');
   toggleInstOtra();        // el bucle de arriba vació los valores, no el estado visual
   actualizarNumTramites(); // construye la fila del trámite 1 dinámicamente

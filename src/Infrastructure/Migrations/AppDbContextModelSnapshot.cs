@@ -3028,6 +3028,44 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.ToTable("LevantamientoEquipo", (string)null);
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.MiembroEquipoExpediente", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Cargo")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Correo")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ExpedienteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("Prioridad")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Telefono")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpedienteId");
+
+                    b.ToTable("ExpedienteEquipo", (string)null);
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.ModuloAmbito", b =>
                 {
                     b.Property<int>("Id")
@@ -6026,6 +6064,15 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.MiembroEquipoExpediente", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
+                        .WithMany("Equipo")
+                        .HasForeignKey("ExpedienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.NotaSeguimientoExpediente", b =>
                 {
                     b.HasOne("Diger.TramitesEstado.Domain.Entities.Expediente", null)
@@ -6458,6 +6505,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Navigation("DocsSolicitados");
 
                     b.Navigation("Entregables");
+
+                    b.Navigation("Equipo");
 
                     b.Navigation("Flujos");
 

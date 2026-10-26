@@ -16,11 +16,14 @@ public static class ExpedienteMapper
         e.DirSede         = d.DirSede?.Trim();
         e.NumTramitesProd = d.NumTramitesProd;
 
-        // Contacto
-        e.ContactoNombre = d.ContactoNombre?.Trim();
-        e.ContactoCargo  = d.ContactoCargo?.Trim();
-        e.ContactoCorreo = d.ContactoCorreo?.Trim();
-        e.ContactoTel    = d.ContactoTel?.Trim();
+        // Contacto. Con equipo, el contacto es su prioridad 1; sin equipo (quien llama no lo
+        // envía) se toma del DTO como siempre.
+        var equipo = NormalizarEquipo(d.Equipo);
+        var principal = equipo?.FirstOrDefault();
+        e.ContactoNombre = equipo is null ? d.ContactoNombre?.Trim() : principal?.Nombre;
+        e.ContactoCargo  = equipo is null ? d.ContactoCargo?.Trim()  : principal?.Cargo;
+        e.ContactoCorreo = equipo is null ? d.ContactoCorreo?.Trim() : principal?.Correo;
+        e.ContactoTel    = equipo is null ? d.ContactoTel?.Trim()    : principal?.Telefono;
 
         // Contraparte e Histórico
         e.ContraparteUsuarioId     = d.ContraparteUsuarioId;
@@ -67,7 +70,11 @@ public static class ExpedienteMapper
 
         // ── Colecciones (reemplazo en bloque) ─────────────────────
         var antesHijos = ConteosHijos(e);
+        var equipoPrevio = e.Equipo.ToList();
         e.LimpiarHijos();
+
+        foreach (var m in equipo ?? equipoPrevio)
+            e.Agregar(m);
 
         foreach (var t in d.Tramites.Where(x => !string.IsNullOrWhiteSpace(x.NombreTramite)))
             e.Agregar(new ExpedienteTramite
@@ -192,7 +199,30 @@ public static class ExpedienteMapper
         ["Condiciones"] = e.Condiciones.Count,
         ["Checklist infra"] = e.ChecklistInfra.Count,
         ["Secciones"] = e.Secciones.Count,
+        ["Equipo institucional"] = e.Equipo.Count,
     };
+
+    /// <summary>
+    /// Las filas del equipo listas para guardar: sin las que no tienen nombre (una fila que
+    /// alguien empezó y no llenó), en el orden de prioridad pedido y renumeradas 1..n, para
+    /// que la prioridad nunca tenga huecos ni empates. Null si no vino equipo.
+    /// </summary>
+    private static List<MiembroEquipoExpediente>? NormalizarEquipo(List<MiembroEquipoInput>? equipo) =>
+        equipo?
+            .Where(m => !string.IsNullOrWhiteSpace(m.Nombre))
+            .Select((m, i) => (m, i))
+            .OrderBy(x => x.m.Prioridad).ThenBy(x => x.i)
+            .Select((x, k) => new MiembroEquipoExpediente
+            {
+                Prioridad = k + 1,
+                Nombre    = x.m.Nombre.Trim(),
+                Cargo     = Limpio(x.m.Cargo),
+                Correo    = Limpio(x.m.Correo),
+                Telefono  = Limpio(x.m.Telefono)
+            })
+            .ToList();
+
+    private static string? Limpio(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     /// <summary>Resumen legible de los conteos que cambiaron entre dos snapshots de colecciones hijas.</summary>
     private static string? DescribirCambiosHijos(Dictionary<string, int> antes, Dictionary<string, int> despues)
@@ -249,5 +279,7 @@ public static class ExpedienteMapper
         e.Entregables.OrderBy(g => g.TramiteIndex).ThenBy(g => g.Orden).Select(g => new EntregableInput(
             g.TramiteIndex, g.Orden, g.Entregable, g.Formato, g.Presentacion)).ToList(),
         e.Lugares.OrderBy(l => l.TramiteIndex).ThenBy(l => l.Orden).Select(l => new LugarInput(
-            l.TramiteIndex, l.Orden, l.Lugar, l.Ciudad, l.Direccion, l.Telefonos)).ToList());
+            l.TramiteIndex, l.Orden, l.Lugar, l.Ciudad, l.Direccion, l.Telefonos)).ToList(),
+        e.Equipo.OrderBy(m => m.Prioridad).Select(m => new MiembroEquipoInput(
+            m.Prioridad, m.Nombre, m.Cargo, m.Correo, m.Telefono)).ToList());
 }

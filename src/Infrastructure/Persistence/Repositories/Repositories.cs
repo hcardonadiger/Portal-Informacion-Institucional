@@ -17,6 +17,7 @@ public sealed class ExpedienteRepository(AppDbContext ctx) : IExpedienteReposito
             .Include(e => e.Condiciones)
             .Include(e => e.ChecklistInfra)
             .Include(e => e.Secciones)
+            .Include(e => e.Equipo)
             .AsSplitQuery()  // evita la explosión cartesiana de 10 colecciones (una query por colección)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 

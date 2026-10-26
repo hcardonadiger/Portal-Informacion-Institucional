@@ -123,7 +123,10 @@ public static class OriginalShapeMapper
             ParseDate(o.FechaLimiteEntrega),
             o.ValidadoDigerUsuarioId,
             o.ValidadoInstUsuarioId,
-            entregables, lugares);
+            entregables, lugares,
+            // El orden de la lista es la prioridad. Null (un borrador guardado antes del
+            // equipo) deja el equipo como estaba.
+            o.Equipo?.Select((m, i) => new MiembroEquipoInput(i + 1, m.Nombre ?? "", m.Cargo, m.Correo, m.Telefono)).ToList());
     }
 
     // ── DTO de aplicación → forma editor (al abrir para editar) ───────────
@@ -237,6 +240,20 @@ public static class OriginalShapeMapper
             o.Estados[s.Seccion.ToString()] = FmtSeccion(s.Estado);
             o.Notas[s.Seccion.ToString()] = s.Nota;
         }
+
+        // Equipo institucional, en orden de prioridad. Un expediente de antes del equipo trae
+        // solo el contacto: ese contacto abre el equipo como prioridad 1, para que el editor
+        // no lo muestre vacío ni lo pierda en el siguiente guardado.
+        o.Equipo = (d.Equipo ?? []).OrderBy(m => m.Prioridad)
+            .Select(m => new OriginalExpedienteDto.MiembroEquipoOrig
+            {
+                Nombre = m.Nombre, Cargo = m.Cargo, Correo = m.Correo, Telefono = m.Telefono
+            }).ToList();
+        if (o.Equipo.Count == 0 && !string.IsNullOrWhiteSpace(d.ContactoNombre))
+            o.Equipo.Add(new()
+            {
+                Nombre = d.ContactoNombre, Cargo = d.ContactoCargo, Correo = d.ContactoCorreo, Telefono = d.ContactoTel
+            });
         return o;
     }
 

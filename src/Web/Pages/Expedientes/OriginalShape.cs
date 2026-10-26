@@ -23,6 +23,9 @@ public sealed class OriginalExpedienteDto
     [JsonPropertyName("contacto_cargo")]     public string? ContactoCargo { get; set; }
     [JsonPropertyName("contacto_correo")]    public string? ContactoCorreo { get; set; }
     [JsonPropertyName("contacto_tel")]       public string? ContactoTel { get; set; }
+    /// <summary>Equipo institucional; el orden de la lista es la prioridad. Null si el JSON no
+    /// lo trae (borradores de antes del equipo).</summary>
+    [JsonPropertyName("equipo")]             public List<MiembroEquipoOrig>? Equipo { get; set; }
     [JsonPropertyName("num_tramites")]       public int NumTramites { get; set; } = 1;
     [JsonPropertyName("num_tramites_prod")]  public int NumTramitesProd { get; set; }
     [JsonPropertyName("tramite_nombres")]    public List<string?> TramiteNombres { get; set; } = [];
@@ -86,6 +89,7 @@ public sealed class OriginalExpedienteDto
         [JsonPropertyName("checklist")] public List<ChkOrig> Checklist { get; set; } = [];
         [JsonPropertyName("plan")] public string? Plan { get; set; }
     }
+    public sealed class MiembroEquipoOrig { [JsonPropertyName("nombre")] public string? Nombre { get; set; } [JsonPropertyName("cargo")] public string? Cargo { get; set; } [JsonPropertyName("correo")] public string? Correo { get; set; } [JsonPropertyName("telefono")] public string? Telefono { get; set; } }
     public sealed class PerfilOrig { [JsonPropertyName("perfil")] public string? Perfil { get; set; } [JsonPropertyName("nombre")] public string? Nombre { get; set; } [JsonPropertyName("correo")] public string? Correo { get; set; } }
     public sealed class ChkOrig    { [JsonPropertyName("req")] public string? Req { get; set; } [JsonPropertyName("status")] public string? Status { get; set; } [JsonPropertyName("obs")] public string? Obs { get; set; } }
 }

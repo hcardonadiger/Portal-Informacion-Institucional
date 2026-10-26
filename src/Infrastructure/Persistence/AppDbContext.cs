@@ -896,6 +896,23 @@ public sealed class ExpedienteConfiguration : IEntityTypeConfiguration<Expedient
         b.HasMany(x => x.Condiciones).WithOne().HasForeignKey(t => t.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.ChecklistInfra).WithOne().HasForeignKey(t => t.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Secciones).WithOne().HasForeignKey(t => t.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Equipo).WithOne().HasForeignKey(t => t.ExpedienteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class MiembroEquipoExpedienteConfiguration : IEntityTypeConfiguration<MiembroEquipoExpediente>
+{
+    public void Configure(EntityTypeBuilder<MiembroEquipoExpediente> b)
+    {
+        b.ToTable("ExpedienteEquipo");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        // Mismos largos que Expedientes.Contacto*, porque la prioridad 1 se copia ahí.
+        b.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
+        b.Property(x => x.Cargo).HasMaxLength(150);
+        b.Property(x => x.Correo).HasMaxLength(200);
+        b.Property(x => x.Telefono).HasMaxLength(40);
+        b.HasIndex(x => x.ExpedienteId);
     }
 }
 

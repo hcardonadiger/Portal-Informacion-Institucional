@@ -31,16 +31,25 @@
     </section>
 
     @* ── 0. Apertura del expediente ─────────────────────────────── *@
-    @if (Hay(d.ContactoNombre))
+    @* El equipo en orden de prioridad. Un expediente de antes del equipo solo tiene el
+       contacto, que se muestra como prioridad 1. *@
+    @{
+        var equipo = (d.Equipo ?? []).OrderBy(m => m.Prioridad).ToList();
+        if (equipo.Count == 0 && Hay(d.ContactoNombre))
+            equipo.Add(new MiembroEquipoInput(1, d.ContactoNombre!, d.ContactoCargo, d.ContactoCorreo, d.ContactoTel));
+    }
+    @if (equipo.Count > 0)
     {
         <section class="acta-sec">
             <h2>Apertura del expediente</h2>
-            <p class="acta-person">
-                <strong>Contacto institucional principal:</strong> @d.ContactoNombre
-                @if (Hay(d.ContactoCargo)) { <text> · @d.ContactoCargo</text> }
-                @if (Hay(d.ContactoCorreo)) { <br/> @d.ContactoCorreo }
-                @if (Hay(d.ContactoTel)) { <text> · @d.ContactoTel</text> }
-            </p>
+            <p class="acta-person"><strong>Equipo institucional</strong> — en orden de prioridad para atender consultas</p>
+            @* Cada integrante en una sola línea del fuente: .acta-sec p es white-space:pre-line,
+               así que cada salto del Razor se vería como un salto en la página. *@
+            @foreach (var m in equipo)
+            {
+                var medios = string.Join(" · ", new[] { m.Correo, m.Telefono }.Where(Hay));
+                <p class="acta-person"><strong>@m.Prioridad.</strong> @m.Nombre@(Hay(m.Cargo) ? " · " + m.Cargo : "")@if (medios.Length > 0) {<br/>@medios}</p>
+            }
         </section>
     }
 
