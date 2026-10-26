@@ -15,6 +15,8 @@
     </div>
 
     <form method="get" class="lista-buscar" style="margin-bottom:1rem">
+        <input type="search" name="Buscar" value="@Model.Buscar" placeholder="Buscar por código, nombre, categoría, tiempo o costo…" />
+        <button type="submit" class="btns">Buscar</button>
         <select name="InstitucionId" onchange="this.form.submit()">
             <option value="">— Todas las instituciones —</option>
             @foreach (var i in Model.Instituciones)
@@ -26,7 +28,12 @@
             <input type="checkbox" name="SoloIncompletas" value="true" checked="@Model.SoloIncompletas" onchange="this.form.submit()" />
             Solo fichas incompletas
         </label>
+        @if (!string.IsNullOrWhiteSpace(Model.Buscar))
+        {
+            <a class="btns" asp-page="/HondurasSimple/CapturaLote" asp-route-InstitucionId="@Model.InstitucionId" asp-route-SoloIncompletas="@Model.SoloIncompletas">Limpiar búsqueda</a>
+        }
     </form>
+    <p class="res-meta" style="margin-top:-.5rem">@Model.Filas.Count trámite(s) en la tabla.</p>
 
     @if (Model.Filas.Count == 0)
     {
@@ -40,6 +47,7 @@
         <form method="post">
             <input type="hidden" name="InstitucionId" value="@Model.InstitucionId" />
             <input type="hidden" name="SoloIncompletas" value="@Model.SoloIncompletas" />
+            <input type="hidden" name="Buscar" value="@Model.Buscar" />
 
             <div class="card" style="margin-bottom:1rem">
                 <h3 style="margin-top:0">Aplicar a los trámites seleccionados</h3>

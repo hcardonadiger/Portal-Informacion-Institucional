@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Siger;
 using Diger.TramitesEstado.Application.Siger.Bloqueo;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,6 +13,7 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
 {
     [BindProperty(SupportsGet = true)] public string? InstitucionId { get; set; }
     [BindProperty(SupportsGet = true)] public bool SoloIncompletas { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Buscar { get; set; }
 
     [BindProperty] public List<int> Seleccionados { get; set; } = [];
     [BindProperty] public int? CategoriaId { get; set; }
@@ -86,6 +88,20 @@ public sealed class CapturaLoteModel(IApplicationDbContext ctx) : PageModel
             f.Modalidad, f.TiempoTexto, f.CostoTexto, f.CostoEsGratuito, f.EstaEnSol,
             FichaPublicaCompletitud.Evaluar(f.CategoriaId, f.Modalidad, f.TiempoTexto, f.CostoEsGratuito, f.EstaEnSol, f.SolUrl, f.SolTramo)));
 
-        Filas = (SoloIncompletas ? todas.Where(f => !f.FichaCompleta) : todas).ToList();
+        if (SoloIncompletas) todas = todas.Where(f => !f.FichaCompleta);
+
+        // La búsqueda va en memoria y no en SQL: las filas ya se cargaron enteras (la completitud
+        // se calcula aquí), y así "inscripcion" encuentra "Inscripción" sin depender de la
+        // intercalación de la base. Cada palabra tiene que aparecer en algún campo visible.
+        var palabras = ConciliacionMatcher.Normalizar(Buscar).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (palabras.Length > 0)
+            todas = todas.Where(f =>
+            {
+                var texto = ConciliacionMatcher.Normalizar(string.Join(' ',
+                    f.Codigo, f.Nombre, f.CategoriaNombre, f.Modalidad, f.TiempoTexto, f.CostoTexto));
+                return palabras.All(p => texto.Contains(p, StringComparison.Ordinal));
+            });
+
+        Filas = todas.ToList();
     }
 }
