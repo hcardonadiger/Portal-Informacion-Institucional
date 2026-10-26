@@ -611,9 +611,25 @@ public sealed class EditorModel(
     [BindProperty] public string?          IntCargo      { get; set; }
     [BindProperty] public string?          IntNotas      { get; set; }
 
+    /// <summary>
+    /// La ficha está en el paso de equipo del alta: el proyecto se acaba de crear y lo que sigue es
+    /// armar el equipo —o saltarlo— y pasar a la estructura. Viaja en la query y en los formularios
+    /// de interesados para que agregar a alguien no saque a la persona del recorrido.
+    /// </summary>
+    [BindProperty(SupportsGet = true)] public bool Alta { get; set; }
+
+    /// <summary>Lo manda el botón «Agregar y continuar a la estructura» del paso de equipo.</summary>
+    [BindProperty] public bool IntContinuar { get; set; }
+
+    /// <summary>Vuelve a los interesados sin perder el paso del alta, si se estaba en él.</summary>
+    private IActionResult VolverAInteresados(int id) => Alta
+        ? RedirectToPage(pageName: null, pageHandler: null, routeValues: new { id, alta = true }, fragment: "interesados")
+        : VolverA(id, "interesados");
+
     [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
     public async Task<IActionResult> OnPostGuardarInteresadoAsync(int id, CancellationToken ct)
     {
+        var agregado = false;
         try
         {
             if (IntId > 0)
@@ -634,12 +650,16 @@ public sealed class EditorModel(
                     id, IntUsuarioId, IntRol, IntInfluencia, IntInstitucion, IntCargo, IntNotas), ct);
                 TempData["SuccessMsg"] =
                     "Interesado agregado. Ya puede ver el proyecto y quedar a cargo de entregables y actividades.";
+                agregado = true;
             }
         }
         catch (DomainException ex) { TempData["ErrorMsg"] = ex.Message; }
         catch (NotFoundException)  { return NotFound(); }
 
-        return VolverA(id, "interesados");
+        // Solo se avanza si se agregó: con un rechazo, la persona tiene que ver el motivo en el
+        // mismo paso, con el formulario a mano para corregirlo.
+        if (Alta && IntContinuar && agregado) return VolverA(id, "estructura");
+        return VolverAInteresados(id);
     }
 
     [Permission("Proyectos", AccionModulo.Editar, "Editar proyectos")]
@@ -652,7 +672,7 @@ public sealed class EditorModel(
         }
         catch (NotFoundException) { return NotFound(); }
 
-        return VolverA(id, "interesados");
+        return VolverAInteresados(id);
     }
 
     // ── Vínculos con reuniones y expedientes ────────────────────────────────

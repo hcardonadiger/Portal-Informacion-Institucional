@@ -2065,6 +2065,22 @@
              role="tabpanel" aria-labelledby="tab-equipo" hidden>
     @* ── Interesados ─────────────────────────────────────────────── *@
     <div class="card ficha-sec" id="interesados">
+        @* Paso de equipo del alta: ficha → equipo → estructura. Va antes que la estructura porque de
+           esta lista salen sus responsables, y es omitible porque un proyecto puede arrancar con el
+           responsable solo y sumar gente después. *@
+        @if (Model.Alta && Model.PuedeEditar)
+        {
+            <div class="hint" id="paso-equipo" style="margin-bottom:1rem;align-items:center">
+                <span class="ico" aria-hidden="true">👥</span>
+                <div style="flex:1">
+                    <strong>Paso 2 de 3 · Equipo del proyecto.</strong>
+                    Agregue a las personas que van a trabajar en él y guarde. Después sigue la
+                    estructura de entregables y actividades. Este paso es opcional.
+                </div>
+                <a class="btns" asp-page="/Proyectos/Editor" asp-route-id="@p.Id" asp-fragment="estructura"
+                   style="white-space:nowrap">@(Model.Interesados.Any() ? "Continuar a la estructura →" : "Omitir este paso →")</a>
+            </div>
+        }
         <h3 class="sec-h">Interesados</h3>
         <p class="res-meta" style="margin-top:-.35rem">
             Quién patrocina, ejecuta, acompaña, se beneficia o regula. La influencia alta en un rol
@@ -2130,6 +2146,7 @@
                                         {
                                             <form method="post" asp-page-handler="QuitarInteresado" asp-route-id="@p.Id">
                                                 <input type="hidden" name="IntId" value="@it.Id" />
+                                                @if (Model.Alta) { <input type="hidden" name="Alta" value="true" /> }
                                                 <button type="submit" class="hist-del" aria-label="Quitar interesado"
                                                         data-confirm="¿Quitar a @it.Nombre de los interesados?">✕</button>
                                             </form>
@@ -2152,9 +2169,11 @@
 
         @if (Model.PuedeEditar)
         {
-            <details style="margin-top:1rem">
+            @* En el paso de equipo del alta llega abierto: agregar gente es lo único que hay que hacer. *@
+            <details style="margin-top:1rem" open="@Model.Alta">
                 <summary class="btns" style="display:inline-block;cursor:pointer">+ Agregar interesado</summary>
                 <form method="post" asp-page-handler="GuardarInteresado" asp-route-id="@p.Id" style="margin-top:.8rem">
+                    @if (Model.Alta) { <input type="hidden" name="Alta" value="true" /> }
                     <p class="res-meta" style="margin:0 0 .7rem">
                         El interesado es un usuario del portal y <strong>pasa a ver este proyecto</strong>,
                         aunque quede fuera de su institución, área o unidad. Si la persona no tiene
@@ -2204,7 +2223,17 @@
                             <input id="i-notas" name="IntNotas" maxlength="1000" />
                         </div>
                     </div>
-                    <div style="margin-top:.6rem"><button type="submit" class="btnp">Agregar</button></div>
+                    @if (Model.Alta)
+                    {
+                        <div style="margin-top:.6rem;display:flex;gap:8px;flex-wrap:wrap">
+                            <button type="submit" class="btnp" name="IntContinuar" value="true">Guardar y continuar a la estructura</button>
+                            <button type="submit" class="btns">Guardar y agregar otro</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="margin-top:.6rem"><button type="submit" class="btnp">Agregar</button></div>
+                    }
                 </form>
             </details>
         }

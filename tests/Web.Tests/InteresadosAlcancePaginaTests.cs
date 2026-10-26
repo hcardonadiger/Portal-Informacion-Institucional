@@ -109,4 +109,68 @@ public sealed class InteresadosAlcancePaginaTests : IAsyncLifetime
         quitar.StatusCode.Should().Be(HttpStatusCode.Redirect);
         (await LeerAsync(_interesadoDeA)).Should().BeNull();
     }
+
+    // ── Paso de equipo del alta: ficha → equipo → estructura ───────────────
+
+    private async Task<Guid> UsuarioNuevoAsync()
+    {
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var u = Usuario.Crear("Integrante nuevo", $"integrante{Guid.NewGuid():N}@pruebas.gob.hn", "hash");
+        db.Usuarios.Add(u);
+        await db.SaveChangesAsync();
+        return u.Id;
+    }
+
+    [Fact]
+    public async Task En_el_alta_la_ficha_ofrece_el_paso_de_equipo_y_omitirlo()
+    {
+        var html = await _portal.ClienteComo("JefeArea").GetStringAsync($"/Proyectos/Editor/{_proyectoA}?alta=true");
+
+        html.Should().Contain("id=\"paso-equipo\"");
+        html.Should().Contain("Guardar y continuar a la estructura");
+        html.Should().Contain($"/Proyectos/Editor/{_proyectoA}#estructura", "el paso se puede saltar hacia la estructura");
+
+        var normal = await _portal.ClienteComo("JefeArea").GetStringAsync($"/Proyectos/Editor/{_proyectoA}");
+        normal.Should().NotContain("id=\"paso-equipo\"", "fuera del alta la ficha no muestra el recorrido");
+    }
+
+    [Fact]
+    public async Task Guardar_y_continuar_lleva_a_la_estructura()
+    {
+        var (cliente, token) = await SesionAsync();
+
+        var r = await cliente.PostAsync($"/Proyectos/Editor/{_proyectoA}?handler=GuardarInteresado",
+            Form(token, ("Alta", "true"), ("IntContinuar", "true"),
+                ("IntUsuarioId", (await UsuarioNuevoAsync()).ToString()), ("IntRol", nameof(RolInteresado.Ejecutor))));
+
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        r.Headers.Location!.OriginalString.Should().EndWith("#estructura").And.NotContain("alta");
+    }
+
+    [Fact]
+    public async Task Guardar_y_agregar_otro_se_queda_en_el_paso_de_equipo()
+    {
+        var (cliente, token) = await SesionAsync();
+
+        var r = await cliente.PostAsync($"/Proyectos/Editor/{_proyectoA}?handler=GuardarInteresado",
+            Form(token, ("Alta", "true"),
+                ("IntUsuarioId", (await UsuarioNuevoAsync()).ToString()), ("IntRol", nameof(RolInteresado.Ejecutor))));
+
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        r.Headers.Location!.OriginalString.Should().Contain("alta=True").And.EndWith("#interesados");
+    }
+
+    [Fact]
+    public async Task Un_rechazo_en_el_paso_de_equipo_no_avanza_a_la_estructura()
+    {
+        var (cliente, token) = await SesionAsync();
+
+        // Sin usuario elegido: el handler lo rechaza y la persona tiene que verlo en el mismo paso.
+        var r = await cliente.PostAsync($"/Proyectos/Editor/{_proyectoA}?handler=GuardarInteresado",
+            Form(token, ("Alta", "true"), ("IntContinuar", "true")));
+
+        r.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        r.Headers.Location!.OriginalString.Should().Contain("alta=True").And.EndWith("#interesados");
+    }
 }

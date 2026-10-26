@@ -109,7 +109,7 @@ public sealed class AltaProyectoRechazadaTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Un_alta_valida_sigue_llevando_a_la_ficha_del_proyecto_nuevo()
+    public async Task Un_alta_valida_lleva_al_paso_de_equipo_del_proyecto_nuevo()
     {
         var (cliente, token) = await ListadoAsync();
 
@@ -120,7 +120,10 @@ public sealed class AltaProyectoRechazadaTests : IAsyncLifetime
             ("NuevaFechaFin",    "2026-12-15")));
 
         respuesta.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        respuesta.Headers.Location!.OriginalString.Should().Contain("/Proyectos/Editor");
+        var destino = respuesta.Headers.Location!.OriginalString;
+        destino.Should().Contain("/Proyectos/Editor");
+        destino.Should().Contain("alta=True", "la ficha llega en el paso de equipo del alta");
+        destino.Should().EndWith("#interesados", "después de la ficha sigue el equipo, no la estructura");
     }
 
     [Fact]

@@ -95,8 +95,12 @@ public sealed class IndexModel(ISender sender, AccesoModulosService acceso, ICur
                 PrioridadId: NuevaPrioridadId, CategoriaId: NuevaCategoriaId, Accion: NuevaAccion,
                 FechaInicioPlan: NuevaFechaInicio, FechaFinPlan: NuevaFechaFin), ct);
 
-            TempData["SuccessMsg"] = "Proyecto creado. Cargue sus entregables y las actividades de cada uno.";
-            return RedirectToPage("/Proyectos/Editor", new { id });
+            // El alta sigue en el equipo y no en la estructura: de los interesados salen los
+            // responsables de entregables y actividades, así que armar la estructura primero
+            // obligaba a volver a ella después a asignarlos. El paso se puede omitir.
+            TempData["SuccessMsg"] = "Proyecto creado. Agregue a su equipo, o omita este paso, y siga con la estructura.";
+            return RedirectToPage("/Proyectos/Editor", pageHandler: null,
+                routeValues: new { id, alta = true }, fragment: "interesados");
         }
         catch (DomainException ex)
         {
