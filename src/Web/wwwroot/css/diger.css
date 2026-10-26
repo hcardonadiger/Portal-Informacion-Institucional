@@ -293,6 +293,36 @@ table {
 }
 
 /* ── FIELDS ─────────────────────────────────────────────────── */
+/* Base de todo <select>. Cada contenedor (.edit-grid, .lista-buscar, .trm-filtros…) fue
+   arreglando el suyo cuando aparecía con la apariencia del navegador —borde negro, fuente
+   del sistema—, y los que no tenían regla se quedaban así: el filtro de Área del tablero
+   ejecutivo, los de Tableros, Tickets, Siger, Proyectos, Llenado… Esta base los cubre a
+   todos. Va en :where() para que pese cero: cualquier regla con clase o contenedor sigue
+   mandando sobre lo que declare. */
+:where(select) {
+    max-width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm);
+    font-size: var(--diger-fs-sm);
+    font-family: inherit;
+    background-color: var(--diger-bg-soft);
+    color: var(--diger-text);
+    transition: border .2s, box-shadow .2s, background .2s;
+}
+
+:where(select):focus {
+    outline: none;
+    border-color: var(--diger-blue-mid);
+    background-color: var(--diger-surface);
+    box-shadow: var(--diger-ring);
+}
+
+:where(select):disabled {
+    opacity: .7;
+    cursor: not-allowed;
+}
+
 .field {
     margin-bottom: 1.1rem;
 }
