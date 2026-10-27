@@ -23,6 +23,7 @@ public sealed record FilaModulo(ModuloInfo Modulo, IReadOnlyDictionary<AccionMod
 public sealed class PermisosModel(ISender sender) : PageModel
 {
     public IReadOnlyList<RolColumnaDto> Roles { get; private set; } = [];
+    public IReadOnlyList<string> Administradores { get; private set; } = [];
     public RolColumnaDto? Rol { get; private set; }
     public string? Q { get; private set; }
     public bool Comparar { get; private set; }
@@ -60,6 +61,7 @@ public sealed class PermisosModel(ISender sender) : PageModel
         var data = await sender.Send(new GetCatalogoPermisosQuery(), ct);
 
         Roles  = data.Roles;
+        Administradores = data.Administradores;
         Matriz = data.Matriz.ToDictionary(m => m.RolId, m => m.Permisos.ToHashSet(), StringComparer.OrdinalIgnoreCase);
 
         Rol = Roles.FirstOrDefault(r => string.Equals(r.RolId, rolSeleccionado, StringComparison.OrdinalIgnoreCase))

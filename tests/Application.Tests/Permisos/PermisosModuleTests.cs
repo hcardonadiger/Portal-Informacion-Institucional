@@ -9,6 +9,8 @@ using Diger.TramitesEstado.Infrastructure.Security;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
@@ -361,5 +363,47 @@ public class PermissionAuthorizationHandlerTests
         var resultado = await EjecutarAsync(handler, "Tickets.Editar");
 
         resultado.HasSucceeded.Should().BeFalse();
+    }
+}
+
+/// <summary>
+/// La pantalla de Permisos lee los roles del catálogo en memoria, que es una foto por proceso.
+/// Un rol que llegó a la base por otro camino (otro proceso de IIS, un INSERT a mano) no
+/// aparecía hasta reiniciar la app: el rol DITRA se creó y no salió en Permisos.
+/// </summary>
+public class GetCatalogoPermisosQueryTests
+{
+    [Fact]
+    public async Task Handle_RolEnLaBaseQueElCatalogoNoConoce_Aparece()
+    {
+        var nombreBase = Guid.NewGuid().ToString();
+        var fakeUser = Substitute.For<ICurrentUserService>();
+        fakeUser.EsGlobal.Returns(true);
+
+        AppDbContext NuevoContexto() => new(
+            new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(nombreBase).Options,
+            fakeUser, Substitute.For<MediatR.IPublisher>());
+
+        var provider = new ServiceCollection()
+            .AddScoped<IApplicationDbContext>(_ => NuevoContexto())
+            .BuildServiceProvider();
+        var catalogo = new RolCatalogo(
+            provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<RolCatalogo>.Instance);
+
+        var ctx = NuevoContexto();
+
+        // El catálogo se carga ANTES de que exista el rol, como el proceso que no atendió el alta.
+        ctx.Roles.Add(Rol.Crear("Administrador", "Administrador", NivelAlcance.Global, esAdministrador: true));
+        await ctx.SaveChangesAsync();
+        await catalogo.RecargarAsync();
+
+        ctx.Roles.Add(Rol.Crear("DITRA", "DITRA", NivelAlcance.Institucion));
+        await ctx.SaveChangesAsync();
+
+        var dto = await new GetCatalogoPermisosQueryHandler(ctx, catalogo)
+            .Handle(new GetCatalogoPermisosQuery(), CancellationToken.None);
+
+        dto.Roles.Select(r => r.RolId).Should().Contain("DITRA");
+        dto.Administradores.Should().Equal("Administrador");
     }
 }

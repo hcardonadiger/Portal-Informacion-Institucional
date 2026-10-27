@@ -23,10 +23,14 @@ public sealed record RolColumnaDto(
 
 public sealed record RolPermisosDto(string RolId, IReadOnlyList<string> Permisos);
 
+/// <param name="Administradores">Nombres de los roles activos que quedan fuera de la matriz por
+/// tener capacidad de administrador. Se devuelven para que la pantalla los nombre: un rol recién
+/// creado con esa casilla tildada desaparecía de Permisos sin ninguna explicación.</param>
 public sealed record CatalogoPermisosDto(
     IReadOnlyList<RolColumnaDto> Roles,
     IReadOnlyList<PermisoDto>    Catalogo,
-    IReadOnlyList<RolPermisosDto> Matriz);
+    IReadOnlyList<RolPermisosDto> Matriz,
+    IReadOnlyList<string>        Administradores);
 
 // ── Query: catálogo + matriz actual ─────────────────────────────────────────
 public sealed record GetCatalogoPermisosQuery : IRequest<CatalogoPermisosDto>;
@@ -44,6 +48,13 @@ public sealed class GetCatalogoPermisosQueryHandler(IApplicationDbContext ctx, I
 
         var grants = await ctx.RolPermisos.ToListAsync(ct);
 
+        // El catálogo es una foto en memoria POR PROCESO: crear un rol solo refresca el proceso
+        // que atendió el alta. Con más de un proceso sirviendo el sitio (IIS con web garden o
+        // reciclado solapado) o con un rol insertado por SQL, el rol nuevo no aparecía en esta
+        // pantalla hasta reiniciar la app. Releerlo acá cuesta una consulta de diez filas y deja
+        // además al proceso listo para aceptar el guardado, que valida contra el mismo catálogo.
+        await catalogo.RecargarAsync(ct);
+
         var configurables = catalogo.Configurables();
 
         var roles = configurables
@@ -56,7 +67,12 @@ public sealed class GetCatalogoPermisosQueryHandler(IApplicationDbContext ctx, I
                       .Select(g => g.PermisoClave).ToList()))
             .ToList();
 
-        return new CatalogoPermisosDto(roles, permisos, matriz);
+        var administradores = catalogo.Activos()
+            .Where(r => r.EsAdministrador)
+            .Select(r => r.Nombre)
+            .ToList();
+
+        return new CatalogoPermisosDto(roles, permisos, matriz, administradores);
     }
 }
 

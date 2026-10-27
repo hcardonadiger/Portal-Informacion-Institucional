@@ -17,6 +17,10 @@
         <div>
             <h2>Administrar permisos</h2>
             <p>Define qué acción puede hacer cada rol sobre cada módulo. Los roles con capacidad de <strong>administrador</strong> tienen acceso completo por código y no se configuran acá.</p>
+            @if (Model.Administradores.Count > 0)
+            {
+                <p class="hint">Fuera de la matriz por ser administradores: <strong>@string.Join(", ", Model.Administradores)</strong>.</p>
+            }
         </div>
     </div>
     <p class="hint">
