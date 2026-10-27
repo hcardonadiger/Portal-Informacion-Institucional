@@ -318,5 +318,91 @@ public class PlantillasProyectoTests : IDisposable
         (await LeerProyectoAsync(proyectoId)).Entregables.Should().HaveCount(1);
     }
 
+    // ── Clasificación: categoría y acción ─────────────────────────
+    // Es lo que deja al alta ofrecer solo las plantillas que encajan con el
+    // proyecto que se crea. El filtro vive en la pantalla; acá se mide que el
+    // dato se guarde, se limpie y llegue a quien lo filtra.
+
+    private async Task<int> CrearCategoriaAsync(string nombre)
+    {
+        var c = CategoriaProyecto.Crear(nombre, 1, ColorEtiqueta.Azul);
+        _ctx.CategoriasProyecto.Add(c);
+        await _ctx.SaveChangesAsync(CancellationToken.None);
+        return c.Id;
+    }
+
+    private Task<int> GuardarClasificadaAsync(int? id, int? categoriaId, AccionProyecto? accion) =>
+        Guardar.Handle(new GuardarPlantillaProyectoCommand(
+            id, "POA anual", null, true, NivelAlcance.Institucion, null, null,
+            [Ent("Entregable")], categoriaId, accion), CancellationToken.None);
+
+    [Fact]
+    public async Task Clasificar_ElListadoYElDetalleDevuelvenCategoriaYAccion()
+    {
+        var categoriaId = await CrearCategoriaAsync("Planificación");
+        var id = await GuardarClasificadaAsync(null, categoriaId, AccionProyecto.Acompanamiento);
+
+        var resumen = (await new GetPlantillasProyectoQueryHandler(_ctx, _usuario)
+            .Handle(new GetPlantillasProyectoQuery(), CancellationToken.None)).Single();
+        resumen.CategoriaId.Should().Be(categoriaId);
+        resumen.Categoria.Should().Be("Planificación");
+        resumen.Accion.Should().Be(AccionProyecto.Acompanamiento);
+
+        var detalle = await new GetPlantillaProyectoQueryHandler(_ctx)
+            .Handle(new GetPlantillaProyectoQuery(id), CancellationToken.None);
+        detalle!.CategoriaId.Should().Be(categoriaId);
+        detalle.Accion.Should().Be(AccionProyecto.Acompanamiento);
+    }
+
+    [Fact]
+    public async Task Clasificar_SinCategoriaNiAccionLaPlantillaSirveParaCualquiera()
+    {
+        await CrearPlantillaAsync("Genérica");
+
+        var resumen = (await new GetPlantillasProyectoQueryHandler(_ctx, _usuario)
+            .Handle(new GetPlantillasProyectoQuery(), CancellationToken.None)).Single();
+
+        // El null es el dato: «para cualquier proyecto». Inventarle una
+        // clasificación la escondería del alta en cuanto se eligiera otra.
+        resumen.CategoriaId.Should().BeNull();
+        resumen.Accion.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Clasificar_EditarSinClasificacionLaLimpia()
+    {
+        var categoriaId = await CrearCategoriaAsync("Planificación");
+        var id = await GuardarClasificadaAsync(null, categoriaId, AccionProyecto.Desarrollo);
+
+        await GuardarClasificadaAsync(id, null, null);
+
+        var plantilla = await _ctx.PlantillasProyecto.AsNoTracking().FirstAsync(p => p.Id == id);
+        plantilla.CategoriaId.Should().BeNull();
+        plantilla.Accion.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Clasificar_UnaCategoriaQueNoExisteSeRechaza()
+    {
+        var acto = () => GuardarClasificadaAsync(null, 9999, null);
+
+        await acto.Should().ThrowAsync<DomainException>().WithMessage("*categoría*no existe*");
+    }
+
+    [Fact]
+    public async Task Clasificar_NoSePuedeEliminarUnaCategoriaQueUsaUnaPlantilla()
+    {
+        // La llave es Restrict: sin este aviso, borrar la categoría acabaría en
+        // un error de base en vez de un mensaje que se pueda leer.
+        var categoriaId = await CrearCategoriaAsync("Planificación");
+        await GuardarClasificadaAsync(null, categoriaId, null);
+
+        var acto = () => new Diger.TramitesEstado.Application.Proyectos.Categorias.EliminarCategoriaProyectoCommandHandler(_ctx)
+            .Handle(new Diger.TramitesEstado.Application.Proyectos.Categorias.EliminarCategoriaProyectoCommand(categoriaId),
+                    CancellationToken.None);
+
+        await acto.Should().ThrowAsync<DomainException>().WithMessage("*plantilla*");
+    }
+
     public void Dispose() => _ctx.Dispose();
 }

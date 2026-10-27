@@ -31,7 +31,8 @@ public sealed record EntregablePlantillaDto(
 public sealed record PlantillaProyectoDto(
     int Id, string Nombre, string? Descripcion, bool Activa,
     NivelAlcance Nivel, string InstitucionId, string? AreaId, string? UnidadId,
-    IReadOnlyList<EntregablePlantillaDto> Entregables)
+    IReadOnlyList<EntregablePlantillaDto> Entregables,
+    int? CategoriaId = null, string? Categoria = null, AccionProyecto? Accion = null)
 {
     /// <summary>Cuántas actividades hay en total, para no recorrer el árbol en la vista.</summary>
     public int TotalActividades => Entregables.Sum(e => e.Actividades.Count);
@@ -41,7 +42,8 @@ public sealed record PlantillaProyectoDto(
 public sealed record PlantillaProyectoResumenDto(
     int Id, string Nombre, string? Descripcion, bool Activa,
     NivelAlcance Nivel, string InstitucionId, string? AreaId, string? UnidadId,
-    int NumEntregables, int NumActividades);
+    int NumEntregables, int NumActividades,
+    int? CategoriaId = null, string? Categoria = null, AccionProyecto? Accion = null);
 
 // ── Consultas ─────────────────────────────────────────────────────────
 
@@ -84,7 +86,8 @@ public sealed class GetPlantillasProyectoQueryHandler(
                 p.Id, p.Nombre, p.Descripcion, p.Activa,
                 p.Nivel, p.InstitucionId, p.AreaId, p.UnidadId,
                 p.Entregables.Count,
-                p.Entregables.Sum(e => e.Actividades.Count)))
+                p.Entregables.Sum(e => e.Actividades.Count),
+                p.CategoriaId, p.CategoriaRef != null ? p.CategoriaRef.Nombre : null, p.Accion))
             .ToListAsync(ct);
     }
 }
@@ -107,7 +110,8 @@ public sealed class GetPlantillaProyectoQueryHandler(IApplicationDbContext ctx)
                         e.Actividades.OrderBy(a => a.Orden)
                             .Select(a => new ActividadPlantillaDto(a.Orden, a.Nombre, a.Descripcion))
                             .ToList()))
-                    .ToList()))
+                    .ToList(),
+                p.CategoriaId, p.CategoriaRef != null ? p.CategoriaRef.Nombre : null, p.Accion))
             .FirstOrDefaultAsync(ct);
 }
 
@@ -120,7 +124,8 @@ public sealed record ActividadPlantillaInput(string Nombre, string? Descripcion)
 public sealed record GuardarPlantillaProyectoCommand(
     int? Id, string Nombre, string? Descripcion, bool Activa,
     NivelAlcance Nivel, string? AreaId, string? UnidadId,
-    IReadOnlyList<EntregablePlantillaInput> Entregables) : IRequest<int>;
+    IReadOnlyList<EntregablePlantillaInput> Entregables,
+    int? CategoriaId = null, AccionProyecto? Accion = null) : IRequest<int>;
 
 public sealed class GuardarPlantillaProyectoCommandHandler(
     IApplicationDbContext ctx, ICurrentUserService usuario)
@@ -135,6 +140,12 @@ public sealed class GuardarPlantillaProyectoCommandHandler(
         if (string.IsNullOrWhiteSpace(institucion))
             throw new DomainException("No hay institución activa para guardar la plantilla.");
 
+        // La categoría tiene que existir: la llave foránea lo rechazaría igual,
+        // pero con un error de base en vez de un mensaje que se pueda leer.
+        if (c.CategoriaId is > 0 and var categoriaId
+            && !await ctx.CategoriasProyecto.AnyAsync(x => x.Id == categoriaId, ct))
+            throw new DomainException("La categoría elegida ya no existe.");
+
         PlantillaProyecto plantilla;
 
         if (c.Id is { } id)
@@ -147,6 +158,7 @@ public sealed class GuardarPlantillaProyectoCommandHandler(
             plantilla.Renombrar(c.Nombre, c.Descripcion);
             plantilla.FijarAlcance(c.Nivel, c.AreaId, c.UnidadId);
             plantilla.Activar(c.Activa);
+            plantilla.Clasificar(c.CategoriaId, c.Accion);
 
             // Se reemplaza en bloque, igual que los hijos de Expediente: casar
             // por id qué entregable cambió es de donde salen los huérfanos, y
@@ -158,6 +170,7 @@ public sealed class GuardarPlantillaProyectoCommandHandler(
             plantilla = PlantillaProyecto.Crear(
                 c.Nombre, institucion!, c.Nivel, c.AreaId, c.UnidadId, c.Descripcion);
             plantilla.Activar(c.Activa);
+            plantilla.Clasificar(c.CategoriaId, c.Accion);
             ctx.PlantillasProyecto.Add(plantilla);
         }
 

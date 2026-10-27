@@ -7,6 +7,13 @@
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/Web", "--no-launch-profile", "--", "--urls", "http://localhost:5011", "--environment", "Development"],
       "port": 5011
+    },
+    {
+      "name": "web-48",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Web", "-c", "Release", "--no-build", "--no-launch-profile", "--", "--environment", "Development", "--Ports:DevMain=48175", "--Ports:DevCert=48176", "--Ports:DevHttp=48177", "--https_port=48175"],
+      "port": 48175,
+      "url": "https://localhost:48175"
     }
   ]
 }

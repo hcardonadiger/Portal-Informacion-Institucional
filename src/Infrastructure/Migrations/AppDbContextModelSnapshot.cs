@@ -3594,6 +3594,10 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Accion")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<bool>("Activa")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -3602,6 +3606,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("AreaId")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<int?>("CategoriaId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -3640,6 +3647,8 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoriaId");
 
                     b.HasIndex("InstitucionId", "Activa");
 
@@ -6125,6 +6134,16 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasForeignKey("PlantillaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaProyecto", b =>
+                {
+                    b.HasOne("Diger.TramitesEstado.Domain.Entities.CategoriaProyecto", "CategoriaRef")
+                        .WithMany()
+                        .HasForeignKey("CategoriaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CategoriaRef");
                 });
 
             modelBuilder.Entity("Diger.TramitesEstado.Domain.Entities.PlantillaRequisito", b =>

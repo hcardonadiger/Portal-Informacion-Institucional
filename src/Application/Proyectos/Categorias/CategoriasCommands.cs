@@ -84,6 +84,12 @@ public sealed class EliminarCategoriaProyectoCommandHandler(IApplicationDbContex
             throw new DomainException(
                 $"No se puede eliminar: {enUso} proyecto(s) la tienen asignada. Desactívela en su lugar.");
 
+        // Las plantillas también apuntan a la categoría, con la misma llave Restrict.
+        var enPlantillas = await ctx.PlantillasProyecto.IgnoreQueryFilters().CountAsync(p => p.CategoriaId == cmd.Id, ct);
+        if (enPlantillas > 0)
+            throw new DomainException(
+                $"No se puede eliminar: {enPlantillas} plantilla(s) de proyecto la tienen asignada. Desactívela en su lugar.");
+
         ctx.CategoriasProyecto.Remove(categoria);
         await ctx.SaveChangesAsync(ct);
         return Unit.Value;

@@ -1,6 +1,7 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Proyectos.PlantillasModel
 @using Diger.TramitesEstado.Domain.Enums
+@using Diger.TramitesEstado.Application.Dashboards.Queries
 @{
     ViewData["Title"] = "Plantillas de proyecto";
     var edi = Model.EnEdicion;
@@ -88,6 +89,33 @@
                 </div>
             </div>
 
+            @* ── Clasificación ────────────────────────────────────────
+               Los mismos catálogos de la ficha de proyecto. Sirven para que
+               el alta ofrezca solo las plantillas que encajan con lo que se
+               está creando; dejarlos en «Cualquiera» la ofrece siempre. *@
+            <div class="grid-2" style="margin-top:.6rem">
+                <div class="field">
+                    <label for="p-categoria">Categoría</label>
+                    <select id="p-categoria" name="categoriaId" class="field-input">
+                        <option value="">— Cualquiera —</option>
+                        @foreach (var ca in Model.Categorias)
+                        {
+                            <option value="@ca.Id" selected="@(edi?.CategoriaId == ca.Id)">@ca.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="p-accion">Acción</label>
+                    <select id="p-accion" name="accion" class="field-input">
+                        <option value="">— Cualquiera —</option>
+                        @foreach (var ac in Enum.GetValues<AccionProyecto>())
+                        {
+                            <option value="@((int)ac)" selected="@(edi?.Accion == ac)">@Etiquetas.Accion(ac)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
             @* ── El árbol ─────────────────────────────────────────────
                Entregables con sus actividades dentro. Los name llevan el
                índice del entregable (act_nombre_0, act_nombre_1…) para que
@@ -127,7 +155,8 @@
             <thead>
                 <tr>
                     <th>Plantilla</th>
-                    <th style="width:190px">Quién la usa</th>
+                    <th style="width:160px">Quién la usa</th>
+                    <th style="width:190px">Para proyectos de</th>
                     <th class="col-num" style="width:110px">Entregables</th>
                     <th class="col-num" style="width:110px">Actividades</th>
                     <th style="width:100px">Estado</th>
@@ -149,6 +178,16 @@
                         </td>
                         <td class="res-meta">
                             @Diger.TramitesEstado.Web.Pages.Proyectos.PlantillasModel.NivelTexto(p.Nivel)
+                        </td>
+                        <td class="res-meta">
+                            @if (p.Categoria is null && p.Accion is null)
+                            {
+                                <span>Cualquier proyecto</span>
+                            }
+                            else
+                            {
+                                @(string.Join(" · ", new[] { p.Categoria, p.Accion is { } a ? Etiquetas.Accion(a) : null }.Where(x => x is not null)))
+                            }
                         </td>
                         <td class="col-num">@p.NumEntregables</td>
                         <td class="col-num">@p.NumActividades</td>

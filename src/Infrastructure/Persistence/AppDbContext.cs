@@ -1154,6 +1154,14 @@ public sealed class PlantillaProyectoConfiguration : IEntityTypeConfiguration<Pl
         // filtra por activa.
         b.HasIndex(x => new { x.InstitucionId, x.Activa });
 
+        // Clasificación, con el mismo trato que en Proyecto: la acción como
+        // texto y la categoría con Restrict, para que quitar una categoría del
+        // catálogo no se lleve por delante las plantillas que la usan.
+        b.Property(x => x.Accion).HasConversion<string>().HasMaxLength(20);
+        b.HasOne(x => x.CategoriaRef).WithMany()
+         .HasForeignKey(x => x.CategoriaId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => x.CategoriaId);
+
         b.HasMany(x => x.Entregables)
          .WithOne()
          .HasForeignKey(e => e.PlantillaProyectoId)

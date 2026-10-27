@@ -78,7 +78,7 @@ public sealed class PlantillaGenericaAltaTests : IAsyncLifetime
     public async Task El_modal_de_alta_ofrece_la_generica_pero_llega_sin_plantilla()
     {
         var html = await _portal.ClienteComo("JefeArea").GetStringAsync("/Proyectos");
-        html.Should().MatchRegex($"""<option value="{_plantilla}">Proyecto gen""",
+        html.Should().MatchRegex($"""<option value="{_plantilla}"[^>]*>Proyecto gen""",
             "la genérica se ofrece, pero sin marcar");
         Regex.Match(html, """<select id="n-plantilla"[\s\S]*?</select>""").Value
             .Should().NotContain("selected", "un proyecto que se arma de cero no puede llevarse una estructura que nadie pidió");

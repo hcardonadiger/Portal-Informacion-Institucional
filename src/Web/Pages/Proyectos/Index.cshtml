@@ -365,9 +365,12 @@
                         <option value="">— Sin plantilla: la estructura se arma a mano —</option>
                         @foreach (var pl in Model.Plantillas)
                         {
-                            <option value="@pl.Id" selected="@(Model.NuevaPlantillaId == pl.Id)">@pl.Nombre (@pl.NumEntregables entregables · @pl.NumActividades actividades)</option>
+                            @* data-categoria / data-accion vacíos = la plantilla sirve para cualquiera. *@
+                            <option value="@pl.Id" selected="@(Model.NuevaPlantillaId == pl.Id)"
+                                    data-categoria="@pl.CategoriaId" data-accion="@(pl.Accion is { } plAc ? (int?)plAc : null)">@pl.Nombre (@pl.NumEntregables entregables · @pl.NumActividades actividades)</option>
                         }
                     </select>
+                    <div class="hint" id="n-plantilla-aviso" aria-live="polite" hidden></div>
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:.75rem">
                     <button type="button" class="btns" onclick="document.getElementById('modal-nuevo').style.display='none'">Cancelar</button>
@@ -388,6 +391,56 @@
         if (!m) return;
         m.addEventListener('click', function (e) { if (e.target === this) this.style.display = 'none'; });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.style.display = 'none'; });
+
+        /* Las plantillas se filtran por la categoría y la acción elegidas para el proyecto: solo
+           quedan las que encajan, más las que no declaran ese atributo (sirven para cualquiera).
+           Es ayuda, no regla: el servidor acepta cualquier plantilla que alcance a quien crea. */
+        var selCat = document.getElementById('n-categoria');
+        var selAcc = document.getElementById('n-accion');
+        var selPl  = document.getElementById('n-plantilla');
+        var aviso  = document.getElementById('n-plantilla-aviso');
+        if (selCat && selAcc && selPl) {
+            var filtrarPlantillas = function () {
+                var cat = selCat.value, acc = selAcc.value, total = 0, visibles = 0;
+                Array.prototype.forEach.call(selPl.options, function (o) {
+                    if (!o.value) return;
+                    total++;
+                    var ok = (!cat || !o.dataset.categoria || o.dataset.categoria === cat)
+                          && (!acc || !o.dataset.accion    || o.dataset.accion    === acc);
+                    o.hidden = o.disabled = !ok;
+                    if (ok) visibles++;
+                });
+                // Una plantilla que dejó de encajar no puede quedar elegida a escondidas.
+                var elegida = selPl.options[selPl.selectedIndex];
+                if (elegida && elegida.disabled) selPl.value = '';
+                if (!aviso) return;
+                aviso.textContent = total === 0 || (!cat && !acc) ? ''
+                    : visibles === 0 ? 'Ninguna plantilla encaja con esa categoría y acción.'
+                    : visibles + ' de ' + total + ' plantilla' + (total === 1 ? '' : 's')
+                      + (visibles === 1 ? ' encaja' : ' encajan') + ' con esa categoría y acción.';
+                // .hint lleva borde y relleno: vacío se vería como una franja sin texto.
+                aviso.hidden = !aviso.textContent;
+            };
+
+            // Elegir una plantilla completa la categoría y la acción que el proyecto aún no tiene;
+            // nunca pisa las que la persona ya eligió.
+            var completar = function (sel, valor) {
+                if (!valor || sel.value) return;
+                if (Array.prototype.some.call(sel.options, function (o) { return o.value === valor; }))
+                    sel.value = valor;
+            };
+            selPl.addEventListener('change', function () {
+                var o = selPl.options[selPl.selectedIndex];
+                if (o && o.value) {
+                    completar(selCat, o.dataset.categoria);
+                    completar(selAcc, o.dataset.accion);
+                }
+                filtrarPlantillas();
+            });
+            selCat.addEventListener('change', filtrarPlantillas);
+            selAcc.addEventListener('change', filtrarPlantillas);
+            filtrarPlantillas();
+        }
 
         /* El cierre planificado no puede caer antes del inicio. Es la regla de
            CrearProyectoCommand, revisada acá para que no haya que escribir el alta dos veces:

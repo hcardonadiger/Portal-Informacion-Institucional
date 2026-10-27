@@ -33,6 +33,15 @@ public sealed class PlantillaProyecto : BaseAuditableEntity
     public string? AreaId        { get; private set; }
     public string? UnidadId      { get; private set; }
 
+    // ── Clasificación ────────────────────────────────────────────────
+    // Los mismos dos catálogos de la ficha de proyecto, para que el alta
+    // pueda ofrecer solo las plantillas que encajan con el proyecto que se
+    // está creando. Ambos opcionales: el null dice «sirve para cualquiera»,
+    // y una plantilla sin clasificar aparece siempre en vez de esconderse.
+    public int? CategoriaId { get; private set; }
+    public CategoriaProyecto? CategoriaRef { get; private set; }
+    public AccionProyecto? Accion { get; private set; }
+
     private readonly List<PlantillaEntregable> _entregables = [];
     public IReadOnlyCollection<PlantillaEntregable> Entregables => _entregables.AsReadOnly();
 
@@ -63,6 +72,13 @@ public sealed class PlantillaProyecto : BaseAuditableEntity
     }
 
     public void Activar(bool activa) => Activa = activa;
+
+    /// <summary>Para qué categoría y qué acción sirve. Null en cualquiera de los dos = para todas.</summary>
+    public void Clasificar(int? categoriaId, AccionProyecto? accion)
+    {
+        CategoriaId = categoriaId is > 0 ? categoriaId : null;
+        Accion      = accion;
+    }
 
     /// <summary>
     /// Fija hasta dónde se ve la plantilla, limpiando lo que el nivel no usa.

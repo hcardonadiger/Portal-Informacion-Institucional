@@ -1,3 +1,4 @@
+using Diger.TramitesEstado.Application.Proyectos.Categorias;
 using Diger.TramitesEstado.Application.Proyectos.Plantillas;
 using Diger.TramitesEstado.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,9 @@ public sealed class PlantillasModel(ISender sender, IApplicationDbContext ctx) :
     public IReadOnlyList<(string Id, string Nombre)> Areas { get; private set; } = [];
     public IReadOnlyList<(string Id, string Nombre, string AreaId)> Unidades { get; private set; } = [];
 
+    /// <summary>Categorías vivas para clasificar la plantilla, más la que ya tenga aunque se haya retirado.</summary>
+    public IReadOnlyList<OpcionCategoriaDto> Categorias { get; private set; } = [];
+
     public async Task OnGetAsync(int? editar, CancellationToken ct)
     {
         await CargarAsync(editar, ct);
@@ -43,6 +47,8 @@ public sealed class PlantillasModel(ISender sender, IApplicationDbContext ctx) :
 
         if (editar is { } id)
             EnEdicion = await sender.Send(new GetPlantillaProyectoQuery(id), ct);
+
+        Categorias = await sender.Send(new GetOpcionesCategoriaQuery(EnEdicion?.CategoriaId), ct);
 
         // El filtro global del contexto ya acota estas dos al ámbito del usuario.
         Areas = await ctx.Areas.AsNoTracking()
@@ -60,6 +66,7 @@ public sealed class PlantillasModel(ISender sender, IApplicationDbContext ctx) :
     public async Task<IActionResult> OnPostGuardarAsync(
         int? id, string nombre, string? descripcion, bool activa,
         NivelAlcance nivel, string? areaId, string? unidadId,
+        int? categoriaId, AccionProyecto? accion,
         CancellationToken ct)
     {
         var entregables = LeerArbol();
@@ -67,7 +74,8 @@ public sealed class PlantillasModel(ISender sender, IApplicationDbContext ctx) :
         try
         {
             await sender.Send(new GuardarPlantillaProyectoCommand(
-                id, nombre, descripcion, activa, nivel, areaId, unidadId, entregables), ct);
+                id, nombre, descripcion, activa, nivel, areaId, unidadId, entregables,
+                categoriaId, accion), ct);
             TempData["SuccessMsg"] = id is null ? "Plantilla creada." : "Plantilla actualizada.";
             return RedirectToPage();
         }
