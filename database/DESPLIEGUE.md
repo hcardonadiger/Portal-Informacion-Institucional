@@ -16,9 +16,17 @@ el de 2026-10-02 que nombra el diagnóstico. Va después de `2026-09-24_poner_al
 lo comprueba solo y se detiene si la base no llegó ahí. Pasos de publicación, configuración y
 reversión: `docs/despliegue/2026-10-26_produccion_poner_al_dia.md`.
 
-**Después**, `2026-10-26_equipo_institucional.sql` (migración `20261026192746_ExpedienteEquipoInstitucional`:
-tabla `ExpedienteEquipo` y el contacto de cada expediente pasado a su equipo como prioridad 1). Es
-idempotente y va aparte porque llegó después de armado el script único.
+**Después**, un solo script más con lo del 2026-10-26 y el 2026-10-27:
+
+```
+sqlcmd -S <servidor> -d <base> -b -I -f 65001 -i 2026-10-27_poner_al_dia.sql
+```
+
+Trae dos migraciones: `20261026192746_ExpedienteEquipoInstitucional` (tabla `ExpedienteEquipo` y el
+contacto de cada expediente pasado a su equipo como prioridad 1) y
+`20261027182217_PlantillaCategoriaYAccion` (categoría y acción de las plantillas de proyecto). Es
+idempotente. Ya incluye `2026-10-26_equipo_institucional.sql`, que no se corre aparte; si ya se
+corrió, este se salta lo que encuentra hecho.
 
 `00_diagnostico.sql` todavía no conoce los cambios posteriores al 2026-10-02: sobre la base de
 producción va a recomendar el script de esa fecha. Úselo para confirmar que la base es la correcta

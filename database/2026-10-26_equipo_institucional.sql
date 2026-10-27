@@ -1,6 +1,9 @@
 /* =====================================================================================
    Poner al día la base con los cambios al 2026-10-26 — equipo institucional del expediente
    -------------------------------------------------------------------------------------
+   YA NO SE CORRE APARTE: 2026-10-27_poner_al_dia.sql lo trae dentro, junto con lo del
+   2026-10-27. Se conserva como antecedente; correrlo no hace daño (es idempotente).
+
    Va DESPUÉS de 2026-10-26_poner_al_dia.sql (el script único de producción). Corra antes 00_diagnostico.sql.
 
    QUÉ TRAE — la migración EF 20261026192746_ExpedienteEquipoInstitucional:
@@ -20,7 +23,7 @@
    con la prioridad 1, porque el resumen, los recordatorios y los informes leen de ahí.
 
    CÓMO CORRERLO
-     sqlcmd -S <servidor> -d <base> -b -I -f 65001 -i 2026-10-26_poner_al_dia.sql
+     sqlcmd -S <servidor> -d <base> -b -I -f 65001 -i 2026-10-26_equipo_institucional.sql
    ===================================================================================== */
 
 SET NOCOUNT ON;
