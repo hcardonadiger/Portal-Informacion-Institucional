@@ -4553,6 +4553,21 @@ a.kpi-cell:hover .kpi-cell-arw {
     font-variant-numeric: tabular-nums;
 }
 
+/* Chats esperando en la cola de soporte, junto a «Chat de Soporte» del menú. */
+.nav-cola {
+    margin-left: auto;
+    min-width: 20px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--diger-danger, #e11d48);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.nav-cola[hidden] { display: none; }
+
 .nav-item-chev {
     color: var(--diger-text-faint);
     font-size: var(--diger-fs-base);

@@ -1,7 +1,6 @@
 using Diger.TramitesEstado.Application.AI;
 using Diger.TramitesEstado.Application.Chat;
 using Diger.TramitesEstado.Application.Common.Interfaces;
-using Diger.TramitesEstado.Application.Notificaciones;
 using Diger.TramitesEstado.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -18,7 +17,8 @@ public sealed class SoporteHub(
 {
     // ── Constantes de grupos SignalR ──────────────────────────────────────
     public static string GrupoSesion(int sesionId) => $"sesion-{sesionId}";
-    public static string GrupoTecnico(Guid uid)    => $"tecnico-{uid}";
+    /// <summary>Todos los que atienden soporte: comparten la cola y su contador en vivo.</summary>
+    public const string GrupoBandeja = "bandeja-soporte";
     public static string GrupoTema(int temaId)     => $"tema-{temaId}";
 
     // ── Conexión / desconexión ────────────────────────────────────────────
@@ -28,9 +28,9 @@ public sealed class SoporteHub(
         var uid = UserId();
         if (uid is null) return;
 
-        // El técnico se suscribe a su grupo personal para recibir alertas de nuevos chats
+        // Quien atiende soporte ve la misma cola que los demás: se suscribe a sus cambios.
         if (currentUser.EsTecnicoSoporte)
-            await Groups.AddToGroupAsync(Context.ConnectionId, GrupoTecnico(uid.Value));
+            await Groups.AddToGroupAsync(Context.ConnectionId, GrupoBandeja);
 
         logger.LogDebug("Chat: usuario {Uid} conectado ({ConnectionId})", uid, Context.ConnectionId);
         await base.OnConnectedAsync();
@@ -80,6 +80,7 @@ public sealed class SoporteHub(
     {
         await chatSvc.CerrarSesionAsync(sesionId, ChatEstado.Abandonado);
         await Clients.Group(GrupoSesion(sesionId)).SendAsync("SesionCerrada", ChatEstado.Abandonado.ToString());
+        await AvisarColaAsync(Clients.Group(GrupoBandeja), chatSvc);
     }
 
     // ── Métodos del técnico ───────────────────────────────────────────────
@@ -91,21 +92,47 @@ public sealed class SoporteHub(
         var nombre = currentUser.Nombre ?? currentUser.Correo ?? "Técnico";
         if (uid is null) return;
 
-        await chatSvc.AsignarTecnicoAsync(sesionId, uid.Value, nombre);
+        string? anterior;
+        try
+        {
+            anterior = await chatSvc.TomarSesionAsync(sesionId, uid.Value, nombre, puedeReasignar: currentUser.EsGlobal);
+        }
+        catch (DomainException ex)
+        {
+            throw new HubException(ex.Message);
+        }
         await Groups.AddToGroupAsync(Context.ConnectionId, GrupoSesion(sesionId));
 
-        var msgSistema = await chatSvc.EnviarMensajeAsync(sesionId,
-            $"{nombre} se ha unido al chat.",
+        var msgSistema = await chatSvc.EnviarMensajeAsync(sesionId, MensajeToma(nombre, anterior),
             esDelTecnico: true, esSistema: true, autorNombre: "Sistema");
 
-        await Clients.Group(GrupoSesion(sesionId)).SendAsync("TecnicoAsignado", nombre, msgSistema);
+        await Clients.Group(GrupoSesion(sesionId)).SendAsync("TecnicoAsignado", nombre, msgSistema, uid.Value);
+        await AvisarColaAsync(Clients.Group(GrupoBandeja), chatSvc);
         logger.LogInformation("Chat: técnico {Uid} tomó sesión {SesionId}", uid, sesionId);
+    }
+
+    /// <summary>El texto de sistema que deja la toma; si hubo reasignación, dice a quién se la quitó.</summary>
+    public static string MensajeToma(string nombre, string? anterior) => anterior is null
+        ? $"{nombre} se ha unido al chat."
+        : $"{nombre} tomó el chat (lo atendía {anterior}).";
+
+    /// <summary>
+    /// Solo quien atiende la sesión responde o la resuelve. Sin esta guarda, cualquier
+    /// conectado al hub podía escribir en cualquier chat con solo conocer su número; y el
+    /// «solo lectura» del Global en los chats ajenos habría sido cosa de la pantalla.
+    /// </summary>
+    private async Task ExigirQueLaAtiendeAsync(int sesionId)
+    {
+        var uid = UserId();
+        if (uid is null || !await chatSvc.AtiendeSesionAsync(sesionId, uid.Value))
+            throw new HubException("Solo el técnico que atiende esta conversación puede responderla o resolverla.");
     }
 
     /// <summary>El técnico envía un mensaje.</summary>
     public async Task EnviarRespuesta(int sesionId, string texto)
     {
         if (string.IsNullOrWhiteSpace(texto) || texto.Length > 2000) return;
+        await ExigirQueLaAtiendeAsync(sesionId);
 
         var nombre = currentUser.Nombre ?? currentUser.Correo ?? "Técnico";
         var msg    = await chatSvc.EnviarMensajeAsync(sesionId, texto.Trim(),
@@ -117,6 +144,7 @@ public sealed class SoporteHub(
     /// <summary>El técnico cierra la sesión como resuelta.</summary>
     public async Task CerrarComoResuelto(int sesionId)
     {
+        await ExigirQueLaAtiendeAsync(sesionId);
         await chatSvc.CerrarSesionAsync(sesionId, ChatEstado.Resuelto);
 
         var msgSistema = await chatSvc.EnviarMensajeAsync(sesionId,
@@ -130,32 +158,23 @@ public sealed class SoporteHub(
     /// <summary>Marca mensajes del interlocutor como leídos.</summary>
     public async Task MarcarLeidos(int sesionId, bool esElTecnicoQueLee)
     {
+        // Que el Global lea un chat ajeno no debe apagarle los no leídos al técnico que lo atiende.
+        if (esElTecnicoQueLee && (UserId() is not Guid uid || !await chatSvc.AtiendeSesionAsync(sesionId, uid)))
+            return;
+
         await chatSvc.MarcarLeidosAsync(sesionId, lectoPorTecnico: esElTecnicoQueLee);
         await Clients.OthersInGroup(GrupoSesion(sesionId)).SendAsync("MensajesLeidos", sesionId);
     }
 
-    // ── Método usado por la página de técnico para notificar nuevos chats ─
+    // ── La cola compartida ────────────────────────────────────────────────
 
-    /// <summary>Llama al técnico asignado enviando una notificación SignalR.</summary>
-    public static async Task NotificarTecnicoAsync(
-        IHubContext<SoporteHub> hub,
-        INotificacionService notifSvc,
-        Guid tecnicoId,
-        int sesionId,
-        string usuarioNombre,
-        string? temaNombre,
-        CancellationToken ct = default)
-    {
-        await hub.Clients.Group(GrupoTecnico(tecnicoId))
-            .SendAsync("NuevoChat", sesionId, usuarioNombre, temaNombre ?? "General", cancellationToken: ct);
-
-        await notifSvc.CrearYGuardarAsync(
-            tecnicoId,
-            TipoNotificacion.ChatRecibido,
-            $"Nuevo chat de {usuarioNombre}" + (temaNombre != null ? $" · {temaNombre}" : ""),
-            $"/Chat#{sesionId}",
-            ct: ct);
-    }
+    /// <summary>
+    /// Avisa a toda la bandeja que la cola cambió, con el nuevo total: el contador del menú y la
+    /// tabla «En cola» se refrescan solos. Ya no se elige a un técnico para avisarle: la cola es
+    /// una sola, la ven todos, cada quien toma y un supervisor reparte.
+    /// </summary>
+    public static async Task AvisarColaAsync(IClientProxy bandeja, IChatService chatSvc, CancellationToken ct = default)
+        => await bandeja.SendAsync("ColaActualizada", await chatSvc.ContarColaAsync(ct), cancellationToken: ct);
 
     // ── Helpers ───────────────────────────────────────────────────────────
 

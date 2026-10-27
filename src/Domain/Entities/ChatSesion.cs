@@ -41,6 +41,27 @@ public sealed class ChatSesion : BaseEntity
         Estado        = ChatEstado.Activo;
     }
 
+    public bool EstaAbierta => Estado is ChatEstado.EnCola or ChatEstado.Activo;
+
+    /// <summary>
+    /// Un técnico toma la conversación. De la cola la toma cualquiera; si ya la atiende otro,
+    /// solo quien tiene alcance Global puede quitársela (<paramref name="puedeReasignar"/>).
+    /// Devuelve el nombre de quien la atendía cuando hubo reasignación, para dejarlo dicho en el chat.
+    /// </summary>
+    public string? Tomar(Guid tecnicoId, string tecnicoNombre, bool puedeReasignar)
+    {
+        if (!EstaAbierta)
+            throw new DomainException("La conversación ya está cerrada.");
+        if (TecnicoId == tecnicoId)
+            throw new DomainException("Ya atiende esta conversación.");
+        if (TecnicoId.HasValue && !puedeReasignar)
+            throw new DomainException("Esta conversación ya la atiende otro técnico.");
+
+        var anterior = TecnicoId.HasValue ? TecnicoNombre : null;
+        AsignarTecnico(tecnicoId, tecnicoNombre);
+        return anterior;
+    }
+
     public void VincularTicket(int ticketId) => TicketId = ticketId;
 
     public ChatMensaje AgregarMensaje(string texto, bool esDelTecnico, bool esSistema, string autorNombre)

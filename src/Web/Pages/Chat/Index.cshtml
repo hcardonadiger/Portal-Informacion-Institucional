@@ -1,46 +1,36 @@
 @page
 @model Diger.TramitesEstado.Web.Pages.Chat.IndexModel
+@using System.Security.Claims
+@using Diger.TramitesEstado.Application.Chat
 @{
     ViewData["Title"] = "Chat de Soporte";
+
+    // Quién atiende cada conversación: es lo que el Global necesita leer de un vistazo.
+    static string Atiende(ChatSesionDto s) => s.TecnicoNombre is { Length: > 0 } t ? t : "Sin asignar";
 }
 
 <div class="pg-wrap">
   <div class="pg-hdr">
     <div class="pg-hdr-left">
       <h1 class="pg-title">Chat de Soporte</h1>
-      @if (Model.Cola.Count > 0)
-      {
-        <span class="badge-alert">@Model.Cola.Count en cola</span>
-      }
+      <span class="badge-alert" id="colaBadge" @(Model.Cola.Count == 0 ? "hidden" : null)>@Model.Cola.Count en cola</span>
     </div>
   </div>
+
+  <partial name="_SuccessBanner" />
+  @if (TempData["ErrorMsg"] is string err)
+  {
+    <div class="alert alert-error" style="margin-bottom:1rem">@err</div>
+  }
 
   <div class="chat-layout">
 
     <!-- ── Panel izquierdo: listas ─────────────────────────── -->
     <div class="chat-sidebar">
 
-      @if (Model.Cola.Count > 0)
-      {
-        <div class="sidebar-section">
-          <div class="sidebar-section-title">En cola</div>
-          @foreach (var s in Model.Cola)
-          {
-            <div class="chat-item cola" id="ci-@s.Id">
-              <div class="ci-avatar">👤</div>
-              <div class="ci-info">
-                <div class="ci-nombre">@s.UsuarioNombre</div>
-                <div class="ci-tema">@(s.TemaNombre ?? "Sin tema")</div>
-                <div class="ci-hora">@s.Inicio.ToLocalTime().ToString("HH:mm")</div>
-              </div>
-              <form method="post" asp-page-handler="Tomar" style="margin:0">
-                <input type="hidden" name="sesionId" value="@s.Id" />
-                <button type="submit" class="btn-tomar">Tomar</button>
-              </form>
-            </div>
-          }
-        </div>
-      }
+      <div id="colaChat">
+        <partial name="_ColaChat" model="Model" />
+      </div>
 
       <div class="sidebar-section">
         <div class="sidebar-section-title">Mis chats activos</div>
@@ -63,6 +53,47 @@
           </a>
         }
       </div>
+
+      @if (Model.EsSupervision)
+      {
+        <div class="sidebar-section" data-seccion="otros">
+          <div class="sidebar-section-title">Activos de otros técnicos</div>
+          @if (Model.ActivasDeOtros.Count == 0)
+          {
+            <div class="sidebar-empty">Ningún otro técnico tiene chats activos</div>
+          }
+          @foreach (var s in Model.ActivasDeOtros)
+          {
+            <a href="/Chat?sesion=@s.Id" class="chat-item @(s.Id == Model.SesionAbiertoId ? "activo" : "")">
+              <div class="ci-avatar">💬</div>
+              <div class="ci-info">
+                <div class="ci-nombre">@s.UsuarioNombre</div>
+                <div class="ci-tema">@(s.TemaNombre ?? "General")</div>
+                <div class="ci-atiende">Atiende: @Atiende(s)</div>
+              </div>
+            </a>
+          }
+        </div>
+
+        <div class="sidebar-section" data-seccion="cerrados">
+          <div class="sidebar-section-title">Cerrados recientes</div>
+          @if (Model.Cerradas.Count == 0)
+          {
+            <div class="sidebar-empty">Sin chats cerrados</div>
+          }
+          @foreach (var s in Model.Cerradas)
+          {
+            <a href="/Chat?sesion=@s.Id" class="chat-item cerrado @(s.Id == Model.SesionAbiertoId ? "activo" : "")">
+              <div class="ci-avatar">🗂</div>
+              <div class="ci-info">
+                <div class="ci-nombre">@s.UsuarioNombre</div>
+                <div class="ci-tema">@(s.TemaNombre ?? "General") · @s.Estado</div>
+                <div class="ci-atiende">Atendió: @Atiende(s)</div>
+              </div>
+            </a>
+          }
+        </div>
+      }
     </div>
 
     <!-- ── Panel derecho: conversación ────────────────────── -->
@@ -80,7 +111,7 @@
         <div class="chat-conv-header">
           <div>
             <div class="chat-conv-nombre">@s.UsuarioNombre</div>
-            <div class="chat-conv-meta">@(s.TemaNombre ?? "General") · @s.Estado</div>
+            <div class="chat-conv-meta">@(s.TemaNombre ?? "General") · @s.Estado · Atiende: @Atiende(s)</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <div id="convTicketBadge">
@@ -91,9 +122,9 @@
                 </a>
               }
             </div>
-            @if (s.Estado == ChatEstado.Activo)
+            @if (Model.LaAtiendo)
             {
-              <form method="post" asp-page-handler="Cerrar" style="margin:0">
+              <form method="post" asp-page-handler="Cerrar" style="margin:0" id="frmResolver">
                 <input type="hidden" name="sesionId" value="@s.Id" />
                 <button type="submit" class="btn-sec" onclick="return confirm('¿Marcar como resuelto?')">
                   ✓ Resolver
@@ -102,6 +133,24 @@
             }
           </div>
         </div>
+
+        @if (!Model.LaAtiendo)
+        {
+          <div class="chat-solo-lectura" id="avisoSoloLectura">
+            <span>
+              @(s.TecnicoId.HasValue ? $"Lo atiende {s.TecnicoNombre}" : "Sin asignar") · solo lectura
+            </span>
+            @if (Model.PuedeTomarLaAbierta)
+            {
+              <form method="post" asp-page-handler="Tomar" style="margin:0">
+                <input type="hidden" name="sesionId" value="@s.Id" />
+                <button type="submit" class="btn-tomar"
+                        data-confirma="@(s.TecnicoId.HasValue ? $"¿Tomar este chat? Dejará de atenderlo {s.TecnicoNombre}." : "")"
+                        onclick="return !this.dataset.confirma || confirm(this.dataset.confirma)">Tomar para responder</button>
+              </form>
+            }
+          </div>
+        }
 
         <div class="chat-mensajes" id="chatMensajes">
           @foreach (var m in Model.SesionAbierta.Mensajes)
@@ -115,7 +164,7 @@
           }
         </div>
 
-        @if (s.Estado == ChatEstado.Activo)
+        @if (Model.LaAtiendo)
         {
           <div class="chat-input-bar">
             <textarea id="txtRespuesta" class="chat-textarea" placeholder="Escribe tu respuesta..." rows="2"></textarea>
@@ -161,10 +210,26 @@
 .ci-nombre { font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .ci-tema { font-size:11px;color:var(--diger-text-muted); }
 .ci-hora { font-size:10px;color:var(--diger-text-muted); }
+.ci-atiende { font-size:11px;color:var(--diger-text);font-weight:600; }
+.chat-item.cerrado { opacity:.8; }
+.chat-solo-lectura {
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 18px;border-bottom:1px solid var(--diger-border);
+  background:var(--diger-bg-soft);font-size:12px;color:var(--diger-text-muted);
+}
 .ci-badge {
   flex:none;width:20px;height:20px;border-radius:50%;display:flex;
   align-items:center;justify-content:center;font-size:10px;font-weight:700;
   background:var(--diger-blue-mid);color:#fff;
+}
+.cola-acciones { display:flex;flex-direction:column;gap:4px;align-items:stretch;flex:none; }
+.cola-asignar { display:flex;gap:4px;padding:0 14px 10px 44px;margin:0; }
+.cola-asignar select {
+  flex:1;min-width:0;font-size:11px;padding:3px 4px;border:1px solid var(--diger-border);border-radius:6px;
+}
+.btn-asignar {
+  flex:none;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;
+  background:#fff;color:var(--diger-blue);border:1px solid var(--diger-blue);cursor:pointer;
 }
 .btn-tomar {
   flex:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;
@@ -220,6 +285,8 @@
 <script>
 const sesionId    = @(Model.SesionAbiertoId);
 const esTecnico   = true;
+const soloLectura = @(Model.LaAtiendo ? "false" : "true");
+const miUid       = '@(User.FindFirstValue("diger:uid"))';
 const antiForgery = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
 // ── SignalR ──────────────────────────────────────────────────────────────
@@ -238,6 +305,15 @@ conn.on('SesionCerrada', (estado, msg) => {
     mostrarSistema(`Sesión ${estado.toLowerCase()}.`);
 });
 
+// Si otro técnico (el Global) toma el chat, quien lo atendía pasa a solo lectura.
+conn.on('TecnicoAsignado', (nombre, msg, tecnicoId) => {
+    if (msg && sesionId && msg.sesionId == sesionId) agregarMensaje(msg);
+    if (tecnicoId && tecnicoId !== miUid) {
+        document.querySelector('.chat-input-bar')?.remove();
+        document.getElementById('frmResolver')?.remove();
+    }
+});
+
 conn.on('TicketCreado', (tId, numero) => {
     const badge = document.getElementById('convTicketBadge');
     if (badge) badge.innerHTML = `<a href="/Tickets/Detalle/${tId}" target="_blank" class="ticket-badge-link">📋 ${escHtml(numero ?? 'Ticket vinculado')}</a>`;
@@ -249,15 +325,22 @@ conn.on('TicketCreado', (tId, numero) => {
     setTimeout(() => t.remove(), 7000);
 });
 
-conn.on('NuevoChat', (sid, nombre, tema) => {
-    mostrarToast(`Nuevo chat de ${nombre} · ${tema}`, sid);
-    actualizarBadge(1);
+// La cola es una sola para toda la bandeja: cuando cambia, se vuelve a pedir la tabla.
+conn.on('ColaActualizada', async (total) => {
+    const badge = document.getElementById('colaBadge');
+    if (badge) { badge.textContent = `${total} en cola`; badge.hidden = total === 0; }
+    const nav = document.getElementById('navColaChat');
+    if (nav) { nav.textContent = total; nav.hidden = total === 0; }
+    const cont = document.getElementById('colaChat');
+    if (!cont) return;
+    const r = await fetch(`/Chat?handler=Cola&sesion=${sesionId}`);
+    if (r.ok) cont.innerHTML = await r.text();
 });
 
 conn.start().then(() => {
     if (sesionId) {
         conn.invoke('UnirseASesion', sesionId);
-        conn.invoke('MarcarLeidos', sesionId, esTecnico);
+        if (!soloLectura) conn.invoke('MarcarLeidos', sesionId, esTecnico);
     }
 }).catch(err => console.error('SignalR error:', err));
 
@@ -265,7 +348,8 @@ conn.start().then(() => {
 function enviarRespuesta() {
     const txt = document.getElementById('txtRespuesta').value.trim();
     if (!txt || !sesionId) return;
-    conn.invoke('EnviarRespuesta', sesionId, txt);
+    conn.invoke('EnviarRespuesta', sesionId, txt)
+        .catch(err => mostrarSistema(String(err?.message ?? err).replace(/^.*HubException: /, '')));
     document.getElementById('txtRespuesta').value = '';
 }
 

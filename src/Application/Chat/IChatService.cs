@@ -29,7 +29,8 @@ public record ChatSesionDetalleDto(
     ChatSesionDto              Sesion,
     IReadOnlyList<ChatMensajeDto> Mensajes);
 
-public record TecnicoDisponibleDto(Guid Id, string Nombre, int ChatsActivos);
+/// <summary>Candidato a recibir un chat de la cola. <see cref="DelTema"/>: tiene asignado el tema del chat.</summary>
+public record TecnicoAsignableDto(Guid Id, string Nombre, bool DelTema);
 
 // ── Interfaz del servicio ────────────────────────────────────────────────
 public interface IChatService
@@ -37,8 +38,23 @@ public interface IChatService
     /// <summary>Crea una sesión en estado EnCola y persiste.</summary>
     Task<ChatSesion> IniciarSesionAsync(Guid usuarioId, string usuarioNombre, int? temaId, CancellationToken ct = default);
 
-    /// <summary>Asigna un técnico a la sesión y la activa.</summary>
-    Task AsignarTecnicoAsync(int sesionId, Guid tecnicoId, string tecnicoNombre, CancellationToken ct = default);
+    /// <summary>
+    /// El técnico toma la sesión y la activa. Si ya la atiende otro, solo procede con
+    /// <paramref name="puedeReasignar"/> (alcance Global); si no, lanza DomainException.
+    /// Devuelve el nombre de quien la atendía cuando hubo reasignación.
+    /// </summary>
+    Task<string?> TomarSesionAsync(int sesionId, Guid tecnicoId, string tecnicoNombre, bool puedeReasignar, CancellationToken ct = default);
+
+    /// <summary>
+    /// Un supervisor reparte un chat de la cola a <paramref name="tecnicoId"/>. Solo chats en cola
+    /// y solo técnicos activos con un rol que atiende soporte; si no, DomainException.
+    /// Devuelve el nombre del técnico, para el mensaje de sistema y la notificación.
+    /// </summary>
+    Task<string> AsignarDesdeColaAsync(int sesionId, Guid tecnicoId, CancellationToken ct = default);
+
+    /// <summary>¿Es <paramref name="tecnicoId"/> quien atiende esta sesión, y sigue abierta?
+    /// Solo ese técnico responde o resuelve; los demás, incluido el Global, la leen.</summary>
+    Task<bool> AtiendeSesionAsync(int sesionId, Guid tecnicoId, CancellationToken ct = default);
 
     /// <summary>Agrega un mensaje a la sesión y lo persiste.</summary>
     Task<ChatMensajeDto> EnviarMensajeAsync(int sesionId, string texto, bool esDelTecnico, bool esSistema, string autorNombre, CancellationToken ct = default);
@@ -59,6 +75,13 @@ public interface IChatService
     Task<ChatSesionDetalleDto?>           GetDetalleAsync(int sesionId, CancellationToken ct = default);
     Task<IReadOnlyList<ChatSesionDto>>    GetSesionesTecnicoAsync(Guid tecnicoId, CancellationToken ct = default);
     Task<IReadOnlyList<ChatSesionDto>>    GetColaAsync(int? temaId = null, CancellationToken ct = default);
-    Task<IReadOnlyList<TecnicoDisponibleDto>> GetTecnicosDisponiblesAsync(int temaId, CancellationToken ct = default);
+
+    // Supervisión (alcance Global): lo que la bandeja de un técnico no muestra.
+    Task<IReadOnlyList<ChatSesionDto>>    GetActivasDeOtrosAsync(Guid tecnicoId, CancellationToken ct = default);
+    Task<IReadOnlyList<ChatSesionDto>>    GetCerradasRecientesAsync(int maximo = 50, CancellationToken ct = default);
+    Task<int>                             ContarColaAsync(CancellationToken ct = default);
+
+    /// <summary>Técnicos activos a quienes se puede asignar un chat: los del tema primero, luego el resto.</summary>
+    Task<IReadOnlyList<TecnicoAsignableDto>> GetTecnicosAsignablesAsync(int? temaId, CancellationToken ct = default);
     Task<ChatSesionDto?>                  GetSesionActivaUsuarioAsync(Guid usuarioId, CancellationToken ct = default);
 }

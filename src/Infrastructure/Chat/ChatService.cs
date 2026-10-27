@@ -23,14 +23,34 @@ public sealed class ChatService(IApplicationDbContext ctx, IUnitOfWork uow) : IC
         return sesion;
     }
 
-    public async Task AsignarTecnicoAsync(int sesionId, Guid tecnicoId, string tecnicoNombre, CancellationToken ct = default)
+    public async Task<string?> TomarSesionAsync(int sesionId, Guid tecnicoId, string tecnicoNombre, bool puedeReasignar, CancellationToken ct = default)
     {
         var sesion = await ctx.ChatSesiones.FindAsync([sesionId], ct)
             ?? throw new InvalidOperationException($"Sesión {sesionId} no encontrada.");
 
-        sesion.AsignarTecnico(tecnicoId, tecnicoNombre);
+        var anterior = sesion.Tomar(tecnicoId, tecnicoNombre, puedeReasignar);
         await uow.SaveChangesAsync(ct);
+        return anterior;
     }
+
+    public async Task<string> AsignarDesdeColaAsync(int sesionId, Guid tecnicoId, CancellationToken ct = default)
+    {
+        var sesion = await ctx.ChatSesiones.FindAsync([sesionId], ct)
+            ?? throw new InvalidOperationException($"Sesión {sesionId} no encontrada.");
+        if (sesion.Estado != ChatEstado.EnCola)
+            throw new DomainException("Ese chat ya no está en la cola.");
+
+        var tecnico = (await GetTecnicosAsignablesAsync(null, ct)).FirstOrDefault(t => t.Id == tecnicoId)
+            ?? throw new DomainException("El usuario elegido no puede atender el chat de soporte.");
+
+        sesion.Tomar(tecnico.Id, tecnico.Nombre, puedeReasignar: false);
+        await uow.SaveChangesAsync(ct);
+        return tecnico.Nombre;
+    }
+
+    public Task<bool> AtiendeSesionAsync(int sesionId, Guid tecnicoId, CancellationToken ct = default)
+        => ctx.ChatSesiones.AsNoTracking().AnyAsync(s => s.Id == sesionId && s.TecnicoId == tecnicoId &&
+            (s.Estado == ChatEstado.EnCola || s.Estado == ChatEstado.Activo), ct);
 
     public async Task<ChatMensajeDto> EnviarMensajeAsync(int sesionId, string texto, bool esDelTecnico, bool esSistema, string autorNombre, CancellationToken ct = default)
     {
@@ -110,31 +130,52 @@ public sealed class ChatService(IApplicationDbContext ctx, IUnitOfWork uow) : IC
         => GetSesionesWhere(s => s.Estado == ChatEstado.EnCola &&
             (!temaId.HasValue || s.TemaId == temaId), ct);
 
-    public async Task<IReadOnlyList<TecnicoDisponibleDto>> GetTecnicosDisponiblesAsync(int temaId, CancellationToken ct = default)
+    public Task<IReadOnlyList<ChatSesionDto>> GetActivasDeOtrosAsync(Guid tecnicoId, CancellationToken ct = default)
+        => GetSesionesWhere(s => s.Estado == ChatEstado.Activo &&
+            s.TecnicoId.HasValue && s.TecnicoId != tecnicoId, ct);
+
+    // Las cerradas crecen sin tope: se ordenan por cierre (lo último resuelto primero) y se cortan.
+    public async Task<IReadOnlyList<ChatSesionDto>> GetCerradasRecientesAsync(int maximo = 50, CancellationToken ct = default)
     {
-        var tecnicoIds = await ctx.UsuarioTemas
-            .Where(ut => ut.TemaId == temaId)
-            .Select(ut => ut.UsuarioId)
+        var sesiones = await ctx.ChatSesiones
+            .AsNoTracking()
+            .Where(s => s.Estado != ChatEstado.EnCola && s.Estado != ChatEstado.Activo)
+            .OrderByDescending(s => s.Cierre ?? s.Inicio)
+            .Take(maximo)
+            .Select(s => new
+            {
+                Sesion   = s,
+                NoLeidos = s.Mensajes.Count(m => !m.Leido),
+            })
             .ToListAsync(ct);
 
-        if (tecnicoIds.Count == 0)
-            return [];
+        return sesiones.Select(x => ToSesionDto(x.Sesion, x.NoLeidos)).ToList();
+    }
 
-        var chatsActivos = await ctx.ChatSesiones
-            .Where(s => s.TecnicoId.HasValue && s.Estado == ChatEstado.Activo)
-            .GroupBy(s => s.TecnicoId!.Value)
-            .Select(g => new { TecnicoId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.TecnicoId, x => x.Count, ct);
+    public Task<int> ContarColaAsync(CancellationToken ct = default)
+        => ctx.ChatSesiones.AsNoTracking().CountAsync(s => s.Estado == ChatEstado.EnCola, ct);
 
+    public async Task<IReadOnlyList<TecnicoAsignableDto>> GetTecnicosAsignablesAsync(int? temaId, CancellationToken ct = default)
+    {
+        // Atiende soporte quien tiene alguna asignación con un rol activo que lo permite —la
+        // misma capacidad que abre la bandeja—, no solo quien tiene temas: un chat sin tema, o de
+        // un tema que nadie tiene, también tiene que poder repartirse.
+        var rolesTecnicos = ctx.Roles.Where(r => r.Activo && r.EsTecnicoSoporte).Select(r => r.Id);
         var tecnicos = await ctx.Usuarios
-            .Where(u => tecnicoIds.Contains(u.Id) && u.Activo)
-            .Select(u => new { u.Id, u.Nombre })
+            .AsNoTracking()
+            .Where(u => u.Activo &&
+                ctx.AsignacionesUsuario.Any(a => a.UsuarioId == u.Id && rolesTecnicos.Contains(a.Rol)))
+            .Select(u => new
+            {
+                u.Id,
+                u.Nombre,
+                DelTema = temaId != null && ctx.UsuarioTemas.Any(ut => ut.UsuarioId == u.Id && ut.TemaId == temaId),
+            })
             .ToListAsync(ct);
 
         return tecnicos
-            .Select(u => new TecnicoDisponibleDto(u.Id, u.Nombre,
-                chatsActivos.GetValueOrDefault(u.Id, 0)))
-            .OrderBy(t => t.ChatsActivos)
+            .OrderByDescending(t => t.DelTema).ThenBy(t => t.Nombre)
+            .Select(t => new TecnicoAsignableDto(t.Id, t.Nombre, t.DelTema))
             .ToList();
     }
 

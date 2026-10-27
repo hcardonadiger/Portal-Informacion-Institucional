@@ -204,6 +204,8 @@
         var puedeTickets     = await Acceso.PuedeAsync(ModulosPortal.Tickets);
         var puedeContactos   = await Acceso.PuedeAsync(ModulosPortal.Contactos);
         var puedeSoporte     = await Acceso.EsSoporteAsync();   // atiende el chat de soporte
+        // La cola es una sola y la ve toda la bandeja: el menú dice cuántos chats esperan.
+        var colaChat         = puedeSoporte ? await chatSvc.ContarColaAsync() : 0;
         var puedeProyectos   = await Acceso.PuedeAsync(ModulosPortal.Proyectos);
         var puedeSiger       = await Acceso.PuedeAsync(ModulosPortal.Siger);
 
@@ -452,7 +454,7 @@
                                     }
                                     @if (puedeSoporte)
                                     {
-                                        <a class="nav-item @(EsRuta("/Chat") ? "on" : "")" asp-page="/Chat/Index"><svg class="ico"><use href="#i-respuesta"></use></svg>Chat de Soporte</a>
+                                        <a class="nav-item @(EsRuta("/Chat") ? "on" : "")" asp-page="/Chat/Index"><svg class="ico"><use href="#i-respuesta"></use></svg>Chat de Soporte<span class="nav-cola" id="navColaChat" title="Chats en cola" @(colaChat == 0 ? "hidden" : null)>@colaChat</span></a>
                                     }
                                     @if (puedeContactos)
                                     {
@@ -1325,6 +1327,17 @@
     .cwp-ticket-confirm:hover { opacity:.9; }
     .cwp-ticket-confirm:disabled { opacity:.55;cursor:not-allowed; }
     </style>
+
+    @* Contador de la cola en vivo, fuera de /Chat (allá lo actualiza la propia bandeja). *@
+    <script>
+    (function() {
+        const badge = document.getElementById('navColaChat');
+        if (!badge || !window.signalR) return;
+        const conn = new signalR.HubConnectionBuilder().withUrl('/hubs/soporte').withAutomaticReconnect().build();
+        conn.on('ColaActualizada', total => { badge.textContent = total; badge.hidden = total === 0; });
+        conn.start().catch(() => {});
+    })();
+    </script>
 }
 </body>
 </html>

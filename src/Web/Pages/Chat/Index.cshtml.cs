@@ -29,13 +29,58 @@ public sealed class IndexModel(
     public ChatSesionDetalleDto?        SesionAbierta   { get; private set; }
     public int                          SesionAbiertoId { get; private set; }
 
+    // Supervisión: el Global ve todas las conversaciones, no solo la cola y las suyas.
+    public bool                         EsSupervision   { get; private set; }
+    public IReadOnlyList<ChatSesionDto> ActivasDeOtros  { get; private set; } = [];
+    public IReadOnlyList<ChatSesionDto> Cerradas        { get; private set; } = [];
+
+    /// <summary>La sesión abierta la atiende quien mira: puede responder y resolverla.</summary>
+    public bool LaAtiendo => SesionAbierta is { } d && d.Sesion.TecnicoId == currentUser.UserId &&
+                             d.Sesion.Estado == ChatEstado.Activo;
+
+    /// <summary>El Global puede quitarle a otro técnico un chat abierto que no es suyo.</summary>
+    public bool PuedeTomarLaAbierta => EsSupervision && SesionAbierta is { } d &&
+                                       d.Sesion.Estado is ChatEstado.Activo or ChatEstado.EnCola &&
+                                       d.Sesion.TecnicoId != currentUser.UserId;
+
+    /// <summary>
+    /// Jefaturas y Global reparten la cola; el resto solo toma. La PMO queda fuera aunque su rol
+    /// sea de supervisión: su función es aparte del soporte, y repartir chats no le corresponde.
+    /// </summary>
+    public bool PuedeAsignar => currentUser.EsGlobal || (currentUser.EsSupervisor && !currentUser.EsPmo);
+
+    /// <summary>Candidatos para el «Asignar a…» de cada chat en cola, por su tema (null = sin tema).</summary>
+    public IReadOnlyDictionary<int, IReadOnlyList<TecnicoAsignableDto>> Asignables { get; private set; }
+        = new Dictionary<int, IReadOnlyList<TecnicoAsignableDto>>();
+
+    public IReadOnlyList<TecnicoAsignableDto> AsignablesDe(ChatSesionDto s) =>
+        Asignables.TryGetValue(s.TemaId ?? 0, out var l) ? l : [];
+
+    private async Task CargarColaAsync(CancellationToken ct)
+    {
+        Cola = await chatSvc.GetColaAsync(temaId: null, ct);
+        if (!PuedeAsignar) return;
+
+        var porTema = new Dictionary<int, IReadOnlyList<TecnicoAsignableDto>>();
+        foreach (var temaId in Cola.Select(c => c.TemaId).Distinct())
+            porTema[temaId ?? 0] = await chatSvc.GetTecnicosAsignablesAsync(temaId, ct);
+        Asignables = porTema;
+    }
+
     public async Task OnGetAsync(int? sesion, CancellationToken ct)
     {
         var uid = currentUser.UserId;
         if (uid is null) return;
 
         SesionesActivas = await chatSvc.GetSesionesTecnicoAsync(uid.Value, ct);
-        Cola            = await chatSvc.GetColaAsync(temaId: null, ct);
+        await CargarColaAsync(ct);
+
+        EsSupervision = currentUser.EsGlobal;
+        if (EsSupervision)
+        {
+            ActivasDeOtros = await chatSvc.GetActivasDeOtrosAsync(uid.Value, ct);
+            Cerradas       = await chatSvc.GetCerradasRecientesAsync(ct: ct);
+        }
 
         if (sesion.HasValue)
         {
@@ -52,22 +97,86 @@ public sealed class IndexModel(
         var nombre = currentUser.Nombre ?? currentUser.Correo ?? "Técnico";
         if (uid is null) return Forbid();
 
-        await chatSvc.AsignarTecnicoAsync(sesionId, uid.Value, nombre, ct);
+        string? anterior;
+        try
+        {
+            anterior = await chatSvc.TomarSesionAsync(sesionId, uid.Value, nombre,
+                puedeReasignar: currentUser.EsGlobal, ct);
+        }
+        catch (DomainException ex)
+        {
+            TempData["ErrorMsg"] = ex.Message;
+            return RedirectToPage(new { sesion = sesionId });
+        }
 
         var msgSistema = await chatSvc.EnviarMensajeAsync(sesionId,
-            $"{nombre} se ha unido al chat.",
+            SoporteHub.MensajeToma(nombre, anterior),
             esDelTecnico: true, esSistema: true, autorNombre: "Sistema", ct);
 
         await hub.Clients.Group(SoporteHub.GrupoSesion(sesionId))
-            .SendAsync("TecnicoAsignado", nombre, msgSistema, cancellationToken: ct);
+            .SendAsync("TecnicoAsignado", nombre, msgSistema, uid.Value, cancellationToken: ct);
+        await SoporteHub.AvisarColaAsync(hub.Clients.Group(SoporteHub.GrupoBandeja), chatSvc, ct);
 
         return RedirectToPage(new { sesion = sesionId });
+    }
+
+    /// <summary>La tabla «En cola», sola: la bandeja la vuelve a pedir cuando la cola cambia.</summary>
+    public async Task<IActionResult> OnGetColaAsync(int? sesion, CancellationToken ct)
+    {
+        SesionAbiertoId = sesion ?? 0;
+        await CargarColaAsync(ct);
+        return Partial("_ColaChat", this);
+    }
+
+    // Un supervisor reparte un chat de la cola. La capacidad del rol se exige acá, no solo en la
+    // vista: el permiso Chat.Editar lo tiene cualquier técnico.
+    [Permission("Chat", AccionModulo.Editar, "Atender el chat de soporte")]
+    public async Task<IActionResult> OnPostAsignarAsync(int sesionId, Guid tecnicoId, CancellationToken ct)
+    {
+        if (!PuedeAsignar) return Forbid();
+
+        string tecnicoNombre;
+        try
+        {
+            tecnicoNombre = await chatSvc.AsignarDesdeColaAsync(sesionId, tecnicoId, ct);
+        }
+        catch (DomainException ex)
+        {
+            TempData["ErrorMsg"] = ex.Message;
+            return RedirectToPage();
+        }
+
+        var quien = currentUser.Nombre ?? currentUser.Correo ?? "Supervisor";
+        var msgSistema = await chatSvc.EnviarMensajeAsync(sesionId,
+            $"{quien} asignó el chat a {tecnicoNombre}.",
+            esDelTecnico: true, esSistema: true, autorNombre: "Sistema", ct);
+
+        await hub.Clients.Group(SoporteHub.GrupoSesion(sesionId))
+            .SendAsync("TecnicoAsignado", tecnicoNombre, msgSistema, tecnicoId, cancellationToken: ct);
+        await SoporteHub.AvisarColaAsync(hub.Clients.Group(SoporteHub.GrupoBandeja), chatSvc, ct);
+
+        // Este sí es un aviso con destinatario: el chat ya es suyo.
+        var detalle = await chatSvc.GetDetalleAsync(sesionId, ct);
+        await notifSvc.CrearYGuardarAsync(tecnicoId, TipoNotificacion.ChatRecibido,
+            $"Te asignaron un chat de {detalle?.Sesion.UsuarioNombre}" +
+                (detalle?.Sesion.TemaNombre is { } tema ? $" · {tema}" : ""),
+            $"/Chat?sesion={sesionId}", ct: ct);
+
+        TempData["SuccessMsg"] = $"Chat asignado a {tecnicoNombre}.";
+        return RedirectToPage();
     }
 
     // Cerrar sesión como resuelta
     [Permission("Chat", AccionModulo.Editar, "Atender el chat de soporte")]
     public async Task<IActionResult> OnPostCerrarAsync(int sesionId, CancellationToken ct)
     {
+        // Resolver es del técnico que la atiende; el Global la lee, y si quiere cerrarla la toma antes.
+        if (currentUser.UserId is not Guid uid || !await chatSvc.AtiendeSesionAsync(sesionId, uid, ct))
+        {
+            TempData["ErrorMsg"] = "Solo el técnico que atiende esta conversación puede resolverla.";
+            return RedirectToPage(new { sesion = sesionId });
+        }
+
         await chatSvc.CerrarSesionAsync(sesionId, ChatEstado.Resuelto, ct);
 
         var msgSistema = await chatSvc.EnviarMensajeAsync(sesionId,
@@ -102,17 +211,9 @@ public sealed class IndexModel(
             await chatSvc.EnviarMensajeAsync(sesion.Id, req.Mensaje.Trim(),
                 esDelTecnico: false, esSistema: false, autorNombre: nombre, ct);
 
-        // Buscar técnico disponible y notificarlo
-        if (sesion.TemaId.HasValue)
-        {
-            var tecnicos = await chatSvc.GetTecnicosDisponiblesAsync(sesion.TemaId.Value, ct);
-            var tecnico  = tecnicos.FirstOrDefault();
-            if (tecnico != null)
-            {
-                await SoporteHub.NotificarTecnicoAsync(hub, notifSvc,
-                    tecnico.Id, sesion.Id, nombre, sesion.TemaNombre, ct);
-            }
-        }
+        // Ya no se elige a un técnico para avisarle: el chat entra a la cola que ve toda la
+        // bandeja, y cada quien lo toma o un supervisor lo reparte.
+        await SoporteHub.AvisarColaAsync(hub.Clients.Group(SoporteHub.GrupoBandeja), chatSvc, ct);
 
         return new JsonResult(new { sesionId = sesion.Id });
     }
