@@ -481,6 +481,7 @@
                                                 aria-expanded="true" title="Plegar o desplegar sus actividades">
                                             <span class="caret" aria-hidden="true">▾</span>
                                         </button>
+                                        <span class="edt-tipo edt-tipo-ent" title="Entregable">ENT</span>
                                         <input name="Entregables[@i].Nombre" value="@e.Nombre" maxlength="300"
                                                class="edt-nombre" disabled="@(!Model.PuedeEditar)"
                                                placeholder="Qué se entrega"
@@ -632,6 +633,7 @@
                                     <input type="hidden" name="Entregables[@i].Actividades[@j].Descripcion" value="@a.Descripcion" />
                                     <td class="edt-cuerpo edt-cuerpo-act">
                                         <div class="edt-titulo">
+                                            <span class="edt-tipo edt-tipo-act" title="Actividad">ACT</span>
                                             <input name="Entregables[@i].Actividades[@j].Nombre" value="@a.Nombre" maxlength="300"
                                                    class="edt-nombre" disabled="@(!Model.PuedeEditar)"
                                                    placeholder="Qué hay que hacer"
@@ -2613,6 +2615,7 @@
                 '<td class="edt-cuerpo">' +
                 '<div class="edt-titulo">' +
                 '<button type="button" class="edt-toggle" onclick="alternarGrupo(this)" aria-expanded="true" title="Plegar o desplegar sus actividades"><span class="caret" aria-hidden="true">&#9662;</span></button>' +
+                '<span class="edt-tipo edt-tipo-ent" title="Entregable">ENT</span>' +
                 '<input name="Entregables[' + i + '].Nombre" maxlength="300" class="edt-nombre" placeholder="Qué se entrega" aria-label="Nombre del entregable nuevo" />' +
                 '</div>' +
                 '<div class="edt-marcas"><span class="res-meta">sin actividades todavía</span></div>' +
@@ -2664,7 +2667,7 @@
                 '<input type="hidden" name="' + base + '.Id" value="0" />' +
                 '<input type="hidden" name="' + base + '.Descripcion" value="" />' +
                 '<td class="edt-cuerpo edt-cuerpo-act">' +
-                '<div class="edt-titulo"><input name="' + base + '.Nombre" maxlength="300" class="edt-nombre" placeholder="Qué hay que hacer" aria-label="Nombre de la actividad nueva" /></div>' +
+                '<div class="edt-titulo"><span class="edt-tipo edt-tipo-act" title="Actividad">ACT</span><input name="' + base + '.Nombre" maxlength="300" class="edt-nombre" placeholder="Qué hay que hacer" aria-label="Nombre de la actividad nueva" /></div>' +
                 // La fila nueva puede depender de actividades ya guardadas; ser predecesora,
                 // todavía no. Por eso lleva el botón pero no aparece en el catálogo.
                 '<div class="dep-lista"><button type="button" class="dep-mas" onclick="abrirDependencia(this)" title="Elegir qué actividad tiene que terminar antes que esta">+ depende de…</button></div>' +
