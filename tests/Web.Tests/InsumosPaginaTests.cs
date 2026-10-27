@@ -217,11 +217,39 @@ public sealed class InsumosPaginaTests : IAsyncLifetime
 
         var html = await _portal.ClienteComo("Administrador").GetStringAsync($"/Proyectos/Editor/{_proyecto}");
 
-        // Del chip hasta el botón «+ insumos…» de la misma fila.
-        var chip = Regex.Match(html, $"""<span class="dep-chip baja" data-ins="{_retirado}"[\s\S]*?(?=class="dep-mas")""").Value;
-        chip.Should().Contain("Asbesto").And.Contain("desactivado");
-        chip.Should().Contain($"name=\"Entregables[0].Actividades[0].Insumos\" value=\"{_retirado}\"",
+        // El campo de insumos de la actividad: sus hidden y el botón que los cuenta.
+        var campo = Regex.Match(html, """<div class="ins-campo">[\s\S]*?</button>""").Value;
+        campo.Should().Contain($"name=\"Entregables[0].Actividades[0].Insumos\" value=\"{_retirado}\"",
             "viaja en el formulario para que guardar no lo pierda");
+        campo.Should().Contain("data-baja=\"1\"").And.Contain("data-nombre=\"Asbesto\"");
+        WebUtility.HtmlDecode(campo).Should().Contain("1 insumo · 1 desactivado").And.Contain("Asbesto (desactivado)");
+    }
+
+    [Fact]
+    public async Task Los_insumos_son_un_boton_con_el_conteo_y_no_una_linea_bajo_las_dependencias()
+    {
+        await AsignarDirectoAsync(_actividad, _cemento);
+
+        var html = WebUtility.HtmlDecode(
+            await _portal.ClienteComo("Administrador").GetStringAsync($"/Proyectos/Editor/{_proyecto}"));
+
+        html.Should().NotContain("class=\"ins-lista\"").And.NotContain("+ insumos…");
+        var campo = Regex.Match(html, """<div class="ins-campo">[\s\S]*?</button>""").Value;
+        campo.Should().Contain("1 insumo").And.Contain("title=\"Cemento gris\"",
+            "los nombres se leen al pasar el mouse, sin abrir la ventana");
+    }
+
+    [Fact]
+    public async Task Quien_solo_ve_el_proyecto_abre_la_ventana_como_lista()
+    {
+        await AsignarDirectoAsync(_actividad, _cemento);
+        await _portal.OtorgarAsync("Consultor", "Proyectos.Ver");
+
+        var html = await _portal.ClienteComo("Consultor").GetStringAsync($"/Proyectos/Editor/{_proyecto}");
+
+        html.Should().Contain("id=\"dlg-ins\"", "la ventana ya no depende de poder editar");
+        html.Should().Contain("var editaIns = false");
+        WebUtility.HtmlDecode(html).Should().Contain("Ver los insumos de Instalar el servidor");
     }
 
     [Fact]

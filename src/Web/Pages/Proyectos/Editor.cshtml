@@ -709,43 +709,6 @@
                                             </div>
                                         }
 
-                                        @* Los insumos, con el mismo armado que las dependencias: es la línea
-                                           «Insumos: …» de la actividad, que el PDF repite con los mismos nombres y
-                                           en el mismo orden. La clase NO es dep-lista: el diálogo de dependencias
-                                           busca esa clase en la fila y metería sus chips acá. *@
-                                        @if (a.Insumos.Count > 0 || Model.PuedeEditar)
-                                        {
-                                            <div class="ins-lista" role="group" aria-label="Insumos de @a.Nombre">
-                                                @if (a.Insumos.Count > 0)
-                                                {
-                                                    <span class="dep-rot" aria-hidden="true">insumos</span>
-                                                }
-                                                @foreach (var ins in a.Insumos)
-                                                {
-                                                    <span class="dep-chip@(ins.Disponible ? "" : " baja")" data-ins="@ins.Id"
-                                                          title="@(ins.Disponible ? $"{ins.Categoria} · {ins.Nombre}" : "Desactivado en el catálogo: ya no se ofrece, pero se conserva aquí.")">
-                                                        <input type="hidden" name="Entregables[@i].Actividades[@j].Insumos" value="@ins.Id" />
-                                                        <span class="dep-nom">@ins.Nombre</span>
-                                                        @if (!ins.Disponible)
-                                                        {
-                                                            <span class="badge badge-secondary">desactivado</span>
-                                                        }
-                                                        @if (Model.PuedeEditar)
-                                                        {
-                                                            <button type="button" class="dep-x" onclick="quitarInsumo(this)"
-                                                                    aria-label="Quitar el insumo @ins.Nombre">&#10005;</button>
-                                                        }
-                                                    </span>
-                                                }
-                                                @if (Model.PuedeEditar)
-                                                {
-                                                    <button type="button" class="dep-mas" onclick="abrirInsumos(this)"
-                                                            aria-label="Elegir los insumos de @a.Nombre"
-                                                            title="Elegir qué insumos usa esta actividad">+ insumos…</button>
-                                                }
-                                            </div>
-                                        }
-
                                         @* Una sola línea de campos rotulados: la actividad es la fila que más
                                            se repite —un entregable puede tener trece— y un bloque alto por
                                            cada una vuelve el árbol imposible de recorrer. *@
@@ -811,6 +774,35 @@
                                                        nada y el binder deja el valor anterior. *@
                                                     <input type="hidden" name="Entregables[@i].Actividades[@j].Cancelada" value="false" />
                                                 }
+                                            </div>
+
+                                            @* Los insumos son un campo más de la fila: un botón con el conteo que
+                                               abre la ventana. Los hidden son lo que se postea —el PDF los imprime
+                                               en la línea «Insumos: …» de la actividad—; el botón es su cara visible
+                                               y su title, los nombres. *@
+                                            <div class="edt-campo">
+                                                <span class="cel-lbl" title="Qué insumos del catálogo usa esta actividad">Insumos</span>
+                                                <div class="ins-campo">
+                                                    @foreach (var ins in a.Insumos)
+                                                    {
+                                                        <input type="hidden" name="Entregables[@i].Actividades[@j].Insumos" value="@ins.Id"
+                                                               data-ins="@ins.Id" data-nombre="@ins.Nombre" data-cat="@ins.Categoria"
+                                                               data-baja="@(ins.Disponible ? null : "1")" />
+                                                    }
+                                                    @if (a.Insumos.Count > 0 || Model.PuedeEditar)
+                                                    {
+                                                        var bajas = a.Insumos.Count(x => !x.Disponible);
+                                                        <button type="button" class="ins-btn" onclick="abrirInsumos(this)"
+                                                                aria-label="@(Model.PuedeEditar ? "Elegir" : "Ver") los insumos de @a.Nombre"
+                                                                title="@(a.Insumos.Count == 0 ? "Elegir qué insumos usa esta actividad" : string.Join(" · ", a.Insumos.Select(x => x.Disponible ? x.Nombre : $"{x.Nombre} (desactivado)")))">
+                                                            @(a.Insumos.Count switch { 0 => "Ninguno", 1 => "1 insumo", var n => $"{n} insumos" })@(bajas > 0 ? $" · {bajas} desactivado{(bajas == 1 ? "" : "s")}" : "")
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="cel-calc">—</div>
+                                                    }
+                                                </div>
                                             </div>
 
                                             <div class="edt-campo edt-campo-angosto">
@@ -2522,41 +2514,43 @@
             <button type="button" class="btnp" id="dlg-dep-ok" onclick="confirmarDependencia()">Agregar</button>
         </div>
     </dialog>
-
-    @* La ventana de insumos: una sola, fuera del formulario, por lo mismo que la de dependencias.
-       Las casillas se arman al abrirla desde catalogoIns; solo trae activos de categorías activas,
-       que es la misma regla con la que el servidor acepta un insumo nuevo. *@
-    <dialog id="dlg-ins" class="dep-dialog ins-dialog" aria-labelledby="dlg-ins-titulo" aria-describedby="dlg-ins-de">
-        <h3 id="dlg-ins-titulo">Insumos</h3>
-        <p class="res-meta" id="dlg-ins-de"></p>
-        <div id="dlg-ins-busca">
-            <label class="cel-lbl" for="dlg-ins-q">Buscar</label>
-            <input type="search" id="dlg-ins-q" placeholder="Nombre o categoría…" autocomplete="off" />
-            <p class="res-meta" id="dlg-ins-cuenta" aria-live="polite"></p>
-        </div>
-        <div class="ins-opciones" id="dlg-ins-lista"></div>
-        <p class="res-meta" id="dlg-ins-nada" hidden>Ningún insumo coincide con la búsqueda.</p>
-        <p class="hint" id="dlg-ins-vacio" hidden style="margin-top:.6rem">
-            <span class="ico" aria-hidden="true">💡</span>
-            <span>
-                Todavía no hay insumos en el catálogo.
-                @if (Model.PuedeAdministrarInsumos)
-                {
-                    <a href="/Catalogos/Insumos" target="_blank" rel="noopener">Abrir el catálogo de insumos</a><text> (se abre en otra pestaña).</text>
-                }
-                else
-                {
-                    <text>Pídale al administrador que los registre en Catálogos.</text>
-                }
-            </span>
-        </p>
-        <div class="dep-dialog-pie">
-            <button type="button" class="btns" onclick="cerrarInsumos()">Cancelar</button>
-            <button type="button" class="btnp" id="dlg-ins-ok" onclick="confirmarInsumos()">Aplicar</button>
-        </div>
-        <p class="res-meta" style="margin-top:.5rem;text-align:right">Los cambios se guardan al guardar el proyecto.</p>
-    </dialog>
 }
+
+@* La ventana de insumos: una sola, fuera del formulario, por lo mismo que la de dependencias.
+   Las casillas se arman al abrirla desde catalogoIns; solo trae activos de categorías activas,
+   que es la misma regla con la que el servidor acepta un insumo nuevo. Va fuera del bloque de
+   edición: quien solo puede ver la abre igual, como lista y sin casillas. *@
+<dialog id="dlg-ins" class="dep-dialog ins-dialog" aria-labelledby="dlg-ins-titulo" aria-describedby="dlg-ins-de">
+    <h3 id="dlg-ins-titulo">Insumos</h3>
+    <p class="res-meta" id="dlg-ins-de"></p>
+    <div id="dlg-ins-busca">
+        <label class="cel-lbl" for="dlg-ins-q">Buscar</label>
+        <input type="search" id="dlg-ins-q" placeholder="Nombre o categoría…" autocomplete="off" />
+        <p class="res-meta" id="dlg-ins-cuenta" aria-live="polite"></p>
+    </div>
+    <div class="ins-opciones" id="dlg-ins-lista"></div>
+        <ul class="ins-solo-ver" id="dlg-ins-ver" hidden></ul>
+    <p class="res-meta" id="dlg-ins-nada" hidden>Ningún insumo coincide con la búsqueda.</p>
+    <p class="hint" id="dlg-ins-vacio" hidden style="margin-top:.6rem">
+        <span class="ico" aria-hidden="true">💡</span>
+        <span>
+            Todavía no hay insumos en el catálogo.
+            @if (Model.PuedeAdministrarInsumos)
+            {
+                <a href="/Catalogos/Insumos" target="_blank" rel="noopener">Abrir el catálogo de insumos</a><text> (se abre en otra pestaña).</text>
+            }
+            else
+            {
+                <text>Pídale al administrador que los registre en Catálogos.</text>
+            }
+        </span>
+    </p>
+    <div class="dep-dialog-pie">
+        <button type="button" class="btns" id="dlg-ins-cancelar" onclick="cerrarInsumos()">Cancelar</button>
+        <button type="button" class="btnp" id="dlg-ins-ok" onclick="confirmarInsumos()">Aplicar</button>
+    </div>
+    <p class="res-meta" id="dlg-ins-nota" style="margin-top:.5rem;text-align:right">Los cambios se guardan al guardar el proyecto.</p>
+</dialog>
 
 @* Las secciones no pueden declararse dentro de un bloque condicional: se define siempre y el
    script solo hace algo si la tabla editable está en la página. *@
@@ -2671,8 +2665,6 @@
                 // La fila nueva puede depender de actividades ya guardadas; ser predecesora,
                 // todavía no. Por eso lleva el botón pero no aparece en el catálogo.
                 '<div class="dep-lista"><button type="button" class="dep-mas" onclick="abrirDependencia(this)" title="Elegir qué actividad tiene que terminar antes que esta">+ depende de…</button></div>' +
-                // Los insumos sí se pueden elegir en una fila nueva: no apuntan a otra actividad.
-                '<div class="ins-lista" role="group" aria-label="Insumos de la actividad nueva"><button type="button" class="dep-mas" onclick="abrirInsumos(this)" aria-label="Elegir los insumos de la actividad nueva" title="Elegir qué insumos usa esta actividad">+ insumos…</button></div>' +
                 '<div class="edt-campos edt-campos-act">' +
                 '<div class="edt-campo"><label class="cel-lbl">Responsable</label>' +
                 '<select name="' + base + '.ResponsableId" aria-label="Responsable de la actividad nueva">' + optsResponsable() + '</select></div>' +
@@ -2688,6 +2680,9 @@
                 '<label class="edt-cancelada" title="Sale del promedio del entregable, sin borrarse">' +
                 '<input type="checkbox" name="' + base + '.Cancelada" value="true" /><span>Cancelada</span></label>' +
                 '<input type="hidden" name="' + base + '.Cancelada" value="false" /></div>' +
+                // Los insumos sí se pueden elegir en una fila nueva: no apuntan a otra actividad.
+                '<div class="edt-campo"><span class="cel-lbl">Insumos</span><div class="ins-campo">' +
+                '<button type="button" class="ins-btn" onclick="abrirInsumos(this)" aria-label="Elegir los insumos de la actividad nueva" title="Elegir qué insumos usa esta actividad">Ninguno</button></div></div>' +
                 '<div class="edt-campo edt-campo-angosto"><span class="cel-lbl">Creado</span>' +
                 '<div class="cel-calc" title="Se registra al guardar">—</div></div>' +
                 '</div></td>' +
@@ -2840,42 +2835,38 @@
         };
 
         // ── Insumos ──────────────────────────────────────────────────────
-        // Lo que se puede elegir hoy. Un insumo ya asignado que se desactivó no está acá: su chip
-        // queda en la fila, marcado, y la ventana no lo toca.
+        // Lo que se puede elegir hoy. Un insumo ya asignado que se desactivó no está acá: la
+        // ventana lo muestra aparte, marcado, para poder quitarlo pero no volver a ponerlo.
         var catalogoIns = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
             Model.InsumosElegibles.Select(x => new { id = x.Id, nombre = x.Nombre, cat = x.Categoria, desc = x.Descripcion })));
+        var editaIns = @(Model.PuedeEditar ? "true" : "false");
 
-        var filaIns = null;   // la fila para la que se abrió la ventana
+        var campoIns = null;   // el campo .ins-campo para el que se abrió la ventana
 
         // Sin mayúsculas ni tildes: «camion» tiene que encontrar «Camión».
         function plano(s) {
             return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
         }
 
-        function refrescarInsumos(lista) {
-            if (!lista) return;
-            var hay = lista.querySelector('.dep-chip');
-            var rot = lista.querySelector('.dep-rot');
-            if (hay && !rot) {
-                rot = document.createElement('span');
-                rot.className = 'dep-rot';
-                rot.setAttribute('aria-hidden', 'true');
-                rot.textContent = 'insumos';
-                lista.insertBefore(rot, lista.firstChild);
-            } else if (!hay && rot) {
-                rot.remove();
-            }
+        // Los hidden del campo son la fuente: lo que se postea y lo que la ventana marca.
+        function insumosDe(campo) {
+            return [].map.call(campo.querySelectorAll('input[data-ins]'), function (h) {
+                return { id: h.getAttribute('data-ins'), nombre: h.getAttribute('data-nombre'),
+                         cat: h.getAttribute('data-cat'), baja: h.hasAttribute('data-baja') };
+            });
         }
 
-        window.quitarInsumo = function (btn) {
-            var chip = btn.closest('.dep-chip');
-            var lista = chip.parentNode;
-            chip.remove();
-            refrescarInsumos(lista);
-            // El botón que se pulsó ya no existe: sin esto el foco cae al principio de la página.
-            var mas = lista.querySelector('.dep-mas');
-            if (mas) mas.focus();
-        };
+        // El botón dice cuántos hay; su title, cuáles.
+        function pintarBotonIns(campo) {
+            var btn = campo.querySelector('.ins-btn');
+            if (!btn) return;
+            var xs = insumosDe(campo);
+            var bajas = xs.filter(function (x) { return x.baja; }).length;
+            btn.textContent = (xs.length === 0 ? 'Ninguno' : xs.length === 1 ? '1 insumo' : xs.length + ' insumos') +
+                (bajas > 0 ? ' · ' + bajas + (bajas === 1 ? ' desactivado' : ' desactivados') : '');
+            btn.title = xs.length === 0 ? 'Elegir qué insumos usa esta actividad'
+                : xs.map(function (x) { return x.baja ? x.nombre + ' (desactivado)' : x.nombre; }).join(' · ');
+        }
 
         function filtrarInsumos() {
             var q = plano(document.getElementById('dlg-ins-q').value.trim());
@@ -2897,15 +2888,46 @@
                 (q ? visibles + ' de ' + catalogoIns.length : catalogoIns.length + ' en el catálogo');
         }
 
+        function casilla(idx, x, marcado, extra) {
+            var id = 'dlg-ins-c' + idx;
+            var titulo = x.desc ? ' title="' + esc(x.desc) + '"' : '';
+            return '<label class="chk" for="' + id + '" data-busca="' + esc(plano(x.nombre + ' ' + x.cat)) + '"' + titulo + '>' +
+                   '<input type="checkbox" id="' + id + '" value="' + esc(x.id) + '"' + (marcado ? ' checked' : '') + ' />' +
+                   '<span>' + esc(x.nombre) + '</span>' + (extra || '') + '</label>';
+        }
+
         window.abrirInsumos = function (btn) {
             var dlg = document.getElementById('dlg-ins');
             if (!dlg) return;
-            filaIns = btn.closest('tr');
+            campoIns = btn.closest('.ins-campo');
+            var puestos = insumosDe(campoIns);
 
-            var puestos = {};
-            [].forEach.call(filaIns.querySelectorAll('.ins-lista .dep-chip'), function (c) {
-                puestos[c.getAttribute('data-ins')] = true;
-            });
+            var fila = btn.closest('tr');
+            var nom  = fila && fila.querySelector('input[name$=".Nombre"]');
+            document.getElementById('dlg-ins-de').textContent =
+                nom && nom.value ? '«' + nom.value + '» usa:' : '';
+
+            // Quien solo puede ver: la lista de la actividad, sin casillas ni Aplicar.
+            var ver = document.getElementById('dlg-ins-ver');
+            ver.hidden = editaIns;
+            document.getElementById('dlg-ins-busca').hidden = !editaIns;
+            document.getElementById('dlg-ins-lista').hidden = !editaIns;
+            document.getElementById('dlg-ins-ok').hidden = !editaIns;
+            document.getElementById('dlg-ins-nota').hidden = !editaIns;
+            document.getElementById('dlg-ins-cancelar').textContent = editaIns ? 'Cancelar' : 'Cerrar';
+            if (!editaIns) {
+                ver.innerHTML = puestos.map(function (x) {
+                    return '<li>' + esc(x.nombre) + ' <span class="res-meta">' + esc(x.cat || '') + '</span>' +
+                           (x.baja ? ' <span class="badge badge-secondary">desactivado</span>' : '') + '</li>';
+                }).join('');
+                document.getElementById('dlg-ins-vacio').hidden = true;
+                document.getElementById('dlg-ins-nada').hidden = true;
+                dlg.showModal();
+                return;
+            }
+
+            var marcado = {};
+            puestos.forEach(function (x) { marcado[x.id] = true; });
 
             // Agrupados por categoría, en el orden del catálogo: la consulta ya los trae así.
             var html = [], actual = null, idx = 0;
@@ -2915,19 +2937,26 @@
                     html.push('<fieldset class="ins-grupo"><legend>' + esc(x.cat) + '</legend>');
                     actual = x.cat;
                 }
-                var id = 'dlg-ins-c' + (idx++);
-                var titulo = x.desc ? ' title="' + esc(x.desc) + '"' : '';
-                var marcado = puestos[String(x.id)] ? ' checked' : '';
-                html.push('<label class="chk" for="' + id + '" data-busca="' + esc(plano(x.nombre + ' ' + x.cat)) + '"' + titulo + '>' +
-                          '<input type="checkbox" id="' + id + '" value="' + x.id + '"' + marcado + ' />' +
-                          '<span>' + esc(x.nombre) + '</span></label>');
+                html.push(casilla(idx++, x, marcado[String(x.id)]));
             });
             if (actual !== null) html.push('</fieldset>');
+
+            // Los desactivados que la actividad conserva: marcados, se pueden desmarcar para
+            // quitarlos. Una vez aplicado, ya no vuelven a ofrecerse.
+            var bajas = puestos.filter(function (x) { return x.baja; });
+            if (bajas.length > 0) {
+                html.push('<fieldset class="ins-grupo"><legend>Desactivados en el catálogo</legend>');
+                bajas.forEach(function (x) {
+                    html.push(casilla(idx++, { id: x.id, nombre: x.nombre, cat: x.cat }, true,
+                        ' <span class="badge badge-secondary">desactivado</span>'));
+                });
+                html.push('</fieldset>');
+            }
 
             var lista = document.getElementById('dlg-ins-lista');
             lista.innerHTML = html.join('');
 
-            var vacio = catalogoIns.length === 0;
+            var vacio = catalogoIns.length === 0 && bajas.length === 0;
             document.getElementById('dlg-ins-vacio').hidden = !vacio;
             document.getElementById('dlg-ins-busca').hidden = vacio;
             document.getElementById('dlg-ins-ok').disabled  = vacio;
@@ -2936,10 +2965,6 @@
             var q = document.getElementById('dlg-ins-q');
             q.value = '';
             filtrarInsumos();
-
-            var nom = filaIns.querySelector('input[name$=".Nombre"]');
-            document.getElementById('dlg-ins-de').textContent =
-                nom && nom.value ? '«' + nom.value + '» usa:' : '';
 
             dlg.showModal();
             if (!vacio) q.focus();
@@ -2950,35 +2975,34 @@
             if (dlg && dlg.open) dlg.close();
         };
 
-        // Aplicar sincroniza la fila con las casillas: agrega las marcadas que no estaban y quita
-        // las desmarcadas. Los chips de insumos desactivados no tienen casilla y quedan como están.
+        // Aplicar rehace los hidden del campo con lo marcado: los del catálogo y los desactivados
+        // que se dejaron marcados.
         window.confirmarInsumos = function () {
-            if (!filaIns) { cerrarInsumos(); return; }
-
-            var idInput = filaIns.querySelector('input[name$=".Id"]');
-            var lista   = filaIns.querySelector('.ins-lista');
-            if (!idInput || !lista) { cerrarInsumos(); return; }
+            if (!campoIns) { cerrarInsumos(); return; }
+            var idInput = campoIns.closest('tr').querySelector('input[name$=".Id"]');
+            if (!idInput) { cerrarInsumos(); return; }
             var base = idInput.getAttribute('name').replace(/\.Id$/, '');
 
-            [].forEach.call(document.querySelectorAll('#dlg-ins-lista input[type=checkbox]'), function (cb) {
-                var chip = lista.querySelector('.dep-chip[data-ins="' + cb.value + '"]');
-                if (!cb.checked && chip) { chip.remove(); return; }
-                if (!cb.checked || chip) return;
+            var previos = {};
+            insumosDe(campoIns).forEach(function (x) { previos[x.id] = x; });
+            [].forEach.call(campoIns.querySelectorAll('input[data-ins]'), function (h) { h.remove(); });
 
-                var x = catalogoIns.find(function (i) { return String(i.id) === cb.value; });
-                var nuevo = document.createElement('span');
-                nuevo.className = 'dep-chip';
-                nuevo.setAttribute('data-ins', cb.value);
-                nuevo.title = x.cat + ' · ' + x.nombre;
-                nuevo.innerHTML =
-                    '<input type="hidden" name="' + base + '.Insumos" value="' + esc(cb.value) + '" />' +
-                    '<span class="dep-nom">' + esc(x.nombre) + '</span>' +
-                    '<button type="button" class="dep-x" aria-label="Quitar el insumo ' + esc(x.nombre) + '" ' +
-                    'onclick="quitarInsumo(this)">&#10005;</button>';
-                lista.insertBefore(nuevo, lista.querySelector('.dep-mas'));
+            var btn = campoIns.querySelector('.ins-btn');
+            [].forEach.call(document.querySelectorAll('#dlg-ins-lista input[type=checkbox]:checked'), function (cb) {
+                var x = catalogoIns.find(function (i) { return String(i.id) === cb.value; }) || previos[cb.value];
+                if (!x) return;
+                var h = document.createElement('input');
+                h.type = 'hidden';
+                h.name = base + '.Insumos';
+                h.value = cb.value;
+                h.setAttribute('data-ins', cb.value);
+                h.setAttribute('data-nombre', x.nombre);
+                h.setAttribute('data-cat', x.cat || '');
+                if (x.baja) h.setAttribute('data-baja', '1');
+                campoIns.insertBefore(h, btn);
             });
 
-            refrescarInsumos(lista);
+            pintarBotonIns(campoIns);
             cerrarInsumos();
         };
 
@@ -2989,7 +3013,7 @@
             document.getElementById('dlg-ins-lista').addEventListener('change', filtrarInsumos);
             // Escape cierra por el «cancel» nativo sin pasar por cerrarInsumos: el estado se
             // limpia acá, en «close», que corre en los dos casos.
-            dlg.addEventListener('close', function () { filaIns = null; });
+            dlg.addEventListener('close', function () { campoIns = null; });
         })();
 
         // ── Plegar grupos ────────────────────────────────────────────────

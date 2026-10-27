@@ -7085,10 +7085,7 @@ textarea.form-control { resize: vertical; }
    las actividades no depende de nada, así que una novena columna estaría vacía casi siempre.
    Todos los colores salen de tokens que sí cambian con el tema — --diger-blue-pale y compañía no
    lo hacen y dejarían líneas claras sobre fondo oscuro. */
-/* .ins-lista es la fila de insumos de la actividad (entrega 4): misma forma que la de
-   dependencias, con otra clase porque el diálogo de dependencias busca .dep-lista en la fila. */
-.dep-lista,
-.ins-lista {
+.dep-lista {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -7160,6 +7157,25 @@ textarea.form-control { resize: vertical; }
 }
 .dep-mas:hover { color: var(--diger-text); border-color: var(--diger-text-muted); }
 
+/* Los insumos de la actividad: un campo más de la fila, con un botón que dice cuántos hay y
+   abre la ventana. Los nombres van en su title y en la ventana, no en una línea aparte. */
+.ins-btn {
+    font: inherit;
+    font-size: var(--diger-fs-sm);
+    color: var(--diger-text);
+    background: var(--diger-surface, #fff);
+    border: 1px solid var(--diger-border);
+    border-radius: var(--diger-radius-sm, 6px);
+    padding: 3px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ins-btn:hover { border-color: var(--diger-text-muted); }
+.ins-solo-ver { margin: .6rem 0 0; padding-left: 1.1rem; }
+.ins-solo-ver li { margin: .2rem 0; }
+.ins-solo-ver[hidden] { display: none; }
+
+.ins-btn:focus-visible,
 .dep-x:focus-visible,
 .dep-mas:focus-visible {
     outline: 2px solid var(--diger-blue, #02395e);
