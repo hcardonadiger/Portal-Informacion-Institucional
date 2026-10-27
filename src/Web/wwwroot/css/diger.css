@@ -3448,6 +3448,13 @@ tr.contacto-inactivo td {
     border-spacing: 0 6px;
 }
 
+/* Sin el marco que le pone el tema claro a .seg-table: con las tarjetas ya bordeadas era una
+   segunda línea alrededor de todo que no delimitaba nada. Va con .tema-claro delante porque
+   esa regla pesa dos clases, y un `.edt-lista { border: 0 }` a secas perdía contra ella. */
+.tema-claro .seg-table.edt-lista {
+    border: 0;
+}
+
 .edt-lista > tbody > tr > td {
     border: 0;
 }
