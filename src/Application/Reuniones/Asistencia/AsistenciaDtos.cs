@@ -16,7 +16,11 @@ public sealed class AsistenteAutoInput
 public sealed record ReunionPublicaDto(
     Guid Token, string Titulo, DateOnly? Fecha, string? Hora, string? Modalidad, string? Lugar,
     string? Institucion, bool RegistroAbierto, int YaRegistrados,
-    IReadOnlyList<string> Instituciones);
+    IReadOnlyList<InstitucionPublicaDto> Instituciones);
+
+/// <summary>Institución que se ofrece en el auto-registro. <c>Sigla</c> existe solo para buscar:
+/// lo que se guarda en el asistente sigue siendo el nombre.</summary>
+public sealed record InstitucionPublicaDto(string Nombre, string Sigla);
 
 /// <summary>Gestión de la lista de asistencia (vista del organizador).</summary>
 public sealed record AsistenciaAdminDto(

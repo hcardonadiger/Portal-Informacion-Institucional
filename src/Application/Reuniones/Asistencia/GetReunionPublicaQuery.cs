@@ -28,7 +28,11 @@ public sealed class GetReunionPublicaQueryHandler(
         var institucionesActivas = idsConvocados.Count > 0
             ? catalogo.Where(i => idsConvocados.Contains(i.Id)).ToList()
             : catalogo;
-        var insts = institucionesActivas.Select(i => i.Nombre).OrderBy(n => n).ToList();
+        // La sigla es la corta si la hay y si no el Id, que ya es el nombre en mayúsculas y sin
+        // tildes ni espacios («SECRETARIADEFINANZAS»): sirve igual para buscar «finanzas».
+        var insts = institucionesActivas
+            .Select(i => new InstitucionPublicaDto(i.Nombre, string.IsNullOrWhiteSpace(i.NombreCorto) ? i.Id : i.NombreCorto))
+            .OrderBy(i => i.Nombre).ToList();
 
         return new ReunionPublicaDto(
             r.RegistroToken, r.Titulo, r.Fecha, r.Hora, r.Modalidad, r.Lugar,

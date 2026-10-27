@@ -10,6 +10,22 @@
     var r = Model.Reunion!;
 }
 
+<style>
+    .inst-combo { position: relative; }
+    .inst-lista {
+        position: absolute; z-index: 20; top: calc(100% - 1px); left: 0; right: 0;
+        max-height: 240px; overflow-y: auto;
+        background: var(--diger-surface); border: 1.5px solid var(--diger-blue-mid);
+        border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    }
+    .inst-item { padding: 10px 12px; cursor: pointer; font-size: 14px; border-bottom: 1px solid var(--diger-border); }
+    .inst-item:last-child { border-bottom: none; }
+    .inst-item:hover, .inst-item.activa { background: var(--diger-blue-light); }
+    .inst-item.otra { color: var(--diger-text-muted); font-style: italic; }
+    .inst-item.vacio { color: var(--diger-text-muted); cursor: default; }
+    .inst-item.vacio:hover { background: transparent; }
+</style>
+
 <div class="container" style="max-width:520px">
     <div class="card" style="margin-top:1.5rem">
         <div style="text-align:center;margin-bottom:1.25rem">
@@ -88,12 +104,22 @@
                         <input asp-for="Datos.Nombre" autocomplete="name" placeholder="Nombre y apellidos" required />
                     </div>
                     <div class="field">
-                        <label>Institución</label>
-                        <select id="instSel" onchange="onInstChange()">
+                        <label for="instBuscar">Institución</label>
+                        @* Un solo campo: se escribe y la lista de abajo se va acortando con cada letra.
+                           El <select> queda oculto como fuente de datos y como valor elegido, para que
+                           el resto del formulario (áreas, «Otra…», initForm) siga igual. *@
+                        <div class="inst-combo">
+                            <input type="text" id="instBuscar" placeholder="Buscar por nombre o sigla…" autocomplete="off"
+                                   role="combobox" aria-expanded="false" aria-controls="instLista" aria-autocomplete="list"
+                                   oninput="filtrarInst(true)" onfocus="this.select(); filtrarInst(true, true)" onkeydown="teclaInst(event)"
+                                   onblur="setTimeout(cerrarInst, 150)" />
+                            <div id="instLista" class="inst-lista" role="listbox" hidden></div>
+                        </div>
+                        <select id="instSel" onchange="onInstChange()" aria-hidden="true" tabindex="-1" style="display:none">
                             <option value="">— Seleccione —</option>
                             @foreach (var i in r.Instituciones)
                             {
-                                <option value="@i">@i</option>
+                                <option value="@i.Nombre" data-sigla="@i.Sigla">@i.Nombre</option>
                             }
                             <option value="__OTRO__">Otra…</option>
                         </select>
@@ -145,6 +171,78 @@
 @section Scripts {
 <script>
   var catalogAreas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Areas.Select(a => new { inst = a.InstitucionNombre, instId = a.InstitucionId, nombre = a.Nombre })));
+
+  // Buscador de institución: un campo de texto con su lista debajo, que se acorta con cada letra
+  // (por nombre o sigla, sin tildes ni mayúsculas). Elegir de la lista fija el <select> oculto y
+  // dispara onInstChange, así que áreas y «Otra…» siguen funcionando como antes. La lista se arma
+  // en un div y no con <option hidden>: Safari en iPhone ignora eso, y el QR se abre en teléfonos.
+  var instOpciones = null, instActiva = -1;
+  function sinTildes(s){ return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function opcionesInst(){
+    if(!instOpciones) instOpciones = Array.from(document.getElementById('instSel').options)
+      .filter(function(op){ return op.value; })
+      .map(function(op){ return { valor: op.value, nombre: op.textContent, sigla: op.dataset.sigla || '' }; });
+    return instOpciones;
+  }
+  // `todas`: al enfocar, el texto de lo ya elegido queda seleccionado (lo primero que se escriba
+  // lo reemplaza) y la lista se abre completa, no acotada a esa misma institución.
+  function filtrarInst(abrir, todas){
+    var b = document.getElementById('instBuscar'), lista = document.getElementById('instLista');
+    var q = todas ? '' : sinTildes(b.value.trim());
+    var hallados = opcionesInst().filter(function(i){
+      return i.valor === '__OTRO__' || !q || sinTildes(i.nombre).indexOf(q) >= 0 || sinTildes(i.sigla).indexOf(q) >= 0;
+    });
+    lista.innerHTML = '';
+    if(hallados.length === 1){
+      var nada = document.createElement('div');
+      nada.className = 'inst-item vacio'; nada.textContent = 'Sin coincidencias';
+      lista.appendChild(nada);
+    }
+    hallados.forEach(function(i, k){
+      var d = document.createElement('div');
+      d.className = 'inst-item' + (i.valor === '__OTRO__' ? ' otra' : '');
+      d.setAttribute('role', 'option');
+      d.textContent = i.valor === '__OTRO__' ? 'Otra… (escribirla)' : i.nombre;
+      d.onmousedown = function(e){ e.preventDefault(); elegirInst(i.valor); };
+      lista.appendChild(d);
+    });
+    instActiva = q && hallados.length > 1 ? 0 : -1;
+    marcarInst();
+    if(abrir){ lista.hidden = false; b.setAttribute('aria-expanded', 'true'); }
+  }
+  function marcarInst(){
+    var items = document.querySelectorAll('#instLista .inst-item[role=option]');
+    items.forEach(function(d, k){ d.classList.toggle('activa', k === instActiva); });
+    if(items[instActiva]) items[instActiva].scrollIntoView({ block: 'nearest' });
+  }
+  function teclaInst(e){
+    var items = document.querySelectorAll('#instLista .inst-item[role=option]');
+    if(e.key === 'ArrowDown'){ e.preventDefault(); filtrarInstSiCerrada(); instActiva = Math.min(instActiva + 1, items.length - 1); marcarInst(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); instActiva = Math.max(instActiva - 1, 0); marcarInst(); }
+    else if(e.key === 'Enter'){
+      if(instActiva >= 0 && items[instActiva]){ e.preventDefault(); items[instActiva].onmousedown(e); }
+    }
+    else if(e.key === 'Escape'){ cerrarInst(); }
+  }
+  function filtrarInstSiCerrada(){ if(document.getElementById('instLista').hidden) filtrarInst(true); }
+  function cerrarInst(){
+    var b = document.getElementById('instBuscar'), lista = document.getElementById('instLista');
+    lista.hidden = true; b.setAttribute('aria-expanded', 'false');
+    // Lo escrito sin elegir no cuenta: el campo vuelve a mostrar lo que de verdad quedó elegido.
+    mostrarInstElegida();
+  }
+  function elegirInst(valor){
+    var s = document.getElementById('instSel');
+    s.value = valor;
+    onInstChange();
+    cerrarInst();
+    if(valor === '__OTRO__') document.getElementById('instOtro').focus();
+  }
+  function mostrarInstElegida(){
+    var s = document.getElementById('instSel'), b = document.getElementById('instBuscar');
+    if(!b) return;
+    b.value = s.value === '__OTRO__' ? 'Otra…' : (s.value ? s.selectedOptions[0].textContent : '');
+  }
 
   function syncOtro(){ document.getElementById('instVal').value=document.getElementById('instOtro').value; }
   function syncAreaOtro(){ document.getElementById('areaVal').value=document.getElementById('areaOtro').value; }
@@ -215,6 +313,7 @@
     else { s.value=actualInst; v.value=actualInst; o.style.display='none'; }
 
     renderAreasForInst(v.value, actualArea);
+    mostrarInstElegida();
   }
 
   document.addEventListener('DOMContentLoaded', function(){
