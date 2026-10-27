@@ -36,14 +36,9 @@
        necesita el tablero en su propia ruta para proyectarlo e imprimirlo. *@
     @if (ej is not null)
     {
-        var nuevo = TablerosCatalogo.Buscar("/Tableros/Ejecutivo");
         <section class="ini-banda" aria-labelledby="ini-ejec-t">
             <div class="ini-banda-cab">
                 <h3 id="ini-ejec-t">Tablero ejecutivo de proyectos<span class="ini-banda-sub">@Model.EjecutivoTitulo</span></h3>
-                @if (nuevo is not null && TablerosCatalogo.TextoInsignia(nuevo) is { } txtNuevo)
-                {
-                    <span class="@TablerosCatalogo.ClaseInsignia(nuevo.Estado)"><svg class="ico" aria-hidden="true"><use href="#@TablerosCatalogo.IconoInsignia(nuevo.Estado)"></use></svg>@txtNuevo</span>
-                }
             </div>
             <partial name="_KpiEjecutivo" model="ej" />
             <div class="ini-banda-pie">
@@ -60,23 +55,17 @@
 
     @* ── C. Todos los tableros ────────────────────────────────────────
        Sale del catálogo (Web/Common/TablerosCatalogo.cs): una tarjeta por tablero que el usuario
-       puede abrir, gateada con las claves de su DESTINO, y la insignia de la auditoría con texto,
-       icono y color — nunca solo color. *@
+       puede abrir, gateada con las claves de su DESTINO. *@
     <section class="ini-banda" aria-labelledby="ini-todos-t">
         <div class="ini-banda-cab"><h3 id="ini-todos-t">Todos los tableros</h3></div>
         <div class="cat-tableros">
             @foreach (var t in Model.Tableros)
             {
-                var insignia = TablerosCatalogo.TextoInsignia(t);
                 <a class="cat-tablero" href="@t.Ruta">
                     <span class="cat-tablero-ico"><svg class="ico" aria-hidden="true"><use href="#@t.Icono"></use></svg></span>
                     <span>
                         <span class="cat-tablero-t1">@t.Titulo</span>
                         <span class="cat-tablero-t2">@t.Descripcion</span>
-                        @if (insignia is not null)
-                        {
-                            <span class="@TablerosCatalogo.ClaseInsignia(t.Estado)"><svg class="ico" aria-hidden="true"><use href="#@TablerosCatalogo.IconoInsignia(t.Estado)"></use></svg>@insignia</span>
-                        }
                     </span>
                 </a>
             }

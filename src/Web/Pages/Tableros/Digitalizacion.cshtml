@@ -10,7 +10,7 @@
 
 <div class="container lista">
     <div class="hist-header">
-        <div><h2>Tablero de Digitalización</h2><partial name="_InsigniaTablero" model="@("/Tableros/Digitalizacion")" /><p>Seguimiento gerencial del avance de digitalización de trámites</p></div>
+        <div><h2>Tablero de Digitalización</h2><p>Seguimiento gerencial del avance de digitalización de trámites</p></div>
         <div class="btns-group">
             <a class="btns btns-primary" asp-page-handler="Excel" asp-route-institucionId="@Model.InstitucionId"
                asp-route-desde="@(Model.Desde?.ToString("yyyy-MM-dd"))" asp-route-hasta="@(Model.Hasta?.ToString("yyyy-MM-dd"))">⬇ Descargar Excel</a>

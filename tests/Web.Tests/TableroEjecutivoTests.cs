@@ -274,16 +274,17 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
         html.Should().NotContain("id=\"ini-hoy-t\"");
     }
 
+    /// <summary>Las insignias de la auditoría (nuevo, repetido, rediseño pendiente, propuesto
+    /// retirar) se quitaron el 2026-10-27: ni en las tarjetas del Inicio ni bajo el título.</summary>
     [Fact]
-    public async Task El_catalogo_muestra_las_insignias_con_texto()
+    public async Task El_catalogo_ya_no_muestra_las_insignias_de_la_auditoria()
     {
         var html = await GetAsync("/Tableros/Index");
 
         html.Should().Contain("class=\"cat-tablero\" href=\"/Tableros/Ejecutivo\"");
-        html.Should().Contain("class=\"tablero-badge nuevo\"");
-        html.Should().Contain("class=\"tablero-badge repetido\"");
-        html.Should().Contain("Repetido con");
-        html.Should().Contain("class=\"tablero-badge rediseno\"");
+        html.Should().NotContain("tablero-badge");
+        html.Should().NotContain("Repetido con");
+        html.Should().NotContain("Propuesto retirar");
     }
 
     [Fact]
@@ -296,24 +297,13 @@ public sealed class TableroEjecutivoTests : IAsyncLifetime
         html.Should().Contain("id=\"ini-todos-t\"");
     }
 
-    /// <summary>R6: «Mis proyectos» se marca como repetido con el operativo, que todo el que tiene
-    /// Proyectos.Ver puede abrir, y no con «mi área», que solo ven los jefes de área.</summary>
     [Fact]
-    public void Mis_proyectos_se_relaciona_con_el_operativo()
-    {
-        var item = TablerosCatalogo.Buscar("/Tableros/ProyectosUnidad")!;
-
-        item.Relacionado.Should().Be("/Tableros/Proyectos");
-        TablerosCatalogo.TextoInsignia(item).Should().Be("Repetido con Proyectos — seguimiento operativo");
-    }
-
-    [Fact]
-    public async Task Un_tablero_marcado_muestra_su_insignia_bajo_el_titulo()
+    public async Task Un_tablero_ya_no_lleva_la_marca_bajo_el_titulo()
     {
         var html = await GetAsync("/Tableros/Proyectos");
 
-        html.Should().Contain("class=\"res-meta tablero-marca\"");
-        html.Should().Contain("class=\"tablero-badge rediseno\"");
+        html.Should().NotContain("tablero-marca");
+        html.Should().NotContain("Este tablero está marcado");
     }
 
     [Fact]

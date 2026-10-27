@@ -8371,7 +8371,7 @@ body.tema-claro {
 }
 
 /* Etiqueta de salud: texto + icono, nunca solo color. */
-.salud-badge, .tablero-badge {
+.salud-badge {
     display: inline-flex; align-items: center; gap: .35em;
     padding: 2px 10px; border-radius: var(--diger-radius-pill);
     font-size: var(--diger-fs-2xs); font-weight: 700; text-transform: uppercase;
@@ -8381,13 +8381,6 @@ body.tema-claro {
 .salud-badge.ambar  { background: var(--diger-warning-bg); color: var(--diger-warning-strong); }
 .salud-badge.verde  { background: var(--diger-success-bg); color: var(--diger-success-strong); }
 .salud-badge.neutro { background: var(--diger-bg-soft);    color: var(--diger-text-muted); border-color: var(--diger-border); }
-
-/* Insignia del catálogo de tableros (Inicio y cabeceras marcadas). */
-.tablero-badge.nuevo    { background: var(--diger-blue-light);   color: var(--diger-blue-mid); }
-.tablero-badge.repetido { background: var(--diger-warning-bg);   color: var(--diger-warning-strong); }
-.tablero-badge.rediseno { background: var(--diger-bg-blue-pale); color: var(--diger-blue-mid); border-color: var(--diger-blue-pale); }
-.tablero-badge.retirar  { background: var(--diger-danger-bg);    color: var(--diger-danger-text); }
-.tablero-marca { display: flex; flex-wrap: wrap; align-items: center; gap: var(--diger-space-2); margin: 4px 0; }
 
 /* Dona por estado: conic-gradient con tokens, sin canvas. */
 .ejec-dona-caja { display: flex; align-items: center; gap: var(--diger-space-4); flex-wrap: wrap; }
@@ -8460,18 +8453,9 @@ body.tema-claro {
     display: flex; align-items: center; justify-content: center;
     background: var(--diger-blue-light); color: var(--diger-blue-mid); font-size: 1.1rem;
 }
-/* Texto en columna: la insignia va al pie, así todas quedan a la misma altura en la fila. */
 .cat-tablero > span:last-child { display: flex; flex-direction: column; min-width: 0; }
 .cat-tablero-t1 { display: block; font-weight: 700; color: var(--diger-text); }
 .cat-tablero-t2 { display: block; font-size: var(--diger-fs-sm); color: var(--diger-text-muted); margin: 2px 0 8px; }
-/* La insignia del catálogo puede ser larga («Propuesto retirar · usa Digitalización»): aquí
-   baja de renglón dentro de la tarjeta en vez de salirse por el borde. */
-.cat-tablero .tablero-badge {
-    align-self: flex-start; margin-top: auto; max-width: 100%;
-    white-space: normal; line-height: 1.35; padding-top: 3px; padding-bottom: 3px;
-    border-radius: var(--diger-radius-sm);
-}
-.cat-tablero .tablero-badge .ico { flex-shrink: 0; }
 
 
 @media (max-width: 900px) {
