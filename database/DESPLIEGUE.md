@@ -1,5 +1,40 @@
 # Desplegar `ike_opt` a producción — qué correr en la base
 
+## Si la base es `GestionGD_QA` (medido el 2026-10-28)
+
+Medido sobre el respaldo de `GestionGD_QA` de `PKI-WEB-TEST-01` (2026-10-26 10:16), restaurado y
+comparado objeto por objeto contra el esquema que espera `ike_opt`:
+
+| | |
+|---|---|
+| Migraciones en la base | **92**, la última `20261022223203_PanelControlNotificaciones` |
+| Diferencia de esquema | la tabla `ExpedienteEquipo` y las columnas `PlantillasProyecto.CategoriaId` / `.Accion`. **Nada más.** |
+| Diferencia de datos | `UsuarioTemas` tiene 175 filas: 124 son de 24 personas ajenas a DITRA |
+
+QA **ya trae** todo lo del script único del 2026-10-26, así que ese no se corre. **Un solo
+script**, y nada más:
+
+```
+sqlcmd -S <servidor> -d GestionGD_QA -b -I -f 65001 -i 2026-10-27_poner_al_dia.sql
+```
+
+Deja la base en 94 migraciones y en **cero diferencias** contra el esquema de `ike_opt`
+(1087 columnas y 550 objetos a cada lado). Cambia **4 tablas de 103**: `ExpedienteEquipo` +8,
+`__EFMigrationsHistory` +2, `UsuarioTemas` −124 y `UsuarioTemas_Respaldo_20261027` +124 (el
+respaldo de lo que quita). Las otras 99 quedan con el conteo exacto. La segunda corrida no hace
+nada.
+
+Lo único que no es esquema es el paso 3 (temas de soporte solo para DITRA): en QA deja 7 técnicos
+—Brizzio Zelaya, Carlos Ordóñez, Henry Cardona, Henry Ortez, Jamil Garcia, Jefe DEV y Kevin
+Rosales—. Si en la base que se corra no existiera la unidad DITRA, o nadie de DITRA tuviera temas,
+ese paso se **omite** imprimiendo el motivo y los pasos 1 y 2 entran igual: comprobado forzando
+las dos condiciones.
+
+Falta una cosa que el script no hace, a propósito: las claves `PanelControl.Proyectos.Ver` y
+`PanelControl.Proyectos.Eliminar` no están en `Permisos`. Las siembra el arranque de la app por
+reflexión, como las de `TokensMcp.*`; otorgarlas a un rol que no sea Administrador es a mano en
+`/Accesos/Permisos`.
+
 ## Vigente desde el 2026-10-26: un solo script
 
 Medido contra el respaldo de producción `GestionGD_021026` (copia del 2026-10-26, 74 migraciones,
@@ -22,11 +57,13 @@ reversión: `docs/despliegue/2026-10-26_produccion_poner_al_dia.md`.
 sqlcmd -S <servidor> -d <base> -b -I -f 65001 -i 2026-10-27_poner_al_dia.sql
 ```
 
-Trae dos migraciones: `20261026192746_ExpedienteEquipoInstitucional` (tabla `ExpedienteEquipo` y el
-contacto de cada expediente pasado a su equipo como prioridad 1) y
-`20261027182217_PlantillaCategoriaYAccion` (categoría y acción de las plantillas de proyecto). Es
-idempotente. Ya incluye `2026-10-26_equipo_institucional.sql`, que no se corre aparte; si ya se
-corrió, este se salta lo que encuentra hecho.
+Trae dos migraciones y un cambio de datos: `20261026192746_ExpedienteEquipoInstitucional` (tabla
+`ExpedienteEquipo` y el contacto de cada expediente pasado a su equipo como prioridad 1),
+`20261027182217_PlantillaCategoriaYAccion` (categoría y acción de las plantillas de proyecto) y los
+temas de soporte restringidos a la unidad DITRA. Es idempotente. Ya incluye
+`2026-10-26_equipo_institucional.sql` y `2026-10-27_tecnicos_soporte_ditra.sql`, que **no se
+corren aparte**; si alguno ya se corrió, este se salta lo que encuentra hecho. Con él la base
+queda al día con la punta de `ike_opt` (`20261027182217`): no hay un script posterior.
 
 `00_diagnostico.sql` todavía no conoce los cambios posteriores al 2026-10-02: sobre la base de
 producción va a recomendar el script de esa fecha. Úselo para confirmar que la base es la correcta

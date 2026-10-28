@@ -18,7 +18,10 @@
      SELECT r.UsuarioId, r.TemaId FROM UsuarioTemas_Respaldo_20261027 r
      WHERE NOT EXISTS (SELECT 1 FROM UsuarioTemas ut WHERE ut.UsuarioId = r.UsuarioId AND ut.TemaId = r.TemaId);
 
-   Va después de 2026-10-27_poner_al_dia.sql. Correrlo dos veces no cambia nada más.
+   YA NO HACE FALTA CORRERLO: desde el 2026-10-28 este paso vive dentro de
+   2026-10-27_poner_al_dia.sql (paso 3), que es el único script que se corre. Este queda como
+   el cambio suelto, por si hay que aplicarlo a una base que ya pasó por el otro. Correrlo dos
+   veces no cambia nada más.
 
    CÓMO CORRERLO
    sqlcmd -S <servidor> -d <base> -b -I -f 65001 -i 2026-10-27_tecnicos_soporte_ditra.sql

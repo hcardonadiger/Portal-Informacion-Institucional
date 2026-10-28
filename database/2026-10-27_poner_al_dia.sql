@@ -3,10 +3,17 @@
    -------------------------------------------------------------------------------------
    Va DESPUÉS de 2026-10-26_poner_al_dia.sql (el script único de producción). Corra antes
    00_diagnostico.sql. Es el ÚNICO que hace falta después de ese: ya trae dentro lo de
-   2026-10-26_equipo_institucional.sql, así que ese no se corre aparte (si ya se corrió,
-   no pasa nada: aquí todo se salta lo que ya está).
+   2026-10-26_equipo_institucional.sql y lo de 2026-10-27_tecnicos_soporte_ditra.sql, así
+   que ninguno de los dos se corre aparte (si ya se corrieron, no pasa nada: aquí todo se
+   salta lo que ya está).
 
-   QUÉ TRAE — dos migraciones EF, nada fuera de EF:
+   MEDIDO CONTRA LA BASE REAL. Sobre el respaldo de GestionGD_QA de PKI-WEB-TEST-01
+   (2026-10-26 10:16, 92 migraciones, la última 20261022223203_PanelControlNotificaciones)
+   restaurado y comparado objeto por objeto contra el esquema que espera ike_opt: la única
+   diferencia de esquema son la tabla y las dos columnas que trae este script, y el único
+   dato fuera de lugar son los temas de soporte del paso 3. Nada más falta en QA.
+
+   QUÉ TRAE — dos migraciones EF y un cambio de datos que no es migración:
 
    1. 20261026192746_ExpedienteEquipoInstitucional (2026-10-26)
 
@@ -35,8 +42,30 @@
      categoría y la acción que se le eligen. NULL = «sirve para cualquiera». Las plantillas
      existentes quedan sin clasificar y siguen apareciendo para todos.
 
-   ES ADITIVO. Una tabla nueva, dos columnas nulables, índices y llaves foráneas. Lo único
-   que mueve datos es el paso 1: copia, no borra.
+   3. Técnicos de soporte: solo la unidad DITRA (2026-10-27) — NO es migración de EF
+
+     Técnico de soporte es quien tiene temas asignados (Usuarios › Editor › «Temas que
+     atiende»): ese filtro decide a quién se le puede asignar un chat de la cola y qué
+     tickets ve en «Sus temas». Los temas estaban marcados a casi todo el personal, así que
+     el «Asignar a…» del chat era el directorio entero. Por ahora atiende soporte solo
+     DITRA, de modo que se le quitan los temas a quien no tenga asignación en esa unidad.
+
+     Antes de borrar, lo que se quita se copia a UsuarioTemas_Respaldo_20261027 (UsuarioTemas
+     no guarda historial). Para deshacerlo:
+       INSERT INTO UsuarioTemas (UsuarioId, TemaId)
+       SELECT r.UsuarioId, r.TemaId FROM UsuarioTemas_Respaldo_20261027 r
+       WHERE NOT EXISTS (SELECT 1 FROM UsuarioTemas ut
+                         WHERE ut.UsuarioId = r.UsuarioId AND ut.TemaId = r.TemaId);
+
+     Por ser datos y no esquema, no se registra en __EFMigrationsHistory. Y por ser el único
+     paso que borra, va al final y con red: si no existe la unidad DITRA, o si nadie de DITRA
+     tiene temas —dejar el soporte sin técnicos sería peor que dejarlo de más—, el paso se
+     OMITE con el motivo impreso y los pasos 1 y 2 se quedan puestos. En GestionGD_QA sí
+     aplica: quita 124 filas de 24 personas y deja 7 técnicos de DITRA.
+
+   ES ADITIVO EN ESQUEMA. Una tabla nueva, dos columnas nulables, índices y llaves foráneas.
+   Mueve datos en dos lugares: el paso 1 copia (no borra) y el paso 3 borra filas de
+   UsuarioTemas, con respaldo y reversa. Correrlo dos veces no cambia nada más.
 
    CÓMO CORRERLO
      sqlcmd -S <servidor> -d <base> -b -I -f 65001 -i 2026-10-27_poner_al_dia.sql
@@ -53,11 +82,35 @@ IF OBJECT_ID(N'[Expedientes]', N'U') IS NULL
    OR OBJECT_ID(N'[PlantillasProyecto]', N'U') IS NULL
    OR OBJECT_ID(N'[CategoriasProyecto]', N'U') IS NULL
    OR OBJECT_ID(N'[__EFMigrationsHistory]', N'U') IS NULL
+   OR OBJECT_ID(N'[UsuarioTemas]', N'U') IS NULL
+   OR OBJECT_ID(N'[AsignacionesUsuario]', N'U') IS NULL
+   OR OBJECT_ID(N'[Unidades]', N'U') IS NULL
+   OR OBJECT_ID(N'[Usuarios]', N'U') IS NULL
 BEGIN
     THROW 50000,
-        'Faltan Expedientes (o su columna ContactoNombre), PlantillasProyecto, CategoriasProyecto o __EFMigrationsHistory. Corra 00_diagnostico.sql: no es la base del portal o le falta 2026-10-26_poner_al_dia.sql.',
+        'Falta alguna tabla base: Expedientes (o su columna ContactoNombre), PlantillasProyecto, CategoriasProyecto, __EFMigrationsHistory, UsuarioTemas, AsignacionesUsuario, Unidades o Usuarios. Corra 00_diagnostico.sql: no es la base del portal o le falta 2026-10-26_poner_al_dia.sql.',
         1;
 END
+GO
+
+/* El paso 3 se decide aquí, antes de tocar nada, y la decisión viaja en una tabla temporal
+   —sobrevive a los GO de esta misma conexión—. No se usa THROW: el paso 3 es datos, y
+   abortar por él dejaría los pasos 1 y 2 puestos pero sin su fila de historial. */
+IF OBJECT_ID(N'tempdb..#PlanDitra') IS NOT NULL DROP TABLE #PlanDitra;
+CREATE TABLE #PlanDitra (Aplicar bit NOT NULL, Motivo nvarchar(300) NULL);
+
+INSERT INTO #PlanDitra (Aplicar, Motivo)
+SELECT 0, N'no existe la unidad DITRA en esta base: no se sabe a quién conservar'
+WHERE NOT EXISTS (SELECT 1 FROM [Unidades] WHERE [Id] = N'DITRA');
+
+IF NOT EXISTS (SELECT 1 FROM #PlanDitra)
+INSERT INTO #PlanDitra (Aplicar, Motivo)
+SELECT 0, N'nadie de DITRA tiene temas asignados: el soporte quedaría sin técnicos'
+WHERE NOT EXISTS (SELECT 1 FROM [UsuarioTemas] ut
+                  JOIN [AsignacionesUsuario] a ON a.[UsuarioId] = ut.[UsuarioId]
+                  WHERE a.[UnidadId] = N'DITRA');
+
+IF NOT EXISTS (SELECT 1 FROM #PlanDitra) INSERT INTO #PlanDitra (Aplicar, Motivo) VALUES (1, NULL);
 GO
 
 /* ─────────────────────────────────────────────────────────────────────────────────────
@@ -174,6 +227,57 @@ END
 ELSE PRINT '  PlantillaCategoriaYAccion ....... ya estaba';
 GO
 
+/* ─────────────────────────────────────────────────────────────────────────────────────
+   3. Técnicos de soporte: solo DITRA (2026-10-27) · datos, no migración
+   ───────────────────────────────────────────────────────────────────────────────────── */
+PRINT '';
+PRINT '════════ 3. Técnicos de soporte: solo DITRA ════════';
+GO
+
+DECLARE @motivoOmision nvarchar(300) = (SELECT TOP 1 Motivo FROM #PlanDitra WHERE Aplicar = 0);
+IF @motivoOmision IS NOT NULL
+    PRINT '  *** PASO 3 OMITIDO: ' + @motivoOmision + '. No se tocó nada. ***';
+GO
+
+IF EXISTS (SELECT 1 FROM #PlanDitra WHERE Aplicar = 1)
+   AND OBJECT_ID(N'[UsuarioTemas_Respaldo_20261027]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [UsuarioTemas_Respaldo_20261027] (
+        [Id]        int              NOT NULL,
+        [UsuarioId] uniqueidentifier NOT NULL,
+        [TemaId]    int              NOT NULL,
+        [Quitado]   datetime2        NOT NULL
+            CONSTRAINT [DF_UTResp20261027_Quitado] DEFAULT SYSDATETIME());
+    PRINT '  UsuarioTemas_Respaldo_20261027 .. creada';
+END
+ELSE IF OBJECT_ID(N'[UsuarioTemas_Respaldo_20261027]', N'U') IS NOT NULL
+    PRINT '  UsuarioTemas_Respaldo_20261027 .. ya estaba';
+GO
+
+/* Respaldar y quitar en una sola transacción: nunca se borra una fila que no quedó copiada.
+   El NOT EXISTS por Id hace que una segunda corrida no duplique el respaldo. */
+IF EXISTS (SELECT 1 FROM #PlanDitra WHERE Aplicar = 1)
+BEGIN
+    BEGIN TRAN;
+        INSERT INTO [UsuarioTemas_Respaldo_20261027] ([Id], [UsuarioId], [TemaId])
+        SELECT ut.[Id], ut.[UsuarioId], ut.[TemaId]
+        FROM [UsuarioTemas] ut
+        WHERE NOT EXISTS (SELECT 1 FROM [AsignacionesUsuario] a
+                          WHERE a.[UsuarioId] = ut.[UsuarioId] AND a.[UnidadId] = N'DITRA')
+          AND NOT EXISTS (SELECT 1 FROM [UsuarioTemas_Respaldo_20261027] r WHERE r.[Id] = ut.[Id]);
+
+        DELETE ut
+        FROM [UsuarioTemas] ut
+        WHERE NOT EXISTS (SELECT 1 FROM [AsignacionesUsuario] a
+                          WHERE a.[UsuarioId] = ut.[UsuarioId] AND a.[UnidadId] = N'DITRA');
+        PRINT '  temas quitados a quien no es de DITRA  ' + CAST(@@ROWCOUNT AS varchar(10)) + ' fila(s)';
+    COMMIT;
+
+    DECLARE @tecnicos int = (SELECT COUNT(DISTINCT [UsuarioId]) FROM [UsuarioTemas]);
+    PRINT '  técnicos que quedan ............. ' + CAST(@tecnicos AS varchar(10)) + ' persona(s)';
+END
+GO
+
 PRINT '';
 PRINT '════════ Comprobación ════════';
 SELECT N'Tabla ExpedienteEquipo' AS Control,
@@ -204,7 +308,35 @@ UNION ALL SELECT N'Historial: ExpedienteEquipoInstitucional',
             THEN 'presente' ELSE 'FALTA' END
 UNION ALL SELECT N'Historial: PlantillaCategoriaYAccion',
        CASE WHEN EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = N'20261027182217_PlantillaCategoriaYAccion')
-            THEN 'presente' ELSE 'FALTA' END;
+            THEN 'presente' ELSE 'FALTA' END
+UNION ALL SELECT N'Soporte restringido a DITRA',
+       CASE WHEN EXISTS (SELECT 1 FROM #PlanDitra WHERE Aplicar = 0)
+                 THEN 'no aplica: ' + (SELECT TOP 1 Motivo FROM #PlanDitra)
+            WHEN EXISTS (SELECT 1 FROM [UsuarioTemas] ut
+                         WHERE NOT EXISTS (SELECT 1 FROM [AsignacionesUsuario] a
+                                           WHERE a.[UsuarioId] = ut.[UsuarioId] AND a.[UnidadId] = N'DITRA'))
+                 THEN 'FALTA'
+            ELSE 'presente' END
+UNION ALL SELECT N'DITRA conserva técnicos con temas',
+       CASE WHEN EXISTS (SELECT 1 FROM #PlanDitra WHERE Aplicar = 0)
+                 THEN 'no aplica: ' + (SELECT TOP 1 Motivo FROM #PlanDitra)
+            WHEN EXISTS (SELECT 1 FROM [UsuarioTemas] ut
+                         JOIN [AsignacionesUsuario] a ON a.[UsuarioId] = ut.[UsuarioId]
+                         WHERE a.[UnidadId] = N'DITRA')
+                 THEN 'presente'
+            ELSE 'FALTA' END;
+
+PRINT '';
+PRINT 'Quiénes quedan como técnicos de soporte:';
+SELECT u.[Nombre] AS Tecnico, COUNT(*) AS Temas
+FROM [UsuarioTemas] ut JOIN [Usuarios] u ON u.[Id] = ut.[UsuarioId]
+GROUP BY u.[Nombre] ORDER BY u.[Nombre];
+
 PRINT '';
 PRINT 'Todo debe decir «presente». Si algo dice FALTA, la corrida no terminó.';
+PRINT 'Los dos controles de DITRA pueden decir «no aplica»: solo el paso 3 se salta, y arriba';
+PRINT 'quedó impreso el motivo. Los pasos 1 y 2 igual entraron completos.';
+GO
+
+IF OBJECT_ID(N'tempdb..#PlanDitra') IS NOT NULL DROP TABLE #PlanDitra;
 GO
