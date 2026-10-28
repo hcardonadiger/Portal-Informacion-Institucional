@@ -10,13 +10,19 @@
     <div class="sidebar-section-title">En cola</div>
     @foreach (var s in Model.Cola)
     {
-      <div class="chat-item cola" id="ci-@s.Id">
+      @* Antes de tomarlo hay que saber de qué trata: la tarjeta adelanta el primer mensaje y,
+         al pulsarla, abre la conversación en solo lectura. Tomar sigue siendo el botón. *@
+      <div class="chat-item cola @(s.Id == Model.SesionAbiertoId ? "activo" : "")" id="ci-@s.Id">
         <div class="ci-avatar">👤</div>
-        <div class="ci-info">
+        <a href="/Chat?sesion=@s.Id" class="ci-info ci-ver" title="Ver la conversación antes de tomarla">
           <div class="ci-nombre">@s.UsuarioNombre</div>
           <div class="ci-tema">@(s.TemaNombre ?? "Sin tema")</div>
+          @if (!string.IsNullOrWhiteSpace(s.PrimerMensaje))
+          {
+            <div class="ci-preview">@s.PrimerMensaje</div>
+          }
           <div class="ci-hora">@s.Inicio.ToLocalTime().ToString("HH:mm") · Sin asignar</div>
-        </div>
+        </a>
         <form method="post" asp-page="/Chat/Index" asp-page-handler="Tomar" style="margin:0">
           <input type="hidden" name="sesionId" value="@s.Id" />
           <button type="submit" class="btn-tomar">Tomar</button>
@@ -24,25 +30,29 @@
       </div>
       @if (Model.PuedeAsignar)
       {
+        @* Solo quienes atienden el tema del chat; sin tema, o si nadie lo atiende, los que atienden
+           alguno (ChatService.GetTecnicosAsignablesAsync). Los temas se asignan en Usuarios › Editor. *@
         var candidatos = Model.AsignablesDe(s);
-        var delTema    = candidatos.Where(t => t.DelTema).ToList();
-        var otros      = candidatos.Where(t => !t.DelTema).ToList();
-        <form method="post" asp-page="/Chat/Index" asp-page-handler="Asignar" class="cola-asignar" data-asignar="@s.Id">
-          <input type="hidden" name="sesionId" value="@s.Id" />
-          <select name="tecnicoId" required aria-label="Asignar el chat de @s.UsuarioNombre a">
-            <option value="">Asignar a…</option>
-            @if (delTema.Count > 0)
-            {
-              <optgroup label="Del tema @s.TemaNombre">
-                @foreach (var t in delTema) { <option value="@t.Id">@t.Nombre</option> }
+        if (candidatos.Count == 0)
+        {
+          <div class="cola-asignar cola-sin-tecnicos" data-asignar="@s.Id">
+            Nadie tiene temas asignados para recibir este chat.
+          </div>
+        }
+        else
+        {
+          var delTema = candidatos.Any(t => t.DelTema);
+          <form method="post" asp-page="/Chat/Index" asp-page-handler="Asignar" class="cola-asignar" data-asignar="@s.Id">
+            <input type="hidden" name="sesionId" value="@s.Id" />
+            <select name="tecnicoId" required aria-label="Asignar el chat de @s.UsuarioNombre a">
+              <option value="">Asignar a…</option>
+              <optgroup label="@(delTema ? $"Atienden {s.TemaNombre}" : "Técnicos con temas")">
+                @foreach (var t in candidatos) { <option value="@t.Id">@t.Nombre</option> }
               </optgroup>
-            }
-            <optgroup label="@(delTema.Count > 0 ? "Otros técnicos" : "Técnicos")">
-              @foreach (var t in otros) { <option value="@t.Id">@t.Nombre</option> }
-            </optgroup>
-          </select>
-          <button type="submit" class="btn-asignar">Asignar</button>
-        </form>
+            </select>
+            <button type="submit" class="btn-asignar">Asignar</button>
+          </form>
+        }
       }
     }
   </div>

@@ -29,6 +29,11 @@ public sealed class ColaCompartidaChatTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var s = ChatSesion.Iniciar(Guid.NewGuid(), "Lucía EnCola");
         db.ChatSesiones.Add(s);
+        // Técnico es quien tiene temas: sin uno, el empleado no aparecería en «Asignar a…».
+        var tema = TemaTicket.Crear("Soporte general", 0);
+        db.TemasTicket.Add(tema);
+        await db.SaveChangesAsync();
+        db.UsuarioTemas.Add(UsuarioTema.Crear(_portal.UsuarioDe("Empleado"), tema.Id));
         await db.SaveChangesAsync();
         _enCola = s.Id;
     }
@@ -66,6 +71,34 @@ public sealed class ColaCompartidaChatTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Con_chats_en_cola_el_titulo_Soporte_va_en_negrita_y_con_aviso()
+    {
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Tickets");
+
+        Regex.IsMatch(html, """class="nav-group[^"]*\bpendiente\b[^"]*"[^>]*data-seccion="soporte""").Should().BeTrue(
+            "la sección nace contraída y el título tiene que avisar que algo espera");
+        Regex.IsMatch(html, """id="navColaSoporte"[^>]*>1</span>""").Should().BeTrue(
+            "la burbuja del título cuenta los chats en cola");
+    }
+
+    [Fact]
+    public async Task Sin_chats_en_cola_el_titulo_Soporte_no_avisa()
+    {
+        using (var scope = _portal.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.ChatSesiones.RemoveRange(db.ChatSesiones);
+            await db.SaveChangesAsync();
+        }
+
+        var html = await _portal.ClienteComo("Administrador").GetStringAsync("/Tickets");
+
+        html.Should().Contain("data-seccion=\"soporte\"");
+        Regex.IsMatch(html, """class="nav-group[^"]*\bpendiente\b[^"]*"[^>]*data-seccion="soporte""").Should().BeFalse();
+        Regex.IsMatch(html, """id="navColaSoporte"[^>]*hidden""").Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Las_jefaturas_ven_el_asignar_y_un_tecnico_comun_no()
     {
         await _portal.OtorgarAsync("JefeArea", "Chat.Ver");
@@ -75,7 +108,8 @@ public sealed class ColaCompartidaChatTests : IAsyncLifetime
         var empleado = await _portal.ClienteComo("Empleado").GetStringAsync("/Chat");
 
         jefe.Should().Contain($"data-asignar=\"{_enCola}\"");
-        jefe.Should().Contain("Usuario empleado", "el selector ofrece a los técnicos activos");
+        jefe.Should().Contain("Usuario empleado", "el selector ofrece a quienes tienen temas asignados");
+        jefe.Should().NotContain(">Usuario jefearea</option>", "su rol atiende soporte, pero sin temas no es técnico");
         empleado.Should().Contain("EnCola<", "la cola es la misma para todos");
         empleado.Should().NotContain("data-asignar=", "un técnico común toma, no reparte");
     }
@@ -161,6 +195,43 @@ public sealed class ColaCompartidaChatTests : IAsyncLifetime
         (await db.ChatMensajes.AsNoTracking()
             .AnyAsync(m => m.SesionId == _enCola && m.EsSistema && m.Texto.Contains("asignó el chat a Usuario empleado")))
             .Should().BeTrue();
+    }
+
+    private async Task ConMensajeDelUsuarioAsync(string texto)
+    {
+        using var scope = _portal.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var s = await db.ChatSesiones.SingleAsync(x => x.Id == _enCola);
+        s.AgregarMensaje(texto, esDelTecnico: false, esSistema: false, autorNombre: "Lucía EnCola");
+        await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task La_tarjeta_en_cola_adelanta_el_primer_mensaje_del_usuario()
+    {
+        await ConMensajeDelUsuarioAsync("No me deja firmar el acta de la sesion");
+        await _portal.OtorgarAsync("Empleado", "Chat.Ver");
+
+        var html = await _portal.ClienteComo("Empleado").GetStringAsync("/Chat");
+
+        html.Should().Contain("class=\"ci-preview\"");
+        html.Should().Contain("No me deja firmar el acta de la sesion",
+            "para decidir si lo toma, el técnico tiene que saber de qué trata");
+        html.Should().Contain($"href=\"/Chat?sesion={_enCola}\"", "la tarjeta abre la conversación");
+    }
+
+    [Fact]
+    public async Task Un_tecnico_comun_lee_un_chat_en_cola_antes_de_tomarlo()
+    {
+        await ConMensajeDelUsuarioAsync("No me deja firmar el acta de la sesion");
+        await _portal.OtorgarAsync("Empleado", "Chat.Ver", "Chat.Editar");
+
+        var html = await _portal.ClienteComo("Empleado").GetStringAsync($"/Chat?sesion={_enCola}");
+
+        html.Should().Contain("solo lectura", "mirarlo no es tomarlo");
+        html.Should().Contain("Tomar para responder", "desde la vista previa se toma sin volver a la cola");
+        html.Should().NotContain("id=\"frmResolver\"");
+        (await SesionAsync()).Estado.Should().Be(ChatEstado.EnCola, "abrir la vista previa no asigna el chat");
     }
 
     [Fact]

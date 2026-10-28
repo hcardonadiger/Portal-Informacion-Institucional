@@ -210,6 +210,12 @@
 .ci-nombre { font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .ci-tema { font-size:11px;color:var(--diger-text-muted); }
 .ci-hora { font-size:10px;color:var(--diger-text-muted); }
+.ci-ver { text-decoration:none;color:inherit; }
+.cola-sin-tecnicos { font-size:11px;color:var(--diger-text-muted); }
+.ci-preview {
+  font-size:12px;color:var(--diger-text);margin:2px 0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
 .ci-atiende { font-size:11px;color:var(--diger-text);font-weight:600; }
 .chat-item.cerrado { opacity:.8; }
 .chat-solo-lectura {
@@ -329,8 +335,7 @@ conn.on('TicketCreado', (tId, numero) => {
 conn.on('ColaActualizada', async (total) => {
     const badge = document.getElementById('colaBadge');
     if (badge) { badge.textContent = `${total} en cola`; badge.hidden = total === 0; }
-    const nav = document.getElementById('navColaChat');
-    if (nav) { nav.textContent = total; nav.hidden = total === 0; }
+    window.marcarColaSoporte?.(total);
     const cont = document.getElementById('colaChat');
     if (!cont) return;
     const r = await fetch(`/Chat?handler=Cola&sesion=${sesionId}`);

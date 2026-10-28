@@ -38,10 +38,13 @@ public sealed class IndexModel(
     public bool LaAtiendo => SesionAbierta is { } d && d.Sesion.TecnicoId == currentUser.UserId &&
                              d.Sesion.Estado == ChatEstado.Activo;
 
-    /// <summary>El Global puede quitarle a otro técnico un chat abierto que no es suyo.</summary>
-    public bool PuedeTomarLaAbierta => EsSupervision && SesionAbierta is { } d &&
-                                       d.Sesion.Estado is ChatEstado.Activo or ChatEstado.EnCola &&
-                                       d.Sesion.TecnicoId != currentUser.UserId;
+    /// <summary>
+    /// Un chat en cola lo toma cualquiera desde su vista previa, igual que desde la cola. Solo el
+    /// Global puede quitarle a otro técnico un chat activo que no es suyo.
+    /// </summary>
+    public bool PuedeTomarLaAbierta => SesionAbierta is { } d && d.Sesion.TecnicoId != currentUser.UserId &&
+                                       (d.Sesion.Estado == ChatEstado.EnCola ||
+                                        EsSupervision && d.Sesion.Estado == ChatEstado.Activo);
 
     /// <summary>
     /// Jefaturas y Global reparten la cola; el resto solo toma. La PMO queda fuera aunque su rol
@@ -219,6 +222,30 @@ public sealed class IndexModel(
     }
 
     public sealed record IniciarSesionRequest(int? TemaId, string? Mensaje);
+
+    // El usuario cierra su chat abierto para empezar otra consulta desde la burbuja. Solo el
+    // dueño: un chat ajeno responde NotFound, igual que uno que no existe.
+    [Permission("Chat", AccionModulo.Editar, "Atender el chat de soporte")]
+    public async Task<IActionResult> OnPostNuevaConsultaAsync(int sesionId, CancellationToken ct)
+    {
+        if (currentUser.UserId is not Guid uid) return Forbid();
+
+        var detalle = await chatSvc.GetDetalleAsync(sesionId, ct);
+        if (detalle is null || detalle.Sesion.UsuarioId != uid) return NotFound();
+        if (detalle.Sesion.Estado is not (ChatEstado.EnCola or ChatEstado.Activo))
+            return new JsonResult(new { cerrada = false });
+
+        await chatSvc.CerrarSesionAsync(sesionId, ChatEstado.Abandonado, ct);
+        var msgSistema = await chatSvc.EnviarMensajeAsync(sesionId,
+            "El usuario cerró la conversación para iniciar otra consulta.",
+            esDelTecnico: false, esSistema: true, autorNombre: "Sistema", ct);
+
+        await hub.Clients.Group(SoporteHub.GrupoSesion(sesionId))
+            .SendAsync("SesionCerrada", ChatEstado.Abandonado.ToString(), msgSistema, cancellationToken: ct);
+        await SoporteHub.AvisarColaAsync(hub.Clients.Group(SoporteHub.GrupoBandeja), chatSvc, ct);
+
+        return new JsonResult(new { cerrada = true });
+    }
 
     // Generar ticket de soporte a partir del historial de chat
     // Crea un ticket a partir de la conversación: la mutación es sobre Tickets, no sobre Chat.

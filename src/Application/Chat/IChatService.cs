@@ -23,7 +23,9 @@ public record ChatSesionDto(
     ChatEstado Estado,
     DateTime   Inicio,
     DateTime?  Cierre,
-    int        MensajesNoLeidos);
+    int        MensajesNoLeidos,
+    // Lo primero que escribió el usuario: con eso el técnico decide si toma el chat de la cola.
+    string?    PrimerMensaje = null);
 
 public record ChatSesionDetalleDto(
     ChatSesionDto              Sesion,
@@ -81,7 +83,10 @@ public interface IChatService
     Task<IReadOnlyList<ChatSesionDto>>    GetCerradasRecientesAsync(int maximo = 50, CancellationToken ct = default);
     Task<int>                             ContarColaAsync(CancellationToken ct = default);
 
-    /// <summary>Técnicos activos a quienes se puede asignar un chat: los del tema primero, luego el resto.</summary>
+    /// <summary>
+    /// Técnicos a quienes se puede asignar un chat: los que atienden su tema; si no tiene tema o nadie
+    /// lo atiende, todos los que atienden alguno. Sin temas asignados nadie es técnico.
+    /// </summary>
     Task<IReadOnlyList<TecnicoAsignableDto>> GetTecnicosAsignablesAsync(int? temaId, CancellationToken ct = default);
     Task<ChatSesionDto?>                  GetSesionActivaUsuarioAsync(Guid usuarioId, CancellationToken ct = default);
 }

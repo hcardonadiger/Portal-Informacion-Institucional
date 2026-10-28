@@ -161,40 +161,105 @@ public sealed class SupervisionChatTests : IDisposable
         (await _svc.ContarColaAsync()).Should().Be(2);
     }
 
-    [Fact]
-    public async Task Los_asignables_son_los_tecnicos_activos_con_los_del_tema_primero()
+    private async Task<TemaTicket> TemaAsync(string nombre)
     {
-        await RolesAsync();
-        var tema = TemaTicket.Crear("Accesos", 0);
+        var tema = TemaTicket.Crear(nombre, 0);
         _ctx.TemasTicket.Add(tema);
         await _ctx.SaveChangesAsync();
+        return tema;
+    }
 
-        await UsuarioAsync("Zoila del tema", "Empleado", temaId: tema.Id);
+    private async Task<int> SesionDelTemaAsync(TemaTicket tema)
+    {
+        var s = ChatSesion.Iniciar(Guid.NewGuid(), "Usuario con tema");
+        s.AsignarTema(tema.Id, tema.Nombre);
+        _ctx.ChatSesiones.Add(s);
+        await _ctx.SaveChangesAsync();
+        return s.Id;
+    }
+
+    // Técnico es quien tiene temas asignados. Antes entraba a la lista todo rol con
+    // EsTecnicoSoporte, y como casi todos los roles lo tienen, el «Asignar a…» era el directorio.
+    [Fact]
+    public async Task Los_asignables_de_un_chat_son_solo_quienes_atienden_su_tema()
+    {
+        await RolesAsync();
+        var accesos = await TemaAsync("Accesos");
+        var datos   = await TemaAsync("Datos");
+
+        await UsuarioAsync("Zoila de accesos", "Empleado", temaId: accesos.Id);
+        await UsuarioAsync("Bruno de datos", "Empleado", temaId: datos.Id);
         await UsuarioAsync("Alberto sin tema", "Empleado");
-        await UsuarioAsync("Consultora", "Consultor");                  // su rol no atiende soporte
-        await UsuarioAsync("Inactivo", "Empleado", activo: false);
+        await UsuarioAsync("Consultora", "Consultor", temaId: accesos.Id); // su rol no atiende soporte
+        await UsuarioAsync("Inactivo", "Empleado", activo: false, temaId: accesos.Id);
 
-        var lista = await _svc.GetTecnicosAsignablesAsync(tema.Id);
+        var lista = await _svc.GetTecnicosAsignablesAsync(accesos.Id);
 
-        lista.Select(t => (t.Nombre, t.DelTema)).Should().Equal(
-            ("Zoila del tema", true), ("Alberto sin tema", false));
+        lista.Select(t => (t.Nombre, t.DelTema)).Should().Equal(("Zoila de accesos", true));
+    }
 
-        (await _svc.GetTecnicosAsignablesAsync(null)).Should().OnlyContain(t => !t.DelTema,
-            "un chat sin tema también se reparte, entre todos");
+    [Fact]
+    public async Task Sin_tema_o_si_nadie_lo_atiende_se_reparte_entre_todos_los_que_tienen_temas()
+    {
+        await RolesAsync();
+        var accesos = await TemaAsync("Accesos");
+        var datos   = await TemaAsync("Datos");
+        var huerfano = await TemaAsync("Nadie lo atiende");
+
+        await UsuarioAsync("Zoila de accesos", "Empleado", temaId: accesos.Id);
+        await UsuarioAsync("Bruno de datos", "Empleado", temaId: datos.Id);
+        await UsuarioAsync("Alberto sin tema", "Empleado");
+
+        foreach (var temaId in new int?[] { null, huerfano.Id })
+            (await _svc.GetTecnicosAsignablesAsync(temaId)).Select(t => (t.Nombre, t.DelTema)).Should().Equal(
+                [("Bruno de datos", false), ("Zoila de accesos", false)],
+                "sin quien atienda el tema, el chat igual tiene que poder repartirse, pero no a cualquiera");
     }
 
     [Fact]
     public async Task Asignar_desde_la_cola_deja_el_chat_activo_con_ese_tecnico()
     {
         await RolesAsync();
-        var (id, nombre) = await UsuarioAsync("Empleado DEV", "Empleado");
-        var sesion = await SesionAsync("En cola");
+        var tema = await TemaAsync("Accesos");
+        var (id, nombre) = await UsuarioAsync("Empleado DEV", "Empleado", temaId: tema.Id);
+        var sesion = await SesionDelTemaAsync(tema);
 
         var asignado = await _svc.AsignarDesdeColaAsync(sesion, id);
 
         asignado.Should().Be(nombre);
         (await _svc.AtiendeSesionAsync(sesion, id)).Should().BeTrue();
         (await _svc.ContarColaAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task No_se_asigna_un_chat_a_quien_no_atiende_su_tema()
+    {
+        await RolesAsync();
+        var accesos = await TemaAsync("Accesos");
+        var datos   = await TemaAsync("Datos");
+        await UsuarioAsync("Zoila de accesos", "Empleado", temaId: accesos.Id);
+        var (bruno, _) = await UsuarioAsync("Bruno de datos", "Empleado", temaId: datos.Id);
+        var sesion = await SesionDelTemaAsync(accesos);
+
+        var act = () => _svc.AsignarDesdeColaAsync(sesion, bruno);
+
+        await act.Should().ThrowAsync<DomainException>("el POST no puede saltarse la lista que ofrece la pantalla");
+        (await _svc.ContarColaAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task No_se_asigna_a_quien_no_tiene_temas()
+    {
+        await RolesAsync();
+        var tema = await TemaAsync("Accesos");
+        await UsuarioAsync("Zoila de accesos", "Empleado", temaId: tema.Id);
+        var (alberto, _) = await UsuarioAsync("Alberto sin tema", "Empleado");
+        var sesion = await SesionAsync("En cola sin tema");
+
+        var act = () => _svc.AsignarDesdeColaAsync(sesion, alberto);
+
+        await act.Should().ThrowAsync<DomainException>();
+        (await _svc.ContarColaAsync()).Should().Be(1);
     }
 
     [Fact]

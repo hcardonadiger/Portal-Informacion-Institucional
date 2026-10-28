@@ -78,6 +78,10 @@ public sealed class SoporteHub(
     /// <summary>El usuario cierra voluntariamente el chat.</summary>
     public async Task AbandonarChat(int sesionId)
     {
+        // Solo el dueño cierra su chat: sin esto, cualquier sesión conectada cerraba la de otro.
+        var detalle = await chatSvc.GetDetalleAsync(sesionId);
+        if (detalle is null || detalle.Sesion.UsuarioId != UserId()) return;
+
         await chatSvc.CerrarSesionAsync(sesionId, ChatEstado.Abandonado);
         await Clients.Group(GrupoSesion(sesionId)).SendAsync("SesionCerrada", ChatEstado.Abandonado.ToString());
         await AvisarColaAsync(Clients.Group(GrupoBandeja), chatSvc);

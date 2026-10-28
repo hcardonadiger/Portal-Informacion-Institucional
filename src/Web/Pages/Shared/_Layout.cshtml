@@ -444,9 +444,11 @@
                         {
                             var grpSoporte = EsRuta("/Tickets") || EsRuta("/Contactos") || EsRuta("/Chat");
                             var abreSoporte = AbreSeccion("soporte", grpSoporte);
-                            <div class="nav-group @(grpSoporte ? "on" : "")" data-seccion="soporte">
+                            @* Con chats en cola el título va en negrita y lleva su burbuja: la sección
+                               nace contraída y, sin esto, el contador de adentro no se veía. *@
+                            <div class="nav-group @(grpSoporte ? "on" : "") @(colaChat > 0 ? "pendiente" : "")" data-seccion="soporte">
                                 <button type="button" class="nav-group-btn" onclick="toggleNavGroup(this)"
-                                        aria-expanded="@(abreSoporte ? "true" : "false")" aria-controls="nav-sec-soporte">Soporte<svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+                                        aria-expanded="@(abreSoporte ? "true" : "false")" aria-controls="nav-sec-soporte">Soporte<span class="nav-cola" id="navColaSoporte" title="Chats de soporte pendientes" @(colaChat == 0 ? "hidden" : null)>@colaChat</span><svg class="ico nav-caret" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
                                 <div class="nav-group-menu" id="nav-sec-soporte">
                                     @if (puedeTickets)
                                     {
@@ -919,11 +921,63 @@
 }
 @if (_chatUid.HasValue && !_esRutaChat)
 {
-    var _chatTemas = await ctx.TemasTicket
+    // El chat tiene que llegar con tema: el «Asignar a…» de la bandeja ofrece a quienes lo
+    // atienden. Se elige la categoría y, dentro de ella, el tema. Los temas sin categoría, o con
+    // una inactiva, van juntos como «Otros temas» (categoría 0) para no quedar inalcanzables.
+    var _chatCategorias = await ctx.CategoriasTicket
+        .Where(c => c.Activo)
+        .OrderBy(c => c.Nombre)
+        .Select(c => new { c.Id, c.Nombre })
+        .ToListAsync();
+    var _chatCategoriaIds = _chatCategorias.Select(c => c.Id).ToHashSet();
+    var _chatTemas = (await ctx.TemasTicket
         .Where(t => t.Activo)
         .OrderBy(t => t.Nombre)
-        .Select(t => new { t.Id, t.Nombre })
-        .ToListAsync();
+        .Select(t => new { t.Id, t.Nombre, t.CategoriaId })
+        .ToListAsync())
+        .Select(t => new
+        {
+            t.Id, t.Nombre,
+            Categoria = t.CategoriaId is int c && _chatCategoriaIds.Contains(c) ? c : 0,
+        })
+        .ToList();
+    var _chatCategoriasConTemas = _chatCategorias.Where(c => _chatTemas.Any(t => t.Categoria == c.Id)).ToList();
+    var _chatHayOtrosTemas = _chatTemas.Any(t => t.Categoria == 0);
+
+    // Un solo formulario de inicio: se pinta al abrir y se clona (plantilla) tras cerrar un chat.
+    async Task FormInicioChat(string intro)
+    {
+        <div id="cwpInicio">
+            <p class="cwp-intro">@intro</p>
+            <div class="cwp-form">
+                @if (_chatTemas.Count > 0)
+                {
+                    <label class="cwp-label" for="cwpCategoria">Categoría</label>
+                    <select id="cwpCategoria" class="cwp-select" onchange="cwpFiltrarTemas()">
+                        <option value="">-- Selecciona una categoría --</option>
+                        @foreach (var c in _chatCategoriasConTemas)
+                        {
+                            <option value="@c.Id">@c.Nombre</option>
+                        }
+                        @if (_chatHayOtrosTemas)
+                        {
+                            <option value="0">Otros temas</option>
+                        }
+                    </select>
+                    <label class="cwp-label" style="margin-top:10px" for="cwpTema">Tema de tu consulta</label>
+                    <select id="cwpTema" class="cwp-select" disabled>
+                        <option value="">-- Primero elige la categoría --</option>
+                    </select>
+                }
+                <label class="cwp-label" style="margin-top:10px" for="cwpMensaje">Mensaje inicial</label>
+                <textarea id="cwpMensaje" class="cwp-textarea" rows="3" placeholder="Describe tu consulta..."></textarea>
+                <p id="cwpAviso" class="cwp-aviso" hidden></p>
+                <button type="button" class="btn-prim" style="width:100%;margin-top:10px" onclick="iniciarChat()">
+                    Iniciar chat
+                </button>
+            </div>
+        </div>
+    }
     var _sesionActiva = await chatSvc.GetSesionActivaUsuarioAsync(_chatUid.Value);
 
     <!-- Widget flotante -->
@@ -949,31 +1003,18 @@
                             }
                         </div>
                     }
+                    @if (_sesionActiva is not null)
+                    {
+                        <button type="button" id="cwpNueva" class="cwp-head-nueva" onclick="cwpNuevaConsulta()"
+                                title="Cerrar esta conversación y empezar otra consulta">＋ Nueva</button>
+                    }
                     <button type="button" onclick="toggleChatWidget()" class="cwp-close" aria-label="Cerrar chat">✕</button>
                 </div>
             </div>
             <div class="cwp-body" id="cwpBody">
                 @if (_sesionActiva is null)
                 {
-                    <!-- Formulario de inicio -->
-                    <div id="cwpInicio">
-                        <p class="cwp-intro">¿En qué podemos ayudarte?</p>
-                        <div class="cwp-form">
-                            <label class="cwp-label">Tema de tu consulta</label>
-                            <select id="cwpTema" class="cwp-select">
-                                <option value="">-- Selecciona un tema --</option>
-                                @foreach (var t in _chatTemas)
-                                {
-                                    <option value="@t.Id">@t.Nombre</option>
-                                }
-                            </select>
-                            <label class="cwp-label" style="margin-top:10px">Mensaje inicial</label>
-                            <textarea id="cwpMensaje" class="cwp-textarea" rows="3" placeholder="Describe tu consulta..."></textarea>
-                            <button type="button" class="btn-prim" style="width:100%;margin-top:10px" onclick="iniciarChat()">
-                                Iniciar chat
-                            </button>
-                        </div>
-                    </div>
+                    await FormInicioChat("¿En qué podemos ayudarte?");
                 }
                 else
                 {
@@ -1016,6 +1057,8 @@
         </div>
     </div>
 
+    <template id="cwpInicioTpl">@{ await FormInicioChat("¿En qué más podemos ayudarte?"); }</template>
+
     <script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
     <script>
     (function() {
@@ -1023,7 +1066,26 @@
         let sesionId = @(_sesionActiva?.Id.ToString() ?? "null");
         let hubConn  = null;
         const _temas = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            _chatTemas.Select(t => new { id = t.Id, nombre = t.Nombre })));
+            _chatTemas.Select(t => new { id = t.Id, nombre = t.Nombre, categoria = t.Categoria })));
+
+        // Los temas de la categoría elegida; si es uno solo, queda elegido.
+        window.cwpFiltrarTemas = function() {
+            const cat  = document.getElementById('cwpCategoria')?.value ?? '';
+            const sel  = document.getElementById('cwpTema');
+            if (!sel) return;
+            const delaCat = cat === '' ? [] : _temas.filter(t => String(t.categoria) === cat);
+            sel.innerHTML = (delaCat.length === 1 ? '' :
+                `<option value="">${cat === '' ? '-- Primero elige la categoría --' : '-- Selecciona un tema --'}</option>`) +
+                delaCat.map(t => `<option value="${t.id}">${escHtml(t.nombre)}</option>`).join('');
+            sel.disabled = delaCat.length === 0;
+        };
+
+        function cwpAvisar(texto) {
+            const p = document.getElementById('cwpAviso');
+            if (!p) return;
+            p.textContent = texto;
+            p.hidden = !texto;
+        }
 
         // ── Widget toggle ────────────────────────────────────────────────
         let mensajesCargados = false;
@@ -1050,9 +1112,13 @@
 
         // ── Iniciar una nueva sesión ─────────────────────────────────────
         window.iniciarChat = async function() {
-            const temaId  = document.getElementById('cwpTema')?.value || null;
+            const selTema = document.getElementById('cwpTema');
+            const temaId  = selTema?.value || null;
             const texto   = document.getElementById('cwpMensaje')?.value?.trim() || '';
-            if (!texto) { alert('Escribe un mensaje para iniciar el chat.'); return; }
+            // Sin tema el chat no sabe quién lo atiende; se pide antes de enviar, sin borrar lo escrito.
+            if (selTema && !temaId) { cwpAvisar('Elige la categoría y el tema de tu consulta.'); return; }
+            if (!texto) { cwpAvisar('Escribe un mensaje para iniciar el chat.'); return; }
+            cwpAvisar('');
 
             const res = await fetch('/Chat?handler=IniciarSesion', {
                 method: 'POST',
@@ -1104,7 +1170,11 @@
             });
 
             hubConn.on('SesionCerrada', (estado) => {
+                // Si la cerró el propio usuario con «Nueva», la burbuja ya está en el formulario:
+                // repintarlo a los 1,5 s borraría lo que esté escribiendo.
+                if (sesionId === null) return;
                 sesionId = null;
+                document.getElementById('cwpNueva')?.remove();
                 mensajesCargados = false;
                 document.querySelector('.cwp-input-bar')?.remove();
                 document.getElementById('cwpFormTicket')?.remove();
@@ -1173,30 +1243,44 @@
             if (lbl) lbl.textContent = '🤖 Asistente virtual activo · esperando técnico';
         }
 
+        // ── Nueva consulta: el usuario cierra la suya y vuelve al formulario ──
+        window.cwpNuevaConsulta = async function() {
+            if (!sesionId) return;
+            // Confirmación en el mismo botón, sin diálogo del navegador (congela la pestaña):
+            // el primer clic arma, el segundo cierra; si no llega en 4 s, se desarma.
+            const btn = document.getElementById('cwpNueva');
+            if (btn && !btn.dataset.armado) {
+                btn.dataset.armado = '1';
+                btn.textContent = '¿Cerrar este chat?';
+                btn.classList.add('armado');
+                setTimeout(() => {
+                    if (!btn.isConnected) return;
+                    delete btn.dataset.armado;
+                    btn.textContent = '＋ Nueva';
+                    btn.classList.remove('armado');
+                }, 4000);
+                return;
+            }
+            const cerrando = sesionId;
+            const res = await fetch(`/Chat?handler=NuevaConsulta&sesionId=${cerrando}`, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': antiForgery }
+            });
+            if (!res.ok) return;
+            sesionId = null;
+            mensajesCargados = false;
+            document.getElementById('cwpNueva')?.remove();
+            const tz = document.getElementById('cwpTicketZone');
+            if (tz) tz.innerHTML = '';
+            mostrarFormNuevoChat();
+        };
+
         // ── Restablecer widget tras cierre de sesión ─────────────────────
         function mostrarFormNuevoChat() {
             const body = document.getElementById('cwpBody');
-            if (!body) return;
-            const opts = _temas.map(t =>
-                `<option value="${t.id}">${escHtml(t.nombre)}</option>`).join('');
-            body.innerHTML =
-                `<div id="cwpInicio">
-                    <p class="cwp-intro">¿En qué más podemos ayudarte?</p>
-                    <div class="cwp-form">
-                        <label class="cwp-label">Tema de tu consulta</label>
-                        <select id="cwpTema" class="cwp-select">
-                            <option value="">-- Selecciona un tema --</option>
-                            ${opts}
-                        </select>
-                        <label class="cwp-label" style="margin-top:10px">Mensaje inicial</label>
-                        <textarea id="cwpMensaje" class="cwp-textarea" rows="3"
-                            placeholder="Describe tu consulta..."></textarea>
-                        <button type="button" class="btn-prim"
-                            style="width:100%;margin-top:10px" onclick="iniciarChat()">
-                            Iniciar chat
-                        </button>
-                    </div>
-                </div>`;
+            const tpl  = document.getElementById('cwpInicioTpl');
+            if (!body || !tpl) return;
+            body.replaceChildren(tpl.content.cloneNode(true));
         }
 
         // ── Crear ticket desde el chat ────────────────────────────────────
@@ -1275,6 +1359,7 @@
     .cwp-intro { font-size:13px;color:var(--diger-text-muted);margin:0 0 12px; }
     .cwp-form { display:flex;flex-direction:column;padding:16px; }
     .cwp-label { font-size:11.5px;font-weight:700;color:var(--diger-text-muted);margin-bottom:4px; }
+    .cwp-aviso { font-size:12px;color:var(--diger-danger,#b91c1c);margin:8px 0 0; }
     .cwp-select,.cwp-textarea,.cwp-input {
         border:1.5px solid var(--diger-border);border-radius:8px;
         padding:8px 10px;font-size:13px;font-family:inherit;background:#fff;
@@ -1310,6 +1395,12 @@
         text-decoration:none;transition:background .12s;
     }
     .cwp-head-ticket-btn:hover,.cwp-head-ticket-link:hover { background:rgba(255,255,255,.28); }
+    .cwp-head-nueva {
+        background:rgba(255,255,255,.15);border:none;color:#fff;height:28px;padding:0 10px;
+        border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;
+    }
+    .cwp-head-nueva:hover { background:rgba(255,255,255,.28); }
+    .cwp-head-nueva.armado { background:#fff;color:var(--diger-blue); }
     .cwp-ticket-form {
         padding:10px 12px;border-top:1px solid var(--diger-border);
         background:var(--diger-bg-soft);flex-direction:column;gap:8px;flex:none;
@@ -1330,11 +1421,18 @@
 
     @* Contador de la cola en vivo, fuera de /Chat (allá lo actualiza la propia bandeja). *@
     <script>
+    // Un solo sitio que pinta la cola en el menú: el contador del ítem y el aviso del título.
+    window.marcarColaSoporte = function (total) {
+        for (const id of ['navColaChat', 'navColaSoporte']) {
+            const b = document.getElementById(id);
+            if (b) { b.textContent = total; b.hidden = total === 0; }
+        }
+        document.querySelector('#mainNav [data-seccion="soporte"]')?.classList.toggle('pendiente', total > 0);
+    };
     (function() {
-        const badge = document.getElementById('navColaChat');
-        if (!badge || !window.signalR) return;
+        if (!document.getElementById('navColaChat') || !window.signalR) return;
         const conn = new signalR.HubConnectionBuilder().withUrl('/hubs/soporte').withAutomaticReconnect().build();
-        conn.on('ColaActualizada', total => { badge.textContent = total; badge.hidden = total === 0; });
+        conn.on('ColaActualizada', total => window.marcarColaSoporte(total));
         conn.start().catch(() => {});
     })();
     </script>

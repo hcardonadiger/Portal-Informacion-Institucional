@@ -40,8 +40,9 @@ public sealed class ChatService(IApplicationDbContext ctx, IUnitOfWork uow) : IC
         if (sesion.Estado != ChatEstado.EnCola)
             throw new DomainException("Ese chat ya no está en la cola.");
 
-        var tecnico = (await GetTecnicosAsignablesAsync(null, ct)).FirstOrDefault(t => t.Id == tecnicoId)
-            ?? throw new DomainException("El usuario elegido no puede atender el chat de soporte.");
+        // La misma lista que ofrece la pantalla para este chat: un POST armado no se la salta.
+        var tecnico = (await GetTecnicosAsignablesAsync(sesion.TemaId, ct)).FirstOrDefault(t => t.Id == tecnicoId)
+            ?? throw new DomainException("El usuario elegido no atiende el tema de este chat.");
 
         sesion.Tomar(tecnico.Id, tecnico.Nombre, puedeReasignar: false);
         await uow.SaveChangesAsync(ct);
@@ -157,14 +158,15 @@ public sealed class ChatService(IApplicationDbContext ctx, IUnitOfWork uow) : IC
 
     public async Task<IReadOnlyList<TecnicoAsignableDto>> GetTecnicosAsignablesAsync(int? temaId, CancellationToken ct = default)
     {
-        // Atiende soporte quien tiene alguna asignación con un rol activo que lo permite —la
-        // misma capacidad que abre la bandeja—, no solo quien tiene temas: un chat sin tema, o de
-        // un tema que nadie tiene, también tiene que poder repartirse.
+        // Técnico es quien tiene temas asignados (Usuarios › Editor, «Temas que atiende»). El rol
+        // con EsTecnicoSoporte se sigue exigiendo —es lo que abre la bandeja—, pero ya no basta:
+        // casi todos los roles lo tienen, y la lista terminaba siendo el directorio entero.
         var rolesTecnicos = ctx.Roles.Where(r => r.Activo && r.EsTecnicoSoporte).Select(r => r.Id);
         var tecnicos = await ctx.Usuarios
             .AsNoTracking()
             .Where(u => u.Activo &&
-                ctx.AsignacionesUsuario.Any(a => a.UsuarioId == u.Id && rolesTecnicos.Contains(a.Rol)))
+                ctx.AsignacionesUsuario.Any(a => a.UsuarioId == u.Id && rolesTecnicos.Contains(a.Rol)) &&
+                ctx.UsuarioTemas.Any(ut => ut.UsuarioId == u.Id))
             .Select(u => new
             {
                 u.Id,
@@ -173,8 +175,11 @@ public sealed class ChatService(IApplicationDbContext ctx, IUnitOfWork uow) : IC
             })
             .ToListAsync(ct);
 
-        return tecnicos
-            .OrderByDescending(t => t.DelTema).ThenBy(t => t.Nombre)
+        // Con quien atienda el tema, solo ellos. Un chat sin tema, o de un tema que nadie tiene,
+        // también tiene que poder repartirse: entonces entre todos los que atienden algún tema.
+        var candidatos = tecnicos.Any(t => t.DelTema) ? tecnicos.Where(t => t.DelTema) : tecnicos;
+        return candidatos
+            .OrderBy(t => t.Nombre)
             .Select(t => new TecnicoAsignableDto(t.Id, t.Nombre, t.DelTema))
             .ToList();
     }
@@ -207,10 +212,15 @@ public sealed class ChatService(IApplicationDbContext ctx, IUnitOfWork uow) : IC
             {
                 Sesion    = s,
                 NoLeidos  = s.Mensajes.Count(m => !m.Leido),
+                Primero   = s.Mensajes
+                    .Where(m => !m.EsSistema && !m.EsDelTecnico)
+                    .OrderBy(m => m.Enviado)
+                    .Select(m => m.Texto)
+                    .FirstOrDefault(),
             })
             .ToListAsync(ct);
 
-        return sesiones.Select(x => ToSesionDto(x.Sesion, x.NoLeidos)).ToList();
+        return sesiones.Select(x => ToSesionDto(x.Sesion, x.NoLeidos) with { PrimerMensaje = x.Primero }).ToList();
     }
 
     private static ChatSesionDto ToSesionDto(ChatSesion s, int noLeidos) => new(

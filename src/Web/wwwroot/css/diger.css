@@ -4568,6 +4568,26 @@ a.kpi-cell:hover .kpi-cell-arw {
 }
 .nav-cola[hidden] { display: none; }
 
+/* Con chats en cola, «Soporte» se lee en negrita aunque la sección esté
+   contraída, y su burbuja queda pegada a la flecha. */
+.main-nav .nav-group.pendiente > .nav-group-btn {
+    font-weight: 800;
+}
+.main-nav .nav-group.pendiente:not(.on) > .nav-group-btn {
+    color: var(--diger-blue);
+}
+/* La burbuja del título va en el azul oscuro de la marca, no en el rojo del
+   ítem: avisa que algo espera, no que algo falló. */
+.main-nav .nav-group-btn > .nav-cola {
+    margin-right: 4px;
+    background: var(--diger-blue);
+    color: #fff;
+}
+/* En oscuro --diger-blue es el celeste claro: el número va en marino. */
+.tema-oscuro .main-nav .nav-group-btn > .nav-cola {
+    color: var(--diger-blue-dark);
+}
+
 .nav-item-chev {
     color: var(--diger-text-faint);
     font-size: var(--diger-fs-base);
