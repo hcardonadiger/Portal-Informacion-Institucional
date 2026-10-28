@@ -22,4 +22,10 @@ public interface IConexionMicrosoft
     /// <summary>Token de acceso a Graph vigente. Lanza <see cref="OutlookConexionVencidaException"/>
     /// (y marca la fila) si hay que reconectar.</summary>
     Task<string> ObtenerTokenAsync(Guid usuarioId, CancellationToken ct);
+
+    /// <summary>Token para leer reuniones en línea y sus transcripciones (fase 2, parte B). Aparte
+    /// del de calendario a propósito: si la conexión es de antes del permiso, lanza
+    /// <see cref="Memoria.TranscripcionNoDisponibleException"/> pidiendo reconectar, pero NO marca
+    /// la conexión vencida, porque para el calendario sigue sirviendo.</summary>
+    Task<string> ObtenerTokenTranscripcionesAsync(Guid usuarioId, CancellationToken ct);
 }

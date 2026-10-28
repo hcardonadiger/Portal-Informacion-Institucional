@@ -101,7 +101,7 @@ public sealed class GraphOutlookCalendario(
     /// <summary>El <c>error.code</c> de una respuesta de error de Graph («ErrorAccessDenied»…), o
     /// <c>null</c> si el cuerpo no lo trae o no se puede leer: leerlo es solo para el log, así que
     /// ningún fallo aquí cambia lo que se lanza.</summary>
-    private static async Task<string?> CodigoDeErrorAsync(HttpResponseMessage resp, CancellationToken ct)
+    internal static async Task<string?> CodigoDeErrorAsync(HttpResponseMessage resp, CancellationToken ct)
     {
         try
         {

@@ -95,6 +95,13 @@ public static class DependencyInjection
             c.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
             c.Timeout = TimeSpan.FromSeconds(20);
         });
+        // Fase 2, parte B: la transcripción de Teams. Una reunión larga pesa varios cientos de KB
+        // en VTT, de ahí el plazo más holgado que el del calendario.
+        services.AddHttpClient<Application.Reuniones.Memoria.ITranscripcionesTeams, GraphTranscripcionesTeams>(c =>
+        {
+            c.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
+            c.Timeout = TimeSpan.FromSeconds(60);
+        });
 
         // Dirección pública del portal, para los enlaces que salen de él (recuperación de
         // contraseña, QR de asistencia). Nunca se toma de la petición.

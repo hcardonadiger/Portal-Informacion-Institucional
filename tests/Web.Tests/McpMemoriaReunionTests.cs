@@ -211,4 +211,22 @@ public sealed class McpMemoriaReunionTests : IAsyncLifetime
 
         (await LeerAsync(_reunionDeOtraInstitucionId)).ObjetivoAgenda.Should().BeNull();
     }
+
+    [Fact]
+    public async Task La_transcripcion_de_una_reunion_sin_Teams_le_dice_a_la_IA_que_la_pida()
+    {
+        var accion = () => ComoMcpAsync("Empleado", t => t.ObtenerTranscripcionReunion(_reunionId));
+
+        (await accion.Should().ThrowAsync<McpException>())
+            .WithMessage(GetTranscripcionReunionQueryHandler.SinTeams);
+    }
+
+    [Fact]
+    public async Task La_transcripcion_de_una_reunion_fuera_de_alcance_no_se_lee()
+    {
+        var accion = () => ComoMcpAsync("JefeArea", t => t.ObtenerTranscripcionReunion(_reunionDeOtraInstitucionId));
+
+        (await accion.Should().ThrowAsync<McpPermisoDenegadoException>())
+            .WithMessage($"No se encontró la reunión {_reunionDeOtraInstitucionId}*");
+    }
 }

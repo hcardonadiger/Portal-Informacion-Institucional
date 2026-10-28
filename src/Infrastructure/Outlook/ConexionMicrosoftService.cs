@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using Diger.TramitesEstado.Application.Reuniones.Memoria;
 using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Infrastructure.Persistence;
@@ -29,6 +30,18 @@ public sealed class ConexionMicrosoftService(
         "https://graph.microsoft.com/Calendars.ReadWrite",
         "https://graph.microsoft.com/User.Read"
     ];
+
+    // Fase 2, parte B: localizar la reunión en línea por su enlace y leer sus transcripciones. El
+    // segundo exige consentimiento de administrador; por eso solo se piden con «Transcripciones».
+    internal static readonly string[] AlcancesTranscripciones =
+    [
+        "https://graph.microsoft.com/OnlineMeetings.Read",
+        "https://graph.microsoft.com/OnlineMeetingTranscript.Read.All"
+    ];
+
+    /// <summary>Lo que se pide al conectar. El token de calendario sigue pidiendo solo
+    /// <see cref="Alcances"/>: así una conexión de antes del permiso no se cae para el calendario.</summary>
+    private string[] AlcancesAlConectar => _o.Transcripciones ? [.. Alcances, .. AlcancesTranscripciones] : Alcances;
 
     private readonly MicrosoftGraphOptions _o = opciones.Value;
 
@@ -63,7 +76,7 @@ public sealed class ConexionMicrosoftService(
         try
         {
             var url = await app
-                .GetAuthorizationRequestUrl(Alcances)
+                .GetAuthorizationRequestUrl(AlcancesAlConectar)
                 .WithPkce(out var verificador)
                 .WithPrompt(Prompt.SelectAccount)
                 // MSAL 4.91 marcó obsoleta la sobrecarga Dictionary<string,string>; esta es la vigente.
@@ -91,7 +104,7 @@ public sealed class ConexionMicrosoftService(
         AuthenticationResult res;
         try
         {
-            res = await app.AcquireTokenByAuthorizationCode(Alcances, codigo)
+            res = await app.AcquireTokenByAuthorizationCode(AlcancesAlConectar, codigo)
                 .WithPkceCodeVerifier(verificador)
                 .ExecuteAsync(ct);
         }
@@ -122,7 +135,18 @@ public sealed class ConexionMicrosoftService(
     /// </summary>
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> Candados = new();
 
-    public async Task<string> ObtenerTokenAsync(Guid usuarioId, CancellationToken ct)
+    public Task<string> ObtenerTokenAsync(Guid usuarioId, CancellationToken ct) =>
+        TokenAsync(usuarioId, Alcances, paraTranscripciones: false, ct);
+
+    public Task<string> ObtenerTokenTranscripcionesAsync(Guid usuarioId, CancellationToken ct)
+    {
+        if (!_o.Transcripciones)
+            throw new TranscripcionNoDisponibleException(
+                "La descarga de transcripciones de Teams no está activada en este servidor. Pídale a la persona que pegue la transcripción.");
+        return TokenAsync(usuarioId, AlcancesTranscripciones, paraTranscripciones: true, ct);
+    }
+
+    private async Task<string> TokenAsync(Guid usuarioId, string[] alcances, bool paraTranscripciones, CancellationToken ct)
     {
         var candado = Candados.GetOrAdd(usuarioId, _ => new SemaphoreSlim(1, 1));
         await candado.WaitAsync(ct);
@@ -147,13 +171,23 @@ public sealed class ConexionMicrosoftService(
                 if (cuenta is null)
                     return await VencerAsync(fila, "La cuenta no está en la caché.", ct);
 
-                var res = await app.AcquireTokenSilent(Alcances, cuenta).ExecuteAsync(ct);
+                var res = await app.AcquireTokenSilent(alcances, cuenta).ExecuteAsync(ct);
                 if (cacheNueva is not null)
                 {
                     fila.GuardarCache(protector.Cifrar(cacheNueva));
                     await ctx.SaveChangesAsync(ct);
                 }
                 return res.AccessToken;
+            }
+            catch (MsalUiRequiredException ex) when (paraTranscripciones)
+            {
+                // Lo normal en una conexión hecha antes de encender las transcripciones: el refresh
+                // token no cubre el permiso nuevo. Para el calendario sigue sirviendo, así que la
+                // fila no se marca vencida; solo se pide reconectar una vez.
+                log.LogInformation("Conexión de {UsuarioId} sin permiso de transcripciones: {Codigo}", usuarioId, ex.ErrorCode);
+                throw new TranscripcionNoDisponibleException(
+                    "La conexión de Outlook de quien organizó la reunión es anterior al permiso de transcripciones: " +
+                    "tiene que reconectarse una vez desde su perfil.");
             }
             catch (MsalUiRequiredException ex)
             {

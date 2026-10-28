@@ -51,10 +51,56 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
         };
     }
 
+    [McpServerTool(Name = "obtener_transcripcion_reunion")]
+    [Description("La transcripción de Teams de la reunión, descargada con la conexión de Outlook de " +
+                 "quien la organizó, junto con las mismas instrucciones de instrucciones_memoria_reunion. " +
+                 "Solo existe si la reunión se envió a Outlook con Teams desde el portal y alguien inició " +
+                 "la transcripción en Teams durante la reunión; Teams la publica minutos después de " +
+                 "terminar. Si no se puede, el error dice por qué: entonces pídale a la persona que pegue " +
+                 "la transcripción y use instrucciones_memoria_reunion.")]
+    public async Task<object> ObtenerTranscripcionReunion(
+        [Description("Id numérico de la reunión.")] int id)
+    {
+        await permisos.ExigirAsync("Reuniones.Ver");
+
+        var datos = (await LeerAsync(id)).Datos;
+
+        TranscripcionTeams transcripcion;
+        try
+        {
+            transcripcion = await sender.Send(new GetTranscripcionReunionQuery(id));
+        }
+        catch (TranscripcionNoDisponibleException ex)
+        {
+            throw new McpException(ex.Message);
+        }
+        catch (NotFoundException)
+        {
+            throw NoEncontrada(id);
+        }
+
+        var esCapacitacion = MemoriaDesdeTranscripcion.EsCapacitacion(datos.Tipo);
+        var instrucciones = MemoriaDesdeTranscripcion.Instrucciones(esCapacitacion, datos.EncuestaActiva);
+
+        return new
+        {
+            ReunionId      = id,
+            Titulo         = datos.Titulo,
+            Tipo           = datos.Tipo,
+            EsCapacitacion = esCapacitacion,
+            EncuestaActiva = datos.EncuestaActiva,
+            instrucciones.Prompt,
+            instrucciones.Formato,
+            instrucciones.Campos,
+            TranscripcionCreadaElUtc = transcripcion.CreadaElUtc,
+            Transcripcion  = transcripcion.Texto,
+        };
+    }
+
     [McpServerTool(Name = "llenar_memoria_reunion")]
     [Description("Escribe en la reunión la ayuda memoria redactada como JSON. Primero pida " +
                  "instrucciones_memoria_reunion y redacte el JSON siguiendo esas reglas a partir de " +
-                 "la transcripción que le dio la persona. «Generales» (título, fecha, tipo, lugar…) " +
+                 "la transcripción (la de obtener_transcripcion_reunion, o la que le dio la persona). «Generales» (título, fecha, tipo, lugar…) " +
                  "nunca se escribe desde aquí. Si un campo ya tiene otro valor no se escribe nada y " +
                  "se lo dice: pregúntele a la persona; no use «sobreescribir» salvo que ella lo pida. " +
                  "Los acuerdos que ya tienen seguimiento no se reemplazan nunca.")]

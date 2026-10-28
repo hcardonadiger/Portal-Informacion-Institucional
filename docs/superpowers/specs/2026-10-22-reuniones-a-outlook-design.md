@@ -348,8 +348,8 @@ reunión ya guarda su `OutlookEventId` y su enlace de Teams.
 Se parte en dos. **La parte A está hecha** (2026-10-23, plan
 `docs/superpowers/plans/2026-10-23-memoria-por-mcp-fase2a.md`): las reglas en el servidor y el
 MCP que llena la memoria con un JSON que la IA redacta desde la transcripción que la persona le
-pega. No depende de TI. **La parte B** —que el portal descargue la transcripción de Teams— sigue
-pendiente, con su propio plan, y es la que necesita el permiso nuevo y la conexión real.
+pega. No depende de TI. **La parte B** —que el portal descargue la transcripción de Teams— está
+hecha en código (2026-10-28) y **apagada** hasta que TI dé el consentimiento de administrador.
 
 ### Parte A — hecha
 
@@ -377,7 +377,36 @@ Sus reglas vivían en el JavaScript de `Reuniones/Editor.cshtml`. Ahora:
   Outlook: con la regla de reunión terminada (Actualizar al guardar, paso 2) no haría nada.
 - **Outlook no actualiza una reunión que ya terminó** (fase 1, Actualizar al guardar, paso 2).
 
-### Parte B — pendiente: lo que el diseño original agregaba
+### Parte B — hecha en código (2026-10-28), apagada hasta el consentimiento de TI
+
+Cómo quedó, frente al diseño original de abajo:
+
+- **Llave `MicrosoftGraph:Transcripciones`** (por defecto `false`). Solo encendida se piden al
+  conectar `OnlineMeetings.Read` (para hallar la reunión en línea por su enlace; el diseño no lo
+  nombraba y Graph lo exige) y `OnlineMeetingTranscript.Read.All`. Encenderla sin el
+  consentimiento de administrador haría fallar «Conectar mi Outlook» a todos, calendario incluido.
+- **Token aparte:** `IConexionMicrosoft.ObtenerTokenTranscripcionesAsync`. El de calendario sigue
+  pidiendo solo sus dos alcances, así que una conexión de antes del permiso **no se cae** para el
+  calendario: la transcripción responde «tiene que reconectarse una vez» y la fila no se marca vencida.
+- **`ITranscripcionesTeams`** (Application/Reuniones/Memoria) → `GraphTranscripcionesTeams`
+  (Infrastructure/Outlook): `me/onlineMeetings?$filter=JoinWebUrl eq '…'`, `…/transcripts`, la de
+  `createdDateTime` más reciente, `…/content?$format=text/vtt`. `TranscripcionVtt.ATexto` deja
+  «Hablante: texto» y junta frases seguidas de la misma persona.
+- **`GetTranscripcionReunionQuery`**: pasa por el filtro de alcance, usa la conexión del
+  organizador; sin `OutlookEnlaceTeams` u organizador no llama a Microsoft.
+- **MCP `obtener_transcripcion_reunion(id)`** (`Reuniones.Ver`): transcripción + las mismas
+  instrucciones de `instrucciones_memoria_reunion`. Errores como `McpException` con el mensaje.
+- **403** de Graph → mensaje que apunta al consentimiento de TI; **404** o lista vacía → «no
+  tiene transcripción… Teams la publica minutos después».
+- Pruebas: `TranscripcionesTeamsTests` (VTT, Graph con HttpMessageHandler, la consulta) y dos
+  casos en `McpMemoriaReunionTests`.
+- Sin tocar: el editor web sigue con el pegado manual.
+
+**Para encenderla:** TI concede consentimiento de administrador a los dos permisos delegados en
+el registro `ecbeb8e6-…`; luego `MicrosoftGraph__Transcripciones=true` (o en appsettings) y cada
+organizador reconecta Outlook una vez desde su perfil.
+
+### Parte B — el diseño original
 
 1. **Permiso nuevo en la misma conexión:** `OnlineMeetingTranscript.Read.All` (delegado; pide
    consentimiento de administrador). «Conectar mi Outlook» lo pide junto con los de la fase 1;

@@ -13,6 +13,14 @@ public sealed class MicrosoftGraphOptions
     public string ClientId     { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Pedir al conectar los permisos de transcripciones de Teams (fase 2, parte B). Apagado por
+    /// defecto, y se enciende solo DESPUÉS de que TI dé el consentimiento de administrador:
+    /// OnlineMeetingTranscript.Read.All lo exige, y pedirlo sin él hace fallar «Conectar mi
+    /// Outlook» a todo el que no sea administrador del tenant, calendario incluido.
+    /// </summary>
+    public bool Transcripciones { get; set; }
+
     public bool EstaCompleta =>
         !string.IsNullOrWhiteSpace(TenantId) && !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(ClientSecret);
 }
