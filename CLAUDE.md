@@ -144,7 +144,9 @@ conectado (`SincronizacionCalendarioOutlookService`, cada 15 min, de hoy a +90 d
 `docs/superpowers/specs/2026-10-29-calendario-outlook-al-portal-design.md`). Una reunión importada
 entra privada, no está «En Outlook» (`OutlookEventId` null: el portal nunca le manda cambios), y sus
 Generales los ignora `ReunionMapper.Aplicar`. Sus invitados entran como pre-registrados
-(`Asistente.DeOutlook`); la sincronización solo quita a los suyos que siguen pendientes. Cada usuario conecta su cuenta Microsoft desde su perfil
+(`Asistente.DeOutlook`); la sincronización solo quita a los suyos que siguen pendientes. Una
+reunión del portal que su organizador mueve en Outlook toma de la cita solo fecha, hora y duración,
+y se le recalcula la huella para que el portal no le devuelva la hora vieja. Cada usuario conecta su cuenta Microsoft desde su perfil
 (OAuth delegado, MSAL); la caché de tokens se guarda cifrada en `ConexionesMicrosoft` y la
 integración se apaga sola sin `MicrosoftGraph:TenantId/ClientId/ClientSecret` (el secreto va en
 User Secrets, nunca en appsettings). Application arma un `EventoOutlook` puro y habla con

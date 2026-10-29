@@ -274,6 +274,24 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
         if (!string.IsNullOrWhiteSpace(iCalUId)) OutlookICalUId = iCalUId;
     }
 
+    /// <summary>
+    /// Fecha, hora y duración de una reunión creada en el portal que su organizador movió en
+    /// Outlook (decisión del 2026-10-29): ahí Outlook manda solo sobre el horario; título, lugar e
+    /// invitados siguen mandando desde el portal. Quien llama ya comparó el horario resuelto, así
+    /// que «1 hora» contra «1:00» no llega aquí como cambio. Devuelve true si cambió algo.
+    /// </summary>
+    public bool AplicarHorarioDeOutlook(DateOnly fecha, string hora, string duracion)
+    {
+        if (!EstaEnOutlook || EsImportadaDeOutlook)
+            throw new DomainException("Solo una reunión del portal enviada a Outlook toma el horario de su cita.");
+
+        if (Fecha == fecha && Hora == hora && Duracion == duracion) return false;
+        Fecha    = fecha;
+        Hora     = hora;
+        Duracion = duracion;
+        return true;
+    }
+
     /// <summary>Solo las reuniones virtuales e híbridas se conectan a Outlook (decisión del
     /// 2026-10-28): una presencial no necesita cita ni Teams. Se lee la modalidad escrita, así
     /// que «Híbrida», «hibrida» o «Virtual (Teams)» también cuentan.</summary>

@@ -89,6 +89,16 @@ al enviar una reunión a Outlook, sus pre-registrados con correo se vuelven invi
 Columna nueva: `Asistentes.DeOutlook bit NOT NULL DEFAULT 0`. Con esto la base guarda nombre y
 correo de los invitados de cada cita importada.
 
+## Reuniones del portal movidas en Outlook (agregado el 2026-10-29)
+
+Si el organizador mueve en Outlook una reunión **creada en el portal**, la copia de su calendario
+(el id de la cita es el `OutlookEventId`) trae a la reunión la **fecha, hora y duración**. Título,
+lugar e invitados siguen mandando desde el portal. Se compara el horario resuelto, no el texto. Con
+el horario nuevo se recalcula la huella (con `Correo:UrlBase`, ficha `/Reuniones/Acta/{id}`) para que
+el próximo guardado no le devuelva a Outlook la hora vieja. Las copias en el calendario de los
+invitados se siguen saltando, y una cita de todo el día o cancelada no se aplica. Lo pidió el usuario
+tras mover la 2062 en Outlook durante la prueba real.
+
 ## Cambios, cancelaciones y lo que nunca se toca
 
 - **Cita cambiada** (`lastModifiedDateTime` distinto): se recalculan los Generales de la tabla y

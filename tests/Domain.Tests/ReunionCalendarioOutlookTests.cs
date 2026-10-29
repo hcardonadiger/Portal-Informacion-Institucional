@@ -127,6 +127,32 @@ public class ReunionCalendarioOutlookTests
     }
 
     [Fact]
+    public void Una_reunion_del_portal_toma_el_horario_que_le_pusieron_en_Outlook()
+    {
+        var r = Reunion.Crear("Del portal");
+        r.Fecha = new DateOnly(2026, 10, 29); r.Hora = "11:55"; r.Duracion = "1 hora";
+        r.RegistrarEnvioOutlook("AAMk-portal", Ana, null, "huella", DateTime.UtcNow);
+
+        r.AplicarHorarioDeOutlook(new DateOnly(2026, 10, 29), "16:55", "1:00").Should().BeTrue();
+        r.AplicarHorarioDeOutlook(new DateOnly(2026, 10, 29), "16:55", "1:00").Should().BeFalse();
+
+        r.Hora.Should().Be("16:55");
+        r.Titulo.Should().Be("Del portal");
+    }
+
+    [Fact]
+    public void El_horario_de_Outlook_solo_aplica_a_reuniones_del_portal_en_Outlook()
+    {
+        var sinEnviar = Reunion.Crear("Sin enviar");
+        var importada = Reunion.ImportarDeOutlook(EventId, G(), Ana, "DIGER", null, null);
+
+        ((Action)(() => sinEnviar.AplicarHorarioDeOutlook(new DateOnly(2026, 11, 3), "10:00", "1:00")))
+            .Should().Throw<DomainException>();
+        ((Action)(() => importada.AplicarHorarioDeOutlook(new DateOnly(2026, 11, 3), "10:00", "1:00")))
+            .Should().Throw<DomainException>();
+    }
+
+    [Fact]
     public void Una_importada_no_se_puede_enviar_a_Outlook()
     {
         var r = Reunion.ImportarDeOutlook(EventId, G(teams: "https://teams/x"), Ana, "DIGER", null, null);

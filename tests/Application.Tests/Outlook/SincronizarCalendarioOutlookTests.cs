@@ -1,4 +1,6 @@
 using Diger.TramitesEstado.Application.Common.Interfaces;
+using Diger.TramitesEstado.Application.Common.Models;
+using Diger.TramitesEstado.Application.Reuniones.Outlook;
 using Diger.TramitesEstado.Application.Reuniones.Outlook.Calendario;
 using Diger.TramitesEstado.Domain.Entities;
 using Diger.TramitesEstado.Domain.Enums;
@@ -49,9 +51,66 @@ public class SincronizarCalendarioOutlookTests : IDisposable
     private void Calendario(params CitaOutlook[] citas) =>
         _cal.ListarAsync(_ana.Id, Hoy, Hoy.AddDays(90), Arg.Any<CancellationToken>()).Returns(citas);
 
+    private const string UrlBase = "https://portal.test";
+
     private Task<ResultadoSincronizacionCalendario> Sincronizar() =>
-        new SincronizarCalendarioOutlookCommandHandler(_ctx, _cal, _ctx, _reloj)
+        new SincronizarCalendarioOutlookCommandHandler(_ctx, _cal, _ctx, _reloj,
+                Microsoft.Extensions.Options.Options.Create(new CorreoOptions { UrlBase = UrlBase }))
             .Handle(new SincronizarCalendarioOutlookCommand(_ana.Id), default);
+
+    /// <summary>Una reunión creada en el portal y enviada a Outlook con Ana como organizadora.</summary>
+    private async Task<Reunion> DelPortalAsync(string eventId = "evento-del-portal", string hora = "09:00", string duracion = "1 hora")
+    {
+        var r = Reunion.Crear("Del portal");
+        r.Fecha = Hoy.AddDays(1); r.Hora = hora; r.Duracion = duracion; r.Modalidad = "Virtual";
+        r.RegistrarEnvioOutlook(eventId, _ana.Id, null, "huella-vieja", DateTime.UtcNow);
+        r.RecordarICalUId("ical-" + eventId);
+        _ctx.Reuniones.Add(r);
+        await _ctx.SaveChangesAsync();
+        return r;
+    }
+
+    private Task<Reunion> PorId(int id) =>
+        _ctx.Reuniones.IgnoreQueryFilters().Include(r => r.Asistentes).SingleAsync(r => r.Id == id);
+
+    [Fact]
+    public async Task Una_reunion_del_portal_movida_en_Outlook_toma_el_horario_y_su_huella()
+    {
+        var r = await DelPortalAsync();
+        Calendario(Cita("evento-del-portal", titulo: "Otro título en Outlook", hora: "15:00"));
+
+        (await Sincronizar()).Actualizadas.Should().Be(1);
+
+        r = await PorId(r.Id);
+        r.Hora.Should().Be("15:00");
+        r.Duracion.Should().Be("1:00");
+        r.Titulo.Should().Be("Del portal", "título, lugar e invitados siguen mandando desde el portal");
+        r.OutlookHuella.Should().Be(
+            EventoOutlookBuilder.Construir(r, "ana@diger.gob.hn", $"{UrlBase}/Reuniones/Acta/{r.Id}").Huella(),
+            "si no, el próximo guardado le devolvería a Outlook la hora vieja");
+        (await Importadas()).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Una_reunion_del_portal_con_el_mismo_horario_no_se_toca()
+    {
+        var r = await DelPortalAsync(duracion: "1 hora");
+        Calendario(Cita("evento-del-portal", hora: "09:00"));
+
+        (await Sincronizar()).Should().Be(new ResultadoSincronizacionCalendario(0, 0, 0, 1));
+        (await PorId(r.Id)).Duracion.Should().Be("1 hora", "«1 hora» y «1:00» son el mismo horario");
+    }
+
+    [Fact]
+    public async Task La_copia_de_un_invitado_no_mueve_una_reunion_del_portal()
+    {
+        var r = await DelPortalAsync();
+        Calendario(Cita("copia-en-otro-buzon", ical: "ical-evento-del-portal", hora: "15:00"));
+
+        await Sincronizar();
+
+        (await PorId(r.Id)).Hora.Should().Be("09:00");
+    }
 
     private Task<List<Reunion>> Importadas() =>
         _ctx.Reuniones.IgnoreQueryFilters().Include(r => r.Asistentes)
@@ -93,6 +152,8 @@ public class SincronizarCalendarioOutlookTests : IDisposable
     public async Task Salta_las_reuniones_que_el_portal_envio_por_iCalUId_y_por_eventId()
     {
         var delPortal = Reunion.Crear("Del portal");
+        // El mismo horario que la cita: la copia del organizador no trae cambios y solo se salta.
+        delPortal.Fecha = Hoy.AddDays(1); delPortal.Hora = "09:00"; delPortal.Duracion = "1:00";
         delPortal.RegistrarEnvioOutlook("evento-del-portal", _ana.Id, null, "huella", DateTime.UtcNow);
         delPortal.RecordarICalUId("ical-compartido");
         _ctx.Reuniones.Add(delPortal);
