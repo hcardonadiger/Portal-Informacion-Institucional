@@ -343,6 +343,11 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("DeOutlook")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Departamento")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
@@ -4235,6 +4240,9 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.Property<string>("AreaId")
                         .HasColumnType("nvarchar(120)");
 
+                    b.Property<DateTime?>("CanceladaEnOutlookEl")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Compromisos")
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
@@ -4391,6 +4399,20 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                         .HasColumnType("nchar(64)")
                         .IsFixedLength();
 
+                    b.Property<string>("OutlookICalUId")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<Guid?>("OutlookImportadaPorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("OutlookImportadoEventId")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<DateTime?>("OutlookModificadaEl")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid?>("OutlookOrganizadorId")
                         .HasColumnType("uniqueidentifier");
 
@@ -4475,6 +4497,12 @@ namespace Diger.TramitesEstado.Infrastructure.Migrations
                     b.HasIndex("OrigenExternoId")
                         .IsUnique()
                         .HasFilter("[OrigenExternoId] IS NOT NULL");
+
+                    b.HasIndex("OutlookICalUId")
+                        .HasFilter("[OutlookICalUId] IS NOT NULL");
+
+                    b.HasIndex("OutlookImportadaPorId")
+                        .HasFilter("[OutlookImportadaPorId] IS NOT NULL");
 
                     b.HasIndex("RegistroToken")
                         .IsUnique();

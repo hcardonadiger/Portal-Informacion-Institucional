@@ -720,6 +720,13 @@ public sealed class ReunionConfiguration : IEntityTypeConfiguration<Reunion>
         b.Property(x => x.OutlookConTeams).HasDefaultValue(true);
         b.Property(x => x.OutlookPendiente).HasDefaultValue(false);
         b.Ignore(x => x.EstaEnOutlook);
+
+        // Calendario de Outlook al portal (spec 2026-10-29).
+        b.Property(x => x.OutlookImportadoEventId).HasMaxLength(400);
+        b.Property(x => x.OutlookICalUId).HasMaxLength(400);
+        b.HasIndex(x => x.OutlookImportadaPorId).HasFilter("[OutlookImportadaPorId] IS NOT NULL");
+        b.HasIndex(x => x.OutlookICalUId).HasFilter("[OutlookICalUId] IS NOT NULL");
+        b.Ignore(x => x.EsImportadaDeOutlook);
     }
 }
 
@@ -784,6 +791,7 @@ public sealed class AsistenteConfiguration : IEntityTypeConfiguration<Asistente>
         b.Property(x => x.Correo).HasMaxLength(200);
         b.Property(x => x.Telefono).HasMaxLength(40);
         b.Property(x => x.EsPreregistro).HasDefaultValue(false);
+        b.Property(x => x.DeOutlook).HasDefaultValue(false);
         b.Property(x => x.Confirmado);
         b.HasIndex(x => x.ReunionId);
         b.HasIndex(x => x.EsPreregistro);
