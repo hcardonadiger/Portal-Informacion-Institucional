@@ -44,6 +44,13 @@ public sealed class GraphCalendarioOutlookLectura(
                    && doc.RootElement.TryGetProperty("@odata.nextLink", out var sig) && sig.ValueKind == JsonValueKind.String
                 ? sig.GetString() : null;
         }
+
+        // Diagnóstico (Debug): qué vio Graph, sin asunto, lugar ni invitados. La clave es el hash del
+        // id, la misma que queda en OrigenExternoId, para cruzarla con la base.
+        if (log.IsEnabled(LogLevel.Debug))
+            foreach (var c in citas)
+                log.LogDebug("Cita {Clave}: inicio {Inicio:yyyy-MM-dd HH:mm}, cancelada {Cancelada}, modificada {Modificada:o}",
+                    Diger.TramitesEstado.Domain.Entities.Reunion.ClaveOrigenOutlook(c.Id)[..20], c.Inicio, c.Cancelada, c.ModificadaElUtc);
         return citas;
     }
 
