@@ -74,6 +74,7 @@ public static class DependencyInjection
         // El reloj se inyecta para poder probar los recordatorios y el cronograma a una hora fija.
         services.TryAddSingleton(TimeProvider.System);
         services.AddHostedService<RecordatorioBackgroundService>();
+        services.AddHostedService<Outlook.SincronizacionCalendarioOutlookService>();
 
         // Autenticación (expiración de cookie/token de recuperación)
         services.Configure<AuthOptions>(configuration.GetSection("Auth"));
