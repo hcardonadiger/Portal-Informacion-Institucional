@@ -27,6 +27,16 @@ public sealed class GraphTranscripcionesTeams(
         "La reunión no tiene transcripción. Debe iniciarse en Teams durante la reunión, y Teams la " +
         "publica unos minutos después de que termina: si acaba de terminar, vuelva a intentarlo en un rato.";
 
+    // Dos interruptores de todo el tenant, en el centro de administración de Teams, que bloquean
+    // aunque los permisos de Entra estén concedidos. Vienen apagados por defecto (julio de 2026).
+    public const string AccesoDeshabilitado =
+        "El acceso a transcripciones por Microsoft Graph está apagado en el tenant. TI debe encenderlo en el " +
+        "centro de administración de Teams: Reuniones → Configuración de reuniones → Acceso a la API de transcripciones.";
+
+    public const string SinAtribucion =
+        "Teams no permite entregar la transcripción con los nombres de quien habla. TI debe encender la " +
+        "atribución de hablantes en el centro de administración de Teams, junto al acceso a la API de transcripciones.";
+
     public async Task<TranscripcionTeams> ObtenerUltimaAsync(Guid organizadorId, string enlaceTeams, CancellationToken ct)
     {
         var token = await conexion.ObtenerTokenTranscripcionesAsync(organizadorId, ct);
@@ -110,11 +120,19 @@ public sealed class GraphTranscripcionesTeams(
         if (resp.IsSuccessStatusCode) return resp;
 
         var codigo = resp.StatusCode;
-        var codigoGraph = await GraphOutlookCalendario.CodigoDeErrorAsync(resp, ct);
+        var (codigoGraph, mensajeGraph) = await ErrorDeGraphAsync(resp, ct);
         resp.Dispose();
-        log.LogWarning("Graph respondió {Estado} ({Codigo}) en GET {Ruta}", (int)codigo, codigoGraph ?? "sin código", ruta);
+        // A diferencia del calendario, aquí el error.message sí se registra: un 403 de transcripciones
+        // tiene varias causas (permiso, política de Teams, licencia) y solo el mensaje las distingue.
+        // Lo redacta Microsoft y no lleva el token.
+        log.LogWarning("Graph respondió {Estado} ({Codigo}) en GET {Ruta}: {Mensaje}",
+            (int)codigo, codigoGraph ?? "sin código", ruta, mensajeGraph ?? "sin mensaje");
         throw codigo switch
         {
+            HttpStatusCode.Forbidden when codigoGraph == "GraphAccessToTranscriptsDisabled"
+                                        => new TranscripcionNoDisponibleException(AccesoDeshabilitado),
+            HttpStatusCode.Forbidden when codigoGraph == "SpeakerAttributionNotAllowed"
+                                        => new TranscripcionNoDisponibleException(SinAtribucion),
             HttpStatusCode.Unauthorized => new OutlookConexionVencidaException("Graph rechazó el token (401)"),
             HttpStatusCode.Forbidden    => new TranscripcionNoDisponibleException(
                 "Microsoft negó el acceso a la transcripción. Lo más probable es que TI no haya dado el " +
@@ -122,5 +140,29 @@ public sealed class GraphTranscripcionesTeams(
             HttpStatusCode.NotFound     => new TranscripcionNoDisponibleException(SinTranscripcion),
             _                           => new OutlookNoDisponibleException($"Graph respondió {(int)codigo}")
         };
+    }
+
+    /// <summary><c>error.code</c> y <c>error.message</c> de una respuesta de error de Graph; nulos si
+    /// el cuerpo no los trae. Solo para el log: ningún fallo aquí cambia lo que se lanza.</summary>
+    private static async Task<(string? Codigo, string? Mensaje)> ErrorDeGraphAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try
+        {
+            using var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object)
+                return (null, null);
+            var mensaje = Texto(error, "message");
+            if (mensaje is { Length: > 300 }) mensaje = mensaje[..300];
+            // El motivo fino de un 403 viene en innerError.code (GraphAccessToTranscriptsDisabled…).
+            var codigo = error.TryGetProperty("innerError", out var interno) && interno.ValueKind == JsonValueKind.Object
+                ? Texto(interno, "code") ?? Texto(error, "code")
+                : Texto(error, "code");
+            return (codigo, mensaje);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return (null, null);
+        }
     }
 }

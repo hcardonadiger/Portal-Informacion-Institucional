@@ -131,6 +131,20 @@ public class TranscripcionesTeamsTests
     }
 
     [Fact]
+    public async Task El_interruptor_de_Teams_apagado_se_nombra_y_no_culpa_al_permiso()
+    {
+        var (t, _) = Armar(
+            ("me/onlineMeetings?", HttpStatusCode.OK, """{"value":[{"id":"MSo1"}]}"""),
+            ("me/onlineMeetings/MSo1/transcripts", HttpStatusCode.Forbidden,
+                """{"error":{"code":"Forbidden","message":"Graph API access to transcripts is disabled for this tenant.","innerError":{"code":"GraphAccessToTranscriptsDisabled"}}}"""));
+
+        var act = () => t.ObtenerUltimaAsync(Org, Enlace, default);
+
+        await act.Should().ThrowAsync<TranscripcionNoDisponibleException>()
+            .WithMessage(GraphTranscripcionesTeams.AccesoDeshabilitado);
+    }
+
+    [Fact]
     public async Task Un_401_es_conexion_vencida()
     {
         var (t, _) = Armar(("me/onlineMeetings?", HttpStatusCode.Unauthorized, "{}"));
