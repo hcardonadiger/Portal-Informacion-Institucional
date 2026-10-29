@@ -27,6 +27,7 @@ La doctrina queda así: **Portal → Outlook** para las reuniones creadas en el 
 | A quién | **Todo usuario con Outlook conectado**, sin casilla aparte |
 | Rango | **De hoy a +90 días** (Graph exige un rango cerrado) |
 | Mecanismo | **Revisión periódica cada 15 minutos** con `calendarView` |
+| Invitados | Entran como **pre-registrados**; Outlook manda sobre los que trajo, nunca sobre los demás (agregado el 2026-10-29) |
 
 Descartados: consulta delta (el rango queda fijo en el token y hay que reiniciarlo; más piezas
 para el mismo resultado a esta escala) y webhooks (exigen HTTPS público alcanzable por Microsoft;
@@ -54,7 +55,8 @@ Graph expande las recurrencias: cada ocurrencia es una cita y una reunión.
 | — | `Visibilidad` = Privada, `CreadoPorId` = `OutlookImportadaPorId` = el usuario |
 | — | `InstitucionDuenaId`, `AreaId`, `UnidadId` = primera asignación activa del usuario |
 
-El cuerpo de la cita **no** se copia: la memoria se llena en el portal.
+El cuerpo de la cita **no** se copia: la memoria se llena en el portal. Los invitados sí: ver
+"Invitados" más abajo.
 
 **Se salta** toda cita cuyo `iCalUId` ya pertenece a una reunión creada en el portal (las que el
 portal envió a Outlook, y las copias de esas en el calendario de otros invitados). Para eso
@@ -65,11 +67,33 @@ reuniones enviadas antes de este cambio no tienen `iCalUId`: se reconocen ademá
 Cada usuario importa su propia copia: si dos usuarios del portal asisten a la misma reunión de
 Outlook, cada uno tiene la suya, privada. No se fusionan.
 
+## Invitados
+
+Cada invitado de la cita (`attendees`, obligatorios y opcionales) entra como **pre-registrado**:
+`Asistente` con `EsPreregistro = true`, `Confirmado = null`, `DeOutlook = true`, nombre y correo de
+Outlook (nombre vacío → el correo; recortados a 150 y 200). Es el camino inverso del que ya existe:
+al enviar una reunión a Outlook, sus pre-registrados con correo se vuelven invitados.
+
+- **No entran**: los recursos (`type = resource`: salas, equipos) ni el dueño del calendario
+  (su `Upn` de la conexión).
+- **Sin duplicados**: si ya hay un asistente con ese correo (sin distinguir mayúsculas), no se
+  agrega otro, venga de donde venga.
+- **Outlook manda solo sobre los suyos** (`DeOutlook = true`): un invitado nuevo se agrega; uno
+  retirado en Outlook se quita **solo si sigue pendiente** (`Confirmado = null`) y no se
+  auto-registró. Nunca se tocan los auto-registrados (QR), los que tienen la asistencia marcada
+  ni los agregados a mano en el portal.
+- La respuesta del invitado en Outlook (aceptó / rechazó) **no** se traduce a asistencia:
+  aceptar la invitación no es asistir.
+- Un cambio solo en invitados cuenta como reunión actualizada.
+
+Columna nueva: `Asistentes.DeOutlook bit NOT NULL DEFAULT 0`. Con esto la base guarda nombre y
+correo de los invitados de cada cita importada.
+
 ## Cambios, cancelaciones y lo que nunca se toca
 
 - **Cita cambiada** (`lastModifiedDateTime` distinto): se recalculan los Generales de la tabla y
   se guardan **solo si alguno cambió**, para no llenar la auditoría cada 15 minutos.
-- **Nunca se toca**: memoria, objetivo, desarrollo, acuerdos, asistencia, adjuntos, encuesta,
+- **Nunca se toca**: memoria, objetivo, desarrollo, acuerdos, asistencia marcada, adjuntos, encuesta,
   hilo, visibilidad, tipo, institución contraparte.
 - **Editor**: en una reunión importada, título, fecha, hora, duración y lugar son de solo
   lectura con la nota "Viene de Outlook: cámbielo allá". El handler del editor también los
@@ -90,7 +114,8 @@ Outlook, cada uno tiene la suya, privada. No se fusionan.
 - **Domain** — `Reunion`: columnas `OutlookICalUId`, `OutlookImportadaPorId`,
   `OutlookModificadaEl`, `CanceladaEnOutlookEl`; propiedad `EsImportadaDeOutlook`; métodos
   `ImportarDeOutlook`, `ActualizarDeOutlook` (devuelve si cambió algo),
-  `MarcarCanceladaEnOutlook`, `QuitarCancelacionOutlook`.
+  `MarcarCanceladaEnOutlook`, `QuitarCancelacionOutlook`, `SincronizarInvitadosOutlook`
+  (devuelve si cambió algo); `Asistente.DeOutlook`; record `InvitadoOutlook(Nombre, Correo)`.
 - **Application** — `ICalendarioOutlookLectura` (`ListarAsync(usuarioId, desde, hasta)`,
   `ExisteAsync(usuarioId, eventId)` → cita o null); `CitaOutlook` (record) y
   `CitaOutlookTraductor` (puro); `SincronizarCalendarioOutlookCommand(usuarioId)` → resumen
@@ -111,7 +136,10 @@ Outlook, cada uno tiene la suya, privada. No se fusionan.
 
 ## Pruebas
 
-- `CitaOutlookTraductor`: zona horaria, todo el día, Teams sí/no, asunto vacío, organizador sí/no.
+- `CitaOutlookTraductor`: zona horaria, todo el día, Teams sí/no, asunto vacío, organizador sí/no;
+  invitados sin recursos, nombre vacío → correo, recortes.
+- `Reunion.SincronizarInvitadosOutlook`: agrega nuevos, no duplica por correo, quita solo los
+  retirados pendientes de Outlook, no toca auto-registrados, marcados ni manuales.
 - `SincronizarCalendarioOutlookCommand` (puerto simulado + EF In-Memory): crea; no duplica; actualiza
   solo si cambió; nunca toca memoria ni visibilidad; salta las del portal por `iCalUId` y por
   `OutlookEventId`; cancela con 404; mueve fuera de ventana sin cancelar; congela pasadas;
@@ -123,5 +151,6 @@ Outlook, cada uno tiene la suya, privada. No se fusionan.
 
 ## Fuera de alcance
 
-Calendarios compartidos o secundarios; copiar el cuerpo o los invitados; devolver a Outlook los
+Calendarios compartidos o secundarios; copiar el cuerpo de la cita; traducir la respuesta de los
+invitados a asistencia; devolver a Outlook los
 cambios hechos en el portal a una reunión importada; sincronizar más allá de +90 días.

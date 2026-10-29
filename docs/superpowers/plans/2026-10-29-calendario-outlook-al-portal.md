@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Cada 15 minutos, las citas del calendario de Outlook de cada usuario conectado (hoy a +90 días) entran al portal como reuniones privadas y se mantienen al día; Outlook manda sobre los Generales.
+**Goal:** Cada 15 minutos, las citas del calendario de Outlook de cada usuario conectado (hoy a +90 días) entran al portal como reuniones privadas y se mantienen al día; Outlook manda sobre los Generales y sobre los invitados que trajo, que entran como pre-registrados.
 
 **Architecture:** Un `BackgroundService` (Infrastructure) recorre las conexiones vigentes y despacha `SincronizarCalendarioOutlookCommand(usuarioId)`. El handler (Application) lee las citas por el puerto `ICalendarioOutlookLectura`, las traduce con `CitaOutlookTraductor` a `GeneralesOutlook` (Domain) y crea, actualiza o marca canceladas reuniones mediante métodos nuevos de `Reunion`. `GraphCalendarioOutlookLectura` (Infrastructure) implementa el puerto con `me/calendarView`.
 
@@ -18,7 +18,8 @@
 - Una cita cancelada o borrada en Outlook se **marca** (`CanceladaEnOutlookEl`); nunca se borra la reunión.
 - Las reuniones importadas **no** son "En Outlook" (`OutlookEventId` queda null): el portal nunca les manda cambios ni cancelaciones a Outlook.
 - `OrigenExternoId` mide 60: se guarda `outlook:` + SHA-256 base64url del id del evento (51 caracteres). El id completo va en `OutlookImportadoEventId`.
-- Límites de columna existentes: `Titulo` 250, `Lugar` 250, `Hora` 20, `Duracion` 60. Truncar al traducir.
+- Límites de columna existentes: `Titulo` 250, `Lugar` 250, `Hora` 20, `Duracion` 60; `Asistentes.Nombre` 150, `Asistentes.Correo` 200. Truncar al traducir.
+- Invitados: entran como `Asistente` con `EsPreregistro = true`, `Confirmado = null`, `DeOutlook = true`. Sin recursos (salas) ni el dueño del calendario. Sin duplicar por correo (sin distinguir mayúsculas). Se quita uno retirado en Outlook solo si `DeOutlook`, `Confirmado == null` y `!AutoRegistro`. La respuesta del invitado (aceptó/rechazó) no se traduce a asistencia.
 - Logs: id de usuario y conteos. Nunca tokens, asuntos, lugares ni invitados.
 - Todo cambio de base lleva migración EF **y** script `database/2026-10-29_poner_al_dia.sql` (va después de `2026-10-27_poner_al_dia.sql`).
 - Comandos: build `dotnet build Diger.TramitesEstado.sln`; si falla solo con `MSB3027`/`MSB3021`, detener `Diger.TramitesEstado.Web` y repetir.
@@ -41,8 +42,8 @@ Expected: sin salida.
 ### Task 1: Dominio — `GeneralesOutlook` y la reunión importada
 
 **Files:**
-- Create: `src/Domain/Entities/GeneralesOutlook.cs`
-- Modify: `src/Domain/Entities/Reunion.cs` (bloque `// ── Outlook (fase 1…` y `PrepararEnvioOutlook`)
+- Create: `src/Domain/Entities/GeneralesOutlook.cs` (también `InvitadoOutlook`)
+- Modify: `src/Domain/Entities/Reunion.cs` (bloque `// ── Outlook (fase 1…`, `PrepararEnvioOutlook` y la clase `Asistente`)
 - Test: `tests/Domain.Tests/ReunionCalendarioOutlookTests.cs`
 
 **Interfaces:**
@@ -54,6 +55,9 @@ Expected: sin salida.
   - `bool Reunion.MarcarCanceladaEnOutlook(DateTime utcAhora)` — true si no estaba marcada
   - `bool Reunion.QuitarCancelacionOutlook()` — true si estaba marcada
   - `void Reunion.RecordarICalUId(string? iCalUId)`
+  - `record InvitadoOutlook(string Nombre, string Correo)` — ya filtrado y recortado por quien lo arma
+  - `bool Reunion.SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoOutlook> invitados)` — true si agregó o quitó alguno
+  - `bool Asistente.DeOutlook { get; set; }`
   - propiedades: `OutlookImportadoEventId`, `OutlookICalUId`, `OutlookImportadaPorId`, `OutlookModificadaEl`, `CanceladaEnOutlookEl`, `EsImportadaDeOutlook`
 
 - [ ] **Step 1: Escribir las pruebas que fallan**
@@ -156,6 +160,38 @@ public class ReunionCalendarioOutlookTests
     }
 
     [Fact]
+    public void Los_invitados_entran_como_preregistrados_de_Outlook_sin_duplicar_por_correo()
+    {
+        var r = Reunion.ImportarDeOutlook(EventId, G(), Ana, "DIGER", null, null);
+        r.Agregar(new Asistente { Nombre = "Luis (QR)", Correo = "luis@ihtt.gob.hn", AutoRegistro = true });
+
+        r.SincronizarInvitadosOutlook([new("Marta", "marta@copeco.gob.hn"), new("Luis", "LUIS@ihtt.gob.hn")])
+            .Should().BeTrue();
+
+        r.Asistentes.Should().HaveCount(2);
+        var marta = r.Asistentes.Single(a => a.Correo == "marta@copeco.gob.hn");
+        marta.EsPreregistro.Should().BeTrue();
+        marta.DeOutlook.Should().BeTrue();
+        marta.Confirmado.Should().BeNull();
+
+        r.SincronizarInvitadosOutlook([new("Marta", "marta@copeco.gob.hn"), new("Luis", "luis@ihtt.gob.hn")])
+            .Should().BeFalse("nada cambió");
+    }
+
+    [Fact]
+    public void Un_retirado_en_Outlook_se_quita_solo_si_vino_de_Outlook_y_sigue_pendiente()
+    {
+        var r = Reunion.ImportarDeOutlook(EventId, G(), Ana, "DIGER", null, null);
+        r.SincronizarInvitadosOutlook([new("Pendiente", "p@x.hn"), new("Asistio", "a@x.hn")]);
+        r.Asistentes.Single(a => a.Correo == "a@x.hn").Confirmado = true;
+        r.Agregar(new Asistente { Nombre = "Manual", Correo = "m@x.hn", EsPreregistro = true });
+
+        r.SincronizarInvitadosOutlook([]).Should().BeTrue();
+
+        r.Asistentes.Select(a => a.Correo).Should().BeEquivalentTo(["a@x.hn", "m@x.hn"]);
+    }
+
+    [Fact]
     public void Una_importada_no_se_puede_enviar_a_Outlook()
     {
         var r = Reunion.ImportarDeOutlook(EventId, G(teams: "https://teams/x"), Ana, "DIGER", null, null);
@@ -176,6 +212,10 @@ Expected: FAIL de compilación (`GeneralesOutlook` y `ImportarDeOutlook` no exis
 
 ```csharp
 namespace Diger.TramitesEstado.Domain.Entities;
+
+/// <summary>Un invitado de la cita, ya sin recursos ni el dueño del calendario, y recortado a los
+/// largos de Asistentes (Nombre 150, Correo 200). Lo arma CitaOutlookTraductor.</summary>
+public sealed record InvitadoOutlook(string Nombre, string Correo);
 
 /// <summary>
 /// Lo que una cita de Outlook decide sobre su reunión del portal (spec 2026-10-29): Outlook manda
@@ -286,6 +326,38 @@ public sealed record GeneralesOutlook(
         return true;
     }
 
+    /// <summary>
+    /// Los invitados de la cita como pre-registrados. Outlook manda solo sobre los que trajo
+    /// (DeOutlook): agrega los nuevos y quita los retirados que siguen pendientes. Nunca toca un
+    /// auto-registrado (QR), uno con la asistencia marcada ni uno agregado a mano. No duplica por
+    /// correo. Devuelve true si agregó o quitó alguno.
+    /// </summary>
+    public bool SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoOutlook> invitados)
+    {
+        static string Clave(string correo) => correo.Trim().ToLowerInvariant();
+
+        var porCorreo = new Dictionary<string, InvitadoOutlook>();
+        foreach (var i in invitados)
+            if (!string.IsNullOrWhiteSpace(i.Correo)) porCorreo.TryAdd(Clave(i.Correo), i);
+
+        var cambio = false;
+        foreach (var a in _asistentes.Where(a => a.DeOutlook && a.Confirmado is null && !a.AutoRegistro
+                                                 && (a.Correo is null || !porCorreo.ContainsKey(Clave(a.Correo)))).ToList())
+        {
+            _asistentes.Remove(a);
+            cambio = true;
+        }
+
+        var yaEstan = _asistentes.Where(a => !string.IsNullOrWhiteSpace(a.Correo)).Select(a => Clave(a.Correo!)).ToHashSet();
+        foreach (var (clave, i) in porCorreo)
+        {
+            if (yaEstan.Contains(clave)) continue;
+            _asistentes.Add(new Asistente { Nombre = i.Nombre, Correo = i.Correo.Trim(), EsPreregistro = true, DeOutlook = true });
+            cambio = true;
+        }
+        return cambio;
+    }
+
     /// <summary>Lo llama el envío desde el portal con el iCalUId que devuelve Graph.</summary>
     public void RecordarICalUId(string? iCalUId)
     {
@@ -300,18 +372,26 @@ Y al inicio de `PrepararEnvioOutlook(bool conTeams)`, antes de `if (EstaEnOutloo
             throw new DomainException("Esta reunión viene de su Outlook: ya está en su calendario.");
 ```
 
+En la clase `Asistente` (mismo archivo), después de `public bool? Confirmado { get; set; }`:
+
+```csharp
+    /// <summary>true = llegó como invitado de la cita de Outlook (spec 2026-10-29). Solo a estos
+    /// los puede quitar la sincronización, y solo mientras sigan pendientes.</summary>
+    public bool  DeOutlook     { get; set; }
+```
+
 Si `Reunion.cs` no tiene `using Diger.TramitesEstado.Domain.Enums;`, agregarlo (o confirmar que `VisibilidadReunion` ya resuelve por `global using`).
 
 - [ ] **Step 5: Correr y ver que pasa**
 
 Run: `dotnet test tests\Domain.Tests --filter "FullyQualifiedName~ReunionCalendarioOutlook|FullyQualifiedName~ReunionOutlook"`
-Expected: PASS (las 6 nuevas y las existentes de `ReunionOutlookTests`).
+Expected: PASS (las 8 nuevas y las existentes de `ReunionOutlookTests`).
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add src/Domain/Entities/GeneralesOutlook.cs src/Domain/Entities/Reunion.cs tests/Domain.Tests/ReunionCalendarioOutlookTests.cs
-git commit -m "Dominio: la reunion que entra desde el calendario de Outlook"
+git commit -m "Dominio: la reunion que entra desde el calendario de Outlook, con sus invitados"
 ```
 
 ---
@@ -319,13 +399,13 @@ git commit -m "Dominio: la reunion que entra desde el calendario de Outlook"
 ### Task 2: Base de datos — columnas, migración y script
 
 **Files:**
-- Modify: `src/Infrastructure/Persistence/AppDbContext.cs` (configuración de `Reunion`, junto a `b.Ignore(x => x.EstaEnOutlook);`)
+- Modify: `src/Infrastructure/Persistence/AppDbContext.cs` (configuración de `Reunion`, junto a `b.Ignore(x => x.EstaEnOutlook);`, y la de `Asistente`, junto a `b.Property(x => x.EsPreregistro).HasDefaultValue(false);`)
 - Create: `src/Infrastructure/Persistence/Migrations/<timestamp>_CalendarioOutlookAlPortal.cs` (+ Designer, + snapshot actualizado) — generados
 - Create: `database/2026-10-29_poner_al_dia.sql`
 
 **Interfaces:**
-- Consumes: las cinco propiedades de la Task 1.
-- Produces: columnas `Reuniones.OutlookImportadoEventId nvarchar(400)`, `OutlookICalUId nvarchar(400)`, `OutlookImportadaPorId uniqueidentifier`, `OutlookModificadaEl datetime2`, `CanceladaEnOutlookEl datetime2`, todas NULL; índices `IX_Reuniones_OutlookImportadaPorId` e `IX_Reuniones_OutlookICalUId`, filtrados `IS NOT NULL`.
+- Consumes: las cinco propiedades de `Reunion` y `Asistente.DeOutlook` de la Task 1.
+- Produces: columnas `Reuniones.OutlookImportadoEventId nvarchar(400)`, `OutlookICalUId nvarchar(400)`, `OutlookImportadaPorId uniqueidentifier`, `OutlookModificadaEl datetime2`, `CanceladaEnOutlookEl datetime2`, todas NULL; `Asistentes.DeOutlook bit NOT NULL DEFAULT 0`; índices `IX_Reuniones_OutlookImportadaPorId` e `IX_Reuniones_OutlookICalUId`, filtrados `IS NOT NULL`.
 
 - [ ] **Step 1: Configurar EF** — después de `b.Ignore(x => x.EstaEnOutlook);`:
 
@@ -338,10 +418,16 @@ git commit -m "Dominio: la reunion que entra desde el calendario de Outlook"
         b.Ignore(x => x.EsImportadaDeOutlook);
 ```
 
+Y en la configuración de `Asistente`, después de `b.Property(x => x.EsPreregistro).HasDefaultValue(false);`:
+
+```csharp
+        b.Property(x => x.DeOutlook).HasDefaultValue(false);
+```
+
 - [ ] **Step 2: Generar la migración** (nunca editar el snapshot a mano)
 
 Run: `dotnet ef migrations add CalendarioOutlookAlPortal --project src\Infrastructure --startup-project src\Web --output-dir Persistence\Migrations`
-Expected: crea `src/Infrastructure/Persistence/Migrations/<timestamp>_CalendarioOutlookAlPortal.cs`. Abrirlo y confirmar que `Up` solo agrega las cinco columnas y los dos índices de arriba. Si trae cualquier otra cosa, el modelo tenía cambios ajenos: `dotnet ef migrations remove …` (mismos parámetros) y volver a la Task 0.
+Expected: crea `src/Infrastructure/Persistence/Migrations/<timestamp>_CalendarioOutlookAlPortal.cs`. Abrirlo y confirmar que `Up` solo agrega las cinco columnas de `Reuniones`, `Asistentes.DeOutlook` y los dos índices de arriba. Si trae cualquier otra cosa, el modelo tenía cambios ajenos: `dotnet ef migrations remove …` (mismos parámetros) y volver a la Task 0.
 
 - [ ] **Step 3: Escribir `database/2026-10-29_poner_al_dia.sql`**, reemplazando `<MigrationId>` por el nombre del archivo generado sin `.cs` (p. ej. `20261029190000_CalendarioOutlookAlPortal`):
 
@@ -352,8 +438,9 @@ Expected: crea `src/Infrastructure/Persistence/Migrations/<timestamp>_Calendario
    Va DESPUÉS de 2026-10-27_poner_al_dia.sql. Corra antes 00_diagnostico.sql.
 
    Qué trae: el calendario de Outlook entra al portal (spec 2026-10-29). Cinco columnas en
-   Reuniones y dos índices, todos de la migración EF <MigrationId>, que se registra al final
-   en __EFMigrationsHistory. No hay nada fuera de EF.
+   Reuniones, Asistentes.DeOutlook (los invitados de la cita entran como pre-registrados) y
+   dos índices, todos de la migración EF <MigrationId>, que se registra al final en
+   __EFMigrationsHistory. No hay nada fuera de EF.
 
    Cada paso comprueba SU condición contra el catálogo; la fila del historial va al final.
    Se puede correr las veces que haga falta: la segunda no hace nada.
@@ -396,6 +483,10 @@ ELSE PRINT '  OutlookModificadaEl ..... ya estaba';
 IF COL_LENGTH('Reuniones', 'CanceladaEnOutlookEl') IS NULL
 BEGIN ALTER TABLE [Reuniones] ADD [CanceladaEnOutlookEl] datetime2 NULL; PRINT '  CanceladaEnOutlookEl .... agregada'; END
 ELSE PRINT '  CanceladaEnOutlookEl .... ya estaba';
+
+IF COL_LENGTH('Asistentes', 'DeOutlook') IS NULL
+BEGIN ALTER TABLE [Asistentes] ADD [DeOutlook] bit NOT NULL CONSTRAINT [DF_Asistentes_DeOutlook] DEFAULT CAST(0 AS bit); PRINT '  Asistentes.DeOutlook .... agregada'; END
+ELSE PRINT '  Asistentes.DeOutlook .... ya estaba';
 GO
 
 PRINT '── 2. Índices ──────────────────────────────────────────────────────';
@@ -415,6 +506,7 @@ ELSE PRINT '  IX_Reuniones_OutlookICalUId .......... ya estaba';
 
 PRINT '── 3. Historial de EF ──────────────────────────────────────────────';
 IF COL_LENGTH('Reuniones', 'CanceladaEnOutlookEl') IS NOT NULL
+   AND COL_LENGTH('Asistentes', 'DeOutlook') IS NOT NULL
    AND EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'[Reuniones]') AND name = N'IX_Reuniones_OutlookICalUId')
    AND NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = N'<MigrationId>')
 BEGIN
@@ -431,6 +523,7 @@ UNION ALL SELECT 'Reuniones.OutlookICalUId',        CASE WHEN COL_LENGTH('Reunio
 UNION ALL SELECT 'Reuniones.OutlookImportadaPorId', CASE WHEN COL_LENGTH('Reuniones','OutlookImportadaPorId') IS NULL THEN 'FALTA' ELSE 'presente' END
 UNION ALL SELECT 'Reuniones.OutlookModificadaEl',   CASE WHEN COL_LENGTH('Reuniones','OutlookModificadaEl')   IS NULL THEN 'FALTA' ELSE 'presente' END
 UNION ALL SELECT 'Reuniones.CanceladaEnOutlookEl',  CASE WHEN COL_LENGTH('Reuniones','CanceladaEnOutlookEl')  IS NULL THEN 'FALTA' ELSE 'presente' END
+UNION ALL SELECT 'Asistentes.DeOutlook',            CASE WHEN COL_LENGTH('Asistentes','DeOutlook')            IS NULL THEN 'FALTA' ELSE 'presente' END
 UNION ALL SELECT 'IX_Reuniones_OutlookImportadaPorId', CASE WHEN EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'[Reuniones]') AND name = N'IX_Reuniones_OutlookImportadaPorId') THEN 'presente' ELSE 'FALTA' END
 UNION ALL SELECT 'IX_Reuniones_OutlookICalUId',     CASE WHEN EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'[Reuniones]') AND name = N'IX_Reuniones_OutlookICalUId') THEN 'presente' ELSE 'FALTA' END
 UNION ALL SELECT 'Historial <MigrationId>',         CASE WHEN EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = N'<MigrationId>') THEN 'presente' ELSE 'FALTA' END;
@@ -441,7 +534,9 @@ Nota: el `GO` tras el paso 1 corta la transacción en dos lotes; con `-b` y `XAC
 - [ ] **Step 4: Probar el script dos veces contra la base local**
 
 Run: `sqlcmd -S "localhost\SQL2025" -d GestionGD_new -E -C -b -I -f 65001 -i database\2026-10-29_poner_al_dia.sql`
-Expected: primera vez "agregada"/"creado"/"registrada"; ocho filas `presente`. Segunda vez: todo "ya estaba", ocho `presente`.
+Expected: primera vez "agregada"/"creado"/"registrada"; nueve filas `presente`. Segunda vez: todo "ya estaba", nueve `presente`.
+
+Si la migración generada nombra el default de otra forma que `DF_Asistentes_DeOutlook`, no importa: el script comprueba la columna, no el nombre de la restricción.
 
 - [ ] **Step 5: Compilar**
 
@@ -470,9 +565,11 @@ git commit -m "Base: columnas del calendario de Outlook en Reuniones, migracion 
 **Interfaces:**
 - Consumes: `GeneralesOutlook` (Task 1).
 - Produces:
-  - `record CitaOutlook(string Id, string? ICalUId, string? Asunto, DateTime Inicio, DateTime Fin, bool TodoElDia, string? Ubicacion, string? EnlaceTeams, bool EsOrganizador, bool Cancelada, DateTime? ModificadaElUtc)` — `Inicio`/`Fin` en hora de Honduras, `Kind = Unspecified`.
+  - `record CitaOutlook(string Id, string? ICalUId, string? Asunto, DateTime Inicio, DateTime Fin, bool TodoElDia, string? Ubicacion, string? EnlaceTeams, bool EsOrganizador, bool Cancelada, DateTime? ModificadaElUtc, IReadOnlyList<InvitadoCita>? Invitados = null)` — `Inicio`/`Fin` en hora de Honduras, `Kind = Unspecified`.
+  - `record InvitadoCita(string? Nombre, string? Correo, bool EsRecurso)` — tal como viene de Graph.
   - `interface ICalendarioOutlookLectura { Task<IReadOnlyList<CitaOutlook>> ListarAsync(Guid usuarioId, DateOnly desde, DateOnly hasta, CancellationToken ct); Task<CitaOutlook?> ObtenerAsync(Guid usuarioId, string eventId, CancellationToken ct); }`
   - `static GeneralesOutlook CitaOutlookTraductor.Traducir(CitaOutlook c)`
+  - `static IReadOnlyList<InvitadoOutlook> CitaOutlookTraductor.Invitados(CitaOutlook c, string? correoDueno)`
 
 - [ ] **Step 1: Pruebas que fallan**
 
@@ -525,6 +622,35 @@ public class CitaOutlookTraductorTests
     }
 
     [Fact]
+    public void Invitados_sin_recursos_ni_el_dueno_y_con_nombre_de_respaldo()
+    {
+        var c = Cita() with
+        {
+            Invitados =
+            [
+                new("Marta López", "marta@copeco.gob.hn", false),
+                new(null, "  luis@ihtt.gob.hn ", false),
+                new("Sala 2", "sala2@diger.gob.hn", true),
+                new("Henry", "HCARDONA@diger.gob.hn", false),
+                new("Sin correo", null, false),
+                new(new string('n', 200), "largo@x.hn", false),
+            ]
+        };
+
+        var inv = CitaOutlookTraductor.Invitados(c, "hcardona@diger.gob.hn");
+
+        inv.Select(i => i.Correo).Should().Equal("marta@copeco.gob.hn", "luis@ihtt.gob.hn", "largo@x.hn");
+        inv[1].Nombre.Should().Be("luis@ihtt.gob.hn", "sin nombre, se usa el correo");
+        inv[2].Nombre.Should().HaveLength(150);
+    }
+
+    [Fact]
+    public void Sin_invitados_es_lista_vacia()
+    {
+        CitaOutlookTraductor.Invitados(Cita(), "x@diger.gob.hn").Should().BeEmpty();
+    }
+
+    [Fact]
     public void El_enlace_de_Teams_pasa_tal_cual()
     {
         CitaOutlookTraductor.Traducir(Cita(teams: "https://teams.microsoft.com/l/x")).EnlaceTeams
@@ -547,7 +673,12 @@ namespace Diger.TramitesEstado.Application.Reuniones.Outlook.Calendario;
 /// Inicio y Fin en hora de Honduras (Kind = Unspecified): Graph las manda ya en esa zona.</summary>
 public sealed record CitaOutlook(
     string Id, string? ICalUId, string? Asunto, DateTime Inicio, DateTime Fin, bool TodoElDia,
-    string? Ubicacion, string? EnlaceTeams, bool EsOrganizador, bool Cancelada, DateTime? ModificadaElUtc);
+    string? Ubicacion, string? EnlaceTeams, bool EsOrganizador, bool Cancelada, DateTime? ModificadaElUtc,
+    IReadOnlyList<InvitadoCita>? Invitados = null);
+
+/// <summary>Un invitado tal como lo trae Graph. <see cref="EsRecurso"/> = sala o equipo
+/// (attendee type «resource»): no es una persona y no se pre-registra.</summary>
+public sealed record InvitadoCita(string? Nombre, string? Correo, bool EsRecurso);
 
 /// <summary>
 /// Lectura del calendario de un usuario con SU conexión. Los fallos llegan como
@@ -577,6 +708,23 @@ public static class CitaOutlookTraductor
 {
     private const int LargoTitulo = 250;
     private const int LargoLugar  = 250;
+    private const int LargoNombre = 150;   // Asistentes.Nombre
+    private const int LargoCorreo = 200;   // Asistentes.Correo
+
+    /// <summary>Los invitados que se pre-registran: sin recursos, sin el dueño del calendario
+    /// (<paramref name="correoDueno"/>, su Upn) y sin los que no traen correo. El orden es el de Outlook.</summary>
+    public static IReadOnlyList<InvitadoOutlook> Invitados(CitaOutlook c, string? correoDueno)
+    {
+        var dueno = correoDueno?.Trim();
+        return (c.Invitados ?? [])
+            .Where(i => !i.EsRecurso && !string.IsNullOrWhiteSpace(i.Correo))
+            .Select(i => (Nombre: i.Nombre?.Trim(), Correo: i.Correo!.Trim()))
+            .Where(i => !string.Equals(i.Correo, dueno, StringComparison.OrdinalIgnoreCase))
+            .Select(i => new InvitadoOutlook(
+                Recortar(string.IsNullOrWhiteSpace(i.Nombre) ? i.Correo : i.Nombre, LargoNombre),
+                Recortar(i.Correo, LargoCorreo)))
+            .ToList();
+    }
 
     public static GeneralesOutlook Traducir(CitaOutlook c)
     {
@@ -612,7 +760,7 @@ public static class CitaOutlookTraductor
 - [ ] **Step 5: Correr y ver que pasa**
 
 Run: `dotnet test tests\Application.Tests --filter "FullyQualifiedName~CitaOutlookTraductor"`
-Expected: PASS (4).
+Expected: PASS (6).
 
 - [ ] **Step 6: Commit**
 
@@ -630,7 +778,7 @@ git commit -m "Application: la cita de Outlook, el puerto de lectura y su traduc
 - Test: `tests/Application.Tests/Outlook/SincronizarCalendarioOutlookTests.cs`
 
 **Interfaces:**
-- Consumes: `ICalendarioOutlookLectura`, `CitaOutlook`, `CitaOutlookTraductor.Traducir` (Task 3); `Reunion.ImportarDeOutlook`, `ActualizarDeOutlook`, `MarcarCanceladaEnOutlook`, `QuitarCancelacionOutlook`, `ClaveOrigenOutlook` (Task 1); `HoraHonduras.Ahora(TimeProvider)`.
+- Consumes: `ICalendarioOutlookLectura`, `CitaOutlook`, `InvitadoCita`, `CitaOutlookTraductor.Traducir` e `Invitados` (Task 3); `ConexionMicrosoft.Upn`; `Reunion.ImportarDeOutlook`, `ActualizarDeOutlook`, `SincronizarInvitadosOutlook`, `MarcarCanceladaEnOutlook`, `QuitarCancelacionOutlook`, `ClaveOrigenOutlook` (Task 1); `HoraHonduras.Ahora(TimeProvider)`.
 - Produces:
   - `record SincronizarCalendarioOutlookCommand(Guid UsuarioId) : IRequest<ResultadoSincronizacionCalendario>`
   - `record ResultadoSincronizacionCalendario(int Creadas, int Actualizadas, int Canceladas, int Saltadas)`
@@ -670,16 +818,18 @@ public class SincronizarCalendarioOutlookTests : IDisposable
         _ctx = new AppDbContext(opts, usuario, Substitute.For<MediatR.IPublisher>());
         _ctx.Usuarios.Add(_ana);
         _ctx.AsignacionesUsuario.Add(AsignacionUsuario.Crear(_ana.Id, "DIGER", "AREA1", "UNI1", "Empleado"));
+        _ctx.ConexionesMicrosoft.Add(ConexionMicrosoft.Crear(_ana.Id, "ana@diger.gob.hn", "h", [1], DateTime.UtcNow));
         _ctx.SaveChanges();
     }
 
     public void Dispose() => _ctx.Dispose();
 
     private static CitaOutlook Cita(string id, string titulo = "Mesa", int dias = 1, string? ical = null,
-        bool cancelada = false, string hora = "09:00") =>
+        bool cancelada = false, string hora = "09:00", params string[] invitados) =>
         new(id, ical ?? "ical-" + id, titulo, Hoy.AddDays(dias).ToDateTime(TimeOnly.Parse(hora)),
             Hoy.AddDays(dias).ToDateTime(TimeOnly.Parse(hora)).AddHours(1), false, "Sala", null, false, cancelada,
-            new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc));
+            new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc),
+            invitados.Select(c => new InvitadoCita(null, c, false)).ToList());
 
     private void Calendario(params CitaOutlook[] citas) =>
         _cal.ListarAsync(_ana.Id, Hoy, Hoy.AddDays(90), Arg.Any<CancellationToken>()).Returns(citas);
@@ -689,7 +839,8 @@ public class SincronizarCalendarioOutlookTests : IDisposable
             .Handle(new SincronizarCalendarioOutlookCommand(_ana.Id), default);
 
     private Task<List<Reunion>> Importadas() =>
-        _ctx.Reuniones.IgnoreQueryFilters().Where(r => r.OutlookImportadaPorId == _ana.Id).ToListAsync();
+        _ctx.Reuniones.IgnoreQueryFilters().Include(r => r.Asistentes)
+            .Where(r => r.OutlookImportadaPorId == _ana.Id).ToListAsync();
 
     [Fact]
     public async Task Crea_privadas_con_la_asignacion_del_usuario_y_no_duplica()
@@ -808,6 +959,34 @@ public class SincronizarCalendarioOutlookTests : IDisposable
     }
 
     [Fact]
+    public async Task Los_invitados_entran_preregistrados_sin_la_duena_del_calendario()
+    {
+        Calendario(Cita("e1", invitados: ["marta@copeco.gob.hn", "ANA@diger.gob.hn"]));
+
+        await Sincronizar();
+
+        var a = (await Importadas()).Single().Asistentes.Should().ContainSingle().Subject;
+        a.Correo.Should().Be("marta@copeco.gob.hn");
+        a.EsPreregistro.Should().BeTrue();
+        a.DeOutlook.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Cambio_de_invitados_actualiza_y_respeta_la_asistencia_marcada()
+    {
+        Calendario(Cita("e1", invitados: ["p@x.hn", "a@x.hn"]));
+        await Sincronizar();
+        (await Importadas()).Single().Asistentes.Single(x => x.Correo == "a@x.hn").Confirmado = true;
+        await _ctx.SaveChangesAsync();
+
+        Calendario(Cita("e1", invitados: ["n@x.hn"]));
+        (await Sincronizar()).Actualizadas.Should().Be(1);
+
+        (await Importadas()).Single().Asistentes.Select(x => x.Correo)
+            .Should().BeEquivalentTo(["a@x.hn", "n@x.hn"]);
+    }
+
+    [Fact]
     public async Task Borrada_por_el_usuario_no_se_vuelve_a_crear()
     {
         Calendario(Cita("e1"));
@@ -870,10 +1049,16 @@ public sealed class SincronizarCalendarioOutlookCommandHandler(
         var icalsDelPortal   = delPortal.Where(x => x.OutlookICalUId != null).Select(x => x.OutlookICalUId!).ToHashSet();
         var eventosDelPortal = delPortal.Where(x => x.OutlookEventId != null).Select(x => x.OutlookEventId!).ToHashSet();
 
-        // Con las borradas: una reunión que el usuario borró no debe volver a nacer.
+        // Con las borradas: una reunión que el usuario borró no debe volver a nacer. Con sus
+        // asistentes: la sincronización de invitados agrega y quita sobre la colección cargada.
         var mias = await ctx.Reuniones.IgnoreQueryFilters()
+            .Include(r => r.Asistentes)
             .Where(r => r.OutlookImportadaPorId == usuarioId)
             .ToListAsync(ct);
+
+        // El dueño del calendario aparece entre los invitados de las citas a las que lo invitaron.
+        var correoDueno = await ctx.ConexionesMicrosoft.AsNoTracking()
+            .Where(x => x.Id == usuarioId).Select(x => x.Upn).FirstOrDefaultAsync(ct);
         var porClave = mias.ToDictionary(r => r.OrigenExternoId!);
 
         var asignacion = await ctx.AsignacionesUsuario.AsNoTracking()
@@ -906,13 +1091,15 @@ public sealed class SincronizarCalendarioOutlookCommandHandler(
                 }
                 var quitoCancelacion = r.QuitarCancelacionOutlook();
                 var cambio = r.ActualizarDeOutlook(CitaOutlookTraductor.Traducir(c));
-                if (cambio || quitoCancelacion) actualizadas++;
+                var cambioInvitados = r.SincronizarInvitadosOutlook(CitaOutlookTraductor.Invitados(c, correoDueno));
+                if (cambio || cambioInvitados || quitoCancelacion) actualizadas++;
             }
             else
             {
                 if (c.Cancelada) { saltadas++; continue; }
                 var nueva = Reunion.ImportarDeOutlook(c.Id, CitaOutlookTraductor.Traducir(c), usuarioId,
                     asignacion?.InstitucionId, asignacion?.AreaId, asignacion?.UnidadId);
+                nueva.SincronizarInvitadosOutlook(CitaOutlookTraductor.Invitados(c, correoDueno));
                 ctx.Reuniones.Add(nueva);
                 porClave[clave] = nueva;
                 creadas++;
@@ -930,9 +1117,11 @@ public sealed class SincronizarCalendarioOutlookCommandHandler(
             {
                 if (r.MarcarCanceladaEnOutlook(utcAhora)) canceladas++;
             }
-            else if (r.ActualizarDeOutlook(CitaOutlookTraductor.Traducir(c)))
+            else
             {
-                actualizadas++;
+                var cambio = r.ActualizarDeOutlook(CitaOutlookTraductor.Traducir(c));
+                var cambioInvitados = r.SincronizarInvitadosOutlook(CitaOutlookTraductor.Invitados(c, correoDueno));
+                if (cambio || cambioInvitados) actualizadas++;
             }
         }
 
@@ -949,7 +1138,7 @@ public sealed class SincronizarCalendarioOutlookCommandHandler(
 - [ ] **Step 4: Correr y ver que pasa**
 
 Run: `dotnet test tests\Application.Tests --filter "FullyQualifiedName~SincronizarCalendarioOutlook"`
-Expected: PASS (9).
+Expected: PASS (11).
 
 - [ ] **Step 5: Commit**
 
@@ -1018,7 +1207,9 @@ public class GraphCalendarioOutlookLecturaTests
          "lastModifiedDateTime":"2026-10-29T18:00:00Z",
          "start":{"dateTime":"2026-11-03T09:30:00.0000000","timeZone":"Central America Standard Time"},
          "end":{"dateTime":"2026-11-03T10:30:00.0000000","timeZone":"Central America Standard Time"},
-         "location":{"displayName":"Sala 2"},"onlineMeeting":{"joinUrl":"https://teams/x"}}
+         "location":{"displayName":"Sala 2"},"onlineMeeting":{"joinUrl":"https://teams/x"},
+         "attendees":[{"type":"required","emailAddress":{"name":"Marta","address":"marta@copeco.gob.hn"}},
+                      {"type":"resource","emailAddress":{"name":"Sala 2","address":"sala2@diger.gob.hn"}}]}
         """;
 
     [Fact]
@@ -1032,8 +1223,10 @@ public class GraphCalendarioOutlookLecturaTests
 
         citas.Should().ContainSingle();
         var c = citas[0];
-        c.Should().Be(new CitaOutlook("AAMk-1", "ical-1", "Mesa", new DateTime(2026, 11, 3, 9, 30, 0), new DateTime(2026, 11, 3, 10, 30, 0),
-            false, "Sala 2", "https://teams/x", true, false, new DateTime(2026, 10, 29, 18, 0, 0, DateTimeKind.Utc)));
+        // BeEquivalentTo y no Be: el record lleva una lista, y la igualdad de record la compara por referencia.
+        c.Should().BeEquivalentTo(new CitaOutlook("AAMk-1", "ical-1", "Mesa", new DateTime(2026, 11, 3, 9, 30, 0), new DateTime(2026, 11, 3, 10, 30, 0),
+            false, "Sala 2", "https://teams/x", true, false, new DateTime(2026, 10, 29, 18, 0, 0, DateTimeKind.Utc),
+            [new InvitadoCita("Marta", "marta@copeco.gob.hn", false), new InvitadoCita("Sala 2", "sala2@diger.gob.hn", true)]));
 
         var primero = Uri.UnescapeDataString(g.Pedidos[0].RequestUri!.ToString());
         primero.Should().Contain("me/calendarView?startDateTime=2026-11-02T00:00:00-06:00&endDateTime=2027-01-31T23:59:59-06:00");
@@ -1123,7 +1316,7 @@ public sealed class GraphCalendarioOutlookLectura(
     HttpClient http, IConexionMicrosoft conexion, ILogger<GraphCalendarioOutlookLectura> log) : ICalendarioOutlookLectura
 {
     private const string Campos =
-        "id,iCalUId,subject,start,end,isAllDay,location,onlineMeeting,isOrganizer,isCancelled,lastModifiedDateTime";
+        "id,iCalUId,subject,start,end,isAllDay,location,onlineMeeting,isOrganizer,isCancelled,lastModifiedDateTime,attendees";
     private const string Zona = "Central America Standard Time";
 
     public async Task<IReadOnlyList<CitaOutlook>> ListarAsync(Guid usuarioId, DateOnly desde, DateOnly hasta, CancellationToken ct)
@@ -1215,11 +1408,23 @@ public sealed class GraphCalendarioOutlookLectura(
                          && DateTimeOffset.TryParse(m, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dto)
             ? dto.UtcDateTime : (DateTime?)null;
 
+        var invitados = new List<InvitadoCita>();
+        if (e.TryGetProperty("attendees", out var att) && att.ValueKind == JsonValueKind.Array)
+            foreach (var a in att.EnumerateArray().Where(a => a.ValueKind == JsonValueKind.Object))
+            {
+                var hayCorreo = a.TryGetProperty("emailAddress", out var em) && em.ValueKind == JsonValueKind.Object;
+                invitados.Add(new InvitadoCita(
+                    Nombre:    hayCorreo ? Texto(em, "name") : null,
+                    Correo:    hayCorreo ? Texto(em, "address") : null,
+                    EsRecurso: string.Equals(Texto(a, "type"), "resource", StringComparison.OrdinalIgnoreCase)));
+            }
+
         return new CitaOutlook(
             Id: id, ICalUId: Texto(e, "iCalUId"), Asunto: Texto(e, "subject"),
             Inicio: inicio.Value, Fin: fin, TodoElDia: Bool(e, "isAllDay"),
             Ubicacion: Sub("location", "displayName"), EnlaceTeams: Sub("onlineMeeting", "joinUrl"),
-            EsOrganizador: Bool(e, "isOrganizer"), Cancelada: Bool(e, "isCancelled"), ModificadaElUtc: modificada);
+            EsOrganizador: Bool(e, "isOrganizer"), Cancelada: Bool(e, "isCancelled"), ModificadaElUtc: modificada,
+            Invitados: invitados);
     }
 
     private static DateTime? Hora(JsonElement e, string prop) =>
@@ -1657,7 +1862,8 @@ Dos sentidos que no se cruzan: **Portal → Outlook** para las reuniones creadas
 (`SincronizacionCalendarioOutlookService`, cada 15 min, de hoy a +90 días; spec
 `docs/superpowers/specs/2026-10-29-calendario-outlook-al-portal-design.md`). Una reunión importada
 entra privada, no está «En Outlook» (`OutlookEventId` null: el portal nunca le manda cambios), y sus
-Generales los ignora `ReunionMapper.Aplicar`.
+Generales los ignora `ReunionMapper.Aplicar`. Sus invitados entran como pre-registrados
+(`Asistente.DeOutlook`); la sincronización solo quita a los suyos que siguen pendientes.
 ```
 
 - [ ] **Step 2: Spec** — cambiar `**Estado:** aprobado en conversación, pendiente de revisión escrita` por `**Estado:** implementado (2026-10-29)` y agregar al final:
@@ -1679,7 +1885,8 @@ Generales los ignora `ReunionMapper.Aplicar`.
 3. Esperar ~2 minutos (espera inicial) y revisar el registro: `Calendario de <id>: N nuevas…`.
 4. Comprobar en la base: `SELECT COUNT(*), SUM(CASE WHEN Visibilidad='Privada' THEN 1 ELSE 0 END) FROM Reuniones WHERE OutlookImportadaPorId IS NOT NULL` → ambos iguales y > 0.
 5. Que la reunión 2062 (enviada desde el portal) **no** aparezca duplicada.
-6. Pedir al usuario: mover una cita en Outlook y, tras ≤ 15 min, ver la hora nueva en el portal; cancelar otra y ver "cancelada en Outlook".
+6. Abrir una importada con invitados: aparecen como pre-registrados, sin salas ni el propio usuario.
+7. Pedir al usuario: mover una cita en Outlook y, tras ≤ 15 min, ver la hora nueva en el portal; cancelar otra y ver "cancelada en Outlook".
 
 - [ ] **Step 4: Commit**
 
