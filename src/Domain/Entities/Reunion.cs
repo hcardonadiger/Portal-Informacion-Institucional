@@ -140,6 +140,140 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
 
     public bool EstaEnOutlook => OutlookEventId is not null;
 
+    // ── Calendario de Outlook al portal (spec 2026-10-29) ─────────
+    // Sentido contrario al de arriba: la cita nació en Outlook y la reunión es su copia. Outlook
+    // manda solo sobre los Generales (GeneralesOutlook) y sobre los invitados que trajo; lo demás
+    // es del portal. OutlookEventId queda null a propósito: EstaEnOutlook es «el portal manda esta
+    // cita», y aquí no manda.
+
+    /// <summary>Id de la cita en el calendario de <see cref="OutlookImportadaPorId"/>. El id es
+    /// largo (~150) y OrigenExternoId mide 60: allá va su hash, acá el id para consultarla.</summary>
+    public string?   OutlookImportadoEventId { get; private set; }
+    /// <summary>Id de la cita común a todos los calendarios donde aparece. Se guarda también al
+    /// enviar desde el portal: así la sincronización reconoce las reuniones propias del portal.</summary>
+    public string?   OutlookICalUId          { get; private set; }
+    /// <summary>Dueño del calendario del que vino. null = no es importada.</summary>
+    public Guid?     OutlookImportadaPorId   { get; private set; }
+    /// <summary>lastModifiedDateTime de la cita la última vez que cambió algo en el portal (UTC).</summary>
+    public DateTime? OutlookModificadaEl     { get; private set; }
+    /// <summary>Cuándo se vio cancelada o borrada en Outlook (UTC). La reunión no se borra.</summary>
+    public DateTime? CanceladaEnOutlookEl    { get; private set; }
+
+    public bool EsImportadaDeOutlook => OutlookImportadaPorId is not null;
+
+    /// <summary>«outlook:» + SHA-256 en base64url del id: 51 caracteres, cabe en OrigenExternoId
+    /// y en su índice único, que es lo que impide importar dos veces la misma cita.</summary>
+    public static string ClaveOrigenOutlook(string eventId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(eventId));
+        return "outlook:" + Convert.ToBase64String(hash).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    /// <summary>Crea la copia privada de una cita de Outlook. Sin evento de dominio: importar no
+    /// es «alguien creó una reunión» y no debe avisarle a nadie.</summary>
+    public static Reunion ImportarDeOutlook(string eventId, GeneralesOutlook g, Guid usuarioId,
+        string? institucionId, string? areaId, string? unidadId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (usuarioId == Guid.Empty) throw new ArgumentException("La cita necesita dueño.", nameof(usuarioId));
+
+        var r = new Reunion
+        {
+            OrigenExternoId         = ClaveOrigenOutlook(eventId),
+            OutlookImportadoEventId = eventId,
+            OutlookImportadaPorId   = usuarioId,
+            CreadoPorId             = usuarioId,
+            Visibilidad             = VisibilidadReunion.Privada,
+            InstitucionDuenaId      = institucionId,
+            AreaId                  = areaId,
+            UnidadId                = unidadId,
+            Modalidad               = string.IsNullOrWhiteSpace(g.EnlaceTeams) ? "Presencial" : "Virtual",
+            OutlookICalUId          = g.ICalUId,
+            OutlookOrganizadorId    = g.EsOrganizador ? usuarioId : null,
+        };
+        r.AplicarGenerales(g);
+        return r;
+    }
+
+    /// <summary>Aplica lo que Outlook manda. Devuelve false si todo ya estaba igual, para no
+    /// escribir (ni auditar) cada 15 minutos una reunión que no cambió.</summary>
+    public bool ActualizarDeOutlook(GeneralesOutlook g)
+    {
+        if (!EsImportadaDeOutlook)
+            throw new DomainException("Solo una reunión que vino de Outlook se actualiza desde Outlook.");
+
+        var igual = Titulo == g.Titulo && Fecha == g.Fecha && Hora == g.Hora && Duracion == g.Duracion
+                    && Lugar == g.Lugar && OutlookEnlaceTeams == g.EnlaceTeams;
+        if (igual) return false;
+
+        AplicarGenerales(g);
+        return true;
+    }
+
+    private void AplicarGenerales(GeneralesOutlook g)
+    {
+        Titulo              = g.Titulo;
+        Fecha               = g.Fecha;
+        Hora                = g.Hora;
+        Duracion            = g.Duracion;
+        Lugar               = g.Lugar;
+        OutlookEnlaceTeams  = g.EnlaceTeams;
+        OutlookModificadaEl = g.ModificadaElUtc;
+    }
+
+    public bool MarcarCanceladaEnOutlook(DateTime utcAhora)
+    {
+        if (CanceladaEnOutlookEl is not null) return false;
+        CanceladaEnOutlookEl = utcAhora;
+        return true;
+    }
+
+    public bool QuitarCancelacionOutlook()
+    {
+        if (CanceladaEnOutlookEl is null) return false;
+        CanceladaEnOutlookEl = null;
+        return true;
+    }
+
+    /// <summary>
+    /// Los invitados de la cita como pre-registrados. Outlook manda solo sobre los que trajo
+    /// (DeOutlook): agrega los nuevos y quita los retirados que siguen pendientes. Nunca toca un
+    /// auto-registrado (QR), uno con la asistencia marcada ni uno agregado a mano. No duplica por
+    /// correo. Devuelve true si agregó o quitó alguno.
+    /// </summary>
+    public bool SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoOutlook> invitados)
+    {
+        static string Clave(string correo) => correo.Trim().ToLowerInvariant();
+
+        var porCorreo = new Dictionary<string, InvitadoOutlook>();
+        foreach (var i in invitados)
+            if (!string.IsNullOrWhiteSpace(i.Correo)) porCorreo.TryAdd(Clave(i.Correo), i);
+
+        var cambio = false;
+        foreach (var a in _asistentes.Where(a => a.DeOutlook && a.Confirmado is null && !a.AutoRegistro
+                                                 && (a.Correo is null || !porCorreo.ContainsKey(Clave(a.Correo)))).ToList())
+        {
+            _asistentes.Remove(a);
+            cambio = true;
+        }
+
+        var yaEstan = _asistentes.Where(a => !string.IsNullOrWhiteSpace(a.Correo)).Select(a => Clave(a.Correo!)).ToHashSet();
+        foreach (var (clave, i) in porCorreo)
+        {
+            if (yaEstan.Contains(clave)) continue;
+            _asistentes.Add(new Asistente { Nombre = i.Nombre, Correo = i.Correo.Trim(), EsPreregistro = true, DeOutlook = true });
+            cambio = true;
+        }
+        return cambio;
+    }
+
+    /// <summary>Lo llama el envío desde el portal con el iCalUId que devuelve Graph.</summary>
+    public void RecordarICalUId(string? iCalUId)
+    {
+        if (!string.IsNullOrWhiteSpace(iCalUId)) OutlookICalUId = iCalUId;
+    }
+
     /// <summary>Solo las reuniones virtuales e híbridas se conectan a Outlook (decisión del
     /// 2026-10-28): una presencial no necesita cita ni Teams. Se lee la modalidad escrita, así
     /// que «Híbrida», «hibrida» o «Virtual (Teams)» también cuentan.</summary>
@@ -275,6 +409,8 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     /// <summary>Fija la transacción del envío (la misma en cada reintento) y si lleva Teams.</summary>
     public Guid PrepararEnvioOutlook(bool conTeams)
     {
+        if (EsImportadaDeOutlook)
+            throw new DomainException("Esta reunión viene de su Outlook: ya está en su calendario.");
         if (EstaEnOutlook)
             throw new DomainException("La reunión ya está en Outlook: los cambios se envían al guardar.");
         if (!AdmiteOutlook)
@@ -474,6 +610,9 @@ public sealed class Asistente : BaseEntity
     public bool  EsPreregistro { get; set; }
     /// <summary>null = pendiente de confirmar; true = asistió; false = ausente.</summary>
     public bool? Confirmado    { get; set; }
+    /// <summary>true = llegó como invitado de la cita de Outlook (spec 2026-10-29). Solo a estos
+    /// los puede quitar la sincronización, y solo mientras sigan pendientes.</summary>
+    public bool  DeOutlook     { get; set; }
 }
 
 public sealed class AcuerdoReunion : BaseEntity
