@@ -27,8 +27,9 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
     [Description("Las instrucciones para redactar la ayuda memoria de una reunión: el prompt, el " +
                  "formato JSON exacto y los campos que se llenan. Dependen del tipo de la reunión " +
                  "(una capacitación pide además convocados, asistentes y compromisos) y de si la " +
-                 "encuesta está activa (pide la firma del validador de la institución). Pídalas " +
-                 "siempre antes de llenar_memoria_reunion.")]
+                 "encuesta está activa (pide la firma del validador de la institución). Úsela solo " +
+                 "cuando la persona le pegó la transcripción o cuando obtener_transcripcion_reunion " +
+                 "no pudo bajarla: obtener_transcripcion_reunion ya trae estas mismas instrucciones.")]
     public async Task<object> InstruccionesMemoriaReunion(
         [Description("Id numérico de la reunión.")] int id)
     {
@@ -52,12 +53,15 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
     }
 
     [McpServerTool(Name = "obtener_transcripcion_reunion")]
-    [Description("La transcripción de Teams de la reunión, descargada con la conexión de Outlook de " +
-                 "quien la organizó, junto con las mismas instrucciones de instrucciones_memoria_reunion. " +
-                 "Solo existe si la reunión se envió a Outlook con Teams desde el portal y alguien inició " +
-                 "la transcripción en Teams durante la reunión; Teams la publica minutos después de " +
-                 "terminar. Si no se puede, el error dice por qué: entonces pídale a la persona que pegue " +
-                 "la transcripción y use instrucciones_memoria_reunion.")]
+    [Description("PRIMER PASO para hacer el resumen o llenar la ayuda memoria de una reunión: llámela " +
+                 "siempre antes de redactar, sin esperar a que la persona pegue la transcripción. Baja " +
+                 "la transcripción de Teams con la conexión de Outlook de quien organizó la reunión y " +
+                 "trae las mismas instrucciones de instrucciones_memoria_reunion. Con eso redacte el " +
+                 "JSON y páselo a llenar_memoria_reunion. Solo existe si la reunión se envió a Outlook " +
+                 "con Teams desde el portal y alguien inició la transcripción en Teams durante la " +
+                 "reunión; Teams la publica minutos después de terminar. Si no se puede, el error dice " +
+                 "por qué: entonces pídale a la persona que pegue la transcripción y use " +
+                 "instrucciones_memoria_reunion.")]
     public async Task<object> ObtenerTranscripcionReunion(
         [Description("Id numérico de la reunión.")] int id)
     {
@@ -98,9 +102,10 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
     }
 
     [McpServerTool(Name = "llenar_memoria_reunion")]
-    [Description("Escribe en la reunión la ayuda memoria redactada como JSON. Primero pida " +
-                 "instrucciones_memoria_reunion y redacte el JSON siguiendo esas reglas a partir de " +
-                 "la transcripción (la de obtener_transcripcion_reunion, o la que le dio la persona). «Generales» (título, fecha, tipo, lugar…) " +
+    [Description("Escribe en la reunión la ayuda memoria redactada como JSON. Antes baje la " +
+                 "transcripción con obtener_transcripcion_reunion y redacte el JSON con las reglas que " +
+                 "trae; solo si no se pudo bajar, use la que le pegó la persona con " +
+                 "instrucciones_memoria_reunion. «Generales» (título, fecha, tipo, lugar…) " +
                  "nunca se escribe desde aquí. Si un campo ya tiene otro valor no se escribe nada y " +
                  "se lo dice: pregúntele a la persona; no use «sobreescribir» salvo que ella lo pida. " +
                  "Los acuerdos que ya tienen seguimiento no se reemplazan nunca.")]

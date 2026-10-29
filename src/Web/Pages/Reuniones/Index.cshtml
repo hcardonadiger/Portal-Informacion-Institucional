@@ -132,6 +132,9 @@
                 <tr>
                     @* La flecha va como @(...) —expresión explícita—: escrita pegada al texto,
                        Razor lee "Título@Flecha" como una dirección de correo y la imprime literal. *@
+                    @* El número es el Id de la reunión: el que se le da al asistente por el MCP
+                       («llena la memoria de la reunión 2061»). Sin él no había cómo saberlo. *@
+                    <th style="text-align:center;width:1%">Nº</th>
                     <th><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Titulo)">Título@(Flecha(OrdenReuniones.Titulo))</a></th>
                     <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Fecha)">Fecha@(Flecha(OrdenReuniones.Fecha))</a></th>
                     <th style="text-align:center"><a class="th-orden" href="@OrdenUrl(OrdenReuniones.Institucion)">Institución@(Flecha(OrdenReuniones.Institucion))</a></th>
@@ -144,11 +147,12 @@
             <tbody>
                 @if (Model.Resultado.Items.Count == 0)
                 {
-                    <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--diger-text-faint)">No se encontraron reuniones con los criterios aplicados.</td></tr>
+                    <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--diger-text-faint)">No se encontraron reuniones con los criterios aplicados.</td></tr>
                 }
                 @foreach (var r in Model.Resultado.Items)
                 {
                     <tr>
+                        <td class="res-meta" style="text-align:center">@r.Id</td>
                         <td>
                             @* Salió el disco con las dos iniciales de la institución
                                (2026-10-19). Decía menos que la columna Institución, que está
@@ -218,6 +222,7 @@
                         <table class="seg-table encabezado-fijo">
                             <thead>
                                 <tr>
+                                    <th style="text-align:center;width:1%">Nº</th>
                                     <th>Título</th>
                                     <th style="text-align:center">Fecha</th>
                                     <th style="text-align:center">Tipo</th>
@@ -231,6 +236,7 @@
                                 @foreach (var r in grupo)
                                 {
                                     <tr>
+                                        <td class="res-meta" style="text-align:center">@r.Id</td>
                                         <td><a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
                                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>

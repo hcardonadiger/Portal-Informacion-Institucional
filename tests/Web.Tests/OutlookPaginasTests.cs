@@ -186,7 +186,7 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
     private static readonly DateOnly FechaReunion = DateOnly.FromDateTime(DateTime.Today.AddDays(30));
     private static readonly string FechaReunionIso = FechaReunion.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
-    private async Task<int> SembrarReunionAsync(bool conectada)
+    private async Task<int> SembrarReunionAsync(bool conectada, string? modalidad = "Virtual")
     {
         using var scope = _portal.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
@@ -194,6 +194,7 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
         r.InstitucionId = "DIGER"; r.InstitucionDuenaId = "DIGER";
         r.AreaId = PortalFactory.AreaDeCasa; r.UnidadId = PortalFactory.UnidadDeCasa;
         r.Fecha = FechaReunion; r.Hora = "09:00";
+        r.Modalidad = modalidad; // solo las virtuales e híbridas van a Outlook
         db.Reuniones.Add(r);
         if (conectada)
             db.ConexionesMicrosoft.Add(Diger.TramitesEstado.Domain.Entities.ConexionMicrosoft.Crear(
@@ -221,6 +222,18 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
 
         html.Should().Contain("Enviar a Outlook");
         html.Should().MatchRegex("name=\"conTeams\"[^>]*checked");
+    }
+
+    [Fact]
+    public async Task El_editor_de_una_presencial_no_ofrece_enviar_a_Outlook()
+    {
+        _conexion.EstaConfigurada.Returns(true);
+        var id = await SembrarReunionAsync(conectada: true, modalidad: "Presencial");
+
+        var html = WebUtility.HtmlDecode(await Jefe().GetStringAsync($"/Reuniones/Editor?id={id}"));
+
+        html.Should().NotContain("Enviar a Outlook");
+        html.Should().Contain("virtuales o híbridas");
     }
 
     [Fact]

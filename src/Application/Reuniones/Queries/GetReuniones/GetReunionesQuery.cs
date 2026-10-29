@@ -48,8 +48,11 @@ public sealed class GetReunionesQueryHandler(IApplicationDbContext ctx)
         var (q, page, size) = Paginacion.Normalizar(query.Q, query.Page, query.Size);
 
         var baseq = ctx.Reuniones.AsNoTracking();
+        // Un número se busca también como Nº de la reunión: es el que se le da al asistente.
+        var numero = int.TryParse(q, out var n) ? n : (int?)null;
         if (q is not null)
             baseq = baseq.Where(r =>
+                r.Id == numero ||
                 r.Titulo.Contains(q) ||
                 (r.Institucion != null && r.Institucion.Contains(q)) ||
                 (r.Tipo != null && r.Tipo.Contains(q)));

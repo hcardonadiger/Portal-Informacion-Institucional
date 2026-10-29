@@ -20,7 +20,11 @@
     <a class="btns" asp-page="/Reuniones/Index">← Volver</a>
     @if (Model.ReunionId is not null)
     {
-        <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@Model.ReunionId">Ver acta</a>
+        @* El número que se le da al asistente por el MCP para bajar la transcripción y llenar la memoria. *@
+        <div style="display:flex;gap:12px;align-items:center">
+            <span class="res-meta" title="Número de la reunión: es el que se le da al asistente">Reunión Nº <strong>@Model.ReunionId</strong></span>
+            <a class="btns" asp-page="/Reuniones/Acta" asp-route-id="@Model.ReunionId">Ver acta</a>
+        </div>
     }
 </div>
 
@@ -63,6 +67,13 @@
                     </form>
                 </div>
             }
+        }
+        else if (!Diger.TramitesEstado.Domain.Entities.Reunion.EsModalidadEnLinea(d.Modalidad))
+        {
+            @* La regla vive en Reunion.PrepararEnvioOutlook; esto solo evita ofrecer un botón que la rompe. *@
+            <span class="hint">Solo las reuniones <strong>virtuales o híbridas</strong> se envían a Outlook.
+                Esta es @(string.IsNullOrWhiteSpace(d.Modalidad) ? "sin modalidad" : d.Modalidad.ToLowerInvariant()):
+                si va a ser en línea, cambie la modalidad en «Generales» y guarde.</span>
         }
         else if (!o.UsuarioConectado || o.UsuarioRequiereReconexion)
         {

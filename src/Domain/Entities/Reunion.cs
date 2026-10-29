@@ -126,9 +126,9 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     /// <summary>Usuario en cuyo calendario vive la cita. Actualizar y cancelar van siempre con
     /// SU conexión, aunque edite otra persona.</summary>
     public Guid?     OutlookOrganizadorId  { get; private set; }
-    /// <summary>Teams nace encendido para toda modalidad: las presenciales también se graban
-    /// para sacar la transcripción. Queda fijo tras el envío (Graph no le quita el Teams a una
-    /// cita que ya lo tiene).</summary>
+    /// <summary>Teams nace encendido: las reuniones que van a Outlook (virtuales e híbridas) se
+    /// graban para sacar la transcripción. Queda fijo tras el envío (Graph no le quita el Teams a
+    /// una cita que ya lo tiene).</summary>
     public bool      OutlookConTeams       { get; private set; } = true;
     public string?   OutlookEnlaceTeams    { get; private set; }
     /// <summary>SHA-256 del último evento enviado. Guardar sin cambios visibles no llama a Graph:
@@ -139,6 +139,21 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     public string?   OutlookError          { get; private set; }
 
     public bool EstaEnOutlook => OutlookEventId is not null;
+
+    /// <summary>Solo las reuniones virtuales e híbridas se conectan a Outlook (decisión del
+    /// 2026-10-28): una presencial no necesita cita ni Teams. Se lee la modalidad escrita, así
+    /// que «Híbrida», «hibrida» o «Virtual (Teams)» también cuentan.</summary>
+    public bool AdmiteOutlook => EsModalidadEnLinea(Modalidad);
+
+    public static bool EsModalidadEnLinea(string? modalidad)
+    {
+        if (string.IsNullOrWhiteSpace(modalidad)) return false;
+        var sinTildes = new string(modalidad.Trim().Normalize(System.Text.NormalizationForm.FormD)
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                        != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .ToArray()).ToLowerInvariant();
+        return sinTildes.StartsWith("virtual") || sinTildes.StartsWith("hibrid");
+    }
 
     // ── Hijos ─────────────────────────────────────────────────────
     private readonly List<Asistente>          _asistentes  = [];
@@ -262,6 +277,9 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     {
         if (EstaEnOutlook)
             throw new DomainException("La reunión ya está en Outlook: los cambios se envían al guardar.");
+        if (!AdmiteOutlook)
+            throw new DomainException("Solo las reuniones virtuales o híbridas se envían a Outlook. " +
+                                      "Cambie la modalidad en «Generales» y guarde antes de enviarla.");
 
         OutlookConTeams = conTeams;
         OutlookTransaccionId ??= Guid.NewGuid();

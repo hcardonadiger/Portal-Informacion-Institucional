@@ -126,7 +126,7 @@
                             foreach (var r in reusDia)
                             {
                                 var destino = Model.PuedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta";
-                                var meta = string.Join(" · ", new[] { r.Institucion, r.Tipo, r.Privada ? "Privada" : null }
+                                var meta = string.Join(" · ", new[] { $"Nº {r.Id}", r.Institucion, r.Tipo, r.Privada ? "Privada" : null }
                                     .Where(x => !string.IsNullOrWhiteSpace(x)));
                                 <a class="cal-dia-item @(r.Privada ? "priv" : "")" data-tipo="Reunion"
                                    asp-page="@destino" asp-route-id="@r.Id">
@@ -193,7 +193,7 @@
                             {
                                 var destino = Model.PuedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta";
                                 <a class="cal-chip@(r.Privada ? " priv" : "")" data-tipo="Reunion" asp-page="@destino" asp-route-id="@r.Id"
-                                   title="@(r.Privada ? "Privada · " : "")@(string.IsNullOrWhiteSpace(r.Hora) ? "" : r.Hora + " · ")@r.Titulo@(string.IsNullOrWhiteSpace(r.Institucion) ? "" : " — " + r.Institucion)">
+                                   title="Nº @r.Id · @(r.Privada ? "Privada · " : "")@(string.IsNullOrWhiteSpace(r.Hora) ? "" : r.Hora + " · ")@r.Titulo@(string.IsNullOrWhiteSpace(r.Institucion) ? "" : " — " + r.Institucion)">
                                     @if (!string.IsNullOrWhiteSpace(r.Hora)) { <time>@r.Hora</time> }
                                     @r.Titulo
                                 </a>
@@ -494,7 +494,7 @@
       } else {
         reus.forEach(function(r){
           var destino = calState.puedeGestionar ? '/Reuniones/Editor/' : '/Reuniones/Acta/';
-          var meta = [r.institucion, r.tipo, r.privada?'Privada':null].filter(Boolean).join(' · ');
+          var meta = ['Nº '+r.id, r.institucion, r.tipo, r.privada?'Privada':null].filter(Boolean).join(' · ');
           html += '<a class="cal-dia-item'+(r.privada?' priv':'')+'" data-tipo="Reunion" href="'+destino+r.id+'">';
           html += '<span class="cal-dia-hora">'+(r.hora||'—')+'</span><span class="cal-dia-body"><span class="cal-dia-titulo">'+escH(r.titulo)+'</span>';
           if(meta) html += '<span class="cal-dia-meta">'+escH(meta)+'</span>';
@@ -536,7 +536,7 @@
 
         reus.slice(0, tope).forEach(function(r){
           var destino = calState.puedeGestionar ? '/Reuniones/Editor/' : '/Reuniones/Acta/';
-          html += '<a class="cal-chip'+(r.privada?' priv':'')+'" data-tipo="Reunion" href="'+destino+r.id+'" title="'+escH((r.privada?'Privada · ':'')+(r.hora?r.hora+' · ':'')+r.titulo)+'">';
+          html += '<a class="cal-chip'+(r.privada?' priv':'')+'" data-tipo="Reunion" href="'+destino+r.id+'" title="'+escH('Nº '+r.id+' · '+(r.privada?'Privada · ':'')+(r.hora?r.hora+' · ':'')+r.titulo)+'">';
           if(r.hora) html += '<time>'+escH(r.hora)+'</time>';
           html += escH(r.titulo)+'</a>';
         });

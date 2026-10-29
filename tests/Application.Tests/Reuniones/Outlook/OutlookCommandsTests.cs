@@ -56,6 +56,7 @@ public class OutlookCommandsTests : IDisposable
     private Reunion Sembrar(string hora = "09:00")
     {
         var r = Reunion.Crear("Mesa técnica");
+        r.Modalidad = "Virtual";
         r.Fecha = new DateOnly(2026, 10, 23);
         r.Hora = hora;
         r.PreRegistrar("Invitada", null, "IHTT", null, "invitada@ihtt.gob.hn", null);
@@ -87,6 +88,21 @@ public class OutlookCommandsTests : IDisposable
     }
 
     // ── Enviar ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Enviar_una_presencial_se_rechaza_sin_tocar_Graph()
+    {
+        Conectar(_organizador);
+        var r = Sembrar();
+        r.Modalidad = "Presencial";
+        _ctx.SaveChanges();
+
+        var acto = () => Enviar().Handle(new EnviarReunionAOutlookCommand(r.Id, true, Url), default);
+
+        await acto.Should().ThrowAsync<DomainException>().WithMessage("*virtuales o híbridas*");
+        await _outlook.DidNotReceiveWithAnyArgs().CrearAsync(default, default!, default, default);
+        (await _ctx.Reuniones.AsNoTracking().SingleAsync()).OutlookEventId.Should().BeNull();
+    }
 
     [Fact]
     public async Task Enviar_crea_la_cita_y_guarda_id_organizador_enlace_y_huella()

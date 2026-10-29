@@ -48,7 +48,7 @@ public class EventoOutlookBuilderTests
     [Fact]
     public void Sin_Teams_cuando_se_desmarco_al_enviar()
     {
-        var r = Base();
+        var r = Base("Híbrida"); // solo las virtuales e híbridas se envían
         r.PrepararEnvioOutlook(conTeams: false);
 
         EventoOutlookBuilder.Construir(r, null, Url).EsTeams.Should().BeFalse();

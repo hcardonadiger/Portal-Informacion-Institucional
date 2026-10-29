@@ -228,6 +228,12 @@ builder.Services
     .AddMcpServer(opts =>
     {
         opts.ServerInfo = new() { Name = "portal-gestion-digital", Version = "1.0.0" };
+        // El cliente lee esto al conectarse: sin ello la IA tiende a pedirle a la persona que
+        // pegue la transcripción en vez de bajarla de Teams.
+        opts.ServerInstructions =
+            "Para resumir una reunión o llenar su ayuda memoria, baje primero la transcripción de " +
+            "Teams con obtener_transcripcion_reunion y luego escriba con llenar_memoria_reunion. " +
+            "Pídale a la persona que la pegue solo si esa herramienta no pudo bajarla.";
     })
     .WithHttpTransport(opts => opts.Stateless = true)
     .WithTools<Diger.TramitesEstado.Web.Mcp.ProyectosTools>()
