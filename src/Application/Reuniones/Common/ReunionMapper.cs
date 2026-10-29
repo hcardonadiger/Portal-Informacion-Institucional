@@ -43,7 +43,8 @@ public static class ReunionMapper
                 Institucion = a.Institucion?.Trim(),
                 Departamento = a.Departamento?.Trim(),
                 Correo = a.Correo?.Trim().ToLowerInvariant(), Telefono = a.Telefono?.Trim(),
-                AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl
+                AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl,
+                EsPreregistro = a.EsPreregistro, Confirmado = a.Confirmado, DeOutlook = a.DeOutlook
             });
 
         var orden = 0;
@@ -129,7 +130,8 @@ public static class ReunionMapper
         {
             Nombre = a.Nombre, Cargo = a.Cargo,
             InstitucionId = a.InstitucionId, Institucion = a.Institucion, Departamento = a.Departamento,
-            Correo = a.Correo, Telefono = a.Telefono, AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl
+            Correo = a.Correo, Telefono = a.Telefono, AutoRegistro = a.AutoRegistro, RegistradoEl = a.RegistradoEl,
+            EsPreregistro = a.EsPreregistro, Confirmado = a.Confirmado, DeOutlook = a.DeOutlook
         }).ToList();
         var acuerdos = r.Acuerdos.OrderBy(a => a.Orden).Select(a => new AcuerdoInput
         {

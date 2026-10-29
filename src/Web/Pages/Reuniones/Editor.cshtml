@@ -265,6 +265,14 @@
               {
                   <div class="asistente-item">
                       <input type="hidden" name="Asistentes.Index" value="@i" />
+                      @* Origen y asistencia: el guardado reemplaza los asistentes en bloque y sin estos
+                         campos todos volvían como «manuales», sin la asistencia marcada. Las filas que
+                         agrega el JavaScript no los llevan: nacen manuales, que es lo que son. *@
+                      <input type="hidden" name="Asistentes[@i].EsPreregistro" value="@(Model.Asistentes[i].EsPreregistro ? "true" : "false")" />
+                      <input type="hidden" name="Asistentes[@i].Confirmado" value="@(Model.Asistentes[i].Confirmado is { } conf ? (conf ? "true" : "false") : "")" />
+                      <input type="hidden" name="Asistentes[@i].AutoRegistro" value="@(Model.Asistentes[i].AutoRegistro ? "true" : "false")" />
+                      <input type="hidden" name="Asistentes[@i].RegistradoEl" value="@(Model.Asistentes[i].RegistradoEl?.ToString("yyyy-MM-ddTHH:mm:ss.fffffff", System.Globalization.CultureInfo.InvariantCulture))" />
+                      <input type="hidden" name="Asistentes[@i].DeOutlook" value="@(Model.Asistentes[i].DeOutlook ? "true" : "false")" />
                       <div class="asi-hdr">
                           <span class="asist-av ic@(i % 8) asi-av-live" aria-hidden="true">@AsistIni(Model.Asistentes[i].Nombre)</span>
                           <input name="Asistentes[@i].Nombre" class="asi-nombre" value="@Model.Asistentes[i].Nombre" placeholder="Nombre completo…" autocomplete="name" />

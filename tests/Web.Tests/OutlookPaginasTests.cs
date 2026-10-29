@@ -237,6 +237,27 @@ public sealed class OutlookPaginasTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task El_editor_envia_el_origen_y_la_asistencia_de_cada_asistente()
+    {
+        var id = await SembrarReunionAsync(conectada: false);
+        using (var scope = _portal.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Diger.TramitesEstado.Infrastructure.Persistence.AppDbContext>();
+            var r = await db.Reuniones.IgnoreQueryFilters().Include(x => x.Asistentes).SingleAsync(x => x.Id == id);
+            r.Agregar(new Diger.TramitesEstado.Domain.Entities.Asistente
+                { Nombre = "Marta", Correo = "marta@x.hn", EsPreregistro = true, Confirmado = true, DeOutlook = true });
+            await db.SaveChangesAsync();
+        }
+
+        var html = await Jefe().GetStringAsync($"/Reuniones/Editor?id={id}");
+
+        html.Should().Contain("name=\"Asistentes[0].EsPreregistro\" value=\"true\"")
+            .And.Contain("name=\"Asistentes[0].Confirmado\" value=\"true\"")
+            .And.Contain("name=\"Asistentes[0].DeOutlook\" value=\"true\"")
+            .And.Contain("name=\"Asistentes[0].AutoRegistro\" value=\"false\"");
+    }
+
+    [Fact]
     public async Task Enviar_desde_el_editor_deja_la_reunion_en_Outlook()
     {
         _conexion.EstaConfigurada.Returns(true);

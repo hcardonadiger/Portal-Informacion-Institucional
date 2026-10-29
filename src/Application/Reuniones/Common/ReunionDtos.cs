@@ -12,9 +12,13 @@ public sealed class AsistenteInput
     public string? Correo       { get; set; }
     public string? Telefono     { get; set; }
 
-    // Trazabilidad del auto-registro (se conserva al reemplazar los hijos en bloque).
-    public bool      AutoRegistro { get; set; }
-    public DateTime? RegistradoEl { get; set; }
+    // Origen y asistencia: viajan como campos ocultos del editor para sobrevivir al reemplazo en
+    // bloque. Sin ellos, cada guardado convertía a todos en «manuales» y borraba la asistencia marcada.
+    public bool      AutoRegistro  { get; set; }
+    public DateTime? RegistradoEl  { get; set; }
+    public bool      EsPreregistro { get; set; }
+    public bool?     Confirmado    { get; set; }
+    public bool      DeOutlook     { get; set; }
 }
 
 public sealed class AcuerdoInput
