@@ -115,7 +115,7 @@ correo de los invitados de cada cita importada.
   `OutlookModificadaEl`, `CanceladaEnOutlookEl`; propiedad `EsImportadaDeOutlook`; métodos
   `ImportarDeOutlook`, `ActualizarDeOutlook` (devuelve si cambió algo),
   `MarcarCanceladaEnOutlook`, `QuitarCancelacionOutlook`, `SincronizarInvitadosOutlook`
-  (devuelve si cambió algo); `Asistente.DeOutlook`; record `InvitadoOutlook(Nombre, Correo)`.
+  (devuelve si cambió algo); `Asistente.DeOutlook`; record `InvitadoImportado(Nombre, Correo)`.
 - **Application** — `ICalendarioOutlookLectura` (`ListarAsync(usuarioId, desde, hasta)`,
   `ExisteAsync(usuarioId, eventId)` → cita o null); `CitaOutlook` (record) y
   `CitaOutlookTraductor` (puro); `SincronizarCalendarioOutlookCommand(usuarioId)` → resumen

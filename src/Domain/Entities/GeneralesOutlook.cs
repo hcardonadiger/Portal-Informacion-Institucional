@@ -2,7 +2,7 @@ namespace Diger.TramitesEstado.Domain.Entities;
 
 /// <summary>Un invitado de la cita, ya sin recursos ni el dueño del calendario, y recortado a los
 /// largos de Asistentes (Nombre 150, Correo 200). Lo arma CitaOutlookTraductor.</summary>
-public sealed record InvitadoOutlook(string Nombre, string Correo);
+public sealed record InvitadoImportado(string Nombre, string Correo);
 
 /// <summary>
 /// Lo que una cita de Outlook decide sobre su reunión del portal (spec 2026-10-29): Outlook manda

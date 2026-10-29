@@ -242,11 +242,11 @@ public sealed class Reunion : BaseAuditableEntity, ISoftDeletable
     /// auto-registrado (QR), uno con la asistencia marcada ni uno agregado a mano. No duplica por
     /// correo. Devuelve true si agregó o quitó alguno.
     /// </summary>
-    public bool SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoOutlook> invitados)
+    public bool SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoImportado> invitados)
     {
         static string Clave(string correo) => correo.Trim().ToLowerInvariant();
 
-        var porCorreo = new Dictionary<string, InvitadoOutlook>();
+        var porCorreo = new Dictionary<string, InvitadoImportado>();
         foreach (var i in invitados)
             if (!string.IsNullOrWhiteSpace(i.Correo)) porCorreo.TryAdd(Clave(i.Correo), i);
 

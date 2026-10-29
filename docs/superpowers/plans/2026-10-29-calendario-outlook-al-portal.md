@@ -42,7 +42,7 @@ Expected: sin salida.
 ### Task 1: Dominio — `GeneralesOutlook` y la reunión importada
 
 **Files:**
-- Create: `src/Domain/Entities/GeneralesOutlook.cs` (también `InvitadoOutlook`)
+- Create: `src/Domain/Entities/GeneralesOutlook.cs` (también `InvitadoImportado`)
 - Modify: `src/Domain/Entities/Reunion.cs` (bloque `// ── Outlook (fase 1…`, `PrepararEnvioOutlook` y la clase `Asistente`)
 - Test: `tests/Domain.Tests/ReunionCalendarioOutlookTests.cs`
 
@@ -55,8 +55,8 @@ Expected: sin salida.
   - `bool Reunion.MarcarCanceladaEnOutlook(DateTime utcAhora)` — true si no estaba marcada
   - `bool Reunion.QuitarCancelacionOutlook()` — true si estaba marcada
   - `void Reunion.RecordarICalUId(string? iCalUId)`
-  - `record InvitadoOutlook(string Nombre, string Correo)` — ya filtrado y recortado por quien lo arma
-  - `bool Reunion.SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoOutlook> invitados)` — true si agregó o quitó alguno
+  - `record InvitadoImportado(string Nombre, string Correo)` — ya filtrado y recortado por quien lo arma
+  - `bool Reunion.SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoImportado> invitados)` — true si agregó o quitó alguno
   - `bool Asistente.DeOutlook { get; set; }`
   - propiedades: `OutlookImportadoEventId`, `OutlookICalUId`, `OutlookImportadaPorId`, `OutlookModificadaEl`, `CanceladaEnOutlookEl`, `EsImportadaDeOutlook`
 
@@ -215,7 +215,7 @@ namespace Diger.TramitesEstado.Domain.Entities;
 
 /// <summary>Un invitado de la cita, ya sin recursos ni el dueño del calendario, y recortado a los
 /// largos de Asistentes (Nombre 150, Correo 200). Lo arma CitaOutlookTraductor.</summary>
-public sealed record InvitadoOutlook(string Nombre, string Correo);
+public sealed record InvitadoImportado(string Nombre, string Correo);
 
 /// <summary>
 /// Lo que una cita de Outlook decide sobre su reunión del portal (spec 2026-10-29): Outlook manda
@@ -332,11 +332,11 @@ public sealed record GeneralesOutlook(
     /// auto-registrado (QR), uno con la asistencia marcada ni uno agregado a mano. No duplica por
     /// correo. Devuelve true si agregó o quitó alguno.
     /// </summary>
-    public bool SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoOutlook> invitados)
+    public bool SincronizarInvitadosOutlook(IReadOnlyCollection<InvitadoImportado> invitados)
     {
         static string Clave(string correo) => correo.Trim().ToLowerInvariant();
 
-        var porCorreo = new Dictionary<string, InvitadoOutlook>();
+        var porCorreo = new Dictionary<string, InvitadoImportado>();
         foreach (var i in invitados)
             if (!string.IsNullOrWhiteSpace(i.Correo)) porCorreo.TryAdd(Clave(i.Correo), i);
 
@@ -569,7 +569,7 @@ git commit -m "Base: columnas del calendario de Outlook en Reuniones, migracion 
   - `record InvitadoCita(string? Nombre, string? Correo, bool EsRecurso)` — tal como viene de Graph.
   - `interface ICalendarioOutlookLectura { Task<IReadOnlyList<CitaOutlook>> ListarAsync(Guid usuarioId, DateOnly desde, DateOnly hasta, CancellationToken ct); Task<CitaOutlook?> ObtenerAsync(Guid usuarioId, string eventId, CancellationToken ct); }`
   - `static GeneralesOutlook CitaOutlookTraductor.Traducir(CitaOutlook c)`
-  - `static IReadOnlyList<InvitadoOutlook> CitaOutlookTraductor.Invitados(CitaOutlook c, string? correoDueno)`
+  - `static IReadOnlyList<InvitadoImportado> CitaOutlookTraductor.Invitados(CitaOutlook c, string? correoDueno)`
 
 - [ ] **Step 1: Pruebas que fallan**
 
@@ -713,14 +713,14 @@ public static class CitaOutlookTraductor
 
     /// <summary>Los invitados que se pre-registran: sin recursos, sin el dueño del calendario
     /// (<paramref name="correoDueno"/>, su Upn) y sin los que no traen correo. El orden es el de Outlook.</summary>
-    public static IReadOnlyList<InvitadoOutlook> Invitados(CitaOutlook c, string? correoDueno)
+    public static IReadOnlyList<InvitadoImportado> Invitados(CitaOutlook c, string? correoDueno)
     {
         var dueno = correoDueno?.Trim();
         return (c.Invitados ?? [])
             .Where(i => !i.EsRecurso && !string.IsNullOrWhiteSpace(i.Correo))
             .Select(i => (Nombre: i.Nombre?.Trim(), Correo: i.Correo!.Trim()))
             .Where(i => !string.Equals(i.Correo, dueno, StringComparison.OrdinalIgnoreCase))
-            .Select(i => new InvitadoOutlook(
+            .Select(i => new InvitadoImportado(
                 Recortar(string.IsNullOrWhiteSpace(i.Nombre) ? i.Correo : i.Nombre, LargoNombre),
                 Recortar(i.Correo, LargoCorreo)))
             .ToList();
