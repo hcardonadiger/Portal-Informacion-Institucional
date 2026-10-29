@@ -50,6 +50,7 @@ public sealed class EnviarReunionAOutlookCommandHandler(
         }
 
         r.RegistrarEnvioOutlook(res.EventId, usuarioId, res.EnlaceTeams, evento.Huella(), DateTime.UtcNow);
+        r.RecordarICalUId(res.ICalUId);
         await uow.SaveChangesAsync(ct);
         return Unit.Value;
     }

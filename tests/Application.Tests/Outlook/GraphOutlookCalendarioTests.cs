@@ -75,6 +75,14 @@ public class GraphOutlookCalendarioTests
     }
 
     [Fact]
+    public async Task Crear_devuelve_tambien_el_iCalUId()
+    {
+        var (cal, _) = Armar(HttpStatusCode.Created, """{"id":"AAMk-1","iCalUId":"ical-9"}""");
+
+        (await cal.CrearAsync(Org, Evento, Guid.NewGuid(), default)).ICalUId.Should().Be("ical-9");
+    }
+
+    [Fact]
     public async Task Sin_Teams_no_pide_reunion_en_linea()
     {
         var (cal, m) = Armar(HttpStatusCode.Created, """{"id":"AAMk-1"}""");

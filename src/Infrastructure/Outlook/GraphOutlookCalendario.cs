@@ -132,7 +132,8 @@ public sealed class GraphOutlookCalendario(
                      ?? throw new OutlookNoDisponibleException("Graph devolvió una respuesta ilegible");
             string? enlace = raiz.TryGetProperty("onlineMeeting", out var om) && om.ValueKind == JsonValueKind.Object
                              && om.TryGetProperty("joinUrl", out var ju) ? ju.GetString() : null;
-            return new ResultadoOutlook(id, enlace);
+            string? ical = raiz.TryGetProperty("iCalUId", out var ic) && ic.ValueKind == JsonValueKind.String ? ic.GetString() : null;
+            return new ResultadoOutlook(id, enlace, ical);
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
         {

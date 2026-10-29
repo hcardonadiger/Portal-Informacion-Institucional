@@ -102,6 +102,12 @@ public static class DependencyInjection
             c.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
             c.Timeout = TimeSpan.FromSeconds(60);
         });
+        // Calendario de Outlook al portal (spec 2026-10-29): lectura del calendario de cada usuario.
+        services.AddHttpClient<Application.Reuniones.Outlook.Calendario.ICalendarioOutlookLectura, GraphCalendarioOutlookLectura>(c =>
+        {
+            c.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
+            c.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         // Dirección pública del portal, para los enlaces que salen de él (recuperación de
         // contraseña, QR de asistencia). Nunca se toma de la petición.

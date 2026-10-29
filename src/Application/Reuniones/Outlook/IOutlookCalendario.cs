@@ -1,6 +1,6 @@
 namespace Diger.TramitesEstado.Application.Reuniones.Outlook;
 
-public sealed record ResultadoOutlook(string EventId, string? EnlaceTeams);
+public sealed record ResultadoOutlook(string EventId, string? EnlaceTeams, string? ICalUId = null);
 
 /// <summary>
 /// Lo único que el portal sabe de Microsoft Graph. Siempre actúa en el calendario de
