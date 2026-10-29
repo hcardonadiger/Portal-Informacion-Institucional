@@ -1,6 +1,6 @@
 # Calendario de Outlook al portal — diseño
 
-**Fecha:** 2026-10-29 · **Rama:** `ike_opt` · **Estado:** aprobado en conversación, pendiente de revisión escrita
+**Fecha:** 2026-10-29 · **Rama:** `ike_opt` · **Estado:** implementado (2026-10-29)
 
 ## Qué y por qué
 
@@ -154,3 +154,18 @@ correo de los invitados de cada cita importada.
 Calendarios compartidos o secundarios; copiar el cuerpo de la cita; traducir la respuesta de los
 invitados a asistencia; devolver a Outlook los
 cambios hechos en el portal a una reunión importada; sincronizar más allá de +90 días.
+
+## Desvíos durante la implementación
+
+- `OrigenExternoId` mide 60 y un id de evento de Graph pasa de 150: allí va `outlook:` + SHA-256
+  base64url (51), y el id completo en la columna nueva `OutlookImportadoEventId` (cinco columnas en
+  `Reuniones`, no cuatro).
+- El invitado de dominio se llama `InvitadoImportado`: Application ya tenía un
+  `InvitadoOutlook(Correo, Nombre)` para los invitados que envía el portal, con los campos al revés.
+- El servicio vive en `Infrastructure/Outlook/`, junto a `RecordatorioBackgroundService`, no en Web.
+- La prueba "el editor no deja cambiar Generales" es de `ReunionMapper.Aplicar`: ahí vive la regla;
+  el `readonly` del input es solo aviso.
+- El script va en dos lotes con su propia transacción: SQL Server no deja indexar una columna creada
+  en el mismo lote.
+- Se corrigió de paso un defecto anterior: guardar desde el editor recreaba los asistentes sin su
+  origen ni su asistencia marcada. Ahora viajan como campos ocultos (commit aparte).
