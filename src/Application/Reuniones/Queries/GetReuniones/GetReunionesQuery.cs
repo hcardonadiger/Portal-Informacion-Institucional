@@ -2,7 +2,8 @@ namespace Diger.TramitesEstado.Application.Reuniones.Queries.GetReuniones;
 
 public sealed record ReunionListItemDto(
     int Id, string Titulo, DateOnly? Fecha, string? Institucion, string? Tipo, int NumAsistentes,
-    VisibilidadReunion Visibilidad, Guid? HiloId = null, DateTime CreadaEl = default);
+    VisibilidadReunion Visibilidad, Guid? HiloId = null, DateTime CreadaEl = default,
+    bool DeOutlook = false, bool CanceladaEnOutlook = false);
 
 /// <summary>Columnas por las que se puede ordenar el listado.</summary>
 public enum OrdenReuniones { Creacion, Fecha, Titulo, Institucion, Tipo, Asistentes }
@@ -90,7 +91,9 @@ public sealed class GetReunionesQueryHandler(IApplicationDbContext ctx)
         var items = await Ordenar(baseq, query.Ordenar, query.Desc)
             .Skip((page - 1) * size).Take(size)
             .Select(r => new ReunionListItemDto(
-                r.Id, r.Titulo, r.Fecha, r.Institucion, r.Tipo, r.Asistentes.Count, r.Visibilidad, r.HiloId, r.CreatedAt))
+                r.Id, r.Titulo, r.Fecha, r.Institucion, r.Tipo, r.Asistentes.Count, r.Visibilidad, r.HiloId, r.CreatedAt,
+                // EsImportadaDeOutlook está ignorada en EF y no se traduce: se pregunta por las columnas.
+                r.OutlookImportadaPorId != null, r.CanceladaEnOutlookEl != null))
             .ToListAsync(ct);
 
         return new PagedResult<ReunionListItemDto>(items, total, page, size);

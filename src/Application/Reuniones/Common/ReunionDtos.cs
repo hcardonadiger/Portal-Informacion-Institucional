@@ -75,6 +75,11 @@ public sealed class ReunionFormDto
     public string?   Modalidad { get; set; }
     public string?   Lugar     { get; set; }
 
+    /// <summary>Solo lectura para la vista: la regla vive en ReunionMapper.Aplicar, que mira la
+    /// reunión y no este campo (el formulario no lo envía y no se puede falsificar).</summary>
+    public bool      EsImportadaDeOutlook { get; set; }
+    public DateTime? CanceladaEnOutlookEl { get; set; }
+
     // ── Expediente vinculado ──────────────────────────────────────
     public int?      ExpedienteId     { get; set; }
     public string?   ExpedienteCodigo { get; set; }

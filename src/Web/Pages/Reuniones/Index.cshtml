@@ -166,6 +166,8 @@
                             <div class="reun-titulo-cell">
                                 <a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>
                                 @if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }
+                                @if (r.CanceladaEnOutlook) { <span class="hilo-badge" title="La cita se canceló o se borró en Outlook">cancelada en Outlook</span> }
+                                else if (r.DeOutlook) { <span class="hilo-badge" title="Viene de su calendario de Outlook">Outlook</span> }
                             </div>
                         </td>
                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
@@ -237,7 +239,9 @@
                                 {
                                     <tr>
                                         <td class="res-meta" style="text-align:center">@r.Id</td>
-                                        <td><a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }</td>
+                                        <td><a class="seg-inst" asp-page="@(puedeGestionar ? "/Reuniones/Editor" : "/Reuniones/Acta")" asp-route-id="@r.Id">@r.Titulo</a>@if (r.HiloId is Guid h) { <a class="hilo-badge" asp-page="/Reuniones/Hilo" asp-route-id="@h" title="Pertenece a un hilo — ver hilo">🔗 hilo</a> }
+                                @if (r.CanceladaEnOutlook) { <span class="hilo-badge" title="La cita se canceló o se borró en Outlook">cancelada en Outlook</span> }
+                                else if (r.DeOutlook) { <span class="hilo-badge" title="Viene de su calendario de Outlook">Outlook</span> }</td>
                                         <td class="res-meta" style="text-align:center">@(r.Fecha?.ToFechaCorta() ?? "—")</td>
                                         <td class="res-meta" style="text-align:center">@(r.Tipo ?? "—")</td>
                                         <td style="text-align:center">

@@ -4,9 +4,15 @@ public static class ReunionMapper
 {
     public static void Aplicar(Reunion r, ReunionFormDto d, List<AsistenteInput> asistentes, List<AcuerdoInput> acuerdos)
     {
-        r.EstablecerTitulo(d.Titulo);
-        r.Fecha = d.Fecha; r.Hora = d.Hora?.Trim(); r.Duracion = d.Duracion?.Trim();
-        r.Modalidad = d.Modalidad?.Trim(); r.Lugar = d.Lugar?.Trim();
+        // En una reunión que vino de Outlook, Outlook manda sobre estos cinco (spec 2026-10-29):
+        // el editor los muestra de solo lectura y aquí se ignoran aunque lleguen en el formulario.
+        if (!r.EsImportadaDeOutlook)
+        {
+            r.EstablecerTitulo(d.Titulo);
+            r.Fecha = d.Fecha; r.Hora = d.Hora?.Trim(); r.Duracion = d.Duracion?.Trim();
+            r.Lugar = d.Lugar?.Trim();
+        }
+        r.Modalidad = d.Modalidad?.Trim();
         r.ExpedienteId = d.ExpedienteId; r.ExpedienteCodigo = d.ExpedienteCodigo?.Trim();
         r.Tipo = d.Tipo?.Trim(); r.EsCapacitacionPlataforma = d.EsCapacitacionPlataforma;
         r.Visibilidad = d.Visibilidad;
@@ -96,6 +102,7 @@ public static class ReunionMapper
         {
             Titulo = r.Titulo, Fecha = r.Fecha, Hora = r.Hora, Duracion = r.Duracion,
             Modalidad = r.Modalidad, Lugar = r.Lugar, ExpedienteId = r.ExpedienteId, ExpedienteCodigo = r.ExpedienteCodigo,
+            EsImportadaDeOutlook = r.EsImportadaDeOutlook, CanceladaEnOutlookEl = r.CanceladaEnOutlookEl,
             InstitucionesIds = r.InstitucionesParticipantes.OrderBy(x => x.Orden).Select(x => x.InstitucionId).ToList(),
             Tipo = r.Tipo,
             EsCapacitacionPlataforma = r.EsCapacitacionPlataforma, Visibilidad = r.Visibilidad,

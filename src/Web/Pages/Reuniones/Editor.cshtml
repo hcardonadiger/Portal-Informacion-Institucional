@@ -49,7 +49,18 @@
         {
             <div class="alert-warn" style="flex-basis:100%">@Model.OutlookAviso</div>
         }
-        @if (o.EnOutlook)
+        @if (d.EsImportadaDeOutlook)
+        {
+            <span class="hint">Viene de su calendario de Outlook: el título, la fecha, la hora, la duración y el lugar
+                se cambian allá y llegan solos en unos minutos.</span>
+            @if (d.CanceladaEnOutlookEl is { } cancelada)
+            {
+                <div class="alert-warn" style="flex-basis:100%">La cita se canceló o se borró en Outlook
+                    (visto el @cancelada.ToLocalTime().ToString("dd/MM/yyyy HH:mm")). La reunión se conserva con lo que
+                    se haya llenado; si no la necesita, puede borrarla.</div>
+            }
+        }
+        else if (o.EnOutlook)
         {
             <span class="hint">En el calendario de @o.Organizador
                 @(o.SincronizadaEl is { } s ? $"· actualizada {s.ToLocalTime():dd/MM/yyyy HH:mm}" : "")</span>
@@ -144,11 +155,11 @@
       <div class="card accent">
         <div class="fg-hdr">Información básica</div>
         <div class="field"><label>Título <span style="color:var(--diger-danger)">*</span></label>
-          <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" required /></div>
+          <input asp-for="Datos.Titulo" placeholder="Ej: Taller de inducción a la plataforma" required readonly="@(d.EsImportadaDeOutlook ? "readonly" : null)" /></div>
         <div class="row3">
-          <div class="field"><label>Fecha</label><input asp-for="Datos.Fecha" type="date" /></div>
-          <div class="field"><label>Hora</label><input asp-for="Datos.Hora" type="time" /></div>
-          <div class="field"><label>Duración</label><input asp-for="Datos.Duracion" placeholder="2 horas" /></div>
+          <div class="field"><label>Fecha</label><input asp-for="Datos.Fecha" type="date" readonly="@(d.EsImportadaDeOutlook ? "readonly" : null)" /></div>
+          <div class="field"><label>Hora</label><input asp-for="Datos.Hora" type="time" readonly="@(d.EsImportadaDeOutlook ? "readonly" : null)" /></div>
+          <div class="field"><label>Duración</label><input asp-for="Datos.Duracion" placeholder="2 horas" readonly="@(d.EsImportadaDeOutlook ? "readonly" : null)" /></div>
         </div>
         <div class="fg-hdr">Tipo y modalidad <span class="help-tip tip-down" data-tip="El tipo determina las secciones del formulario. Las capacitaciones incluyen secciones adicionales de resultados y evidencia.">?</span></div>
         <div class="row2">
@@ -184,7 +195,7 @@
         </div>
         <div class="fg-hdr">Logística</div>
         <div class="row2" style="gap:14px">
-          <div class="field"><label>Lugar</label><input asp-for="Datos.Lugar" placeholder="Sede, sala o enlace de videollamada" /></div>
+          <div class="field"><label>Lugar</label><input asp-for="Datos.Lugar" placeholder="Sede, sala o enlace de videollamada" readonly="@(d.EsImportadaDeOutlook ? "readonly" : null)" /></div>
           <div class="field">
             <label>Visibilidad</label>
             <select asp-for="Datos.Visibilidad">
