@@ -42,6 +42,10 @@ public sealed class McpMemoriaReunionTests : IAsyncLifetime
         capacitacion.EncuestaActiva = true;
 
         var reunion = Sembrar("Mesa técnica", "DIGER");
+        // En la lista de asistencia: él y su institución pueden ser responsables de un acuerdo.
+        reunion.RegistrarAsistente("Luis Gómez", null, "IHTT", null, "lgomez@ihtt.gob.hn", null);
+        // Invitado que no llegó: no puede ser responsable.
+        reunion.PreRegistrar("Tomás Fantl", null, "PNUD", null, "tomas.fantl@undp.org", null);
         reunion.Tipo = "Reunión técnica";
 
         var conObjetivo = Sembrar("Mesa con objetivo", "DIGER");
@@ -126,7 +130,7 @@ public sealed class McpMemoriaReunionTests : IAsyncLifetime
         cap.GetProperty("encuestaActiva").GetBoolean().Should().BeTrue();
         cap.GetProperty("formato").GetString().Should().Contain("validador_institucion");
         cap.GetProperty("formato").GetString().Should().Contain("num_asistentes");
-        cap.GetProperty("prompt").GetString().Should().Be(
+        cap.GetProperty("prompt").GetString().Should().StartWith(
             MemoriaDesdeTranscripcion.Instrucciones(esCapacitacion: true, conEncuesta: true).Prompt,
             "las reglas son las de MemoriaDesdeTranscripcion, no una copia");
         cap.GetProperty("campos").EnumerateArray()
@@ -160,6 +164,35 @@ public sealed class McpMemoriaReunionTests : IAsyncLifetime
         fila.ObjetivoAgenda.Should().Be("Revisar el avance del trámite");
         fila.Titulo.Should().Be("Mesa técnica");
         fila.Acuerdos.Should().ContainSingle(a => a.Compromiso == "Enviar el borrador" && a.Responsable == "IHTT");
+    }
+
+    [Fact]
+    public async Task Las_instrucciones_traen_solo_responsables_de_la_lista_de_asistencia()
+    {
+        var reu = Json(await ComoMcpAsync("Empleado", t => t.InstruccionesMemoriaReunion(_reunionId)));
+
+        reu.GetProperty("responsables").EnumerateArray().Select(r => r.GetProperty("nombre").GetString())
+            .Should().BeEquivalentTo(["Luis Gómez", "IHTT"]);
+        reu.GetProperty("prompt").GetString().Should().Contain("- Luis Gómez").And.NotContain("Tomás Fantl");
+        reu.GetProperty("avisoAsistencia").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Sin_nadie_en_la_lista_las_instrucciones_lo_avisan()
+    {
+        var cap = Json(await ComoMcpAsync("Empleado", t => t.InstruccionesMemoriaReunion(_capacitacionId)));
+
+        cap.GetProperty("avisoAsistencia").GetString().Should().Contain("Nadie ha llenado");
+    }
+
+    [Fact]
+    public async Task Llenar_avisa_que_responsables_quedaron_fuera()
+    {
+        var resultado = Json(await ComoMcpAsync("JefeArea", t => t.LlenarMemoriaReunion(_reunionId,
+            """{ "acuerdos": [ { "compromiso": "Revisar costos", "responsable": "Tomás Fantl" } ] }""")));
+
+        resultado.GetProperty("mensaje").GetString().Should().Contain("no están en la lista de asistencia: Tomás Fantl");
+        (await LeerAsync(_reunionId)).Acuerdos.Should().ContainSingle(a => a.Compromiso == "Revisar costos" && a.Responsable == null);
     }
 
     [Fact]

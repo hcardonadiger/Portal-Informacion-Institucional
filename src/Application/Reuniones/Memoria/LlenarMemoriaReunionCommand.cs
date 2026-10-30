@@ -94,13 +94,18 @@ public sealed class LlenarMemoriaReunionCommandHandler(
         if (p.PctAsistencia is not null)        r.PctAsistencia  = p.PctAsistencia;
 
         if (p.Acuerdos.Count > 0)
+        {
+            // Solo responsables de la lista de asistencia o instituciones registradas (decisión del
+            // 2026-10-30), con su nombre exacto: es lo que el editor ofrece en el desplegable. Lo que
+            // no casa queda sin responsable; el MCP le dice a la IA cuáles fueron.
+            var validos = ResponsablesMemoria.De(r);
             r.ReemplazarAcuerdos(p.Acuerdos.Select(a => new AcuerdoReunion
             {
                 Compromiso = a.Compromiso.Trim(),
-                // Texto tal como lo nombra la transcripción; casarlo con el directorio es de una persona.
-                Responsable = string.IsNullOrWhiteSpace(a.Responsable) ? null : a.Responsable.Trim(),
+                Responsable = ResponsablesMemoria.Resolver(a.Responsable, validos),
                 ResponsableContactoId = null,
                 Plazo = a.Plazo,
             }));
+        }
     }
 }

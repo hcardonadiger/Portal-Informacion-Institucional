@@ -35,9 +35,11 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
     {
         await permisos.ExigirAsync("Reuniones.Ver");
 
-        var datos = (await LeerAsync(id)).Datos;
+        var detalle = await LeerAsync(id);
+        var datos = detalle.Datos;
         var esCapacitacion = MemoriaDesdeTranscripcion.EsCapacitacion(datos.Tipo);
         var instrucciones = MemoriaDesdeTranscripcion.Instrucciones(esCapacitacion, datos.EncuestaActiva);
+        var responsables = ResponsablesDe(detalle);
 
         return new
         {
@@ -46,9 +48,11 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
             Tipo           = datos.Tipo,
             EsCapacitacion = esCapacitacion,
             EncuestaActiva = datos.EncuestaActiva,
-            instrucciones.Prompt,
+            Prompt         = instrucciones.Prompt + "\n\n" + ResponsablesMemoria.Regla(responsables),
             instrucciones.Formato,
             instrucciones.Campos,
+            Responsables    = responsables.Select(r => new { r.Nombre, r.EsInstitucion }),
+            AvisoAsistencia = AvisoAsistencia(responsables),
         };
     }
 
@@ -67,7 +71,8 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
     {
         await permisos.ExigirAsync("Reuniones.Ver");
 
-        var datos = (await LeerAsync(id)).Datos;
+        var detalle = await LeerAsync(id);
+        var datos = detalle.Datos;
 
         TranscripcionTeams transcripcion;
         try
@@ -85,6 +90,7 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
 
         var esCapacitacion = MemoriaDesdeTranscripcion.EsCapacitacion(datos.Tipo);
         var instrucciones = MemoriaDesdeTranscripcion.Instrucciones(esCapacitacion, datos.EncuestaActiva);
+        var responsables = ResponsablesDe(detalle);
 
         return new
         {
@@ -93,9 +99,11 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
             Tipo           = datos.Tipo,
             EsCapacitacion = esCapacitacion,
             EncuestaActiva = datos.EncuestaActiva,
-            instrucciones.Prompt,
+            Prompt         = instrucciones.Prompt + "\n\n" + ResponsablesMemoria.Regla(responsables),
             instrucciones.Formato,
             instrucciones.Campos,
+            Responsables    = responsables.Select(r => new { r.Nombre, r.EsInstitucion }),
+            AvisoAsistencia = AvisoAsistencia(responsables),
             TranscripcionCreadaElUtc = transcripcion.CreadaElUtc,
             Transcripcion  = transcripcion.Texto,
         };
@@ -116,7 +124,8 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
     {
         await permisos.ExigirEscrituraAsync("Reuniones.Editar");
 
-        var datos = (await LeerAsync(id)).Datos;
+        var detalle = await LeerAsync(id);
+        var datos = detalle.Datos;
 
         try
         {
@@ -133,11 +142,32 @@ public sealed class ReunionesMemoriaTools(ISender sender, McpPermisos permisos)
             throw NoEncontrada(id);
         }
 
-        var mensaje = MemoriaDesdeTranscripcion.Interpretar(
-            json, MemoriaDesdeTranscripcion.EsCapacitacion(datos.Tipo), datos.EncuestaActiva).Mensaje;
+        var propuesta = MemoriaDesdeTranscripcion.Interpretar(
+            json, MemoriaDesdeTranscripcion.EsCapacitacion(datos.Tipo), datos.EncuestaActiva);
+        var mensaje = propuesta.Mensaje;
+
+        // El comando dejó sin responsable lo que no está en la lista de asistencia: se le dice a la IA
+        // para que se lo cuente a la persona, que puede pedir a esa gente que se registre.
+        var responsables = ResponsablesDe(detalle);
+        var descartados = propuesta.Acuerdos
+            .Where(a => !string.IsNullOrWhiteSpace(a.Responsable) && ResponsablesMemoria.Resolver(a.Responsable, responsables) is null)
+            .Select(a => a.Responsable!.Trim()).Distinct().ToList();
+        if (descartados.Count > 0)
+            mensaje += $" Quedaron sin responsable porque no están en la lista de asistencia: {string.Join(", ", descartados)}.";
 
         return new { Id = id, Mensaje = mensaje };
     }
+
+    private static IReadOnlyList<ResponsableValido> ResponsablesDe(ReunionDetailDto detalle) =>
+        ResponsablesMemoria.DeFormulario(detalle.Asistentes, detalle.InstitucionNombre);
+
+    /// <summary>Si nadie se ha registrado, la IA debe saberlo antes de redactar: los acuerdos irán sin
+    /// responsable, y conviene pedir a los asistentes que llenen la lista primero.</summary>
+    private static string? AvisoAsistencia(IReadOnlyList<ResponsableValido> responsables) =>
+        responsables.Any(r => !r.EsInstitucion)
+            ? null
+            : "Nadie ha llenado todavía la lista de asistencia de esta reunión: los acuerdos quedarán sin " +
+              "responsable. Sugiérale a la persona que los asistentes se registren antes de llenar la memoria.";
 
     /// <summary>La reunión, si la cuenta la alcanza. Fuera de alcance y no existente responden lo
     /// mismo, como en <see cref="ProyectosTools"/>: no se confirma que exista lo que no se ve.</summary>

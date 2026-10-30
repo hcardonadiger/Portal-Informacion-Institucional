@@ -631,6 +631,10 @@ public sealed class Asistente : BaseEntity
     /// <summary>true = llegó como invitado de la cita de Outlook (spec 2026-10-29). Solo a estos
     /// los puede quitar la sincronización, y solo mientras sigan pendientes.</summary>
     public bool  DeOutlook     { get; set; }
+
+    /// <summary>Está en la lista de asistencia: se registró por QR, lo agregaron a mano, o fue
+    /// pre-registrado (invitado) y confirmó. Un invitado pendiente o ausente no está.</summary>
+    public bool  EnLaLista     => !EsPreregistro || AutoRegistro || Confirmado == true;
 }
 
 public sealed class AcuerdoReunion : BaseEntity

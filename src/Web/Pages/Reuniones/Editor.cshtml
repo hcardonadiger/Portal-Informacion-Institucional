@@ -1122,6 +1122,33 @@
                 .filter(function (v) { return v.length > 0; });
         }
 
+        // Responsables que se ofrecen en los acuerdos (decisión del 2026-10-30): quienes están en la
+        // lista de asistencia —registrados por QR, agregados a mano o invitados que confirmaron—, las
+        // instituciones con que se registraron y la institución principal de la reunión. Un invitado
+        // de Outlook pendiente no está. Es la misma regla que ResponsablesMemoria en el servidor.
+        function enLaLista(item) {
+            function v(campo) { var el = item.querySelector('input[name$=".' + campo + '"]'); return el ? el.value : ''; }
+            return v('EsPreregistro') !== 'true' || v('AutoRegistro') === 'true' || v('Confirmado') === 'true';
+        }
+        function responsablesValidos() {
+            var personas = [], instituciones = [];
+            document.querySelectorAll('#asistentes-list .asistente-item').forEach(function (item) {
+                if (!enLaLista(item)) return;
+                var n = item.querySelector('input[name$=".Nombre"]');
+                var i = item.querySelector('input[name$=".Institucion"]');
+                if (n && n.value.trim()) personas.push(n.value.trim());
+                if (i && i.value.trim()) instituciones.push(i.value.trim());
+            });
+            if (institucionesSeleccionadas.length) instituciones.push(nombreInstitucion(institucionesSeleccionadas[0]));
+            var vistos = {};
+            return personas.concat(instituciones).filter(function (x) {
+                var k = x.toLowerCase();
+                if (vistos[k]) return false;
+                vistos[k] = true;
+                return true;
+            });
+        }
+
         // Contacto del directorio cuyo nombre coincide (para vincular participantes al directorio)
         function contactoPorNombre(nombre) {
             return CONTACTOS_DIR.filter(function (c) { return c.nombre === nombre; })[0] || null;
@@ -1147,7 +1174,7 @@
         // Lo que ya estaba guardado no se pierde: si el responsable actual no está entre los
         // asistentes, se conserva como opción al final para no borrarlo al reabrir el acta.
         function actualizarResponsables() {
-            var nombres = nombresAsistentes();
+            var nombres = responsablesValidos();
             document.querySelectorAll('#acuerdos-list .resp-select').forEach(function (sel) {
                 var actual = sel.dataset.selected !== undefined ? sel.dataset.selected : sel.value;
                 var actualCid = sel.dataset.selectedCid || '';
@@ -1155,7 +1182,7 @@
 
                 var blank = document.createElement('option');
                 blank.value = '';
-                blank.textContent = nombres.length ? '— Seleccione —' : '— Agregue asistentes primero —';
+                blank.textContent = nombres.length ? '— Seleccione —' : '— Nadie en la lista de asistencia —';
                 sel.appendChild(blank);
 
                 // `elegido` existe para que el valor guardado SIEMPRE quede representado. Sin esa

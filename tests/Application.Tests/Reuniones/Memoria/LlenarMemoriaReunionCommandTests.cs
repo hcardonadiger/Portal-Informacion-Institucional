@@ -67,7 +67,8 @@ public class LlenarMemoriaReunionCommandTests : IDisposable
     [Fact]
     public async Task Llena_una_reunion_vacia_y_guarda()
     {
-        var r = Sembrar();
+        // Los responsables tienen que estar en la lista de asistencia (o ser su institución).
+        var r = Sembrar(x => x.RegistrarAsistente("Luis Gómez", null, "IHTT", null, "lgomez@ihtt.gob.hn", null));
 
         await Llenar(r.Id, JsonCompleto);
 
@@ -81,6 +82,27 @@ public class LlenarMemoriaReunionCommandTests : IDisposable
             (0, "Enviar el borrador", "IHTT", new DateOnly(2026, 11, 5)),
             (1, "Revisar requisitos", "Luis Gómez", (DateOnly?)null));
         acuerdos.Should().OnlyContain(a => a.ResponsableContactoId == null && a.Estado == EstadoCompromiso.Pendiente);
+    }
+
+    [Fact]
+    public async Task Un_responsable_que_no_esta_en_la_lista_queda_vacio_y_uno_parecido_se_ajusta()
+    {
+        var r = Sembrar(x =>
+        {
+            x.RegistrarAsistente("Wendy Elizabeth Oviedo Martinez", null, "Secretaría de Gobernación", null, "wendy.oviedo@sgjd.gob.hn", null);
+            x.PreRegistrar("Tomás Fantl", null, "PNUD", null, "tomas.fantl@undp.org", null);   // invitado que no llegó
+        });
+
+        await Llenar(r.Id, """
+            { "acuerdos": [
+                { "compromiso": "Enviar las fichas", "responsable": "Wendy Oviedo (Gobernación)" },
+                { "compromiso": "Revisar el presupuesto", "responsable": "Tomás Fantl" },
+                { "compromiso": "Coordinar la agenda", "responsable": "secretaria de gobernacion" }
+            ] }
+            """);
+
+        (await Releer()).Acuerdos.OrderBy(a => a.Orden).Select(a => a.Responsable).Should().Equal(
+            "Wendy Elizabeth Oviedo Martinez", null, "Secretaría de Gobernación");
     }
 
     [Fact]
